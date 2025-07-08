@@ -1,5 +1,8 @@
-from pydantic import Annotated, BaseModel, Field
-from typing import Literal
+from pydantic import BaseModel, Field
+from typing import Annotated, Literal
+from MCPTool import MCPTool
+from pathlib import Path
+import json
 
 
 class Lab(BaseModel):
@@ -12,3 +15,75 @@ class Lab(BaseModel):
     discipline: Annotated[
         Literal["Chemistry", "Biology"], Field(description="实验室的学科类型")
     ]
+    mcp_tools_available: Annotated[
+        set[MCPTool], Field(description="实验室可以使用的MCP工具tid列表")
+    ] = set()
+
+    @classmethod
+    def add_mcp_tool(
+        self,
+        MCPTool: Annotated[MCPTool | None, Field(description="MCP工具的实例")] = None,
+    ):  # 添加MCP工具
+        if MCPTool is None:
+            raise ValueError("必须提供MCP工具的实例")
+        elif MCPTool.requires_license:
+            raise ValueError("添加该MCP工具需要权限")
+        else:
+            self.mcp_tools_available.add(MCPTool)
+            self.save_labs()
+
+    @classmethod
+    def remove_mcp_tool(
+        self,
+        MCPTool: Annotated[MCPTool | None, Field(description="MCP工具的实例")] = None,
+    ):  # 删除MCP工具
+        if MCPTool is None:
+            raise ValueError("必须提供MCP工具的实例")
+        elif MCPTool.requires_license:
+            raise ValueError("删除该MCP工具需要权限")
+        else:
+            self.mcp_tools_available.remove(MCPTool)
+            self.save_labs()
+
+    @classmethod
+    def from_lid(
+        cls, lid: Annotated[int | None, Field(description="实验室的Lab ID")]
+    ) -> "Lab":  # 从Lab ID获取实验室实例
+        data_path = Path(__file__).parent.parent / "data" / "labs.json"
+        with open(data_path, "r", encoding="utf-8") as f:
+            labs_data = json.load(f)
+        for lab_data in labs_data:
+            if lab_data["lid"] == lid:
+                return cls(**lab_data)
+        raise ValueError(
+            f"未找到lid为{lid}的实验室，可用ID: {set(x['lid'] for x in labs_data)}"
+        )
+
+    def save_labs(self):  # 追加保存实验室实例
+        data_path = Path(__file__).parent.parent / "data" / "labs.json"
+        # 读取现有数据
+        try:
+            with open(data_path, "r", encoding="utf-8") as f:
+                existing_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            existing_data = []
+
+        # 追加新数据
+        existing_data.append(self.model_dump(mode="json"))
+
+        # 写入文件
+        with open(data_path, "w", encoding="utf-8") as f:
+            json.dump(existing_data, f, ensure_ascii=False, indent=4)
+        print(f"已追加保存实验室实例: {self.model_dump()}")
+
+
+if __name__ == "__main__":
+    try:
+        for lid in [1, 2, 3, 4, 5, 6]:
+            lab = Lab.from_lid(lid)
+            print(lab)
+    except Exception as e:
+        print(f"测试失败: {str(e)}")
+    finally:
+        lab.save_labs()
+        print("测试完毕！但是还有MCPTool的增减没有测试！")

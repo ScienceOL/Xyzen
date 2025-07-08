@@ -1,5 +1,5 @@
-from pydantic import Annotated, BaseModel, Field
-from typing import Literal
+from pydantic import BaseModel, Field
+from typing import Annotated, Literal
 
 
 class MCPTool(BaseModel):
@@ -15,3 +15,4 @@ class MCPTool(BaseModel):
     ]
     # MCPTool的内部参数
     parameters: Annotated[dict, Field(description="MCPTool的参数")]
+    requires_license: Annotated[bool, Field(description="操作是否需要权限")] = True

@@ -1,0 +1,50 @@
+[
+    {
+        "name": "生物实验室",
+        "description": "生物实验室",
+        "lid": 1,
+        "type": "Public",
+        "discipline": "Biology",
+        "mcp_tools_available": []
+    },
+    {
+        "name": "无机化学实验室",
+        "description": "新材料",
+        "lid": 2,
+        "type": "Public",
+        "discipline": "Chemistry",
+        "mcp_tools_available": []
+    },
+    {
+        "name": "高分子实验室",
+        "description": "嵌段共聚物自组装",
+        "lid": 3,
+        "type": "Public",
+        "discipline": "Chemistry",
+        "mcp_tools_available": []
+    },
+    {
+        "name": "分析化学实验室",
+        "description": "高效液相色谱",
+        "lid": 4,
+        "type": "Public",
+        "discipline": "Chemistry",
+        "mcp_tools_available": []
+    },
+    {
+        "name": "有机合成",
+        "description": "不对称催化",
+        "lid": 5,
+        "type": "Public",
+        "discipline": "Chemistry",
+        "mcp_tools_available": []
+    },
+    {
+        "name": "新实验室",
+        "description": "新实验室",
+        "lid": 6,
+        "type": "Public",
+        "discipline": "Chemistry",
+        "mcp_tools_available": []
+    }
+]
