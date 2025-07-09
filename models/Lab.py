@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Annotated, Literal
-from MCPTool import MCPTool
+from .MCPTool import MCPTool
 from pathlib import Path
 import json
 
@@ -16,10 +16,9 @@ class Lab(BaseModel):
         Literal["Chemistry", "Biology"], Field(description="实验室的学科类型")
     ]
     mcp_tools_available: Annotated[
-        set[MCPTool], Field(description="实验室可以使用的MCP工具tid列表")
-    ] = set()
+        list[MCPTool], Field(description="实验室可以使用的MCP工具列表")
+    ] = []
 
-    @classmethod
     def add_mcp_tool(
         self,
         MCPTool: Annotated[MCPTool | None, Field(description="MCP工具的实例")] = None,
@@ -29,10 +28,10 @@ class Lab(BaseModel):
         elif MCPTool.requires_license:
             raise ValueError("添加该MCP工具需要权限")
         else:
-            self.mcp_tools_available.add(MCPTool)
+            if MCPTool not in self.mcp_tools_available:
+                self.mcp_tools_available.append(MCPTool)
             self.save_labs()
 
-    @classmethod
     def remove_mcp_tool(
         self,
         MCPTool: Annotated[MCPTool | None, Field(description="MCP工具的实例")] = None,
@@ -42,7 +41,8 @@ class Lab(BaseModel):
         elif MCPTool.requires_license:
             raise ValueError("删除该MCP工具需要权限")
         else:
-            self.mcp_tools_available.remove(MCPTool)
+            if MCPTool in self.mcp_tools_available:
+                self.mcp_tools_available.remove(MCPTool)
             self.save_labs()
 
     @classmethod
@@ -59,7 +59,7 @@ class Lab(BaseModel):
             f"未找到lid为{lid}的实验室，可用ID: {set(x['lid'] for x in labs_data)}"
         )
 
-    def save_labs(self):  # 追加保存实验室实例
+    def save_labs(self) -> None:  # 追加保存实验室实例
         data_path = Path(__file__).parent.parent / "data" / "labs.json"
         # 读取现有数据
         try:
@@ -85,5 +85,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"测试失败: {str(e)}")
     finally:
-        lab.save_labs()
         print("测试完毕！但是还有MCPTool的增减没有测试！")

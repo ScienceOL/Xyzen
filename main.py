@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi_mcp import FastApiMCP
+from routers import labs_router
 
 app = FastAPI()
-
+app.include_router(labs_router)
 
 # normal http
 @app.get("/", operation_id="index", tags=["default"])
@@ -66,3 +67,8 @@ def analyze_data(data_points: list[float]) -> str:
 mcp = FastApiMCP(fastapi=app, include_tags=["tools", "resources"])
 
 mcp.mount()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+

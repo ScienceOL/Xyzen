@@ -1,0 +1,130 @@
+[
+    {
+        "name": "分子结构可视化工具",
+        "version": "2.1.0",
+        "download_url": "https://github.com/chem-tools/molviewer/releases/v2.1.0",
+        "description": "用于3D分子结构可视化和分析的化学工具，支持多种分子格式",
+        "tid": 1001,
+        "type": "Tools",
+        "parameters": {
+            "file_formats": ["mol", "pdb", "xyz", "cif"],
+            "visualization_modes": ["ball_stick", "space_filling", "wireframe"],
+            "export_formats": ["png", "svg", "pdf"]
+        },
+        "requires_license": true
+    },
+    {
+        "name": "蛋白质序列分析器",
+        "version": "1.8.3",
+        "download_url": "https://github.com/bio-tools/protein-analyzer/releases/v1.8.3",
+        "description": "生物信息学工具，用于蛋白质序列分析、比对和功能预测",
+        "tid": 1002,
+        "type": "Tools",
+        "parameters": {
+            "analysis_types": [
+                "sequence_alignment",
+                "motif_search",
+                "secondary_structure"
+            ],
+            "databases": ["UniProt", "PDB", "NCBI"],
+            "output_formats": ["fasta", "clustal", "json"]
+        },
+        "requires_license": false
+    },
+    {
+        "name": "化学反应路径预测器",
+        "version": "3.0.1",
+        "download_url": "https://github.com/chem-tools/reaction-predictor/releases/v3.0.1",
+        "description": "基于机器学习的化学反应路径预测和优化工具",
+        "tid": 1003,
+        "type": "Tools",
+        "parameters": {
+            "prediction_methods": ["neural_network", "rule_based", "hybrid"],
+            "reaction_types": ["organic", "inorganic", "catalytic"],
+            "accuracy_threshold": 0.85
+        },
+        "requires_license": true
+    },
+    {
+        "name": "基因表达数据分析包",
+        "version": "2.5.2",
+        "download_url": "https://github.com/bio-tools/gene-expression/releases/v2.5.2",
+        "description": "用于RNA-seq和微阵列基因表达数据分析的生物信息学工具集",
+        "tid": 1004,
+        "type": "Tools",
+        "parameters": {
+            "analysis_pipeline": [
+                "quality_control",
+                "normalization",
+                "differential_expression"
+            ],
+            "statistical_tests": ["t_test", "anova", "wilcoxon"],
+            "visualization": ["heatmap", "volcano_plot", "pca"]
+        },
+        "requires_license": true
+    },
+    {
+        "name": "化学数据库资源包",
+        "version": "1.0.0",
+        "download_url": "https://github.com/chem-tools/chemical-databases/releases/v1.0.0",
+        "description": "包含PubChem、ChEMBL等主要化学数据库的访问接口和查询工具",
+        "tid": 1005,
+        "type": "Resources",
+        "parameters": {
+            "databases": ["PubChem", "ChEMBL", "DrugBank", "ZINC"],
+            "query_types": ["structure_search", "property_search", "similarity_search"],
+            "export_formats": ["sdf", "csv", "json"]
+        },
+        "requires_license": false
+    },
+    {
+        "name": "生物分子动力学模拟器",
+        "version": "4.2.1",
+        "download_url": "https://github.com/bio-tools/molecular-dynamics/releases/v4.2.1",
+        "description": "用于蛋白质、核酸等生物分子的分子动力学模拟和分析",
+        "tid": 1006,
+        "type": "Tools",
+        "parameters": {
+            "force_fields": ["AMBER", "CHARMM", "OPLS"],
+            "simulation_types": ["NVT", "NPT", "NVE"],
+            "analysis_tools": [
+                "trajectory_analysis",
+                "free_energy",
+                "binding_affinity"
+            ]
+        },
+        "requires_license": true
+    },
+    {
+        "name": "化学合成路线规划器",
+        "version": "2.3.0",
+        "download_url": "https://github.com/chem-tools/synthesis-planner/releases/v2.3.0",
+        "description": "基于逆合成分析的化学合成路线规划和优化工具",
+        "tid": 1007,
+        "type": "Tools",
+        "parameters": {
+            "planning_algorithms": [
+                "retrosynthesis",
+                "forward_synthesis",
+                "bidirectional"
+            ],
+            "reaction_libraries": ["USPD", "USPD_2017", "custom"],
+                "optimization_criteria": ["yield", "cost", "safety", "green_chemistry"]
+        },
+        "requires_license": true
+    },
+    {
+        "name": "生物实验设计提示库",
+        "version": "1.2.0",
+        "download_url": "https://github.com/bio-tools/experiment-prompts/releases/v1.2.0",
+        "description": "包含各种生物实验设计的智能提示和最佳实践指南",
+        "tid": 1008,
+        "type": "Prompts",
+        "parameters": {
+            "experiment_types": ["PCR", "Western_Blot", "Cell_Culture", "Microscopy"],
+            "prompt_categories": ["protocol_design", "troubleshooting", "data_analysis"],
+            "difficulty_levels": ["beginner", "intermediate", "advanced"]
+        },
+        "requires_license": false
+    }
+]

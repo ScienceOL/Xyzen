@@ -1,0 +1,1 @@
+from .labs import labs_router
