@@ -58,6 +58,7 @@ class Lab(BaseModel):
         raise ValueError(
             f"未找到lid为{lid}的实验室，可用ID: {set(x['lid'] for x in labs_data)}"
         )
+        return None
 
     def save_labs(self) -> None:  # 追加保存实验室实例
         data_path = Path(__file__).parent.parent / "data" / "labs.json"
