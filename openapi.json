@@ -1,0 +1,443 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FastAPI",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/labs/{lid}": {
+            "get": {
+                "tags": [
+                    "labs"
+                ],
+                "summary": "Get Lab Info",
+                "operationId": "get_lab_info_labs__lid__get",
+                "parameters": [
+                    {
+                        "name": "lid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "实验室ID",
+                            "title": "Lid"
+                        },
+                        "description": "实验室ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Lab"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/labs/{lid}/tools": {
+            "get": {
+                "tags": [
+                    "labs"
+                ],
+                "summary": "Get Lab Tools",
+                "operationId": "get_lab_tools_labs__lid__tools_get",
+                "parameters": [
+                    {
+                        "name": "lid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "实验室ID",
+                            "title": "Lid"
+                        },
+                        "description": "实验室ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/MCPTool"
+                                    },
+                                    "title": "Response Get Lab Tools Labs  Lid  Tools Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "labs"
+                ],
+                "summary": "Add Lab Tool",
+                "operationId": "add_lab_tool_labs__lid__tools_post",
+                "parameters": [
+                    {
+                        "name": "lid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "实验室ID",
+                            "title": "Lid"
+                        },
+                        "description": "实验室ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MCPTool"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "labs"
+                ],
+                "summary": "Remove Lab Tool",
+                "operationId": "remove_lab_tool_labs__lid__tools_delete",
+                "parameters": [
+                    {
+                        "name": "lid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "实验室ID",
+                            "title": "Lid"
+                        },
+                        "description": "实验室ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MCPTool"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/": {
+            "get": {
+                "tags": [
+                    "common"
+                ],
+                "summary": "Index",
+                "operationId": "index",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "Lab": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "实验室的名称"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "实验室的描述"
+                    },
+                    "lid": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Lid",
+                        "description": "实验室的Lab ID"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "Public",
+                            "Private"
+                        ],
+                        "title": "Type",
+                        "description": "实验室的类型"
+                    },
+                    "discipline": {
+                        "type": "string",
+                        "enum": [
+                            "Chemistry",
+                            "Biology"
+                        ],
+                        "title": "Discipline",
+                        "description": "实验室的学科类型"
+                    },
+                    "mcp_tools_available": {
+                        "items": {
+                            "$ref": "#/components/schemas/MCPTool"
+                        },
+                        "type": "array",
+                        "title": "Mcp Tools Available",
+                        "description": "实验室可以使用的MCP工具列表",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "description",
+                    "lid",
+                    "type",
+                    "discipline"
+                ],
+                "title": "Lab"
+            },
+            "MCPTool": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "MCPTool的名称"
+                    },
+                    "version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Version",
+                        "description": "MCPTool的版本"
+                    },
+                    "download_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Download Url",
+                        "description": "MCPTool的下载地址"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "MCPTool的描述"
+                    },
+                    "tid": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tid",
+                        "description": "MCPTool的Tool ID"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "Resources",
+                            "Tools",
+                            "Prompts"
+                        ],
+                        "title": "Type",
+                        "description": "MCPTools的类型"
+                    },
+                    "parameters": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Parameters",
+                        "description": "MCPTool的参数"
+                    },
+                    "requires_license": {
+                        "type": "boolean",
+                        "title": "Requires License",
+                        "description": "操作是否需要权限",
+                        "default": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version",
+                    "download_url",
+                    "description",
+                    "tid",
+                    "type",
+                    "parameters"
+                ],
+                "title": "MCPTool"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}

@@ -1,0 +1,286 @@
+{
+    "get_lab_info_labs__lid__get": {
+        "path": "/labs/{lid}",
+        "method": "get",
+        "parameters": [
+            {
+                "name": "lid",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "integer",
+                    "description": "实验室ID",
+                    "title": "Lid"
+                },
+                "description": "实验室ID"
+            }
+        ],
+        "request_body": {}
+    },
+    "get_lab_tools_labs__lid__tools_get": {
+        "path": "/labs/{lid}/tools",
+        "method": "get",
+        "parameters": [
+            {
+                "name": "lid",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "integer",
+                    "description": "实验室ID",
+                    "title": "Lid"
+                },
+                "description": "实验室ID"
+            }
+        ],
+        "request_body": {}
+    },
+    "add_lab_tool_labs__lid__tools_post": {
+        "path": "/labs/{lid}/tools",
+        "method": "post",
+        "parameters": [
+            {
+                "name": "lid",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "integer",
+                    "description": "实验室ID",
+                    "title": "Lid"
+                },
+                "description": "实验室ID"
+            }
+        ],
+        "request_body": {
+            "required": true,
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "properties": {
+                            "name": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Name",
+                                "description": "MCPTool的名称"
+                            },
+                            "version": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Version",
+                                "description": "MCPTool的版本"
+                            },
+                            "download_url": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Download Url",
+                                "description": "MCPTool的下载地址"
+                            },
+                            "description": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Description",
+                                "description": "MCPTool的描述"
+                            },
+                            "tid": {
+                                "anyOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Tid",
+                                "description": "MCPTool的Tool ID"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "Resources",
+                                    "Tools",
+                                    "Prompts"
+                                ],
+                                "title": "Type",
+                                "description": "MCPTools的类型"
+                            },
+                            "parameters": {
+                                "additionalProperties": true,
+                                "type": "object",
+                                "title": "Parameters",
+                                "description": "MCPTool的参数"
+                            },
+                            "requires_license": {
+                                "type": "boolean",
+                                "title": "Requires License",
+                                "description": "操作是否需要权限",
+                                "default": true
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "version",
+                            "download_url",
+                            "description",
+                            "tid",
+                            "type",
+                            "parameters"
+                        ],
+                        "title": "MCPTool"
+                    }
+                }
+            }
+        }
+    },
+    "remove_lab_tool_labs__lid__tools_delete": {
+        "path": "/labs/{lid}/tools",
+        "method": "delete",
+        "parameters": [
+            {
+                "name": "lid",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "integer",
+                    "description": "实验室ID",
+                    "title": "Lid"
+                },
+                "description": "实验室ID"
+            }
+        ],
+        "request_body": {
+            "required": true,
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "properties": {
+                            "name": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Name",
+                                "description": "MCPTool的名称"
+                            },
+                            "version": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Version",
+                                "description": "MCPTool的版本"
+                            },
+                            "download_url": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Download Url",
+                                "description": "MCPTool的下载地址"
+                            },
+                            "description": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Description",
+                                "description": "MCPTool的描述"
+                            },
+                            "tid": {
+                                "anyOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Tid",
+                                "description": "MCPTool的Tool ID"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "Resources",
+                                    "Tools",
+                                    "Prompts"
+                                ],
+                                "title": "Type",
+                                "description": "MCPTools的类型"
+                            },
+                            "parameters": {
+                                "additionalProperties": true,
+                                "type": "object",
+                                "title": "Parameters",
+                                "description": "MCPTool的参数"
+                            },
+                            "requires_license": {
+                                "type": "boolean",
+                                "title": "Requires License",
+                                "description": "操作是否需要权限",
+                                "default": true
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "version",
+                            "download_url",
+                            "description",
+                            "tid",
+                            "type",
+                            "parameters"
+                        ],
+                        "title": "MCPTool"
+                    }
+                }
+            }
+        }
+    },
+    "index": {
+        "path": "/",
+        "method": "get",
+        "parameters": [],
+        "request_body": {}
+    }
+}
