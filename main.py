@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi_mcp import FastApiMCP
 from routers import labs_router
+from server.FastAPILabMCP import mount_lab_mcp_dynamically
 
 app = FastAPI()
 app.include_router(labs_router)
@@ -59,9 +60,12 @@ def analyze_data(data_points: list[float]) -> str:
     return f"Please analyze these data points: {formatted_data}"
 
 
+# 原有的MCP服务器（作为备用）
 mcp = FastApiMCP(fastapi=app, include_tags=["tools", "resources"])
-
 mcp.mount()
+
+# 动态挂载实验室MCP服务器
+mount_lab_mcp_dynamically(app)
 
 if __name__ == "__main__":
     import uvicorn

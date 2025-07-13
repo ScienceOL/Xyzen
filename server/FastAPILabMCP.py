@@ -1,167 +1,473 @@
-from typing_extensions import Annotated, Any, Dict, Doc, List, Optional
-from fastapi.openapi.utils import get_openapi
-from fastapi import FastAPI
-from mcp.types import Tool
+from typing_extensions import Annotated, Any, Dict, Doc, List, Literal, Optional
 from mcp.server.lowlevel.server import Server
+from server.MCPServer import MCPServer
+from fastapi.openapi.utils import get_openapi
+from fastapi import FastAPI, APIRouter, Request, params
+from mcp.types import Tool
 from tools import openapi2mcp
+from models import Lab
+import logging
+import httpx
+from fastapi_mcp.transport.sse import FastApiSseTransport
+from fastapi_mcp.types import HTTPRequestInfo
+from typing import Sequence, Union
+import mcp.types as types
+import json
 
+logger = logging.getLogger(__name__)
 
+class LabMCPManager:
+    """管理多个实验室的MCP服务器实例"""
+    def __init__(self):
+        self.lab_mcp_servers: Dict[int, 'FastAPILabMCP'] = {}
+        self.lab_transports: Dict[int, FastApiSseTransport] = {}
+    
+    def get_or_create_lab_mcp(self, lid: int, fastapi_app: FastAPI) -> 'FastAPILabMCP':
+        """获取或创建指定实验室的MCP服务器"""
+        if lid not in self.lab_mcp_servers:
+            try:
+                lab = Lab.from_lid(lid)
+                # 根据实验室可用工具创建operation_ids过滤列表
+                available_tool_ids = [tool.tid for tool in lab.mcp_tools_available if tool.tid is not None]
+                
+                self.lab_mcp_servers[lid] = FastAPILabMCP(
+                    fastapi=fastapi_app,
+                    name=f"{lab.name} MCP Server",
+                    description=f"MCP服务器 for {lab.name}",
+                    lab_id=lid,
+                    available_tool_ids=available_tool_ids
+                )
+            except Exception as e:
+                raise ValueError(f"创建实验室{lid}的MCP服务器失败: {str(e)}")
+        
+        return self.lab_mcp_servers[lid]
+    
+    def get_lab_transport(self, lid: int) -> Optional[FastApiSseTransport]:
+        """获取指定实验室的传输实例"""
+        return self.lab_transports.get(lid)
+    
+    def set_lab_transport(self, lid: int, transport: FastApiSseTransport):
+        """设置指定实验室的传输实例"""
+        self.lab_transports[lid] = transport
 
+# 全局实验室MCP管理器
+lab_mcp_manager = LabMCPManager()
 
 class FastAPILabMCP:
     def __init__(
         self,
         # FastAPILabMCP基础参数
-        fastapi: Annotated[
-            FastAPI,
-            Doc("利用挂载FastAPI创建实验室个性化的MCP服务器")
-        ],
+        fastapi: Annotated[FastAPI, Doc("利用挂载FastAPI创建实验室个性化的MCP服务器")],
         name: Annotated[
-            Optional[str],
-            Doc("实验室的MCP服务器名称(默认继承FastAPI的名称)")
+            Optional[str], Doc("实验室的MCP服务器名称(默认继承FastAPI的名称)")
         ] = None,
         description: Annotated[
-            Optional[str],
-            Doc("实验室的MCP服务器描述（默认继承FastAPI的描述）")
+            Optional[str], Doc("实验室的MCP服务器描述（默认继承FastAPI的描述）")
         ] = None,
-        # FastAPILabMCP工具参数
+        # FastAPILabMCP实验室参数
+        lab_id: Annotated[
+            Optional[int], Doc("实验室ID，用于过滤工具")
+        ] = None,
+        available_tool_ids: Annotated[
+            Optional[List[int]], Doc("实验室可用工具的ID列表")
+        ] = None,
+        # FastAPILabMCP工具筛选参数
         operations_include: Annotated[
             Optional[List[str]],
-            Doc("通过operation_id指定MCP工具（默认包含所有API转化而来的MCP工具，不与operations_exclude同时使用）")
+            Doc(
+                "通过operation_id指定MCP工具（默认包含所有API转化而来的MCP工具，不与operations_exclude同时使用）"
+            ),
         ] = None,
         operations_exclude: Annotated[
             Optional[List[str]],
-            Doc("通过operation_id排除MCP工具（默认包含所有API转化而来的MCP工具，不与operations_include同时使用）")
+            Doc(
+                "通过operation_id排除MCP工具（默认包含所有API转化而来的MCP工具，不与operations_include同时使用）"
+            ),
         ] = None,
         tags_include: Annotated[
             Optional[List[str]],
-            Doc("通过tag指定MCP工具(默认包含所有API转化而来的MCP工具，不与tags_exclude同时使用)")
+            Doc(
+                "通过tag指定MCP工具(默认包含所有API转化而来的MCP工具，不与tags_exclude同时使用)"
+            ),
         ] = None,
         tags_exclude: Annotated[
             Optional[List[str]],
-            Doc("通过tag排除MCP工具（默认包含所有API转化而来的MCP工具，不与tags_include同时使用）")
-        ] = None
+            Doc(
+                "通过tag排除MCP工具（默认包含所有API转化而来的MCP工具，不与tags_include同时使用）"
+            ),
+        ] = None,
     ):
         # 工具筛选方法验证
-        if operations_include and operations_exclude:# 不能同时使用
+        if operations_include and operations_exclude:  # 不能同时使用
             raise ValueError("operations_include和operations_exclude不能同时使用")
-        if tags_include and tags_exclude:# 不能同时使用
+        if tags_include and tags_exclude:  # 不能同时使用
             raise ValueError("tags_include和tags_exclude不能同时使用")
+        
+        # 实验室相关参数
+        self.lab_id = lab_id
+        self.available_tool_ids = available_tool_ids or []
+        
         # 工具参数初始化
         self._operations_include = operations_include
         self._operations_exclude = operations_exclude
         self._tags_include = tags_include
         self._tags_exclude = tags_exclude
-        
+
         # MCP服务器参数初始化
         self.operation_map: Dict[str, Dict[str, Any]]
-        self.tools: set[Tool]# MCP工具列表（已筛选了operations或者tags）
-        self.server: Server # MCP服务器实例
-        
+        self.tools: set[Tool]  # MCP工具列表（已筛选了operations或者tags）
+        self.server: Server  # MCP服务器实例
+
         # 基础参数初始化
         self.fastapi = fastapi
         self.name = name or fastapi.title or "FastAPI LabMCP"
-        self.description = description or fastapi.description or "This is a FastAPI mounted LabMCP server."
+        self.description = (
+            description
+            or fastapi.description
+            or "This is a FastAPI mounted LabMCP server."
+        )
         
+        # HTTP客户端
+        self._base_url = "http://apiserver"
+        self._http_client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.fastapi, raise_app_exceptions=False),
+            base_url=self._base_url,
+            timeout=10.0,
+        )
 
-        
         # 初始化LabMCP服务器
         self.setup_lab_mcp_server()
-    
+
     # API2MCP工具生成方法
-    def _get_openapi_schema(self) -> Dict[str, Any]:
-        """获取FastAPI的OpenAPI模式"""
+    def _get_openapi_schema(self) -> Dict[str, Any]:  # 获取FastAPI的OpenAPI模式
         return get_openapi(
             title=self.fastapi.title,
             version=self.fastapi.version,
             openapi_version=self.fastapi.openapi_version,
             description=self.fastapi.description,
-            routes=self.fastapi.routes
+            routes=self.fastapi.routes,
         )
-    
-    def _has_filters(self) -> bool:
-        """检查是否有任何筛选条件"""
+
+    def _has_filters(self) -> bool:  # 检查是否有任何筛选条件
         return (
             self._operations_include is not None
             or self._operations_exclude is not None
             or self._tags_include is not None
             or self._tags_exclude is not None
         )
-    
-    def _build_operations_by_tag(self) -> Dict[str, List[str]]:
-        """构建tag到operation_id的映射关系"""
+
+    def _build_operations_by_tag(
+        self,
+    ) -> Dict[str, List[str]]:  # 构建tag到operation_id的映射关系
         openapi_schema = self._get_openapi_schema()
         operations_by_tag: Dict[str, List[str]] = {}
-        
+
         for path, path_item in openapi_schema.get("paths", {}).items():
             for method, operation in path_item.items():
                 if method not in ["get", "post", "put", "delete", "patch"]:
                     continue
-                
+
                 operation_id = operation.get("operationId")
                 if not operation_id:
                     continue
-                
+
                 for tag in operation.get("tags", []):
                     if tag not in operations_by_tag:
                         operations_by_tag[tag] = []
                     operations_by_tag[tag].append(operation_id)
-        
+
         return operations_by_tag
-    
-    def _filter_tools(self, mcp_tools: set[Tool]) -> set[Tool]:
+
+    def _filter_tools(
+        self, mcp_tools: List[Tool]
+    ) -> List[Tool]:  # 根据操作ID和标签过滤工具列表
         """根据操作ID和标签过滤工具列表"""
         if not self._has_filters():
             return mcp_tools
 
         operations_by_tag = self._build_operations_by_tag()
         all_operations = {tool.name for tool in mcp_tools}
-        
-        # 收集包含和排除的操作
-        include_ops = set()
-        exclude_ops = set()
-        
-        if self._operations_include:
-            include_ops.update(self._operations_include)
-        if self._operations_exclude:
-            exclude_ops.update(self._operations_exclude)
-        if self._tags_include:
+
+        operations_to_include = set()
+
+        # 按优先级处理包含和排除逻辑
+        if self._operations_include is not None:
+            operations_to_include.update(self._operations_include)
+        elif self._operations_exclude is not None:
+            operations_to_include.update(all_operations - set(self._operations_exclude))
+
+        if self._tags_include is not None:
             for tag in self._tags_include:
-                include_ops.update(operations_by_tag.get(tag, []))
-        if self._tags_exclude:
+                operations_to_include.update(operations_by_tag.get(tag, []))
+        elif self._tags_exclude is not None:
+            excluded_operations = set()
             for tag in self._tags_exclude:
-                exclude_ops.update(operations_by_tag.get(tag, []))
-        
-        # 确定最终包含的操作
-        if exclude_ops:
-            include_ops = include_ops - exclude_ops
-        elif not include_ops and (self._operations_exclude or self._tags_exclude):
-            include_ops = all_operations - exclude_ops
+                excluded_operations.update(operations_by_tag.get(tag, []))
+            operations_to_include.update(all_operations - excluded_operations)
 
         # 过滤工具
-        filtered_tools = set()
+        filtered_tools = []
         for tool in mcp_tools:
-            if tool.name in include_ops:
-                filtered_tools.add(tool)
-        return filtered_tools
-    
+            if tool.name in operations_to_include:
+                filtered_tools.append(tool)
 
-    def api2mcp_tools(self) -> set[Tool]:# 自定义地将FastAPI的API转化为MCP工具
-        mcp_tools, self.operation_map = openapi2mcp(openapi_schema=self._get_openapi_schema())
-        
-        if not self._has_filters():
-            return mcp_tools
-        
-        filtered_tools = self._filter_tools(mcp_tools)
-        
         # 更新operation_map
         if filtered_tools:
-            filtered_ids = {tool.name for tool in filtered_tools}
-            self.operation_map = {op_id: details for op_id, details in self.operation_map.items() if op_id in filtered_ids}
-        
+            filtered_operation_ids = {tool.name for tool in filtered_tools}
+            self.operation_map = {
+                op_id: details
+                for op_id, details in self.operation_map.items()
+                if op_id in filtered_operation_ids
+            }
+
         return filtered_tools
 
-    # LabMCP服务器初始化方法
-    def setup_lab_mcp_server(self):
+    def _api2mcp_tools(self) -> List[Tool]:  # 自定义地将FastAPI的API转化为MCP工具
+        mcp_tools, self.operation_map = openapi2mcp(
+            openapi_schema=self._get_openapi_schema()
+        )
+
+        # 转换为列表
+        mcp_tools_list = list(mcp_tools)
+        
+        # 过滤工具
+        filtered_tools = self._filter_tools(mcp_tools_list)
+
+        return filtered_tools
+
+    def setup_lab_mcp_server(self):  # 初始化LabMCP服务器
         # 初始化工具列表
-        self.tools = self.api2mcp_tools()
+        self.tools = self._api2mcp_tools()
+        
+        # 创建MCP服务器实例
+        lab_mcp_server: MCPServer = MCPServer(self.name, self.description)
+
+        @lab_mcp_server.list_tools()
+        async def handle_list_tools() -> List[types.Tool]:
+            return self.tools
+
+        @lab_mcp_server.call_tool()
+        async def handle_call_tool(
+            name: str, arguments: Dict[str, Any], http_request_info: Optional[HTTPRequestInfo] = None
+        ) -> List[Union[types.TextContent, types.ImageContent, types.EmbeddedResource]]:
+            return await self._execute_api_tool(
+                client=self._http_client,
+                tool_name=name,
+                arguments=arguments,
+                operation_map=self.operation_map,
+                http_request_info=http_request_info,
+            )
+
+        self.server = lab_mcp_server
+    
+    async def _execute_api_tool(
+        self,
+        client: httpx.AsyncClient,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        operation_map: Dict[str, Dict[str, Any]],
+        http_request_info: Optional[HTTPRequestInfo] = None,
+    ) -> List[Union[types.TextContent, types.ImageContent, types.EmbeddedResource]]:
+        """执行API工具"""
+        if tool_name not in operation_map:
+            raise Exception(f"Unknown tool: {tool_name}")
+
+        operation = operation_map[tool_name]
+        path: str = operation["path"]
+        method: str = operation["method"]
+        parameters: List[Dict[str, Any]] = operation.get("parameters", [])
+        arguments = arguments.copy() if arguments else {}
+
+        # 处理路径参数
+        for param in parameters:
+            if param.get("in") == "path" and param.get("name") in arguments:
+                param_name = param.get("name")
+                if param_name:
+                    path = path.replace(f"{{{param_name}}}", str(arguments.pop(param_name)))
+
+        # 处理查询参数
+        query = {}
+        for param in parameters:
+            if param.get("in") == "query" and param.get("name") in arguments:
+                param_name = param.get("name")
+                if param_name:
+                    query[param_name] = arguments.pop(param_name)
+
+        # 处理头部参数
+        headers = {}
+        for param in parameters:
+            if param.get("in") == "header" and param.get("name") in arguments:
+                param_name = param.get("name")
+                if param_name:
+                    headers[param_name] = arguments.pop(param_name)
+
+        # 处理身份验证
+        if http_request_info and http_request_info.headers:
+            if "Authorization" in http_request_info.headers:
+                headers["Authorization"] = http_request_info.headers["Authorization"]
+
+        body = arguments if arguments else None
+
+        try:
+            logger.debug(f"Making {method.upper()} request to {path}")
+            response = await self._request(client, method, path, query, headers, body)
+            
+            try:
+                result = response.json()
+                result_text = json.dumps(result, indent=2, ensure_ascii=False)
+            except json.JSONDecodeError:
+                result_text = response.text if hasattr(response, 'text') else str(response.content)
+
+            if 400 <= response.status_code < 600:
+                raise Exception(f"Error calling {tool_name}. Status code: {response.status_code}. Response: {result_text}")
+
+            return [types.TextContent(type="text", text=result_text)]
+
+        except Exception as e:
+            logger.exception(f"Error calling {tool_name}")
+            raise e
+
+    async def _request(
+        self,
+        client: httpx.AsyncClient,
+        method: str,
+        path: str,
+        query: Dict[str, Any],
+        headers: Dict[str, str],
+        body: Optional[Any],
+    ) -> Any:
+        """发送HTTP请求"""
+        method_lower = method.lower()
+        if method_lower == "get":
+            return await client.get(path, params=query, headers=headers)
+        elif method_lower == "post":
+            return await client.post(path, params=query, headers=headers, json=body)
+        elif method_lower == "put":
+            return await client.put(path, params=query, headers=headers, json=body)
+        elif method_lower == "delete":
+            return await client.delete(path, params=query, headers=headers)
+        elif method_lower == "patch":
+            return await client.patch(path, params=query, headers=headers, json=body)
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+
+    def _register_mcp_connection_endpoint_sse(
+        self,
+        router: FastAPI | APIRouter,
+        transport: FastApiSseTransport,
+        mount_path: str,
+        dependencies: Optional[Sequence[params.Depends]],
+    ):
+        """注册MCP连接端点"""
+        @router.get(mount_path, include_in_schema=False, operation_id=f"mcp_connection_{self.lab_id}", dependencies=dependencies)
+        async def handle_mcp_connection(request: Request):
+            async with transport.connect_sse(request.scope, request.receive, request._send) as (reader, writer):
+                await self.server.run(
+                    reader,
+                    writer,
+                    self.server.create_initialization_options(notification_options=None, experimental_capabilities={}),
+                    raise_exceptions=False,
+                )
+
+    def _register_mcp_messages_endpoint_sse(
+        self,
+        router: FastAPI | APIRouter,
+        transport: FastApiSseTransport,
+        mount_path: str,
+        dependencies: Optional[Sequence[params.Depends]],
+    ):
+        """注册MCP消息端点"""
+        @router.post(
+            f"{mount_path}/messages/",
+            include_in_schema=False,
+            operation_id=f"mcp_messages_{self.lab_id}",
+            dependencies=dependencies,
+        )
+        async def handle_post_message(request: Request):
+            return await transport.handle_fastapi_post_message(request)
+
+    def _register_mcp_endpoints_sse(
+        self,
+        router: FastAPI | APIRouter,
+        transport: FastApiSseTransport,
+        mount_path: str,
+        dependencies: Optional[Sequence[params.Depends]],
+    ):
+        """注册MCP端点"""
+        self._register_mcp_connection_endpoint_sse(router, transport, mount_path, dependencies)
+        self._register_mcp_messages_endpoint_sse(router, transport, mount_path, dependencies)
+
+    def mount(
+        self,
+        router: Annotated[
+            Optional[FastAPI | APIRouter],
+            Doc("挂载MCP服务器到FastAPI或APIRouter,默认挂载到FastAPI"),
+        ] = None,
+        mount_path: Annotated[str, Doc("挂载路径,默认挂载到/mcp")] = "/mcp",
+        transport: Annotated[
+            Literal["sse"],
+            Doc("MCP服务器的传输类型,默认使用sse"),
+        ] = "sse",
+    ) -> None:
+        """挂载MCP服务器到指定路径"""
+        # 规范化挂载路径的格式
+        if not mount_path.startswith("/"):
+            mount_path = f"/{mount_path}"
+        if mount_path.endswith("/"):
+            mount_path = mount_path[:-1]
+        
+        # 获取挂载的router
+        if not router:
+            router = self.fastapi
+        
+        # 构建基础路径
+        if isinstance(router, FastAPI):
+            base_path = router.root_path
+        elif isinstance(router, APIRouter):
+            base_path = self.fastapi.root_path + router.prefix
+        else:
+            raise ValueError(f"Invalid router type: {type(router)}")
+
+        messages_path = f"{base_path}{mount_path}/messages/"
+        
+        # 创建SSE传输
+        sse_transport = FastApiSseTransport(messages_path)
+        
+        # 注册端点
+        if transport == "sse":
+            self._register_mcp_endpoints_sse(router, sse_transport, mount_path, None)
+        else:
+            raise ValueError(f"Invalid transport: {transport}")
+
+        # 如果是APIRouter，需要重新包含到FastAPI应用中
+        if isinstance(router, APIRouter):
+            self.fastapi.include_router(router)
+
+        logger.info(f"Lab {self.lab_id} MCP server mounted at {mount_path}")
+
+def mount_lab_mcp_dynamically(app: FastAPI):
+    """动态挂载所有实验室的MCP服务器"""
+    from data.labs import get_all_lab_ids  # 假设有这个函数
+    
+    try:
+        # 获取所有实验室ID
+        lab_ids = get_all_lab_ids()
+        
+        for lid in lab_ids:
+            try:
+                # 创建或获取实验室MCP服务器
+                lab_mcp = lab_mcp_manager.get_or_create_lab_mcp(lid, app)
+                
+                # 挂载到动态路径
+                mount_path = f"/labs/{lid}/tools/mcp"
+                lab_mcp.mount(router=app, mount_path=mount_path)
+                
+                logger.info(f"Successfully mounted MCP server for lab {lid} at {mount_path}")
+                
+            except Exception as e:
+                logger.error(f"Failed to mount MCP server for lab {lid}: {str(e)}")
+                continue
+                
+    except Exception as e:
+        logger.error(f"Failed to mount lab MCP servers: {str(e)}")
+        
