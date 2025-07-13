@@ -1,20 +1,18 @@
+# Python官方库导入
 from typing_extensions import Annotated, Any, Dict, Doc, List, Literal, Optional
-from mcp.server.lowlevel.server import Server
-from server.MCPServer import MCPServer
-from fastapi.openapi.utils import get_openapi
-from fastapi import FastAPI, APIRouter, Request, params
-from mcp.types import Tool
-from tools import openapi2mcp
-from models import Lab
-import logging
-import httpx
-from fastapi_mcp.transport.sse import FastApiSseTransport
-from fastapi_mcp.types import HTTPRequestInfo
-from typing import Sequence, Union
-import mcp.types as types
-import json
 
-logger = logging.getLogger(__name__)
+# FastAPI导入
+from fastapi.openapi.utils import get_openapi
+from fastapi import FastAPI, APIRouter
+
+# MCP官网SDK导入
+from mcp.types import Tool
+
+# 本地导入
+from servers import MCPServer
+from tools import FastAPILabMCPSseServerTransport, FastAPILabMCPHttpServerTransport, openapi2mcp
+from models import Lab
+
 
 class LabMCPManager:
     """管理多个实验室的MCP服务器实例"""
@@ -116,7 +114,7 @@ class FastAPILabMCP:
         # MCP服务器参数初始化
         self.operation_map: Dict[str, Dict[str, Any]]
         self.tools: set[Tool]  # MCP工具列表（已筛选了operations或者tags）
-        self.server: Server  # MCP服务器实例
+        self.server: MCPServer  # MCP服务器实例
 
         # 基础参数初始化
         self.fastapi = fastapi
@@ -126,7 +124,7 @@ class FastAPILabMCP:
             or fastapi.description
             or "This is a FastAPI mounted LabMCP server."
         )
-        
+        """
         # HTTP客户端
         self._base_url = "http://apiserver"
         self._http_client = httpx.AsyncClient(
@@ -134,7 +132,7 @@ class FastAPILabMCP:
             base_url=self._base_url,
             timeout=10.0,
         )
-
+        """
         # 初始化LabMCP服务器
         self.setup_lab_mcp_server()
 
@@ -156,9 +154,7 @@ class FastAPILabMCP:
             or self._tags_exclude is not None
         )
 
-    def _build_operations_by_tag(
-        self,
-    ) -> Dict[str, List[str]]:  # 构建tag到operation_id的映射关系
+    def _build_operations_by_tag(self) -> Dict[str, List[str]]:  # 构建tag到operation_id的映射关系
         openapi_schema = self._get_openapi_schema()
         operations_by_tag: Dict[str, List[str]] = {}
 
@@ -178,18 +174,12 @@ class FastAPILabMCP:
 
         return operations_by_tag
 
-    def _filter_tools(
-        self, mcp_tools: List[Tool]
-    ) -> List[Tool]:  # 根据操作ID和标签过滤工具列表
-        """根据操作ID和标签过滤工具列表"""
+    def _filter_tools(self, mcp_tools: set[Tool]) -> set[Tool]:  # 根据操作ID和标签过滤工具列表
         if not self._has_filters():
             return mcp_tools
-
         operations_by_tag = self._build_operations_by_tag()
         all_operations = {tool.name for tool in mcp_tools}
-
         operations_to_include = set()
-
         # 按优先级处理包含和排除逻辑
         if self._operations_include is not None:
             operations_to_include.update(self._operations_include)
@@ -204,13 +194,11 @@ class FastAPILabMCP:
             for tag in self._tags_exclude:
                 excluded_operations.update(operations_by_tag.get(tag, []))
             operations_to_include.update(all_operations - excluded_operations)
-
         # 过滤工具
-        filtered_tools = []
+        filtered_tools = set()
         for tool in mcp_tools:
             if tool.name in operations_to_include:
-                filtered_tools.append(tool)
-
+                filtered_tools.add(tool)
         # 更新operation_map
         if filtered_tools:
             filtered_operation_ids = {tool.name for tool in filtered_tools}
@@ -219,29 +207,24 @@ class FastAPILabMCP:
                 for op_id, details in self.operation_map.items()
                 if op_id in filtered_operation_ids
             }
-
         return filtered_tools
 
-    def _api2mcp_tools(self) -> List[Tool]:  # 自定义地将FastAPI的API转化为MCP工具
-        mcp_tools, self.operation_map = openapi2mcp(
-            openapi_schema=self._get_openapi_schema()
-        )
-
-        # 转换为列表
-        mcp_tools_list = list(mcp_tools)
+    def _api2mcp_tools(self) -> set[Tool]:  # 自定义地将FastAPI的API转化为MCP工具
+        mcp_tools, self.operation_map = openapi2mcp(openapi_schema=self._get_openapi_schema())
         
         # 过滤工具
-        filtered_tools = self._filter_tools(mcp_tools_list)
+        filtered_tools = self._filter_tools(mcp_tools)
 
         return filtered_tools
 
-    def setup_lab_mcp_server(self):  # 初始化LabMCP服务器
+    def setup_lab_mcp_server(self) -> None:  # 初始化LabMCP服务器
         # 初始化工具列表
         self.tools = self._api2mcp_tools()
         
         # 创建MCP服务器实例
         lab_mcp_server: MCPServer = MCPServer(self.name, self.description)
 
+        """# 注册MCP工具列表端点
         @lab_mcp_server.list_tools()
         async def handle_list_tools() -> List[types.Tool]:
             return self.tools
@@ -257,9 +240,11 @@ class FastAPILabMCP:
                 operation_map=self.operation_map,
                 http_request_info=http_request_info,
             )
+        """
 
         self.server = lab_mcp_server
-    
+
+    """# 执行API工具
     async def _execute_api_tool(
         self,
         client: httpx.AsyncClient,
@@ -268,7 +253,6 @@ class FastAPILabMCP:
         operation_map: Dict[str, Dict[str, Any]],
         http_request_info: Optional[HTTPRequestInfo] = None,
     ) -> List[Union[types.TextContent, types.ImageContent, types.EmbeddedResource]]:
-        """执行API工具"""
         if tool_name not in operation_map:
             raise Exception(f"Unknown tool: {tool_name}")
 
@@ -336,7 +320,6 @@ class FastAPILabMCP:
         headers: Dict[str, str],
         body: Optional[Any],
     ) -> Any:
-        """发送HTTP请求"""
         method_lower = method.lower()
         if method_lower == "get":
             return await client.get(path, params=query, headers=headers)
@@ -358,7 +341,6 @@ class FastAPILabMCP:
         mount_path: str,
         dependencies: Optional[Sequence[params.Depends]],
     ):
-        """注册MCP连接端点"""
         @router.get(mount_path, include_in_schema=False, operation_id=f"mcp_connection_{self.lab_id}", dependencies=dependencies)
         async def handle_mcp_connection(request: Request):
             async with transport.connect_sse(request.scope, request.receive, request._send) as (reader, writer):
@@ -376,7 +358,6 @@ class FastAPILabMCP:
         mount_path: str,
         dependencies: Optional[Sequence[params.Depends]],
     ):
-        """注册MCP消息端点"""
         @router.post(
             f"{mount_path}/messages/",
             include_in_schema=False,
@@ -393,11 +374,10 @@ class FastAPILabMCP:
         mount_path: str,
         dependencies: Optional[Sequence[params.Depends]],
     ):
-        """注册MCP端点"""
         self._register_mcp_connection_endpoint_sse(router, transport, mount_path, dependencies)
         self._register_mcp_messages_endpoint_sse(router, transport, mount_path, dependencies)
-
-    def mount(
+    """
+    def mount(# 挂载MCP服务器到指定路径
         self,
         router: Annotated[
             Optional[FastAPI | APIRouter],
@@ -405,7 +385,7 @@ class FastAPILabMCP:
         ] = None,
         mount_path: Annotated[str, Doc("挂载路径,默认挂载到/mcp")] = "/mcp",
         transport: Annotated[
-            Literal["sse"],
+            Literal["sse", "http"],
             Doc("MCP服务器的传输类型,默认使用sse"),
         ] = "sse",
     ) -> None:
@@ -419,7 +399,7 @@ class FastAPILabMCP:
         # 获取挂载的router
         if not router:
             router = self.fastapi
-        
+
         # 构建基础路径
         if isinstance(router, FastAPI):
             base_path = router.root_path
@@ -430,20 +410,29 @@ class FastAPILabMCP:
 
         messages_path = f"{base_path}{mount_path}/messages/"
         
-        # 创建SSE传输
-        sse_transport = FastApiSseTransport(messages_path)
-        
         # 注册端点
         if transport == "sse":
-            self._register_mcp_endpoints_sse(router, sse_transport, mount_path, None)
+            # 创建SSE传输
+            sse_transport = FastAPILabMCPSseServerTransport(messages_path)
+            #self._register_mcp_endpoints_sse(router, sse_transport, mount_path, None)
+            #TODO 实现SSE传输
+            pass
+        elif transport == "http":
+            # 创建HTTP传输
+            http_transport = FastAPILabMCPHttpServerTransport(messages_path)
+            #self._register_mcp_endpoints_http(router, http_transport, mount_path, None)
+            #TODO 实现HTTP传输
+            pass
         else:
             raise ValueError(f"Invalid transport: {transport}")
 
         # 如果是APIRouter，需要重新包含到FastAPI应用中
+        """# logger和重新包含有待考察再去具体实现
         if isinstance(router, APIRouter):
             self.fastapi.include_router(router)
-
+        
         logger.info(f"Lab {self.lab_id} MCP server mounted at {mount_path}")
+        """
 
 def mount_lab_mcp_dynamically(app: FastAPI):
     """动态挂载所有实验室的MCP服务器"""
