@@ -8,7 +8,7 @@ from fastapi import APIRouter
 from mcp.types import Tool
 
 # 本地导入
-from models import Instrument, InstrumentsData
+from models import Instrument, InstrumentsData, MCPTool
 from tools import register_instruments_batch, get_instruments, get_mcp_tools
 
 tools_router = APIRouter(prefix="/tools", tags=["tools"])
@@ -29,6 +29,6 @@ async def get_tools() -> List[Instrument] | None:
     return get_instruments()
 
 @tools_router.get("/mcp_tools")# 获取已经注册仪器构成的MCP工具列表  
-async def get_mcp_list() -> List[Tool] | None:
+async def get_mcp_list() -> List[MCPTool] | None:
     """获取已经注册仪器构成的MCP工具列表"""
     return get_mcp_tools()

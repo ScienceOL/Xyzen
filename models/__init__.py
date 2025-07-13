@@ -1,4 +1,4 @@
-from .MCPTool import MCPTool
+from .MCPTool import MCPTool, SaveMCPTool
 from .Lab import Lab
 from .Instrument import Instrument, Action, InstrumentsData
 
@@ -7,5 +7,6 @@ __all__ = [
     "Lab",
     "Instrument",
     "Action",
-    "InstrumentsData"
+    "InstrumentsData",
+    "SaveMCPTool"
 ]

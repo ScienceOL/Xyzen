@@ -5,7 +5,8 @@ from typing_extensions import Annotated
 # 动作模型
 class Action(BaseModel):
     name: Annotated[str, Field(description="动作名称")]
-    description: Annotated[str, Field(description="动作描述")]    
+    description: Annotated[str, Field(description="动作描述")]
+    parameters: Annotated[dict, Field(description="动作参数")]
 
 # 仪器模型
 class Instrument(BaseModel):
