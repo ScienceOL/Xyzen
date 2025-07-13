@@ -1,19 +1,20 @@
 # Python官方库导入
-from pydantic import BaseModel, Field
 from typing_extensions import Annotated
+from pydantic import BaseModel, Field
 
-# 动作模型
-class Action(BaseModel):
+class Action(BaseModel):# 动作模型
     name: Annotated[str, Field(description="动作名称")]
     description: Annotated[str, Field(description="动作描述")]
     parameters: Annotated[dict, Field(description="动作参数")]
+    output: Annotated[dict, Field(description="动作输出")]
+    action_id: Annotated[str, Field(description="动作ID, 用于唯一标识动作")]
 
-# 仪器模型
-class Instrument(BaseModel):
+class Instrument(BaseModel):# 仪器模型
     name: Annotated[str, Field(description="仪器名称")]
     description: Annotated[str, Field(description="仪器描述")]
+    instrument_id: Annotated[str, Field(description="仪器ID, 用于唯一标识仪器")]
     actions: Annotated[dict[str, Action], Field(description="仪器动作")]
 
-# 嵌套字典结构的仪器数据模型
-class InstrumentsData(BaseModel):
-    Instruments: Annotated[dict[str, Instrument], Field(description="仪器字典")]
+class InstrumentsData(BaseModel):# 仪器动作POST传参数据模型
+    instruments: Annotated[dict[str, Instrument], Field(description="仪器动作POST传参数据模型")]
+

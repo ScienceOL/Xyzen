@@ -1,70 +1,195 @@
 {
-    "Instruments": {
-        "I1": {
-            "name": "I1",
-            "description": "I1",
+    "instruments": {
+        "Mechanical_Arm": {
+            "name": "Mechanical_Arm",
+            "description": "This is a Mechanical_Arm",
+            "instrument_id": "1",
             "actions": {
-                "I1_A1": {
-                    "name": "I1_A1",
-                    "description": "I1_A1"
+                "Move_To_Position_X": {
+                    "name": "Move_To_Position_X",
+                    "description": "Move the Mechanical_Arm to a specific position",
+                    "parameters": {
+                        "x": {
+                            "type": "number",
+                            "description": "The x position to move to"
+                        }
                     },
-                "I1_A2": {
-                    "name": "I1_A2",
-                    "description": "I1_A2"
+                    "output": {
+                        "type": "number",
+                        "description": "The x position to move to"
+                    },
+                    "action_id": "1-1"
                 },
-                "I1_A3": {
-                    "name": "I1_A3",
-                    "description": "I1_A3"
+                "Move_To_Position_Y": {
+                    "name": "Move_To_Position_Y",
+                    "description": "Move the Mechanical_Arm to a specific position",
+                    "parameters": {
+                        "z": {
+                            "type": "number",
+                            "description": "The z position to move to"
+                        }
+                    },
+                    "output": {
+                        "type": "number",
+                        "description": "The y position to move to"
+                    },
+                    "id": "1-2"
+                },
+                "Move_To_Position_Z": {
+                    "name": "Move_To_Position_Z",
+                    "description": "Move the Mechanical_Arm to a specific position",
+                    "parameters": {
+                        "z": {
+                            "type": "number",
+                            "description": "The z position to move to"
+                        }
+                    },
+                    "output": {
+                        "type": "number",
+                        "description": "The z position to move to"
+                    },
+                    "action_id": "1-3"
                 }
             }
         },
-        "I2": {
-            "name": "I2",
-            "description": "I2",
+        "Mechanical_Hand": {
+            "name": "Mechanical_Hand",
+            "description": "This is a Mechanical_Hand",
+            "instrument_id": "2",
             "actions": {
-                "I2_A1": {
-                    "name": "I2_A1",
-                    "description": "I2_A1"
+                "Open_Gripper": {
+                    "name": "Open_Gripper",
+                    "description": "Open the Mechanical_Hand's gripper",
+                    "parameters": {
+                        "speed": {
+                            "type": "number",
+                            "description": "The speed of the gripper"
+                        }
+                    },
+                    "output": {
+                        "type": "boolean",
+                        "description": "The gripper is open"
+                    },
+                    "action_id": "2-1"
                 },
-                "I2_A2": {
-                    "name": "I2_A2",
-                    "description": "I2_A2"
+                "Close_Gripper": {
+                    "name": "Close_Gripper",
+                    "description": "Close the Mechanical_Hand's gripper",
+                    "parameters": {
+                        "speed": {
+                            "type": "number",
+                            "description": "The speed of the gripper"
+                        }
+                    },
+                    "output": {
+                        "type": "boolean",
+                        "description": "The gripper is closed"
+                    },
+                    "action_id": "2-2"
                 }
             }
         },
-        "I3": {
-            "name": "I3",
-            "description": "I3",
+        "Lab_Cart": {
+            "name": "Lab_Cart",
+            "description": "This is a Lab_Cart",
+            "instrument_id": "3",
             "actions": {
-                "I3_A1": {
-                    "name": "I3_A1",
-                    "description": "I3_A1"
+                "Move_To_Position_X": {
+                    "name": "Move_To_Position",
+                    "description": "Move the Lab_Cart to a specific position",
+                    "parameters": {
+                        "x": {
+                            "type": "number",
+                            "description": "The x position to move to"
+                        }
+                    },
+                    "output": {
+                        "type": "number",
+                        "description": "The x position to move to"
+                    },
+                    "action_id": "3-1"
                 },
-                "I3_A2": {
-                    "name": "I3_A2",
-                    "description": "I3_A2"
+                "Move_To_Position_Y": {
+                    "name": "Move_To_Position_Y",
+                    "description": "Move the Lab_Cart to a specific position",
+                    "parameters": {
+                        "y": {
+                            "type": "number",
+                            "description": "The y position to move to"
+                        }
+                    },
+                    "output": {
+                        "type": "number",
+                        "description": "The y position to move to"
+                    },
+                    "action_id": "3-2"
                 }
             }
         },
-        "I4": {
-            "name": "I4",
-            "description": "I4",
+        "Mechanical_Platform": {
+            "name": "Mechanical_Platform",
+            "description": "This is a Mechanical_Platform",
+            "instrument_id": "4",
             "actions": {
-                "I4_A1": {
-                    "name": "I4_A1",
-                    "description": "I4_A1"
+                "Move_To_Position_X": {
+                    "name": "Move_To_Position_X",
+                    "description": "Move the Mechanical_Platform to a specific position",
+                    "parameters": {
+                        "x": {
+                            "type": "number",
+                            "description": "The x position to move to"
+                        }
+                    },
+                    "output": {
+                        "type": "number",
+                        "description": "The x position to move to"
+                    },
+                    "action_id": "4-1"
                 },
-                "I4_A2": {
-                    "name": "I4_A2",
-                    "description": "I4_A2"
+                "Move_To_Position_Y": {
+                    "name": "Move_To_Position_Y",
+                    "description": "Move the Mechanical_Platform to a specific position",
+                    "parameters": {
+                        "y": {
+                            "type": "number",
+                            "description": "The y position to move to"
+                        }
+                    },
+                    "output": {
+                        "type": "number",
+                        "description": "The y position to move to"
+                    },
+                    "action_id": "4-2"
                 },
-                "I4_A3": {
-                    "name": "I4_A3",
-                    "description": "I4_A3"
+                "Move_To_Position_Z": {
+                    "name": "Move_To_Position_Z",
+                    "description": "Move the Mechanical_Platform to a specific position",
+                    "parameters": {
+                        "z": {
+                            "type": "number",
+                            "description": "The z position to move to"
+                        }
+                    },
+                    "output": {
+                        "type": "number",
+                        "description": "The z position to move to"
+                    },
+                    "action_id": "4-3"
                 },
-                "I4_A4": {
-                    "name": "I4_A4",
-                    "description": "I4_A4"
+                "Spin_Spindle": {
+                    "name": "Spin_Spindle",
+                    "description": "Spin the Mechanical_Platform's spindle",
+                    "parameters": {
+                        "speed": {
+                            "type": "number",
+                            "description": "The speed of the spindle"
+                        }
+                    },
+                    "output": {
+                        "type": "boolean",
+                        "description": "The spindle is spinning"
+                    },
+                    "action_id": "4-4"
                 }
             }
         }
