@@ -1,5 +1,6 @@
 # Python官方库导入
 from typing_extensions import Annotated, Any, Dict, Doc, List, Literal, Optional
+from logging import getLogger
 
 # FastAPI导入
 from fastapi.openapi.utils import get_openapi
@@ -9,27 +10,27 @@ from fastapi import FastAPI, APIRouter
 from mcp.types import Tool
 
 # 本地导入
+from tools import FastAPILabMCPSseServerTransport, FastAPILabMCPHttpServerTransport, openapi2mcp, get_all_lids
 from servers import MCPServer
-from tools import FastAPILabMCPSseServerTransport, FastAPILabMCPHttpServerTransport, openapi2mcp
 from models import Lab
+from routers import labs_router
 
+logger = getLogger(__name__)
 
-class LabMCPManager:
-    """管理多个实验室的MCP服务器实例"""
+class LabMCPManager:# 管理多个实验室的MCP服务器类
     def __init__(self):
-        self.lab_mcp_servers: Dict[int, 'FastAPILabMCP'] = {}
-        self.lab_transports: Dict[int, FastApiSseTransport] = {}
-    
-    def get_or_create_lab_mcp(self, lid: int, fastapi_app: FastAPI) -> 'FastAPILabMCP':
-        """获取或创建指定实验室的MCP服务器"""
+        self.lab_mcp_servers: Dict[int, 'FastAPILabMCP'] = {}# Lab ID与实验室MCP服务器实例的映射
+        self.lab_transports: Dict[int, FastAPILabMCPSseServerTransport] = {}# Lab ID与实验室MCP服务器传输实例的映射
+
+    def get_or_create_lab_mcp(self, lid: int, fastapi: FastAPI) -> 'FastAPILabMCP':# 获取或创建指定实验室的MCP服务器 TODO 需要完善处理FastAPILabMCP中的tags&operation_ids筛选与lids筛选之间的关系
         if lid not in self.lab_mcp_servers:
             try:
                 lab = Lab.from_lid(lid)
                 # 根据实验室可用工具创建operation_ids过滤列表
                 available_tool_ids = [tool.tid for tool in lab.mcp_tools_available if tool.tid is not None]
-                
+
                 self.lab_mcp_servers[lid] = FastAPILabMCP(
-                    fastapi=fastapi_app,
+                    fastapi=fastapi,
                     name=f"{lab.name} MCP Server",
                     description=f"MCP服务器 for {lab.name}",
                     lab_id=lid,
@@ -40,19 +41,16 @@ class LabMCPManager:
         
         return self.lab_mcp_servers[lid]
     
-    def get_lab_transport(self, lid: int) -> Optional[FastApiSseTransport]:
-        """获取指定实验室的传输实例"""
+    def get_lab_transport(self, lid: int) -> Optional[FastAPILabMCPSseServerTransport]:# 获取指定实验室的传输实例
         return self.lab_transports.get(lid)
-    
-    def set_lab_transport(self, lid: int, transport: FastApiSseTransport):
-        """设置指定实验室的传输实例"""
+
+    def set_lab_transport(self, lid: int, transport: FastAPILabMCPSseServerTransport):# 设置指定实验室的传输实例
         self.lab_transports[lid] = transport
 
-# 全局实验室MCP管理器
-lab_mcp_manager = LabMCPManager()
+lab_mcp_manager = LabMCPManager()# 全局实验室MCP管理器
 
-class FastAPILabMCP:
-    def __init__(
+class FastAPILabMCP:# 实验室MCP服务器类
+    def __init__(# 初始化实验室MCP服务器
         self,
         # FastAPILabMCP基础参数
         fastapi: Annotated[FastAPI, Doc("利用挂载FastAPI创建实验室个性化的MCP服务器")],
@@ -419,7 +417,7 @@ class FastAPILabMCP:
             pass
         elif transport == "http":
             # 创建HTTP传输
-            http_transport = FastAPILabMCPHttpServerTransport(messages_path)
+            #http_transport = FastAPILabMCPHttpServerTransport(messages_path)
             #self._register_mcp_endpoints_http(router, http_transport, mount_path, None)
             #TODO 实现HTTP传输
             pass
@@ -434,22 +432,19 @@ class FastAPILabMCP:
         logger.info(f"Lab {self.lab_id} MCP server mounted at {mount_path}")
         """
 
-def mount_lab_mcp_dynamically(app: FastAPI):
-    """动态挂载所有实验室的MCP服务器"""
-    from data.labs import get_all_lab_ids  # 假设有这个函数
-    
+def mount_lab_mcp_dynamically(fastapi: FastAPI):# 动态挂载所有实验室的MCP服务器
     try:
         # 获取所有实验室ID
-        lab_ids = get_all_lab_ids()
-        
-        for lid in lab_ids:
+        lids = get_all_lids()
+
+        for lid in lids:
             try:
                 # 创建或获取实验室MCP服务器
-                lab_mcp = lab_mcp_manager.get_or_create_lab_mcp(lid, app)
+                lab_mcp = lab_mcp_manager.get_or_create_lab_mcp(lid, fastapi)
                 
                 # 挂载到动态路径
                 mount_path = f"/labs/{lid}/tools/mcp"
-                lab_mcp.mount(router=app, mount_path=mount_path)
+                lab_mcp.mount(router=labs_router, mount_path=mount_path)
                 
                 logger.info(f"Successfully mounted MCP server for lab {lid} at {mount_path}")
                 
