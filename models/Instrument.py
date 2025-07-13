@@ -14,6 +14,14 @@ class Instrument(BaseModel):# 仪器模型
     description: Annotated[str, Field(description="仪器描述")]
     instrument_id: Annotated[str, Field(description="仪器ID, 用于唯一标识仪器")]
     actions: Annotated[dict[str, Action], Field(description="仪器动作")]
+    
+    def __hash__(self) -> int:# 基于instrument_id比较两个Instrument
+        return hash(self.instrument_id)
+    
+    def __eq__(self, other) -> bool:# 基于instrument_id比较两个Instrument
+        if isinstance(other, Instrument):
+            return self.instrument_id == other.instrument_id
+        return False
 
 class InstrumentsData(BaseModel):# 仪器动作POST传参数据模型
     instruments: Annotated[dict[str, Instrument], Field(description="仪器动作POST传参数据模型")]

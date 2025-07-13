@@ -175,8 +175,8 @@ def register_instrument(instrument: Annotated[Instrument, Doc("注册仪器")]) 
             logger.error(f"注册仪器失败: {e}")
             return False
 
+"""# TODO:查询 待定
 def get_instruments() -> List[Instrument] | None:
-    """获取已经注册仪器列表"""
     try:
         existing_data = load_existing_data()
         instruments_registered = [item.instrument for item in existing_data]
@@ -187,7 +187,6 @@ def get_instruments() -> List[Instrument] | None:
         return None
 
 def get_mcp_tools() -> List[MCPTool] | None:
-    """获取已经注册仪器构成的MCP工具列表"""
     try:
         existing_data = load_existing_data()
         mcp_tools = []
@@ -198,3 +197,4 @@ def get_mcp_tools() -> List[MCPTool] | None:
     except Exception as e:
         logger.error(f"获取已经注册仪器构成的MCP工具列表失败: {e}")
         return None
+"""
