@@ -5,7 +5,7 @@ import json
 import os
 
 # Pydantic官方库导入
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 # MCP官网SDK导入
 from mcp.types import Tool
@@ -19,6 +19,14 @@ class MCPTool(Tool):
     """MCP工具"""
     tool_id: Annotated[str, Field(description="MCP工具的ID")]
     requires_license: Annotated[bool, Field(description="操作是否需要权限")] = True
+
+class MCPToolRegisterResponse(BaseModel):
+    """MCP工具注册响应"""
+    success: Annotated[bool, Field(description="是否成功")] = False
+    success_instruments: Annotated[List[Instrument], Field(description="成功注册的仪器")] = []
+    success_tools: Annotated[List[MCPTool], Field(description="成功注册的工具")] = []
+    failed_instruments: Annotated[List[Instrument], Field(description="失败注册的仪器")] = []
+    failed_tools: Annotated[List[MCPTool], Field(description="失败注册的工具")] = []
 
 class SaveMCPTool:
     """以仪器-MCP工具映射字典为数据结构的MCP工具保存数据模型"""
@@ -78,28 +86,28 @@ class SaveMCPTool:
         return instrument in self.data
     
     def add_instrument_tools(self, instrument: Instrument, tools: List[MCPTool]) -> None:
-        """添加仪器和工具"""
+        """完整地添加仪器和对应工具列表，如果仪器已存在，则更新工具列表"""
         self.data[instrument] = tools
         logger.info(f"添加仪器和工具: {instrument.name}")
         self._save_data()
     
     def update_instrument_tools(self, instrument: Instrument, tools: List[MCPTool]) -> None:
-        """更新仪器和工具"""
+        """完整地更新仪器和工具列表，如果仪器不存在，则添加仪器和工具列表"""
         if instrument in self.data:
             self.data[instrument] = tools
             logger.info(f"更新仪器和工具: {instrument.name}")
             self._save_data()
         else:
-            raise KeyError(f"仪器不存在: {instrument.name}")
+            self.add_instrument_tools(instrument, tools)
     
     def remove_instrument_tools(self, instrument: Instrument) -> None:
-        """删除仪器和工具"""
+        """完整地删除仪器和工具列表，如果仪器不存在，则不进行任何操作"""
         if instrument in self.data:
             del self.data[instrument]
             logger.info(f"删除仪器和工具: {instrument.name}")
             self._save_data()
         else:
-            raise KeyError(f"仪器不存在: {instrument.name}")
+            logger.warning(f"仪器不存在: {instrument.name}")
     
     def get_instrument_by_id(self, instrument_id: str) -> Instrument | None:
         """通过ID获取仪器对象"""
