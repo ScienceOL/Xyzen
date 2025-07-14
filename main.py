@@ -1,5 +1,6 @@
 import logging
 from fastapi import FastAPI
+from servers import LabMCPServer
 from routers import labs_router, tools_router
 
 # 配置日志
@@ -19,6 +20,11 @@ app.include_router(tools_router)# MCP工具路由
 @app.get("/", operation_id="index", tags=["default"])
 def index():
     return {"message": "Hello World!"}
+
+mcp = LabMCPServer(fastapi=app)
+
+# 挂载到统一的MCP Router
+mcp.mount()
 
 if __name__ == "__main__":
     import uvicorn

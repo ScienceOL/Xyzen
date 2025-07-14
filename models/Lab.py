@@ -3,19 +3,18 @@ from typing import Annotated, Literal
 from pathlib import Path
 import json
 from .MCPTool import MCPTool
-
 class Lab(BaseModel):
     # 实验室基础信息
     name: Annotated[str | None, Field(description="实验室的名称")]
     description: Annotated[str | None, Field(description="实验室的描述")]
     # 实验室管理参数信息
-    lid: Annotated[int | None, Field(description="实验室的Lab ID")]
+    lab_id: Annotated[int | None, Field(description="实验室的Lab ID")]
     type: Annotated[Literal["Public", "Private"], Field(description="实验室的类型")]
     discipline: Annotated[
         Literal["Chemistry", "Biology"], Field(description="实验室的学科类型")
     ]
     mcp_tools_available: Annotated[
-        list[MCPTool], Field(description="实验室可以使用的MCP工具列表")
+        list[str], Field(description="实验室可以使用的MCP工具列表")
     ] = []
 
     def add_mcp_tool(
@@ -28,7 +27,7 @@ class Lab(BaseModel):
             raise ValueError("添加该MCP工具需要权限")
         else:
             if MCPTool not in self.mcp_tools_available:
-                self.mcp_tools_available.append(MCPTool)
+                self.mcp_tools_available.append(MCPTool.tool_id)
             self.save_labs()
 
     def remove_mcp_tool(
@@ -41,7 +40,7 @@ class Lab(BaseModel):
             raise ValueError("删除该MCP工具需要权限")
         else:
             if MCPTool in self.mcp_tools_available:
-                self.mcp_tools_available.remove(MCPTool)
+                self.mcp_tools_available.remove(MCPTool.tool_id)
             self.save_labs()
 
     @classmethod
@@ -75,14 +74,3 @@ class Lab(BaseModel):
         with open(data_path, "w", encoding="utf-8") as f:
             json.dump(existing_data, f, ensure_ascii=False, indent=4)
         print(f"已追加保存实验室实例: {self.model_dump()}")
-
-
-if __name__ == "__main__":
-    try:
-        for lid in [1, 2, 3, 4, 5, 6]:
-            lab = Lab.from_lid(lid)
-            print(lab)
-    except Exception as e:
-        print(f"测试失败: {str(e)}")
-    finally:
-        print("测试完毕！但是还有MCPTool的增减没有测试！")

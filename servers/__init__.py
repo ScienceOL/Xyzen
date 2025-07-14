@@ -1,6 +1,4 @@
-from .FastAPILabMCP import FastAPILabMCP
-from .MCPServer import MCPServer
+from .LabMCPServer import LabMCPServer
 __all__ = [
-    "FastAPILabMCP",
-    "MCPServer"
+    "LabMCPServer"
 ]

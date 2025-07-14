@@ -1,0 +1,33 @@
+[
+    {
+        "name": "机械臂控制实验室",
+        "description": "专门用于机械臂和机械手控制的实验室，可以进行精确的位置控制和抓取操作",
+        "lab_id": 1,
+        "type": "Public",
+        "discipline": "Chemistry",
+        "mcp_tools_available": [
+            "1-1",
+            "1-2", 
+            "1-3",
+            "2-1",
+            "2-2",
+            "3-1",
+            "3-2"
+        ]
+    },
+    {
+        "name": "精密加工实验室", 
+        "description": "专注于精密加工和平台控制的实验室，可以进行多轴位置控制和主轴旋转操作",
+        "lab_id": 2,
+        "type": "Private",
+        "discipline": "Biology",
+        "mcp_tools_available": [
+            "1-1",
+            "1-2",
+            "4-1",
+            "4-2", 
+            "4-3",
+            "4-4"
+        ]
+    }
+]
