@@ -1,5 +1,6 @@
 # Python官方库导入
 from typing_extensions import Annotated, List, Iterator, Dict
+from logging import getLogger
 import json
 import os
 
@@ -12,45 +13,48 @@ from mcp.types import Tool
 # 本地导入
 from .Instrument import Instrument
 
-class MCPTool(Tool):# MCP工具
+logger = getLogger(__name__)
+
+class MCPTool(Tool):
+    """MCP工具"""
     tool_id: Annotated[str, Field(description="MCP工具的ID")]
     requires_license: Annotated[bool, Field(description="操作是否需要权限")] = True
 
-class SaveMCPTool:# 以仪器-MCP工具映射字典为数据结构的MCP工具保存数据模型
+class SaveMCPTool:
+    """以仪器-MCP工具映射字典为数据结构的MCP工具保存数据模型"""
     def __init__(
         self,
-        save_path: Annotated[str, Field(description="保存路径")] = "data/mcp_tools.json"
+        save_path: Annotated[str, Field(description="保存路径")] = "data/mcp_tools.json",
     ):
+        """初始化"""
         self.save_path: str = save_path
-        self.data: Dict[Instrument, List[MCPTool]] = {}  # 直接使用Instrument作为键
+        self.data: Dict[Instrument, List[MCPTool]] = {}
         self._load_data()
     
-    def _load_data(self) -> None:# 加载数据
+    def _load_data(self) -> None:
+        """加载数据"""
         if os.path.exists(self.save_path):
             try:
                 with open(self.save_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    # 解析数据为对象
-                    for item in data.get("instruments_tools", []):
-                        instrument = Instrument(**item["instrument"])
-                        tools = [MCPTool(**tool_data) for tool_data in item["tools"]]
-                        self.data[instrument] = tools
+                    self.data = self.from_dict(data).data
+                    logger.info(f"MCP工具数据加载完成，数据数量：{self.__len__()}")
             except (json.JSONDecodeError, KeyError) as e:
-                print(f"警告：加载数据时出错 {e}，使用空数据")
+                logger.warning(f"警告：加载数据时出错 {e}，使用空数据")
                 self.data = {}
         else:
-            # 文件不存在时创建空文件
+            logger.info(f"MCP工具数据文件不存在，创建新文件")
             self._save_data()
     
     def _save_data(self) -> None:
         """保存数据到文件"""
         try:
-            # 确保目录存在
             os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
             with open(self.save_path, "w", encoding="utf-8") as f:
                 json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
+            logger.info(f"MCP工具数据保存完成")
         except Exception as e:
-            print(f"保存数据时出错: {e}")
+            logger.error(f"保存数据时出错: {e}")
     
     def __getitem__(self, instrument: Instrument) -> List[MCPTool]:
         """通过仪器获取工具列表"""
@@ -76,12 +80,14 @@ class SaveMCPTool:# 以仪器-MCP工具映射字典为数据结构的MCP工具�
     def add_instrument_tools(self, instrument: Instrument, tools: List[MCPTool]) -> None:
         """添加仪器和工具"""
         self.data[instrument] = tools
+        logger.info(f"添加仪器和工具: {instrument.name}")
         self._save_data()
     
     def update_instrument_tools(self, instrument: Instrument, tools: List[MCPTool]) -> None:
         """更新仪器和工具"""
         if instrument in self.data:
             self.data[instrument] = tools
+            logger.info(f"更新仪器和工具: {instrument.name}")
             self._save_data()
         else:
             raise KeyError(f"仪器不存在: {instrument.name}")
@@ -90,6 +96,7 @@ class SaveMCPTool:# 以仪器-MCP工具映射字典为数据结构的MCP工具�
         """删除仪器和工具"""
         if instrument in self.data:
             del self.data[instrument]
+            logger.info(f"删除仪器和工具: {instrument.name}")
             self._save_data()
         else:
             raise KeyError(f"仪器不存在: {instrument.name}")
@@ -117,6 +124,136 @@ class SaveMCPTool:# 以仪器-MCP工具映射字典为数据结构的MCP工具�
         instrument = self.get_instrument_by_id(instrument_id)
         if instrument:
             self.remove_instrument_tools(instrument)
+        else:
+            raise KeyError(f"仪器ID不存在: {instrument_id}")
+    
+    # ==================== 工具级别的操作方法 ====================
+    
+    def add_tool_to_instrument(self, instrument: Instrument, tool: MCPTool) -> None:
+        """向指定仪器添加单个工具"""
+        if instrument in self.data:
+            if tool not in self.data[instrument]:
+                self.data[instrument].append(tool)
+                logger.info(f"向仪器 {instrument.name} 添加工具: {tool.name}")
+                self._save_data()
+            else:
+                logger.warning(f"工具 {tool.name} 已存在于仪器 {instrument.name} 中")
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def add_tools_to_instrument(self, instrument: Instrument, tools: List[MCPTool]) -> None:
+        """向指定仪器添加多个工具"""
+        if instrument in self.data:
+            added_count = 0
+            for tool in tools:
+                if tool not in self.data[instrument]:
+                    self.data[instrument].append(tool)
+                    added_count += 1
+                else:
+                    logger.warning(f"工具 {tool.name} 已存在于仪器 {instrument.name} 中")
+            
+            if added_count > 0:
+                logger.info(f"向仪器 {instrument.name} 添加了 {added_count} 个工具")
+                self._save_data()
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def remove_tool_from_instrument(self, instrument: Instrument, tool: MCPTool) -> None:
+        """从指定仪器移除单个工具"""
+        if instrument in self.data:
+            if tool in self.data[instrument]:
+                self.data[instrument].remove(tool)
+                logger.info(f"从仪器 {instrument.name} 移除工具: {tool.name}")
+                self._save_data()
+            else:
+                raise KeyError(f"工具 {tool.name} 不存在于仪器 {instrument.name} 中")
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def remove_tools_from_instrument(self, instrument: Instrument, tools: List[MCPTool]) -> None:
+        """从指定仪器移除多个工具"""
+        if instrument in self.data:
+            removed_count = 0
+            for tool in tools:
+                if tool in self.data[instrument]:
+                    self.data[instrument].remove(tool)
+                    removed_count += 1
+                else:
+                    logger.warning(f"工具 {tool.name} 不存在于仪器 {instrument.name} 中")
+            
+            if removed_count > 0:
+                logger.info(f"从仪器 {instrument.name} 移除了 {removed_count} 个工具")
+                self._save_data()
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def update_tool_in_instrument(self, instrument: Instrument, old_tool: MCPTool, new_tool: MCPTool) -> None:
+        """更新指定仪器中的工具"""
+        if instrument in self.data:
+            if old_tool in self.data[instrument]:
+                index = self.data[instrument].index(old_tool)
+                self.data[instrument][index] = new_tool
+                logger.info(f"更新仪器 {instrument.name} 中的工具: {old_tool.name} -> {new_tool.name}")
+                self._save_data()
+            else:
+                raise KeyError(f"工具 {old_tool.name} 不存在于仪器 {instrument.name} 中")
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def get_tools_by_name(self, instrument: Instrument, tool_name: str) -> List[MCPTool]:
+        """根据工具名称获取指定仪器中的工具"""
+        if instrument in self.data:
+            return [tool for tool in self.data[instrument] if tool.name == tool_name]
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def has_tool_in_instrument(self, instrument: Instrument, tool: MCPTool) -> bool:
+        """检查指定仪器是否包含某个工具"""
+        if instrument in self.data:
+            return tool in self.data[instrument]
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def clear_tools_from_instrument(self, instrument: Instrument) -> None:
+        """清空指定仪器的所有工具"""
+        if instrument in self.data:
+            tool_count = len(self.data[instrument])
+            self.data[instrument].clear()
+            logger.info(f"清空仪器 {instrument.name} 的所有工具，共 {tool_count} 个")
+            self._save_data()
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    def get_tool_count(self, instrument: Instrument) -> int:
+        """获取指定仪器的工具数量"""
+        if instrument in self.data:
+            return len(self.data[instrument])
+        else:
+            raise KeyError(f"仪器不存在: {instrument.name}")
+    
+    # ==================== 通过ID的工具级别操作 ====================
+    
+    def add_tool_to_instrument_by_id(self, instrument_id: str, tool: MCPTool) -> None:
+        """通过仪器ID向指定仪器添加工具"""
+        instrument = self.get_instrument_by_id(instrument_id)
+        if instrument:
+            self.add_tool_to_instrument(instrument, tool)
+        else:
+            raise KeyError(f"仪器ID不存在: {instrument_id}")
+    
+    def remove_tool_from_instrument_by_id(self, instrument_id: str, tool: MCPTool) -> None:
+        """通过仪器ID从指定仪器移除工具"""
+        instrument = self.get_instrument_by_id(instrument_id)
+        if instrument:
+            self.remove_tool_from_instrument(instrument, tool)
+        else:
+            raise KeyError(f"仪器ID不存在: {instrument_id}")
+    
+    def get_tools_by_name_by_id(self, instrument_id: str, tool_name: str) -> List[MCPTool]:
+        """通过仪器ID根据工具名称获取工具"""
+        instrument = self.get_instrument_by_id(instrument_id)
+        if instrument:
+            return self.get_tools_by_name(instrument, tool_name)
         else:
             raise KeyError(f"仪器ID不存在: {instrument_id}")
     

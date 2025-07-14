@@ -9,7 +9,7 @@ from mcp.types import Tool
 
 # 本地导入
 from models import Instrument, InstrumentsData, MCPTool
-from tools import register_instruments_batch, get_instruments, get_mcp_tools
+from tools import register_instruments_batch
 
 tools_router = APIRouter(prefix="/tools", tags=["tools"])
 
