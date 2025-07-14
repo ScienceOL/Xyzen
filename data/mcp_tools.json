@@ -1,0 +1,422 @@
+{
+  "instruments_tools": [
+    {
+      "instrument": {
+        "name": "Mechanical_Arm",
+        "description": "This is a Mechanical_Arm",
+        "instrument_id": "1",
+        "actions": [
+          {
+            "name": "Move_To_Position_X",
+            "description": "Move the Mechanical_Arm to a specific position",
+            "parameters": {
+              "x": {
+                "type": "number",
+                "description": "The x position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The x position to move to"
+            },
+            "action_id": "1-1"
+          },
+          {
+            "name": "Move_To_Position_Y",
+            "description": "Move the Mechanical_Arm to a specific position",
+            "parameters": {
+              "y": {
+                "type": "number",
+                "description": "The y position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The y position to move to"
+            },
+            "action_id": "1-2"
+          },
+          {
+            "name": "Move_To_Position_Z",
+            "description": "Move the Mechanical_Arm to a specific position",
+            "parameters": {
+              "z": {
+                "type": "number",
+                "description": "The z position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The z position to move to"
+            },
+            "action_id": "1-3"
+          }
+        ]
+      },
+      "tools": [
+        {
+          "name": "Move_To_Position_X",
+          "title": null,
+          "description": "Move the Mechanical_Arm to a specific position",
+          "inputSchema": {
+            "x": {
+              "type": "number",
+              "description": "The x position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The x position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "1-1",
+          "requires_license": true
+        },
+        {
+          "name": "Move_To_Position_Y",
+          "title": null,
+          "description": "Move the Mechanical_Arm to a specific position",
+          "inputSchema": {
+            "y": {
+              "type": "number",
+              "description": "The y position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The y position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "1-2",
+          "requires_license": true
+        },
+        {
+          "name": "Move_To_Position_Z",
+          "title": null,
+          "description": "Move the Mechanical_Arm to a specific position",
+          "inputSchema": {
+            "z": {
+              "type": "number",
+              "description": "The z position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The z position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "1-3",
+          "requires_license": true
+        }
+      ]
+    },
+    {
+      "instrument": {
+        "name": "Mechanical_Hand",
+        "description": "This is a Mechanical_Hand",
+        "instrument_id": "2",
+        "actions": [
+          {
+            "name": "Open_Gripper",
+            "description": "Open the Mechanical_Hand's gripper",
+            "parameters": {
+              "speed": {
+                "type": "number",
+                "description": "The speed of the gripper"
+              }
+            },
+            "output": {
+              "type": "boolean",
+              "description": "The gripper is open"
+            },
+            "action_id": "2-1"
+          },
+          {
+            "name": "Close_Gripper",
+            "description": "Close the Mechanical_Hand's gripper",
+            "parameters": {
+              "speed": {
+                "type": "number",
+                "description": "The speed of the gripper"
+              }
+            },
+            "output": {
+              "type": "boolean",
+              "description": "The gripper is closed"
+            },
+            "action_id": "2-2"
+          }
+        ]
+      },
+      "tools": [
+        {
+          "name": "Open_Gripper",
+          "title": null,
+          "description": "Open the Mechanical_Hand's gripper",
+          "inputSchema": {
+            "speed": {
+              "type": "number",
+              "description": "The speed of the gripper"
+            }
+          },
+          "outputSchema": {
+            "type": "boolean",
+            "description": "The gripper is open"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "2-1",
+          "requires_license": true
+        },
+        {
+          "name": "Close_Gripper",
+          "title": null,
+          "description": "Close the Mechanical_Hand's gripper",
+          "inputSchema": {
+            "speed": {
+              "type": "number",
+              "description": "The speed of the gripper"
+            }
+          },
+          "outputSchema": {
+            "type": "boolean",
+            "description": "The gripper is closed"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "2-2",
+          "requires_license": true
+        }
+      ]
+    },
+    {
+      "instrument": {
+        "name": "Lab_Cart",
+        "description": "This is a Lab_Cart",
+        "instrument_id": "3",
+        "actions": [
+          {
+            "name": "Move_To_Position",
+            "description": "Move the Lab_Cart to a specific position",
+            "parameters": {
+              "x": {
+                "type": "number",
+                "description": "The x position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The x position to move to"
+            },
+            "action_id": "3-1"
+          },
+          {
+            "name": "Move_To_Position_Y",
+            "description": "Move the Lab_Cart to a specific position",
+            "parameters": {
+              "y": {
+                "type": "number",
+                "description": "The y position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The y position to move to"
+            },
+            "action_id": "3-2"
+          }
+        ]
+      },
+      "tools": [
+        {
+          "name": "Move_To_Position",
+          "title": null,
+          "description": "Move the Lab_Cart to a specific position",
+          "inputSchema": {
+            "x": {
+              "type": "number",
+              "description": "The x position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The x position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "3-1",
+          "requires_license": true
+        },
+        {
+          "name": "Move_To_Position_Y",
+          "title": null,
+          "description": "Move the Lab_Cart to a specific position",
+          "inputSchema": {
+            "y": {
+              "type": "number",
+              "description": "The y position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The y position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "3-2",
+          "requires_license": true
+        }
+      ]
+    },
+    {
+      "instrument": {
+        "name": "Mechanical_Platform",
+        "description": "This is a Mechanical_Platform",
+        "instrument_id": "4",
+        "actions": [
+          {
+            "name": "Move_To_Position_X",
+            "description": "Move the Mechanical_Platform to a specific position",
+            "parameters": {
+              "x": {
+                "type": "number",
+                "description": "The x position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The x position to move to"
+            },
+            "action_id": "4-1"
+          },
+          {
+            "name": "Move_To_Position_Y",
+            "description": "Move the Mechanical_Platform to a specific position",
+            "parameters": {
+              "y": {
+                "type": "number",
+                "description": "The y position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The y position to move to"
+            },
+            "action_id": "4-2"
+          },
+          {
+            "name": "Move_To_Position_Z",
+            "description": "Move the Mechanical_Platform to a specific position",
+            "parameters": {
+              "z": {
+                "type": "number",
+                "description": "The z position to move to"
+              }
+            },
+            "output": {
+              "type": "number",
+              "description": "The z position to move to"
+            },
+            "action_id": "4-3"
+          },
+          {
+            "name": "Spin_Spindle",
+            "description": "Spin the Mechanical_Platform's spindle",
+            "parameters": {
+              "speed": {
+                "type": "number",
+                "description": "The speed of the spindle"
+              }
+            },
+            "output": {
+              "type": "boolean",
+              "description": "The spindle is spinning"
+            },
+            "action_id": "4-4"
+          }
+        ]
+      },
+      "tools": [
+        {
+          "name": "Move_To_Position_X",
+          "title": null,
+          "description": "Move the Mechanical_Platform to a specific position",
+          "inputSchema": {
+            "x": {
+              "type": "number",
+              "description": "The x position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The x position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "4-1",
+          "requires_license": true
+        },
+        {
+          "name": "Move_To_Position_Y",
+          "title": null,
+          "description": "Move the Mechanical_Platform to a specific position",
+          "inputSchema": {
+            "y": {
+              "type": "number",
+              "description": "The y position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The y position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "4-2",
+          "requires_license": true
+        },
+        {
+          "name": "Move_To_Position_Z",
+          "title": null,
+          "description": "Move the Mechanical_Platform to a specific position",
+          "inputSchema": {
+            "z": {
+              "type": "number",
+              "description": "The z position to move to"
+            }
+          },
+          "outputSchema": {
+            "type": "number",
+            "description": "The z position to move to"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "4-3",
+          "requires_license": true
+        },
+        {
+          "name": "Spin_Spindle",
+          "title": null,
+          "description": "Spin the Mechanical_Platform's spindle",
+          "inputSchema": {
+            "speed": {
+              "type": "number",
+              "description": "The speed of the spindle"
+            }
+          },
+          "outputSchema": {
+            "type": "boolean",
+            "description": "The spindle is spinning"
+          },
+          "annotations": null,
+          "meta": null,
+          "tool_id": "4-4",
+          "requires_license": true
+        }
+      ]
+    }
+  ]
+}

@@ -19,14 +19,26 @@ class MCPTool(Tool):
     """MCP工具"""
     tool_id: Annotated[str, Field(description="MCP工具的ID")]
     requires_license: Annotated[bool, Field(description="操作是否需要权限")] = True
+    
+    def __eq__(self, other) -> bool:
+        """基于tool_id比较两个MCPTool"""
+        if isinstance(other, MCPTool):
+            return self.tool_id == other.tool_id
+        return False
+    
+    def __hash__(self) -> int:
+        """基于tool_id生成哈希值"""
+        return hash(self.tool_id)
 
 class MCPToolRegisterResponse(BaseModel):
     """MCP工具注册响应"""
     success: Annotated[bool, Field(description="是否成功")] = False
-    success_instruments: Annotated[List[Instrument], Field(description="成功注册的仪器")] = []
-    success_tools: Annotated[List[MCPTool], Field(description="成功注册的工具")] = []
-    failed_instruments: Annotated[List[Instrument], Field(description="失败注册的仪器")] = []
-    failed_tools: Annotated[List[MCPTool], Field(description="失败注册的工具")] = []
+    success_instruments: Annotated[List[str], Field(description="成功注册的仪器")] = []
+    success_tools: Annotated[List[str], Field(description="成功注册的工具")] = []
+    failed_instruments: Annotated[List[str], Field(description="失败注册的仪器")] = []
+    failed_tools: Annotated[List[str], Field(description="失败注册的工具")] = []
+    registered_instruments: Annotated[List[str], Field(description="已注册的仪器")] = []
+    registered_tools: Annotated[List[str], Field(description="已注册的工具")] = []
 
 class SaveMCPTool:
     """以仪器-MCP工具映射字典为数据结构的MCP工具保存数据模型"""
@@ -41,7 +53,7 @@ class SaveMCPTool:
     
     def _load_data(self) -> None:
         """加载数据"""
-        if os.path.exists(self.save_path):
+        if os.path.exists(self.save_path) and os.path.getsize(self.save_path) > 0:
             try:
                 with open(self.save_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -51,7 +63,10 @@ class SaveMCPTool:
                 logger.warning(f"警告：加载数据时出错 {e}，使用空数据")
                 self.data = {}
         else:
-            logger.info(f"MCP工具数据文件不存在，创建新文件")
+            if not os.path.exists(self.save_path):
+                logger.info(f"MCP工具数据文件不存在，创建新文件")
+            else:
+                logger.info(f"MCP工具数据文件为空，使用空数据")
             self._save_data()
     
     def _save_data(self) -> None:
@@ -280,7 +295,10 @@ class SaveMCPTool:
     @classmethod
     def from_dict(cls, data: dict) -> 'SaveMCPTool':
         """从字典创建对象，便于JSON反序列化"""
-        instance = cls()
+        instance = cls.__new__(cls)  # 创建实例但不调用 __init__
+        instance.save_path = "data/mcp_tools.json"  # 设置默认路径
+        instance.data = {}  # 初始化空数据
+        
         for item in data.get("instruments_tools", []):
             instrument = Instrument(**item["instrument"])
             tools = [MCPTool(**tool_data) for tool_data in item["tools"]]

@@ -1,5 +1,15 @@
+import logging
 from fastapi import FastAPI
 from routers import labs_router, tools_router
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()  # 输出到控制台
+    ]
+)
 
 app = FastAPI()
 app.include_router(labs_router)# 实验室路由
