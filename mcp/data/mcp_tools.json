@@ -199,7 +199,7 @@
         "instrument_id": "3",
         "actions": [
           {
-            "name": "Move_To_Position",
+            "name": "Move_To_Position_X",
             "description": "Move the Lab_Cart to a specific position",
             "parameters": {
               "x": {
@@ -232,7 +232,7 @@
       },
       "tools": [
         {
-          "name": "Move_To_Position",
+          "name": "Move_To_Position_X",
           "title": null,
           "description": "Move the Lab_Cart to a specific position",
           "inputSchema": {
