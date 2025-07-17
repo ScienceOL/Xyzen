@@ -1,0 +1,65 @@
+#### 获取设备 
+GET http://127.0.0.1:8081/api/environment/lab/mcp?secret_key=66A22BE1
+返回值
+{
+  "code": 0,
+  "data": {
+    "lab_name": "xyf_test1",
+    "devices": [
+      "bioyond1",
+      "bioyond"
+    ]
+  }
+}
+#### 获取指定设备的 action 
+GET http://127.0.0.1:8081/api/environment/lab/mcp/actions/?secret_key=66A22BE1&device_id=bioyond1
+返回值
+{
+  "code": 0,
+  "data": {
+    "device_id": "bioyond1",
+    "actions": {
+      "command": {
+        "schema": {
+          "command": {
+            "type": "string"
+          },
+          "unilabos_device_id": {
+            "type": "string",
+            "default": "",
+            "description": "UniLabOS设备ID，用于指定执行动作的具体设备实例"
+          }
+        },
+        "action_type": "unilabos_msgs.action._send_cmd.SendCmd"
+      }
+    }
+  }
+}
+#### 执行动作
+POST http://127.0.0.1:8081/api/environment/lab/mcp/execute/?secret_key=66A22BE1&device_id=bioyond1
+Content-Type: application/json
+{
+    "action_type": "unilabos_msgs.action._send_cmd.SendCmd",
+    "action": "command",
+    "data":{
+        "command": "start"
+    }
+}
+返回值
+{
+  "code": 0,
+  "data": {
+    "job_id": "d84c2d26-7941-4ee5-8c94-d99ce086f940",
+    "status": "pending"
+  }
+}
+#### 查询设备状态
+GET http://127.0.0.1:8081/api/environment/lab/mcp/device_status/?secret_key=66A22BE1&device_id=bioyond1
+返回值
+{
+  "code": 0,
+  "data": {
+    "device_id": "bioyond1",
+    "statuses": {}
+  }
+}

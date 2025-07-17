@@ -29,6 +29,13 @@ class AuthConfig(BaseModel):
     Application: str = Field(default="app-built-in", description="Casdoor 应用")
 
 
+class LabConfig(BaseModel):
+    """实验室API配置"""
+    ApiBaseUrl: str = Field(default="https://uni-lab.test.bohrium.com", description="实验室API基础URL")
+    SecretKey: str = Field(default="66A22BE1", description="API访问密钥")
+    Timeout: int = Field(default=10, description="API请求超时时间(秒)")
+
+
 class AppConfig(BaseModel):
     Env: str = Field(default="dev", description="环境")
     Debug: bool = Field(default=True, description="调试模式")
@@ -40,3 +47,4 @@ class AppConfig(BaseModel):
     MCP: MCPConfig = Field(default_factory=MCPConfig)
     LOGGING: LoggingConfig = Field(default_factory=LoggingConfig)
     AUTH: AuthConfig = Field(default_factory=AuthConfig)
+    LAB: LabConfig = Field(default_factory=LabConfig)
