@@ -29,6 +29,7 @@ class AppConfig(BaseSettings):
     Debug: bool = Field(default=True, description="调试模式")
     Host: str = Field(default="localhost", description="服务器主机")
     Port: int = Field(default=48200, description="服务器端口")
+    Workers: int = Field(default=1, description="Gunicorn 工作进程数")
 
     Logger: LoggerConfig = Field(
         default_factory=lambda: LoggerConfig(),

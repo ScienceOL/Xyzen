@@ -7,6 +7,7 @@ from fastmcp.server.http import create_streamable_http_app
 from starlette.routing import Mount
 from starlette.types import Receive, Scope, Send
 
+from handler.api import api_router
 from handler.mcp import lab_mcp, other_mcp
 from internal import configs
 from middleware.auth.casdoor import casdoor_mcp_auth
@@ -43,6 +44,10 @@ app = FastAPI(
     description="Xyzen is AI-powered service with FastAPI and MCP",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.include_router(
+    api_router,
 )
 
 
