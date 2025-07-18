@@ -25,3 +25,12 @@ jobs:
       - name: Build and push Docker image
         run: |
           docker build service -t registry.scienceol.tech/sciol/xyzen:latest --push
+
+
+      # - name: Rolling update deployment
+      #   run: |
+      #     kubectl \
+      #       --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
+      #       --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
+      #       --insecure-skip-tls-verify=true \
+      #       rollout restart deployment xyzen -n sciol
