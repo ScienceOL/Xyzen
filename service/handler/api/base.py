@@ -17,8 +17,7 @@ async def health_check() -> dict[str, str]:
 
 @r.get("/mcp/status")
 async def mcp_status() -> dict[str, Any]:
-    return {
-        "lab_tools": "http://127.0.0.1:48200/mcp/lab/",
-        "other_tools": "http://127.0.0.1:48200/mcp/other/",
-        "available_tools": {"lab": ["multiply"], "other": ["add"]},
-    }
+
+    from handler.mcp import MCP_SERVERS
+
+    return {k: {"mount_path": v["mount_path"], "name": v["name"]} for k, v in MCP_SERVERS.items()}
