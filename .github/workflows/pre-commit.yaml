@@ -44,8 +44,6 @@ jobs:
 
       - name: Install and run pre-commit
         uses: pre-commit/action@v3.0.1
-        with:
-          extra_args: --all-files
         env:
           # 确保 uv 可以在 pre-commit 中使用
           PATH: ${{ env.PATH }}:/home/runner/.local/bin
