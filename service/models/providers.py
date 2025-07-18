@@ -2,12 +2,12 @@ from pydantic import BaseModel, Field
 
 
 class AIServerProvider(BaseModel):
-    """AI服务器提供者配置"""
+    """AI server provider configuration"""
 
-    Name: str = Field(default="", description="提供者名称")
-    Api: str = Field(default="", description="API基础URL")
-    Key: str = Field(default="", description="API访问密钥")
-    Timeout: int = Field(default=10, description="API请求超时时间(秒)")
-    Model: str = Field(default="", description="默认模型名称")
-    MaxTokens: int = Field(default=4096, description="最大令牌数")
-    Temperature: float = Field(default=0.7, description="生成温度")
+    Name: str = Field(default="", description="Provider name")
+    Api: str = Field(default="", description="API base URL")
+    Key: str = Field(default="", description="API access key")
+    Timeout: int = Field(default=10, description="API request timeout (seconds)")
+    Model: str = Field(default="", description="Default model name")
+    MaxTokens: int = Field(default=4096, description="Max token count")
+    Temperature: float = Field(default=0.7, description="Generation temperature")
