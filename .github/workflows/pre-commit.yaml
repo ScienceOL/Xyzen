@@ -41,4 +41,4 @@ jobs:
 
       - name: Run pre-commit checks
         working-directory: .
-        run: pre-commit run --all-files
+        run: uv run pre-commit run --all-files
