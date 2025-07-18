@@ -38,4 +38,4 @@ jobs:
           echo "Dependencies installed successfully"
           uv run pre-commit install
           echo "Pre-commit hooks installed successfully"
-          cd .. && uv run pre-commit run --all-files
+          cd .. && uv run pre-commit run
