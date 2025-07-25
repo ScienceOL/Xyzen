@@ -1,5 +1,4 @@
 import logging
-from typing import Literal
 
 import requests
 from fastmcp import FastMCP
@@ -32,13 +31,12 @@ async def show_user_info() -> dict[str, str]:
 
 
 @lab_mcp.tool
-async def list_laboratory_devices(category: Literal["device"] | None = None) -> dict:
+async def list_laboratory_devices() -> dict:
     """
     Lists laboratory devices by calling an internal lab API.
     Authentication is handled automatically on the server.
 
     Args:
-        - category (Literal["device"] | None): If none, list just resources, otherwise list devices.
 
     Returns:
         A dictionary containing the result of the operation.
@@ -50,6 +48,7 @@ async def list_laboratory_devices(category: Literal["device"] | None = None) -> 
 
         If an error occurs, the dictionary will contain `error` (str) and `success` (bool, always `False`).
     """
+    category = "device"  # Default to device category
     try:
         api_secret = configs.Lab.Key
         if not api_secret:
@@ -57,6 +56,62 @@ async def list_laboratory_devices(category: Literal["device"] | None = None) -> 
 
         url = f"{configs.Lab.Api}/api/environment/lab/mcp"
         params = {"secret_key": api_secret, "type": category}
+
+        logger.info(f"Making request to {url}...")
+
+        response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
+        response.raise_for_status()
+
+        result = response.json()
+
+        if result.get("code") != 0:
+            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+            logger.error(error_msg)
+            return {"error": error_msg, "success": False}
+
+        data = result.get("data", {})
+        devices = data.get("devices", [])
+        logger.info(f"Successfully retrieved {len(devices)} devices for lab: {data.get('lab_name')}")
+
+        return {"success": True, "lab_name": data.get("lab_name"), "devices": devices, "device_count": len(devices)}
+
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Network error when calling lab API: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+    except Exception as e:
+        error_msg = f"An unexpected error occurred: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+
+@lab_mcp.tool
+async def list_laboratory_resources() -> dict:
+    """
+    Lists laboratory resources by calling an internal lab API.
+    Authentication is handled automatically on the server.
+
+    Args:
+
+    Returns:
+        A dictionary containing the result of the operation.
+        On success, the dictionary will contain the following keys:
+        - `success` (bool): Always `True` if the operation was successful.
+        - `lab_name` (str): The name of the laboratory.
+        - `devices` (list[str]): A list of all device IDs within the lab.
+        - `device_count` (int): The number of devices.
+
+        If an error occurs, the dictionary will contain `error` (str) and `success` (bool, always `False`).
+    """
+    category = "device"  # Default to device category
+    try:
+        api_secret = configs.Lab.Key
+        if not api_secret:
+            raise ValueError("API SecretKey is not configured on the server.")
+
+        url = f"{configs.Lab.Api}/api/environment/lab/mcp"
+        params = {"secret_key": api_secret, "type": None}
 
         logger.info(f"Making request to {url}...")
 
@@ -156,7 +211,7 @@ async def perform_device_action(device_id: str, action_type: str, action: str, p
             raise ValueError("API SecretKey is not configured on the server.")
 
         url = f"{configs.Lab.Api}/api/environment/lab/mcp/execute/"
-        params = {"secret_key": api_secret, "device_id": device_id}
+        http_params = {"secret_key": api_secret, "device_id": device_id}
 
         payload = {
             "action_type": action_type,
@@ -166,7 +221,7 @@ async def perform_device_action(device_id: str, action_type: str, action: str, p
 
         logger.info(f"Making POST request to {url} for device {device_id} with action {action}...")
 
-        response = requests.post(url, params=params, json=payload, timeout=configs.Lab.Timeout)
+        response = requests.post(url, params=http_params, json=payload, timeout=configs.Lab.Timeout)
         response.raise_for_status()
 
         result = response.json()
