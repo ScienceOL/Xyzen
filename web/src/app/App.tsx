@@ -165,7 +165,7 @@ export function Xyzen({ backendUrl = DEFAULT_BACKEND_URL }: XyzenProps) {
           </button>
         </div>
 
-        <Tab.Group selectedIndex={activeTabIndex} onChange={setTabIndex}>
+        <Tab.Group selectedIndex={activeTabIndex} onChange={setTabIndex} style={{ height: '100vh' }}>
           <div className="border-b border-neutral-200 px-4 dark:border-neutral-800">
             <div className="flex items-center justify-between">
               <Tab.List className="flex space-x-1">

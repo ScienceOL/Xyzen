@@ -100,7 +100,7 @@ export default function XyzenChat() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" style={{height: `calc(100vh - 136px)`}}>
       {currentAssistant ? (
         <div className="flex-shrink-0 px-4 pb-2">
           <h2 className="text-lg font-medium text-neutral-800 dark:text-white">
