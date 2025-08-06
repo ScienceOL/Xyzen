@@ -98,7 +98,7 @@ async def delete_agent(*, session: AsyncSession = Depends(get_session), agent_id
     """
     agent = await session.get(Agent, agent_id)
     if not agent:
-        # 即使找不到也返回成功，这是DELETE操作的幂等性实践之一
+        
         return
 
     # 检查是否有会话正在使用此Agent
