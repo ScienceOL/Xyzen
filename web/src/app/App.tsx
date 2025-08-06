@@ -25,6 +25,7 @@ import XyzenHistory from "@/components/layouts/XyzenHistory";
 import XyzenNodes from "@/components/layouts/XyzenNodes";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import useTheme from "@/hooks/useTheme";
+import XyzenAgent from "@/components/layouts/XyzenAgent";
 
 // 定义最小宽度和最大宽度限制
 const MIN_WIDTH = 280;
@@ -83,6 +84,7 @@ export function Xyzen({ backendUrl = DEFAULT_BACKEND_URL }: XyzenProps) {
   // Tab选项
   const tabs = [
     { id: "chat", title: "聊天", component: <XyzenChat /> },
+    {id: "agent", title: "助手", component: <XyzenAgent /> },
     { id: "history", title: "历史", component: <XyzenHistory /> },
     { id: "nodes", title: "节点", component: <XyzenNodes /> },
   ];
@@ -135,6 +137,21 @@ export function Xyzen({ backendUrl = DEFAULT_BACKEND_URL }: XyzenProps) {
   }, [toggleXyzen]);
 
   if (!mounted || !isXyzenOpen) return null;
+
+  // const handleCreateCustomAgent = () => {
+  //   const newAgent = {
+  //     id: `agent-${Date.now()}`,
+  //     name: "自定义助手",
+  //     description: "这是一个自定义创建的助手",
+  //     model: "GPT-4",
+  //     temperature: 0.7,
+  //     tags: [],
+  //     avatar: "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png",
+  //   };
+
+  //   createDefaultChannel(newAgent);         // 创建频道
+  //   setTabIndex(1);
+  // };
 
   return (
     <DndContext
