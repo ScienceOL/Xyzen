@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -38,20 +38,20 @@ async def create_agent(*, session: AsyncSession = Depends(get_session), agent_in
     await session.refresh(db_agent)
     return db_agent
 
-@router.get("/", response_model=List[AgentRead], summary="获取所有Agent列表")
+@router.get("/", response_model=list[AgentRead], summary="获取所有Agent列表")
 async def list_agents(
     *, 
     session: AsyncSession = Depends(get_session), 
     skip: int = 0, 
     limit: int = 100
-) -> List[Agent]:
+) -> list[Agent]:
     """
     获取一个Agent列表。返回的数据将包含每个Agent关联的Provider信息。
     """
     statement = select(Agent).offset(skip).limit(limit)
     result = await session.exec(statement)
     agents = result.all()
-    return agents
+    return list(agents) 
 
 @router.get("/{agent_id}", response_model=AgentRead, summary="根据ID查询Agent")
 async def read_agent(*, session: AsyncSession = Depends(get_session), agent_id: UUID) -> Agent:
@@ -92,7 +92,7 @@ async def update_agent(*, session: AsyncSession = Depends(get_session), agent_id
     return db_agent
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT, summary="删除Agent")
-async def delete_agent(*, session: AsyncSession = Depends(get_session), agent_id: UUID):
+async def delete_agent(*, session: AsyncSession = Depends(get_session), agent_id: UUID) -> None:
     """
     删除指定ID的Agent。如果Agent已关联到Session，将禁止删除。
     """
@@ -111,7 +111,7 @@ async def delete_agent(*, session: AsyncSession = Depends(get_session), agent_id
             detail="Cannot delete agent: It is currently associated with one or more sessions."
         )
 
-    session.delete(agent)
+    await session.delete(agent)
     await session.commit()
     return
 
