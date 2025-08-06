@@ -8,17 +8,18 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 # 使用项目中已有的数据库会话管理
 from middleware.database import get_session
 
-from models import Agent, AgentCreate, AgentRead, AgentUpdate, Provider, Session, SessionCreate, SessionRead
+from models.agents import Agent, AgentCreate, AgentRead, AgentUpdate
+from models.providers import Provider
+from models.sessions import Session, SessionCreate, SessionRead
 
 
 router = APIRouter(
-    prefix="/api", 
     tags=["Agents and Sessions"], 
 )
 
 # --- Agent 增删查改的接口 ---
 
-@router.post("/agents/", response_model=AgentRead, status_code=status.HTTP_201_CREATED, summary="创建新Agent")
+@router.post("/", response_model=AgentRead, status_code=status.HTTP_201_CREATED, summary="创建新Agent")
 async def create_agent(*, session: AsyncSession = Depends(get_session), agent_in: AgentCreate) -> Agent:
     """
     创建一个新的Agent。
@@ -37,7 +38,7 @@ async def create_agent(*, session: AsyncSession = Depends(get_session), agent_in
     await session.refresh(db_agent)
     return db_agent
 
-@router.get("/agents/", response_model=List[AgentRead], summary="获取所有Agent列表")
+@router.get("/", response_model=List[AgentRead], summary="获取所有Agent列表")
 async def list_agents(
     *, 
     session: AsyncSession = Depends(get_session), 
@@ -52,7 +53,7 @@ async def list_agents(
     agents = result.all()
     return agents
 
-@router.get("/agents/{agent_id}", response_model=AgentRead, summary="根据ID查询Agent")
+@router.get("/{agent_id}", response_model=AgentRead, summary="根据ID查询Agent")
 async def read_agent(*, session: AsyncSession = Depends(get_session), agent_id: UUID) -> Agent:
     """
     获取指定ID的Agent的详细信息, 包括其关联的Provider。
@@ -62,7 +63,7 @@ async def read_agent(*, session: AsyncSession = Depends(get_session), agent_id: 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     return agent
 
-@router.patch("/agents/{agent_id}", response_model=AgentRead, summary="更新Agent信息")
+@router.patch("/{agent_id}", response_model=AgentRead, summary="更新Agent信息")
 async def update_agent(*, session: AsyncSession = Depends(get_session), agent_id: UUID, agent_update: AgentUpdate) -> Agent:
     """
     更新指定ID的Agent信息。如果提供了 `provider_id`，会验证其有效性。
@@ -90,7 +91,7 @@ async def update_agent(*, session: AsyncSession = Depends(get_session), agent_id
     await session.refresh(db_agent)
     return db_agent
 
-@router.delete("/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT, summary="删除Agent")
+@router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT, summary="删除Agent")
 async def delete_agent(*, session: AsyncSession = Depends(get_session), agent_id: UUID):
     """
     删除指定ID的Agent。如果Agent已关联到Session，将禁止删除。

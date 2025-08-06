@@ -1,9 +1,22 @@
+from .agents import (
+    Agent,
+    AgentCreate,
+    AgentRead,
+    AgentReadWithSessions,
+    AgentUpdate,
+)
 from .mcps import McpServer
 from .messages import (
     Message,
     MessageCreate,
     MessageRead,
     MessageUpdate,
+)
+from .providers import (
+    Provider,
+    ProviderCreate,
+    ProviderRead,
+    ProviderUpdate,
 )
 from .sessions import (
     Session,
@@ -19,11 +32,20 @@ from .topics import (
 )
 
 __all__ = [
+    "Agent",
+    "AgentCreate",
+    "AgentRead",
+    "AgentReadWithSessions",
+    "AgentUpdate",
     "McpServer",
     "Message",
     "MessageCreate",
     "MessageRead",
     "MessageUpdate",
+    "Provider",
+    "ProviderCreate",
+    "ProviderRead",
+    "ProviderUpdate",
     "Session",
     "SessionCreate",
     "SessionRead",

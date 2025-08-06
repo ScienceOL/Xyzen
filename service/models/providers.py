@@ -29,6 +29,12 @@ class ProviderCreate(ProviderBase):
     pass
 
 
+class ProviderRead(ProviderBase):
+    """Model for reading a provider."""
+
+    id: int
+
+
 class ProviderUpdate(SQLModel):
     """Model for updating a provider. All fields are optional."""
 
