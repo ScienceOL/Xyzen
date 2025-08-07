@@ -4,15 +4,12 @@
 # 示例: make dev ARGS="-d"
 ARGS ?=
 
-# 根据操作系统选择执行不同的脚本
-# Windows 系统会执行 dev.ps1
 ifeq ($(OS),Windows_NT)
 dev:
 	@echo "Starting development environment on Windows..."
-	@powershell -File ./launch/dev.ps1 $(ARGS)
-# 非 Windows 系统（如 macOS, Linux）会执行 dev.sh
+	@powershell -ExecutionPolicy Bypass -File ./launch/dev.ps1 $(ARGS)
 else
 dev:
-	@echo "Starting development environment..."
+	@echo "Starting development environment on Unix..."
 	@./launch/dev.sh $(ARGS)
 endif
