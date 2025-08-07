@@ -10,7 +10,7 @@ from starlette.types import Receive, Scope, Send
 
 from handler import root_router
 from handler.api.v1 import agents, mcps, sessions, topics
-from handler.mcp import lab_mcp, other_mcp
+from handler.mcp import dify_mcp, lab_mcp, other_mcp
 from internal import configs
 from middleware.auth.casdoor import casdoor_mcp_auth
 from middleware.database import create_db_and_tables
@@ -37,11 +37,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         debug=configs.Debug,
     )
 
+    dify_app = create_streamable_http_app(
+        server=dify_mcp,
+        streamable_http_path="/",
+        debug=configs.Debug,
+    )
+
     # 将 FastMCP 应用的生命周期管理器集成到 FastAPI 中
-    async with lab_app.router.lifespan_context(lab_app), other_app.router.lifespan_context(other_app):
+    async with (
+        lab_app.router.lifespan_context(lab_app),
+        other_app.router.lifespan_context(other_app),
+        dify_app.router.lifespan_context(dify_app),
+    ):
         # 将应用存储在 FastAPI 的状态中，以便在路由中使用
         app.state.lab_app = lab_app
         app.state.other_app = other_app
+        app.state.dify_app = dify_app
         yield
 
     # Disconnect from the database, if needed (SQLModel manages sessions)
@@ -84,11 +95,16 @@ async def other_handler(scope: Scope, receive: Receive, send: Send) -> None:
     await app.state.other_app(scope, receive, send)
 
 
+async def dify_handler(scope: Scope, receive: Receive, send: Send) -> None:
+    await app.state.dify_app(scope, receive, send)
+
+
 # Use Mount to register the MCP applications
 app.router.routes.extend(
     [
         Mount("/mcp/lab", lab_handler),
         Mount("/mcp/other", other_handler),
+        Mount("/mcp/dify", dify_handler),
     ]
 )
 

@@ -354,7 +354,12 @@ def get_workflow_templates(
             logger.error(error_msg)
             return {"error": error_msg, "success": False}
 
-        return result
+        return {
+            "success": True,
+            "lab_name": result.get("lab_name"),
+            "devices": result.get("devices"),
+            "device_count": len(result.get("devices", [])),
+        }
 
     except requests.exceptions.Timeout:
         logger.error("请求超时")
@@ -415,7 +420,7 @@ def get_workflow_template_tags(timeout: int = 30) -> Dict[str, Any]:
             logger.error(error_msg)
             return {"error": error_msg, "success": False}
 
-        return result
+        return {"success": True, "tags": result.get("tags")}
 
     except Exception as e:
         logger.error(f"获取工作流模板标签失败: {str(e)}")
@@ -653,68 +658,3 @@ def workflow_template_examples() -> Dict[str, Any]:
     }
 
     return {"code": 0, "msg": "工作流模板API使用示例", "data": examples}
-
-
-@lab_mcp.tool
-async def translate_experiment_workflow(workflow_content: str) -> dict:
-    """
-    翻译生物实验工作流内容。
-
-    Args:
-        workflow_content: 需要翻译的实验工作流内容。
-
-    Returns:
-        包含翻译结果的字典，或错误信息。
-    """
-    try:
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            raise ValueError("Access token is required for this operation.")
-        user_id = access_token.client_id
-
-        dify_api_url = configs.Lab.DifyApi
-        dify_api_key = configs.Lab.DifyKey
-
-        if not dify_api_url or not dify_api_key:
-            raise ValueError("Dify API URL 或 Key 未配置。")
-
-        headers = {
-            "Authorization": f"Bearer {dify_api_key}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "inputs": {},
-            "query": workflow_content,
-            "response_mode": "streaming",
-            "user": user_id,  # 使用当前认证用户的ID
-            "conversation_id": ""
-        }
-
-        logger.info(f"向 Dify API {dify_api_url} 发送翻译请求...")
-
-        response = requests.post(dify_api_url + "/completion", headers=headers, json=payload, timeout=configs.Lab.Timeout)
-        response.raise_for_status()
-
-        # Dify API streaming response needs to be handled. For simplicity, we assume a non-streaming response for now.
-        # In a real-world scenario, you would iterate through the streaming response.
-        result = response.json()
-
-        if result.get("code") == 0 or result.get("answer"): # Dify API usually returns 'answer' for success
-            translated_text = result.get("answer", "")
-            logger.info("翻译成功。")
-            return {"success": True, "translated_workflow": translated_text}
-        else:
-            error_msg = f"Dify API 返回错误: {result.get('message', '未知错误')}"
-            logger.error(error_msg)
-            return {"error": error_msg, "success": False}
-
-    except requests.exceptions.RequestException as e:
-        error_msg = f"网络错误或 Dify API 请求失败: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-
-    except Exception as e:
-        error_msg = f"发生未知错误: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}

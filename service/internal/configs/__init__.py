@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .auth import AuthConfig
 from .database import DatabaseConfig
+from .dify import DifyConfig
 from .lab import LabConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
@@ -57,6 +58,11 @@ class AppConfig(BaseSettings):
     Lab: LabConfig = Field(
         default_factory=lambda: LabConfig(),
         description="Lab configuration",
+    )
+
+    Dify: DifyConfig = Field(
+        default_factory=lambda: DifyConfig(),
+        description="Dify configuration",
     )
 
 
