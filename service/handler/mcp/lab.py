@@ -332,7 +332,7 @@ def get_workflow_templates(
             params["page_size"] = str(page_size)
 
         # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/workflow-templates/"
+        url = f"{configs.Lab.Api}/api/flociety/vs/workflows/library/"
 
         logger.info(f"请求工作流模板列表: {url}, 参数: {params}")
 
@@ -349,17 +349,12 @@ def get_workflow_templates(
 
         result = response.json()
 
-        if result.get("code") != 0:
+        if "code" in result and result.get("code") != 0:
             error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
             logger.error(error_msg)
             return {"error": error_msg, "success": False}
 
-        return {
-            "success": True,
-            "lab_name": result.get("lab_name"),
-            "devices": result.get("devices"),
-            "device_count": len(result.get("devices", [])),
-        }
+        return {"success": True, **result}
 
     except requests.exceptions.Timeout:
         logger.error("请求超时")
@@ -404,7 +399,7 @@ def get_workflow_template_tags(timeout: int = 30) -> Dict[str, Any]:
             raise ValueError("API SecretKey is not configured on the server.")
 
         # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/workflow-templates/tags/"
+        url = f"{configs.Lab.Api}/api/flociety/vs/workflows/library/tags/"
         params = {"secret_key": api_secret}
 
         logger.info(f"请求工作流模板标签: {url}")
@@ -415,10 +410,10 @@ def get_workflow_template_tags(timeout: int = 30) -> Dict[str, Any]:
 
         result = response.json()
 
-        if result.get("code") != 0:
-            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-            logger.error(error_msg)
-            return {"error": error_msg, "success": False}
+        # if result.get("code") != 200:
+        #     error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+        #     logger.error(error_msg)
+        #     return {"error": error_msg, "success": False}
 
         return {"success": True, "tags": result.get("tags")}
 
@@ -450,7 +445,7 @@ def create_workflow_template(
             raise ValueError("API SecretKey is not configured on the server.")
 
         # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/workflow-templates/"
+        url = f"{configs.Lab.Api}/api/flociety/vs/workflows/library/"
         params = {"secret_key": api_secret}
 
         # 构建请求数据
@@ -521,7 +516,7 @@ def run_workflow(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
 
 
 @lab_mcp.tool
-def fork_workflow_template(workflow_uuid: str, lab_uuid: str, timeout: int = 30) -> Dict[str, Any]:
+def fork_workflow_template(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
     """
     Fork（复制）工作流模板到指定的实验室环境
 
@@ -539,9 +534,10 @@ def fork_workflow_template(workflow_uuid: str, lab_uuid: str, timeout: int = 30)
             raise ValueError("API SecretKey is not configured on the server.")
 
         # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/workflow-templates/{workflow_uuid}/fork/"
+        url = f"{configs.Lab.Api}/api/flociety/workflow/{workflow_uuid}/fork/"
         params = {"secret_key": api_secret}
 
+        lab_uuid = configs.Lab.UUID
         # 构建请求数据
         data = {"lab_uuid": lab_uuid}
 
@@ -569,48 +565,48 @@ def fork_workflow_template(workflow_uuid: str, lab_uuid: str, timeout: int = 30)
         return {"code": -1, "msg": f"Fork工作流模板失败: {str(e)}", "data": None}
 
 
-@lab_mcp.tool
-def get_user_laboratories(timeout: int = 30) -> Dict[str, Any]:
-    """
-    获取用户可访问的实验室列表（用于Fork操作时选择目标实验室）
+# @lab_mcp.tool
+# def get_user_laboratories(timeout: int = 30) -> Dict[str, Any]:
+#     """
+#     获取用户可访问的实验室列表（用于Fork操作时选择目标实验室）
 
-    Args:
-        timeout: 请求超时时间（秒），默认30
+#     Args:
+#         timeout: 请求超时时间（秒），默认30
 
-    Returns:
-        用户实验室列表
-    """
-    try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
-            raise ValueError("API SecretKey is not configured on the server.")
+#     Returns:
+#         用户实验室列表
+#     """
+#     try:
+#         api_secret = configs.Lab.Key
+#         if not api_secret:
+#             raise ValueError("API SecretKey is not configured on the server.")
 
-        # 构建完整URL
-        url = f"{configs.Lab.Api}/api/environment/laboratories/"
-        params = {"secret_key": api_secret}
+#         # 构建完整URL
+#         url = f"{configs.Lab.Api}/api/environment/labs/"
+#         params = {"secret_key": api_secret}
 
-        logger.info(f"获取用户实验室列表: {url}")
+#         logger.info(f"获取用户实验室列表: {url}")
 
-        # 发送GET请求
-        response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
-        response.raise_for_status()
+#         # 发送GET请求
+#         response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
+#         response.raise_for_status()
 
-        result = response.json()
+#         result = response.json()
 
-        if result.get("code") != 0:
-            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-            logger.error(error_msg)
-            return {"error": error_msg, "success": False}
+#         if result.get("code") != 0:
+#             error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+#             logger.error(error_msg)
+#             return {"error": error_msg, "success": False}
 
-        return {"code": 0, "msg": "获取实验室列表成功", "data": result.get("data")}
+#         return {"code": 0, "msg": "获取实验室列表成功", "data": result.get("data")}
 
-    except requests.exceptions.RequestException as e:
-        error_msg = f"Network error when calling lab API: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-    except Exception as e:
-        logger.error(f"获取用户实验室列表失败: {str(e)}")
-        return {"code": -1, "msg": f"获取用户实验室列表失败: {str(e)}", "data": []}
+#     except requests.exceptions.RequestException as e:
+#         error_msg = f"Network error when calling lab API: {str(e)}"
+#         logger.error(error_msg)
+#         return {"error": error_msg, "success": False}
+#     except Exception as e:
+#         logger.error(f"获取用户实验室列表失败: {str(e)}")
+#         return {"code": -1, "msg": f"获取用户实验室列表失败: {str(e)}", "data": []}
 
 
 @lab_mcp.tool
