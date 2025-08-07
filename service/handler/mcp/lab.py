@@ -522,7 +522,6 @@ def fork_workflow_template(workflow_uuid: str, timeout: int = 30) -> Dict[str, A
 
     Args:
         workflow_uuid: 源工作流UUID
-        lab_uuid: 目标实验室UUID
         timeout: 请求超时时间（秒），默认30
 
     Returns:
