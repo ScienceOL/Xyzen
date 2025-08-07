@@ -1,7 +1,7 @@
 name: sciol-xyzen
 services:
   network-service:
-    image: alpine
+    image: registry.scienceol.tech/library/alpine
     container_name: sciol-network
     ports:
       - '${WEB_PORT:-32233}:32233'
@@ -24,7 +24,8 @@ services:
     image: registry.scienceol.tech/library/postgres:16.8-alpine
     pull_policy: if_not_present
     network_mode: 'service:network-service'
-    restart: always
+    restart: unless-stopped
+    attach: false
     environment:
       POSTGRES_DB: ${DATABASE_NAME:-postgres}
       POSTGRES_USER: ${DATABASE_USER:-postgres}
@@ -40,12 +41,12 @@ services:
   minio:
     image: registry.scienceol.tech/library/minio
     network_mode: 'service:network-service'
+    attach: false
     volumes:
       - 's3_data:/etc/minio/data'
     environment:
       - 'MINIO_API_CORS_ALLOW_ORIGIN=*'
-    restart: always
-    attach: false
+    restart: unless-stopped
     entrypoint: >
       /bin/sh -c "
         minio server /etc/minio/data --address ':9000' --console-address ':9001' &
@@ -64,7 +65,8 @@ services:
   redis:
     image: registry.scienceol.tech/library/redis:7.4.2-alpine
     network_mode: 'service:network-service'
-    restart: always
+    restart: unless-stopped
+    attach: false
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -118,12 +120,12 @@ services:
           'CMD',
           'python',
           '-c',
-          "import urllib.request; urllib.request.urlopen('http://localhost:48196/api/health/', timeout=3)",
+          "import urllib.request; urllib.request.urlopen('http://localhost:48196/api/health', timeout=5)",
         ]
-      interval: 10s
+      interval: 60s
       timeout: 5s
       retries: 3
-      start_period: 5s
+      start_period: 10s
 
   web:
     image: registry.scienceol.tech/sciol/xyzen-web:latest

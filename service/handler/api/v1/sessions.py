@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List
 from uuid import uuid4
 
@@ -26,11 +26,11 @@ async def create_session_with_default_topic(
     session = Session.model_validate(session_data)
     session.id = uuid4()
 
-    # Create a default topic for this session with a unique name
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    # Create a default topic for this session with a generic name
+    # The timestamp is now handled by the `updated_at` field and displayed correctly on the frontend.
     default_topic = Topic.model_validate(
         TopicCreate(
-            name=f"Chat on {timestamp}",
+            name="新的聊天",  # Changed from a timestamp-based name
             session_id=session.id,
         )
     )

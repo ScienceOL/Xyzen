@@ -135,6 +135,13 @@ if ! command -v docker &> /dev/null; then
 fi
 echo -e "${BRIGHT_GREEN}✓ Docker 已就绪${RESET}"
 
+# 检查 .env.dev 文件是否存在，不存在则从 .env.example 创建
+if [ ! -f "${ENV_FILE}" ]; then
+  echo -e "${BRIGHT_YELLOW}⚠️  未找到 .env.dev 文件，将从 .env.example 创建...${RESET}"
+  cp "${PROJECT_DIR}/docker/.env.example" "${ENV_FILE}"
+  echo -e "${BRIGHT_GREEN}✓ .env.dev 文件已创建${RESET}"
+fi
+
 # 检查并安装 pre-commit 钩子
 check_precommit
 
