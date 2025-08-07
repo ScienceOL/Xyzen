@@ -667,6 +667,11 @@ async def translate_experiment_workflow(workflow_content: str) -> dict:
         包含翻译结果的字典，或错误信息。
     """
     try:
+        access_token: AccessToken | None = get_access_token()
+        if not access_token:
+            raise ValueError("Access token is required for this operation.")
+        user_id = access_token.client_id
+
         dify_api_url = configs.Lab.DifyApi
         dify_api_key = configs.Lab.DifyKey
 
@@ -682,7 +687,7 @@ async def translate_experiment_workflow(workflow_content: str) -> dict:
             "inputs": {},
             "query": workflow_content,
             "response_mode": "streaming",
-            "user": "lab_mcp_user",  # 可以根据实际情况设置用户ID
+            "user": user_id,  # 使用当前认证用户的ID
             "conversation_id": ""
         }
 
