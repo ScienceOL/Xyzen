@@ -516,12 +516,15 @@ def run_workflow(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
 
 
 @lab_mcp.tool
-def fork_workflow_template(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
+def fork_workflow_template(
+    workflow_template_uuid: str, lab_uuid: str = "default", timeout: int = 30
+) -> Dict[str, Any]:
     """
-    Fork（复制）工作流模板到指定的实验室环境
+    Fork（复制）工作流模板到指定的实验室环境。当前你不需要获得实验室的 UUID，因为它会自动使用配置中的实验室UUID。
 
     Args:
-        workflow_uuid: 源工作流UUID
+        workflow_template_uuid: 源工作流模板的UUID
+        lab_uuid: 目标实验室的UUID，默认为"default"，默认值时将使用默认实验室
         timeout: 请求超时时间（秒），默认30
 
     Returns:
@@ -533,10 +536,12 @@ def fork_workflow_template(workflow_uuid: str, timeout: int = 30) -> Dict[str, A
             raise ValueError("API SecretKey is not configured on the server.")
 
         # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/workflow/{workflow_uuid}/fork/"
+        url = f"{configs.Lab.Api}/api/flociety/workflow/{workflow_template_uuid}/fork/"
         params = {"secret_key": api_secret}
 
-        lab_uuid = configs.Lab.UUID
+        # 使用配置中的实验室UUID
+        if lab_uuid == "default":
+            lab_uuid = configs.Lab.UUID
         # 构建请求数据
         data = {"lab_uuid": lab_uuid}
 
@@ -640,15 +645,9 @@ def workflow_template_examples() -> Dict[str, Any]:
         "Fork工作流模板": {
             "function": "fork_workflow_template",
             "example": {
-                "workflow_uuid": "550e8400-e29b-41d4-a716-446655440000",
-                "lab_uuid": "lab-550e8400-e29b-41d4-a716-446655440000",
+                "workflow_template_uuid": "550e8400-e29b-41d4-a716-446655440000",
             },
-            "description": "将工作流模板复制到指定实验室，会自动处理节点模板的实验室映射",
-        },
-        "获取用户实验室": {
-            "function": "get_user_laboratories",
-            "example": {},
-            "description": "获取用户可访问的实验室列表，用于选择Fork目标",
+            "description": "将工作流模板复制到默认实验室，会自动处理节点模板的实验室映射",
         },
     }
 
