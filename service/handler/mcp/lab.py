@@ -296,7 +296,7 @@ async def get_device_status(device_id: str) -> dict:
         return {"error": error_msg, "success": False}
 
 
-@lab_mcp.tool()
+@lab_mcp.tool
 def get_workflow_templates(
     by_user: Optional[bool] = None,
     tag_filters: Optional[List[str]] = None,
@@ -382,7 +382,7 @@ def get_workflow_templates(
         }
 
 
-@lab_mcp.tool()
+@lab_mcp.tool
 def get_workflow_template_tags(timeout: int = 30) -> Dict[str, Any]:
     """
     获取所有工作流模板的标签列表
@@ -422,7 +422,7 @@ def get_workflow_template_tags(timeout: int = 30) -> Dict[str, Any]:
         return {"code": -1, "msg": f"获取工作流模板标签失败: {str(e)}", "tags": []}
 
 
-@lab_mcp.tool()
+@lab_mcp.tool
 def create_workflow_template(
     workflow_uuid: str, title: str, description: str, labels: Optional[List[str]] = None, timeout: int = 30
 ) -> Dict[str, Any]:
@@ -471,7 +471,7 @@ def create_workflow_template(
         return {"code": -1, "msg": f"创建工作流模板失败: {str(e)}", "data": None}
 
 
-@lab_mcp.tool()
+@lab_mcp.tool
 def run_workflow(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
     """
     运行指定的工作流
@@ -515,7 +515,7 @@ def run_workflow(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
         return {"code": -1, "msg": f"运行工作流失败: {str(e)}", "data": None}
 
 
-@lab_mcp.tool()
+@lab_mcp.tool
 def fork_workflow_template(workflow_uuid: str, lab_uuid: str, timeout: int = 30) -> Dict[str, Any]:
     """
     Fork（复制）工作流模板到指定的实验室环境
@@ -564,7 +564,7 @@ def fork_workflow_template(workflow_uuid: str, lab_uuid: str, timeout: int = 30)
         return {"code": -1, "msg": f"Fork工作流模板失败: {str(e)}", "data": None}
 
 
-@lab_mcp.tool()
+@lab_mcp.tool
 def get_user_laboratories(timeout: int = 30) -> Dict[str, Any]:
     """
     获取用户可访问的实验室列表（用于Fork操作时选择目标实验室）
@@ -608,7 +608,7 @@ def get_user_laboratories(timeout: int = 30) -> Dict[str, Any]:
         return {"code": -1, "msg": f"获取用户实验室列表失败: {str(e)}", "data": []}
 
 
-@lab_mcp.tool()
+@lab_mcp.tool
 def workflow_template_examples() -> Dict[str, Any]:
     """
     获取工作流模板API的使用示例
@@ -653,3 +653,63 @@ def workflow_template_examples() -> Dict[str, Any]:
     }
 
     return {"code": 0, "msg": "工作流模板API使用示例", "data": examples}
+
+
+@lab_mcp.tool
+async def translate_experiment_workflow(workflow_content: str) -> dict:
+    """
+    翻译生物实验工作流内容。
+
+    Args:
+        workflow_content: 需要翻译的实验工作流内容。
+
+    Returns:
+        包含翻译结果的字典，或错误信息。
+    """
+    try:
+        dify_api_url = configs.Lab.DifyApi
+        dify_api_key = configs.Lab.DifyKey
+
+        if not dify_api_url or not dify_api_key:
+            raise ValueError("Dify API URL 或 Key 未配置。")
+
+        headers = {
+            "Authorization": f"Bearer {dify_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "inputs": {},
+            "query": workflow_content,
+            "response_mode": "streaming",
+            "user": "lab_mcp_user",  # 可以根据实际情况设置用户ID
+            "conversation_id": ""
+        }
+
+        logger.info(f"向 Dify API {dify_api_url} 发送翻译请求...")
+
+        response = requests.post(dify_api_url + "/completion", headers=headers, json=payload, timeout=configs.Lab.Timeout)
+        response.raise_for_status()
+
+        # Dify API streaming response needs to be handled. For simplicity, we assume a non-streaming response for now.
+        # In a real-world scenario, you would iterate through the streaming response.
+        result = response.json()
+
+        if result.get("code") == 0 or result.get("answer"): # Dify API usually returns 'answer' for success
+            translated_text = result.get("answer", "")
+            logger.info("翻译成功。")
+            return {"success": True, "translated_workflow": translated_text}
+        else:
+            error_msg = f"Dify API 返回错误: {result.get('message', '未知错误')}"
+            logger.error(error_msg)
+            return {"error": error_msg, "success": False}
+
+    except requests.exceptions.RequestException as e:
+        error_msg = f"网络错误或 Dify API 请求失败: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+    except Exception as e:
+        error_msg = f"发生未知错误: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
