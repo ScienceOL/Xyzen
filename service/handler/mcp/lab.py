@@ -490,6 +490,7 @@ def run_workflow(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
 
         # 构建完整URL
         url = f"{configs.Lab.Api}/api/v1/run-workflow/"
+        url = f"{configs.Lab.Api}/api/v1/run_workflow/"
         params = {"secret_key": api_secret}
 
         # 构建请求数据
