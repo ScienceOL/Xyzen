@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -29,33 +30,16 @@ lQIDAQAB
     algorithm="RS256",
 )
 
-# CASE: 使用 Casdoor jwks 作为身份验证提供者
-# lab_auth = JWTVerifier(
-#     jwks_uri="http://localhost:8000/.well-known/jwks",
-#     issuer="http://localhost:8000",
-#     audience="4f2a3691f2168bc18b7f"
-# )
 
-# CASE: 使用对称加密算法 HS256，适用于测试环境
-# lab_auth = JWTVerifier(
-#     # 使用 RSA 公钥 (从 JWKS 的 x5c 证书中提取)
-#     public_key="""-----BEGIN CERTIFICATE-----
-# MIIE3TCCAsWgAwIBAgIDAeJAMA0GCSqGSIb3DQEBCwUAMCgxDjAMBgNVBAoTBWFkbWluMRYwFAYDVQQDEw1jZXJ0LWJ1aWx0LWluMB4XDTI0MDkwOTA5MjYxMVoXDTQ0MDkwOTA5MjYxMVowKDEOMAwGA1UEChMFYWRtaW4xFjAUBgNVBAMTDWNlcnQtYnVpbHQtaW4wggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQC3EnylZ2VurCm4gVtZHBUw67qvuKoYuU9whqaJr2UQEboIX4ca+FtZCjDgcBoD80lwSoYrcKpTG+DIVEMDznUHOjKwongRWclV1jeE3jZqObtmG9872yt/WX+nxQLyDrk+nUGhci6QrhgoYToN1DYaMqMV1Pi8catx8S0W3gg+ilb9mG3xdFpQo89o84mJhajTE/5/0jBuQ50Dx8CRolpRWjZ6i9RNVfFQglei+aW0RNf1PY6RqMkxc/Hy0XwXf/bjM5Ax7Aajwtehx0Q1zeUaRMMhFu6REtz345oJdLJpUkpFwJN4dPQ35a0tqnjkD1MLZjvBhSgOt5IPAJA1HmcR83RMBS8B3iV6y/clPjr02cjyasORy+kL/aFMfZfwvuRWX1NqRE99+rUTlPszH2SQi7PCUItQK72nnMYWBMXgyS8/Mra48q7LDAB/ZQnWuEG1+P1SdsQUWM2UaxkgjmfMNATVAgufrLOcOZDxAwVS7+quCF5f/QPTWaFqz5ofcpoUlf0iriv/k1mil7OghX0eqyLI2cCSma+dgB1eMni91eDCLVRT25mGDYreFjkpAwpMx2uaBk5e6ffT2jmZ2Zp9iCrUomLXDNiwY2wZDClcDKFiHNhNPAN3IbvBC3c6qpt0dLsWvGYW2IQTTnI71r/YY1XN/mTa4t/zwI+/kghjMQIDAQABoxAwDjAMBgNVHRMBAf8EAjAAMA0GCSqGSIb3DQEBCwUAA4ICAQBJUMBYJXnNihlGA2NMFIZMlsnW+5tjUqqK/Pv+oSptrqZxwDKFZL0NMxd4pVnLxIdU5HEcN2e01Xyqlaf5Tm3BZN6MaRVZAIRVfvxcNESQYA0jSFjsJzZUFGIQf8P9a5u+7qqSmj4tZx4XaRjOGSOf8t2RMJDmAbUeydLiD8nyCcxTzetmyYky8J3NBUoYGRbwU6KKbkxHbT35QheAb3jT4CELopLZ57Aa5Fb8xTjQ6tNqwZ+Z3993FkTOWPYLNLM1l46oN3g9yVY4ncGjUJkxsLTpAXB4I+wdqeew9XXexWNcY3cWWjA5VXgCNzntkPFM1D5IWkgP8MYVCvdv0Unfo78PahwVMoQMnDG4xLuS50gVKpukHLZQJNFPF0X4u/JeXauKPv/w7ssTTAK+8RIBYxBXQ72zDJNHyTqldR4efPHZfcW7OTmUr5FGNZThyW7ipvZRWcLM4u4IaWF2ncllOSqAXs1gDxkk201J7LrboZOjC3zgxE9HTCXpiszOAt5I38++5ufE3/hJW3ckz0jaJDeFqUphnn8eQhXPSwtCR8TL4ZpXSAFEpwahG+fCfZDK2KyPME33eXV3jtsYf0QHerYiMnP+tf1vAk3qtOzoE6Iv16fpBUvshk1Gm6E6bdhsP0hCrMwV4dm8uC3S52qcFiWZ6AC/HURaMbY+/lOs0A==
-# -----END CERTIFICATE-----""",
-#     issuer="http://localhost:8000",
-#     audience="4f2a3691f2168bc18b7f",
-#     algorithm="RS256",  # 使用 RSA 算法，匹配 JWKS 中的 alg
-# )
-
-
+# 通过ak获取当前用户信息✅
 @lab_mcp.tool
 async def show_user_info() -> dict[str, Any]:
     """
     Returns the user information from the access token.
     """
     access_token: AccessToken | None = get_access_token()
-
-    assert access_token is not None, "Access token is required for this operation."
+    if not access_token:
+        return {"error": "Access token is required for this operation."}
 
     # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
     user_info = AuthProvider.parse_user_info(access_token.claims)
@@ -66,6 +50,7 @@ async def show_user_info() -> dict[str, Any]:
         }
 
     return {
+        # "token":access_token.token,
         "id": user_info.id,
         "username": user_info.username,
         "email": user_info.email,
@@ -75,18 +60,25 @@ async def show_user_info() -> dict[str, Any]:
     }
 
 
+# 获取实验室列表✅
 @lab_mcp.tool
 async def list_laboratories() -> dict:
     """
-    Lists laboratories by calling an internal lab API.
+    Retrieve a list of laboratories using the internal lab API.
     Authentication is handled automatically on the server.
 
     Returns:
-        A dictionary containing the result of the operation.
-        On success, the dictionary will contain the following keys:
-        - `success` (bool): Always `True` if the operation was successful.
-        - `labs` (list[dict]): A list of labs with their details.
-        If an error occurs, the dictionary will contain `error` (str) and `success` (bool, always `False`).
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the operation succeeded.
+            - labs (list[dict]): List of laboratory details. Each dictionary contains:
+                - lab_uuid (str): Unique identifier of the laboratory.
+                - other fields returned by the API.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
     """
     try:
         url = f"{configs.Lab.Api}/api/v1/lab/list?page=1&page_size=1000"
@@ -120,202 +112,50 @@ async def list_laboratories() -> dict:
         return {"error": error_msg, "success": False}
 
 
-# TODO: 以下所有代码接口需要更新，以及 key 不需要再显示设置，使用 get_access_token().token 即可获取用户 ak 用以接下来的操作。
+# 获取实验室下所有设备✅
 @lab_mcp.tool
-async def list_laboratory_devices() -> dict:
+async def list_laboratory_devices(lab_uuid: str, type: str = "device") -> dict:
     """
-    Lists laboratory devices by calling an internal lab API.
+    Retrieve all devices or resources in a laboratory using the internal lab API.
     Authentication is handled automatically on the server.
 
     Args:
+        lab_uuid (str): Unique identifier of the laboratory.
+        type (str, optional): Type of resources to list, default is "device".
 
     Returns:
-        A dictionary containing the result of the operation.
-        On success, the dictionary will contain the following keys:
-        - `success` (bool): Always `True` if the operation was successful.
-        - `lab_name` (str): The name of the laboratory.
-        - `devices` (list[str]): A list of all device IDs within the lab.
-        - `device_count` (int): The number of devices.
+        dict: Operation result dictionary containing the following fields.
 
-        If an error occurs, the dictionary will contain `error` (str) and `success` (bool, always `False`).
-    """
-    category = "device"  # Default to device category
-    try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
-            raise ValueError("API SecretKey is not configured on the server.")
+        Success:
+            - success (bool): True if the operation succeeded.
+            - devices (list[str]): List of device/resource names.
+            - device_count (int): Number of devices/resources retrieved.
 
-        url = f"{configs.Lab.Api}/api/environment/lab/mcp"
-        params = {"secret_key": api_secret, "type": category}
-
-        logger.info(f"Making request to {url}...")
-
-        response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
-        response.raise_for_status()
-
-        result = response.json()
-
-        if result.get("code") != 0:
-            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-            logger.error(error_msg)
-            return {"error": error_msg, "success": False}
-
-        data = result.get("data", {})
-        devices = data.get("devices", [])
-        logger.info(f"Successfully retrieved {len(devices)} devices for lab: {data.get('lab_name')}")
-
-        return {"success": True, "lab_name": data.get("lab_name"), "devices": devices, "device_count": len(devices)}
-
-    except requests.exceptions.RequestException as e:
-        error_msg = f"Network error when calling lab API: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-
-    except Exception as e:
-        error_msg = f"An unexpected error occurred: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-
-
-@lab_mcp.tool
-async def list_laboratory_resources() -> dict:
-    """
-    Lists laboratory resources by calling an internal lab API.
-    Authentication is handled automatically on the server.
-
-    Args:
-
-    Returns:
-        A dictionary containing the result of the operation.
-        On success, the dictionary will contain the following keys:
-        - `success` (bool): Always `True` if the operation was successful.
-        - `lab_name` (str): The name of the laboratory.
-        - `devices` (list[str]): A list of all device IDs within the lab.
-        - `device_count` (int): The number of devices.
-
-        If an error occurs, the dictionary will contain `error` (str) and `success` (bool, always `False`).
-    """
-    category = "device"  # Default to device category
-    try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
-            raise ValueError("API SecretKey is not configured on the server.")
-
-        url = f"{configs.Lab.Api}/api/environment/lab/mcp"
-        params = {"secret_key": api_secret, "type": None}
-
-        logger.info(f"Making request to {url}...")
-
-        response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
-        response.raise_for_status()
-
-        result = response.json()
-
-        if result.get("code") != 0:
-            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-            logger.error(error_msg)
-            return {"error": error_msg, "success": False}
-
-        data = result.get("data", {})
-        devices = data.get("devices", [])
-        logger.info(f"Successfully retrieved {len(devices)} devices for lab: {data.get('lab_name')}")
-
-        return {"success": True, "lab_name": data.get("lab_name"), "devices": devices, "device_count": len(devices)}
-
-    except requests.exceptions.RequestException as e:
-        error_msg = f"Network error when calling lab API: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-
-    except Exception as e:
-        error_msg = f"An unexpected error occurred: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-
-
-@lab_mcp.tool
-async def list_device_actions(device_id: str) -> dict:
-    """
-    Lists actions for a specific device by calling the internal lab API.
-
-    Args:
-        device_id: The ID of the device to list actions for
-
-    Returns:
-        Dictionary containing device ID and available actions, or an error.
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
     """
     try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
+        access_token = get_access_token()
+        if not access_token:
             raise ValueError("API SecretKey is not configured on the server.")
 
-        url = f"{configs.Lab.Api}/api/environment/lab/mcp/actions/"
-        params = {"secret_key": api_secret, "device_id": device_id}
-
-        logger.info(f"Making request to {url} for device {device_id}...")
-
-        response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
-        response.raise_for_status()
-
-        result = response.json()
-
-        if result.get("code") != 0:
-            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-            logger.error(error_msg)
-            return {"error": error_msg, "success": False}
-
-        data = result.get("data", {})
-        actions = data.get("actions", {})
-        logger.info(f"Successfully retrieved {len(actions)} actions for device: {device_id}")
-
-        return {"success": True, "device_id": data.get("device_id"), "actions": actions, "action_count": len(actions)}
-
-    except requests.exceptions.RequestException as e:
-        error_msg = f"Network error when calling lab API: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-
-    except Exception as e:
-        error_msg = f"An unexpected error occurred: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg, "success": False}
-
-
-@lab_mcp.tool
-async def perform_device_action(device_id: str, action_type: str, action: str, params: dict) -> dict:
-    """
-    Performs a specific action on a device by calling the internal lab API.
-
-
-    Args:
-        device_id: The ID of the device to perform action on
-        action_type: The action type (e.g., "unilabos_msgs.action._send_cmd.SendCmd")
-        action: The action name (e.g., "command")
-        command: The command to send (e.g., "start")
-
-    Returns:
-        Dictionary containing job ID and status, or an error.
-    """
-    try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
-            raise ValueError("API SecretKey is not configured on the server.")
-
-        url = f"{configs.Lab.Api}/api/environment/lab/mcp/execute/"
-        http_params = {"secret_key": api_secret, "device_id": device_id}
-
-        payload = {
-            "action_type": action_type,
-            "action": action,
-            "data": params,
+        url = f"{configs.Lab.Api}/api/v1/lab/material/resource"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
         }
 
-        logger.info(f"Making POST request to {url} for device {device_id} with action {action}...")
+        params = {"lab_uuid": lab_uuid, "type": type}
 
-        response = requests.post(url, params=http_params, json=payload, timeout=configs.Lab.Timeout)
+        logger.info(f"Making request to {url}...")
+
+        response = requests.get(url, headers=headers, params=params, timeout=configs.Lab.Timeout)
         response.raise_for_status()
 
         result = response.json()
+        print(result)
 
         if result.get("code") != 0:
             error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
@@ -323,9 +163,10 @@ async def perform_device_action(device_id: str, action_type: str, action: str, p
             return {"error": error_msg, "success": False}
 
         data = result.get("data", {})
-        logger.info(f"Successfully executed action on device {device_id}, job_id: {data.get('job_id')}")
+        devices = data.get("resource_name_list", [])
+        logger.info(f"Successfully retrieved {len(devices)} devices for lab: {data.get('lab_name')}")
 
-        return {"success": True, "job_id": data.get("job_id"), "status": data.get("status")}
+        return {"success": True, "devices": [d.get("name", "") for d in devices], "device_count": len(devices)}
 
     except requests.exceptions.RequestException as e:
         error_msg = f"Network error when calling lab API: {str(e)}"
@@ -338,30 +179,46 @@ async def perform_device_action(device_id: str, action_type: str, action: str, p
         return {"error": error_msg, "success": False}
 
 
+# 获取实验室资源✅
 @lab_mcp.tool
-async def get_device_status(device_id: str) -> dict:
+async def list_laboratory_resources(lab_uuid: str, type: str = "resources") -> dict:
     """
-    Gets the status of a specific device by calling the internal lab API.
+    Retrieve all resources in a laboratory using the internal lab API.
+    Authentication is handled automatically on the server.
 
     Args:
-        device_id: The ID of the device to get status for
+        lab_uuid (str): Unique identifier of the laboratory.
+        type (str, optional): Type of resources to list, default is "resources".
 
     Returns:
-        Dictionary containing device ID and status information, or an error.
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the operation succeeded.
+            - devices (list[str]): List of all device/resource names in the laboratory.
+            - resources_count (int): Number of devices/resources retrieved.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
     """
     try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
+        access_token = get_access_token()
+        if not access_token:
             raise ValueError("API SecretKey is not configured on the server.")
 
-        url = f"{configs.Lab.Api}/api/environment/lab/mcp/device_status/"
-        params = {"secret_key": api_secret, "device_id": device_id}
+        url = f"{configs.Lab.Api}/api/v1/lab/material/resource"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        params = {"lab_uuid": lab_uuid}
 
-        logger.info(f"Making request to {url} for device {device_id}...")
+        logger.info(f"Making request to {url}...")
 
-        response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
+        response = requests.get(url, headers=headers, params=params, timeout=configs.Lab.Timeout)
         response.raise_for_status()
-
         result = response.json()
 
         if result.get("code") != 0:
@@ -370,10 +227,10 @@ async def get_device_status(device_id: str) -> dict:
             return {"error": error_msg, "success": False}
 
         data = result.get("data", {})
-        status = data.get("status", {})
-        logger.info(f"Successfully retrieved status for device: {device_id}")
+        devices = data.get("resource_name_list", [])
+        logger.info(f"Successfully retrieved {len(devices)} devices for lab: {data.get('lab_name')}")
 
-        return {"success": True, "device_id": data.get("device_id"), "statuses": status, "status_count": len(status)}
+        return {"success": True, "devices": [d.get("name", "") for d in devices], "resources_count": len(devices)}
 
     except requests.exceptions.RequestException as e:
         error_msg = f"Network error when calling lab API: {str(e)}"
@@ -386,65 +243,320 @@ async def get_device_status(device_id: str) -> dict:
         return {"error": error_msg, "success": False}
 
 
+# 查询设备动作✅
+@lab_mcp.tool
+async def list_device_actions(
+    lab_uuid: str,
+    name: str,
+) -> dict:
+    """
+    Retrieve available actions for a specific device using the internal lab API.
+    Authentication is handled automatically on the server.
+
+    Args:
+        lab_uuid (str): Unique identifier of the laboratory.
+        name (str): Name or ID of the device.
+
+    Returns:
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the operation succeeded.
+            - device_id (str): Name or ID of the device.
+            - actions (list[str]): List of available actions for the device.
+            - action_count (int): Number of available actions.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
+    """
+    try:
+        access_token = get_access_token()
+        if not access_token:
+            raise ValueError("API SecretKey is not configured on the server.")
+
+        url = f"{configs.Lab.Api}/api/v1/lab/material/device/actions"
+
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        params = {"name": name, "lab_uuid": lab_uuid}
+
+        logger.info(f"Making request to {url} for name {name}...")
+
+        response = requests.get(url, headers=headers, params=params, timeout=configs.Lab.Timeout)
+        response.raise_for_status()
+        result = response.json()
+        print(f"==================={result}===================")
+
+        if result.get("code") != 0:
+            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+            logger.error(error_msg)
+            return {"error": error_msg, "success": False}
+
+        data = result.get("data", {})
+        actions = data.get("actions", [])
+        logger.info(f"Successfully retrieved {len(actions)} actions for name: {name}")
+
+        return {"success": True, "device_id": data.get("name", ""), "actions": actions, "action_count": len(actions)}
+
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Network error when calling lab API: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+    except Exception as e:
+        error_msg = f"An unexpected error occurred: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+
+# 对设备指定动作✅
+@lab_mcp.tool
+async def perform_device_action(
+    lab_uuid: str,
+    device_id: str,
+    action_type: str,
+    action: str,
+    param: Optional[Any] = None,
+) -> dict:
+    """
+    Perform a specific action on a device using the internal lab API.
+    Authentication is handled automatically on the server.
+
+    Args:
+        lab_uuid (str): Unique identifier of the laboratory.
+        device_id (str): ID of the device (as returned by `list_laboratory_devices`).
+        action_type (str): Type of the action (refer to `list_device_actions` schema).
+        action (str): Name of the action to perform (e.g., "test_latency", "create_resource").
+        param (Optional[Any]): Parameters for the action. Can be a dict or a JSON string.
+            If None, defaults to {"unilabos_device_id": device_id}.
+
+    Returns:
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the operation succeeded.
+            - job_id (str): ID of the job created to perform the action.
+            - status (str): Current status of the job.
+            - return_info (dict): Optional returned information from the device/action.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
+    """
+    try:
+        access_token = get_access_token()
+        if not access_token:
+            raise ValueError("API SecretKey is not configured on the server.")
+
+        url = f"{configs.Lab.Api}/api/v1/lab/mcp/run/action"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        # --- normalize param into a dict (JSON object) ---
+        if param is None:
+            apiparams = {"unilabos_device_id": device_id}
+        elif isinstance(param, dict):
+            apiparams = param
+        elif isinstance(param, str):
+            # try parse JSON string -> dict
+            try:
+                parsed = json.loads(param)
+                if isinstance(parsed, dict):
+                    apiparams = parsed
+                else:
+                    # parsed is not a dict (e.g. list/number), wrap as device id fallback
+                    apiparams = {"unilabos_device_id": param}
+            except json.JSONDecodeError:
+                # not a JSON string, treat as device id
+                apiparams = {"unilabos_device_id": param}
+        else:
+            # other types (list/tuple/etc) — try to coerce to dict safely
+            try:
+                apiparams = dict(param)
+            except Exception:
+                return {
+                    "error": "param must be a JSON object/dict (or JSON string representing one)",
+                    "success": False,
+                }
+
+        payload = {
+            "lab_uuid": lab_uuid,
+            "device_id": device_id,
+            "action_type": action_type,
+            "action": action,
+            "param": apiparams,
+        }
+
+        logger.info(
+            f"""Making POST request to {url} for device {device_id}
+            with action {action}, payload keys: {list(payload.keys())}"""
+        )
+
+        response = requests.post(url, headers=headers, json=payload, timeout=configs.Lab.Timeout)
+        response.raise_for_status()
+        result = response.json()
+
+        if result.get("code") != 0:
+            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+            logger.error(error_msg + f" response={result}")
+            return {"error": error_msg, "success": False}
+
+        data = result.get("data", {})
+        feedback_data = data.get("feedback_data", {})
+
+        return_info = json.loads(feedback_data.get("return_info", "{}"))
+
+        return {
+            "success": True,
+            "job_id": data.get("job_id"),
+            "status": data.get("status"),
+            "return_info": return_info,
+        }
+
+    except requests.exceptions.Timeout:
+        error_msg = "Request timed out when calling lab API"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+    except requests.exceptions.ConnectionError as e:
+        error_msg = f"Connection error when calling lab API: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+    except requests.exceptions.HTTPError as e:
+        error_msg = f"HTTP error when calling lab API: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+    except requests.exceptions.RequestException as e:
+        error_msg = f"General request error: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
+
+# 查询设备状态
+# @lab_mcp.tool
+# async def get_device_status(device_id: str) -> dict:
+#     """
+#     Gets the status of a specific device by calling the internal lab API.
+
+#     Args:
+#         device_id: The ID of the device to get status for
+
+#     Returns:
+#         Dictionary containing device ID and status information, or an error.
+#     """
+#     try:
+#         access_token = get_access_token()
+#         if not access_token:
+#             raise ValueError("API SecretKey is not configured on the server.")
+
+#         url = f"{configs.Lab.Api}/api/environment/lab/mcp/device_status/"
+#         params = {"secret_key": access_token.token, "device_id": device_id}
+
+#         logger.info(f"Making request to {url} for device {device_id}...")
+
+#         response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
+#         response.raise_for_status()
+
+#         result = response.json()
+
+#         if result.get("code") != 0:
+#             error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+#             logger.error(error_msg)
+#             return {"error": error_msg, "success": False}
+
+#         data = result.get("data", {})
+#         status = data.get("status", {})
+#         logger.info(f"Successfully retrieved status for device: {device_id}")
+
+#         return {"success": True, "device_id": data.get("device_id"), "statuses": status, "status_count": len(status)}
+
+#     except requests.exceptions.RequestException as e:
+#         error_msg = f"Network error when calling lab API: {str(e)}"
+#         logger.error(error_msg)
+#         return {"error": error_msg, "success": False}
+
+#     except Exception as e:
+#         error_msg = f"An unexpected error occurred: {str(e)}"
+#         logger.error(error_msg)
+#         return {"error": error_msg, "success": False}
+
+
+# 获取工作流模版列表✅
 @lab_mcp.tool
 def get_workflow_templates(
-    by_user: Optional[bool] = None,
-    tag_filters: Optional[List[str]] = None,
-    page: Optional[int] = 1,
-    page_size: Optional[int] = 10,
+    page: int = 1,
+    page_size: int = 30,
     timeout: int = 30,
+    tag_filters: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
-    获取工作流模板列表，支持分页和标签过滤
+    Retrieve a paginated list of workflow templates using the internal lab API.
+    Authentication is handled automatically on the server.
 
     Args:
-        by_user: 是否按用户过滤
-        tag_filters: 标签过滤列表，例如 ["机器学习", "数据处理"]
-        page: 页码，默认为1
-        page_size: 每页数量，默认为10，最大100
-        timeout: 请求超时时间（秒），默认30
+        page (int, optional): Page number to retrieve, default is 1.
+        page_size (int, optional): Number of templates per page, default is 30.
+        timeout (int, optional): Request timeout in seconds, default is 30.
+        tag_filters (Optional[List[str]]): List of tags to filter templates.
 
     Returns:
-        包含工作流模板列表的响应数据
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the operation succeeded.
+            - data (dict): Workflow template data returned by the API.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
     """
     try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
+        access_token = get_access_token()
+        if not access_token:
             raise ValueError("API SecretKey is not configured on the server.")
 
-        # 构建查询参数
-        params = {"secret_key": api_secret}
-        if by_user:
-            params["by_user"] = "true"
-        if page:
-            params["page"] = str(page)
-        if page_size:
-            params["page_size"] = str(page_size)
+        url = f"{configs.Lab.Api}/api/v1/lab/workflow/template/list"
 
-        # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/vs/workflows/library/"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+        }
+
+        params = {
+            "page": page,
+            "page_size": page_size,
+        }
+
+        # if tag_filters:
+        #     for i, tag in enumerate(tag_filters):
+        #         params[f"tag"] = tag
 
         logger.info(f"请求工作流模板列表: {url}, 参数: {params}")
-
-        # 发送GET请求，对于tag_filters使用特殊处理
-        if tag_filters:
-            # 为每个标签添加参数
-            tag_params = [(key, value) for key, value in params.items()]
-            for tag in tag_filters:
-                tag_params.append(("tag", tag))
-            response = requests.get(url, params=tag_params, timeout=configs.Lab.Timeout)
-        else:
-            response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
+        response = requests.get(url, headers=headers, params=params, timeout=timeout)
         response.raise_for_status()
-
         result = response.json()
 
-        if "code" in result and result.get("code") != 0:
-            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+        if result.get("code", 0) != 0:
+            error_msg = f"API 返回错误: {result.get('msg', '未知错误')}"
             logger.error(error_msg)
             return {"error": error_msg, "success": False}
 
-        return {"success": True, **result}
+        return {"success": True, "data": result.get("data")}
 
     except requests.exceptions.Timeout:
         logger.error("请求超时")
@@ -472,79 +584,186 @@ def get_workflow_templates(
         }
 
 
+# 获取工作流模版标签
+# @lab_mcp.tool
+# def get_workflow_template_tags(
+#     timeout: int = 30,
+# ) -> Dict[str, Any]:
+#     """
+#     获取所有工作流模板的标签列表
+
+#     Args:
+#         lab_uuid: 实验室uuid
+#         timeout: 请求超时时间（秒），默认30
+
+#     Returns:
+#         包含所有可用标签的响应数据
+#     """
+#     try:
+#         access_token = get_access_token()
+#         if not access_token:
+#             raise ValueError("API SecretKey is not configured on the server.")
+
+#         # 构建完整URL
+#         url = f"{configs.Lab.Api}/api/v1/lab/workflow/template/tags/"
+#         headers = {
+#             "Authorization": f"Bearer {access_token.token}",
+#             "Accept": "application/json",
+#         }
+#         # params = {}
+
+#         logger.info(f"请求工作流模板标签: {url}")
+
+#         # 发送GET请求
+#         response = requests.get(url,headers=headers,timeout=configs.Lab.Timeout)
+#         response.raise_for_status()
+
+#         result = response.json()
+
+#         # if result.get("code") != 200:
+#         #     error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
+#         #     logger.error(error_msg)
+#         #     return {"error": error_msg, "success": False}
+
+#         return {"success": True, "tags": result.get("tags")}
+
+#     except Exception as e:
+#         logger.error(f"获取工作流模板标签失败: {str(e)}")
+#         return {"code": -1, "msg": f"获取工作流模板标签失败: {str(e)}", "tags": []}
+
+
+# 获取工作流列表✅
 @lab_mcp.tool
-def get_workflow_template_tags(timeout: int = 30) -> Dict[str, Any]:
+def get_workflow_list(
+    lab_uuid: str,
+    page: int = 1,
+    page_size: int = 30,
+    timeout: int = 30,
+) -> dict[str, Any]:
     """
-    获取所有工作流模板的标签列表
+    Retrieve a paginated list of workflows for a specific laboratory using the internal lab API.
+    Authentication is handled automatically on the server.
 
     Args:
-        timeout: 请求超时时间（秒），默认30
+        lab_uuid (str): Unique identifier of the laboratory.
+        page (int, optional): Page number to retrieve, default is 1.
+        page_size (int, optional): Number of workflows per page, default is 30.
+        timeout (int, optional): Request timeout in seconds, default is 30.
 
     Returns:
-        包含所有可用标签的响应数据
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the operation succeeded.
+            - data (dict): Workflow list data returned by the API.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
     """
     try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
+        access_token = get_access_token()
+        if not access_token:
             raise ValueError("API SecretKey is not configured on the server.")
 
-        # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/vs/workflows/library/tags/"
-        params = {"secret_key": api_secret}
+        url = f"{configs.Lab.Api}/api/v1/lab/workflow/owner/list"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+        }
+        from typing import Mapping, Union
 
-        logger.info(f"请求工作流模板标签: {url}")
+        ParamsType = Mapping[str, Union[str, int, float, None]]
 
-        # 发送GET请求
-        response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
+        params: ParamsType = {
+            "page": page,
+            "page_size": page_size,
+            "lab_uuid": lab_uuid,
+        }
+
+        logger.info(f"请求工作流列表: {url}, 参数: {params}")
+        response = requests.get(url, headers=headers, params=params, timeout=timeout)
         response.raise_for_status()
-
         result = response.json()
 
-        # if result.get("code") != 200:
-        #     error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-        #     logger.error(error_msg)
-        #     return {"error": error_msg, "success": False}
+        if result.get("code", 0) != 0:
+            error_msg = f"API 返回错误: {result.get('msg', '未知错误')}"
+            logger.error(f"API 响应数据: {result}")
+            logger.error(error_msg)
+            return {"error": error_msg, "success": False}
 
-        return {"success": True, "tags": result.get("tags")}
+        return {"success": True, "data": result.get("data")}
 
+    except requests.exceptions.Timeout:
+        logger.error("请求超时")
+        return {"code": -1, "msg": "请求超时", "data": {"count": 0, "next": None, "previous": None, "results": []}}
+    except requests.exceptions.ConnectionError:
+        logger.error("连接错误")
+        return {
+            "code": -1,
+            "msg": "无法连接到服务器",
+            "data": {"count": 0, "next": None, "previous": None, "results": []},
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"请求异常: {str(e)}")
+        return {
+            "code": -1,
+            "msg": f"请求失败: {str(e)}",
+            "data": {"count": 0, "next": None, "previous": None, "results": []},
+        }
     except Exception as e:
-        logger.error(f"获取工作流模板标签失败: {str(e)}")
-        return {"code": -1, "msg": f"获取工作流模板标签失败: {str(e)}", "tags": []}
+        logger.error(f"获取工作流列表失败: {str(e)}")
+        return {
+            "code": -1,
+            "msg": f"获取工作流列表失败: {str(e)}",
+            "data": {"count": 0, "next": None, "previous": None, "results": []},
+        }
 
 
+# publish工作流模版✅
 @lab_mcp.tool
-def create_workflow_template(
-    workflow_uuid: str, title: str, description: str, labels: Optional[List[str]] = None, timeout: int = 30
-) -> Dict[str, Any]:
+def create_workflow_template(uuid: str, description: str, published: bool = True, timeout: int = 30) -> Dict[str, Any]:
     """
-    创建工作流模板
+    Create and optionally publish a workflow template using the internal lab API.
+    Authentication is handled automatically on the server.
 
     Args:
-        workflow_uuid: 工作流UUID
-        title: 模板标题
-        description: 模板描述
-        labels: 标签列表，可选
-        timeout: 请求超时时间（秒），默认30
+        uuid (str): Unique identifier of the workflow.
+        description (str): Description of the workflow template.
+        published (bool, optional): Whether to publish the template immediately, default is True.
+        timeout (int, optional): Request timeout in seconds, default is 30.
 
     Returns:
-        创建结果
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the template was created successfully.
+            - data (dict): Data returned by the API (template details).
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
     """
     try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
+        access_token = get_access_token()
+        if not access_token:
             raise ValueError("API SecretKey is not configured on the server.")
 
         # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/vs/workflows/library/"
-        params = {"secret_key": api_secret}
+        url = f"{configs.Lab.Api}/api/v1/lab/workflow/owner"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
 
         # 构建请求数据
-        data = {"workflow_uuid": workflow_uuid, "title": title, "description": description, "labels": labels or []}
+        data = {"uuid": uuid, "description": description, "published": published}
 
         logger.info(f"创建工作流模板: {url}, 数据: {data}")
 
         # 发送POST请求
-        response = requests.post(url, params=params, json=data, timeout=configs.Lab.Timeout)
+        response = requests.patch(url, headers=headers, json=data, timeout=timeout)
         response.raise_for_status()
 
         result = response.json()
@@ -556,90 +775,67 @@ def create_workflow_template(
 
         return {"code": 0, "msg": "工作流模板创建成功", "data": result.get("data")}
 
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Network error when calling lab API: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg, "success": False}
+
     except Exception as e:
         logger.error(f"创建工作流模板失败: {str(e)}")
         return {"code": -1, "msg": f"创建工作流模板失败: {str(e)}", "data": None}
 
 
+# fork工作流✅
 @lab_mcp.tool
-def run_workflow(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
+def fork_workflow_template(source_uuid: str, target_lab_uuid: str, name: str, timeout: int = 30) -> Dict[str, Any]:
     """
-    运行指定的工作流
+    Fork (duplicate) a workflow template into a specified laboratory using the internal lab API.
+    Authentication is handled automatically on the server.
+    The target laboratory UUID can be provided; if not, the default configured lab UUID is used.
 
     Args:
-        workflow_uuid: 工作流UUID
-        timeout: 请求超时时间（秒），默认30
+        source_uuid (str): UUID of the source workflow template.
+        target_lab_uuid (str): UUID of the target laboratory.
+        name (str): Name of the new workflow template.
+        timeout (int, optional): Request timeout in seconds, default is 30.
 
     Returns:
-        运行结果
+        dict: Operation result dictionary containing the following fields.
+
+        Success:
+            - success (bool): True if the fork operation succeeded.
+            - data (dict): Information about the newly created workflow template, including its UUID.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
     """
     try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
+        access_token = get_access_token()
+        if not access_token:
             raise ValueError("API SecretKey is not configured on the server.")
 
-        # 构建完整URL
-        url = f"{configs.Lab.Api}/api/v1/run-workflow/"
-        url = f"{configs.Lab.Api}/api/v1/run_workflow/"
-        params = {"secret_key": api_secret}
+        url = f"{configs.Lab.Api}/api/v1/lab/workflow/owner/duplicate"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
 
+        # # 使用配置中的实验室UUID
+        # if lab_uuid == "default":
+        #     lab_uuid = configs.Lab.UUID
         # 构建请求数据
-        data = {"uuid": workflow_uuid}
-
-        logger.info(f"运行工作流: {url}, 数据: {data}")
-
-        # 发送POST请求
-        response = requests.post(url, params=params, json=data, timeout=configs.Lab.Timeout)
-        response.raise_for_status()
-
-        result = response.json()
-
-        if result.get("code") != 0:
-            error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-            logger.error(error_msg)
-            return {"error": error_msg, "success": False}
-
-        return {"code": 0, "msg": "工作流运行成功", "data": result.get("data")}
-
-    except Exception as e:
-        logger.error(f"运行工作流失败: {str(e)}")
-        return {"code": -1, "msg": f"运行工作流失败: {str(e)}", "data": None}
-
-
-@lab_mcp.tool
-def fork_workflow_template(
-    workflow_template_uuid: str, lab_uuid: str = "default", timeout: int = 30
-) -> Dict[str, Any]:
-    """
-    Fork（复制）工作流模板到指定的实验室环境。当前你不需要获得实验室的 UUID，因为它会自动使用配置中的实验室UUID。
-
-    Args:
-        workflow_template_uuid: 源工作流模板的UUID
-        lab_uuid: 目标实验室的UUID，默认为"default"，默认值时将使用默认实验室
-        timeout: 请求超时时间（秒），默认30
-
-    Returns:
-        Fork结果，包含新创建的工作流UUID或错误信息
-    """
-    try:
-        api_secret = configs.Lab.Key
-        if not api_secret:
-            raise ValueError("API SecretKey is not configured on the server.")
-
-        # 构建完整URL
-        url = f"{configs.Lab.Api}/api/flociety/workflow/{workflow_template_uuid}/fork/"
-        params = {"secret_key": api_secret}
-
-        # 使用配置中的实验室UUID
-        if lab_uuid == "default":
-            lab_uuid = configs.Lab.UUID
-        # 构建请求数据
-        data = {"lab_uuid": lab_uuid}
+        data = {
+            "source_uuid": source_uuid,
+            "target_lab_uuid": target_lab_uuid,
+            "name": name,
+        }
 
         logger.info(f"Fork工作流模板: {url}, 数据: {data}")
 
-        # 发送POST请求
-        response = requests.post(url, params=params, json=data, timeout=configs.Lab.Timeout)
+        # 发送Put请求
+        response = requests.put(url, headers=headers, json=data, timeout=timeout)
         response.raise_for_status()
 
         result = response.json()
@@ -660,86 +856,145 @@ def fork_workflow_template(
         return {"code": -1, "msg": f"Fork工作流模板失败: {str(e)}", "data": None}
 
 
-# @lab_mcp.tool
-# def get_user_laboratories(timeout: int = 30) -> Dict[str, Any]:
-#     """
-#     获取用户可访问的实验室列表（用于Fork操作时选择目标实验室）
-
-#     Args:
-#         timeout: 请求超时时间（秒），默认30
-
-#     Returns:
-#         用户实验室列表
-#     """
-#     try:
-#         api_secret = configs.Lab.Key
-#         if not api_secret:
-#             raise ValueError("API SecretKey is not configured on the server.")
-
-#         # 构建完整URL
-#         url = f"{configs.Lab.Api}/api/environment/labs/"
-#         params = {"secret_key": api_secret}
-
-#         logger.info(f"获取用户实验室列表: {url}")
-
-#         # 发送GET请求
-#         response = requests.get(url, params=params, timeout=configs.Lab.Timeout)
-#         response.raise_for_status()
-
-#         result = response.json()
-
-#         if result.get("code") != 0:
-#             error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-#             logger.error(error_msg)
-#             return {"error": error_msg, "success": False}
-
-#         return {"code": 0, "msg": "获取实验室列表成功", "data": result.get("data")}
-
-#     except requests.exceptions.RequestException as e:
-#         error_msg = f"Network error when calling lab API: {str(e)}"
-#         logger.error(error_msg)
-#         return {"error": error_msg, "success": False}
-#     except Exception as e:
-#         logger.error(f"获取用户实验室列表失败: {str(e)}")
-#         return {"code": -1, "msg": f"获取用户实验室列表失败: {str(e)}", "data": []}
-
-
+# 运行指定工作流✅
 @lab_mcp.tool
-def workflow_template_examples() -> Dict[str, Any]:
+def run_workflow(workflow_uuid: str, timeout: int = 30) -> Dict[str, Any]:
     """
-    获取工作流模板API的使用示例
+    Execute a specific workflow using the internal lab API.
+    Authentication is handled automatically on the server.
+
+    Args:
+        workflow_uuid (str): UUID of the workflow to run.
+        timeout (int, optional): Request timeout in seconds, default is 30.
 
     Returns:
-        包含使用示例的说明
-    """
-    examples = {
-        "获取所有模板": {"function": "get_workflow_templates", "example": {"page": 1, "page_size": 10}},
-        "按标签过滤": {
-            "function": "get_workflow_templates",
-            "example": {"tag_filters": ["机器学习", "数据处理"], "page": 1, "page_size": 20},
-        },
-        "按用户过滤": {"function": "get_workflow_templates", "example": {"by_user": True, "page": 1, "page_size": 10}},
-        "获取标签列表": {"function": "get_workflow_template_tags", "example": {}},
-        "创建模板": {
-            "function": "create_workflow_template",
-            "example": {
-                "workflow_uuid": "550e8400-e29b-41d4-a716-446655440000",
-                "title": "我的工作流模板",
-                "description": "这是一个示例工作流模板",
-                "labels": ["机器学习", "数据处理"],
-            },
-        },
-        "运行工作流": {
-            "function": "run_workflow",
-            "example": {"workflow_uuid": "550e8400-e29b-41d4-a716-446655440000"},
-        },
-        "Fork工作流模板": {
-            "function": "fork_workflow_template",
-            "example": {
-                "workflow_template_uuid": "550e8400-e29b-41d4-a716-446655440000",
-            },
-            "description": "将工作流模板复制到默认实验室，会自动处理节点模板的实验室映射",
-        },
-    }
+        dict: Operation result dictionary.
 
-    return {"code": 0, "msg": "工作流模板API使用示例", "data": examples}
+        Success:
+            - success (bool): True if the workflow was started successfully.
+            - task_id (str): ID of the task created for this workflow run.
+              Use this task_id with the `get_task` tool to query detailed task information.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
+
+    Note:
+        After starting the workflow successfully, you should immediately query the task information
+        using the returned `task_id` to monitor the workflow execution.
+    """
+    try:
+        access_token = get_access_token()
+        if not access_token:
+            raise ValueError("API SecretKey is not configured on the server.")
+
+        # 构建请求
+        url = f"{configs.Lab.Api}/api/v1/lab/run/workflow"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        data = {"workflow_uuid": workflow_uuid}
+
+        logger.info(f"运行工作流请求: {url}, data={data}")
+
+        # 发送 PUT 请求
+        response = requests.put(url, headers=headers, json=data, timeout=timeout)
+        response.raise_for_status()
+
+        result = response.json()
+
+        logger.info(f"运行工作流响应: {result}")
+
+        # 检查返回的 code
+        if result.get("code", 0) != 0:
+            error_msg = f"API 返回错误: {result.get('msg', '未知错误')}"
+            logger.error(error_msg)
+            return {"code": result.get("code", -1), "msg": error_msg, "data": None}
+
+        return {"code": 0, "msg": "工作流运行成功", "task_id": result.get("data")}
+
+    except requests.exceptions.Timeout:
+        logger.error("运行工作流超时")
+        return {"code": -1, "msg": "请求超时", "data": None}
+    except requests.exceptions.ConnectionError:
+        logger.error("运行工作流连接错误")
+        return {"code": -1, "msg": "无法连接到服务器", "data": None}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"运行工作流请求异常: {str(e)}")
+        return {"code": -1, "msg": f"请求失败: {str(e)}", "data": None}
+    except Exception as e:
+        logger.error(f"运行工作流未知异常: {str(e)}")
+        return {"code": -1, "msg": f"运行工作流失败: {str(e)}", "data": None}
+
+
+# 查询工作流task详细信息
+@lab_mcp.tool
+def get_task(task_id: str, timeout: int = 30) -> Dict[str, Any]:
+    """
+    Retrieve detailed information about a workflow task using the internal lab API.
+    Authentication is handled automatically on the server.
+
+    Args:
+        task_id (str): Unique identifier of the task.
+        timeout (int, optional): Request timeout in seconds, default is 30.
+
+    Returns:
+        dict: Operation result dictionary.
+
+        Success:
+            - success (bool): True if the task information was retrieved successfully.
+            - data (dict): Detailed information about the task returned by the API.
+
+        Failure:
+            - success (bool): False
+            - error (str): Description of the error.
+
+    Notes:
+        Use this function to monitor the status and results of a workflow run using its task ID.
+    """
+
+    try:
+        access_token = get_access_token()
+        if not access_token:
+            raise ValueError("API SecretKey is not configured on the server.")
+
+        url = f"{configs.Lab.Api}/api/v1/lab/mcp/task/{task_id}"
+        headers = {
+            "Authorization": f"Bearer {access_token.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        logger.info(f"请求 task 详细信息: {url}")
+        response = requests.get(url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        result = response.json()
+
+        if result.get("code", 0) != 0:
+            error_msg = f"API 返回错误: {result.get('msg', '未知错误')}"
+            logger.error(error_msg)
+            return {"code": -1, "msg": error_msg, "data": {}}
+
+        return {"success": True, "data": result.get("data")}
+
+    except requests.exceptions.Timeout:
+        logger.error("请求超时")
+        return {"code": -1, "msg": "请求超时", "data": {}}
+
+    except requests.exceptions.ConnectionError:
+        logger.error("连接错误")
+        return {"code": -1, "msg": "无法连接到服务器", "data": {}}
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"请求异常: {str(e)}")
+        return {"code": -1, "msg": f"请求失败: {str(e)}", "data": {}}
+
+    except ValueError as e:
+        logger.error(f"配置错误: {e}")
+        return {"code": -1, "msg": str(e), "data": {}}
+
+    except Exception as e:
+        logger.error(f"未知错误: {e}", exc_info=True)
+        return {"code": -1, "msg": f"未知错误: {str(e)}", "data": {}}
