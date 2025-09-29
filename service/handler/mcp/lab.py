@@ -496,7 +496,7 @@ async def perform_device_action(
 #         return {"error": error_msg, "success": False}
 
 
-# 获取工作流模版列表✅
+# 获取工作流模版列表，如有标签就筛选标签✅
 @lab_mcp.tool
 def get_workflow_templates(
     page: int = 1,
@@ -509,10 +509,15 @@ def get_workflow_templates(
     Authentication is handled automatically on the server.
 
     Args:
+        lab_uuid (str): The lab UUID.
         page (int, optional): Page number to retrieve, default is 1.
         page_size (int, optional): Number of templates per page, default is 30.
         timeout (int, optional): Request timeout in seconds, default is 30.
         tag_filters (Optional[List[str]]): List of tags to filter templates.
+            - None or []: Return all templates.
+            - Single value: Return templates that contain this tag.
+            - Multiple values: Return templates that match all provided tags.
+              (the request will expand into ?tags=tag1&tags=tag2)
 
     Returns:
         dict: Operation result dictionary containing the following fields.
@@ -520,11 +525,14 @@ def get_workflow_templates(
         Success:
             - success (bool): True if the operation succeeded.
             - data (dict): Workflow template data returned by the API.
+              If `tag_filters` is provided, only templates that match
+              the given tags will be included.
 
         Failure:
             - success (bool): False
             - error (str): Description of the error.
     """
+
     try:
         access_token = get_access_token()
         if not access_token:
@@ -540,11 +548,14 @@ def get_workflow_templates(
         params = {
             "page": page,
             "page_size": page_size,
+            "tag": tag_filters,
         }
 
-        # if tag_filters:
-        #     for i, tag in enumerate(tag_filters):
-        #         params[f"tag"] = tag
+        if tag_filters:
+            params["tags"] = tag_filters
+            logger.info(f"Applying tag filters: {tag_filters}")
+        else:
+            logger.info("No tag filters applied, retrieving all templates")
 
         logger.info(f"请求工作流模板列表: {url}, 参数: {params}")
         response = requests.get(url, headers=headers, params=params, timeout=timeout)
@@ -582,55 +593,6 @@ def get_workflow_templates(
             "msg": f"获取工作流模板列表失败: {str(e)}",
             "data": {"count": 0, "next": None, "previous": None, "results": []},
         }
-
-
-# 获取工作流模版标签
-# @lab_mcp.tool
-# def get_workflow_template_tags(
-#     timeout: int = 30,
-# ) -> Dict[str, Any]:
-#     """
-#     获取所有工作流模板的标签列表
-
-#     Args:
-#         lab_uuid: 实验室uuid
-#         timeout: 请求超时时间（秒），默认30
-
-#     Returns:
-#         包含所有可用标签的响应数据
-#     """
-#     try:
-#         access_token = get_access_token()
-#         if not access_token:
-#             raise ValueError("API SecretKey is not configured on the server.")
-
-#         # 构建完整URL
-#         url = f"{configs.Lab.Api}/api/v1/lab/workflow/template/tags/"
-#         headers = {
-#             "Authorization": f"Bearer {access_token.token}",
-#             "Accept": "application/json",
-#         }
-#         # params = {}
-
-#         logger.info(f"请求工作流模板标签: {url}")
-
-#         # 发送GET请求
-#         response = requests.get(url,headers=headers,timeout=configs.Lab.Timeout)
-#         response.raise_for_status()
-
-#         result = response.json()
-
-#         # if result.get("code") != 200:
-#         #     error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
-#         #     logger.error(error_msg)
-#         #     return {"error": error_msg, "success": False}
-
-#         return {"success": True, "tags": result.get("tags")}
-
-#     except Exception as e:
-#         logger.error(f"获取工作流模板标签失败: {str(e)}")
-#         return {"code": -1, "msg": f"获取工作流模板标签失败: {str(e)}", "tags": []}
-
 
 # 获取工作流列表✅
 @lab_mcp.tool
@@ -675,7 +637,7 @@ def get_workflow_list(
 
         ParamsType = Mapping[str, Union[str, int, float, None]]
 
-        params: ParamsType = {
+        params = {
             "page": page,
             "page_size": page_size,
             "lab_uuid": lab_uuid,
