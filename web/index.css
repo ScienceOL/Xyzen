@@ -4,3 +4,19 @@
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* safelist 一些不会在源码里出现的类 */
+@source inline(
+    'to-neutral-100',
+    'to-indigo-700',
+    'from-indigo-100/80',
+    'backdrop-blur-xl',
+    'to-purple-100/60',
+    'min-w-xl',
+    'to-purple-500',
+    'overflow-y-auto',
+    'max-h-64',
+    'overflow-hidden',
+    'translate-x-5',
+    'translate-x-0'
+);
