@@ -12,6 +12,7 @@ from .sessions import (
     SessionRead,
     SessionUpdate,
 )
+from .tool import Tool, ToolFunction, ToolStatus, ToolVersion
 from .topic import (
     Topic,
     TopicCreate,
@@ -35,4 +36,8 @@ __all__ = [
     "TopicUpdate",
     "Provider",
     "ProviderBase",
+    "Tool",
+    "ToolFunction",
+    "ToolStatus",
+    "ToolVersion",
 ]
