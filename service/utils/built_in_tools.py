@@ -1,5 +1,4 @@
 import json
-import os
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List
@@ -8,6 +7,7 @@ from urllib import parse, request
 import openai
 from fastmcp import FastMCP
 
+from internal import configs
 from utils.logger_config import dynamic_logger
 from utils.tool_loader import change_manager, tool_loader
 
@@ -20,13 +20,7 @@ SERVER_PORT = 3001
 TOOLS_DIR = "tools"
 TOOL_EXECUTION_MODE = "container"
 TOOL_SOURCE = "database"
-config = {
-    "openai": {
-        "api_key": os.getenv("XYZEN_LLM_KEY", ""),
-        "base_url": os.getenv("XYZEN_LLM_ENDPOINT", "https://yuanlongping.openai.azure.com"),
-        "model": os.getenv("XYZEN_LLM_MODEL", "gpt-4o"),
-    },
-}
+llm_config = configs.LLM
 
 
 def register_built_in_tools(mcp: FastMCP) -> None:
@@ -104,12 +98,11 @@ def register_built_in_tools(mcp: FastMCP) -> None:
         """
         try:
             # Configure OpenAI client with configuration values
-            openai_config = config.get("openai", {})
-            api_key = openai_config.get("api_key", "")
-            base_url = openai_config.get("base_url", "https://api.openai.com/v1/")
-            model = openai_config.get("model", "gpt-4o")
+            api_key = llm_config.key
+            base_url = llm_config.endpoint
+            model = llm_config.deployment
             if not api_key:
-                return "❌ Configuration error: OpenAI API key not set, please check config.json file"
+                return "❌ Configuration error: OpenAI API key not set"
             client = openai.OpenAI(api_key=api_key, base_url=base_url)
             logger.info(f"Executing advanced web search for query: '{query}'")
             # Execute search with AI enhancement
