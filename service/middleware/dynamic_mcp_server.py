@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime
 from typing import Callable, List, Optional
 
@@ -7,12 +8,11 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.tools.tool import ToolResult
 
 from internal import configs
-from utils.logger_config import dynamic_logger
 from utils.tool_loader import tool_loader
 
 dynamic_mcp_config = configs.DynamicMCP
 
-logger = dynamic_logger.get_logger("dynamic-mcp-server")
+logger = logging.getLogger(__name__)
 
 
 class DynamicToolMiddleware(Middleware):

@@ -1,4 +1,5 @@
 import json
+import logging
 import traceback
 from typing import Any, Dict, List
 from urllib import parse, request
@@ -7,10 +8,9 @@ import openai
 from fastmcp import FastMCP
 
 from internal import configs
-from utils.logger_config import dynamic_logger
 from utils.tool_loader import change_manager, tool_loader
 
-logger = dynamic_logger.get_logger("dynamic-mcp-server")
+logger = logging.getLogger(__name__)
 
 dynamic_mcp_config = configs.DynamicMCP
 llm_config = configs.LLM

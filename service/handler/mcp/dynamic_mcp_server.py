@@ -9,6 +9,7 @@ This server will:
 - Smart caching: Only reload the currently called tool during tool calls (not global reload)
 """
 
+import logging
 import subprocess
 from pathlib import Path
 
@@ -22,7 +23,6 @@ from internal import configs
 from middleware.dynamic_mcp_server import DynamicToolMiddleware
 from utils.built_in_tools import register_built_in_tools
 from utils.json_patch import apply_json_patch
-from utils.logger_config import console, dynamic_logger
 from utils.tool_loader import tool_loader
 
 dynamic_mcp_config = configs.DynamicMCP
@@ -35,7 +35,7 @@ ALLOWED_PATHS = dynamic_mcp_config.allowed_paths
 PLAYWRIGHT_PORT = dynamic_mcp_config.playwright_port
 
 apply_json_patch()
-logger = dynamic_logger.get_logger("dynamic-mcp-server")
+logger = logging.getLogger(__name__)
 
 
 mcp = FastMCP(NAME, version=VERSION)
@@ -46,26 +46,6 @@ mcp.add_middleware(StructuredLoggingMiddleware(include_payloads=True))
 
 register_built_in_tools(mcp)
 
-# Start the dynamic MCP server
-dynamic_logger.print_section(
-    "Dynamic MCP Server - Dynamic Tool Server",
-    [
-        f"{VERSION} | {HOST}:{PORT} | {TRANSPORT} Protocol",
-    ],
-)
-console.print()
-dynamic_logger.print_section(
-    "Server Configuration",
-    [
-        f"Server Name: [bold cyan]{NAME}[/bold cyan]",
-        f"Version: [bold green]{VERSION}[/bold green]",
-        f"Listen Address: [bold yellow]{HOST}:{PORT}[/bold yellow]",
-        f"Transport Protocol: [bold magenta]{TRANSPORT}[/bold magenta]",
-        f"Tools Directory: [bold blue]{Path(ALLOWED_PATHS[0]).absolute()}[/bold blue]",
-    ],
-    "cyan",
-)
-console.print()
 
 # Mirror Remote MCP Server Tools
 # proxy = FastMCP.as_proxy("http://127.0.0.1:8931/mcp/")
@@ -99,15 +79,14 @@ subprocess.Popen(
 # connected_client.close()
 
 # Load Local Tools
-dynamic_logger.info("Loading local tools...")
+logger.info("Loading local tools...")
 if hasattr(tool_loader, "scan_and_load_tools"):
     tools = tool_loader.scan_and_load_tools()
 
 tool_loader.register_tools_to_mcp(mcp, tools)
-dynamic_logger.success(f"Loaded {len(tools)} local tools")
+logger.info(f"Loaded {len(tools)} local tools")
 
-dynamic_logger.print_status("Startup", "Server is starting...", True)
-console.print()
+logger.info("Server is starting...")
 
 # Load Code Tools
 ClaudeCodeServer(

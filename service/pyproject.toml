@@ -13,7 +13,6 @@ dependencies = [
     "google-genai>=1.38.0",
     "httpx>=0.28.1",
     "llm-sandbox[docker]>=0.3.20",
-    "loguru>=0.7.3",
     "mcp>=1.11.0",
     "mcp-claude-code>=0.5.1",
     "openai>=1.98.0",
