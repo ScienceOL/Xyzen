@@ -6,8 +6,11 @@ from fastmcp import Client, FastMCP
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.tools.tool import ToolResult
 
+from internal import configs
 from utils.logger_config import dynamic_logger
 from utils.tool_loader import tool_loader
+
+dynamic_mcp_config = configs.DynamicMCP
 
 logger = dynamic_logger.get_logger("dynamic-mcp-server")
 
@@ -23,7 +26,9 @@ class DynamicToolMiddleware(Middleware):
     async def init_client(self) -> None:
         if self.browser_mcp_client is None:
             logger.info("Initializing browser MCP client")
-            self.browser_mcp_client = Client("http://localhost:8931/mcp")
+            self.browser_mcp_client = Client(
+                f"http://{dynamic_mcp_config.host}:{dynamic_mcp_config.playwright_port}/mcp"
+            )
             await self.browser_mcp_client._connect()
 
     async def on_call_tool(self, context: MiddlewareContext, call_next: Callable) -> ToolResult:

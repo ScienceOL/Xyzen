@@ -18,17 +18,27 @@ from fastmcp.server.middleware.logging import StructuredLoggingMiddleware
 from fastmcp.server.middleware.timing import DetailedTimingMiddleware
 from mcp_claude_code.server import ClaudeCodeServer  # type: ignore
 
+from internal import configs
 from middleware.dynamic_mcp_server import DynamicToolMiddleware
 from utils.built_in_tools import register_built_in_tools
 from utils.json_patch import apply_json_patch
 from utils.logger_config import console, dynamic_logger
 from utils.tool_loader import tool_loader
 
+dynamic_mcp_config = configs.DynamicMCP
+NAME = dynamic_mcp_config.name
+VERSION = dynamic_mcp_config.version
+HOST = dynamic_mcp_config.host
+PORT = dynamic_mcp_config.port
+TRANSPORT = dynamic_mcp_config.transport
+ALLOWED_PATHS = dynamic_mcp_config.allowed_paths
+PLAYWRIGHT_PORT = dynamic_mcp_config.playwright_port
+
 apply_json_patch()
 logger = dynamic_logger.get_logger("dynamic-mcp-server")
 
 
-mcp = FastMCP("DynamicToolsServer", version="1.0.0")
+mcp = FastMCP(NAME, version=VERSION)
 mcp.add_middleware(ErrorHandlingMiddleware(include_traceback=True))
 mcp.add_middleware(DynamicToolMiddleware(mcp))
 mcp.add_middleware(DetailedTimingMiddleware())
@@ -39,17 +49,19 @@ register_built_in_tools(mcp)
 # Start the dynamic MCP server
 dynamic_logger.print_section(
     "Dynamic MCP Server - Dynamic Tool Server",
-    ["v1.0.0 | 0.0.0.0:3001 | SSE Protocol"],
+    [
+        f"{VERSION} | {HOST}:{PORT} | {TRANSPORT} Protocol",
+    ],
 )
 console.print()
 dynamic_logger.print_section(
     "Server Configuration",
     [
-        f"Server Name: [bold cyan]{'DynamicToolsServer'}[/bold cyan]",
-        f"Version: [bold green]{'1.0.0'}[/bold green]",
-        f"Listen Address: [bold yellow]{'0.0.0.0'}:{3001}[/bold yellow]",
-        "Transport Protocol: [bold magenta]SSE[/bold magenta]",
-        f"Tools Directory: [bold blue]{Path('tools').absolute()}[/bold blue]",
+        f"Server Name: [bold cyan]{NAME}[/bold cyan]",
+        f"Version: [bold green]{VERSION}[/bold green]",
+        f"Listen Address: [bold yellow]{HOST}:{PORT}[/bold yellow]",
+        f"Transport Protocol: [bold magenta]{TRANSPORT}[/bold magenta]",
+        f"Tools Directory: [bold blue]{Path(ALLOWED_PATHS[0]).absolute()}[/bold blue]",
     ],
     "cyan",
 )
@@ -58,14 +70,14 @@ console.print()
 # Mirror Remote MCP Server Tools
 # proxy = FastMCP.as_proxy("http://127.0.0.1:8931/mcp/")
 subprocess.Popen(
-    ["npx", "@playwright/mcp@latest", "--port", "8931"],
+    ["npx", "@playwright/mcp@latest", "--port", str(PLAYWRIGHT_PORT)],
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
     text=True,
 )
 # This proxy will reuse the connected session for all requests
 # TODO: Need asycn support
-# connected_client = Client("http://localhost:8931/mcp/")
+# connected_client = Client(f"http://{HOST}:{PLAYWRIGHT_PORT}/mcp/")
 # proxy = FastMCP.as_proxy(connected_client)
 # remote_tools = await proxy.get_tools()
 # tool_info: ProxyTool

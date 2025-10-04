@@ -1,6 +1,5 @@
 import json
 import traceback
-from pathlib import Path
 from typing import Any, Dict, List
 from urllib import parse, request
 
@@ -13,14 +12,13 @@ from utils.tool_loader import change_manager, tool_loader
 
 logger = dynamic_logger.get_logger("dynamic-mcp-server")
 
-SERVER_NAME = "DynamicToolsServer"
-SERVER_VERSION = "1.0.0"
-SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 3001
-TOOLS_DIR = "tools"
-TOOL_EXECUTION_MODE = "container"
-TOOL_SOURCE = "database"
+dynamic_mcp_config = configs.DynamicMCP
 llm_config = configs.LLM
+
+SERVER_NAME = dynamic_mcp_config.name
+SERVER_VERSION = dynamic_mcp_config.version
+SERVER_HOST = dynamic_mcp_config.host
+SERVER_PORT = dynamic_mcp_config.port
 
 
 def register_built_in_tools(mcp: FastMCP) -> None:
@@ -219,12 +217,9 @@ def register_built_in_tools(mcp: FastMCP) -> None:
             "version": SERVER_VERSION,
             "host": SERVER_HOST,
             "port": SERVER_PORT,
-            "tools_directory": str(Path(TOOLS_DIR).absolute()),
             "uptime": "running",
             "change_history_count": len(change_manager.change_history),
             "environment_mode": "isolated",
-            "execution_mode": TOOL_EXECUTION_MODE,
-            "tool_source": TOOL_SOURCE,
             "proxy_tools_count": len(tool_loader.proxy_manager.list_proxies()),
             "container_proxy_tools_count": len(tool_loader.proxy_manager.list_proxies()),
         }
@@ -242,9 +237,6 @@ def register_built_in_tools(mcp: FastMCP) -> None:
                 "version": SERVER_VERSION,
                 "host": SERVER_HOST,
                 "port": SERVER_PORT,
-            },
-            "tools": {
-                "directory": str(Path(TOOLS_DIR).absolute()),
             },
             "features": [
                 "dynamic_tool_loading",
