@@ -1,4 +1,5 @@
 import json
+import os
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List
@@ -21,9 +22,9 @@ TOOL_EXECUTION_MODE = "container"
 TOOL_SOURCE = "database"
 config = {
     "openai": {
-        "api_key": "123abc456def",
-        "base_url": "https://api.openai.com/v1/",
-        "model": "gpt-4o",
+        "api_key": os.getenv("XYZEN_LLM_KEY", ""),
+        "base_url": os.getenv("XYZEN_LLM_ENDPOINT", "https://yuanlongping.openai.azure.com"),
+        "model": os.getenv("XYZEN_LLM_MODEL", "gpt-4o"),
     },
 }
 
