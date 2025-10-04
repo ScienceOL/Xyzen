@@ -15,6 +15,7 @@ class ToolStatus(str, enum.Enum):
 
 
 class Tool(SQLModel, table=True):
+    user_id: str = Field(index=True, description="The user ID from authentication provider")
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     description: Optional[str] = Field(default=None)
@@ -37,6 +38,7 @@ class Tool(SQLModel, table=True):
 
 
 class ToolVersion(SQLModel, table=True):
+    user_id: str = Field(index=True, description="The user ID from authentication provider")
     id: Optional[int] = Field(default=None, primary_key=True)
     version: int = Field(default=1, index=True)
     requirements: str = Field(sa_column=Column(Text))
@@ -54,6 +56,7 @@ class ToolVersion(SQLModel, table=True):
 
 
 class ToolFunction(SQLModel, table=True):
+    user_id: str = Field(index=True, description="The user ID from authentication provider")
     id: Optional[int] = Field(default=None, primary_key=True)
     function_name: str
     docstring: Optional[str] = Field(default=None)
