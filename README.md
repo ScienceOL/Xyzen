@@ -79,4 +79,3 @@ uv run pre-commit run --all-files
 6. Open a pull request against the `main` branch of `jlowin/fastmcp`.
 
 Please open an issue or discussion for questions or suggestions before starting significant work!
-
