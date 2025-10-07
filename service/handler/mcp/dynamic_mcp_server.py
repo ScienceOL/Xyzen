@@ -24,6 +24,7 @@ from middleware.dynamic_mcp_server import DynamicToolMiddleware
 from utils.built_in_tools import register_built_in_tools
 from utils.json_patch import apply_json_patch
 from utils.tool_loader import tool_loader
+from utils.tool_management import register_tool_management_tools
 
 dynamic_mcp_config = configs.DynamicMCP
 NAME = dynamic_mcp_config.name
@@ -45,6 +46,7 @@ mcp.add_middleware(DetailedTimingMiddleware())
 mcp.add_middleware(StructuredLoggingMiddleware(include_payloads=True))
 
 register_built_in_tools(mcp)
+register_tool_management_tools(mcp)
 
 
 # Mirror Remote MCP Server Tools

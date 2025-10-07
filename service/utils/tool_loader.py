@@ -211,8 +211,4 @@ class DatabaseToolLoader:
         return self.register_tools_to_mcp(mcp, tools)
 
 
-def get_tool_loader() -> DatabaseToolLoader:
-    return DatabaseToolLoader()
-
-
-tool_loader = get_tool_loader()
+tool_loader = DatabaseToolLoader()

@@ -8,7 +8,7 @@ import openai
 from fastmcp import FastMCP
 
 from internal import configs
-from utils.tool_loader import change_manager, tool_loader
+from utils.tool_loader import tool_loader
 
 logger = logging.getLogger(__name__)
 
@@ -171,19 +171,9 @@ def register_built_in_tools(mcp: FastMCP) -> None:
             return f"❌ Search error: {str(e)}"
 
     @mcp.tool
-    def get_tools_changes() -> Dict[str, Any]:
-        """
-        Get tool change information, comparing current and previous versions
-
-        Returns:
-            Dictionary containing tool change details
-        """
-        return change_manager.get_change_summary()
-
-    @mcp.tool
     async def refresh_tools() -> Dict[str, Any]:
         """
-        Manually refresh tools in the tools directory
+        Manually refresh tools from the database
 
         Returns:
             Result of the refresh operation
@@ -193,13 +183,11 @@ def register_built_in_tools(mcp: FastMCP) -> None:
             tools = tool_loader.scan_and_load_tools()
             tool_loader.register_tools_to_mcp(mcp, tools)
 
-            changes = change_manager.get_change_summary()
-
             return {
                 "status": "success",
                 "message": "Tools refreshed successfully",
                 "loaded_tools": list(tools.keys()),
-                "changes": changes,
+                "tool_count": len(tools),
             }
         except Exception as e:
             return {"status": "error", "message": f"Error refreshing tools: {str(e)}"}
@@ -218,7 +206,6 @@ def register_built_in_tools(mcp: FastMCP) -> None:
             "host": SERVER_HOST,
             "port": SERVER_PORT,
             "uptime": "running",
-            "change_history_count": len(change_manager.change_history),
             "environment_mode": "isolated",
             "proxy_tools_count": len(tool_loader.proxy_manager.list_proxies()),
             "container_proxy_tools_count": len(tool_loader.proxy_manager.list_proxies()),

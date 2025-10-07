@@ -10,12 +10,35 @@ Tool Proxy - 工具代理模块
 
 import json
 import logging
-import os
 from typing import Any, Dict, List, Optional
 
 from llm_sandbox import SandboxSession  # type: ignore
+from llm_sandbox.exceptions import SandboxTimeoutError  # type: ignore
+from llm_sandbox.security import (  # type: ignore
+    SecurityIssueSeverity,
+    SecurityPattern,
+    SecurityPolicy,
+)
+
+from internal import configs
 
 logger = logging.getLogger(__name__)
+policy = SecurityPolicy(
+    severity_threshold=SecurityIssueSeverity.MEDIUM,
+    patterns=[
+        SecurityPattern(
+            pattern=r"os\.system",
+            description="System command execution",
+            severity=SecurityIssueSeverity.HIGH,
+        ),
+        SecurityPattern(
+            pattern=r"eval\s*\(",
+            description="Dynamic code evaluation",
+            severity=SecurityIssueSeverity.MEDIUM,
+        ),
+    ],
+)
+dynamic_mcp_config = configs.DynamicMCP
 
 
 class ContainerToolProxy:
@@ -37,9 +60,6 @@ class ContainerToolProxy:
             self.function_name = tool_data["function_name"]
         else:
             self.function_name = tool_data["name"].split(".")[-1]
-
-        # 获取容器执行超时时间
-        self.timeout = int(os.environ.get("CONTAINER_TIMEOUT", "60"))
 
     def _build_execution_code(self, args: tuple, kwargs: dict) -> str:
         """Build the execution code for container execution."""
@@ -92,27 +112,49 @@ except Exception as e:
             execution_code = self._build_execution_code(args, kwargs)
 
             # 使用 llm-sandbox 执行
-            with SandboxSession(lang="python", libraries=self.requirements) as session:
-                result = session.run(execution_code, timeout=self.timeout)
+            with SandboxSession(
+                lang="python",
+                keep_template=True,
+                libraries=self.requirements,
+                runtime_configs={
+                    "cpu_count": dynamic_mcp_config.cpu_count,
+                    "mem_limit": dynamic_mcp_config.mem_limit,
+                    "default_timeout": dynamic_mcp_config.default_timeout,
+                },
+                security_policy=policy,
+            ) as session:
+                is_safe, violations = session.is_safe(execution_code)
 
-                # 解析结果
-                if result.exit_code != 0:
-                    error_msg = result.stderr or "Unknown container execution error"
-                    raise RuntimeError(f"Container execution failed: {error_msg}")
+                if is_safe:
+                    result = session.run(execution_code)
 
-                # 解析JSON输出
-                try:
-                    output = json.loads(result.stdout)
-                except json.JSONDecodeError as e:
-                    raise RuntimeError(f"Failed to parse container output: {e}\nOutput: {result.stdout}")
+                    # 解析结果
+                    if result.exit_code != 0:
+                        error_msg = result.stderr or "Unknown container execution error"
+                        raise RuntimeError(f"Container execution failed: {error_msg}")
 
-                # 检查工具执行结果
-                if output.get("success"):
-                    return output["result"]
+                    # 解析JSON输出
+                    try:
+                        output = json.loads(result.stdout)
+                    except json.JSONDecodeError as e:
+                        raise RuntimeError(f"Failed to parse container output: {e}\nOutput: {result.stdout}")
+
+                    # 检查工具执行结果
+                    if output.get("success"):
+                        return output["result"]
+                    else:
+                        error_msg = output.get("error", "Unknown tool execution error")
+                        traceback_msg = output.get("traceback", "")
+                        raise RuntimeError(f"Tool execution error: {error_msg}\n{traceback_msg}")
                 else:
-                    error_msg = output.get("error", "Unknown tool execution error")
-                    traceback_msg = output.get("traceback", "")
-                    raise RuntimeError(f"Tool execution error: {error_msg}\n{traceback_msg}")
+                    logger.error(f"Tool {self.tool_name} is not safe")
+                    for violation in violations:
+                        logger.error(f"Violation: {violation.description}")
+                    raise RuntimeError(f"Tool {self.tool_name} is not safe")
+
+        except SandboxTimeoutError as e:
+            logger.error(f"Container tool execution timed out for {self.tool_name}: {e}")
+            raise RuntimeError(f"Container tool execution timed out for {self.tool_name}: {e}")
 
         except Exception as e:
             logger.error(f"Container tool execution failed for {self.tool_name}: {e}")
@@ -126,11 +168,14 @@ class ToolProxyManager:
         self.proxies: Dict[str, ContainerToolProxy] = {}
 
     def create_proxy(
-        self, tool_data: Dict[str, Any], tool_dir: str, requirements: Optional[list[str]] = None
+        self,
+        tool_data: Dict[str, Any],
+        code_content: str,
+        requirements: Optional[list[str]] = None,
     ) -> ContainerToolProxy:
         """创建工具代理"""
         tool_name = tool_data["name"]
-        proxy = ContainerToolProxy(tool_data, tool_dir, requirements)
+        proxy = ContainerToolProxy(tool_data, code_content, requirements)
         self.proxies[tool_name] = proxy
         return proxy
 
