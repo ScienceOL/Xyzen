@@ -32,13 +32,13 @@
   "applications": [
     {
       "owner": "admin",
-      "name": "scienceol",
+      "name": "app-built-in",
       "createdTime": "2024-09-09T09:26:06Z",
       "displayName": "ScienceOL",
-      "logo": "",
-      "homepageUrl": "",
-      "description": "",
-      "organization": "",
+      "logo": "https://sciol-public.oss-cn-shanghai.aliyuncs.com/BLogo-normal.svg",
+      "homepageUrl": "https://sciol.ac.cn",
+      "description": "ScienceOL is an open source scientific collaboration platform.",
+      "organization": "built-in",
       "cert": "cert-built-in",
       "headerHtml": "",
       "enablePassword": true,
@@ -238,10 +238,7 @@
       "isShared": false,
       "clientId": "a387a4892ee19b1a2249",
       "clientSecret": "f3167664b2c58bca53b04c61807a97db",
-      "redirectUris": [
-        "http://localhost:8080/api/auth/callback/casdoor",
-        "https://localhost:8080/api/auth/callback/casdoor"
-      ],
+      "redirectUris": ["http://localhost:48197/api/auth/callback/casdoor"],
       "tokenFormat": "JWT",
       "tokenSigningMethod": "",
       "tokenFields": [],
@@ -349,10 +346,10 @@
       "name": "built-in",
       "createdTime": "2024-09-09T09:26:04Z",
       "displayName": "Built-in Organization",
-      "websiteUrl": "https://example.com",
-      "logo": "",
-      "logoDark": "",
-      "favicon": "https://cdn.casbin.org/img/casbin/favicon.ico",
+      "websiteUrl": "https://sciol.ac.cn",
+      "logo": "https://sciol-public.oss-cn-shanghai.aliyuncs.com/BLogo-normal.svg",
+      "logoDark": "https://sciol-public.oss-cn-shanghai.aliyuncs.com/BLogo-dark.svg",
+      "favicon": "https://sciol-public.oss-cn-shanghai.aliyuncs.com/BLogo-normal.svg",
       "passwordType": "plain",
       "passwordSalt": "",
       "passwordOptions": ["AtLeast6"],
@@ -370,8 +367,8 @@
         "SG",
         "IN"
       ],
-      "defaultAvatar": "https://cdn.casbin.org/img/casbin.svg",
-      "defaultApplication": "",
+      "defaultAvatar": "https://sciol-public.oss-cn-shanghai.aliyuncs.com/BLogo-normal.svg",
+      "defaultApplication": "app-built-in",
       "tags": [],
       "languages": [
         "en",
@@ -606,270 +603,12 @@
           "viewRule": "Self",
           "modifyRule": "Self",
           "regex": ""
-        }
-      ]
-    },
-    {
-      "owner": "admin",
-      "name": "scienceol",
-      "createdTime": "2024-09-09T09:26:04Z",
-      "displayName": "PROTIUM Organization",
-      "websiteUrl": "",
-      "logo": "",
-      "logoDark": "",
-      "favicon": "",
-      "passwordType": "plain",
-      "passwordSalt": "",
-      "passwordOptions": ["AtLeast6"],
-      "countryCodes": [
-        "US",
-        "ES",
-        "FR",
-        "DE",
-        "GB",
-        "CN",
-        "JP",
-        "KR",
-        "VN",
-        "ID",
-        "SG",
-        "IN"
-      ],
-      "defaultAvatar": "https://cdn.casbin.org/img/casbin.svg",
-      "defaultApplication": "",
-      "tags": [],
-      "languages": [
-        "en",
-        "zh",
-        "es",
-        "fr",
-        "de",
-        "id",
-        "ja",
-        "ko",
-        "ru",
-        "vi",
-        "pt"
-      ],
-      "themeData": null,
-      "masterPassword": "",
-      "defaultPassword": "",
-      "masterVerificationCode": "",
-      "initScore": 2000,
-      "enableSoftDeletion": false,
-      "isProfilePublic": false,
-      "useEmailAsUsername": false,
-      "enableTour": true,
-      "mfaItems": null,
-      "accountItems": [
-        {
-          "name": "Organization",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Admin",
-          "regex": ""
         },
         {
-          "name": "ID",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Immutable",
-          "regex": ""
-        },
-        {
-          "name": "Name",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Display name",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Avatar",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "User type",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Password",
-          "visible": true,
-          "viewRule": "Self",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Email",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Phone",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Country code",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Country/Region",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Location",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Affiliation",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Title",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Homepage",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Bio",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Tag",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Signup application",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Roles",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Immutable",
-          "regex": ""
-        },
-        {
-          "name": "Permissions",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Immutable",
-          "regex": ""
-        },
-        {
-          "name": "Groups",
-          "visible": true,
-          "viewRule": "Public",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "3rd-party logins",
-          "visible": true,
-          "viewRule": "Self",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Properties",
+          "name": "API key",
           "visible": true,
           "viewRule": "Admin",
           "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Is admin",
-          "visible": true,
-          "viewRule": "Admin",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Is forbidden",
-          "visible": true,
-          "viewRule": "Admin",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Is deleted",
-          "visible": true,
-          "viewRule": "Admin",
-          "modifyRule": "Admin",
-          "regex": ""
-        },
-        {
-          "name": "Multi-factor authentication",
-          "visible": true,
-          "viewRule": "Self",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "WebAuthn credentials",
-          "visible": true,
-          "viewRule": "Self",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "Managed accounts",
-          "visible": true,
-          "viewRule": "Self",
-          "modifyRule": "Self",
-          "regex": ""
-        },
-        {
-          "name": "MFA accounts",
-          "visible": true,
-          "viewRule": "Self",
-          "modifyRule": "Self",
           "regex": ""
         }
       ]
@@ -928,7 +667,7 @@
       "displayName": "Admin",
       "firstName": "",
       "lastName": "",
-      "avatar": "https://cdn.casbin.org/img/casbin.svg",
+      "avatar": "https://sciol-public.oss-cn-shanghai.aliyuncs.com/BLogo-normal.svg",
       "avatarType": "",
       "permanentAvatar": "",
       "email": "admin@example.com",
@@ -1055,7 +794,10 @@
       "invitationCode": "",
       "faceIds": null,
       "ldap": "",
-      "properties": {},
+      "properties": {
+        "apiKey": "studio",
+        "apiKeyEnabled": "true"
+      },
       "roles": null,
       "permissions": null,
       "groups": null,

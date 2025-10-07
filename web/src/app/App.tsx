@@ -18,26 +18,19 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
-import {
-  CogIcon,
-  ComputerDesktopIcon,
-  MoonIcon,
-  SparklesIcon,
-  SunIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { CogIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { LlmProviders } from "@/app/LlmProviders";
 import { Mcp } from "@/app/Mcp";
 import McpIcon from "@/assets/McpIcon";
-import { AuthStatus } from "@/components/features";
+import { AuthStatus, ThemeToggle } from "@/components/features";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { AddLlmProviderModal } from "@/components/modals/AddLlmProviderModal";
 import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
-import useTheme from "@/hooks/useTheme";
+// theme toggle is now a separate component
 
 // 定义最小宽度和最大宽度限制
 const MIN_WIDTH = 280;
@@ -122,7 +115,6 @@ export function Xyzen({
     fetchAgents,
     fetchMcpServers,
   } = useXyzen();
-  const { theme, cycleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isMcpOpen, setIsMcpOpen] = useState(false);
@@ -274,19 +266,7 @@ export function Xyzen({
               ))}
             </Tab.List>
             <div className="flex items-center space-x-1">
-              {showThemeToggle && (
-                <button
-                  className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                  title="切换主题"
-                  onClick={cycleTheme}
-                >
-                  {theme === "light" && <SunIcon className="h-5 w-5" />}
-                  {theme === "dark" && <MoonIcon className="h-5 w-5" />}
-                  {theme === "system" && (
-                    <ComputerDesktopIcon className="h-5 w-5" />
-                  )}
-                </button>
-              )}
+              {showThemeToggle && <ThemeToggle />}
               <button
                 className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
                 title="MCP 管理"
