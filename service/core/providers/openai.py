@@ -201,8 +201,8 @@ class OpenAIProvider(BaseLLMProvider):
                             "id": tool_call.id,
                             "type": tool_call.type,
                             "function": {
-                                "name": tool_call.function.name,  # type: ignore
-                                "arguments": tool_call.function.arguments,  # type: ignore
+                                "name": tool_call.function.name,
+                                "arguments": tool_call.function.arguments,
                             },
                         }
                     )

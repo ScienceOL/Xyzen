@@ -17,8 +17,8 @@ from fastmcp import FastMCP
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.server.middleware.logging import StructuredLoggingMiddleware
 from fastmcp.server.middleware.timing import DetailedTimingMiddleware
-from mcp_claude_code.server import ClaudeCodeServer  # type: ignore
 
+# from mcp_claude_code.server import ClaudeCodeServer  # type: ignore
 from internal import configs
 from middleware.dynamic_mcp_server import DynamicToolMiddleware
 from utils.built_in_tools import register_built_in_tools
@@ -91,12 +91,12 @@ logger.info(f"Loaded {len(tools)} local tools")
 logger.info("Server is starting...")
 
 # Load Code Tools
-ClaudeCodeServer(
-    mcp_instance=mcp,
-    allowed_paths=[str(Path.cwd())],
-    enable_agent_tool=False,
-    command_timeout=300,
-)
+# ClaudeCodeServer(
+#     mcp_instance=mcp,
+#     allowed_paths=[str(Path.cwd())],
+#     enable_agent_tool=False,
+#     command_timeout=300,
+# )
 mcp.remove_tool("multi_edit")
 mcp.remove_tool("notebook_read")
 mcp.remove_tool("notebook_edit")
