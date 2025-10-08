@@ -173,23 +173,27 @@ def register_built_in_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def refresh_tools() -> Dict[str, Any]:
         """
-        Manually refresh tools from the database
+        Manually refresh tools from the database, handling additions, deletions, and updates
 
         Returns:
-            Result of the refresh operation
+            Result of the refresh operation with details about changes
         """
         try:
-            # Re-scan and load tools
-            tools = tool_loader.scan_and_load_tools()
-            tool_loader.register_tools_to_mcp(mcp, tools)
+            # Use the new refresh method that handles deletions properly
+            result = tool_loader.refresh_tools(mcp)
 
             return {
                 "status": "success",
                 "message": "Tools refreshed successfully",
-                "loaded_tools": list(tools.keys()),
-                "tool_count": len(tools),
+                "changes": result,
+                "summary": {
+                    "removed": len(result.get("removed", [])),
+                    "added": len(result.get("added", [])),
+                    "updated": len(result.get("updated", [])),
+                },
             }
         except Exception as e:
+            logger.error(f"Error refreshing tools: {e}")
             return {"status": "error", "message": f"Error refreshing tools: {str(e)}"}
 
     @mcp.tool

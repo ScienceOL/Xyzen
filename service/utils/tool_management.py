@@ -106,22 +106,29 @@ def generate_basic_schema(function_info: Dict[str, Any]) -> Dict[str, str]:
 
     input_schema = {"type": "object", "properties": properties, "required": required}
 
-    # Generate output schema
+    # Generate output schema - wrap primitive types in object structure for MCP protocol
     return_type = function_info.get("return_annotation", "Any")
     if return_type == "str" or "str" in str(return_type):
-        output_schema = {"type": "string"}
+        result_type = {"type": "string"}
     elif return_type == "int" or "int" in str(return_type):
-        output_schema = {"type": "integer"}
+        result_type = {"type": "integer"}
     elif return_type == "float" or "float" in str(return_type):
-        output_schema = {"type": "number"}
+        result_type = {"type": "number"}
     elif return_type == "bool" or "bool" in str(return_type):
-        output_schema = {"type": "boolean"}
+        result_type = {"type": "boolean"}
     elif return_type == "list" or "List" in str(return_type):
-        output_schema = {"type": "array"}
+        result_type = {"type": "array"}
     elif return_type == "dict" or "Dict" in str(return_type):
-        output_schema = {"type": "object"}
+        result_type = {"type": "object"}
     else:
-        output_schema = {"type": "string"}  # Default to string
+        result_type = {"type": "string"}  # Default to string
+
+    # Wrap the result type in an object structure for MCP protocol compatibility
+    output_schema = {
+        "type": "object",
+        "properties": {"result": result_type},
+        "required": ["result"],
+    }
 
     return {
         "input_schema": json.dumps(input_schema),
@@ -650,15 +657,24 @@ def register_tool_management_tools(mcp: FastMCP) -> None:
 
                 tool_name = tool.name
 
-                # Delete the tool (cascading deletes will handle versions and functions)
+                # Manually delete related records in correct order due to missing CASCADE DELETE
+                # First delete all functions for all versions
+                for version in tool.versions:
+                    for function in version.functions:
+                        session.delete(function)
+
+                # Then delete all versions
+                for version in tool.versions:
+                    session.delete(version)
+
+                # Finally delete the tool itself
                 session.delete(tool)
                 session.commit()
 
-                # Refresh tools in the loader
+                # Refresh tools in the loader using the new refresh method
                 try:
-                    tools = tool_loader.scan_and_load_tools()
-                    tool_loader.register_tools_to_mcp(mcp, tools)
-                    logger.info(f"Refreshed tools after deleting {tool_name}")
+                    result = tool_loader.refresh_tools(mcp)
+                    logger.info(f"Refreshed tools after deleting {tool_name}: {result}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after deleting {tool_name}: {e}")
 

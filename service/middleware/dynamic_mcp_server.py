@@ -38,26 +38,34 @@ class DynamicToolMiddleware(Middleware):
 
         if "-" in tool_name:
             logger.info(f"Refreshing specific tool before calling: {tool_name}")
-            # Only reload the currently called tool
-            if hasattr(tool_loader, "scan_and_load_tools") and asyncio.iscoroutinefunction(
-                tool_loader.scan_and_load_tools
-            ):
-                reloaded_tools = await tool_loader.scan_and_load_tools(tool_name)
-            else:
-                reloaded_tools = tool_loader.scan_and_load_tools(tool_name)
-            if reloaded_tools:
-                # Re-register the tool to MCP
-                tool_loader.register_tools_to_mcp(self.mcp, reloaded_tools, tool_name)
-            else:
-                logger.warning(f"No tools were reloaded for {tool_name}")
+            # Use the new refresh method that handles deletions properly
+            try:
+                result = tool_loader.refresh_tools(self.mcp)
+                logger.info(f"Tool refresh completed for {tool_name}: {result}")
+            except Exception as e:
+                logger.error(f"Error refreshing tools for {tool_name}: {e}")
+                # Fallback to old method if refresh fails
+                if hasattr(tool_loader, "scan_and_load_tools") and asyncio.iscoroutinefunction(
+                    tool_loader.scan_and_load_tools
+                ):
+                    reloaded_tools = await tool_loader.scan_and_load_tools(tool_name)
+                else:
+                    reloaded_tools = tool_loader.scan_and_load_tools(tool_name)
+                if reloaded_tools:
+                    # Re-register the tool to MCP
+                    tool_loader.register_tools_to_mcp(self.mcp, reloaded_tools, tool_name)
+                else:
+                    logger.warning(f"No tools were reloaded for {tool_name}")
 
         # Execute tool
         logger.warning(f"🚀 Execute: {tool_name} Arguments: {getattr(context.message, 'arguments', {})}")
         if tool_name.startswith("browser_"):
             await self.init_client()
             assert self.browser_mcp_client is not None
-            result = await self.browser_mcp_client.call_tool(tool_name, getattr(context.message, "arguments", {}))
-            result = ToolResult(result.content, result.structured_content)  # type: ignore
+            tool_call_result = await self.browser_mcp_client.call_tool(
+                tool_name, getattr(context.message, "arguments", {})
+            )
+            result = ToolResult(tool_call_result.content, tool_call_result.structured_content)  # type: ignore
         else:
             result = await call_next(context)
         end_time = datetime.now()
@@ -79,13 +87,19 @@ class DynamicToolMiddleware(Middleware):
     async def on_list_tools(self, context: MiddlewareContext, call_next: Callable) -> List:
         """Refresh tools directory when listing tools"""
         logger.info("Refreshing all tools before listing tools")
-        # Re-scan and load tools
-        if hasattr(tool_loader, "scan_and_load_tools") and asyncio.iscoroutinefunction(
-            tool_loader.scan_and_load_tools
-        ):
-            tools = await tool_loader.scan_and_load_tools()
-        else:
-            tools = tool_loader.scan_and_load_tools()
-        tool_loader.register_tools_to_mcp(self.mcp, tools)
+        # Use the new refresh method that handles deletions properly
+        try:
+            result = tool_loader.refresh_tools(self.mcp)
+            logger.info(f"Tool refresh completed: {result}")
+        except Exception as e:
+            logger.error(f"Error refreshing tools: {e}")
+            # Fallback to old method if refresh fails
+            if hasattr(tool_loader, "scan_and_load_tools") and asyncio.iscoroutinefunction(
+                tool_loader.scan_and_load_tools
+            ):
+                tools = await tool_loader.scan_and_load_tools()
+            else:
+                tools = tool_loader.scan_and_load_tools()
+            tool_loader.register_tools_to_mcp(self.mcp, tools)
         # Continue executing list tools
         return await call_next(context)  # type: ignore

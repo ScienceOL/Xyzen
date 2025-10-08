@@ -119,8 +119,8 @@ except Exception as e:
                 runtime_configs={
                     "cpu_count": dynamic_mcp_config.cpu_count,
                     "mem_limit": dynamic_mcp_config.mem_limit,
-                    "default_timeout": dynamic_mcp_config.default_timeout,
                 },
+                default_timeout=dynamic_mcp_config.default_timeout,
                 security_policy=policy,
             ) as session:
                 is_safe, violations = session.is_safe(execution_code)
@@ -141,7 +141,11 @@ except Exception as e:
 
                     # 检查工具执行结果
                     if output.get("success"):
-                        return output["result"]
+                        result = output["result"]
+                        # Wrap non-dict results according to MCP protocol requirements
+                        if not isinstance(result, dict):
+                            return {"result": result}
+                        return result
                     else:
                         error_msg = output.get("error", "Unknown tool execution error")
                         traceback_msg = output.get("traceback", "")
