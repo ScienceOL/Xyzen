@@ -1,8 +1,6 @@
-import hashlib
 import json
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastmcp import FastMCP
 from fastmcp.tools import FunctionTool
@@ -14,109 +12,6 @@ from utils.parser import parse_requirements
 from utils.tool_proxy import ContainerToolProxy, ToolProxyManager
 
 logger = logging.getLogger(__name__)
-
-
-class ToolChangeManager:
-    """Manage tool change detection and recording"""
-
-    def __init__(self) -> None:
-        self.previous_tools: Dict[str, Dict[str, Any]] = {}
-        self.current_tools: Dict[str, Dict[str, Any]] = {}
-        self.change_history: List[Dict[str, Any]] = []
-        self.file_hashes: Dict[str, str] = {}
-
-    def get_file_hash(self, filepath: str) -> str:
-        """Get MD5 hash of a file"""
-        try:
-            with open(filepath, "rb") as f:
-                return hashlib.md5(f.read()).hexdigest()
-        except Exception:
-            return ""
-
-    def update_tools(
-        self,
-        existing_tools_desc: Dict[str, Dict[str, Any]],
-        new_tools_desc: Dict[str, Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """Update tool list and detect changes"""
-        self.previous_tools = existing_tools_desc.copy()
-        self.current_tools = new_tools_desc.copy()
-
-        # Detect changes
-        changes = self.detect_changes()
-        if changes and (len(changes["added"]) or len(changes["modified"]) or len(changes["removed"])):
-            change_record = {
-                "timestamp": datetime.now().isoformat(),
-                "changes": changes,
-            }
-            self.change_history.append(change_record)
-
-        return changes
-
-    def detect_changes(self) -> Dict[str, Any]:
-        """Detect tool changes with detailed value comparison"""
-        changes: Dict[str, Any] = {"added": [], "removed": [], "modified": []}
-
-        # Detect newly added tools
-        for tool_name in self.current_tools:
-            if tool_name not in self.previous_tools:
-                changes["added"].append({"name": tool_name, "details": self.current_tools[tool_name]})
-
-        # Detect removed tools
-        for tool_name in self.previous_tools:
-            if tool_name not in self.current_tools:
-                changes["removed"].append({"name": tool_name, "details": self.previous_tools[tool_name]})
-
-        # Detect modified tools
-        for tool_name in self.current_tools:
-            if tool_name in self.previous_tools:
-                if self.current_tools[tool_name] != self.previous_tools[tool_name]:
-                    # Detailed difference comparison
-                    diff_details = self._get_detailed_diff(
-                        self.previous_tools[tool_name], self.current_tools[tool_name]
-                    )
-                    changes["modified"].append(
-                        {
-                            "name": tool_name,
-                            "previous": self.previous_tools[tool_name],
-                            "current": self.current_tools[tool_name],
-                            "differences": diff_details,
-                        }
-                    )
-
-        return changes
-
-    def _get_detailed_diff(self, old_desc: Dict[str, Any], new_desc: Dict[str, Any]) -> Dict[str, Any]:
-        """Get detailed differences between two tool descriptions"""
-        differences: Dict[str, Any] = {}
-
-        # Check all key changes
-        all_keys = set(old_desc.keys()) | set(new_desc.keys())
-
-        for key in all_keys:
-            old_value = old_desc.get(key)
-            new_value = new_desc.get(key)
-
-            if old_value != new_value:
-                differences[key] = {"old": old_value, "new": new_value}
-
-        return differences
-
-    def get_change_summary(self) -> Dict[str, Any]:
-        """Get change summary"""
-        return {
-            "current_tools_count": len(self.current_tools),
-            "previous_tools_count": len(self.previous_tools),
-            "recent_changes": self.change_history[-2:] if self.change_history else [],
-            "tool_details": {
-                "current": list(self.current_tools.keys()),
-                "previous": list(self.previous_tools.keys()),
-            },
-        }
-
-
-# Global change manager
-change_manager = ToolChangeManager()
 
 
 class DatabaseToolLoader:

@@ -23,8 +23,8 @@ from internal import configs
 from middleware.dynamic_mcp_server import DynamicToolMiddleware
 from utils.built_in_tools import register_built_in_tools
 from utils.json_patch import apply_json_patch
+from utils.manage_tools import register_manage_tools
 from utils.tool_loader import tool_loader
-from utils.tool_management import register_tool_management_tools
 
 
 def create_claude_code_server() -> None:
@@ -99,7 +99,7 @@ mcp.add_middleware(DetailedTimingMiddleware())
 mcp.add_middleware(StructuredLoggingMiddleware(include_payloads=True))
 
 register_built_in_tools(mcp)
-register_tool_management_tools(mcp)
+register_manage_tools(mcp)
 
 # Load Local Tools
 logger.info("Loading local tools...")
