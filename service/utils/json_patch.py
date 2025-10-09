@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 JSON Monkey Patch - 修复 pydantic 类型的 JSON 序列化问题
 
@@ -77,5 +76,4 @@ def remove_json_patch() -> None:
 
 
 if __name__ == "__main__":
-    # 测试代码
     apply_json_patch()

@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from middleware.database.connection import engine
 from models import Tool, ToolFunction, ToolStatus, ToolVersion
-from utils.requirements_parser import parse_requirements
+from utils.parser import parse_requirements
 from utils.tool_proxy import ContainerToolProxy, ToolProxyManager
 
 logger = logging.getLogger(__name__)
