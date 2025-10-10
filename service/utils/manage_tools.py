@@ -16,7 +16,7 @@ from fastmcp import FastMCP
 from fastmcp.server.dependencies import AccessToken, get_access_token
 from sqlmodel import Session, desc, select, true
 
-from middleware.auth import AuthProvider
+from middleware.auth import AuthProvider, UserInfo
 from middleware.database.connection import engine
 from models.tool import Tool, ToolFunction, ToolStatus, ToolVersion
 from utils.code_analyzer import discover_functions_from_code, generate_basic_schema
@@ -30,6 +30,20 @@ def error_response(message: str) -> Dict[str, Any]:
         "status": "error",
         "message": message,
     }
+
+
+def get_current_user() -> UserInfo:
+    """
+    Dependency function to get the current user from the access token.
+    """
+    access_token: AccessToken | None = get_access_token()
+    if not access_token:
+        raise ValueError("Access token is required for this operation.")
+
+    user_info = AuthProvider.parse_user_info(access_token.claims)
+    if not user_info or not user_info.id:
+        raise ValueError(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+    return user_info
 
 
 def register_manage_tools(mcp: FastMCP) -> None:
@@ -54,15 +68,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing creation result and tool information
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             # Basic validation
@@ -149,10 +155,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
             return error_response(f"Error creating tool: {str(e)}")
 
     @mcp.tool
-    def create_function(
-        tool_id: int,
-        code_content: str,
-    ) -> Dict[str, Any]:
+    def create_function(tool_id: int, code_content: str) -> Dict[str, Any]:
         """
         Add new function(s) to an existing tool by providing code content.
         The new code will be appended to the existing tool's code content.
@@ -165,16 +168,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing creation result
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
-
+        user_info = get_current_user()
         try:
             # Basic validation
             if not code_content:
@@ -300,15 +294,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing update result
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             with Session(engine) as session:
@@ -411,11 +397,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
             return error_response(f"Error updating tool: {str(e)}")
 
     @mcp.tool
-    def update_function(
-        tool_id: int,
-        function_name: str,
-        code_content: str,
-    ) -> Dict[str, Any]:
+    def update_function(tool_id: int, function_name: str, code_content: str) -> Dict[str, Any]:
         """
         Update a function in an existing tool by providing new code content.
         The new code will be appended to the existing tool's code content.
@@ -429,15 +411,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing update result
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             # Basic validation
@@ -568,15 +542,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing deletion result
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             with Session(engine) as session:
@@ -634,15 +600,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing deletion result
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             with Session(engine) as session:
@@ -708,15 +666,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing tool functions information
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             with Session(engine) as session:
@@ -777,15 +727,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing complete tool information
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             with Session(engine) as session:
@@ -853,15 +795,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing recent tool changes
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             with Session(engine) as session:
@@ -961,15 +895,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Returns:
             Dictionary containing tool statistics
         """
-        access_token: AccessToken | None = get_access_token()
-        if not access_token:
-            return error_response("Access token is required for this operation.")
-
-        # 使用现有的 parse_user_info 方法从 AccessToken 的 claims 中解析用户信息
-        user_info = AuthProvider.parse_user_info(access_token.claims)
-
-        if not user_info or not user_info.id:
-            return error_response(f"Hello, unknown! Your scopes are: {', '.join(access_token.scopes)}")
+        user_info = get_current_user()
 
         try:
             with Session(engine) as session:
