@@ -253,6 +253,7 @@
       "tokenFormat": "JWT",
       "tokenSigningMethod": "",
       "tokenFields": [],
+      "subType": "user_id",
       "expireInHours": 168,
       "refreshExpireInHours": 0,
       "signupUrl": "",
