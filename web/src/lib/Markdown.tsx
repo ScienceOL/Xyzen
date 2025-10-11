@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -84,11 +83,7 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
     <ReactMarkdown
       components={MarkdownComponents}
       remarkPlugins={[remarkMath, remarkGfm]}
-      rehypePlugins={[
-        rehypeKatex,
-        rehypeRaw,
-        [rehypeHighlight, { ignoreMissing: true }],
-      ]}
+      rehypePlugins={[rehypeKatex, rehypeRaw]}
     >
       {content}
     </ReactMarkdown>
