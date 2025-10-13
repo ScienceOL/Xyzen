@@ -290,7 +290,6 @@ async def list_device_actions(
         response = requests.get(url, headers=headers, params=params, timeout=configs.Lab.Timeout)
         response.raise_for_status()
         result = response.json()
-        print(f"==================={result}===================")
 
         if result.get("code") != 0:
             error_msg = f"API returned an error: {result.get('msg', 'Unknown Error')}"
@@ -634,11 +633,11 @@ def get_workflow_list(
             "Authorization": f"Bearer {access_token.token}",
             "Accept": "application/json",
         }
-        from typing import Mapping, Union
+        from typing import Iterable, Mapping, Union
 
-        ParamsType = Mapping[str, Union[str, int, float, None]]
+        ParamsType = Mapping[str, Union[str, int, float, None, Iterable[Union[str, int, float]]]]
 
-        params = {
+        params: ParamsType = {
             "page": page,
             "page_size": page_size,
             "lab_uuid": lab_uuid,
