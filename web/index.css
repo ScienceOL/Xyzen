@@ -1,6 +1,28 @@
-/* @import "tailwindcss"; */
-@layer xyzen-base {
-    @import "tailwindcss";
-}
+@import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+@utility scrollbar-hidden {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+/* safelist 一些不会在源码里出现的类 */
+@source inline('to-neutral-100');
+@source inline('to-indigo-700');
+@source inline('from-indigo-100/80');
+@source inline('backdrop-blur-xl');
+@source inline('to-purple-100/60');
+@source inline('min-w-xl');
+@source inline('to-purple-500');
+@source inline('overflow-y-auto');
+@source inline('max-h-64');
+@source inline('overflow-hidden');
+@source inline('translate-x-5');
+@source inline('translate-x-0');

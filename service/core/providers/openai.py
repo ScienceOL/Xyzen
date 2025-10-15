@@ -12,7 +12,12 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion_tool_param import ChatCompletionToolParam
 
-from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamChunk
+from .base import (
+    BaseLLMProvider,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatCompletionStreamChunk,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,10 +101,16 @@ class OpenAIProvider(BaseLLMProvider):
                     if has_tool_calls:
                         # This is a proper tool response, but we need tool_call_id
                         # For now, convert to user message with clear indication it's a tool result
-                        message_dict = {"role": "user", "content": f"Tool execution result: {msg.content}"}
+                        message_dict = {
+                            "role": "user",
+                            "content": f"Tool execution result: {msg.content}",
+                        }
                     else:
                         # Convert tool messages to user messages to avoid OpenAI validation errors
-                        message_dict = {"role": "user", "content": f"Tool result: {msg.content}"}
+                        message_dict = {
+                            "role": "user",
+                            "content": f"Tool result: {msg.content}",
+                        }
                 else:
                     message_dict = {"role": msg.role, "content": msg.content}
                 messages.append(message_dict)
@@ -241,9 +252,15 @@ class OpenAIProvider(BaseLLMProvider):
                         prev_msg and hasattr(prev_msg, "tool_calls") and getattr(prev_msg, "tool_calls", None)
                     )
                     if has_tool_calls:
-                        message_dict = {"role": "user", "content": f"Tool execution result: {msg.content}"}
+                        message_dict = {
+                            "role": "user",
+                            "content": f"Tool execution result: {msg.content}",
+                        }
                     else:
-                        message_dict = {"role": "user", "content": f"Tool result: {msg.content}"}
+                        message_dict = {
+                            "role": "user",
+                            "content": f"Tool result: {msg.content}",
+                        }
                 else:
                     message_dict = {"role": msg.role, "content": msg.content}
                 messages.append(message_dict)

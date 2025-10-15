@@ -8,11 +8,11 @@ class CasdoorAuthConfig(BaseModel):
         description="Casdoor public key for JWT signature verification",
     )
     Issuer: str = Field(
-        default="http://localhost:8000",
+        default="http://host.docker.internal:8000",
         description="Casdoor service address",
     )
     JwksUri: str | None = Field(
-        default="http://localhost:8000/.well-known/jwks",
+        default="http://host.docker.internal:8000/.well-known/jwks",
         description="Casdoor JWKS endpoint",
     )
     Algorithm: str = Field(
@@ -32,7 +32,7 @@ class BohriumAuthConfig(BaseModel):
         description="Bohrium client secret for JWT signature verification",
     )
     Issuer: str = Field(
-        default="https://localhost:8000",
+        default="https://host.docker.internal:8000",
         description="Bohrium service address",
     )
     JwksUri: str | None = Field(

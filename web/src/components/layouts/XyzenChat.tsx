@@ -195,11 +195,7 @@ export default function XyzenChat() {
           <div className="relative flex-grow overflow-y-auto">
             <div
               ref={messagesContainerRef}
-              className="h-full overflow-y-auto rounded-lg bg-neutral-50 pt-6 dark:bg-black"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "rgba(156,163,175,0.5) transparent",
-              }}
+              className="h-full overflow-y-auto rounded-lg bg-neutral-50 pt-6 dark:bg-black custom-scrollbar"
               onScroll={handleScroll}
             >
               <div className="px-3">

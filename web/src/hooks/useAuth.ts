@@ -22,7 +22,7 @@ export function useAuth(): UseAuthReturn {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // 处理认证状态变化
+  // 处理认证状态变化 - 使用useCallback并稳定依赖
   const handleAuthChange = useCallback((result: AuthResult) => {
     setAuthResult(result);
     setIsLoading(false);
@@ -67,24 +67,35 @@ export function useAuth(): UseAuthReturn {
     authService.logout();
   }, []);
 
-  // 组件挂载时进行自动登录检查
+  // 组件挂载时进行自动登录检查 - 只执行一次
   useEffect(() => {
+    let mounted = true;
+
     const performAutoLogin = async () => {
+      if (!mounted) return;
+
       setIsLoading(true);
       try {
         const result = await authService.autoLogin();
-        setAuthResult(result);
+        if (mounted) {
+          setAuthResult(result);
+        }
       } catch (error) {
         console.error("Auto-login failed:", error);
-        setAuthResult({
-          state: AuthState.ERROR,
-          message: error instanceof Error ? error.message : "自动登录失败",
-        });
+        if (mounted) {
+          setAuthResult({
+            state: AuthState.ERROR,
+            message: error instanceof Error ? error.message : "自动登录失败",
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
+    // 只在第一次挂载时执行自动登录
     performAutoLogin();
 
     // 添加认证状态监听器
@@ -92,6 +103,7 @@ export function useAuth(): UseAuthReturn {
 
     // 清理监听器
     return () => {
+      mounted = false;
       authService.removeAuthStateListener(handleAuthChange);
     };
   }, [handleAuthChange]);

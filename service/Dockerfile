@@ -1,7 +1,7 @@
 # Use the official Python image as a base
-FROM python:3.13.5-alpine
+FROM python:3.13.5-slim
 
-RUN apk add --no-cache ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 

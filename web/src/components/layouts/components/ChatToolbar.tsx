@@ -221,7 +221,7 @@ export default function ChatToolbar({
                 {/* MCP Tooltip */}
                 <div
                   className=" transition-opacity
-                  overflow-auto hidden w-80
+                  overflow-hidden hidden w-80
                   group-hover/mcp:block absolute bottom-full
                   left-0 mb-2 rounded-lg border
                  border-neutral-200 bg-white p-3 shadow-lg

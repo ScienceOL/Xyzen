@@ -56,7 +56,8 @@ export const createAuthSlice: StateCreator<
     if (token) {
       set({ status: "loading" });
       try {
-        const authResult = await authService.checkAuthState(true);
+        // 使用非强制的检查，避免重复调用
+        const authResult = await authService.checkAuthState(false);
         if (authResult.state === "authenticated" && authResult.user) {
           set({
             token,

@@ -119,6 +119,16 @@ services:
           echo 'Bucket ${AWS_STORAGE_BUCKET_NAME:-studio} already exists'
         fi
 
+        # 检查 Casdoor 存储桶是否存在，不存在则创建
+        if ! mc ls myminio/casdoor > /dev/null 2>&1; then
+          echo 'Creating bucket casdoor'
+          mc mb myminio/casdoor
+        else
+          echo 'Bucket casdoor already exists'
+        fi
+
+        mc anonymous set download myminio/casdoor
+
         # 检查 Lab 收集存储桶是否启用，启用则创建
         if [ "${LAB_MINIO_ENABLE:-false}" = "true" ]; then
           if ! mc ls myminio/${MINIO_BUCKET:-lab} > /dev/null 2>&1; then
@@ -165,6 +175,8 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
+      minio:
+        condition: service_started
     environment:
       RUNNING_IN_DOCKER: 'true'
       driverName: 'postgres'

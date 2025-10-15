@@ -178,7 +178,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
                   Available Tools
                 </span>
               </div>
-              <div className="max-h-64 overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent dark:scrollbar-thumb-neutral-600 pr-2">
+              <div className="max-h-64 overflow-y-auto space-y-2 dark:scrollbar-thumb-neutral-600 pr-2 custom-scrollbar">
                 {server.tools?.map((tool, index) => (
                   <motion.button
                     key={`${tool.name}-${index}`}
@@ -323,7 +323,7 @@ export function Mcp() {
           className="relative"
         >
           {/* Enhanced container with fixed height and layers */}
-          <div className="relative min-h-[66vh] max-h-[66vh] overflow-hidden rounded-3xl border border-neutral-200/30 bg-gradient-to-br from-white/80 via-white/60 to-white/40 backdrop-blur-xl dark:border-neutral-700/30 dark:from-neutral-900/80 dark:via-neutral-900/60 dark:to-neutral-900/40">
+          <div className="relative min-h-[66vh] max-h-[66vh] overflow-y-auto rounded-3xl border border-neutral-200/30 bg-gradient-to-br from-white/80 via-white/60 to-white/40 backdrop-blur-xl dark:border-neutral-700/30 dark:from-neutral-900/80 dark:via-neutral-900/60 dark:to-neutral-900/40">
             {/* Subtle background patterns for depth */}
             <div className="absolute inset-0 opacity-30">
               <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/50 via-transparent to-transparent rounded-full blur-3xl dark:from-indigo-900/30" />

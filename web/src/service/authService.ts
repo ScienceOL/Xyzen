@@ -198,6 +198,11 @@ class AuthService {
       return this.authCheckPromise;
     }
 
+    // 清除之前的Promise（如果force=true）
+    if (force) {
+      this.authCheckPromise = null;
+    }
+
     this.authCheckPromise = this._performAuthCheck();
     const result = await this.authCheckPromise;
 

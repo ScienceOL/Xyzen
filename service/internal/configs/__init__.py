@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dify import DifyConfig
+from .dynamic_mcp_server import DynamicMCPConfig
 from .lab import LabConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
@@ -63,6 +64,11 @@ class AppConfig(BaseSettings):
     Dify: DifyConfig = Field(
         default_factory=lambda: DifyConfig(),
         description="Dify configuration",
+    )
+
+    DynamicMCP: DynamicMCPConfig = Field(
+        default_factory=lambda: DynamicMCPConfig(),
+        description="Dynamic MCP configuration",
     )
 
 

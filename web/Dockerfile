@@ -24,9 +24,9 @@ RUN corepack enable
 COPY . .
 
 # Set build-time environment variables
-ARG VITE_BACKEND_URL
+ARG VITE_XYZEN_BACKEND_URL
 ENV NODE_ENV=production
-ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_BACKEND_URL=${VITE_XYZEN_BACKEND_URL}
 
 # Build the application
 # The build script in package.json is "rimraf site && tsc -b && vite build"

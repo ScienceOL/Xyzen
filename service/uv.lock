@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.13"
 
 [[package]]
@@ -292,6 +292,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b5/4a/263763cb2ba3816dd94b08ad3a33d5fdae34ecb856678773cc40a3605829/dnspython-2.7.0.tar.gz", hash = "sha256:ce9c432eda0dc91cf618a5cedf1a4e142651196bbcd2c80e89ed5a907e5cfaf1", size = 345197, upload-time = "2024-10-05T20:14:59.362Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/68/1b/e0a87d256e40e8c888847551b20a017a6b98139178505dc7ffb96f04e954/dnspython-2.7.0-py3-none-any.whl", hash = "sha256:b4c34b7d10b51bcc3a5071e7b8dee77939f1e878477eeecc965e9835f63c6c86", size = 313632, upload-time = "2024-10-05T20:14:57.687Z" },
+]
+
+[[package]]
+name = "docker"
+version = "7.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pywin32", marker = "sys_platform == 'win32'" },
+    { name = "requests" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/9b/4a2ea29aeba62471211598dac5d96825bb49348fa07e906ea930394a83ce/docker-7.1.0.tar.gz", hash = "sha256:ad8c70e6e3f8926cb8a92619b832b4ea5299e2831c14284663184e200546fa6c", size = 117834, upload-time = "2024-05-23T11:13:57.216Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e3/26/57c6fb270950d476074c087527a558ccb6f4436657314bfb6cdf484114c4/docker-7.1.0-py3-none-any.whl", hash = "sha256:c96b93b7f0a746f9e77d325bcfb87422a3d8bd4f03136ae8a85b37f1898d5fc0", size = 147774, upload-time = "2024-05-23T11:13:55.01Z" },
 ]
 
 [[package]]
@@ -673,6 +687,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7b/89/68c50fcfd81e11480cd8ee7f654c9bd790a9053b9a0efe9983d46106f6a9/lazy_object_proxy-1.11.0-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:0613116156801ab3fccb9e2b05ed83b08ea08c2517fdc6c6bc0d4697a1a376e3", size = 28777, upload-time = "2025-04-16T16:53:41.371Z" },
     { url = "https://files.pythonhosted.org/packages/39/d0/7e967689e24de8ea6368ec33295f9abc94b9f3f0cd4571bfe148dc432190/lazy_object_proxy-1.11.0-cp313-cp313t-win_amd64.whl", hash = "sha256:bb03c507d96b65f617a6337dedd604399d35face2cdf01526b913fb50c4cb6e8", size = 29598, upload-time = "2025-04-16T16:53:42.513Z" },
     { url = "https://files.pythonhosted.org/packages/e7/1e/fb441c07b6662ec1fc92b249225ba6e6e5221b05623cb0131d082f782edc/lazy_object_proxy-1.11.0-py3-none-any.whl", hash = "sha256:a56a5093d433341ff7da0e89f9b486031ccd222ec8e52ec84d0ec1cdc819674b", size = 16635, upload-time = "2025-04-16T16:53:47.198Z" },
+]
+
+[[package]]
+name = "llm-sandbox"
+version = "0.3.20"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2c/6d/ebb0bdeca72d2d1222d1aead511217f06b833e0a66c1425ee16623cc0120/llm_sandbox-0.3.20.tar.gz", hash = "sha256:585bda4a222dfb9df431f8ecc989ed43020da6cbf05226fe23340a099962977f", size = 480995, upload-time = "2025-10-01T13:03:54.01Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/66/cb/58a81d4200e97a62aa3b61d4be1cb4f623a9e03a910cbdb405864524d974/llm_sandbox-0.3.20-py3-none-any.whl", hash = "sha256:0a1734aa4f77780f685e18fc640d35c885dd5149090b2020b5d04cf02da10973", size = 67758, upload-time = "2025-10-01T13:03:51.53Z" },
+]
+
+[package.optional-dependencies]
+docker = [
+    { name = "docker" },
 ]
 
 [[package]]
@@ -1397,6 +1428,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "google-genai" },
     { name = "httpx" },
+    { name = "llm-sandbox", extra = ["docker"] },
     { name = "mcp" },
     { name = "openai" },
     { name = "psycopg", extra = ["binary", "pool"] },
@@ -1425,6 +1457,7 @@ requires-dist = [
     { name = "fastmcp", specifier = ">=2.12.3" },
     { name = "google-genai", specifier = ">=1.38.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "llm-sandbox", extras = ["docker"], specifier = ">=0.3.20" },
     { name = "mcp", specifier = ">=1.11.0" },
     { name = "openai", specifier = ">=1.98.0" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.2.9" },

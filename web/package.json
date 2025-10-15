@@ -1,7 +1,8 @@
 {
   "name": "@sciol/xyzen",
+  "type": "module",
   "packageManager": "yarn@4.9.2",
-  "version": "0.2.4",
+  "version": "0.2.8",
   "description": "A modern, lightweight, and extensible chat component for React.",
   "author": "Haohui <harveyque@outlook.com>",
   "license": "GPL-3.0-only",
@@ -36,7 +37,7 @@
     "dev": "vite --host --port 32233 --strictPort",
     "build": "rimraf site && tsc -b && vite build",
     "build:lib": "rimraf dist && cross-env BUILD_MODE=library vite build",
-    "image:bohr": "docker buildx build . --build-arg VITE_BACKEND_URL=https://uni-xyzen.test.bohrium.com --platform linux/amd64 -t registry.dp.tech/public/xyzen-web:latest --push",
+    "image:bohr": "docker buildx build . --build-arg VITE_XYZEN_BACKEND_URL=https://uni-xyzen.test.bohrium.com --platform linux/amd64 -t registry.dp.tech/public/xyzen-web:latest --push",
     "lint": "eslint .",
     "preview": "vite preview",
     "publish": "yarn npm publish"
@@ -86,7 +87,7 @@
     "rimraf": "^6.0.1",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
-    "vite": "^7",
+    "vite": "^7.1.7",
     "vite-plugin-dts": "^4.5.4"
   }
 }

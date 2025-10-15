@@ -6,6 +6,7 @@ import { LoadingKeys } from "./loadingSlice";
 
 export interface McpSlice {
   mcpServers: McpServer[];
+  lastFetchTime: number; // 添加最后一次获取时间
   fetchMcpServers: () => Promise<void>;
   refreshMcpServers: () => Promise<void>;
   addMcpServer: (server: McpServerCreate) => Promise<void>;
@@ -24,15 +25,25 @@ export const createMcpSlice: StateCreator<
   McpSlice
 > = (set, get) => ({
   mcpServers: [],
+  lastFetchTime: 0,
   fetchMcpServers: async () => {
     const { setLoading } = get();
+
+    // 缓存机制：如果5秒内已经获取过，直接返回
+    const now = Date.now();
+    const { lastFetchTime } = get();
+    if (now - lastFetchTime < 5000) {
+      console.log("McpSlice: 使用缓存的MCP服务器数据");
+      return;
+    }
+
     setLoading(LoadingKeys.MCP_SERVERS, true);
 
     try {
       console.log("McpSlice: Starting to fetch MCP servers...");
       const servers = await mcpService.getMcpServers();
       console.log(`McpSlice: Loaded ${servers.length} MCP servers`);
-      set({ mcpServers: servers });
+      set({ mcpServers: servers, lastFetchTime: now });
     } catch (error) {
       console.error("Failed to fetch MCP servers:", error);
     } finally {
