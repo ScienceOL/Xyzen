@@ -82,7 +82,10 @@ export default function ToolCallCard({
   onConfirm,
   onCancel,
 }: ToolCallCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  // For completed/failed status (history), default to expanded to show both arguments and results
+  const isHistoryMode =
+    toolCall.status === "completed" || toolCall.status === "failed";
+  const [isExpanded, setIsExpanded] = useState(isHistoryMode);
 
   const formatArguments = (args: Record<string, unknown>) => {
     try {

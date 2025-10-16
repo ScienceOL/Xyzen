@@ -2,10 +2,11 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -13,6 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from core.chat import get_ai_response_stream
 from middleware.auth import get_current_user_websocket
 from middleware.database import get_session
+from middleware.database.connection import async_engine
 from models.agent import Agent as AgentModel
 from models.message import Message as MessageModel
 from models.message import MessageCreate
@@ -72,6 +74,20 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+tool_message_sessionmaker = async_sessionmaker(async_engine, expire_on_commit=False)
+
+
+async def persist_tool_message(topic_id: UUID, payload: Dict[str, Any]) -> None:
+    """
+    Persist a tool event message in a short-lived session to avoid expiring
+    state in the long-lived websocket session.
+    """
+    message_content = json.dumps(payload, ensure_ascii=False, default=str)
+    message = MessageModel.model_validate(MessageCreate(role="tool", content=message_content, topic_id=topic_id))
+
+    async with tool_message_sessionmaker() as session:
+        session.add(message)
+        await session.commit()
 
 
 async def handle_tool_call_confirmation(
@@ -94,6 +110,19 @@ async def handle_tool_call_confirmation(
                 "data": {"toolCallId": tool_call_id, "status": "failed", "error": "用户取消执行"},
             }
             await manager.send_personal_message(json.dumps(response), connection_id)
+            # Persist a tool message for cancellation (failed)
+            try:
+                await persist_tool_message(
+                    UUID(connection_id.split(":")[1]),
+                    {
+                        "event": "tool_call_response",
+                        "toolCallId": tool_call_id,
+                        "status": "failed",
+                        "error": "用户取消执行",
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"Failed to persist cancelled tool call message: {e}")
             # Remove from pending
             del manager.pending_tool_calls[tool_call_id]
             return
@@ -134,6 +163,20 @@ async def handle_tool_call_confirmation(
                         },
                     }
                     await manager.send_personal_message(json.dumps(completion_event), connection_id)
+
+                    # Persist tool completion as a Message row for history
+                    try:
+                        await persist_tool_message(
+                            UUID(connection_id.split(":")[1]),
+                            {
+                                "event": "tool_call_response",
+                                "toolCallId": tc_id,
+                                "status": "completed",
+                                "result": result,
+                            },
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to persist tool completion message: {e}")
 
             # Continue with AI response generation using the same logic as immediate execution
             assistant_tool_message = ChatMessage(
@@ -244,6 +287,20 @@ async def handle_tool_call_confirmation(
                 "data": {"toolCallId": tool_call_id, "status": "failed", "error": str(e)},
             }
             await manager.send_personal_message(json.dumps(error_response), connection_id)
+
+            # Persist error tool message
+            try:
+                await persist_tool_message(
+                    UUID(connection_id.split(":")[1]),
+                    {
+                        "event": "tool_call_response",
+                        "toolCallId": tool_call_id,
+                        "status": "failed",
+                        "error": str(e),
+                    },
+                )
+            except Exception as pe:
+                logger.warning(f"Failed to persist tool error message: {pe}")
 
         finally:
             # Remove from pending
@@ -369,30 +426,54 @@ async def chat_websocket(
                 # Track message ID and content for database saving
                 if stream_event["type"] == "streaming_start":
                     ai_message_id = stream_event["data"]["id"]
-                    logger.info(f"Forwarding streaming_start event with ID: {ai_message_id}")
                     # Forward streaming_start to frontend
                     await manager.send_personal_message(json.dumps(stream_event), connection_id)
                 elif stream_event["type"] == "streaming_chunk" and ai_message_id:
                     chunk_content = stream_event["data"]["content"]
                     full_content += chunk_content
-                    logger.info(f"Forwarding streaming_chunk: '{chunk_content}' (full so far: '{full_content}')")
                     # Forward streaming_chunk to frontend
                     await manager.send_personal_message(json.dumps(stream_event), connection_id)
                 elif stream_event["type"] == "streaming_end":
                     full_content = stream_event["data"].get("content", full_content)
-                    logger.info(f"Forwarding streaming_end event with final content: '{full_content}'")
                     # Forward streaming_end to frontend
                     await manager.send_personal_message(json.dumps(stream_event), connection_id)
                 elif stream_event["type"] == "tool_call_request":
-                    # Handle tool call request - don't save to database yet
-                    logger.info(f"Tool call request received: {stream_event['data']['name']}")
                     # Forward tool call request to frontend
+                    try:
+                        req = stream_event["data"]
+                        await persist_tool_message(
+                            topic_id,
+                            {
+                                "event": "tool_call_request",
+                                "id": req.get("id"),
+                                "name": req.get("name"),
+                                "description": req.get("description"),
+                                "arguments": req.get("arguments"),
+                                "status": req.get("status"),
+                                "timestamp": req.get("timestamp"),
+                            },
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to persist tool call request message: {e}")
                     await manager.send_personal_message(json.dumps(stream_event), connection_id)
-                    # Tool call events should not end the stream - they need user confirmation
+
                     continue
                 elif stream_event["type"] == "tool_call_response":
                     # Handle tool call response
-                    logger.info(f"Forwarding tool_call_response event")
+                    try:
+                        resp = stream_event["data"]
+                        await persist_tool_message(
+                            topic_id,
+                            {
+                                "event": "tool_call_response",
+                                "toolCallId": resp.get("toolCallId"),
+                                "status": resp.get("status"),
+                                "result": resp.get("result"),
+                                "error": resp.get("error"),
+                            },
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to persist tool call response message: {e}")
                     await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     continue
                 elif stream_event["type"] == "message":

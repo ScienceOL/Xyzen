@@ -1,13 +1,138 @@
 import { authService } from "@/service/authService";
 import xyzenService from "@/service/xyzenService";
+import { parseToolMessage } from "@/utils/toolMessageParser";
 import type { StateCreator } from "zustand";
 import type {
   ChatChannel,
   ChatHistoryItem,
+  Message,
   SessionResponse,
+  ToolCall,
   TopicResponse,
   XyzenState,
 } from "../types";
+
+/**
+ * Group consecutive tool messages with their preceding assistant message
+ * This makes history look identical to live chat experience
+ * Tool messages that can't be grouped are kept as standalone
+ */
+function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
+  const result: Message[] = [];
+
+  const toolCallLookup = new Map<
+    string,
+    { toolCall: ToolCall; message: Message }
+  >();
+
+  const cloneToolCall = (toolCall: ToolCall): ToolCall => ({
+    ...toolCall,
+    arguments: { ...(toolCall.arguments || {}) },
+  });
+
+  const cloneMessage = (message: Message): Message => ({
+    ...message,
+    toolCalls: message.toolCalls
+      ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
+      : undefined,
+  });
+
+  for (const msg of messages) {
+    if (msg.role !== "tool") {
+      const cloned = cloneMessage(msg);
+      result.push(cloned);
+
+      if (cloned.toolCalls) {
+        cloned.toolCalls.forEach((toolCall) => {
+          toolCallLookup.set(toolCall.id, { toolCall, message: cloned });
+        });
+      }
+      continue;
+    }
+
+    const parsed = parseToolMessage(msg.content);
+    if (!parsed) {
+      result.push(cloneMessage(msg));
+      continue;
+    }
+
+    if (parsed.event === "tool_call_request") {
+      const toolCallId =
+        parsed.id || parsed.toolCallId || msg.id || `tool-${Date.now()}`;
+      const toolCall: ToolCall = {
+        id: toolCallId,
+        name: parsed.name || "Unknown Tool",
+        description: parsed.description,
+        arguments: { ...(parsed.arguments || {}) },
+        status:
+          (parsed.status as ToolCall["status"]) || "waiting_confirmation",
+        timestamp: parsed.timestamp
+          ? new Date(parsed.timestamp).toISOString()
+          : msg.created_at,
+      };
+
+      const toolMessage: Message = {
+        id: msg.id || `tool-call-${toolCallId}`,
+        role: "assistant",
+        content: "我需要使用工具来帮助回答您的问题。",
+        created_at: msg.created_at,
+        toolCalls: [toolCall],
+      };
+
+      result.push(toolMessage);
+      toolCallLookup.set(toolCallId, { toolCall, message: toolMessage });
+      continue;
+    }
+
+    const toolCallId = parsed.toolCallId || parsed.id || msg.id || "";
+    if (!toolCallId) {
+      continue;
+    }
+
+    let existingEntry = toolCallLookup.get(toolCallId);
+    if (!existingEntry) {
+      const toolCall: ToolCall = {
+        id: toolCallId,
+        name: "工具调用",
+        arguments: {},
+        status: (parsed.status as ToolCall["status"]) || "completed",
+        timestamp: msg.created_at,
+      };
+
+      const toolMessage: Message = {
+        id: msg.id || `tool-response-${toolCallId}`,
+        role: "assistant",
+        content: "工具调用更新",
+        created_at: msg.created_at,
+        toolCalls: [toolCall],
+      };
+
+      result.push(toolMessage);
+      existingEntry = { toolCall, message: toolMessage };
+      toolCallLookup.set(toolCallId, existingEntry);
+    }
+
+    const { toolCall } = existingEntry;
+
+    if (parsed.status) {
+      toolCall.status = parsed.status as ToolCall["status"];
+    }
+
+    if (parsed.result !== undefined) {
+      toolCall.result =
+        typeof parsed.result === "string"
+          ? parsed.result
+          : JSON.stringify(parsed.result);
+    }
+
+    if (parsed.error) {
+      toolCall.error = parsed.error;
+      toolCall.status = "failed";
+    }
+  }
+
+  return result;
+}
 
 export interface ChatSlice {
   activeChatChannel: string | null;
@@ -258,9 +383,13 @@ export const createChatSlice: StateCreator<
             console.log(
               `ChatSlice: Loaded ${messages.length} messages for topic ${topicId}`,
             );
+
+            // Process messages to group tool events with assistant messages
+            const processedMessages = groupToolMessagesWithAssistant(messages);
+
             set((state: ChatSlice) => {
               if (state.channels[topicId]) {
-                state.channels[topicId].messages = messages;
+                state.channels[topicId].messages = processedMessages;
               }
             });
           } else {

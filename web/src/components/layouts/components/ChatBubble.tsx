@@ -1,7 +1,11 @@
 import ProfileIcon from "@/assets/ProfileIcon";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
-import type { Message } from "@/store/types";
+import type { Message, ToolCall } from "@/store/types";
+import {
+  parseToolMessage,
+  toolEventToToolCall,
+} from "@/utils/toolMessageParser";
 import LoadingMessage from "./LoadingMessage";
 import ToolCallCard from "./ToolCallCard";
 
@@ -18,7 +22,19 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   const { role, content, created_at, isLoading, isStreaming, toolCalls } =
     message;
 
+  // Parse tool messages from history
+  const parsedToolCall = React.useMemo<ToolCall | null>(() => {
+    if (role === "tool") {
+      const parsed = parseToolMessage(content);
+      if (parsed) {
+        return toolEventToToolCall(parsed);
+      }
+    }
+    return null;
+  }, [role, content]);
+
   const isUserMessage = role === "user";
+  const isToolMessage = role === "tool";
 
   // Debug logging for tool calls
   React.useEffect(() => {
@@ -28,7 +44,13 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
         toolCalls,
       );
     }
-  }, [toolCalls, message.id]);
+    if (parsedToolCall) {
+      console.log(
+        `ChatBubble: Parsed tool message ${message.id}:`,
+        parsedToolCall,
+      );
+    }
+  }, [toolCalls, message.id, parsedToolCall]);
 
   // Updated time format to include seconds
   const formattedTime = new Date(created_at).toLocaleTimeString([], {
@@ -60,6 +82,17 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
       );
     }
 
+    if (isToolMessage) {
+      // Tool message icon
+      return (
+        <div
+          className={`flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white`}
+        >
+          <span className="text-xs">🔧</span>
+        </div>
+      );
+    }
+
     // AI助手头像显示首字母
     const initial = role?.charAt(0)?.toUpperCase() || "A";
 
@@ -71,6 +104,67 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
       </div>
     );
   };
+
+  // If this is a tool message from history, render as ToolCallCard
+  if (isToolMessage) {
+    if (parsedToolCall) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="group relative w-full pl-8"
+        >
+          {/* Timestamp */}
+          <div className="absolute -top-6 left-8 z-10 transform opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <span className="rounded px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {formattedTime}
+            </span>
+          </div>
+
+          {/* Avatar */}
+          <div className="absolute left-0 top-1">{renderAvatar()}</div>
+
+          {/* Tool Card */}
+          <div className="w-full">
+            <ToolCallCard
+              toolCall={parsedToolCall}
+              // No confirm/cancel buttons for history (read-only)
+              onConfirm={undefined}
+              onCancel={undefined}
+            />
+          </div>
+        </motion.div>
+      );
+    } else {
+      // Fallback: show raw JSON if parsing fails
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="group relative w-full pl-8"
+        >
+          {/* Timestamp */}
+          <div className="absolute -top-6 left-8 z-10 transform opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <span className="rounded px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {formattedTime}
+            </span>
+          </div>
+
+          {/* Avatar */}
+          <div className="absolute left-0 top-1">{renderAvatar()}</div>
+
+          {/* Raw JSON display */}
+          <div className="w-full border-l-4 border-orange-400 bg-orange-50/50 dark:border-orange-600 dark:bg-orange-900/20 p-3 rounded-none">
+            <pre className="text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto whitespace-pre-wrap">
+              {content}
+            </pre>
+          </div>
+        </motion.div>
+      );
+    }
+  }
 
   return (
     <motion.div
