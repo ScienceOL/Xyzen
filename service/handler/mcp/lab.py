@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 import requests
 from fastmcp import FastMCP
@@ -32,7 +32,7 @@ lab_mcp: FastMCP = FastMCP(name="Lab 🚀")
 
 # CASE: 使用 Casdoor jwks 作为身份验证提供者
 lab_auth = JWTVerifier(
-    jwks_uri="http://host.docker.internal:8000/.well-known/jwks",
+    jwks_uri=AuthProvider.jwks_uri,
     # NOTE: casdoor 中没有提供标准的 OIDC（如/.well-known/openid-configuration），携带以下两个信息会失败
     # issuer="http://host.docker.internal:8000/",
     # audience="a387a4892ee19b1a2249",
@@ -50,7 +50,7 @@ lab_auth = JWTVerifier(
 #     algorithm="RS256",  # 使用 RSA 算法，匹配 JWKS 中的 alg
 # )
 
-ParamsType = Mapping[str, Union[str, int, float, None]]
+ParamsType = Mapping[str, Union[str, int, float, None, Iterable[Union[str, int, float]]]]
 
 
 # 通过ak获取当前用户信息✅
@@ -656,8 +656,6 @@ def get_workflow_list(
             "Accept": "application/json",
         }
         from typing import Iterable, Mapping, Union
-
-        ParamsType = Mapping[str, Union[str, int, float, None, Iterable[Union[str, int, float]]]]
 
         params: ParamsType = {
             "page": page,

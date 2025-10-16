@@ -27,9 +27,9 @@ class CasdoorAuthConfig(BaseModel):
 
 class BohriumAuthConfig(BaseModel):
 
-    SecretKey: str = Field(
-        default="inputyourownsecret",
-        description="Bohrium client secret for JWT signature verification",
+    PublicKey: str = Field(
+        default="inputyourbohriumpublickeyhere",
+        description="Bohrium client public key for JWT signature verification",
     )
     Issuer: str = Field(
         default="https://host.docker.internal:8000",
@@ -37,7 +37,7 @@ class BohriumAuthConfig(BaseModel):
     )
     JwksUri: str | None = Field(
         default="http://localhost:7000/.well-known/jwks",
-        description="Bohrium JWKS endpoint",
+        description="Bohrium Does not provide JWKS, this is an example",
     )
     Algorithm: str = Field(
         default="RS256",

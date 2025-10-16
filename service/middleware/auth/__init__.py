@@ -9,13 +9,13 @@ from fastapi import Header, HTTPException, Query, status
 
 from internal import configs
 
-# 设置日志记录器
+# Set up logger
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class UserInfo:
-    """用户信息数据类"""
+    """User information data class"""
 
     id: str
     username: str
@@ -28,7 +28,7 @@ class UserInfo:
 
 @dataclass
 class AuthResult:
-    """认证结果数据类"""
+    """Authentication result data class"""
 
     success: bool
     user_info: Optional[UserInfo] = None
@@ -37,7 +37,7 @@ class AuthResult:
 
 
 class BaseAuthProvider(ABC):
-    """基础认证提供商抽象类"""
+    """Abstract base class for authentication providers"""
 
     def __init__(self, config: Dict[str, Any]) -> None:
         self.config = config
@@ -48,73 +48,75 @@ class BaseAuthProvider(ABC):
 
     @abstractmethod
     def get_provider_name(self) -> str:
-        """获取提供商名称"""
+        """Get the provider name"""
         pass
 
     @abstractmethod
     def validate_token(self, access_token: str) -> AuthResult:
-        """验证 access_token 并获取用户信息"""
+        """Validate the access_token and get user information"""
         pass
 
     @abstractmethod
     def parse_user_info(self, token_payload: Dict[str, Any]) -> UserInfo:
-        """从 token payload 解析用户信息"""
+        """Parse user information from the token payload"""
         pass
 
     def get_jwks(self) -> Optional[Dict[str, Any]]:
-        """获取 JWKS 公钥信息"""
+        """Get JWKS public key information"""
         if not self.jwks_uri:
-            logger.warning("JWKS URI 未配置")
+            logger.warning("JWKS URI not configured")
             return None
 
-        logger.info(f"从 {self.jwks_uri} 获取 JWKS 信息...")
+        logger.info(f"Getting JWKS information from {self.jwks_uri}...")
         try:
             response = requests.get(self.jwks_uri, timeout=10)
             response.raise_for_status()
             jwks_data = response.json()
 
             if isinstance(jwks_data, dict):
-                logger.info(f"成功获取 JWKS，包含 {len(jwks_data.get('keys', []))} 个密钥")
+                logger.info(f"Successfully retrieved JWKS, containing {len(jwks_data.get('keys', []))} keys")
                 return jwks_data
             else:
-                logger.error("JWKS 响应格式无效，不是字典类型")
+                logger.error("Invalid JWKS response format, not a dictionary type")
                 return None
         except Exception as e:
-            logger.error(f"从 {self.jwks_uri} 获取 JWKS 失败: {e}")
+            logger.error(f"Failed to get JWKS from {self.jwks_uri}: {e}")
             return None
 
     def decode_jwt_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """解码 JWT token"""
-        logger.info("开始解码 JWT token")
+        """Decode JWT token"""
+        logger.info("Start decoding JWT token")
         try:
-            # 获取 JWKS
-            logger.info("获取 JWKS 公钥信息...")
+            # Get JWKS
+            logger.info("Getting JWKS public key information...")
             jwks = self.get_jwks()
             if not jwks:
-                logger.error("无法获取 JWKS 公钥信息")
+                logger.error("Unable to get JWKS public key information")
                 return None
 
-            # 获取 token header 中的 kid
-            logger.info("解析 token header...")
+            # Get kid from token header
+            logger.info("Parsing token header...")
             unverified_header = jwt.get_unverified_header(token)
             kid = unverified_header.get("kid")
             logger.info(f"Token header kid: {kid}")
 
-            # 找到对应的公钥
-            logger.info("查找匹配的公钥...")
+            # Find the corresponding public key
+            logger.info("Finding matching public key...")
             key = None
             for jwk in jwks.get("keys", []):
                 if jwk.get("kid") == kid:
-                    logger.info(f"找到匹配的公钥，kid: {kid}")
+                    logger.info(f"Found matching public key, kid: {kid}")
                     key = jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
                     break
 
             if not key:
-                logger.error(f"未找到匹配的公钥，token kid: {kid}")
+                logger.error(f"No matching public key found, token kid: {kid}")
                 return None
 
-            # 验证并解码 token
-            logger.info(f"使用算法 {self.algorithm} 验证token，issuer: {self.issuer}, audience: {self.audience}")
+            # Validate and decode token
+            logger.info(
+                f"Verifying token with algorithm {self.algorithm}, issuer: {self.issuer}, audience: {self.audience}"
+            )
             payload = jwt.decode(
                 token,
                 key,
@@ -123,89 +125,93 @@ class BaseAuthProvider(ABC):
                 issuer=self.issuer,
                 options={"verify_exp": True},
             )
-            logger.info(f"Token验证成功，payload sub: {payload.get('sub')}")
+            logger.info(f"Token validation successful, payload sub: {payload.get('sub')}")
             return payload
 
         except jwt.ExpiredSignatureError:
-            logger.warning("Token 已过期")
+            logger.warning("Token has expired")
             return None
         except jwt.InvalidTokenError as e:
-            logger.warning(f"Token 无效: {e}")
+            logger.warning(f"Invalid token: {e}")
             return None
         except Exception as e:
-            logger.error(f"Token 解码错误: {e}")
+            logger.error(f"Token decoding error: {e}")
             return None
 
     def is_configured(self) -> bool:
-        """检查提供商是否已正确配置"""
+        """Check if the provider is configured correctly"""
         is_valid = bool(self.issuer and self.audience)
-        logger.info(f"认证提供商配置检查: issuer={self.issuer}, audience={self.audience}, valid={is_valid}")
+        logger.info(
+            f"Auth provider configuration check: issuer={self.issuer}, audience={self.audience}, valid={is_valid}"
+        )
         return is_valid
 
 
 def _get_auth_provider() -> BaseAuthProvider:
-    """根据配置获取认证提供商实例，如果配置无效则抛出错误"""
-    logger.info("开始初始化认证提供商...")
+    """
+    Get an authentication provider instance based on the configuration,
+    and throw an error if the configuration is invalid
+    """
+    logger.info("Start initializing authentication provider...")
     auth_config = configs.Auth
     provider_name = auth_config.Provider.lower()
-    logger.info(f"配置的认证提供商: {provider_name}")
+    logger.info(f"Configured authentication provider: {provider_name}")
 
-    # 首先检查认证提供商类型是否支持
+    # First, check if the authentication provider type is supported
     match provider_name:
         case "casdoor":
             from .casdoor import CasdoorAuthProvider
 
-            logger.info("初始化 Casdoor 认证提供商")
+            logger.info("Initializing Casdoor authentication provider")
             provider_config = auth_config.Casdoor.model_dump()
-            logger.info(f"Casdoor 配置: {provider_config}")
+            logger.info(f"Casdoor configuration: {provider_config}")
             provider: BaseAuthProvider = CasdoorAuthProvider(provider_config)
         case "bohrium":
             from .bohrium import BohriumAuthProvider
 
-            logger.info("初始化 Bohrium 认证提供商")
+            logger.info("Initializing Bohrium authentication provider")
             provider_config = auth_config.Bohrium.model_dump()
-            logger.info(f"Bohrium 配置: {provider_config}")
+            logger.info(f"Bohrium configuration: {provider_config}")
             provider = BohriumAuthProvider(provider_config)
         case _:
-            error_msg = f"不支持的认证提供商类型: {provider_name}"
+            error_msg = f"Unsupported authentication provider type: {provider_name}"
             logger.error(error_msg)
             raise ValueError(error_msg)
 
-    # 检查认证提供商配置是否有效
+    # Check if the authentication provider configuration is valid
     if not provider.is_configured():
-        error_msg = f"认证提供商 {provider_name} 配置无效"
+        error_msg = f"Authentication provider {provider_name} configuration is invalid"
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-    logger.info(f"认证提供商 {provider_name} 初始化并配置检查成功")
+    logger.info(f"Authentication provider {provider_name} initialized and configuration check passed")
     return provider
 
 
-# 全局认证提供商实例
+# Global authentication provider instance
 try:
     AuthProvider = _get_auth_provider()
 except ValueError as e:
-    logger.error(f"认证提供商初始化失败: {e}")
-    raise RuntimeError(f"认证提供商初始化失败: {e}") from e  # 抛出异常，防止继续使用未初始化的 AuthProvider
+    logger.error(f"Authentication provider initialization failed: {e}")
+    # Raise an exception to prevent further use of the uninitialized AuthProvider
+    raise RuntimeError(f"Authentication provider initialization failed: {e}") from e
 
 
-# === 统一认证依赖函数 ===
-
-
+# === Unified Authentication Dependency Function ===
 async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
-    """从 Authorization header 中获取当前用户ID (用于 HTTP API)"""
+    """Get the current user ID from the Authorization header (for HTTP API)"""
 
-    # 检查 Authorization header
+    # Check Authorization header
     if not authorization:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header")
 
-    # 解析 Bearer token
+    # Parse Bearer token
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format")
 
     access_token = authorization[7:]  # Remove "Bearer " prefix
 
-    # 验证 token
+    # Validate token
     auth_result = AuthProvider.validate_token(access_token)
     if not auth_result.success or not auth_result.user_info:
         raise HTTPException(
@@ -217,13 +223,13 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
 
 
 async def get_current_user_websocket(token: Optional[str] = Query(None, alias="token")) -> str:
-    """从查询参数中的token获取当前用户ID (用于 WebSocket)"""
+    """Get the current user ID from the token in the query parameters (for WebSocket)"""
 
-    # 检查 token
+    # Check token
     if not token:
         raise Exception("Missing authentication token")
 
-    # 验证 token
+    # Validate token
     auth_result = AuthProvider.validate_token(token)
     if not auth_result.success or not auth_result.user_info:
         raise Exception(auth_result.error_message or "Token validation failed")
@@ -232,5 +238,5 @@ async def get_current_user_websocket(token: Optional[str] = Query(None, alias="t
 
 
 def is_auth_configured() -> bool:
-    """检查是否已配置身份认证服务"""
+    """Check if the authentication service is configured"""
     return AuthProvider is not None

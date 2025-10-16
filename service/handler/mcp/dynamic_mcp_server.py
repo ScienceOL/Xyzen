@@ -20,6 +20,7 @@ from fastmcp.server.middleware.logging import StructuredLoggingMiddleware
 from fastmcp.server.middleware.timing import DetailedTimingMiddleware
 
 from internal import configs
+from middleware.auth import AuthProvider
 from middleware.dynamic_mcp_server import DynamicToolMiddleware
 from utils.built_in_tools import register_built_in_tools
 from utils.json_patch import apply_json_patch
@@ -73,7 +74,7 @@ async def proxy_playwright_server() -> None:
 
 
 dynamic_mcp_auth = JWTVerifier(
-    jwks_uri="http://host.docker.internal:8000/.well-known/jwks",
+    jwks_uri=AuthProvider.jwks_uri,
     # NOTE: casdoor 中没有提供标准的 OIDC（如/.well-known/openid-configuration），携带以下两个信息会失败
     # issuer="http://host.docker.internal:8000/",
     # audience="a387a4892ee19b1a2249",
