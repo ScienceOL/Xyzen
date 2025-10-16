@@ -114,6 +114,7 @@ export function Xyzen({
     user,
     fetchAgents,
     fetchMcpServers,
+    fetchUserByToken,
   } = useXyzen();
   const [mounted, setMounted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -130,10 +131,13 @@ export function Xyzen({
     { id: "chat", title: "聊天", component: <XyzenChat /> },
   ];
 
+  // 初始化：设置后端URL和获取用户信息
   useEffect(() => {
     setMounted(true);
     setBackendUrl(backendUrl);
-  }, [backendUrl, setBackendUrl]);
+    // 尝试从localStorage恢复用户会话
+    fetchUserByToken();
+  }, [backendUrl, setBackendUrl, fetchUserByToken]);
 
   // 初始化加载基础数据
   const loadInitialData = useCallback(async () => {
