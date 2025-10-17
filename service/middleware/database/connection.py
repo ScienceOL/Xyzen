@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common import ALEMBIC_INI_PATH
@@ -30,6 +30,11 @@ else:
 # The engine is the gateway to the database.
 async_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
 engine = create_engine(SYNC_DATABASE_URL, echo=False, future=True)
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,  # Necessary for type checking
+    expire_on_commit=False,
+)
 
 
 async def create_db_and_tables() -> None:
@@ -90,13 +95,11 @@ async def create_db_and_tables() -> None:
         await asyncio.to_thread(run_migrations_sync)
     except Exception as e:
         error_msg = f"Database migration failed: {e}"
-        logger.error(error_msg, exc_info=True)
-        raise RuntimeError(error_msg)
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency that provides a database session for each request.
     """
-    async with AsyncSession(async_engine) as session:
+    async with AsyncSessionLocal() as session:
         yield session

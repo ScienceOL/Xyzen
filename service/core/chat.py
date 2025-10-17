@@ -9,6 +9,8 @@ import json
 import logging
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from core.mcp import _async_check_mcp_server_status
 from core.providers import (
     ChatCompletionRequest,
@@ -16,8 +18,10 @@ from core.providers import (
     provider_manager,
 )
 from internal import configs
+from middleware.database.connection import AsyncSessionLocal
 from models import McpServer
 from models.topic import Topic as TopicModel
+from repository import ProviderRepository
 
 # --- Logger Setup ---
 logger = logging.getLogger(__name__)
@@ -25,16 +29,12 @@ logger = logging.getLogger(__name__)
 
 async def _load_providers_from_database() -> None:
     """
-    Load LLM providers from the database providers table.
+    Load LLM providers from the database providers table using the async repository.
     """
     try:
-        from sqlmodel import Session, select
-
-        from middleware.database.connection import engine
-        from models.provider import Provider
-
-        with Session(engine) as session:
-            providers = session.exec(select(Provider)).all()
+        async with AsyncSessionLocal() as db:
+            provider_repo = ProviderRepository(db)
+            providers = await provider_repo.get_all_providers()
 
             for db_provider in providers:
                 try:
@@ -74,12 +74,17 @@ def _map_provider_type(provider_name: str) -> str:
 
 
 async def get_ai_response_stream(
-    message_text: str, topic: TopicModel, connection_manager: Optional[Any] = None, connection_id: Optional[str] = None
+    db: AsyncSession,
+    message_text: str,
+    topic: TopicModel,
+    connection_manager: Optional[Any] = None,
+    connection_id: Optional[str] = None,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Gets a streaming response from the AI model based on the message and chat history.
 
     Args:
+        db: The database session.
         message_text: The user's message.
         topic: The current chat topic containing the history.
 
@@ -115,7 +120,7 @@ async def get_ai_response_stream(
         model = configs.LLM.deployment
 
         # Prepare tools if MCP servers are available
-        tools = await _prepare_mcp_tools(topic)
+        tools = await _prepare_mcp_tools(db, topic)
 
         # Create request
         request = ChatCompletionRequest(
@@ -264,7 +269,7 @@ async def get_ai_response_stream(
 
                 # Execute tools immediately without confirmation
                 try:
-                    tool_results = await _execute_tool_calls(response.tool_calls, topic)
+                    tool_results = await _execute_tool_calls(db, response.tool_calls, topic)
 
                     # Send tool completion events
                     for tool_call in response.tool_calls:
@@ -406,11 +411,12 @@ async def get_ai_response_stream(
         yield {"type": "error", "data": {"error": f"Sorry, the AI service is currently unavailable. Error: {e}"}}
 
 
-async def get_ai_response(message_text: str, topic: TopicModel) -> str:
+async def get_ai_response(db: AsyncSession, message_text: str, topic: TopicModel) -> str:
     """
     Gets a response from the AI model based on the message and chat history.
 
     Args:
+        db: The database session.
         message_text: The user's message.
         topic: The current chat topic containing the history.
 
@@ -445,7 +451,7 @@ async def get_ai_response(message_text: str, topic: TopicModel) -> str:
         model = configs.LLM.deployment
 
         # Prepare tools if MCP servers are available
-        tools = await _prepare_mcp_tools(topic)
+        tools = await _prepare_mcp_tools(db, topic)
 
         # Create request
         request = ChatCompletionRequest(
@@ -480,7 +486,7 @@ async def get_ai_response(message_text: str, topic: TopicModel) -> str:
                     logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
 
                     # Execute the tool (this would need to be implemented)
-                    tool_result = await _execute_tool_call(tool_name, tool_args, topic)
+                    tool_result = await _execute_tool_call(db, tool_name, tool_args, topic)
 
                     # Process and format tool result
                     formatted_result = _format_tool_result(tool_result, tool_name)
@@ -544,11 +550,12 @@ async def get_ai_response(message_text: str, topic: TopicModel) -> str:
         return f"Sorry, the AI service is currently unavailable. Error: {e}"
 
 
-async def _prepare_mcp_tools(topic: TopicModel) -> List[Dict[str, Any]]:
+async def _prepare_mcp_tools(db: AsyncSession, topic: TopicModel) -> List[Dict[str, Any]]:
     """
     Prepare MCP tools for the AI request.
 
     Args:
+        db: The database session.
         topic: The current chat topic
 
     Returns:
@@ -569,41 +576,36 @@ async def _prepare_mcp_tools(topic: TopicModel) -> List[Dict[str, Any]]:
         logger.info("MCP server tools updated")
 
         # Refresh server data from database to build tool list
-        from sqlmodel import Session
+        refreshed_servers = []
+        for server in topic.session.agent.mcp_servers:
+            refreshed_server = await db.get(type(server), server.id)
+            if refreshed_server:
+                refreshed_servers.append(refreshed_server)
 
-        from middleware.database.connection import engine
+        # Build tool list
+        for server in refreshed_servers:
+            if server.tools and server.status == "online":
+                for tool in server.tools:
+                    # Convert MCP tool format to standard format
+                    standard_tool = {
+                        "name": tool.get("name", ""),
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("inputSchema", {}),
+                    }
+                    tools.append(standard_tool)
 
-        with Session(engine) as session:
-            # Refresh server data
-            refreshed_servers = []
-            for server in topic.session.agent.mcp_servers:
-                refreshed_server = session.get(type(server), server.id)
-                if refreshed_server:
-                    refreshed_servers.append(refreshed_server)
-
-            # Build tool list
-            for server in refreshed_servers:
-                if server.tools and server.status == "online":
-                    for tool in server.tools:
-                        # Convert MCP tool format to standard format
-                        standard_tool = {
-                            "name": tool.get("name", ""),
-                            "description": tool.get("description", ""),
-                            "parameters": tool.get("inputSchema", {}),
-                        }
-                        tools.append(standard_tool)
-
-            if tools:
-                logger.info(f"Using {len(tools)} tools from {len(refreshed_servers)} servers")
+        if tools:
+            logger.info(f"Using {len(tools)} tools from {len(refreshed_servers)} servers")
 
     return tools
 
 
-async def _execute_tool_call(tool_name: str, tool_args: str, topic: TopicModel) -> str:
+async def _execute_tool_call(db: AsyncSession, tool_name: str, tool_args: str, topic: TopicModel) -> str:
     """
     Execute a tool call by finding the appropriate MCP server and calling the tool.
 
     Args:
+        db: The database session.
         tool_name: The name of the tool to execute
         tool_args: JSON string containing the tool arguments
         topic: The current chat topic
@@ -614,10 +616,6 @@ async def _execute_tool_call(tool_name: str, tool_args: str, topic: TopicModel) 
     try:
         import json
 
-        from sqlmodel import Session
-
-        from middleware.database.connection import engine
-
         try:
             args_dict = json.loads(tool_args) if tool_args else {}
         except json.JSONDecodeError:
@@ -627,19 +625,18 @@ async def _execute_tool_call(tool_name: str, tool_args: str, topic: TopicModel) 
 
         # Find the MCP server that provides this tool
         if topic.session.agent and topic.session.agent.mcp_servers:
-            with Session(engine) as session:
-                for server in topic.session.agent.mcp_servers:
-                    refreshed_server = session.get(type(server), server.id)
-                    if refreshed_server and refreshed_server.tools and refreshed_server.status == "online":
-                        for tool in refreshed_server.tools:
-                            if tool.get("name") == tool_name:
-                                # Found the tool, now execute it via MCP
-                                try:
-                                    result = await _call_mcp_tool(refreshed_server, tool_name, args_dict)
-                                    return str(result)
-                                except Exception as exec_error:
-                                    logger.error(f"MCP tool execution failed: {exec_error}")
-                                    return f"Error executing tool '{tool_name}': {exec_error}"
+            for server in topic.session.agent.mcp_servers:
+                refreshed_server = await db.get(type(server), server.id)
+                if refreshed_server and refreshed_server.tools and refreshed_server.status == "online":
+                    for tool in refreshed_server.tools:
+                        if tool.get("name") == tool_name:
+                            # Found the tool, now execute it via MCP
+                            try:
+                                result = await _call_mcp_tool(refreshed_server, tool_name, args_dict)
+                                return str(result)
+                            except Exception as exec_error:
+                                logger.error(f"MCP tool execution failed: {exec_error}")
+                                return f"Error executing tool '{tool_name}': {exec_error}"
 
         return f"Tool '{tool_name}' not found or server not available"
 
@@ -763,11 +760,12 @@ def _format_tool_result(tool_result: Any, tool_name: str) -> str:
         return f"Tool '{tool_name}' executed but result formatting failed: {e}"
 
 
-async def _execute_tool_calls(tool_calls: List[Dict[str, Any]], topic: TopicModel) -> Dict[str, Any]:
+async def _execute_tool_calls(db: AsyncSession, tool_calls: List[Dict[str, Any]], topic: TopicModel) -> Dict[str, Any]:
     """
     Execute multiple tool calls and return their results.
 
     Args:
+        db: The database session.
         tool_calls: List of tool call dictionaries from AI response
         topic: The current chat topic
 
@@ -785,7 +783,7 @@ async def _execute_tool_calls(tool_calls: List[Dict[str, Any]], topic: TopicMode
         logger.info(f"Executing tool call {tool_call_id}: {tool_name}")
 
         try:
-            result = await _execute_tool_call(tool_name, tool_args, topic)
+            result = await _execute_tool_call(db, tool_name, tool_args, topic)
             results[tool_call_id] = {"content": result}
         except Exception as e:
             logger.error(f"Failed to execute tool call {tool_call_id}: {e}")

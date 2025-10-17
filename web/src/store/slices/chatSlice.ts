@@ -58,14 +58,13 @@ function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
 
     if (parsed.event === "tool_call_request") {
       const toolCallId =
-        parsed.id || parsed.toolCallId || msg.id || `tool-${Date.now()}`;
+        parsed.id || parsed.toolCallId || msg.id || crypto.randomUUID();
       const toolCall: ToolCall = {
         id: toolCallId,
         name: parsed.name || "Unknown Tool",
         description: parsed.description,
         arguments: { ...(parsed.arguments || {}) },
-        status:
-          (parsed.status as ToolCall["status"]) || "waiting_confirmation",
+        status: (parsed.status as ToolCall["status"]) || "waiting_confirmation",
         timestamp: parsed.timestamp
           ? new Date(parsed.timestamp).toISOString()
           : msg.created_at,
