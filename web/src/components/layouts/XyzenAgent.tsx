@@ -1,11 +1,12 @@
 "use client";
 import McpIcon from "@/assets/McpIcon";
 import { Badge } from "@/components/base/Badge";
-import { PencilIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useState } from "react";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EditAgentModal from "@/components/modals/EditAgentModal";
 import { useXyzen } from "@/store";
 
@@ -24,6 +25,7 @@ interface AgentCardProps {
   agent: Agent;
   onClick?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
+  onDelete?: (agent: Agent) => void;
 }
 
 // 定义动画变体
@@ -41,7 +43,7 @@ const itemVariants: Variants = {
 };
 
 // 详细版本-包括名字，描述，头像，标签以及GPT模型
-const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick, onEdit }) => {
+const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick, onEdit, onDelete }) => {
   return (
     <motion.div
       layout
@@ -86,17 +88,30 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick, onEdit }) => {
 
       {/* 编辑按钮 - 高度和整个条目相同，带动画效果 */}
       {agent.id !== "default-chat" && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit?.(agent);
-          }}
-          className="z-10 ml-3 flex items-center justify-center rounded-lg bg-transparent px-3 text-neutral-400 opacity-0 transition-all duration-300 ease-in-out hover:bg-neutral-100 hover:text-indigo-600 hover:shadow-md hover:scale-105 group-hover:opacity-100 group-hover:shadow-sm active:scale-95 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-indigo-400"
-          style={{ alignSelf: "stretch", margin: "4px 0" }}
-          title="编辑助手"
-        >
-          <PencilIcon className="h-5 w-5 transition-transform duration-200" />
-        </button>
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(agent);
+            }}
+            className="z-10 ml-3 flex items-center justify-center rounded-lg bg-transparent px-3 text-neutral-400 opacity-0 transition-all duration-300 ease-in-out hover:bg-neutral-100 hover:text-indigo-600 hover:shadow-md hover:scale-105 group-hover:opacity-100 group-hover:shadow-sm active:scale-95 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-indigo-400"
+            style={{ alignSelf: "stretch", margin: "4px 0" }}
+            title="编辑助手"
+          >
+            <PencilIcon className="h-5 w-5 transition-transform duration-200" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.(agent);
+            }}
+            className="z-10 ml-1 flex items-center justify-center rounded-lg bg-transparent px-3 text-neutral-400 opacity-0 transition-all duration-300 ease-in-out hover:bg-neutral-100 hover:text-red-600 hover:shadow-md hover:scale-105 group-hover:opacity-100 group-hover:shadow-sm active:scale-95 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-red-400"
+            style={{ alignSelf: "stretch", margin: "4px 0" }}
+            title="删除助手"
+          >
+            <TrashIcon className="h-5 w-5 transition-transform duration-200" />
+          </button>
+        </>
       )}
     </motion.div>
   );
@@ -117,7 +132,9 @@ export default function XyzenAgent() {
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
-  const { agents, fetchAgents, createDefaultChannel } = useXyzen();
+  const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
+  const { agents, fetchAgents, createDefaultChannel, deleteAgent } = useXyzen();
 
   // 默认的"随便聊聊"助手
   const defaultAgent: Agent = {
@@ -151,6 +168,15 @@ export default function XyzenAgent() {
     setEditModalOpen(true);
   };
 
+  const handleDeleteClick = (agent: Agent) => {
+    // 默认助手不可删除
+    if (agent.id === "default-chat") {
+      return;
+    }
+    setAgentToDelete(agent);
+    setConfirmModalOpen(true);
+  };
+
   // 合并默认助手和用户助手
   const allAgents = [defaultAgent, ...agents];
 
@@ -167,6 +193,7 @@ export default function XyzenAgent() {
           agent={agent}
           onClick={handleAgentClick}
           onEdit={handleEditClick}
+          onDelete={handleDeleteClick}
         />
       ))}
       <button
@@ -184,6 +211,19 @@ export default function XyzenAgent() {
         onClose={() => setEditModalOpen(false)}
         agent={editingAgent}
       />
+      {agentToDelete && (
+        <ConfirmationModal
+          isOpen={isConfirmModalOpen}
+          onClose={() => setConfirmModalOpen(false)}
+          onConfirm={() => {
+            deleteAgent(agentToDelete.id);
+            setConfirmModalOpen(false);
+            setAgentToDelete(null);
+          }}
+          title="Delete Agent"
+          message={`Are you sure you want to delete the agent "${agentToDelete.name}"?`}
+        />
+      )}
     </motion.div>
   );
 }

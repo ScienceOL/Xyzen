@@ -13,3 +13,7 @@ export type McpServerCreate = Omit<
   McpServer,
   "id" | "status" | "tools" | "user_id"
 >;
+
+export type McpServerUpdate = Partial<
+  Omit<McpServer, "id" | "tools" | "user_id">
+>;

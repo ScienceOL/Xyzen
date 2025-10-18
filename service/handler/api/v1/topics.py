@@ -86,3 +86,43 @@ async def get_topic_messages(
     result = await db.exec(statement)
     messages = result.all()
     return list(messages)
+
+
+@router.delete("/{topic_id}", status_code=204)
+async def delete_topic(
+    topic_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
+) -> None:
+    """
+    Delete a topic and its associated messages.
+    Only allows deletion if the current user owns the session that contains this topic.
+    """
+    # Get the topic first
+    topic = await db.get(Topic, topic_id)
+    if not topic:
+        # If the topic is already deleted, we can return a 204 status code.
+        return
+
+    # Get the session that contains this topic
+    session = await db.get(Session, topic.session_id)
+    if not session:
+        # This should not happen if the topic exists, but as a safeguard
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Verify that the current user owns this session
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to delete this topic")
+
+    # SQLModel does not support cascade deletes on the relationship yet,
+    # so we need to delete the messages manually.
+    # See: https://github.com/tiangolo/sqlmodel/issues/132
+    statement = select(Message).where(Message.topic_id == topic_id)
+    result = await db.exec(statement)
+    messages_to_delete = result.all()
+    for message in messages_to_delete:
+        await db.delete(message)
+
+    # Delete the topic itself
+    await db.delete(topic)
+    await db.commit()
+
+    return

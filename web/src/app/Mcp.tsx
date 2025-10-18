@@ -1,4 +1,5 @@
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
+import { EditMcpServerModal } from "@/components/modals/EditMcpServerModal";
 import { ToolTestModal } from "@/components/modals/ToolTestModal";
 import { websocketService } from "@/service/websocketService";
 import { useXyzen } from "@/store";
@@ -10,6 +11,7 @@ import {
   CommandLineIcon,
   ExclamationTriangleIcon,
   GlobeAltIcon,
+  PencilIcon,
   PlayIcon,
   PlusIcon,
   ServerStackIcon,
@@ -50,6 +52,7 @@ const ServerStatusIndicator: React.FC<ServerStatusIndicatorProps> = ({
 interface McpServerCardProps {
   server: McpServer;
   onRemove: (id: string) => void;
+  onEdit: (server: McpServer) => void;
   onTestTool: (
     server: McpServer,
     toolName: string,
@@ -60,6 +63,7 @@ interface McpServerCardProps {
 const McpServerCard: React.FC<McpServerCardProps> = ({
   server,
   onRemove,
+  onEdit,
   onTestTool,
 }) => {
   const toolCount = server.tools?.length || 0;
@@ -140,6 +144,14 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
         </div>
 
         <div className="ml-6 flex items-center">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onEdit(server)}
+            className="rounded-lg p-2 text-neutral-400 opacity-0 transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 group-hover:opacity-100 disabled:opacity-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+            title="Edit Server"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleRemove}
@@ -228,6 +240,7 @@ export function Mcp() {
     updateMcpServerInList,
     backendUrl,
     openAddMcpServerModal,
+    openEditMcpServerModal,
     getLoading,
     // MCP Tool actions
     toolTestModal,
@@ -236,6 +249,10 @@ export function Mcp() {
   } = useXyzen();
 
   const mcpServersLoading = getLoading("mcpServers");
+
+  const handleEditServer = (server: McpServer) => {
+    openEditMcpServerModal(server);
+  };
 
   const handleTestTool = (
     server: McpServer,
@@ -367,6 +384,7 @@ export function Mcp() {
                           <McpServerCard
                             server={server}
                             onRemove={removeMcpServer}
+                            onEdit={handleEditServer}
                             onTestTool={handleTestTool}
                           />
                         </motion.div>
@@ -438,6 +456,9 @@ export function Mcp() {
             toolDescription={toolTestModal.toolDescription}
           />
         )}
+
+      {/* Edit MCP Server Modal */}
+      <EditMcpServerModal />
     </div>
   );
 }

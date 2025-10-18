@@ -148,6 +148,7 @@ export interface ChatSlice {
   sendMessage: (message: string) => void;
   createDefaultChannel: (agentId?: string) => Promise<void>;
   updateTopicName: (topicId: string, newName: string) => Promise<void>;
+  deleteTopic: (topicId: string) => Promise<void>;
 
   // Tool call confirmation methods
   confirmToolCall: (channelId: string, toolCallId: string) => void;
@@ -869,6 +870,59 @@ export const createChatSlice: StateCreator<
       console.log(`Topic ${topicId} name updated to: ${newName}`);
     } catch (error) {
       console.error("Failed to update topic name:", error);
+      throw error;
+    }
+  },
+
+  deleteTopic: async (topicId: string) => {
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/topics/${topicId}`,
+        {
+          method: "DELETE",
+          headers,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete topic");
+      }
+
+      set((state: XyzenState) => {
+        // Remove from channels
+        delete state.channels[topicId];
+
+        // Remove from chatHistory
+        state.chatHistory = state.chatHistory.filter(
+          (item) => item.id !== topicId,
+        );
+
+        // If the deleted topic was active, activate another one
+        if (state.activeChatChannel === topicId) {
+          const nextTopic = state.chatHistory[0];
+          if (nextTopic) {
+            state.activeChatChannel = nextTopic.id;
+            get().activateChannel(nextTopic.id);
+          } else {
+            state.activeChatChannel = null;
+          }
+        }
+      });
+
+      console.log(`Topic ${topicId} deleted`);
+    } catch (error) {
+      console.error("Failed to delete topic:", error);
       throw error;
     }
   },

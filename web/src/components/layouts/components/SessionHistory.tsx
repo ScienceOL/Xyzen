@@ -2,6 +2,7 @@
 
 import EditableTitle from "@/components/base/EditableTitle";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { formatTime } from "@/lib/formatDate";
 import { useXyzen } from "@/store";
 import type { ChatHistoryItem } from "@/store/types";
@@ -10,10 +11,11 @@ import { MapPinIcon } from "@heroicons/react/20/solid";
 import {
   ChevronRightIcon,
   ClockIcon,
+  TrashIcon,
   UserIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 interface SessionHistoryProps {
   isOpen: boolean;
@@ -26,6 +28,10 @@ export default function SessionHistory({
   onClose,
   onSelectTopic,
 }: SessionHistoryProps) {
+  const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [topicToDelete, setTopicToDelete] = useState<ChatHistoryItem | null>(
+    null,
+  );
   const {
     chatHistory,
     chatHistoryLoading,
@@ -36,6 +42,7 @@ export default function SessionHistory({
     user,
     fetchChatHistory,
     updateTopicName,
+    deleteTopic,
   } = useXyzen();
 
   // 当组件打开时获取历史记录
@@ -107,6 +114,19 @@ export default function SessionHistory({
   const handleTogglePin = (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
     togglePinChat(chatId);
+  };
+
+  const handleDeleteTopic = (e: React.MouseEvent, topic: ChatHistoryItem) => {
+    e.stopPropagation();
+
+    // Prevent deleting the last topic in the session
+    if (sortedHistory.length <= 1) {
+      console.warn("Cannot delete the last topic in a session");
+      return;
+    }
+
+    setTopicToDelete(topic);
+    setConfirmModalOpen(true);
   };
 
   // 未登录时的UI
@@ -220,6 +240,22 @@ export default function SessionHistory({
               </div>
               <div className="ml-3 flex items-center gap-1">
                 <button
+                  className={`invisible rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-red-700 group-hover:visible dark:hover:bg-neutral-800 dark:hover:text-red-400 ${
+                    sortedHistory.length <= 1
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                  title={
+                    sortedHistory.length <= 1
+                      ? "不能删除最后一个会话"
+                      : "删除会话"
+                  }
+                  onClick={(e) => handleDeleteTopic(e, chat)}
+                  disabled={sortedHistory.length <= 1}
+                >
+                  <TrashIcon className={`h-3.5 w-3.5`} />
+                </button>
+                <button
                   className="invisible rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700 group-hover:visible dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
                   title={chat.isPinned ? "取消置顶" : "置顶会话"}
                   onClick={(e) => handleTogglePin(e, chat.id)}
@@ -294,6 +330,19 @@ export default function SessionHistory({
           })()}
         </div>
       </Transition>
+      {topicToDelete && (
+        <ConfirmationModal
+          isOpen={isConfirmModalOpen}
+          onClose={() => setConfirmModalOpen(false)}
+          onConfirm={() => {
+            deleteTopic(topicToDelete.id);
+            setConfirmModalOpen(false);
+            setTopicToDelete(null);
+          }}
+          title="Delete Topic"
+          message={`Are you sure you want to delete the topic "${topicToDelete.title}"?`}
+        />
+      )}
     </>
   );
 }

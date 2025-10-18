@@ -1,5 +1,5 @@
 import { mcpService } from "@/service/mcpService";
-import type { McpServer, McpServerCreate } from "@/types/mcp";
+import type { McpServer, McpServerCreate, McpServerUpdate } from "@/types/mcp";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
 import { LoadingKeys } from "./loadingSlice";
@@ -7,15 +7,16 @@ import { LoadingKeys } from "./loadingSlice";
 export interface McpSlice {
   mcpServers: McpServer[];
   lastFetchTime: number; // 添加最后一次获取时间
+  isEditMcpServerModalOpen: boolean;
+  editingMcpServer: McpServer | null;
   fetchMcpServers: () => Promise<void>;
   refreshMcpServers: () => Promise<void>;
   addMcpServer: (server: McpServerCreate) => Promise<void>;
-  editMcpServer: (
-    id: string,
-    server: Partial<McpServerCreate>,
-  ) => Promise<void>;
+  editMcpServer: (id: string, server: McpServerUpdate) => Promise<void>;
   removeMcpServer: (id: string) => Promise<void>;
   updateMcpServerInList: (server: McpServer) => void;
+  openEditMcpServerModal: (server: McpServer) => void;
+  closeEditMcpServerModal: () => void;
 }
 
 export const createMcpSlice: StateCreator<
@@ -26,6 +27,14 @@ export const createMcpSlice: StateCreator<
 > = (set, get) => ({
   mcpServers: [],
   lastFetchTime: 0,
+  isEditMcpServerModalOpen: false,
+  editingMcpServer: null,
+  openEditMcpServerModal: (server) => {
+    set({ isEditMcpServerModalOpen: true, editingMcpServer: server });
+  },
+  closeEditMcpServerModal: () => {
+    set({ isEditMcpServerModalOpen: false, editingMcpServer: null });
+  },
   fetchMcpServers: async () => {
     const { setLoading } = get();
 

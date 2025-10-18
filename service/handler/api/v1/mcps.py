@@ -7,10 +7,10 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.mcp import _async_check_mcp_server_status
+from middleware.auth import get_current_user
 from middleware.database.connection import get_session
 from models import McpServer
-
-from .sessions import get_current_user
+from models.mcp import McpServerCreate, McpServerUpdate
 
 router = APIRouter()
 
@@ -32,12 +32,13 @@ async def create_mcp_server(
     session: AsyncSession = Depends(get_session),
     user: str = Depends(get_current_user),
     background_tasks: BackgroundTasks,
-    mcp_server: McpServer,
+    mcp_server: McpServerCreate,
 ) -> McpServer:
-    # Set the user_id from authenticated user
-    mcp_server.user_id = user
+    # Create MCP server with authenticated user_id
+    mcp_data = mcp_server.model_dump()
+    mcp_data["user_id"] = user
 
-    db_mcp_server = McpServer.model_validate(mcp_server)
+    db_mcp_server = McpServer.model_validate(mcp_data)
     session.add(db_mcp_server)
     await session.commit()
 
@@ -87,7 +88,7 @@ async def update_mcp_server(
     session: AsyncSession = Depends(get_session),
     user: str = Depends(get_current_user),
     mcp_server_id: UUID,
-    mcp_server: McpServer,
+    mcp_server: McpServerUpdate,
 ) -> McpServer:
     db_mcp_server = await session.get(McpServer, mcp_server_id)
     if not db_mcp_server:
@@ -100,8 +101,6 @@ async def update_mcp_server(
         )
 
     mcp_data = mcp_server.model_dump(exclude_unset=True)
-    # Don't allow user_id to be changed
-    mcp_data.pop("user_id", None)
 
     for key, value in mcp_data.items():
         setattr(db_mcp_server, key, value)

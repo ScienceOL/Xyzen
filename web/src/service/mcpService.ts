@@ -1,6 +1,6 @@
 import { authService } from "@/service/authService";
 import { useXyzen } from "@/store";
-import type { McpServer, McpServerCreate } from "@/types/mcp";
+import type { McpServer, McpServerCreate, McpServerUpdate } from "@/types/mcp";
 
 const getBackendUrl = () => {
   const url = useXyzen.getState().backendUrl;
@@ -54,7 +54,7 @@ export const mcpService = {
 
   async updateMcpServer(
     id: string,
-    server: Partial<McpServerCreate>,
+    server: McpServerUpdate,
   ): Promise<McpServer> {
     const response = await fetch(`${getBackendUrl()}/xyzen/api/v1/mcps/${id}`, {
       method: "PATCH",
