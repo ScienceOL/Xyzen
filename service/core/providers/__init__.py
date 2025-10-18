@@ -11,6 +11,7 @@ from schemas.providers import ProviderType
 
 from .anthropic import AnthropicProvider
 from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from .google import GoogleProvider
 from .openai import OpenAIProvider
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ class LLMProviderFactory:
         ProviderType.OPENAI: OpenAIProvider,
         ProviderType.AZURE_OPENAI: OpenAIProvider,
         ProviderType.ANTHROPIC: AnthropicProvider,
+        ProviderType.GOOGLE: GoogleProvider,
     }
 
     @classmethod
@@ -264,6 +266,7 @@ __all__ = [
     "ChatCompletionResponse",
     "OpenAIProvider",
     "AnthropicProvider",
+    "GoogleProvider",
     "LLMProviderFactory",
     "LLMProviderManager",
     "ProviderType",

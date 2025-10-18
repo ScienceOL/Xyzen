@@ -7,3 +7,4 @@ class ProviderType(Enum):
     OPENAI = "openai"
     AZURE_OPENAI = "azure_openai"
     ANTHROPIC = "anthropic"
+    GOOGLE = "google"
