@@ -24,10 +24,11 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { LlmProviders } from "@/app/LlmProviders";
 import { Mcp } from "@/app/Mcp";
 import McpIcon from "@/assets/McpIcon";
-import { AuthStatus, ThemeToggle } from "@/components/features";
+import { AuthStatus, SettingsButton, ThemeToggle } from "@/components/features";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { AddLlmProviderModal } from "@/components/modals/AddLlmProviderModal";
+import { SettingsModal } from "@/components/modals/SettingsModal";
 import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 // theme toggle is now a separate component
@@ -271,6 +272,7 @@ export function Xyzen({
             </Tab.List>
             <div className="flex items-center space-x-1">
               {showThemeToggle && <ThemeToggle />}
+              <SettingsButton />
               <button
                 className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
                 title="MCP 管理"
@@ -384,6 +386,7 @@ export function Xyzen({
       </div>
       <AddMcpServerModal />
       {showLlmProvider && <AddLlmProviderModal />}
+      <SettingsModal />
     </DndContext>
   );
 }

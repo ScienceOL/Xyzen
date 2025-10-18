@@ -1,59 +1,35 @@
 import { Input } from "@/components/base/Input";
 import { Modal } from "@/components/base/Modal";
-import { llmProviderService } from "@/service/llmProviderService";
 import { useXyzen } from "@/store";
-import type {
-  LlmProviderCreate,
-  SupportedProviderType,
-} from "@/types/llmProvider";
+import type { LlmProviderCreate } from "@/types/llmProvider";
 import { Button, Field, Label } from "@headlessui/react";
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 
 export function AddLlmProviderModal() {
-  const {
-    isAddLlmProviderModalOpen,
-    closeAddLlmProviderModal,
-    addLlmProvider,
-  } = useXyzen();
-  const [newProvider, setNewProvider] = useState<LlmProviderCreate>({
-    Name: "",
-    Api: "",
-    Key: "",
-    Model: "",
-    MaxTokens: null,
-    Temperature: null,
-    Timeout: null,
+  const { isAddLlmProviderModalOpen, closeAddLlmProviderModal, addProvider } =
+    useXyzen();
+  const [newProvider, setNewProvider] = useState<
+    Omit<LlmProviderCreate, "user_id" | "provider_type">
+  >({
+    name: "",
+    api: "",
+    key: "",
+    model: "",
+    max_tokens: 4096,
+    temperature: 0.7,
+    timeout: 60,
   });
-  const [supportedTypes, setSupportedTypes] = useState<SupportedProviderType[]>(
-    [],
-  );
-  console.log(supportedTypes);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchSupportedTypes = async () => {
-      try {
-        const types = await llmProviderService.getSupportedTypes();
-        setSupportedTypes(types);
-      } catch (error) {
-        console.error("Failed to fetch supported types:", error);
-      }
-    };
-
-    if (isAddLlmProviderModalOpen) {
-      fetchSupportedTypes();
-    }
-  }, [isAddLlmProviderModalOpen, setSupportedTypes]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewProvider((prev) => ({
       ...prev,
       [name]:
-        name === "MaxTokens" || name === "Temperature" || name === "Timeout"
+        name === "max_tokens" || name === "temperature" || name === "timeout"
           ? value === ""
-            ? null
+            ? Number(0)
             : Number(value)
           : value,
     }));
@@ -61,13 +37,13 @@ export function AddLlmProviderModal() {
 
   const handleReset = () => {
     setNewProvider({
-      Name: "",
-      Api: "",
-      Key: "",
-      Model: "",
-      MaxTokens: null,
-      Temperature: null,
-      Timeout: null,
+      name: "",
+      api: "",
+      key: "",
+      model: "",
+      max_tokens: 4096,
+      temperature: 0.7,
+      timeout: 60,
     });
     setError(null);
   };
@@ -77,10 +53,10 @@ export function AddLlmProviderModal() {
     setLoading(true);
 
     if (
-      !newProvider.Name ||
-      !newProvider.Api ||
-      !newProvider.Key ||
-      !newProvider.Model
+      !newProvider.name ||
+      !newProvider.api ||
+      !newProvider.key ||
+      !newProvider.model
     ) {
       setError("Name, API endpoint, API key, and model are required.");
       setLoading(false);
@@ -88,8 +64,13 @@ export function AddLlmProviderModal() {
     }
 
     try {
-      await addLlmProvider(newProvider);
+      await addProvider({
+        ...newProvider,
+        provider_type: "openai",
+        user_id: "",
+      } as LlmProviderCreate);
       handleReset();
+      closeAddLlmProviderModal();
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Failed to add provider",
@@ -108,21 +89,21 @@ export function AddLlmProviderModal() {
     const lowerName = name.toLowerCase();
     if (lowerName.includes("openai") && !lowerName.includes("azure")) {
       return {
-        Api: "https://api.openai.com/v1",
-        Model: "gpt-4o-mini",
+        api: "https://api.openai.com/v1",
+        model: "gpt-4o-mini",
       };
     } else if (lowerName.includes("azure")) {
       return {
-        Api: "https://your-resource.openai.azure.com/",
-        Model: "gpt-4o",
+        api: "https://your-resource.openai.azure.com/",
+        model: "gpt-4o",
       };
     } else if (
       lowerName.includes("anthropic") ||
       lowerName.includes("claude")
     ) {
       return {
-        Api: "https://api.anthropic.com",
-        Model: "claude-3-haiku-20240307",
+        api: "https://api.anthropic.com",
+        model: "claude-3-haiku-20240307",
       };
     }
     return {};
@@ -133,7 +114,7 @@ export function AddLlmProviderModal() {
     const templates = getProviderTemplates(value);
     setNewProvider((prev) => ({
       ...prev,
-      Name: value,
+      name: value,
       ...templates,
     }));
   };
@@ -150,8 +131,8 @@ export function AddLlmProviderModal() {
             Provider Name *
           </Label>
           <Input
-            name="Name"
-            value={newProvider.Name}
+            name="name"
+            value={newProvider.name}
             onChange={handleNameChange}
             placeholder="e.g., OpenAI GPT-4, Azure OpenAI, Claude"
             className="mt-1"
@@ -163,8 +144,8 @@ export function AddLlmProviderModal() {
             API Endpoint *
           </Label>
           <Input
-            name="Api"
-            value={newProvider.Api}
+            name="api"
+            value={newProvider.api}
             onChange={handleInputChange}
             placeholder="https://api.openai.com/v1"
             className="mt-1"
@@ -176,9 +157,9 @@ export function AddLlmProviderModal() {
             API Key *
           </Label>
           <Input
-            name="Key"
+            name="key"
             type="password"
-            value={newProvider.Key}
+            value={newProvider.key}
             onChange={handleInputChange}
             placeholder="sk-..."
             className="mt-1"
@@ -190,8 +171,8 @@ export function AddLlmProviderModal() {
             Model *
           </Label>
           <Input
-            name="Model"
-            value={newProvider.Model}
+            name="model"
+            value={newProvider.model}
             onChange={handleInputChange}
             placeholder="gpt-4o, claude-3-haiku-20240307"
             className="mt-1"
@@ -204,9 +185,9 @@ export function AddLlmProviderModal() {
               Max Tokens
             </Label>
             <Input
-              name="MaxTokens"
+              name="max_tokens"
               type="number"
-              value={newProvider.MaxTokens?.toString() || ""}
+              value={newProvider.max_tokens?.toString() || ""}
               onChange={handleInputChange}
               placeholder="4096"
               className="mt-1"
@@ -218,12 +199,12 @@ export function AddLlmProviderModal() {
               Temperature
             </Label>
             <Input
-              name="Temperature"
+              name="temperature"
               type="number"
               step="0.1"
               min="0"
               max="2"
-              value={newProvider.Temperature?.toString() || ""}
+              value={newProvider.temperature?.toString() || ""}
               onChange={handleInputChange}
               placeholder="0.7"
               className="mt-1"
@@ -235,9 +216,9 @@ export function AddLlmProviderModal() {
               Timeout (s)
             </Label>
             <Input
-              name="Timeout"
+              name="timeout"
               type="number"
-              value={newProvider.Timeout?.toString() || ""}
+              value={newProvider.timeout?.toString() || ""}
               onChange={handleInputChange}
               placeholder="30"
               className="mt-1"

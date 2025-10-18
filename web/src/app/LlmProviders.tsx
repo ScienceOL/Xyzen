@@ -10,45 +10,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { useEffect } from "react";
 
-interface ProviderStatusIndicatorProps {
-  isActive: boolean;
-  isAvailable: boolean;
-}
-
-const ProviderStatusIndicator: React.FC<ProviderStatusIndicatorProps> = ({
-  isActive,
-  isAvailable,
-}) => {
-  return (
-    <div className="flex items-center">
-      {isActive && (
-        <CheckCircleIcon
-          className="h-4 w-4 text-green-500 mr-2"
-          title="Active Provider"
-        />
-      )}
-      <span
-        className={`h-2.5 w-2.5 rounded-full ${
-          isAvailable ? "bg-green-500" : "bg-red-500"
-        }`}
-      />
-      <span
-        className={`ml-2 text-xs font-medium ${
-          isAvailable
-            ? "text-green-700 dark:text-green-300"
-            : "text-red-700 dark:text-red-300"
-        }`}
-      >
-        {isAvailable ? "Available" : "Unavailable"}
-      </span>
-    </div>
-  );
-};
-
 interface LlmProviderCardProps {
   provider: LlmProviderResponse;
-  onRemove: (id: number) => void;
-  onSetActive: (id: number) => void;
+  onRemove: (id: string) => void;
+  onSetActive: (id: string) => void;
 }
 
 const LlmProviderCard: React.FC<LlmProviderCardProps> = ({
@@ -64,6 +29,8 @@ const LlmProviderCard: React.FC<LlmProviderCardProps> = ({
         return "Azure OpenAI";
       case "anthropic":
         return "Anthropic";
+      case "google":
+        return "Google Gemini";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
@@ -72,19 +39,21 @@ const LlmProviderCard: React.FC<LlmProviderCardProps> = ({
   return (
     <div
       className={`group relative flex items-center justify-between rounded-lg border p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 ${
-        provider.is_active
+        provider.is_default
           ? "border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/30"
           : "border-neutral-200 dark:border-neutral-800"
       }`}
     >
       <div className="flex-1 overflow-hidden">
         <div className="flex items-center">
-          <ProviderStatusIndicator
-            isActive={provider.is_active}
-            isAvailable={provider.is_available}
-          />
-          <h3 className="ml-3 truncate text-sm font-medium text-neutral-800 dark:text-white">
-            {provider.Name}
+          {provider.is_default && (
+            <CheckCircleIcon
+              className="mr-2 h-4 w-4 text-green-500"
+              title="Default Provider"
+            />
+          )}
+          <h3 className="truncate text-sm font-medium text-neutral-800 dark:text-white">
+            {provider.name}
           </h3>
         </div>
         <div className="mt-1 flex items-center text-xs text-neutral-500">
@@ -93,18 +62,18 @@ const LlmProviderCard: React.FC<LlmProviderCardProps> = ({
             {getProviderTypeDisplay(provider.provider_type)}
           </span>
           <span className="mx-1.5">·</span>
-          <span className="truncate">{provider.Model}</span>
+          <span className="truncate">{provider.model}</span>
         </div>
-        <p className="mt-1 truncate text-xs text-neutral-400">{provider.Api}</p>
+        <p className="mt-1 truncate text-xs text-neutral-400">{provider.api}</p>
       </div>
       <div className="ml-4 flex items-center space-x-2">
-        {!provider.is_active && (
+        {!provider.is_default && (
           <button
             onClick={() => onSetActive(provider.id)}
             className="invisible rounded px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-100 group-hover:visible dark:text-indigo-400 dark:hover:bg-indigo-900/50"
-            title="Set as Active"
+            title="Set as Default"
           >
-            Activate
+            Set Default
           </button>
         )}
         <button
@@ -123,30 +92,30 @@ export function LlmProviders() {
   const {
     llmProviders,
     llmProvidersLoading,
-    fetchLlmProviders,
-    removeLlmProvider,
-    switchActiveProvider,
+    fetchMyProviders,
+    removeProvider,
+    setAsDefault,
     backendUrl,
     openAddLlmProviderModal,
   } = useXyzen();
 
   useEffect(() => {
     if (backendUrl) {
-      fetchLlmProviders();
+      fetchMyProviders();
     }
-  }, [backendUrl, fetchLlmProviders]);
+  }, [backendUrl, fetchMyProviders]);
 
-  const handleSetActive = async (id: number) => {
+  const handleSetActive = async (id: string) => {
     try {
-      await switchActiveProvider(id);
+      await setAsDefault(id);
     } catch (error) {
-      console.error("Failed to set active provider:", error);
+      console.error("Failed to set default provider:", error);
     }
   };
 
-  const handleRemove = async (id: number) => {
+  const handleRemove = async (id: string) => {
     try {
-      await removeLlmProvider(id);
+      await removeProvider(id);
     } catch (error) {
       console.error("Failed to remove provider:", error);
     }

@@ -10,6 +10,9 @@ export interface UiSlice {
   theme: Theme;
   isAddMcpServerModalOpen: boolean;
   isAddLlmProviderModalOpen: boolean;
+  isSettingsModalOpen: boolean;
+  activeSettingsCategory: string;
+  selectedProviderId: string | null;
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -22,6 +25,10 @@ export interface UiSlice {
   closeAddMcpServerModal: () => void;
   openAddLlmProviderModal: () => void;
   closeAddLlmProviderModal: () => void;
+  openSettingsModal: (category?: string) => void;
+  closeSettingsModal: () => void;
+  setActiveSettingsCategory: (category: string) => void;
+  setSelectedProvider: (id: string | null) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -37,6 +44,9 @@ export const createUiSlice: StateCreator<
   theme: "system",
   isAddMcpServerModalOpen: false,
   isAddLlmProviderModalOpen: false,
+  isSettingsModalOpen: false,
+  activeSettingsCategory: "provider",
+  selectedProviderId: null,
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -55,4 +65,11 @@ export const createUiSlice: StateCreator<
   closeAddMcpServerModal: () => set({ isAddMcpServerModalOpen: false }),
   openAddLlmProviderModal: () => set({ isAddLlmProviderModalOpen: true }),
   closeAddLlmProviderModal: () => set({ isAddLlmProviderModalOpen: false }),
+  openSettingsModal: (category = "provider") =>
+    set({ isSettingsModalOpen: true, activeSettingsCategory: category }),
+  closeSettingsModal: () =>
+    set({ isSettingsModalOpen: false, selectedProviderId: null }),
+  setActiveSettingsCategory: (category) =>
+    set({ activeSettingsCategory: category }),
+  setSelectedProvider: (id) => set({ selectedProviderId: id }),
 });

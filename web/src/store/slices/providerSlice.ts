@@ -2,6 +2,8 @@ import { llmProviderService } from "@/service/llmProviderService";
 import type {
   LlmProviderCreate,
   LlmProviderResponse,
+  LlmProviderUpdate,
+  ProviderTemplate,
 } from "@/types/llmProvider";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
@@ -9,14 +11,18 @@ import type { XyzenState } from "../types";
 export interface ProviderSlice {
   llmProviders: LlmProviderResponse[];
   llmProvidersLoading: boolean;
-  fetchLlmProviders: () => Promise<void>;
-  addLlmProvider: (provider: LlmProviderCreate) => Promise<void>;
-  editLlmProvider: (
-    id: number,
-    provider: Partial<LlmProviderCreate>,
-  ) => Promise<void>;
-  removeLlmProvider: (id: number) => Promise<void>;
-  switchActiveProvider: (id: number) => Promise<void>;
+  providerTemplates: ProviderTemplate[];
+  templatesLoading: boolean;
+  defaultProvider: LlmProviderResponse | null;
+  defaultProviderLoading: boolean;
+
+  fetchProviderTemplates: () => Promise<void>;
+  fetchMyProviders: () => Promise<void>;
+  fetchDefaultProvider: () => Promise<void>;
+  addProvider: (provider: LlmProviderCreate) => Promise<void>;
+  updateProvider: (id: string, provider: LlmProviderUpdate) => Promise<void>;
+  removeProvider: (id: string) => Promise<void>;
+  setAsDefault: (id: string) => Promise<void>;
 }
 
 export const createProviderSlice: StateCreator<
@@ -27,31 +33,63 @@ export const createProviderSlice: StateCreator<
 > = (set, get) => ({
   llmProviders: [],
   llmProvidersLoading: false,
-  fetchLlmProviders: async () => {
+  providerTemplates: [],
+  templatesLoading: false,
+  defaultProvider: null,
+  defaultProviderLoading: false,
+
+  fetchProviderTemplates: async () => {
+    set({ templatesLoading: true });
+    try {
+      const templates = await llmProviderService.getProviderTemplates();
+      set({ providerTemplates: templates, templatesLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch provider templates:", error);
+      set({ templatesLoading: false });
+    }
+  },
+
+  fetchMyProviders: async () => {
     set({ llmProvidersLoading: true });
     try {
-      const providers = await llmProviderService.getLlmProviders();
+      const providers = await llmProviderService.getMyProviders();
       set({ llmProviders: providers, llmProvidersLoading: false });
     } catch (error) {
-      console.error("Failed to fetch LLM providers:", error);
+      console.error("Failed to fetch your providers:", error);
       set({ llmProvidersLoading: false });
     }
   },
-  addLlmProvider: async (provider) => {
+
+  fetchDefaultProvider: async () => {
+    set({ defaultProviderLoading: true });
     try {
-      const newProvider = await llmProviderService.createLlmProvider(provider);
+      const provider = await llmProviderService.getMyDefaultProvider();
+      set({ defaultProvider: provider, defaultProviderLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch default provider:", error);
+      set({ defaultProvider: null, defaultProviderLoading: false });
+    }
+  },
+
+  addProvider: async (provider) => {
+    try {
+      const newProvider = await llmProviderService.createProvider(provider);
       set((state: ProviderSlice) => {
         state.llmProviders.push(newProvider);
       });
+      // Refresh default provider in case this became the default
+      await get().fetchDefaultProvider();
       get().closeAddLlmProviderModal();
+      get().closeSettingsModal();
     } catch (error) {
-      console.error("Failed to add LLM provider:", error);
+      console.error("Failed to add provider:", error);
       throw error;
     }
   },
-  editLlmProvider: async (id, provider) => {
+
+  updateProvider: async (id, provider) => {
     try {
-      const updatedProvider = await llmProviderService.updateLlmProvider(
+      const updatedProvider = await llmProviderService.updateProvider(
         id,
         provider,
       );
@@ -61,28 +99,40 @@ export const createProviderSlice: StateCreator<
           state.llmProviders[index] = updatedProvider;
         }
       });
+      // Refresh default if this was the default provider
+      if (get().defaultProvider?.id === id) {
+        await get().fetchDefaultProvider();
+      }
     } catch (error) {
-      console.error("Failed to edit LLM provider:", error);
+      console.error("Failed to update provider:", error);
       throw error;
     }
   },
-  removeLlmProvider: async (id) => {
+
+  removeProvider: async (id) => {
     try {
-      await llmProviderService.deleteLlmProvider(id);
+      await llmProviderService.deleteProvider(id);
       set((state: ProviderSlice) => {
         state.llmProviders = state.llmProviders.filter((p) => p.id !== id);
       });
+      // Refresh default provider if we deleted it
+      if (get().defaultProvider?.id === id) {
+        await get().fetchDefaultProvider();
+      }
     } catch (error) {
-      console.error("Failed to remove LLM provider:", error);
+      console.error("Failed to remove provider:", error);
       throw error;
     }
   },
-  switchActiveProvider: async (id) => {
+
+  setAsDefault: async (id) => {
     try {
-      await llmProviderService.switchActiveProvider({ provider_id: id });
-      await get().fetchLlmProviders();
+      const updatedProvider = await llmProviderService.setDefaultProvider(id);
+      set({ defaultProvider: updatedProvider });
+      // Refresh all providers to update is_default flags
+      await get().fetchMyProviders();
     } catch (error) {
-      console.error("Failed to switch active provider:", error);
+      console.error("Failed to set default provider:", error);
       throw error;
     }
   },

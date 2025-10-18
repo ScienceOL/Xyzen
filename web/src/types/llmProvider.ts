@@ -1,38 +1,53 @@
 export interface LlmProvider {
-  id: number;
-  Name: string;
-  Api: string;
-  Key: string;
-  Model: string;
-  MaxTokens: number | null;
-  Temperature: number | null;
-  Timeout: number | null;
-  is_active?: boolean;
-  is_available?: boolean;
-  provider_type?: string;
+  id: string;
+  name: string;
+  api: string;
+  key: string;
+  model: string;
+  provider_type: string;
+  max_tokens: number;
+  temperature: number;
+  timeout: number;
+  is_default: boolean;
+  user_id: string;
 }
 
 export interface LlmProviderCreate {
-  Name: string;
-  Api: string;
-  Key: string;
-  Model: string;
-  MaxTokens?: number | null;
-  Temperature?: number | null;
-  Timeout?: number | null;
-}
-
-export interface LlmProviderResponse extends LlmProvider {
-  is_active: boolean;
-  is_available: boolean;
+  name: string;
+  api: string;
+  key: string;
+  model: string;
   provider_type: string;
+  max_tokens?: number;
+  temperature?: number;
+  timeout?: number;
+  user_id: string;
+  is_default?: boolean;
 }
 
-export interface SwitchProviderRequest {
-  provider_id: number;
+export interface LlmProviderUpdate {
+  name?: string;
+  api?: string;
+  key?: string;
+  model?: string;
+  provider_type?: string;
+  max_tokens?: number;
+  temperature?: number;
+  timeout?: number;
+  is_default?: boolean;
 }
 
-export interface SupportedProviderType {
+export type LlmProviderResponse = LlmProvider;
+
+export interface SetDefaultProviderRequest {
+  provider_id: string;
+}
+
+export interface ProviderTemplate {
   type: string;
+  display_name: string;
   description: string;
+  required_fields: string[];
+  optional_fields: string[];
+  default_config: Record<string, string | number | boolean>;
 }
