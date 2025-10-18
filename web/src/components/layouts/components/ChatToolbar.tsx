@@ -18,7 +18,7 @@ import {
   CpuChipIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { getProviderColor } from "@/utils/providerColors";
 
 interface ChatToolbarProps {
@@ -101,7 +101,7 @@ export default function ChatToolbar({
     return agents.find((a) => a.id === channel.agentId) || null;
   }, [activeChatChannel, channels, agents]);
 
-  // Get current agent's provider (explicit or default)
+  // Get current agent's provider (explicit or default/system fallback)
   const currentProvider = useMemo(() => {
     if (!currentAgent) return null;
 
@@ -112,11 +112,19 @@ export default function ChatToolbar({
       );
     }
 
-    // Otherwise fallback to default provider
-    return llmProviders.find((p) => p.is_default) || null;
+    // Otherwise fallback to: user default > system provider > first available
+    const defaultProvider = llmProviders.find(
+      (p) => p.is_default && !p.is_system,
+    );
+    if (defaultProvider) return defaultProvider;
+
+    const systemProvider = llmProviders.find((p) => p.is_system);
+    if (systemProvider) return systemProvider;
+
+    return llmProviders[0] || null;
   }, [currentAgent, llmProviders]);
 
-  // Check if using agent-specific provider or default
+  // Check if using agent-specific provider or fallback
   const isUsingAgentProvider = useMemo(() => {
     return currentAgent?.provider_id != null;
   }, [currentAgent]);
@@ -124,6 +132,49 @@ export default function ChatToolbar({
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
+
+  // Provider change handler
+  const handleProviderChange = useCallback(
+    async (providerId: string | null) => {
+      if (!currentAgent) return;
+
+      try {
+        await updateAgentProvider(currentAgent.id, providerId);
+        console.log(
+          `Updated agent ${currentAgent.name} provider to ${providerId || "default"}`,
+        );
+      } catch (error) {
+        console.error("Failed to update agent provider:", error);
+      }
+    },
+    [currentAgent, updateAgentProvider],
+  );
+
+  // Auto-select system provider if agent has no provider and only system provider exists
+  useEffect(() => {
+    if (!currentAgent || currentAgent.provider_id) return;
+
+    // If there are providers but agent doesn't have one set
+    if (llmProviders.length > 0) {
+      // Check if only system provider exists (no user providers)
+      const userProviders = llmProviders.filter((p) => !p.is_system);
+      const systemProvider = llmProviders.find((p) => p.is_system);
+
+      // Auto-select system provider only if there are no user providers
+      if (userProviders.length === 0 && systemProvider) {
+        handleProviderChange(systemProvider.id);
+      }
+      // If there's a user default provider, auto-select it
+      else {
+        const defaultProvider = llmProviders.find(
+          (p) => p.is_default && !p.is_system,
+        );
+        if (defaultProvider) {
+          handleProviderChange(defaultProvider.id);
+        }
+      }
+    }
+  }, [currentAgent, llmProviders, handleProviderChange]);
 
   // Setup dnd sensors
   const sensors = useSensors(
@@ -160,19 +211,6 @@ export default function ChatToolbar({
       );
     } catch (error) {
       console.error("Failed to update tool call confirmation setting:", error);
-    }
-  };
-
-  const handleProviderChange = async (providerId: string | null) => {
-    if (!currentAgent) return;
-
-    try {
-      await updateAgentProvider(currentAgent.id, providerId);
-      console.log(
-        `Updated agent ${currentAgent.name} provider to ${providerId || "default"}`,
-      );
-    } catch (error) {
-      console.error("Failed to update agent provider:", error);
     }
   };
 
@@ -260,21 +298,21 @@ export default function ChatToolbar({
                       title={
                         currentProvider
                           ? `${currentProvider.name} (${currentProvider.model})`
-                          : "未设置提供商"
+                          : "选择提供商"
                       }
                     >
                       <CpuChipIcon
                         className={`h-4 w-4 ${currentProvider ? getProviderColor(true).icon : getProviderColor(false).icon}`}
                       />
-                      <span>
-                        {currentProvider?.name ||
-                          (llmProviders.length > 0
-                            ? "选择提供商"
-                            : "未设置提供商")}
-                      </span>
-                      {!isUsingAgentProvider && currentProvider && (
-                        <span className="text-[10px] opacity-70">(默认)</span>
+                      <span>{currentProvider?.name || "选择提供商"}</span>
+                      {currentProvider?.is_system && (
+                        <span className="text-[10px] opacity-70">(系统)</span>
                       )}
+                      {!isUsingAgentProvider &&
+                        currentProvider &&
+                        !currentProvider.is_system && (
+                          <span className="text-[10px] opacity-70">(默认)</span>
+                        )}
                     </button>
 
                     {/* Provider Dropdown */}
@@ -289,35 +327,7 @@ export default function ChatToolbar({
                       </div>
 
                       <div className="space-y-1 max-h-80 overflow-y-auto">
-                        {/* Default Provider Option */}
-                        <button
-                          onClick={() => handleProviderChange(null)}
-                          className={`w-full rounded-md px-2 py-2 text-left text-sm transition-colors relative ${
-                            !currentAgent.provider_id
-                              ? `${getProviderColor(true).bg} ${getProviderColor(true).text}`
-                              : `${getProviderColor(false).text} hover:bg-neutral-100 dark:hover:bg-neutral-700/50`
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="font-medium flex items-center gap-2">
-                                使用默认提供商
-                              </div>
-                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                                {llmProviders.find((p) => p.is_default)
-                                  ? `${llmProviders.find((p) => p.is_default)?.name} • ${llmProviders.find((p) => p.is_default)?.model}`
-                                  : "未设置默认提供商"}
-                              </div>
-                            </div>
-                            {!currentAgent.provider_id && (
-                              <CheckIcon
-                                className={`h-4 w-4 ${getProviderColor(true).icon}`}
-                              />
-                            )}
-                          </div>
-                        </button>
-
-                        {/* Individual Provider Options */}
+                        {/* Show all providers (system + user-added) */}
                         {llmProviders.map((provider) => {
                           const isSelected =
                             currentAgent.provider_id === provider.id;
