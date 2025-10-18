@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, List, Optional
 from uuid import UUID, uuid4
 
-from sqlmodel import JSON, Column, Field, Relationship, SQLModel
+from sqlmodel import JSON, Column, Field, ForeignKey, Relationship, SQLModel
 
 from .links import AgentMcpServerLink
 from .mcp import McpServer
@@ -23,7 +23,14 @@ class AgentBase(SQLModel):
         default=False, description="Whether to require user confirmation for tool calls"
     )
 
-    provider_id: Optional[UUID] = Field(default=None, foreign_key="provider.id", index=True)
+    provider_id: Optional[UUID] = Field(
+        default=None,
+        sa_column=Column(
+            ForeignKey("provider.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
 
 
 class Agent(AgentBase, table=True):
@@ -54,6 +61,7 @@ class AgentUpdate(SQLModel):
     temperature: Optional[float] = None
     prompt: Optional[str] = None
     require_tool_confirmation: Optional[bool] = None
+    provider_id: Optional[UUID] = None
     mcp_server_ids: Optional[List[UUID]] = None
 
 

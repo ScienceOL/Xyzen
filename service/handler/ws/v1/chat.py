@@ -226,7 +226,8 @@ async def handle_tool_call_confirmation(
             final_request = ChatCompletionRequest(
                 messages=final_messages,
                 model=model,
-                temperature=0.7,
+                temperature=provider.temperature,
+                max_tokens=provider.max_tokens,
             )
 
             # Log the complete message history being sent to AI
@@ -415,7 +416,7 @@ async def chat_websocket(
                 full_content = ""
 
                 async for stream_event in get_ai_response_stream(
-                    db, message_text, topic_refreshed, manager, connection_id
+                    db, message_text, topic_refreshed, user, manager, connection_id
                 ):
                     logger.info(f"Received stream event: {stream_event['type']}")
 

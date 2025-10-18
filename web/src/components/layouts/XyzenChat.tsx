@@ -21,6 +21,8 @@ export default function XyzenChat() {
     sendMessage,
     connectToChannel,
     updateTopicName,
+    fetchMyProviders,
+    llmProviders,
   } = useXyzen();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -100,6 +102,15 @@ export default function XyzenChat() {
       scrollToBottom();
     }
   }, [messages.length, autoScroll, scrollToBottom]);
+
+  // Fetch providers on mount if not already loaded
+  useEffect(() => {
+    if (llmProviders.length === 0) {
+      fetchMyProviders().catch((error) => {
+        console.error("Failed to fetch providers:", error);
+      });
+    }
+  }, [llmProviders.length, fetchMyProviders]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;

@@ -19,6 +19,7 @@ export type Agent = {
   mcp_server_ids?: string[];
   user_id: string;
   require_tool_confirmation?: boolean;
+  provider_id?: string | null;
 };
 
 interface AgentCardProps {
@@ -43,7 +44,12 @@ const itemVariants: Variants = {
 };
 
 // 详细版本-包括名字，描述，头像，标签以及GPT模型
-const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick, onEdit, onDelete }) => {
+const AgentCard: React.FC<AgentCardProps> = ({
+  agent,
+  onClick,
+  onEdit,
+  onDelete,
+}) => {
   return (
     <motion.div
       layout

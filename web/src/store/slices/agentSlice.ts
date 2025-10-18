@@ -9,6 +9,10 @@ export interface AgentSlice {
   fetchAgents: () => Promise<void>;
   createAgent: (agent: Omit<Agent, "id">) => Promise<void>;
   updateAgent: (agent: Agent) => Promise<void>;
+  updateAgentProvider: (
+    agentId: string,
+    providerId: string | null,
+  ) => Promise<void>;
   deleteAgent: (id: string) => Promise<void>;
 }
 
@@ -83,6 +87,32 @@ export const createAgentSlice: StateCreator<
         throw new Error(`Failed to update agent: ${errorText}`);
       }
       await get().fetchAgents();
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  },
+  updateAgentProvider: async (agentId, providerId) => {
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/${agentId}`,
+        {
+          method: "PATCH",
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ provider_id: providerId }),
+        },
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update agent provider: ${errorText}`);
+      }
+      // Update local state optimistically
+      set((state) => {
+        const agent = state.agents.find((a) => a.id === agentId);
+        if (agent) {
+          agent.provider_id = providerId;
+        }
+      });
     } catch (error) {
       console.error(error);
       throw error;

@@ -60,9 +60,17 @@ class BaseLLMProvider(ABC):
             api_key: The API key for authentication
             base_url: Optional base URL for the API endpoint
             **kwargs: Additional provider-specific configuration
+                - default_model: The default model to use for this provider
+                - max_tokens: Maximum tokens for responses
+                - temperature: Sampling temperature
+                - timeout: Request timeout in seconds
         """
         self.api_key = api_key
         self.base_url = base_url
+        self.default_model = kwargs.get("default_model", "gpt-4o")
+        self.max_tokens = kwargs.get("max_tokens", 4096)
+        self.temperature = kwargs.get("temperature", 0.7)
+        self.timeout = kwargs.get("timeout", 60)
         self.config = kwargs
 
     @abstractmethod

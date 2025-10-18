@@ -6,6 +6,8 @@ Provides abstract base classes and concrete implementations for different LLM pr
 import logging
 from typing import Any, Dict, List, Optional, Type, Union
 
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from internal import configs
 from schemas.providers import ProviderType
 
@@ -21,6 +23,9 @@ async def initialize_providers() -> None:
     """
     Initialize LLM providers from database and default configuration.
     This should be called once during application startup.
+
+    NOTE: This initializes a global provider for development convenience.
+    Production code should use get_user_provider_manager() for per-user providers.
     """
     # First, initialize default Azure OpenAI provider from config
     llm_config = configs.LLM
@@ -259,6 +264,86 @@ class LLMProviderManager:
 # Global provider manager instance
 provider_manager = LLMProviderManager()
 
+
+async def get_user_provider_manager(user_id: str, db: AsyncSession) -> LLMProviderManager:
+    """
+    Create a provider manager with all providers for a specific user.
+
+    This function loads providers from the database and creates a fresh
+    LLMProviderManager instance with only that user's providers.
+
+    Args:
+        user_id: The user ID to load providers for
+        db: Database session
+
+    Returns:
+        LLMProviderManager configured with user's providers
+
+    Raises:
+        ValueError: If user has no providers configured
+    """
+    from repository.provider_repository import ProviderRepository
+
+    provider_repo = ProviderRepository(db)
+    user_providers = await provider_repo.get_providers_by_user(user_id)
+
+    if not user_providers:
+        raise ValueError(f"No providers configured for user {user_id}")
+
+    # Create a new provider manager for this user
+    user_manager = LLMProviderManager()
+
+    # Add all user's providers to the manager
+    for db_provider in user_providers:
+        try:
+            provider_type = db_provider.provider_type
+
+            # Build provider kwargs
+            provider_kwargs = {
+                "default_model": db_provider.model or "gpt-4o",
+                "max_tokens": db_provider.max_tokens,
+                "temperature": db_provider.temperature,
+                "timeout": db_provider.timeout,
+            }
+
+            # Add Azure-specific configuration if needed
+            if provider_type == "azure_openai":
+                provider_kwargs["azure_endpoint"] = db_provider.api
+                # Extract api_version if stored (you may need to add this field)
+                provider_kwargs["api_version"] = "2024-10-21"
+
+            # Add provider with unique name based on ID
+            user_manager.add_provider(
+                name=str(db_provider.id),
+                provider_type=provider_type,
+                api_key=db_provider.key,
+                base_url=db_provider.api,
+                **provider_kwargs,
+            )
+
+            # Set as active if it's the default provider
+            if db_provider.is_default:
+                user_manager.set_active_provider(str(db_provider.id))
+
+            logger.debug(
+                f"Loaded provider {db_provider.name} (ID: {db_provider.id}) "
+                f"for user {user_id}, default: {db_provider.is_default}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to load provider {db_provider.name} for user {user_id}: {e}")
+            continue
+
+    # Ensure at least one provider is active
+    if not user_manager.get_active_provider() and user_manager.list_providers():
+        first_provider_name = user_manager.list_providers()[0]["name"]
+        user_manager.set_active_provider(first_provider_name)
+        logger.info(f"No default provider set for user {user_id}, using first available")
+
+    logger.info(f"Loaded {len(user_providers)} provider(s) for user {user_id}")
+    return user_manager
+
+
 __all__ = [
     "BaseLLMProvider",
     "ChatMessage",
@@ -271,4 +356,5 @@ __all__ = [
     "LLMProviderManager",
     "ProviderType",
     "provider_manager",
+    "get_user_provider_manager",
 ]

@@ -10,6 +10,7 @@ from middleware.auth import get_current_user
 from middleware.database import get_session
 from models.agent import Agent, AgentCreate, AgentRead, AgentUpdate
 from models.mcp import McpServer
+from repository.provider_repository import ProviderRepository
 
 router = APIRouter()
 
@@ -24,6 +25,14 @@ async def create_agent(
     # 创建 agent 数据，设置真实的用户ID
     agent_data = agent.model_dump(exclude={"mcp_server_ids"})
     agent_data["user_id"] = current_user_id
+
+    # Validate provider_id if provided
+    if agent_data.get("provider_id"):
+        provider_repo = ProviderRepository(db)
+        provider = await provider_repo.get_provider_by_id(agent_data["provider_id"], user_id=current_user_id)
+        if not provider:
+            raise HTTPException(status_code=400, detail="Provider not found or does not belong to you")
+
     db_agent = Agent.model_validate(agent_data)
 
     if mcp_server_ids:
@@ -82,6 +91,13 @@ async def update_agent(
         raise HTTPException(status_code=404, detail="Agent not found")
 
     agent_data = agent.model_dump(exclude_unset=True)
+
+    # Validate provider_id if being updated
+    if "provider_id" in agent_data and agent_data["provider_id"] is not None:
+        provider_repo = ProviderRepository(db)
+        provider = await provider_repo.get_provider_by_id(agent_data["provider_id"], user_id=current_user_id)
+        if not provider:
+            raise HTTPException(status_code=400, detail="Provider not found or does not belong to you")
 
     if "mcp_server_ids" in agent_data:
         mcp_server_ids = agent_data.pop("mcp_server_ids")
