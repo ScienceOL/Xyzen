@@ -9,8 +9,8 @@ console.log("VITE_XYZEN_BACKEND_URL:", import.meta.env.VITE_XYZEN_BACKEND_URL);
 
 // 智能后端URL配置：
 // - 如果设置了VITE_XYZEN_BACKEND_URL环境变量，使用它
-// - 开发环境默认使用localhost:48196
 // - 生产环境使用相对路径，自动匹配当前域名
+// - 非生产环境默认使用localhost:48196
 const getBackendURL = (): string => {
   if (import.meta.env.VITE_XYZEN_BACKEND_URL) {
     return import.meta.env.VITE_XYZEN_BACKEND_URL;

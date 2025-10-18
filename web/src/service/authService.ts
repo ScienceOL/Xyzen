@@ -48,7 +48,7 @@ export interface AuthResult {
 }
 
 class AuthService {
-  private static readonly TOKEN_KEY = "access_token";
+  private static readonly TOKEN_KEY = "brm-token";
   private authCheckPromise: Promise<AuthResult> | null = null;
   private listeners: ((result: AuthResult) => void)[] = [];
 

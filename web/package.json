@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://github.com/ScienceOL/Xyzen.git"
   },
-  "homepage": "https://xyzen.sciol.ac.cn",
+  "homepage": "https://sciol.ac.cn",
   "keywords": [
     "react",
     "chat",
@@ -37,7 +37,7 @@
     "dev": "vite --host 0.0.0.0 --port 32233 --strictPort",
     "build": "rimraf site && tsc -b && vite build",
     "build:lib": "rimraf dist && cross-env BUILD_MODE=library vite build",
-    "image:bohr": "docker buildx build . --build-arg VITE_XYZEN_BACKEND_URL=https://uni-xyzen.test.bohrium.com --platform linux/amd64 -t registry.dp.tech/public/xyzen-web:latest --push",
+    "image:bohr": "docker buildx build . --build-arg VITE_XYZEN_BACKEND_URL=https://uni-lab.bohrium.com --platform linux/amd64 -t registry.sciol.ac.cn/sciol/xyzen-web:bohr --push",
     "lint": "eslint .",
     "preview": "vite preview",
     "publish": "yarn npm publish"
