@@ -9,12 +9,14 @@ class ProviderBase(SQLModel):
 
     user_id: str = Field(index=True, description="The user ID from authentication provider")
     name: str = Field(index=True)
+    provider_type: str = Field(index=True, description="Type of LLM provider (openai, google, anthropic, etc.)")
     api: str
     key: str
     timeout: int = 10
     model: Optional[str] = None
     max_tokens: int = 4096
     temperature: float = 0.7
+    is_default: bool = Field(default=False, description="Whether this is the user's default provider")
 
 
 class Provider(ProviderBase, table=True):
@@ -31,13 +33,21 @@ class ProviderRead(ProviderBase):
     id: UUID
 
 
-class ProviderCreate(Provider):
+class ProviderCreate(ProviderBase):
     """Model for creating a provider."""
 
     pass
 
 
-class ProviderUpdate(Provider):
+class ProviderUpdate(SQLModel):
     """Model for updating a provider. All fields are optional."""
 
-    pass
+    name: Optional[str] = None
+    provider_type: Optional[str] = None
+    api: Optional[str] = None
+    key: Optional[str] = None
+    timeout: Optional[int] = None
+    model: Optional[str] = None
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+    is_default: Optional[bool] = None

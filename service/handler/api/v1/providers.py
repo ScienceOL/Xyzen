@@ -1,57 +1,131 @@
-from typing import List, Sequence
+from typing import List
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import select
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from middleware.auth import get_current_user
 from middleware.database.connection import get_session
 from models.provider import Provider, ProviderCreate, ProviderUpdate
+from repository.provider_repository import ProviderRepository
+from schemas.providers import PROVIDER_TEMPLATES, ProviderTemplate, ProviderType
 
 router = APIRouter()
 
 
-@router.post("/", response_model=Provider)
+@router.get("/templates", response_model=List[ProviderTemplate])
+async def get_provider_templates() -> List[ProviderTemplate]:
+    """
+    Get available provider templates with metadata for the UI.
+    Returns configuration templates for all supported LLM providers.
+    """
+    return PROVIDER_TEMPLATES
+
+
+@router.get("/me", response_model=List[Provider])
+async def get_my_providers(
+    *,
+    session: AsyncSession = Depends(get_session),
+    user: str = Depends(get_current_user),
+) -> List[Provider]:
+    """
+    Get all providers for the current authenticated user.
+    """
+    provider_repo = ProviderRepository(session)
+    providers = await provider_repo.get_providers_by_user(user)
+    return providers
+
+
+@router.get("/me/default", response_model=Provider)
+async def get_my_default_provider(
+    *,
+    session: AsyncSession = Depends(get_session),
+    user: str = Depends(get_current_user),
+) -> Provider:
+    """
+    Get the default provider for the current authenticated user.
+    """
+    provider_repo = ProviderRepository(session)
+    provider = await provider_repo.get_default_provider(user)
+    if not provider:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No default provider found. Please set a default provider.",
+        )
+    return provider
+
+
+@router.post("/me/default/{provider_id}", response_model=Provider)
+async def set_my_default_provider(
+    *,
+    session: AsyncSession = Depends(get_session),
+    user: str = Depends(get_current_user),
+    provider_id: UUID,
+) -> Provider:
+    """
+    Set a provider as the default for the current authenticated user.
+    This will unset any other default providers for the user.
+    """
+    provider_repo = ProviderRepository(session)
+    try:
+        provider = await provider_repo.set_default_provider(user, provider_id)
+        return provider
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/", response_model=Provider, status_code=status.HTTP_201_CREATED)
 async def create_provider(
     *,
     session: AsyncSession = Depends(get_session),
-    provider: ProviderCreate,
+    user: str = Depends(get_current_user),
+    provider_data: ProviderCreate,
 ) -> Provider:
     """
-    Create a new provider.
+    Create a new provider for the current authenticated user.
+    The user_id is automatically set from the authenticated user.
     """
-    db_provider = Provider.model_validate(provider)
-    session.add(db_provider)
-    await session.commit()
-    await session.refresh(db_provider)
-    return db_provider
+    # Validate provider_type
+    try:
+        ProviderType(provider_data.provider_type)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid provider_type: {provider_data.provider_type}. "
+            f"Must be one of: {[pt.value for pt in ProviderType]}",
+        )
 
+    # Create provider with authenticated user_id
+    provider = Provider.model_validate(provider_data)
+    provider.user_id = user  # Override with authenticated user
 
-@router.get("/", response_model=List[Provider])
-async def read_providers(
-    *,
-    session: AsyncSession = Depends(get_session),
-    offset: int = 0,
-    limit: int = Query(default=100, le=100),
-) -> Sequence[Provider]:
-    """
-    Read all providers with pagination.
-    """
-    providers = await session.exec(select(Provider).offset(offset).limit(limit))
-    return providers.all()
+    provider_repo = ProviderRepository(session)
+    created_provider = await provider_repo.create_provider(provider)
+
+    # If this is the user's first provider, set it as default
+    user_providers = await provider_repo.get_providers_by_user(user)
+    if len(user_providers) == 1:
+        await provider_repo.set_default_provider(user, created_provider.id)
+        await session.refresh(created_provider)
+
+    return created_provider
 
 
 @router.get("/{provider_id}", response_model=Provider)
-async def read_provider(
+async def get_provider(
     *,
     session: AsyncSession = Depends(get_session),
-    provider_id: int,
+    user: str = Depends(get_current_user),
+    provider_id: UUID,
 ) -> Provider:
     """
-    Read a single provider by ID.
+    Get a single provider by ID.
+    Users can only access their own providers.
     """
-    provider = await session.get(Provider, provider_id)
+    provider_repo = ProviderRepository(session)
+    provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
     if not provider:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
     return provider
 
 
@@ -59,39 +133,53 @@ async def read_provider(
 async def update_provider(
     *,
     session: AsyncSession = Depends(get_session),
-    provider_id: int,
-    provider: ProviderUpdate,
+    user: str = Depends(get_current_user),
+    provider_id: UUID,
+    provider_data: ProviderUpdate,
 ) -> Provider:
     """
     Update a provider.
+    Users can only update their own providers.
     """
-    db_provider = await session.get(Provider, provider_id)
+    provider_repo = ProviderRepository(session)
+    db_provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
     if not db_provider:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
-    provider_data = provider.model_dump(exclude_unset=True)
-    for key, value in provider_data.items():
+    # Validate provider_type if being updated
+    if provider_data.provider_type is not None:
+        try:
+            ProviderType(provider_data.provider_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid provider_type: {provider_data.provider_type}",
+            )
+
+    # Update fields
+    update_data = provider_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(db_provider, key, value)
 
-    session.add(db_provider)
-    await session.commit()
-    await session.refresh(db_provider)
-    return db_provider
+    updated_provider = await provider_repo.update_provider(db_provider)
+    return updated_provider
 
 
-@router.delete("/{provider_id}")
+@router.delete("/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_provider(
     *,
     session: AsyncSession = Depends(get_session),
-    provider_id: int,
-) -> dict[str, bool]:
+    user: str = Depends(get_current_user),
+    provider_id: UUID,
+) -> None:
     """
     Delete a provider.
+    Users can only delete their own providers.
     """
-    provider = await session.get(Provider, provider_id)
+    provider_repo = ProviderRepository(session)
+    provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
     if not provider:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
-    await session.delete(provider)
-    await session.commit()
-    return {"ok": True}
+    await provider_repo.delete_provider(provider)
+    return None

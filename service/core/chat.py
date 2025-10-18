@@ -38,39 +38,39 @@ async def _load_providers_from_database() -> None:
 
             for db_provider in providers:
                 try:
-                    # Map database provider to our provider system
-                    provider_type = _map_provider_type(db_provider.name)
+                    # Use provider_type from database instead of guessing from name
+                    provider_type = db_provider.provider_type
+
+                    # Build provider kwargs
+                    provider_kwargs = {
+                        "default_model": db_provider.model or "gpt-4o",
+                        "max_tokens": db_provider.max_tokens,
+                        "temperature": db_provider.temperature,
+                        "timeout": db_provider.timeout,
+                    }
+
+                    # Add Azure-specific configuration if needed
+                    if provider_type == "azure_openai":
+                        provider_kwargs["azure_endpoint"] = db_provider.api
+                        # You can add api_version if it's stored in the database
 
                     provider_manager.add_provider(
-                        name=f"db_{db_provider.name.lower()}_{db_provider.id}",
+                        name=f"db_{db_provider.provider_type}_{db_provider.id}",
                         provider_type=provider_type,
                         api_key=db_provider.key,
                         base_url=db_provider.api,
-                        default_model=db_provider.model or "gpt-4o",
-                        max_tokens=db_provider.max_tokens,
-                        temperature=db_provider.temperature,
-                        timeout=db_provider.timeout,
+                        **provider_kwargs,
                     )
-                    logger.info(f"Loaded provider from database: {db_provider.name}")
+                    logger.info(
+                        f"Loaded provider from database: {db_provider.name} "
+                        f"(type: {db_provider.provider_type}, default: {db_provider.is_default})"
+                    )
 
                 except Exception as e:
                     logger.error(f"Failed to load provider {db_provider.name} from database: {e}")
 
     except Exception as e:
         logger.error(f"Failed to load providers from database: {e}")
-
-
-def _map_provider_type(provider_name: str) -> str:
-    """
-    Map provider name to provider type.
-    """
-    name_lower = provider_name.lower()
-    if "azure" in name_lower:
-        return "azure_openai"
-    elif "anthropic" in name_lower or "claude" in name_lower:
-        return "anthropic"
-    else:
-        return "openai"
 
 
 async def get_ai_response_stream(
