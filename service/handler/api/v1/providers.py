@@ -30,9 +30,18 @@ async def get_my_providers(
 ) -> List[Provider]:
     """
     Get all providers for the current authenticated user.
+    Includes system provider (for selection in agents) but not user's own providers marked as system.
+    System provider API keys are masked for security.
     """
     provider_repo = ProviderRepository(session)
-    providers = await provider_repo.get_providers_by_user(user)
+    # include_system=True so users can select system provider for their agents
+    providers = await provider_repo.get_providers_by_user(user, include_system=True)
+
+    # Mask API key for system providers
+    for provider in providers:
+        if provider.is_system:
+            provider.key = "••••••••"
+
     return providers
 
 
@@ -44,6 +53,7 @@ async def get_my_default_provider(
 ) -> Provider:
     """
     Get the default provider for the current authenticated user.
+    System provider API keys are masked for security.
     """
     provider_repo = ProviderRepository(session)
     provider = await provider_repo.get_default_provider(user)
@@ -52,6 +62,11 @@ async def get_my_default_provider(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No default provider found. Please set a default provider.",
         )
+
+    # Mask API key for system provider
+    if provider.is_system:
+        provider.key = "••••••••"
+
     return provider
 
 
@@ -120,12 +135,25 @@ async def get_provider(
 ) -> Provider:
     """
     Get a single provider by ID.
-    Users can only access their own providers.
+    Users can only access their own providers or the system provider.
+    System provider API keys are masked for security.
     """
     provider_repo = ProviderRepository(session)
     provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
+
+    # Also allow access to system provider
+    if not provider:
+        system_provider = await provider_repo.get_system_provider()
+        if system_provider and system_provider.id == provider_id:
+            provider = system_provider
+
     if not provider:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
+
+    # Mask API key for system provider
+    if provider.is_system:
+        provider.key = "••••••••"
+
     return provider
 
 
@@ -139,12 +167,19 @@ async def update_provider(
 ) -> Provider:
     """
     Update a provider.
-    Users can only update their own providers.
+    Users can only update their own providers. System providers cannot be updated.
     """
     provider_repo = ProviderRepository(session)
     db_provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
     if not db_provider:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
+
+    # Block updates to system provider
+    if db_provider.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot update system provider. System providers are read-only.",
+        )
 
     # Validate provider_type if being updated
     if provider_data.provider_type is not None:
@@ -174,12 +209,19 @@ async def delete_provider(
 ) -> None:
     """
     Delete a provider.
-    Users can only delete their own providers.
+    Users can only delete their own providers. System providers cannot be deleted.
     """
     provider_repo = ProviderRepository(session)
     provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
     if not provider:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
+
+    # Block deletion of system provider
+    if provider.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot delete system provider. System providers are read-only.",
+        )
 
     await provider_repo.delete_provider(provider)
     return None

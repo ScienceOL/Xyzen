@@ -336,11 +336,17 @@ export default function ChatToolbar({
                                 <div className="flex-1">
                                   <div className="font-medium flex items-center gap-2">
                                     {provider.name}
-                                    {provider.is_default && (
-                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400">
-                                        默认
+                                    {provider.is_system && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+                                        系统
                                       </span>
                                     )}
+                                    {provider.is_default &&
+                                      !provider.is_system && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400">
+                                          默认
+                                        </span>
+                                      )}
                                   </div>
                                   <div className="text-xs text-neutral-500 dark:text-neutral-400">
                                     {provider.provider_type} • {provider.model}

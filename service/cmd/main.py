@@ -21,6 +21,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Create database tables
     await create_db_and_tables()
 
+    # Initialize system provider from environment config
+    from core.providers import initialize_system_provider
+    from middleware.database.connection import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        try:
+            await initialize_system_provider(db)
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to initialize system provider: {e}")
+
     # Initialize LLM providers
     from core.providers import initialize_providers
 

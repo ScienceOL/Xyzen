@@ -17,6 +17,7 @@ class ProviderBase(SQLModel):
     max_tokens: int = 4096
     temperature: float = 0.7
     is_default: bool = Field(default=False, description="Whether this is the user's default provider")
+    is_system: bool = Field(default=False, index=True, description="System-provided default (read-only for users)")
 
 
 class Provider(ProviderBase, table=True):

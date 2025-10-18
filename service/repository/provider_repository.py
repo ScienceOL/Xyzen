@@ -26,10 +26,27 @@ class ProviderRepository:
         logger.info(f"Found {len(providers)} providers in the database.")
         return list(providers)
 
-    async def get_providers_by_user(self, user_id: str) -> List[Provider]:
-        """Fetches all providers for a specific user."""
-        logger.debug(f"Fetching providers for user: {user_id}")
-        result = await self.db.exec(select(Provider).where(Provider.user_id == user_id))
+    async def get_providers_by_user(self, user_id: str, include_system: bool = True) -> List[Provider]:
+        """
+        Fetches all providers for a specific user.
+
+        Args:
+            user_id: The user ID to fetch providers for
+            include_system: If True, also include system provider in results
+        """
+        logger.debug(f"Fetching providers for user: {user_id}, include_system: {include_system}")
+
+        if include_system:
+            # Include both user's providers and system provider
+            result = await self.db.exec(
+                select(Provider).where((Provider.user_id == user_id) | (Provider.is_system == True))  # noqa: E712
+            )
+        else:
+            # Only user's own providers
+            result = await self.db.exec(
+                select(Provider).where(Provider.user_id == user_id, Provider.is_system == False)  # noqa: E712
+            )
+
         providers = result.all()
         logger.info(f"Found {len(providers)} providers for user {user_id}")
         return list(providers)
@@ -120,3 +137,19 @@ class ProviderRepository:
 
         logger.info(f"Set provider {target_provider.name} as default for user {user_id}")
         return target_provider
+
+    async def get_system_provider(self) -> Optional[Provider]:
+        """
+        Get the system-wide default provider.
+
+        Returns:
+            The system provider if it exists, None otherwise
+        """
+        logger.debug("Fetching system provider")
+        result = await self.db.exec(select(Provider).where(Provider.is_system == True))  # noqa: E712
+        provider = result.first()
+        if provider:
+            logger.info(f"Found system provider: {provider.name}")
+        else:
+            logger.debug("No system provider found")
+        return provider

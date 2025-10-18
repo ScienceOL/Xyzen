@@ -95,7 +95,16 @@ async def update_agent(
     # Validate provider_id if being updated
     if "provider_id" in agent_data and agent_data["provider_id"] is not None:
         provider_repo = ProviderRepository(db)
+        # Check if it's user's provider
         provider = await provider_repo.get_provider_by_id(agent_data["provider_id"], user_id=current_user_id)
+
+        # If not found, check if it's the system provider
+        if not provider:
+            system_provider = await provider_repo.get_system_provider()
+            if system_provider and system_provider.id == agent_data["provider_id"]:
+                provider = system_provider
+
+        # If still not found, reject
         if not provider:
             raise HTTPException(status_code=400, detail="Provider not found or does not belong to you")
 

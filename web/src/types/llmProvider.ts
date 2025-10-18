@@ -9,6 +9,7 @@ export interface LlmProvider {
   temperature: number;
   timeout: number;
   is_default: boolean;
+  is_system: boolean;
   user_id: string;
 }
 

@@ -80,6 +80,25 @@ export const ProviderConfigForm = () => {
       // Editing existing provider
       const provider = llmProviders.find((p) => p.id === selectedProviderId);
       if (provider) {
+        // Check if it's a system provider
+        if (provider.is_system) {
+          setError("System provider is read-only and cannot be edited.");
+          setFormData({
+            name: provider.name,
+            provider_type: provider.provider_type,
+            api: provider.api,
+            key: "••••••••", // Mask the key
+            model: provider.model,
+            max_tokens: provider.max_tokens,
+            temperature: provider.temperature,
+            timeout: provider.timeout,
+            is_default: provider.is_default,
+            user_id: provider.user_id,
+          });
+          setIsEditing(false); // Prevent editing
+          return;
+        }
+
         setFormData({
           name: provider.name,
           provider_type: provider.provider_type,
@@ -165,6 +184,16 @@ export const ProviderConfigForm = () => {
 
   const handleDelete = async () => {
     if (!selectedProviderId || selectedProviderId.startsWith("new:")) return;
+
+    // Check if it's a system provider
+    const provider = llmProviders.find((p) => p.id === selectedProviderId);
+    if (provider?.is_system) {
+      setError(
+        "Cannot delete system provider. System providers are read-only.",
+      );
+      return;
+    }
+
     if (!confirm("Are you sure you want to delete this provider?")) return;
 
     setError(null);
@@ -185,6 +214,15 @@ export const ProviderConfigForm = () => {
 
   const handleSetDefault = async () => {
     if (!selectedProviderId || selectedProviderId.startsWith("new:")) return;
+
+    // Check if it's a system provider
+    const provider = llmProviders.find((p) => p.id === selectedProviderId);
+    if (provider?.is_system) {
+      setError(
+        "Cannot set system provider as default. System provider is automatic fallback.",
+      );
+      return;
+    }
 
     setError(null);
     setSuccess(null);
@@ -219,11 +257,20 @@ export const ProviderConfigForm = () => {
       )
     : providerTemplates.find((t) => t.type === formData.provider_type);
 
+  // Check if current provider is a system provider (read-only)
+  const currentProvider = llmProviders.find((p) => p.id === selectedProviderId);
+  const isSystemProvider = currentProvider?.is_system || false;
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto p-6">
         <h2 className="mb-6 text-xl font-semibold text-neutral-900 dark:text-white">
           {isEditing ? "编辑 Provider" : "新建 Provider"}
+          {isSystemProvider && (
+            <span className="ml-3 text-sm px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              系统提供商 (只读)
+            </span>
+          )}
         </h2>
 
         {error && (
@@ -266,6 +313,7 @@ export const ProviderConfigForm = () => {
               onChange={handleInputChange}
               placeholder="e.g., My Gemini Provider"
               className="mt-1"
+              disabled={isSystemProvider}
             />
           </Field>
 
@@ -281,6 +329,7 @@ export const ProviderConfigForm = () => {
               onChange={handleInputChange}
               placeholder="e.g., https://api.openai.com"
               className="mt-1"
+              disabled={isSystemProvider}
             />
           </Field>
 
@@ -296,6 +345,7 @@ export const ProviderConfigForm = () => {
               onChange={handleInputChange}
               placeholder="Your API key"
               className="mt-1"
+              disabled={isSystemProvider}
             />
           </Field>
 
@@ -311,6 +361,7 @@ export const ProviderConfigForm = () => {
               onChange={handleInputChange}
               placeholder="e.g., gpt-4o or gemini-2.0-flash-exp"
               className="mt-1"
+              disabled={isSystemProvider}
             />
           </Field>
 
@@ -331,6 +382,7 @@ export const ProviderConfigForm = () => {
                   value={formData.max_tokens || ""}
                   onChange={handleInputChange}
                   className="mt-1"
+                  disabled={isSystemProvider}
                 />
               </Field>
 
@@ -348,6 +400,7 @@ export const ProviderConfigForm = () => {
                   value={formData.temperature || ""}
                   onChange={handleInputChange}
                   className="mt-1"
+                  disabled={isSystemProvider}
                 />
               </Field>
 
@@ -362,13 +415,14 @@ export const ProviderConfigForm = () => {
                   value={formData.timeout || ""}
                   onChange={handleInputChange}
                   className="mt-1"
+                  disabled={isSystemProvider}
                 />
               </Field>
             </div>
           </details>
 
           {/* Set as Default (for existing providers) */}
-          {isEditing && (
+          {isEditing && !isSystemProvider && (
             <Field className="flex items-center justify-between">
               <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 Default Provider
@@ -397,7 +451,7 @@ export const ProviderConfigForm = () => {
       <div className="border-t border-neutral-200 p-4 dark:border-neutral-800">
         <div className="flex items-center justify-between">
           <div>
-            {isEditing && (
+            {isEditing && !isSystemProvider && (
               <Button
                 onClick={handleDelete}
                 disabled={loading}
@@ -408,14 +462,16 @@ export const ProviderConfigForm = () => {
             )}
           </div>
           <div className="flex gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={loading}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-700 dark:hover:bg-indigo-800"
-            >
-              {loading && <LoadingSpinner size="sm" />}
-              {isEditing ? "Save Changes" : "Create Provider"}
-            </Button>
+            {!isSystemProvider && (
+              <Button
+                onClick={handleSave}
+                disabled={loading}
+                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-700 dark:hover:bg-indigo-800"
+              >
+                {loading && <LoadingSpinner size="sm" />}
+                {isEditing ? "Save Changes" : "Create Provider"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
