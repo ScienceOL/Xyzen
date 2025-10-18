@@ -122,6 +122,6 @@ if __name__ == "__main__":
         host=configs.Host,
         port=configs.Port,
         log_config=LOGGING_CONFIG,
-        log_level=configs.Logger.Level,
+        # log_level=configs.Logger.Level,  # log_level will cover LOGGING_CONFIG settings
         reload=configs.Debug,
     )

@@ -61,17 +61,17 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
 
   // Different styles for user vs AI messages
   const messageStyles = isUserMessage
-    ? "border-l-4 border-blue-400 bg-blue-50/50 dark:border-blue-600 dark:bg-blue-900/20"
-    : "border-l-4 border-neutral-300 bg-white dark:border-neutral-600 dark:bg-neutral-800/50";
+    ? "border-l-2 border-blue-400 bg-blue-50/50 dark:border-blue-600 dark:bg-blue-900/20"
+    : "border-l-2 border-neutral-300 bg-white dark:border-neutral-600 dark:bg-neutral-800/50";
 
   // Loading state styles
   const loadingStyles = isLoading
-    ? "border-l-4 border-purple-400 bg-purple-50/30 dark:border-purple-500 dark:bg-purple-900/10"
+    ? "border-l-2 border-purple-400 bg-purple-50/30 dark:border-purple-500 dark:bg-purple-900/10"
     : messageStyles;
 
   // Streaming animation styles
   const streamingStyles = isStreaming
-    ? "animate-pulse border-l-4 border-green-400 bg-green-50/30 dark:border-green-500 dark:bg-green-900/10"
+    ? "animate-pulse border-l-2 border-green-400 bg-green-50/30 dark:border-green-500 dark:bg-green-900/10"
     : loadingStyles;
 
   // 渲染头像，使用初始字母作为最后的备用选项
@@ -156,7 +156,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
           <div className="absolute left-0 top-1">{renderAvatar()}</div>
 
           {/* Raw JSON display */}
-          <div className="w-full border-l-4 border-orange-400 bg-orange-50/50 dark:border-orange-600 dark:bg-orange-900/20 p-3 rounded-none">
+          <div className="w-full border-l-2 border-orange-400 bg-orange-50/50 dark:border-orange-600 dark:bg-orange-900/20 p-3 rounded-none">
             <pre className="text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto whitespace-pre-wrap">
               {content}
             </pre>
