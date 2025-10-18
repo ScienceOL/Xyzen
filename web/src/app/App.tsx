@@ -23,8 +23,9 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { LlmProviders } from "@/app/LlmProviders";
 import { Mcp } from "@/app/Mcp";
+import { AppFullscreen } from "@/app/AppFullscreen";
 import McpIcon from "@/assets/McpIcon";
-import { AuthStatus, SettingsButton, ThemeToggle } from "@/components/features";
+import { AuthStatus, SettingsButton } from "@/components/features";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { AddLlmProviderModal } from "@/components/modals/AddLlmProviderModal";
@@ -94,15 +95,36 @@ const FloatingButton = ({ onOpenClick }: { onOpenClick: () => void }) => {
 
 export interface XyzenProps {
   backendUrl?: string;
-  showThemeToggle?: boolean;
   showLlmProvider?: boolean;
 }
 
 export function Xyzen({
   backendUrl = DEFAULT_BACKEND_URL,
-  showThemeToggle = true,
   showLlmProvider = false,
 }: XyzenProps) {
+  const { layoutStyle } = useXyzen();
+
+  // Conditionally render layout based on style
+  if (layoutStyle === "fullscreen") {
+    return (
+      <AppFullscreen
+        backendUrl={backendUrl}
+        showLlmProvider={showLlmProvider}
+      />
+    );
+  }
+
+  // Render sidebar layout
+  return (
+    <XyzenSidebar backendUrl={backendUrl} showLlmProvider={showLlmProvider} />
+  );
+}
+
+// Sidebar layout component
+function XyzenSidebar({
+  backendUrl = DEFAULT_BACKEND_URL,
+  showLlmProvider = false,
+}: Omit<XyzenProps, "showThemeToggle">) {
   const {
     isXyzenOpen,
     closeXyzen,
@@ -199,6 +221,7 @@ export function Xyzen({
   // 键盘快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + Shift + X to toggle Xyzen
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "X") {
         e.preventDefault();
         toggleXyzen();
@@ -271,7 +294,6 @@ export function Xyzen({
               ))}
             </Tab.List>
             <div className="flex items-center space-x-1">
-              {showThemeToggle && <ThemeToggle />}
               <SettingsButton />
               <button
                 className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"

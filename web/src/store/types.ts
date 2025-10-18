@@ -69,6 +69,10 @@ export interface User {
 
 export type Theme = "light" | "dark" | "system";
 
+export type LayoutStyle = "sidebar" | "fullscreen";
+
+export type UiSettingType = "theme" | "style";
+
 // Add types for API response
 export interface TopicResponse {
   id: string;

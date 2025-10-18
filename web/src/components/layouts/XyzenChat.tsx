@@ -150,24 +150,44 @@ export default function XyzenChat() {
       ) : (
         <>
           {currentAgent ? (
-            <div className="flex-shrink-0 px-4 pb-2">
-              <EditableTitle
-                title={currentChannel?.title || "新的聊天"}
-                onSave={(newTitle) => {
-                  if (activeChatChannel) {
-                    return updateTopicName(activeChatChannel, newTitle);
+            <div className="flex-shrink-0 border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50 px-4 py-3 dark:border-neutral-800 dark:from-black dark:to-neutral-950">
+              <div className="flex items-start gap-3">
+                <img
+                  src={
+                    currentAgent.id === "default-chat"
+                      ? "https://avatars.githubusercontent.com/u/176685?v=4"
+                      : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png"
                   }
-                  return Promise.resolve();
-                }}
-                className="mb-1"
-                textClassName="text-lg font-medium text-neutral-800 dark:text-white"
-              />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                {currentAgent.description}
-              </p>
+                  alt={currentAgent.name}
+                  className="mt-1 h-8 w-8 flex-shrink-0 rounded-full border-2 border-indigo-100 object-cover shadow-sm dark:border-indigo-900"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                      {currentAgent.name}
+                    </span>
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                      •
+                    </span>
+                    <EditableTitle
+                      title={currentChannel?.title || "新的聊天"}
+                      onSave={(newTitle) => {
+                        if (activeChatChannel) {
+                          return updateTopicName(activeChatChannel, newTitle);
+                        }
+                        return Promise.resolve();
+                      }}
+                      textClassName="text-sm text-neutral-600 dark:text-neutral-400"
+                    />
+                  </div>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                    {currentAgent.description}
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="flex-shrink-0 px-4 pb-2">
+            <div className="flex-shrink-0 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
               <EditableTitle
                 title={currentChannel?.title || "新的聊天"}
                 onSave={(newTitle) => {

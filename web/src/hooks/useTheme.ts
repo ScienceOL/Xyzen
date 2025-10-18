@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { useXyzen } from "@/store";
 
 type Theme = "light" | "dark" | "system";
 
 const useTheme = () => {
   const [theme, setTheme] = useState<Theme>("system");
+  const setStoreTheme = useXyzen((state) => state.setTheme);
 
   const applyTheme = useCallback((selectedTheme: Theme) => {
     const root = window.document.documentElement;
@@ -56,7 +58,13 @@ const useTheme = () => {
     applyTheme(nextTheme);
   };
 
-  return { theme, cycleTheme };
+  const changeTheme = (newTheme: Theme) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    setStoreTheme(newTheme); // Sync with Zustand store
+  };
+
+  return { theme, cycleTheme, setTheme: changeTheme };
 };
 
 export default useTheme;

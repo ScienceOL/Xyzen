@@ -2,8 +2,13 @@ import { useXyzen } from "@/store";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import { ProviderConfigForm } from "./settings/ProviderConfigForm";
-import { ProviderList } from "./settings/ProviderList";
+import {
+  ProviderConfigForm,
+  ProviderList,
+  UiSettings,
+  ThemeSettings,
+  StyleSettings,
+} from "./settings";
 
 export function SettingsModal() {
   const {
@@ -11,12 +16,13 @@ export function SettingsModal() {
     closeSettingsModal,
     activeSettingsCategory,
     setActiveSettingsCategory,
+    activeUiSetting,
   } = useXyzen();
 
   const categories = [
     { id: "provider", label: "Provider" },
+    { id: "ui", label: "UI" },
     // Future categories can be added here
-    // { id: "theme", label: "Theme" },
     // { id: "account", label: "Account" },
   ];
 
@@ -83,12 +89,19 @@ export function SettingsModal() {
                 {/* Column 2: Content Based on Category */}
                 <div className="w-80 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
                   {activeSettingsCategory === "provider" && <ProviderList />}
+                  {activeSettingsCategory === "ui" && <UiSettings />}
                 </div>
 
                 {/* Column 3: Detail View */}
                 <div className="flex-1 bg-white dark:bg-neutral-950">
                   {activeSettingsCategory === "provider" && (
                     <ProviderConfigForm />
+                  )}
+                  {activeSettingsCategory === "ui" && (
+                    <>
+                      {activeUiSetting === "theme" && <ThemeSettings />}
+                      {activeUiSetting === "style" && <StyleSettings />}
+                    </>
                   )}
                 </div>
               </DialogPanel>

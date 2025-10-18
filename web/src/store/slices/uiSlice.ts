@@ -1,6 +1,6 @@
 import xyzenService from "@/service/xyzenService";
 import type { StateCreator } from "zustand";
-import type { Theme, XyzenState } from "../types";
+import type { Theme, XyzenState, LayoutStyle, UiSettingType } from "../types";
 
 export interface UiSlice {
   backendUrl: string;
@@ -8,10 +8,12 @@ export interface UiSlice {
   panelWidth: number;
   activeTabIndex: number;
   theme: Theme;
+  layoutStyle: LayoutStyle;
   isAddMcpServerModalOpen: boolean;
   isAddLlmProviderModalOpen: boolean;
   isSettingsModalOpen: boolean;
   activeSettingsCategory: string;
+  activeUiSetting: UiSettingType;
   selectedProviderId: string | null;
 
   toggleXyzen: () => void;
@@ -20,6 +22,7 @@ export interface UiSlice {
   setPanelWidth: (width: number) => void;
   setTabIndex: (index: number) => void;
   setTheme: (theme: Theme) => void;
+  setLayoutStyle: (style: LayoutStyle) => void;
   setBackendUrl: (url: string) => void;
   openAddMcpServerModal: () => void;
   closeAddMcpServerModal: () => void;
@@ -28,6 +31,7 @@ export interface UiSlice {
   openSettingsModal: (category?: string) => void;
   closeSettingsModal: () => void;
   setActiveSettingsCategory: (category: string) => void;
+  setActiveUiSetting: (setting: UiSettingType) => void;
   setSelectedProvider: (id: string | null) => void;
 }
 
@@ -41,11 +45,19 @@ export const createUiSlice: StateCreator<
   isXyzenOpen: false,
   panelWidth: 380,
   activeTabIndex: 0,
-  theme: "system",
+  theme:
+    typeof window !== "undefined"
+      ? (localStorage.getItem("theme") as Theme) || "system"
+      : "system",
+  layoutStyle:
+    typeof window !== "undefined"
+      ? (localStorage.getItem("layoutStyle") as LayoutStyle) || "sidebar"
+      : "sidebar",
   isAddMcpServerModalOpen: false,
   isAddLlmProviderModalOpen: false,
   isSettingsModalOpen: false,
   activeSettingsCategory: "provider",
+  activeUiSetting: "theme",
   selectedProviderId: null,
 
   toggleXyzen: () =>
@@ -56,7 +68,18 @@ export const createUiSlice: StateCreator<
   closeXyzen: () => set({ isXyzenOpen: false }),
   setPanelWidth: (width) => set({ panelWidth: width }),
   setTabIndex: (index) => set({ activeTabIndex: index }),
-  setTheme: (theme) => set({ theme }),
+  setTheme: (theme) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("theme", theme);
+    }
+    set({ theme });
+  },
+  setLayoutStyle: (style) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("layoutStyle", style);
+    }
+    set({ layoutStyle: style });
+  },
   setBackendUrl: (url) => {
     set({ backendUrl: url });
     xyzenService.setBackendUrl(url);
@@ -71,5 +94,6 @@ export const createUiSlice: StateCreator<
     set({ isSettingsModalOpen: false, selectedProviderId: null }),
   setActiveSettingsCategory: (category) =>
     set({ activeSettingsCategory: category }),
+  setActiveUiSetting: (setting) => set({ activeUiSetting: setting }),
   setSelectedProvider: (id) => set({ selectedProviderId: id }),
 });
