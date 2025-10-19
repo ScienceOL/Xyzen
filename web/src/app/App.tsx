@@ -32,6 +32,7 @@ import { AddLlmProviderModal } from "@/components/modals/AddLlmProviderModal";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
+import useTheme from "@/hooks/useTheme";
 // theme toggle is now a separate component
 
 // 定义最小宽度和最大宽度限制
@@ -103,6 +104,9 @@ export function Xyzen({
   showLlmProvider = false,
 }: XyzenProps) {
   const { layoutStyle } = useXyzen();
+
+  // Initialize theme at the top level so it works for both layouts
+  useTheme();
 
   // Conditionally render layout based on style
   if (layoutStyle === "fullscreen") {

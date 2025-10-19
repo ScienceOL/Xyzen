@@ -3,6 +3,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { DndContext } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { Fragment, useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CogIcon } from "@heroicons/react/24/outline";
 import { Dialog, Transition, TransitionChild } from "@headlessui/react";
 
@@ -78,12 +79,12 @@ export function AppFullscreen({
     return null;
   }
 
-  return (
+  const fullscreenContent = (
     <DndContext
       onDragEnd={handleFloaterDragEnd}
       modifiers={[restrictToVerticalAxis]}
     >
-      <div className="fixed inset-0 flex flex-col bg-white dark:bg-black">
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-black">
         {/* Header Bar */}
         <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 dark:border-neutral-800 dark:bg-black">
           <div className="flex items-center gap-4">
@@ -130,19 +131,19 @@ export function AppFullscreen({
                 </p>
               </div>
               <div className="flex-1 overflow-y-auto py-4">
-                <XyzenAgent />
+                <XyzenAgent key="fullscreen-agent" />
               </div>
             </div>
           </aside>
 
           {/* Center Column: Chat */}
           <section className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
-            <XyzenChat />
+            <XyzenChat key="fullscreen-chat" />
           </section>
 
           {/* Right Column: Topics */}
           <aside className="w-80 flex-shrink-0 border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-            <XyzenTopics />
+            <XyzenTopics key="fullscreen-topics" />
           </aside>
         </main>
 
@@ -225,4 +226,5 @@ export function AppFullscreen({
       <SettingsModal />
     </DndContext>
   );
+  return createPortal(fullscreenContent, document.body);
 }
