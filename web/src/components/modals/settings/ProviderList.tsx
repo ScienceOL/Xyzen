@@ -6,6 +6,12 @@ import type {
 } from "@/types/llmProvider";
 import { CheckCircleIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 import { useEffect } from "react";
+import {
+  OpenAIIcon,
+  AnthropicIcon,
+  GoogleIcon,
+  AzureIcon,
+} from "@/assets/icons";
 
 export const ProviderList = () => {
   const {
@@ -25,17 +31,18 @@ export const ProviderList = () => {
   }, [fetchProviderTemplates, fetchMyProviders]);
 
   const getProviderIcon = (type: string) => {
+    const iconClass = "h-6 w-6";
     switch (type) {
       case "google":
-        return "🤖";
+        return <GoogleIcon className={iconClass} />;
       case "openai":
-        return "🔷";
+        return <OpenAIIcon className={iconClass} />;
       case "anthropic":
-        return "🔵";
+        return <AnthropicIcon className={iconClass} />;
       case "azure_openai":
-        return "☁️";
+        return <AzureIcon className={iconClass} />;
       default:
-        return "⚡";
+        return <OpenAIIcon className={iconClass} />;
     }
   };
 
@@ -74,7 +81,9 @@ export const ProviderList = () => {
                   : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
               }`}
             >
-              <span className="text-2xl">{getProviderIcon(template.type)}</span>
+              <div className="flex-shrink-0">
+                {getProviderIcon(template.type)}
+              </div>
               <div className="flex-1 overflow-hidden">
                 <div className="truncate text-sm font-medium text-neutral-900 dark:text-white">
                   {template.display_name}
@@ -110,9 +119,9 @@ export const ProviderList = () => {
                     : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 }`}
               >
-                <span className="text-2xl">
+                <div className="flex-shrink-0">
                   {getProviderIcon(provider.provider_type)}
-                </span>
+                </div>
                 <div className="flex-1 overflow-hidden">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium text-neutral-900 dark:text-white">
