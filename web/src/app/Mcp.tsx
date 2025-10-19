@@ -320,14 +320,14 @@ export function Mcp() {
               <ArrowPathIcon
                 className={`h-4 w-4 ${mcpServersLoading ? "animate-spin" : ""}`}
               />
-              <span>Refresh</span>
+              <span className="whitespace-nowrap">Refresh</span>
             </button>
             <button
               onClick={openAddMcpServerModal}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:from-indigo-500 hover:to-indigo-600 hover:shadow-xl hover:shadow-indigo-500/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:shadow-indigo-500/20 dark:hover:shadow-indigo-500/40"
             >
               <PlusIcon className="h-4 w-4" />
-              Add Server
+              <span className="whitespace-nowrap">Add Server</span>
             </button>
           </div>
         </motion.div>
@@ -433,7 +433,9 @@ export function Mcp() {
                         className="mt-8 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:from-indigo-500 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                       >
                         <PlusIcon className="h-5 w-5" />
-                        Add Your First Server
+                        <span className="whitespace-nowrap">
+                          Add Your First Server
+                        </span>
                       </Button>
                     </motion.div>
                   </motion.div>

@@ -365,7 +365,7 @@ function XyzenSidebar({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <DialogPanel className="w-full max-w-2xl rounded-lg">
+                <DialogPanel className="w-full max-w-4xl rounded-lg">
                   <Mcp />
                 </DialogPanel>
               </TransitionChild>

@@ -33,7 +33,7 @@ export function SettingsModal() {
           static
           open={isSettingsModalOpen}
           onClose={closeSettingsModal}
-          className="relative z-50"
+          className="relative z-[10000]"
         >
           {/* Backdrop */}
           <motion.div

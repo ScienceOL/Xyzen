@@ -26,7 +26,7 @@ export function Modal({
           static
           open={isOpen}
           onClose={onClose}
-          className="relative z-50"
+          className="relative z-[10000]"
         >
           {/* Enhanced backdrop with multiple layers */}
           <motion.div
