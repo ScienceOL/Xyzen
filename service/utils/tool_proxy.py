@@ -12,7 +12,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from llm_sandbox import SandboxSession  # type: ignore
+from llm_sandbox import SandboxBackend, SandboxSession  # type: ignore
 from llm_sandbox.exceptions import SandboxTimeoutError  # type: ignore
 from llm_sandbox.security import (  # type: ignore
     SecurityIssueSeverity,
@@ -111,18 +111,30 @@ except Exception as e:
             # Build execution code: original code + function call + result serialization
             execution_code = self._build_execution_code(args, kwargs)
 
+            if dynamic_mcp_config.sandbox_backend == "kubernetes":
+                session_kwargs = {
+                    "backend": SandboxBackend.KUBERNETES,
+                    "lang": "python",
+                    "kube_namespace": dynamic_mcp_config.kube_namespace,
+                    "libraries": self.requirements,
+                    "security_policy": policy,
+                }
+            else:
+                session_kwargs = {
+                    "backend": SandboxBackend.DOCKER,
+                    "lang": "python",
+                    "libraries": self.requirements,
+                    "keep_template": True,
+                    "runtime_configs": {
+                        "cpu_count": dynamic_mcp_config.cpu_count,
+                        "mem_limit": dynamic_mcp_config.mem_limit,
+                    },
+                    "default_timeout": dynamic_mcp_config.default_timeout,
+                    "security_policy": policy,
+                }
+
             # 使用 llm-sandbox 执行
-            with SandboxSession(
-                lang="python",
-                keep_template=True,
-                libraries=self.requirements,
-                runtime_configs={
-                    "cpu_count": dynamic_mcp_config.cpu_count,
-                    "mem_limit": dynamic_mcp_config.mem_limit,
-                },
-                default_timeout=dynamic_mcp_config.default_timeout,
-                security_policy=policy,
-            ) as session:
+            with SandboxSession(**session_kwargs) as session:
                 is_safe, violations = session.is_safe(execution_code)
 
                 if is_safe:
