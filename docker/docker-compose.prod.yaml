@@ -2,6 +2,10 @@ services:
   service:
     env_file:
       - .env.prod
+    volumes:
+      - ../service:/app
+      - /app/.venv
+
   protium:
     env_file:
       - .env.prod

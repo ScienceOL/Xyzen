@@ -111,7 +111,7 @@ except Exception as e:
             # Build execution code: original code + function call + result serialization
             execution_code = self._build_execution_code(args, kwargs)
 
-            if dynamic_mcp_config.sandbox_backend == "kubernetes":
+            if configs.Env == "prod":
                 session_kwargs = {
                     "backend": SandboxBackend.KUBERNETES,
                     "lang": "python",

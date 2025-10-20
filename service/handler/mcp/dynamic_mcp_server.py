@@ -11,7 +11,6 @@ This server will:
 
 import logging
 import subprocess
-from pathlib import Path
 
 from fastmcp import FastMCP
 from fastmcp.server.auth import JWTVerifier
@@ -26,17 +25,6 @@ from utils.built_in_tools import register_built_in_tools
 from utils.json_patch import apply_json_patch
 from utils.manage_tools import register_manage_tools
 from utils.tool_loader import tool_loader
-
-
-def create_claude_code_server() -> None:
-    from mcp_claude_code.server import ClaudeCodeServer  # type: ignore
-
-    ClaudeCodeServer(
-        mcp_instance=mcp,
-        allowed_paths=[str(Path.cwd())],
-        enable_agent_tool=False,
-        command_timeout=300,
-    )
 
 
 # TODO: Need asycn support
