@@ -112,12 +112,19 @@ except Exception as e:
             execution_code = self._build_execution_code(args, kwargs)
 
             if configs.Env == "prod":
+                from kubernetes import client as k8s_client  # type: ignore
+                from kubernetes import config as k8s_config
+
+                k8s_config.load_incluster_config()
+                k8s_api = k8s_client.CoreV1Api()
                 session_kwargs = {
                     "backend": SandboxBackend.KUBERNETES,
                     "lang": "python",
                     "kube_namespace": "sciol",
                     "libraries": self.requirements,
                     "security_policy": policy,
+                    "in_cluster": True,
+                    "client": k8s_api,
                 }
             else:
                 session_kwargs = {
