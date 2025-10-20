@@ -15,6 +15,3 @@ class DynamicMCPConfig(BaseModel):
     playwright_port: int = Field(default=8931, description="Playwright MCP Server端口")
     transport: str = Field(default="sse", description="Dynamic MCP Server传输协议")
     allowed_paths: list[str] = Field(default=["tools"], description="Dynamic MCP Server允许的路径")
-
-    sandbox_backend: str = Field(default="docker", description="Sandbox backend: docker or kubernetes")
-    kube_namespace: str = Field(default="sciol", description="Kubernetes namespace for sandbox pods")

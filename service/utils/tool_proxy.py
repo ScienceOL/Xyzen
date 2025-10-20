@@ -115,7 +115,7 @@ except Exception as e:
                 session_kwargs = {
                     "backend": SandboxBackend.KUBERNETES,
                     "lang": "python",
-                    "kube_namespace": dynamic_mcp_config.kube_namespace,
+                    "kube_namespace": "sciol",
                     "libraries": self.requirements,
                     "security_policy": policy,
                 }
