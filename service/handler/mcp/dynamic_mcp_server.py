@@ -26,6 +26,18 @@ from utils.json_patch import apply_json_patch
 from utils.manage_tools import register_manage_tools
 from utils.tool_loader import tool_loader
 
+match AuthProvider.get_provider_name():
+    case "bohrium":
+        dynamic_mcp_auth = JWTVerifier(
+            public_key=AuthProvider.public_key,
+        )
+    case "casdoor":
+        dynamic_mcp_auth = JWTVerifier(
+            jwks_uri=AuthProvider.jwks_uri,
+        )
+    case _:
+        raise ValueError(f"Unsupported authentication provider: {AuthProvider.get_provider_name()}")
+
 
 # TODO: Need asycn support
 async def proxy_playwright_server() -> None:
@@ -60,14 +72,6 @@ async def proxy_playwright_server() -> None:
             logger.error(f"Failed to mirror tool {tool_info.name}: {e}")
     connected_client.close()
 
-
-dynamic_mcp_auth = JWTVerifier(
-    jwks_uri=AuthProvider.jwks_uri,
-    # NOTE: casdoor 中没有提供标准的 OIDC（如/.well-known/openid-configuration），携带以下两个信息会失败
-    # issuer="http://host.docker.internal:8000/",
-    # audience="a387a4892ee19b1a2249",
-    algorithm="RS256",  # 使用 RSA 算法，匹配 JWKS 中的 alg
-)
 
 dynamic_mcp_config = configs.DynamicMCP
 NAME = dynamic_mcp_config.name

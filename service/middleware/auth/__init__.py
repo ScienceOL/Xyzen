@@ -62,6 +62,11 @@ class BaseAuthProvider(ABC):
         """Parse user information from the token payload"""
         pass
 
+    @abstractmethod
+    def parse_userinfo_response(self, userinfo_data: Dict[str, Any]) -> UserInfo:
+        """Parse user information from the userinfo API response"""
+        pass
+
     def get_jwks(self) -> Optional[Dict[str, Any]]:
         """Get JWKS public key information"""
         if not self.jwks_uri:
@@ -151,6 +156,7 @@ class BaseAuthProvider(ABC):
 def _get_auth_provider() -> BaseAuthProvider:
     """
     Get an authentication provider instance based on the configuration,
+    then initialize it with the Class
     and throw an error if the configuration is invalid
     """
     logger.info("Start initializing authentication provider...")
