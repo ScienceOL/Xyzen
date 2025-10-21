@@ -2,7 +2,6 @@ import { useXyzen } from "@/store";
 
 const getBackendUrl = () => {
   const url = useXyzen.getState().backendUrl;
-  // 🔥 修复：如果 backendUrl 为空，使用当前页面的协议和域名
   if (!url || url === "") {
     if (typeof window !== "undefined") {
       return `${window.location.protocol}//${window.location.host}`;
@@ -48,8 +47,8 @@ export interface AuthResult {
 }
 
 class AuthService {
-  private static readonly TOKEN_KEY = "brm-token";
-  private static readonly COOKIE_TOKEN_KEY = "brmToken";
+  private static readonly TOKEN_KEY = "access_token";
+  private static readonly COOKIE_TOKEN_KEY = "appAccessKey";
   private authCheckPromise: Promise<AuthResult> | null = null;
   private listeners: ((result: AuthResult) => void)[] = [];
 
