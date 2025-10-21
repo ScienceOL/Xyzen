@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -48,6 +48,32 @@ async def create_mcp_server(
         background_tasks.add_task(_async_check_mcp_server_status, db_mcp_server.id)
 
     return db_mcp_server
+
+
+@router.get("/discover")
+async def discover_mcp_servers(
+    user: str = Depends(get_current_user),
+) -> List[Dict[str, Any]]:
+    """
+    Discover available MCP servers registered in the backend.
+    Returns server metadata for users to easily add them.
+    """
+    from handler.mcp import registry
+
+    discovered = []
+    for server_name, config in registry.get_all_servers().items():
+        discovered.append(
+            {
+                "name": config["name"],
+                "module_name": server_name,
+                "mount_path": config["mount_path"],
+                "description": f"Built-in MCP server: {server_name.replace('_', ' ').title()}",
+                "is_builtin": True,
+                "requires_auth": config.get("auth") is not None,
+            }
+        )
+
+    return discovered
 
 
 @router.get("", response_model=list[McpServer])

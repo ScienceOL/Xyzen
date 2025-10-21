@@ -9,6 +9,15 @@ export interface McpServer {
   user_id: string;
 }
 
+export interface BuiltinMcpServer {
+  name: string;
+  module_name: string;
+  mount_path: string;
+  description: string;
+  is_builtin: boolean;
+  requires_auth: boolean;
+}
+
 export type McpServerCreate = Omit<
   McpServer,
   "id" | "status" | "tools" | "user_id"

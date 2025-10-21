@@ -10,6 +10,9 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   maxWidth?: string;
+  minWidth?: string;
+  maxHeight?: string;
+  minHeight?: string;
 }
 
 export function Modal({
@@ -18,6 +21,9 @@ export function Modal({
   title,
   children,
   maxWidth = "max-w-2xl",
+  minWidth = "",
+  maxHeight = "",
+  minHeight = "",
 }: ModalProps) {
   return (
     <AnimatePresence>
@@ -60,9 +66,10 @@ export function Modal({
                 ease: [0.4, 0, 0.2, 1],
                 opacity: { duration: 0.25 },
               }}
+              className={`w-full ${maxWidth} ${minWidth} ${maxHeight}`}
             >
               <DialogPanel
-                className={`w-full ${maxWidth} min-w-xl space-y-4 rounded-2xl border border-neutral-200/20 bg-white/95 p-8 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40`}
+                className={`w-full ${minHeight} space-y-4 rounded-2xl border border-neutral-200/20 bg-white/95 p-8 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40`}
               >
                 <DialogTitle className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
                   {title}

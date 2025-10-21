@@ -1,6 +1,11 @@
 import { authService } from "@/service/authService";
 import { useXyzen } from "@/store";
-import type { McpServer, McpServerCreate, McpServerUpdate } from "@/types/mcp";
+import type {
+  BuiltinMcpServer,
+  McpServer,
+  McpServerCreate,
+  McpServerUpdate,
+} from "@/types/mcp";
 
 const getBackendUrl = () => {
   const url = useXyzen.getState().backendUrl;
@@ -96,6 +101,25 @@ export const mcpService = {
       throw new Error(
         `Failed to trigger MCP server refresh: ${response.status} ${errorText}`,
       );
+    }
+  },
+
+  async getBuiltinMcpServers(): Promise<BuiltinMcpServer[]> {
+    try {
+      const response = await fetch(
+        `${getBackendUrl()}/xyzen/api/v1/mcps/discover`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        console.warn("Failed to discover builtin MCP servers");
+        return []; // Fail gracefully
+      }
+      return response.json();
+    } catch (error) {
+      console.warn("Error discovering builtin MCP servers:", error);
+      return []; // Fail gracefully
     }
   },
 };
