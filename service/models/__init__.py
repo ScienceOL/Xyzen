@@ -1,3 +1,4 @@
+from .consume import ConsumeRecord, UserConsumeSummary
 from .mcp import McpServer
 from .message import (
     Message,
@@ -40,4 +41,6 @@ __all__ = [
     "ToolFunction",
     "ToolStatus",
     "ToolVersion",
+    "ConsumeRecord",
+    "UserConsumeSummary",
 ]

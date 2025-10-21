@@ -37,6 +37,15 @@ class AuthResult:
     error_code: Optional[str] = None
 
 
+@dataclass
+class AuthContext:
+    """Complete authentication context for the current request"""
+
+    user_id: str
+    auth_provider: str
+    access_token: str  # 原始 token/accessKey
+
+
 class BaseAuthProvider(ABC):
     """Abstract base class for authentication providers"""
 
@@ -252,6 +261,25 @@ async def get_current_user_websocket(token: Optional[str] = Query(None, alias="t
         raise Exception(auth_result.error_message or "Token validation failed")
 
     return auth_result.user_info.id
+
+
+async def get_auth_context_websocket(token: Optional[str] = Query(None, alias="token")) -> AuthContext:
+    """Get the complete authentication context from the token in the query parameters (for WebSocket)"""
+
+    # Check token
+    if not token:
+        raise Exception("Missing authentication token")
+
+    # Validate token
+    auth_result = AuthProvider.validate_token(token)
+    if not auth_result.success or not auth_result.user_info:
+        raise Exception(auth_result.error_message or "Token validation failed")
+
+    return AuthContext(
+        user_id=auth_result.user_info.id,
+        auth_provider=AuthProvider.get_provider_name(),
+        access_token=token,
+    )
 
 
 def is_auth_configured() -> bool:

@@ -8,7 +8,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from core.chat import get_ai_response_stream
-from middleware.auth import get_current_user_websocket
+from core.consume import create_consume_for_chat
+from middleware.auth import AuthContext, get_auth_context_websocket
 from middleware.database.connection import AsyncSessionLocal
 from models.message import Message as MessageModel
 from models.message import MessageCreate
@@ -340,10 +341,12 @@ async def chat_websocket(
     websocket: WebSocket,
     session_id: UUID,
     topic_id: UUID,
-    user: str = Depends(get_current_user_websocket),
+    auth_ctx: AuthContext = Depends(get_auth_context_websocket),
 ) -> None:
     connection_id = f"{session_id}:{topic_id}"
     await manager.connect(websocket, connection_id)
+
+    user = auth_ctx.user_id  # 兼容现有代码
 
     async with AsyncSessionLocal() as db:
         topic_repo = TopicRepository(db)
@@ -505,6 +508,36 @@ async def chat_websocket(
 
                     # Update topic's updated_at timestamp again after AI response
                     await topic_repo.update_topic_timestamp(topic_refreshed)
+
+                    # === 创建消费记录 ===
+                    try:
+                        # 计算消费金额（这里使用简单的字符数计算，可根据实际需求调整）
+                        consume_amount = 3 + len(full_content) // 100  # 每10个字符消费1积分
+                        if consume_amount > 0:
+                            # 仅在 bohr_app 时传递 access_token
+                            access_key = None
+                            if auth_ctx.auth_provider.lower() == "bohr_app":
+                                access_key = auth_ctx.access_token
+
+                            consume_record = await create_consume_for_chat(
+                                db=db,
+                                user_id=auth_ctx.user_id,
+                                auth_provider=auth_ctx.auth_provider,
+                                amount=consume_amount,
+                                access_key=access_key,
+                                session_id=session_id,
+                                topic_id=topic_id,
+                                message_id=ai_message.id,
+                                description=f"Chat message consume: {consume_amount} points",
+                            )
+                            logger.info(
+                                f"Consume record created: {consume_record.id}, "
+                                f"user: {auth_ctx.user_id}, amount: {consume_amount}, "
+                                f"state: {consume_record.consume_state}"
+                            )
+                    except Exception as e:
+                        logger.error(f"Failed to create consume record: {e}", exc_info=True)
+                        # 消费记录创建失败不影响主流程
 
                     # Send final message confirmation with real database ID
                     final_message_event = {
