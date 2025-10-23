@@ -34,6 +34,7 @@ export default function XyzenChat() {
     const savedHeight = localStorage.getItem("chatInputHeight");
     return savedHeight ? parseInt(savedHeight, 10) : 80;
   });
+  const [sendBlocked, setSendBlocked] = useState(false);
 
   const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
   const currentAgent = currentChannel?.agentId
@@ -42,6 +43,7 @@ export default function XyzenChat() {
   const messages: Message[] = currentChannel?.messages || [];
   const connected = currentChannel?.connected || false;
   const error = currentChannel?.error || null;
+  const responding = currentChannel?.responding || false;
 
   const scrollToBottom = useCallback(
     (force = false) => {
@@ -67,6 +69,12 @@ export default function XyzenChat() {
 
   const handleSendMessage = (inputMessage: string) => {
     if (!inputMessage.trim() || !activeChatChannel) return;
+    if (responding) {
+      setSendBlocked(true);
+      // Auto-hide the hint after 2 seconds
+      window.setTimeout(() => setSendBlocked(false), 2000);
+      return;
+    }
     sendMessage(inputMessage);
     setAutoScroll(true);
     setTimeout(() => scrollToBottom(true), 100);
@@ -150,7 +158,7 @@ export default function XyzenChat() {
       ) : (
         <>
           {currentAgent ? (
-            <div className="flex-shrink-0 border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50 px-4 py-3 dark:border-neutral-800 dark:from-black dark:to-neutral-950">
+            <div className=" relative flex-shrink-0 border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50 px-4 py-3 dark:border-neutral-800 dark:from-black dark:to-neutral-950">
               <div className="flex items-start gap-3">
                 <img
                   src={
@@ -162,7 +170,7 @@ export default function XyzenChat() {
                   className="mt-1 h-8 w-8 flex-shrink-0 rounded-full border-2 border-indigo-100 object-cover shadow-sm dark:border-indigo-900"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="mb-1 flex items-center gap-2">
                     <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                       {currentAgent.name}
                     </span>
@@ -179,6 +187,30 @@ export default function XyzenChat() {
                       }}
                       textClassName="text-sm text-neutral-600 dark:text-neutral-400"
                     />
+                    {responding && (
+                      <span className=" absolute right-0 ml-2 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600 ring-1 ring-inset ring-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:ring-indigo-800/40">
+                        <svg
+                          className="h-3 w-3 animate-spin"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                          />
+                        </svg>
+                        AI 正在回复…
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
                     {currentAgent.description}
@@ -187,7 +219,7 @@ export default function XyzenChat() {
               </div>
             </div>
           ) : (
-            <div className="flex-shrink-0 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
+            <div className=" relative flex-shrink-0 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
               <EditableTitle
                 title={currentChannel?.title || "新的聊天"}
                 onSave={(newTitle) => {
@@ -202,6 +234,27 @@ export default function XyzenChat() {
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 您可以在这里与AI助手自由讨论任何话题
               </p>
+              {responding && (
+                <div className=" absolute right-0 mt-1 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600 ring-1 ring-inset ring-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:ring-indigo-800/40">
+                  <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                  AI 正在回复…
+                </div>
+              )}
             </div>
           )}
 
@@ -277,10 +330,17 @@ export default function XyzenChat() {
               onShowHistory={handleToggleHistory}
               onHeightChange={handleInputHeightChange}
             />
+            {sendBlocked && (
+              <div className="mx-4 mb-1 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/40">
+                正在生成回复，暂时无法发送。请稍后再试。
+              </div>
+            )}
             <ChatInput
               onSendMessage={handleSendMessage}
               disabled={!connected}
-              placeholder="输入消息..."
+              placeholder={
+                responding ? "AI 正在回复中，暂时无法发送…" : "输入消息..."
+              }
               height={inputHeight}
             />
           </div>

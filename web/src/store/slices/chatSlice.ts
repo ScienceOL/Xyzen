@@ -448,8 +448,29 @@ export const createChatSlice: StateCreator<
           if (!channel) return;
 
           switch (event.type) {
+            case "processing": {
+              // Treat backend "processing" as our existing "loading" state
+              channel.responding = true;
+              const loadingMessageId = `loading-${Date.now()}`;
+              const existingLoadingIndex = channel.messages.findIndex(
+                (m) => m.isLoading,
+              );
+
+              if (existingLoadingIndex === -1) {
+                channel.messages.push({
+                  id: loadingMessageId,
+                  role: "assistant" as const,
+                  content: "",
+                  created_at: new Date().toISOString(),
+                  isLoading: true,
+                  isStreaming: false,
+                });
+              }
+              break;
+            }
             case "loading": {
               // Add or update loading message
+              channel.responding = true;
               const loadingMessageId = `loading-${Date.now()}`;
               const existingLoadingIndex = channel.messages.findIndex(
                 (m) => m.isLoading,
@@ -471,6 +492,7 @@ export const createChatSlice: StateCreator<
 
             case "streaming_start": {
               // Convert loading message to streaming message
+              channel.responding = true;
               const loadingIndex = channel.messages.findIndex(
                 (m) => m.isLoading,
               );
@@ -485,6 +507,15 @@ export const createChatSlice: StateCreator<
                   isStreaming: true,
                   content: "",
                 };
+              } else {
+                // No loading present (backend may skip sending "loading"). Create a streaming message now.
+                channel.messages.push({
+                  id: eventData.id,
+                  role: "assistant" as const,
+                  content: "",
+                  created_at: new Date().toISOString(),
+                  isStreaming: true,
+                });
               }
               break;
             }
@@ -495,7 +526,16 @@ export const createChatSlice: StateCreator<
               const streamingIndex = channel.messages.findIndex(
                 (m) => m.id === eventData.id,
               );
-              if (streamingIndex !== -1) {
+              if (streamingIndex === -1) {
+                // If we somehow missed streaming_start, create the message on first chunk
+                channel.messages.push({
+                  id: eventData.id,
+                  role: "assistant" as const,
+                  content: eventData.content,
+                  created_at: new Date().toISOString(),
+                  isStreaming: true,
+                });
+              } else {
                 const currentContent = channel.messages[streamingIndex].content;
                 channel.messages[streamingIndex].content =
                   currentContent + eventData.content;
@@ -505,6 +545,7 @@ export const createChatSlice: StateCreator<
 
             case "streaming_end": {
               // Finalize streaming message
+              channel.responding = false;
               const eventData = event.data as {
                 id: string;
                 created_at?: string;
@@ -513,15 +554,19 @@ export const createChatSlice: StateCreator<
                 (m) => m.id === eventData.id,
               );
               if (endingIndex !== -1) {
-                const {
-                  isLoading: _,
-                  isStreaming: __,
-                  ...messageWithoutFlags
-                } = channel.messages[endingIndex];
-                channel.messages[endingIndex] = {
-                  ...messageWithoutFlags,
-                  created_at: eventData.created_at || new Date().toISOString(),
+                const messageFinal = {
+                  ...channel.messages[endingIndex],
+                } as Omit<import("../types").Message, never> & {
+                  isLoading?: boolean;
+                  isStreaming?: boolean;
                 };
+                // Remove transient flags
+                delete messageFinal.isLoading;
+                delete messageFinal.isStreaming;
+                channel.messages[endingIndex] = {
+                  ...messageFinal,
+                  created_at: eventData.created_at || new Date().toISOString(),
+                } as import("../types").Message;
               }
               break;
             }
@@ -556,11 +601,11 @@ export const createChatSlice: StateCreator<
             }
 
             case "tool_call_request": {
-              // Handle tool call request - create a new assistant message with tool calls
               console.log(
                 "ChatSlice: Received tool_call_request event:",
                 event.data,
               );
+              channel.responding = true;
               const toolCallData = event.data as {
                 id: string;
                 name: string;
@@ -616,6 +661,7 @@ export const createChatSlice: StateCreator<
                 "ChatSlice: Received tool_call_response event:",
                 event.data,
               );
+              // Still responding until final streaming_end
               const responseData = event.data as {
                 toolCallId: string;
                 status: string;
@@ -654,6 +700,7 @@ export const createChatSlice: StateCreator<
 
             case "error": {
               // Handle error - remove loading messages and show error
+              channel.responding = false;
               const errorData = event.data as { error: string };
               const errorLoadingIndex = channel.messages.findIndex(
                 (m) => m.isLoading,
@@ -678,6 +725,11 @@ export const createChatSlice: StateCreator<
   sendMessage: (message: string) => {
     const { activeChatChannel } = get();
     if (activeChatChannel) {
+      // Mark the channel as responding immediately for snappier UX
+      set((state: ChatSlice) => {
+        const channel = state.channels[activeChatChannel];
+        if (channel) channel.responding = true;
+      });
       xyzenService.sendMessage(message);
     }
   },
