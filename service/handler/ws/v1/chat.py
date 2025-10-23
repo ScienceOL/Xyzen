@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
+from common.exceptions import InsufficientBalanceError
 from core.chat import get_ai_response_stream
 from core.consume import create_consume_for_chat
 from middleware.auth import AuthContext, get_auth_context_websocket
@@ -536,9 +537,27 @@ async def chat_websocket(
                                 f"user: {auth_ctx.user_id}, amount: {consume_amount}, "
                                 f"state: {consume_record.consume_state}"
                             )
+                    except InsufficientBalanceError as e:
+                        logger.warning(f"Insufficient balance for user {auth_ctx.user_id}: {e.message}")
+                        # 发送余额不足通知给用户
+                        insufficient_balance_event = {
+                            "type": "insufficient_balance",
+                            "data": {
+                                "error_code": e.error_code,
+                                "message": "Insufficient photon balance",
+                                "message_cn": "光子余额不足，请充值后继续使用",
+                                "details": e.details,
+                                "action_required": "recharge",
+                            },
+                        }
+                        await manager.send_personal_message(
+                            json.dumps(insufficient_balance_event, ensure_ascii=False),
+                            connection_id,
+                        )
+                        # 余额不足时不影响消息的显示，但需要通知用户
                     except Exception as e:
                         logger.error(f"Failed to create consume record: {e}", exc_info=True)
-                        # 消费记录创建失败不影响主流程
+                        # 其他消费记录创建失败不影响主流程
 
                     # Send final message confirmation with real database ID
                     final_message_event = {
