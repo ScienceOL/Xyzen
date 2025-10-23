@@ -6,8 +6,10 @@ from urllib import parse, request
 
 import openai
 from fastmcp import FastMCP
+from fastmcp.server.dependencies import get_access_token
 
 from internal import configs
+from middleware.auth import AuthProvider
 from utils.tool_loader import tool_loader
 
 logger = logging.getLogger(__name__)
@@ -173,18 +175,27 @@ def register_built_in_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def refresh_tools() -> Dict[str, Any]:
         """
-        Manually refresh tools from the database, handling additions, deletions, and updates
+        Manually refresh tools from the database for the current user, handling additions, deletions, and updates
 
         Returns:
             Result of the refresh operation with details about changes
         """
         try:
+            # Extract user_id from JWT token
+            access_token = get_access_token()
+
+            if not access_token:
+                return {"status": "error", "message": "Authentication required to refresh tools"}
+
+            user_info = AuthProvider.parse_user_info(access_token.claims)
+            user_id = user_info.id
+
             # Use the new refresh method that handles deletions properly
-            result = tool_loader.refresh_tools(mcp)
+            result = tool_loader.refresh_tools(mcp, user_id=user_id)
 
             return {
                 "status": "success",
-                "message": "Tools refreshed successfully",
+                "message": f"Tools refreshed successfully for user {user_id}",
                 "changes": result,
                 "summary": {
                     "removed": len(result.get("removed", [])),

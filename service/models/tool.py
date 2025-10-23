@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from typing import List, Optional
 
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, Text, text
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, Text, UniqueConstraint, text
 
 
 class ToolStatus(str, enum.Enum):
@@ -15,9 +15,11 @@ class ToolStatus(str, enum.Enum):
 
 
 class Tool(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_user_tool_name"),)
+
     user_id: str = Field(index=True, description="The user ID from authentication provider")
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(unique=True, index=True)
+    name: str = Field(index=True)  # Removed unique=True, now enforced by composite constraint
     description: Optional[str] = Field(default=None)
     tags_json: str = Field(default="[]")
     is_active: bool = Field(default=True)

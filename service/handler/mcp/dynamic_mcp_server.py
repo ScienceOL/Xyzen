@@ -25,7 +25,6 @@ from middleware.dynamic_mcp_server import DynamicToolMiddleware
 from utils.built_in_tools import register_built_in_tools
 from utils.json_patch import apply_json_patch
 from utils.manage_tools import register_manage_tools
-from utils.tool_loader import tool_loader
 
 # 创建认证提供者 - 使用 TokenVerifier 类型但赋值给变量名 auth
 # 这个变量会被 MCP 自动发现机制识别为 AuthProvider（因为 TokenVerifier 继承自 AuthProvider）
@@ -104,10 +103,7 @@ mcp.add_middleware(StructuredLoggingMiddleware(include_payloads=True))
 register_built_in_tools(mcp)
 register_manage_tools(mcp)
 
-# Load Local Tools
-logger.info("Loading local tools...")
-tools = tool_loader.scan_and_load_tools()
-tool_loader.register_tools_to_mcp(mcp, tools)
-logger.info(f"Loaded {len(tools)} local tools")
+# Database tools are loaded on-demand per user request (not at startup)
+logger.info("Database tool loader initialized (tools loaded on-demand per user)")
 
 logger.info("Server is starting...")

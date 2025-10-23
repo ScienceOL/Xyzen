@@ -1,13 +1,14 @@
-import asyncio
 import logging
 from datetime import datetime
 from typing import Callable, List, Optional
 
 from fastmcp import Client, FastMCP
+from fastmcp.server.dependencies import get_access_token
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.tools.tool import ToolResult
 
 from internal import configs
+from middleware.auth import AuthProvider
 from utils.tool_loader import tool_loader
 
 dynamic_mcp_config = configs.DynamicMCP
@@ -32,30 +33,45 @@ class DynamicToolMiddleware(Middleware):
             await self.browser_mcp_client._connect()
 
     async def on_call_tool(self, context: MiddlewareContext, call_next: Callable) -> ToolResult:
-        """Refresh current tool when calling tool"""
+        """Refresh current tool when calling tool, with user isolation and permission check"""
         tool_name = context.message.name
         start_time = datetime.now()
 
-        if "-" in tool_name:
-            logger.info(f"Refreshing specific tool before calling: {tool_name}")
-            # Use the new refresh method that handles deletions properly
-            try:
-                result = tool_loader.refresh_tools(self.mcp)
-                logger.info(f"Tool refresh completed for {tool_name}: {result}")
-            except Exception as e:
-                logger.error(f"Error refreshing tools for {tool_name}: {e}")
-                # Fallback to old method if refresh fails
-                if hasattr(tool_loader, "scan_and_load_tools") and asyncio.iscoroutinefunction(
-                    tool_loader.scan_and_load_tools
-                ):
-                    reloaded_tools = await tool_loader.scan_and_load_tools(tool_name)
-                else:
-                    reloaded_tools = tool_loader.scan_and_load_tools(tool_name)
-                if reloaded_tools:
-                    # Re-register the tool to MCP
-                    tool_loader.register_tools_to_mcp(self.mcp, reloaded_tools, tool_name)
-                else:
-                    logger.warning(f"No tools were reloaded for {tool_name}")
+        # Check if it's a database tool (has "-" but not browser tool)
+        is_db_tool = "-" in tool_name and not tool_name.startswith("browser_")
+
+        if is_db_tool:
+            # Extract user_id from JWT token
+            access_token = get_access_token()
+
+            if access_token:
+                try:
+                    user_info = AuthProvider.parse_user_info(access_token.claims)
+                    user_id = user_info.id
+
+                    # Verify ownership before refresh
+                    if tool_name in tool_loader._tool_ownership:
+                        tool_owner = tool_loader._tool_ownership[tool_name]
+                        if tool_owner != user_id:
+                            logger.error(
+                                f"Permission denied: User {user_id} "
+                                f"attempted to call tool {tool_name} owned by {tool_owner}"
+                            )
+                            raise PermissionError(f"You don't have permission to call tool '{tool_name}'")
+
+                    # Refresh user's tools
+                    logger.info(f"Refreshing tools for user {user_id} before calling {tool_name}")
+                    result = tool_loader.refresh_tools(self.mcp, user_id=user_id)
+                    logger.info(f"Tool refresh completed: {result}")
+
+                except PermissionError:
+                    raise  # Re-raise permission errors
+                except Exception as e:
+                    logger.error(f"Error refreshing tools: {e}")
+                    # Continue anyway - tool might still be loaded
+            else:
+                logger.warning("No access token for database tool call")
+                raise PermissionError("Authentication required to call database tools")
 
         # Execute tool
         logger.warning(f"🚀 Execute: {tool_name} Arguments: {getattr(context.message, 'arguments', {})}")
@@ -85,21 +101,25 @@ class DynamicToolMiddleware(Middleware):
         return result  # type: ignore
 
     async def on_list_tools(self, context: MiddlewareContext, call_next: Callable) -> List:
-        """Refresh tools directory when listing tools"""
-        logger.info("Refreshing all tools before listing tools")
-        # Use the new refresh method that handles deletions properly
-        try:
-            result = tool_loader.refresh_tools(self.mcp)
-            logger.info(f"Tool refresh completed: {result}")
-        except Exception as e:
-            logger.error(f"Error refreshing tools: {e}")
-            # Fallback to old method if refresh fails
-            if hasattr(tool_loader, "scan_and_load_tools") and asyncio.iscoroutinefunction(
-                tool_loader.scan_and_load_tools
-            ):
-                tools = await tool_loader.scan_and_load_tools()
-            else:
-                tools = tool_loader.scan_and_load_tools()
-            tool_loader.register_tools_to_mcp(self.mcp, tools)
+        """Refresh user's tools before listing"""
+
+        # Extract user_id from JWT token
+        access_token = get_access_token()
+
+        if access_token:
+            try:
+                user_info = AuthProvider.parse_user_info(access_token.claims)
+                user_id = user_info.id
+
+                logger.info(f"Refreshing tools for user {user_id} before list_tools")
+                result = tool_loader.refresh_tools(self.mcp, user_id=user_id)
+                logger.info(f"Tool refresh result: {result}")
+            except Exception as e:
+                logger.error(f"Error refreshing tools: {e}")
+                # Continue anyway - built-in tools still available
+        else:
+            logger.warning("No access token, skipping user tool refresh")
+
         # Continue executing list tools
+        # This will return tools visible to MCP (built-in + current user's)
         return await call_next(context)  # type: ignore
