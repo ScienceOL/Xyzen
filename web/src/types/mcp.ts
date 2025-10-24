@@ -16,6 +16,7 @@ export interface BuiltinMcpServer {
   description: string;
   is_builtin: boolean;
   requires_auth: boolean;
+  is_default?: boolean;
 }
 
 export type McpServerCreate = Omit<

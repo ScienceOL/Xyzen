@@ -9,6 +9,7 @@ interface StatusChangePayload {
 interface MessageEvent {
   type:
     | "message"
+    | "processing"
     | "loading"
     | "streaming_start"
     | "streaming_chunk"

@@ -50,4 +50,4 @@ EXPOSE 32233
 # The '-s' flag handles SPA routing by redirecting all requests to index.html
 CMD ["npx", "-y", "serve", "-s", ".", "-l", "32233"]
 
-LABEL org.opencontainers.image.source https://github.com/ScienceOL/Xyzen
+LABEL org.opencontainers.image.source=https://github.com/scienceol/xyzen

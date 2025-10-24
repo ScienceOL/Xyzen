@@ -95,22 +95,22 @@ class BaseLLMProvider(ABC):
         """
         pass
 
-    async def chat_completion_stream(
-        self, request: ChatCompletionRequest
-    ) -> AsyncGenerator[ChatCompletionStreamChunk, None]:
-        """
-        Generate a streaming chat completion.
+    # async def chat_completion_stream(
+    #     self, request: ChatCompletionRequest
+    # ) -> AsyncGenerator[ChatCompletionStreamChunk, None]:
+    #     """
+    #     Generate a streaming chat completion.
 
-        Args:
-            request: The chat completion request
+    #     Args:
+    #         request: The chat completion request
 
-        Yields:
-            Stream chunks of the completion response
-        """
-        # Default implementation falls back to regular completion
-        response = await self.chat_completion(request)
-        if response.content:
-            yield ChatCompletionStreamChunk(content=response.content, finish_reason=response.finish_reason)
+    #     Yields:
+    #         Stream chunks of the completion response
+    #     """
+    #     # Default implementation falls back to regular completion
+    #     response = await self.chat_completion(request)
+    #     if response.content:
+    #         yield ChatCompletionStreamChunk(content=response.content, finish_reason=response.finish_reason)
 
     def supports_streaming(self) -> bool:
         """

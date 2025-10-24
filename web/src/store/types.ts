@@ -50,6 +50,8 @@ export interface ChatChannel {
   agentId?: string;
   connected: boolean;
   error: string | null;
+  // Whether assistant is currently producing a reply (planning, tool calls, or generating tokens)
+  responding?: boolean;
 }
 
 export interface ChatHistoryItem {

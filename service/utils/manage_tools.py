@@ -136,8 +136,8 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools()
-                    tool_loader.register_tools_to_mcp(mcp, tools)
+                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after creating {name}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after creating {name}: {e}")
@@ -155,14 +155,14 @@ def register_manage_tools(mcp: FastMCP) -> None:
             return error_response(f"Error creating tool: {str(e)}")
 
     @mcp.tool
-    def create_function(tool_id: int, code_content: str) -> Dict[str, Any]:
+    def create_function(tool_name: str, code_content: str) -> Dict[str, Any]:
         """
         Add new function(s) to an existing tool by providing code content.
         The new code will be appended to the existing tool's code content.
         All functions discovered in the new code will be added to the tool.
 
         Args:
-            tool_id: ID of the tool to add function to
+            tool_name: Name of the tool to add function to
             code_content: Python code containing one or more functions to add
 
         Returns:
@@ -185,22 +185,19 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 return error_response(str(e))
 
             with Session(engine) as session:
-                # Get the tool
-                tool = session.get(Tool, tool_id)
-                if not tool:
-                    return error_response(f"Tool with ID {tool_id} not found")
+                # Get the tool by name and user_id
+                tool = session.exec(select(Tool).where(Tool.user_id == user_info.id, Tool.name == tool_name)).first()
 
-                # Check if user has permission
-                if tool.user_id != user_info.id:
-                    return error_response("Permission denied: You don't have permission to modify this tool")
+                if not tool:
+                    return error_response(f"Tool '{tool_name}' not found")
 
                 # Get the latest version
                 latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool_id).order_by(desc(ToolVersion.version))
+                    select(ToolVersion).where(ToolVersion.tool_id == tool.id).order_by(desc(ToolVersion.version))
                 ).first()
 
                 if not latest_version:
-                    return error_response(f"No versions found for tool {tool_id}")
+                    return error_response(f"No versions found for tool '{tool_name}'")
 
                 # Check if any of the functions already exist
                 existing_functions = session.exec(
@@ -229,7 +226,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     requirements=latest_version.requirements,
                     code_content=combined_code_content,  # Combined code
                     status=ToolStatus.READY,
-                    tool_id=tool_id,
+                    tool_id=tool.id,
                 )
                 session.add(new_version)
                 session.commit()
@@ -255,8 +252,8 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools()
-                    tool_loader.register_tools_to_mcp(mcp, tools)
+                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after adding functions {created_functions} to {tool.name}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after adding function: {e}")
@@ -264,18 +261,18 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 return {
                     "status": "success",
                     "message": f"Function(s) added to tool '{tool.name}' successfully",
-                    "tool_id": tool_id,
+                    "tool_name": tool.name,
                     "functions": created_functions,
                     "version": new_version.version,
                 }
 
         except Exception as e:
-            logger.error(f"Error adding function(s) to tool {tool_id}: {e}")
+            logger.error(f"Error adding function(s) to tool '{tool_name}': {e}")
             return error_response(f"Error adding function(s): {str(e)}")
 
     @mcp.tool
     def update_tool(
-        tool_id: int,
+        tool_name: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
         code_content: Optional[str] = None,
@@ -285,7 +282,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
         Update an existing tool.
 
         Args:
-            tool_id: ID of the tool to update
+            tool_name: Name of the tool to update
             name: New tool name (optional)
             description: New description (optional)
             code_content: New Python code (optional)
@@ -298,19 +295,18 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
         try:
             with Session(engine) as session:
-                # Get the tool
-                tool = session.get(Tool, tool_id)
-                if not tool:
-                    return error_response(f"Tool with ID {tool_id} not found")
+                # Get the tool by name and user_id
+                tool = session.exec(select(Tool).where(Tool.user_id == user_info.id, Tool.name == tool_name)).first()
 
-                # Check if user has permission
-                if tool.user_id != user_info.id:
-                    return error_response("Permission denied: You don't have permission to update this tool")
+                if not tool:
+                    return error_response(f"Tool '{tool_name}' not found")
 
                 # Update tool fields if provided
                 if name is not None:
-                    # Check if new name conflicts with existing tools
-                    existing_tool = session.exec(select(Tool).where(Tool.name == name, Tool.id != tool_id)).first()
+                    # Check if new name conflicts with existing tools for this user
+                    existing_tool = session.exec(
+                        select(Tool).where(Tool.user_id == user_info.id, Tool.name == name, Tool.id != tool.id)
+                    ).first()
                     if existing_tool:
                         return error_response(f"Tool with name '{name}' already exists")
                     tool.name = name
@@ -322,11 +318,11 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 # Get the latest version
                 latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool_id).order_by(desc(ToolVersion.version))
+                    select(ToolVersion).where(ToolVersion.tool_id == tool.id).order_by(desc(ToolVersion.version))
                 ).first()
 
                 if not latest_version:
-                    return error_response(f"No versions found for tool {tool_id}")
+                    return error_response(f"No versions found for tool '{tool_name}'")
 
                 # Create new version if code or requirements are updated
                 if code_content is not None or requirements is not None:
@@ -346,7 +342,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                         requirements=requirements if requirements is not None else latest_version.requirements,
                         code_content=code_content if code_content is not None else latest_version.code_content,
                         status=ToolStatus.READY,
-                        tool_id=tool_id,
+                        tool_id=tool.id,
                     )
                     session.add(new_version)
                     session.commit()
@@ -375,8 +371,8 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools()
-                    tool_loader.register_tools_to_mcp(mcp, tools)
+                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after updating {tool.name}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after updating {tool.name}: {e}")
@@ -384,7 +380,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 return {
                     "status": "success",
                     "message": f"Tool '{tool.name}' updated successfully",
-                    "tool_id": tool.id,
+                    "tool_name": tool.name,
                     "version": (
                         latest_version.version + 1
                         if code_content is not None or requirements is not None
@@ -393,7 +389,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 }
 
         except Exception as e:
-            logger.error(f"Error updating tool {tool_id}: {e}")
+            logger.error(f"Error updating tool '{tool_name}': {e}")
             return error_response(f"Error updating tool: {str(e)}")
 
     @mcp.tool
@@ -513,8 +509,8 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools()
-                    tool_loader.register_tools_to_mcp(mcp, tools)
+                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after updating function {function_name} in {tool.name}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after updating function: {e}")
@@ -573,7 +569,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 # Refresh tools in the loader using the new refresh method
                 try:
-                    result = tool_loader.refresh_tools(mcp)
+                    result = tool_loader.refresh_tools(mcp, user_id=user_info.id)
                     logger.info(f"Refreshed tools after deleting {tool_name}: {result}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after deleting {tool_name}: {e}")
@@ -638,8 +634,8 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools()
-                    tool_loader.register_tools_to_mcp(mcp, tools)
+                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after deleting function {function_name} from {tool.name}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after deleting function: {e}")

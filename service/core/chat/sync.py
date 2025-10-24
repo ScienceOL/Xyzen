@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from core.providers import ChatCompletionRequest, ChatMessage, get_user_provider_manager
 from models.topic import Topic as TopicModel
 
+from .messages import build_system_prompt
 from .tools import _execute_tool_call, _format_tool_result, _prepare_mcp_tools
 
 logger = logging.getLogger(__name__)
@@ -47,9 +48,7 @@ async def get_ai_response(
         logger.error(f"No LLM provider available for user {user_id}")
         return "Sorry, no AI provider is currently available."
 
-    system_prompt = "You are a helpful AI assistant."
-    if topic.session.agent and topic.session.agent.prompt:
-        system_prompt = topic.session.agent.prompt
+    system_prompt = build_system_prompt(topic.session.agent)
 
     messages: List[ChatMessage] = [ChatMessage(role="system", content=system_prompt)]
     for msg in topic.messages:
