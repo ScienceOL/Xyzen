@@ -56,10 +56,11 @@
   ],
 
   // Python module search paths (corresponds to extraPaths in pyproject.toml)
-  "python.analysis.extraPaths": ["service"],
+  // Disable auto search to avoid using workspace root as import prefix (prevents "service.*")
+  "python.analysis.autoSearchPaths": false,
+  // Explicitly treat service as import root so completions use "app.*" instead of "service.app.*"
+  "python.analysis.extraPaths": ["./service"],
   "python.analysis.autoImportCompletions": true,
-  "python.analysis.autoSearchPaths": true,
-  "python.autoComplete.extraPaths": ["./service"],
 
   // Diagnostic mode: check only open files
   "python.analysis.diagnosticMode": "openFilesOnly",
@@ -90,6 +91,8 @@
     "reportInconsistentConstructor": "error",
     "reportOverlappingOverload": "error",
     "reportInvalidStringEscapeSequence": "error",
+    "reportMissingParameterType": "error",
+    "reportUnknownLambdaType": "error",
 
     // Warning level (warning)
     "reportUnusedImport": "warning",
@@ -102,19 +105,19 @@
     "reportUnnecessaryCast": "warning",
     "reportUnnecessaryComparison": "warning",
     "reportUnnecessaryContains": "warning",
+    "reportUnnecessaryTypeIgnoreComment": "warning",
+    "reportTypeCommentUsage": "warning",
+    "reportUnknownParameterType": "warning",
+    "reportUnknownArgumentType": "warning",
 
     // Disabled items (none)
     "reportMissingTypeStubs": "none",
     "reportUntypedFunctionDecorator": "none",
     "reportUntypedClassDecorator": "none",
     "reportUntypedBaseClass": "none",
-    "reportUnknownParameterType": "none",
-    "reportUnknownArgumentType": "none",
-    "reportUnknownLambdaType": "none",
     "reportUnknownVariableType": "none",
     "reportUnknownMemberType": "none",
     "reportMissingSuperCall": "none",
-    "reportMissingParameterType": "none",
     "reportCallInDefaultInitializer": "none",
     "reportImplicitStringConcatenation": "none"
   },
