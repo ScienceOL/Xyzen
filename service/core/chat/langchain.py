@@ -18,6 +18,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from core.providers import get_user_provider_manager
 from models.topic import Topic as TopicModel
 
+from .messages import build_system_prompt
+
 logger = logging.getLogger(__name__)
 
 
@@ -143,11 +145,8 @@ async def get_ai_response_stream_langchain(
         yield {"type": "error", "data": {"error": "No AI provider available."}}
         return
 
-    # Get system prompt
-    system_prompt = """You are an advanced AI assistant. Prioritize accuracy, clarity, and helpfulness.
-When tools are available, use them proactively to provide accurate, up-to-date information."""
-    if topic.session.agent and topic.session.agent.prompt:
-        system_prompt = topic.session.agent.prompt
+    # Get system prompt with MCP awareness
+    system_prompt = build_system_prompt(topic.session.agent)
 
     yield {"type": "processing", "data": {"status": "preparing_request"}}
 

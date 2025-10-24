@@ -70,6 +70,7 @@ async def discover_mcp_servers(
                 "description": f"Built-in MCP server: {server_name.replace('_', ' ').title()}",
                 "is_builtin": True,
                 "requires_auth": config.get("auth") is not None,
+                "is_default": config.get("is_default", False),
             }
         )
 
