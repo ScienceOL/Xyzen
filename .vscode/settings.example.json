@@ -13,7 +13,7 @@
   },
 
   "python.languageServer": "Pylance",
-  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.typeCheckingMode": "standard",
   "python.analysis.extraPaths": ["./service"],
   "python.analysis.autoImportCompletions": true,
   "python.analysis.autoSearchPaths": true,
@@ -30,18 +30,10 @@
     "reportUndefinedVariable": "error",
     "reportAssertAlwaysTrue": "warning",
     "reportSelfClsParameterName": "warning",
-    "reportImplicitStringConcatenation": "none"
-  },
-
-  "mypy-type-checker.args": [
-    "--config-file=service/pyproject.toml",
-    "--ignore-missing-imports"
-  ],
-  "mypy-type-checker.importStrategy": "fromEnvironment",
-  "mypy-type-checker.severity": {
-    "error": "Error",
-    "warning": "Warning",
-    "information": "Information"
+    "reportImplicitStringConcatenation": "none",
+    "reportOptionalMemberAccess": "error",
+    "reportOptionalSubscript": "error",
+    "reportPrivateUsage": "warning"
   },
 
   "black-formatter.args": ["--line-length", "119"],

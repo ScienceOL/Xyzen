@@ -21,10 +21,10 @@ repos:
       - id: isort
         args:
           [
-            '--profile',
-            'black',
-            '--line-length=119',
-            '--settings-path=service/pyproject.toml',
+            "--profile",
+            "black",
+            "--line-length=119",
+            "--settings-path=service/pyproject.toml",
           ]
         files: ^service/
 
@@ -37,11 +37,12 @@ repos:
           - --extend-ignore=F401,W503,F541,F841,E226
         files: ^service/
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.1
+  # Python类型检查 - 使用 Pyright
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.390
     hooks:
-      - id: mypy
+      - id: pyright
         args:
-          - --config-file=service/pyproject.toml
+          - --project=service/pyproject.toml
         files: ^service/
-        entry: bash -c 'cd service && uv run --active mypy .'
+        entry: bash -c 'cd service && uv run --active pyright .'

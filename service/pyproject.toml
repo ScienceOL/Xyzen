@@ -32,19 +32,18 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy>=1.16.1",
+    "pyright>=1.1.390",
     "pre-commit>=4.2.0",
 ]
 
 [tool.black]
 line-length = 119
-target-version = ['py312']
+target-version = ['py313']
 include = '.*\.pyi?$'
 exclude = '''
 /(
     \.git
   | \.hg
-  | \.mypy_cache
   | \.tox
   | \.venv
   | _build
@@ -62,41 +61,70 @@ multi_line_output = 3
 include_trailing_comma = true
 src_paths = ["."]
 
-[tool.mypy]
-python_version = "3.13"
-disallow_untyped_decorators = false
-ignore_missing_imports = false
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-mypy_path = "."
-namespace_packages = true
-check_untyped_defs = true
-no_implicit_optional = true
-strict_optional = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unused_ignores = true
-exclude = [
-    ".*/migrations/.*",
-    "migrations/.*",
-    ".*/__pycache__/.*",
-    ".*/\\.mypy_cache/.*",
-    "\\.venv/.*"
-]
-
-[tool.pylance]
-extraPaths = ["."]
-autoImportCompletions = true
-autoSearchPaths = true
-
+# Pyright/Pylance 类型检查配置 (用于 VS Code 和 pre-commit)
 [tool.pyright]
 include = ["."]
-exclude = ["**/__pycache__", "**/.mypy_cache", "*/migrations/*", "migrations/"]
+exclude = [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/migrations",
+    "migrations",
+    ".venv",
+    "build",
+    "dist"
+]
 extraPaths = ["."]
 pythonVersion = "3.13"
-typeCheckingMode = "basic"
+pythonPlatform = "All"
 
-# 针对特定模块的配置
-[[tool.mypy.overrides]]
-module = "yaml"
-ignore_missing_imports = true
+# 类型检查模式: "off" | "basic" | "standard" | "strict"
+typeCheckingMode = "standard"
+
+# 严格模式配置
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+strictParameterNoneValue = true
+
+# 报告配置 - 错误级别
+reportMissingImports = "error"
+reportDuplicateImport = "error"
+reportOptionalSubscript = "error"
+reportOptionalMemberAccess = "error"
+reportOptionalCall = "error"
+reportOptionalIterable = "error"
+reportOptionalContextManager = "error"
+reportOptionalOperand = "error"
+reportConstantRedefinition = "error"
+reportIncompatibleMethodOverride = "error"
+reportIncompatibleVariableOverride = "error"
+reportInconsistentConstructor = "error"
+reportOverlappingOverload = "error"
+reportInvalidStringEscapeSequence = "error"
+
+# 报告配置 - 警告级别
+reportUnusedImport = "warning"
+reportUnusedClass = "warning"
+reportUnusedFunction = "warning"
+reportUnusedVariable = "warning"
+reportPrivateUsage = "warning"
+reportUninitializedInstanceVariable = "warning"
+reportUnnecessaryIsInstance = "warning"
+reportUnnecessaryCast = "warning"
+reportUnnecessaryComparison = "warning"
+reportUnnecessaryContains = "warning"
+
+# 报告配置 - 禁用项
+reportMissingTypeStubs = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedClassDecorator = "none"
+reportUntypedBaseClass = "none"
+reportUnknownParameterType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
+reportMissingSuperCall = "none"
+reportMissingParameterType = "none"
+reportCallInDefaultInitializer = "none"
+reportImplicitStringConcatenation = "none"
