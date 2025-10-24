@@ -39,7 +39,7 @@ async def initialize_system_provider(db: AsyncSession) -> Optional[Any]:
     Returns:
         The system provider if configs.LLM is enabled, None otherwise
     """
-    from models.provider import Provider, ProviderCreate
+    from models.provider import Provider
     from repo.provider import ProviderRepository
 
     llm_config = configs.LLM
@@ -51,22 +51,24 @@ async def initialize_system_provider(db: AsyncSession) -> Optional[Any]:
     repo = ProviderRepository(db)
     system_provider: Provider | None = await repo.get_system_provider()
 
-    # Prepare system provider data
+    # Prepare system provider data with explicit type conversion
     provider_type_value = (
         llm_config.provider.value if hasattr(llm_config.provider, "value") else str(llm_config.provider)
     )
+
+    # Ensure all values match the Provider model's expected types
     system_data = {
-        "user_id": SYSTEM_USER_ID,
-        "name": "System Default",
-        "provider_type": provider_type_value,
-        "api": llm_config.endpoint,
-        "key": llm_config.key,
-        "model": llm_config.deployment,
-        "timeout": 60,
-        "max_tokens": 4096,
-        "temperature": 0.7,
-        "is_system": True,
-        "is_default": False,  # System provider is not a user default
+        "user_id": str(SYSTEM_USER_ID),
+        "name": str("System Default"),
+        "provider_type": str(provider_type_value),
+        "api": str(llm_config.endpoint),
+        "key": str(llm_config.key),
+        "model": str(llm_config.deployment) if llm_config.deployment else None,
+        "timeout": int(60),
+        "max_tokens": int(4096),
+        "temperature": float(0.7),
+        "is_system": bool(True),
+        "is_default": bool(False),  # System provider is not a user default
     }
 
     if system_provider:

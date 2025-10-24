@@ -7,24 +7,33 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from common import ALEMBIC_INI_PATH
 from internal import configs
 
-SYNC_DATABASE_URL = ""
-ASYNC_DATABASE_URL = ""
-if configs.Database.Engine == "postgres":
-    SYNC_DATABASE_URL = (
-        f"postgresql+psycopg://{configs.Database.Postgres.User}:{configs.Database.Postgres.Password}@"
-        f"{configs.Database.Postgres.Host}:{configs.Database.Postgres.Port}/{configs.Database.Postgres.DBName}"
-    )
-    ASYNC_DATABASE_URL = (
-        f"postgresql+asyncpg://{configs.Database.Postgres.User}:{configs.Database.Postgres.Password}@"
-        f"{configs.Database.Postgres.Host}:{configs.Database.Postgres.Port}/{configs.Database.Postgres.DBName}"
-    )
-elif configs.Database.Engine == "sqlite":
-    # For SQLite, the path should be relative to the project root or an absolute path.
-    # Example: f"sqlite+aiosqlite:///./sql_app.db"
-    SYNC_DATABASE_URL = f"sqlite:///{configs.Database.SQLite.Path}"
-    ASYNC_DATABASE_URL = f"sqlite+aiosqlite:///{configs.Database.SQLite.Path}"
-else:
-    raise ValueError(f"Unsupported database engine: {configs.Database.Engine}")
+
+# 根据配置的数据库引擎类型构建数据库连接 URL
+# 使用函数而不是模块级变量赋值来避免 reportConstantRedefinition 错误
+def _build_database_urls() -> tuple[str, str]:
+    """构建同步和异步数据库连接 URL"""
+    if configs.Database.Engine == "postgres":
+        sync_url = (
+            f"postgresql+psycopg://{configs.Database.Postgres.User}:{configs.Database.Postgres.Password}@"
+            f"{configs.Database.Postgres.Host}:{configs.Database.Postgres.Port}/{configs.Database.Postgres.DBName}"
+        )
+        async_url = (
+            f"postgresql+asyncpg://{configs.Database.Postgres.User}:{configs.Database.Postgres.Password}@"
+            f"{configs.Database.Postgres.Host}:{configs.Database.Postgres.Port}/{configs.Database.Postgres.DBName}"
+        )
+    elif configs.Database.Engine == "sqlite":
+        # For SQLite, the path should be relative to the project root or an absolute path.
+        # Example: f"sqlite+aiosqlite:///./sql_app.db"
+        sync_url = f"sqlite:///{configs.Database.SQLite.Path}"
+        async_url = f"sqlite+aiosqlite:///{configs.Database.SQLite.Path}"
+    else:
+        raise ValueError(f"Unsupported database engine: {configs.Database.Engine}")
+
+    return sync_url, async_url
+
+
+# 初始化数据库连接 URL 常量
+SYNC_DATABASE_URL, ASYNC_DATABASE_URL = _build_database_urls()
 
 
 # The engine is the gateway to the database.

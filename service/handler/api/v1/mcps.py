@@ -194,9 +194,8 @@ async def test_mcp_tool(
     if not tool_exists:
         raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found on this server")
 
+    start_time = time.time()
     try:
-        start_time = time.time()
-
         # Use the same tool execution logic as in chat.py
         from core.chat.tools import _call_mcp_tool
 
@@ -209,7 +208,11 @@ async def test_mcp_tool(
 
     except Exception as e:
         end_time = time.time()
-        execution_time_ms = int((end_time - start_time) * 1000)
+        # Safely compute execution time; if start_time is somehow unavailable, return None
+        try:
+            execution_time_ms = int((end_time - start_time) * 1000)
+        except Exception:
+            execution_time_ms = None
 
         return ToolTestResponse(success=False, error=str(e), execution_time_ms=execution_time_ms)
 

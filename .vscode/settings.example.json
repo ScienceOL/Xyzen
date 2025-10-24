@@ -12,28 +12,111 @@
     }
   },
 
+  // ============================================================================
+  // Python Language Server Configuration (Manual sync with service/pyproject.toml)
+  // ============================================================================
+  // ⚠️ Important: These settings must be manually synchronized with [tool.pyright] in service/pyproject.toml
+  //
+  // Why manual sync is needed?
+  // - Workspace root is /Xyzen
+  // - pyproject.toml is located in /Xyzen/service/ subdirectory
+  // - Pylance cannot automatically read pyproject.toml from subdirectories
+  //
+  // How to keep in sync?
+  // 1. After modifying [tool.pyright] in service/pyproject.toml
+  // 2. Update corresponding python.analysis.* settings in this file
+  // 3. Reload VS Code window (⇧⌘P -> Developer: Reload Window)
+  //
+  // How to verify it works?
+  // - Run `cd service && uv run pyright .`
+  // - Check if IDE shows the same errors
   "python.languageServer": "Pylance",
+
+  // Type checking mode: corresponds to typeCheckingMode = "standard" in pyproject.toml
   "python.analysis.typeCheckingMode": "standard",
-  "python.analysis.extraPaths": ["./service"],
+
+  // Paths to include in analysis
+  "python.analysis.include": ["service"],
+
+  // Exclude directories from type checking (corresponds to exclude in pyproject.toml)
+  "python.analysis.exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/migrations",
+    "service/migrations",
+    "**/.venv",
+    "**/venv",
+    "**/build",
+    "**/dist",
+    // Additional exclusions for non-Python project directories
+    "web/**",
+    "docker/**",
+    "infra/**",
+    "launch/**"
+  ],
+
+  // Python module search paths (corresponds to extraPaths in pyproject.toml)
+  "python.analysis.extraPaths": ["service"],
   "python.analysis.autoImportCompletions": true,
   "python.analysis.autoSearchPaths": true,
   "python.autoComplete.extraPaths": ["./service"],
 
+  // Diagnostic mode: check only open files
+  "python.analysis.diagnosticMode": "openFilesOnly",
+
+  // ============================================================================
+  // Diagnostic Severity Overrides (Synced with service/pyproject.toml)
+  // ============================================================================
+  // Note: The following strict mode settings are NOT supported in settings.json:
+  // - strictListInference
+  // - strictDictionaryInference
+  // - strictSetInference
+  // - strictParameterNoneValue
+  // These are configured in service/pyproject.toml only
+  // ============================================================================
   "python.analysis.diagnosticSeverityOverrides": {
-    "reportUnknownVariableType": "none",
-    "reportUnknownMemberType": "none",
+    // Error level (error)
+    "reportMissingImports": "error",
+    "reportDuplicateImport": "error",
+    "reportOptionalSubscript": "error",
+    "reportOptionalMemberAccess": "error",
+    "reportOptionalCall": "error",
+    "reportOptionalIterable": "error",
+    "reportOptionalContextManager": "error",
+    "reportOptionalOperand": "error",
+    "reportConstantRedefinition": "error",
+    "reportIncompatibleMethodOverride": "error",
+    "reportIncompatibleVariableOverride": "error",
+    "reportInconsistentConstructor": "error",
+    "reportOverlappingOverload": "error",
+    "reportInvalidStringEscapeSequence": "error",
+
+    // Warning level (warning)
+    "reportUnusedImport": "warning",
+    "reportUnusedClass": "warning",
+    "reportUnusedFunction": "warning",
+    "reportUnusedVariable": "warning",
+    "reportPrivateUsage": "warning",
+    "reportUninitializedInstanceVariable": "warning",
+    "reportUnnecessaryIsInstance": "warning",
+    "reportUnnecessaryCast": "warning",
+    "reportUnnecessaryComparison": "warning",
+    "reportUnnecessaryContains": "warning",
+
+    // Disabled items (none)
+    "reportMissingTypeStubs": "none",
+    "reportUntypedFunctionDecorator": "none",
+    "reportUntypedClassDecorator": "none",
+    "reportUntypedBaseClass": "none",
+    "reportUnknownParameterType": "none",
     "reportUnknownArgumentType": "none",
     "reportUnknownLambdaType": "none",
-    "reportUnknownParameterType": "none",
-    "reportMissingTypeStubs": "none",
-
-    "reportUndefinedVariable": "error",
-    "reportAssertAlwaysTrue": "warning",
-    "reportSelfClsParameterName": "warning",
-    "reportImplicitStringConcatenation": "none",
-    "reportOptionalMemberAccess": "error",
-    "reportOptionalSubscript": "error",
-    "reportPrivateUsage": "warning"
+    "reportUnknownVariableType": "none",
+    "reportUnknownMemberType": "none",
+    "reportMissingSuperCall": "none",
+    "reportMissingParameterType": "none",
+    "reportCallInDefaultInitializer": "none",
+    "reportImplicitStringConcatenation": "none"
   },
 
   "black-formatter.args": ["--line-length", "119"],

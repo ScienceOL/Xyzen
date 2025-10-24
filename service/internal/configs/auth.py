@@ -63,7 +63,7 @@ MIIE3TCCAsWgAwIBAgIDAeJAMA0GCSqGSIb3DQEBCwUAMCgxDjAMBgNVBAoTBWFkbWluMRYwFAYDVQQD
 class BohriumAuthConfig(AuthProviderConfigBase):
     """Bohrium 认证配置"""
 
-    PublicKey: str = Field(
+    PublicKey: str | None = Field(
         default="""-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnn3jPyW81YqSjSLWBkdE
 ZzurZ5gimj6Db693bO0WvhMPABpYdOTeAU1mnQh2ep4H7zoUdz4PKARh/p5Meh6l

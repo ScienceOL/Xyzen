@@ -77,10 +77,13 @@ async def get_ai_response(
             messages.append(ChatMessage(role="assistant", content=assistant_content))
             tool_results = []
             for tool_call in response.tool_calls:
+                # Ensure identifiers are extracted before executing so they are available in the except block
+                tool_name = tool_call.get("function", {}).get("name", "") if isinstance(tool_call, dict) else ""
+                tool_args = (
+                    tool_call.get("function", {}).get("arguments", "{}") if isinstance(tool_call, dict) else "{}"
+                )
+                tool_id = tool_call.get("id", "") if isinstance(tool_call, dict) else ""
                 try:
-                    tool_name = tool_call.get("function", {}).get("name", "")
-                    tool_args = tool_call.get("function", {}).get("arguments", "{}")
-                    tool_id = tool_call.get("id", "")
                     logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
                     tool_result = await _execute_tool_call(db, tool_name, tool_args, topic)
                     formatted_result = _format_tool_result(tool_result, tool_name)

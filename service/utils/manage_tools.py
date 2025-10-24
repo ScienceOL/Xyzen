@@ -18,7 +18,15 @@ from sqlmodel import Session, desc, select, true
 
 from middleware.auth import AuthProvider, UserInfo
 from middleware.database.connection import engine
-from models.tool import Tool, ToolFunction, ToolStatus, ToolVersion
+from models.tool import (
+    Tool,
+    ToolCreate,
+    ToolFunction,
+    ToolFunctionCreate,
+    ToolStatus,
+    ToolVersion,
+    ToolVersionCreate,
+)
 from utils.code_analyzer import discover_functions_from_code, generate_basic_schema
 from utils.tool_loader import tool_loader
 
@@ -91,44 +99,54 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 if existing_tool:
                     return error_response(f"Tool with name '{name}' already exists")
 
-                # Create Tool record
-                tool = Tool(
+                # Create Tool record using ToolCreate pattern
+                tool_create = ToolCreate(
                     user_id=user_info.id,
                     name=name,
                     description=description,
                     tags_json="[]",
                     is_active=True,
                 )
+                # Convert to Tool (table model) for database
+                tool = Tool.model_validate(tool_create)
                 session.add(tool)
                 session.commit()
                 session.refresh(tool)
 
+                # After refresh, tool.id is guaranteed to exist
+                assert tool.id is not None, "Tool ID must be set after commit"
+
                 # Create ToolVersion record
-                tool_version = ToolVersion(
+                tool_version_create = ToolVersionCreate(
                     user_id=user_info.id,
-                    version=1,  # default version
+                    version=1,
                     requirements=requirements,
                     code_content=code_content,
                     status=ToolStatus.READY,
-                    tool_id=tool.id,
+                    tool_id=tool.id,  # Now type-safe
                 )
+                tool_version = ToolVersion.model_validate(tool_version_create)
                 session.add(tool_version)
                 session.commit()
                 session.refresh(tool_version)
+
+                # After refresh, tool_version.id is guaranteed to exist
+                assert tool_version.id is not None, "ToolVersion ID must be set after commit"
 
                 # Create ToolFunction records for each discovered function
                 created_functions = []
                 for func_info in functions:
                     schemas = generate_basic_schema(func_info)
 
-                    tool_function = ToolFunction(
+                    tool_function_create = ToolFunctionCreate(
                         user_id=user_info.id,
                         function_name=func_info["name"],
                         docstring=func_info["docstring"],
                         input_schema=schemas["input_schema"],
                         output_schema=schemas["output_schema"],
-                        tool_version_id=tool_version.id,
+                        tool_version_id=tool_version.id,  # Now type-safe
                     )
+                    tool_function = ToolFunction.model_validate(tool_function_create)
                     session.add(tool_function)
                     created_functions.append(func_info["name"])
 
@@ -191,6 +209,9 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 if not tool:
                     return error_response(f"Tool '{tool_name}' not found")
 
+                # Tool from query is guaranteed to have id
+                assert tool.id is not None, "Tool ID must exist when queried from database"
+
                 # Get the latest version
                 latest_version = session.exec(
                     select(ToolVersion).where(ToolVersion.tool_id == tool.id).order_by(desc(ToolVersion.version))
@@ -231,6 +252,9 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 session.add(new_version)
                 session.commit()
                 session.refresh(new_version)
+
+                # After refresh, new_version.id is guaranteed to be int
+                assert new_version.id is not None, "ToolVersion ID must be set after commit"
 
                 # Create ToolFunction records for each discovered function
                 created_functions = []
@@ -301,6 +325,9 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 if not tool:
                     return error_response(f"Tool '{tool_name}' not found")
 
+                # Tool from query is guaranteed to have id
+                assert tool.id is not None, "Tool ID must exist when queried from database"
+
                 # Update tool fields if provided
                 if name is not None:
                     # Check if new name conflicts with existing tools for this user
@@ -347,6 +374,9 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     session.add(new_version)
                     session.commit()
                     session.refresh(new_version)
+
+                    # After refresh, new_version.id is guaranteed to be int
+                    assert new_version.id is not None, "ToolVersion ID must be set after commit"
 
                     # Re-discover functions and create ToolFunction records
                     if code_content:
@@ -481,6 +511,9 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 session.add(new_version)
                 session.commit()
                 session.refresh(new_version)
+
+                # After refresh, new_version.id is guaranteed to be int
+                assert new_version.id is not None, "ToolVersion ID must be set after commit"
 
                 # Get the updated function info from the new code
                 updated_function_info = None

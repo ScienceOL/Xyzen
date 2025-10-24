@@ -1,4 +1,4 @@
-from typing import ClassVar, Optional
+from typing import Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
@@ -62,8 +62,6 @@ class ProviderBase(SQLModel):
 
 class Provider(ProviderBase, table=True):
     """Database model for a provider, inherits from ProviderBase."""
-
-    __tablename__: ClassVar[str] = "provider"
 
     id: UUID = Field(
         default_factory=uuid4,

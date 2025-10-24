@@ -61,70 +61,96 @@ multi_line_output = 3
 include_trailing_comma = true
 src_paths = ["."]
 
-# Pyright/Pylance 类型检查配置 (用于 VS Code 和 pre-commit)
+# ============================================================================
+# Pyright/Pylance 类型检查配置
+# ============================================================================
+# 这个配置同时用于:
+# 1. VS Code 的 Pylance 扩展（实时类型检查）
+# 2. 命令行工具 `pyright` 或 `uv run pyright .`（CI/CD 和本地验证）
+# 3. pre-commit 钩子（提交前验证）
 [tool.pyright]
-include = ["."]
+# ---------- 基础配置 ----------
+include = ["."]  # 包含当前目录下的所有文件
 exclude = [
-    "**/__pycache__",
-    "**/.pytest_cache",
-    "**/migrations",
+    "**/__pycache__",      # Python 编译缓存
+    "**/.pytest_cache",    # Pytest 缓存
+    "**/migrations",       # 数据库迁移文件（自动生成，无需类型检查）
     "migrations",
-    ".venv",
-    "build",
-    "dist"
+    ".venv",               # 虚拟环境
+    "build",               # 构建输出
+    "dist"                 # 分发包
 ]
-extraPaths = ["."]
-pythonVersion = "3.13"
-pythonPlatform = "All"
+extraPaths = ["."]         # 额外的模块搜索路径
+pythonVersion = "3.13"     # 项目使用的 Python 版本
+pythonPlatform = "All"     # 目标平台（All 表示跨平台）
 
-# 类型检查模式: "off" | "basic" | "standard" | "strict"
+# ---------- 类型检查严格程度 ----------
+# 可选值: "off" | "basic" | "standard" | "strict"
+# - off: 关闭类型检查
+# - basic: 基础检查，适合迁移项目
+# - standard: 标准检查，平衡严格性和实用性（推荐）
+# - strict: 最严格检查，要求完整类型注解
 typeCheckingMode = "standard"
 
-# 严格模式配置
-strictListInference = true
-strictDictionaryInference = true
-strictSetInference = true
-strictParameterNoneValue = true
+# ---------- 严格模式细节配置 ----------
+# strictListInference = true           # 严格推断列表类型（避免 list[Unknown]）
+# strictDictionaryInference = true     # 严格推断字典类型（避免 dict[Unknown, Unknown]）
+# strictSetInference = true            # 严格推断集合类型
+# strictParameterNoneValue = true      # 严格检查参数默认值 None 的类型匹配
 
-# 报告配置 - 错误级别
-reportMissingImports = "error"
-reportDuplicateImport = "error"
-reportOptionalSubscript = "error"
-reportOptionalMemberAccess = "error"
-reportOptionalCall = "error"
-reportOptionalIterable = "error"
-reportOptionalContextManager = "error"
-reportOptionalOperand = "error"
-reportConstantRedefinition = "error"
-reportIncompatibleMethodOverride = "error"
-reportIncompatibleVariableOverride = "error"
-reportInconsistentConstructor = "error"
-reportOverlappingOverload = "error"
-reportInvalidStringEscapeSequence = "error"
+# ============================================================================
+# 报告配置 - 错误级别 (error)
+# ============================================================================
+# 这些问题会导致类型检查失败，必须修复
 
-# 报告配置 - 警告级别
-reportUnusedImport = "warning"
-reportUnusedClass = "warning"
-reportUnusedFunction = "warning"
-reportUnusedVariable = "warning"
-reportPrivateUsage = "warning"
-reportUninitializedInstanceVariable = "warning"
-reportUnnecessaryIsInstance = "warning"
-reportUnnecessaryCast = "warning"
-reportUnnecessaryComparison = "warning"
-reportUnnecessaryContains = "warning"
+reportMissingImports = "error"                 # 缺失的导入（模块不存在）
+reportDuplicateImport = "error"                # 重复导入同一模块
+reportOptionalSubscript = "error"              # 对可能为 None 的对象使用下标访问
+reportOptionalMemberAccess = "error"           # 访问可能为 None 的对象的成员
+reportOptionalCall = "error"                   # 调用可能为 None 的对象
+reportOptionalIterable = "error"               # 迭代可能为 None 的对象
+reportOptionalContextManager = "error"         # 将可能为 None 的对象用作上下文管理器
+reportOptionalOperand = "error"                # 对可能为 None 的对象使用运算符
+reportConstantRedefinition = "error"           # 重新定义常量（全大写变量名被视为常量）
+reportIncompatibleMethodOverride = "error"     # 方法重写时签名不兼容
+reportIncompatibleVariableOverride = "error"   # 变量重写时类型不兼容
+reportInconsistentConstructor = "error"        # __init__ 方法的实例变量赋值不一致
+reportOverlappingOverload = "error"            # @overload 装饰的函数签名重叠
+reportInvalidStringEscapeSequence = "error"    # 字符串中无效的转义序列
+reportMissingParameterType = "error"           # 函数参数缺少类型注解
+reportUnknownLambdaType = "error"              # Lambda 表达式类型未知
 
-# 报告配置 - 禁用项
-reportMissingTypeStubs = "none"
-reportUntypedFunctionDecorator = "none"
-reportUntypedClassDecorator = "none"
-reportUntypedBaseClass = "none"
-reportUnknownParameterType = "none"
-reportUnknownArgumentType = "none"
-reportUnknownLambdaType = "none"
-reportUnknownVariableType = "none"
-reportUnknownMemberType = "none"
-reportMissingSuperCall = "none"
-reportMissingParameterType = "none"
-reportCallInDefaultInitializer = "none"
-reportImplicitStringConcatenation = "none"
+# ============================================================================
+# 报告配置 - 警告级别 (warning)
+# ============================================================================
+# 这些问题不会导致失败，但应该引起注意并修复
+
+reportUnusedImport = "warning"                      # 未使用的导入
+reportUnusedClass = "warning"                       # 未使用的类定义
+reportUnusedFunction = "warning"                    # 未使用的函数定义
+reportUnusedVariable = "warning"                    # 未使用的变量
+reportPrivateUsage = "warning"                      # 使用私有成员（_开头）
+reportUninitializedInstanceVariable = "warning"     # 实例变量未在 __init__ 中初始化
+reportUnnecessaryIsInstance = "warning"             # 不必要的 isinstance 检查
+reportUnnecessaryCast = "warning"                   # 不必要的类型转换
+reportUnnecessaryComparison = "warning"             # 不必要的比较（如 x is True）
+reportUnnecessaryContains = "warning"               # 不必要的 in 检查
+reportUnnecessaryTypeIgnoreComment = "warning"      # 不必要的 type: ignore 注释（强制审查每个 type: ignore 的必要性）
+reportTypeCommentUsage = "warning"                   # 使用类型注释而非类型注解
+reportUnknownParameterType = "warning"               # TODO: 参数类型未知，未来升级为 error，严格禁止
+reportUnknownArgumentType = "warning"                # TODO: 参数类型未知，未来升级为 error，严格禁止
+
+# ============================================================================
+# 报告配置 - 禁用项 (none)
+# ============================================================================
+# 这些检查被禁用，因为它们可能过于严格或不适用于当前项目
+
+reportMissingTypeStubs = "none"              # 缺少第三方库的类型存根文件（.pyi）
+reportUntypedFunctionDecorator = "none"      # 装饰器没有类型注解
+reportUntypedClassDecorator = "none"         # 类装饰器没有类型注解
+reportUntypedBaseClass = "none"              # 基类没有类型注解
+reportUnknownVariableType = "none"           # 变量类型未知
+reportUnknownMemberType = "none"             # 成员类型未知
+reportMissingSuperCall = "none"              # 子类方法中缺少 super() 调用
+reportCallInDefaultInitializer = "none"      # 在默认参数中调用函数
+reportImplicitStringConcatenation = "none"   # 隐式字符串拼接（如 "a" "b"）

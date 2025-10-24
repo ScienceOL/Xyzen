@@ -98,7 +98,7 @@ class DynamicToolMiddleware(Middleware):
                 logger.info(f"📋 Result {type(result).__name__}({len(result.content)}): [content not accessible]")
         else:
             logger.info(f"📋 Result {type(result).__name__}: {vars(result)}")
-        return result  # type: ignore
+        return result
 
     async def on_list_tools(self, context: MiddlewareContext, call_next: Callable) -> List:
         """Refresh user's tools before listing"""

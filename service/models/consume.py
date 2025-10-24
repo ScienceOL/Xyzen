@@ -4,7 +4,7 @@
 """
 
 from datetime import datetime, timezone
-from typing import Callable, ClassVar, Optional, Union
+from typing import Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import BigInteger, Column
@@ -15,7 +15,7 @@ from sqlmodel import Field, SQLModel
 class ConsumeRecord(SQLModel, table=True):
     """消费记录表 - 记录每次用户的消费明细"""
 
-    __tablename__: ClassVar[Union[str, Callable[..., str]]] = "consume_records"
+    __tablename__ = "consume_records"  # type: ignore
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: str = Field(index=True, description="用户ID")
@@ -57,7 +57,7 @@ class ConsumeRecord(SQLModel, table=True):
 class UserConsumeSummary(SQLModel, table=True):
     """用户消费汇总表 - 记录每个用户的消费总量"""
 
-    __tablename__: ClassVar[Union[str, Callable[..., str]]] = "user_consume_summaries"
+    __tablename__ = "user_consume_summaries"  # type: ignore[assignment]
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: str = Field(unique=True, index=True, description="用户ID")

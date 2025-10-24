@@ -22,8 +22,7 @@ def serialize_scope(scope: MutableMapping[str, Any]) -> str:
 
     result = {}
     for key, value in scope.items():
-        # 确保键是字符串
-        str_key = str(key) if not isinstance(key, str) else key
+        str_key = str(key)
         result[str_key] = serialize_value(value)
 
     return json.dumps(result, indent=2)
