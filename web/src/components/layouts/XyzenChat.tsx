@@ -1,5 +1,6 @@
 "use client";
 import EditableTitle from "@/components/base/EditableTitle";
+import NotificationModal from "@/components/modals/NotificationModal";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
@@ -23,6 +24,8 @@ export default function XyzenChat() {
     updateTopicName,
     fetchMyProviders,
     llmProviders,
+    notification,
+    closeNotification,
   } = useXyzen();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -353,6 +356,19 @@ export default function XyzenChat() {
         onClose={handleCloseHistory}
         onSelectTopic={handleSelectTopic}
       />
+
+      {/* 通知模态框 */}
+      {notification && (
+        <NotificationModal
+          isOpen={notification.isOpen}
+          onClose={closeNotification}
+          title={notification.title}
+          message={notification.message}
+          type={notification.type}
+          actionLabel={notification.actionLabel}
+          onAction={notification.onAction}
+        />
+      )}
     </div>
   );
 }

@@ -139,6 +139,16 @@ export interface ChatSlice {
   chatHistoryLoading: boolean;
   channels: Record<string, ChatChannel>;
 
+  // Notification state
+  notification: {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "info" | "warning" | "error" | "success";
+    actionLabel?: string;
+    onAction?: () => void;
+  } | null;
+
   setActiveChatChannel: (channelUUID: string | null) => void;
   fetchChatHistory: () => Promise<void>;
   togglePinChat: (chatId: string) => void;
@@ -154,6 +164,16 @@ export interface ChatSlice {
   // Tool call confirmation methods
   confirmToolCall: (channelId: string, toolCallId: string) => void;
   cancelToolCall: (channelId: string, toolCallId: string) => void;
+
+  // Notification methods
+  showNotification: (
+    title: string,
+    message: string,
+    type?: "info" | "warning" | "error" | "success",
+    actionLabel?: string,
+    onAction?: () => void,
+  ) => void;
+  closeNotification: () => void;
 }
 
 export const createChatSlice: StateCreator<
@@ -166,6 +186,7 @@ export const createChatSlice: StateCreator<
   chatHistory: [],
   chatHistoryLoading: true,
   channels: {},
+  notification: null,
 
   setActiveChatChannel: (channelId) => set({ activeChatChannel: channelId }),
 
@@ -712,6 +733,44 @@ export const createChatSlice: StateCreator<
               console.error("Chat error:", errorData.error);
               break;
             }
+
+            case "insufficient_balance": {
+              // Handle insufficient balance error
+              const balanceData = event.data as {
+                error_code?: string;
+                message?: string;
+                message_cn?: string;
+                details?: Record<string, unknown>;
+                action_required?: string;
+              };
+
+              console.warn("Insufficient balance:", balanceData);
+
+              // Show notification to user
+              get().showNotification(
+                "Insufficient Balance",
+                balanceData.message_cn ||
+                  balanceData.message ||
+                  "Your photon balance is insufficient. Please recharge to continue.",
+                "warning",
+                "Recharge",
+                () => {
+                  // TODO: Navigate to recharge page or open recharge modal
+                  console.log("User clicked recharge button");
+                  // You can add recharge URL or action here
+                  // For example: window.open('/recharge', '_blank');
+                },
+              );
+
+              // Remove any loading messages
+              const balanceLoadingIndex = channel.messages.findIndex(
+                (m) => m.isLoading,
+              );
+              if (balanceLoadingIndex !== -1) {
+                channel.messages.splice(balanceLoadingIndex, 1);
+              }
+              break;
+            }
           }
         });
       },
@@ -1057,5 +1116,22 @@ export const createChatSlice: StateCreator<
         });
       }
     });
+  },
+
+  showNotification: (title, message, type = "info", actionLabel, onAction) => {
+    set({
+      notification: {
+        isOpen: true,
+        title,
+        message,
+        type,
+        actionLabel,
+        onAction,
+      },
+    });
+  },
+
+  closeNotification: () => {
+    set({ notification: null });
   },
 });

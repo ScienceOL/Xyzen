@@ -3,6 +3,7 @@
 提供消费记录、远程扣费、统计等核心业务逻辑
 """
 
+import json
 import logging
 from typing import List, Optional
 from uuid import UUID
@@ -10,6 +11,7 @@ from uuid import UUID
 import requests
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from common.exceptions import InsufficientBalanceError
 from models.consume import ConsumeRecord, UserConsumeSummary
 from repo.consume import ConsumeRepository
 
@@ -149,19 +151,46 @@ class ConsumeService:
                     record.remote_response = response_text
                     logger.info(f"Remote consume succeeded for record {record.id}")
                 else:
-                    # 优先使用error字段，其次msg
-                    error_msg = (
+                    # 提取错误信息，处理可能的字典或字符串格式
+                    error_data = (
                         response_data.get("error") or response_data.get("msg") or "Unknown error from BohrApp API"
                     )
+
+                    # 如果error_data是字典，提取错误消息
+                    if isinstance(error_data, dict):
+                        error_message = error_data.get("msg") or error_data.get("message") or str(error_data)
+                        # 序列化完整的错误详情
+                        error_details_json = json.dumps(error_data, ensure_ascii=False)
+                    else:
+                        error_message = str(error_data)
+                        error_details_json = error_message
+
                     record.consume_state = "failed"
-                    record.remote_error = error_msg
+                    record.remote_error = error_details_json  # 存储完整的错误详情（JSON字符串）
                     record.remote_response = response_text
-                    logger.warning(f"Remote consume failed: {error_msg}")
+                    logger.warning(f"Remote consume failed: {error_message}")
+
+                    # 检查是否是余额不足错误
+                    if "余额不足" in error_message or "光子余额不足" in error_message:
+                        # 先更新记录，再抛出异常
+                        await self.repo.update_consume_record(record)
+                        raise InsufficientBalanceError(
+                            message=error_message,
+                            error_code=str(response_data.get("code", "INSUFFICIENT_BALANCE")),
+                            details={
+                                "error_data": error_data,
+                                "response": response_data,
+                                "record_id": str(record.id),
+                            },
+                        )
             else:
                 record.consume_state = "failed"
                 record.remote_error = f"HTTP {response.status_code}: {response_text}"
                 record.remote_response = response_text
                 logger.error(f"Remote consume HTTP error: {record.remote_error}")
+        except InsufficientBalanceError:
+            # 余额不足错误已经在上面处理并更新了记录，直接重新抛出
+            raise
         except requests.RequestException as e:
             logger.error(f"Remote consume network error for record {record.id}: {e}")
             record.consume_state = "failed"
@@ -171,7 +200,11 @@ class ConsumeService:
             record.consume_state = "failed"
             record.remote_error = f"Unexpected error: {str(e)}"
         finally:
-            await self.repo.update_consume_record(record)
+            # 只有在非余额不足错误时才更新记录（余额不足已经在上面更新过了）
+            if record.consume_state != "success" and "余额不足" not in (record.remote_error or ""):
+                await self.repo.update_consume_record(record)
+            elif record.consume_state == "success":
+                await self.repo.update_consume_record(record)
 
     async def get_consume_record_by_id(self, record_id: UUID) -> Optional[ConsumeRecord]:
         """获取消费记录"""

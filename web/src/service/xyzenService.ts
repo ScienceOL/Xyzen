@@ -17,6 +17,7 @@ interface MessageEvent {
     | "message_saved"
     | "tool_call_request"
     | "tool_call_response"
+    | "insufficient_balance"
     | "error";
   data:
     | Message
@@ -35,6 +36,12 @@ interface MessageEvent {
         timestamp?: number;
         toolCallId?: string;
         confirmed?: boolean;
+        // Insufficient balance fields
+        error_code?: string;
+        message?: string;
+        message_cn?: string;
+        details?: Record<string, unknown>;
+        action_required?: string;
       };
 }
 
