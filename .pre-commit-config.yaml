@@ -9,14 +9,14 @@ repos:
 
   # Python后端检查
   - repo: https://github.com/psf/black
-    rev: 24.3.0
+    rev: 25.9.0
     hooks:
       - id: black
         args: [--line-length=119, --config=service/pyproject.toml]
         files: ^service/
 
   - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+    rev: 7.0.0
     hooks:
       - id: isort
         args:
@@ -29,7 +29,7 @@ repos:
         files: ^service/
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         args:
@@ -39,7 +39,7 @@ repos:
 
   # Python类型检查 - 使用 Pyright
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.390
+    rev: v1.1.406
     hooks:
       - id: pyright
         args:
