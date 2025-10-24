@@ -17,6 +17,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import get_user_provider_manager
 from models.topic import Topic as TopicModel
+from schemas.chat_events import ChatEventType, ProcessingStatus, ToolCallStatus
 
 from .messages import build_system_prompt
 
@@ -129,7 +130,7 @@ async def get_ai_response_stream_langchain(
         user_provider_manager = await get_user_provider_manager(user_id, db)
     except ValueError as e:
         logger.error(f"Failed to get provider manager for user {user_id}: {e}")
-        yield {"type": "error", "data": {"error": "No LLM providers configured."}}
+        yield {"type": ChatEventType.ERROR, "data": {"error": "No LLM providers configured."}}
         return
 
     # Select provider
@@ -142,13 +143,13 @@ async def get_ai_response_stream_langchain(
 
     if not provider:
         logger.error(f"No provider available for user {user_id}")
-        yield {"type": "error", "data": {"error": "No AI provider available."}}
+        yield {"type": ChatEventType.ERROR, "data": {"error": "No AI provider available."}}
         return
 
     # Get system prompt with MCP awareness
     system_prompt = build_system_prompt(topic.session.agent)
 
-    yield {"type": "processing", "data": {"status": "preparing_request"}}
+    yield {"type": ChatEventType.PROCESSING, "data": {"status": ProcessingStatus.PREPARING_REQUEST}}
 
     try:
         # Create agent
@@ -207,13 +208,13 @@ async def get_ai_response_stream_langchain(
                                 tool_call.get("args"),
                             )
                             yield {
-                                "type": "tool_call_request",
+                                "type": ChatEventType.TOOL_CALL_REQUEST,
                                 "data": {
                                     "id": tool_call.get("id", ""),
                                     "name": tool_call.get("name", ""),
                                     "description": f"Tool: {tool_call.get('name', '')}",
                                     "arguments": tool_call.get("args", {}),
-                                    "status": "executing",
+                                    "status": ToolCallStatus.EXECUTING,
                                     "timestamp": asyncio.get_event_loop().time(),
                                 },
                             }
@@ -228,10 +229,10 @@ async def get_ai_response_stream_langchain(
                             last_message.content,
                         )
                         yield {
-                            "type": "tool_call_response",
+                            "type": ChatEventType.TOOL_CALL_RESPONSE,
                             "data": {
                                 "toolCallId": tool_call_id,
-                                "status": "completed",
+                                "status": ToolCallStatus.COMPLETED,
                                 "result": {"content": str(last_message.content)},
                             },
                         }
@@ -246,14 +247,17 @@ async def get_ai_response_stream_langchain(
                         logger.debug("Final model response detected in step '%s'", step_name)
                         if not is_streaming:
                             logger.debug("Emitting streaming_start for stream_id=%s", stream_id)
-                            yield {"type": "streaming_start", "data": {"id": stream_id}}
+                            yield {"type": ChatEventType.STREAMING_START, "data": {"id": stream_id}}
                             is_streaming = True
 
                         content = last_message.content
                         if content:
                             logger.debug("Emitting streaming_chunk (final content) len=%d", len(content))
                             # Stream the complete content (since we already have it)
-                            yield {"type": "streaming_chunk", "data": {"id": stream_id, "content": content}}
+                            yield {
+                                "type": ChatEventType.STREAMING_CHUNK,
+                                "data": {"id": stream_id, "content": content},
+                            }
 
             elif mode == "messages":
                 # Token-by-token streaming from LLM
@@ -292,12 +296,12 @@ async def get_ai_response_stream_langchain(
                 if token_text:
                     if not is_streaming:
                         logger.debug("Emitting streaming_start for stream_id=%s (from messages)", stream_id)
-                        yield {"type": "streaming_start", "data": {"id": stream_id}}
+                        yield {"type": ChatEventType.STREAMING_START, "data": {"id": stream_id}}
                         is_streaming = True
 
                     logger.debug("Emitting streaming_chunk token len=%d", len(token_text))
                     yield {
-                        "type": "streaming_chunk",
+                        "type": ChatEventType.STREAMING_CHUNK,
                         "data": {"id": stream_id, "content": token_text},
                     }
 
@@ -305,10 +309,10 @@ async def get_ai_response_stream_langchain(
         if is_streaming:
             logger.debug("Emitting streaming_end for stream_id=%s", stream_id)
             yield {
-                "type": "streaming_end",
+                "type": ChatEventType.STREAMING_END,
                 "data": {"id": stream_id, "created_at": asyncio.get_event_loop().time()},
             }
 
     except Exception as e:
         logger.error(f"Agent execution failed: {e}", exc_info=True)
-        yield {"type": "error", "data": {"error": f"Service unavailable: {e}"}}
+        yield {"type": ChatEventType.ERROR, "data": {"error": f"Service unavailable: {e}"}}
