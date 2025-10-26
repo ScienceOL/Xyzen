@@ -15,8 +15,6 @@ from sqlmodel import Field, SQLModel
 class ConsumeRecord(SQLModel, table=True):
     """消费记录表 - 记录每次用户的消费明细"""
 
-    __tablename__ = "consume_records"  # type: ignore
-
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: str = Field(index=True, description="用户ID")
     biz_no: Optional[int] = Field(
@@ -56,8 +54,6 @@ class ConsumeRecord(SQLModel, table=True):
 
 class UserConsumeSummary(SQLModel, table=True):
     """用户消费汇总表 - 记录每个用户的消费总量"""
-
-    __tablename__ = "user_consume_summaries"  # type: ignore[assignment]
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: str = Field(unique=True, index=True, description="用户ID")

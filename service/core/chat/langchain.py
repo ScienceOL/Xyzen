@@ -6,13 +6,15 @@ Uses LangChain's create_agent for automatic tool execution and conversation mana
 import asyncio
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
 
 from langchain.agents import create_agent
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool, StructuredTool
 from langchain_openai import AzureChatOpenAI
 from pydantic import Field, create_model
+from sqlalchemy import asc
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import get_user_provider_manager
@@ -22,6 +24,8 @@ from schemas.chat_events import ChatEventType, ProcessingStatus, ToolCallStatus
 from .messages import build_system_prompt
 
 logger = logging.getLogger(__name__)
+
+ResponseT = TypeVar("ResponseT")
 
 
 def _create_langchain_model(provider: Any) -> AzureChatOpenAI:
@@ -109,6 +113,46 @@ async def _prepare_langchain_tools(db: AsyncSession, topic: TopicModel) -> List[
     return langchain_tools
 
 
+async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
+    """Load historical messages for the topic and map to LangChain message types.
+
+    Only user/assistant/system messages are included to avoid confusing the agent
+    with raw tool execution transcripts.
+    """
+    try:
+        # Local import to avoid circulars
+        from models.message import Message as MessageModel
+
+        # Order by creation time to maintain chronology
+        stmt = (
+            select(MessageModel)
+            .where(MessageModel.topic_id == topic.id)
+            .order_by(asc(MessageModel.created_at))  # type: ignore
+        )
+        result = await db.exec(stmt)
+        rows = list(result.all())
+
+        history: List[Any] = []
+        for m in rows:
+            role = (m.role or "").lower()
+            content = m.content or ""
+            if not content:
+                continue
+            if role == "user":
+                history.append(HumanMessage(content=content))
+            elif role == "assistant":
+                history.append(AIMessage(content=content))
+            elif role == "system":
+                history.append(SystemMessage(content=content))
+            else:
+                # Skip unknown/tool roles for now
+                continue
+        return history
+    except Exception as e:
+        logger.warning(f"Failed to load DB chat history for topic {getattr(topic, 'id', None)}: {e}")
+        return []
+
+
 async def get_ai_response_stream_langchain(
     db: AsyncSession,
     message_text: str,
@@ -162,11 +206,16 @@ async def get_ai_response_stream_langchain(
         stream_id = f"stream_{int(asyncio.get_event_loop().time() * 1000)}"
         is_streaming = False
         current_step = None
+        assistant_buffer: List[str] = []  # collect tokens/final text for persistence
+        got_stream_tokens = False  # whether we received token-by-token chunks
 
         # Use astream with multiple stream modes: "updates" for step progress, "messages" for token streaming
         logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
+        # Load long-term memory (DB-backed) and include it in input
+        history_messages = await _load_db_history(db, topic)
+
         async for chunk in agent.astream(
-            {"messages": [HumanMessage(content=message_text)]},
+            {"messages": [*history_messages, HumanMessage(content=message_text)]},
             stream_mode=["updates", "messages"],
         ):
             # chunk is a tuple: (stream_mode, data)
@@ -237,31 +286,21 @@ async def get_ai_response_stream_langchain(
                             },
                         }
 
-                    # Check if this is final AI response (from model node, no tool calls)
+                    # Final model response update: we rely on token stream ('messages' mode) to avoid duplication
                     elif (
                         hasattr(last_message, "content")
                         and step_name == "model"
                         and (not hasattr(last_message, "tool_calls") or not last_message.tool_calls)
                     ):
-                        # This is the final response - stream it
-                        logger.debug("Final model response detected in step '%s'", step_name)
-                        if not is_streaming:
-                            logger.debug("Emitting streaming_start for stream_id=%s", stream_id)
-                            yield {"type": ChatEventType.STREAMING_START, "data": {"id": stream_id}}
-                            is_streaming = True
-
-                        content = last_message.content
-                        if content:
-                            logger.debug("Emitting streaming_chunk (final content) len=%d", len(content))
-                            # Stream the complete content (since we already have it)
-                            yield {
-                                "type": ChatEventType.STREAMING_CHUNK,
-                                "data": {"id": stream_id, "content": content},
-                            }
+                        # Do not emit content here; 'messages' stream provides token chunks.
+                        # Keeping this branch prevents other handlers from treating it as an error.
+                        logger.debug("Final model response update received; deferring to token stream")
 
             elif mode == "messages":
                 # Token-by-token streaming from LLM
                 # data is a tuple: (message_chunk, metadata)
+                assert isinstance(data, tuple), f"Messages data is not a tuple: {data}"
+
                 try:
                     message_chunk, metadata = data
                 except Exception:
@@ -304,8 +343,10 @@ async def get_ai_response_stream_langchain(
                         "type": ChatEventType.STREAMING_CHUNK,
                         "data": {"id": stream_id, "content": token_text},
                     }
+                    assistant_buffer.append(token_text)
+                    got_stream_tokens = True
 
-        # Finalize
+        # Finalize streaming after processing all chunks
         if is_streaming:
             logger.debug("Emitting streaming_end for stream_id=%s", stream_id)
             yield {

@@ -5,7 +5,7 @@ services:
     ports:
       - '${WEB_PORT:-32233}:32233'
       - '${SERVICE_PORT:-48196}:48196'
-      # - '${POSTGRES_PORT:-5432}:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
       # - '${REDIS_PORT:-6379}:6379'
     command: tail -f /dev/null
     networks:

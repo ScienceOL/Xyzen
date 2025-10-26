@@ -908,6 +908,21 @@ wheels = [
 ]
 
 [[package]]
+name = "langgraph-checkpoint-postgres"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langgraph-checkpoint" },
+    { name = "orjson" },
+    { name = "psycopg" },
+    { name = "psycopg-pool" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/8f/5f24d6be066e85de10e782726d95e4ce9f5f09f31ba937226481cd987144/langgraph_checkpoint_postgres-3.0.0.tar.gz", hash = "sha256:645a3130ff308aba934914d19d1c8861e18f40ed90e97a80d9f0801b66f83652", size = 113103, upload-time = "2025-10-20T18:46:03.014Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/c0/d8383ab20f312900bfce64f91977ac8b62696d7ea9e0254104cb1dee2d3f/langgraph_checkpoint_postgres-3.0.0-py3-none-any.whl", hash = "sha256:8e4fb5fe92deb7d5e58be2c85969cc8da87bc6c76f2481af2506538f274735ce", size = 40909, upload-time = "2025-10-20T18:46:02.085Z" },
+]
+
+[[package]]
 name = "langgraph-prebuilt"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1805,6 +1820,8 @@ dependencies = [
     { name = "langchain-anthropic" },
     { name = "langchain-google-genai" },
     { name = "langchain-openai" },
+    { name = "langgraph" },
+    { name = "langgraph-checkpoint-postgres" },
     { name = "llm-sandbox", extra = ["docker", "k8s"] },
     { name = "mcp" },
     { name = "openai" },
@@ -1838,6 +1855,8 @@ requires-dist = [
     { name = "langchain-anthropic", specifier = ">=1.0.0" },
     { name = "langchain-google-genai", specifier = ">=3.0.0" },
     { name = "langchain-openai", specifier = ">=1.0.1" },
+    { name = "langgraph", specifier = ">=1.0.1" },
+    { name = "langgraph-checkpoint-postgres", specifier = ">=3.0.0" },
     { name = "llm-sandbox", extras = ["docker", "k8s"], specifier = ">=0.3.20" },
     { name = "mcp", specifier = ">=1.11.0" },
     { name = "openai", specifier = ">=1.98.0" },
