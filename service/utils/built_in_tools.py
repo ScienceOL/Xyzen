@@ -169,15 +169,17 @@ def register_built_in_tools(mcp: FastMCP) -> None:
                     messages=[
                         {
                             "role": "system",
-                            "content": """You are a web search assistant. For the given query, provide a comprehensive response based on current web information. Include:
-1. Direct answer to the query
-2. Key facts and details
-3. Multiple perspectives if applicable
-4. Recent developments or updates
-
-Format your response clearly with sections and bullet points where appropriate.
-**Do not add, infer, or guess any facts—use only factual information.**
-**Avoid any info sources from huggingface and other AI-related datasets.**""",
+                            "content": (
+                                "You are a web search assistant. For the given query, "
+                                "provide a comprehensive response based on current web information. Include:\n"
+                                "1. Direct answer to the query\n"
+                                "2. Key facts and details\n"
+                                "3. Multiple perspectives if applicable\n"
+                                "4. Recent developments or updates\n\n"
+                                "Format your response clearly with sections and bullet points where appropriate.\n"
+                                "**Do not add, infer, or guess any facts—use only factual information.**\n"
+                                "**Avoid any info sources from huggingface and other AI-related datasets.**"
+                            ),
                         },
                         {"role": "user", "content": f"Search query: {query}"},
                     ],
@@ -193,7 +195,8 @@ Format your response clearly with sections and bullet points where appropriate.
                 # Add disclaimer about web search limitations
                 final_result = (
                     search_result
-                    + "\n\n*Note: This response is generated based on the AI model's training data. For the most current information, please verify with recent sources.*"
+                    + "\n\n*Note: This response is generated based on the AI model's training data. "
+                    + "For the most current information, please verify with recent sources.*"
                 )
 
                 logger.info(f"🎉 Web search completed successfully for query: '{query}'")
