@@ -4,28 +4,38 @@ Message formatting and construction helpers for chat service.
 
 from typing import Optional
 
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from models.agent import Agent
 
 
-def agent_has_dynamic_mcp(agent: Optional[Agent]) -> bool:
+async def agent_has_dynamic_mcp(db: AsyncSession, agent: Optional[Agent]) -> bool:
     """
     Check if agent has the DynamicMCPServer configured.
 
     Args:
+        db: Database session
         agent: The agent to check
 
     Returns:
         True if agent has DynamicMCPServer, False otherwise
     """
-    if not agent or not agent.mcp_servers:
+    if not agent:
         return False
 
-    return any(
-        s.name == "DynamicMCPServer" or "dynamic_mcp_server" in (s.url or "").lower() for s in agent.mcp_servers
-    )
+    # Load MCP servers for the agent using AgentRepository
+    from repo.agent import AgentRepository
+
+    agent_repo = AgentRepository(db)
+    mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+
+    if not mcp_servers:
+        return False
+
+    return any(s.name == "DynamicMCPServer" or "dynamic_mcp_server" in (s.url or "").lower() for s in mcp_servers)
 
 
-def build_system_prompt(agent: Optional[Agent], has_dynamic_mcp: Optional[bool] = None) -> str:
+async def build_system_prompt(db: AsyncSession, agent: Optional[Agent], has_dynamic_mcp: Optional[bool] = None) -> str:
     """
     Build system prompt with optional MCP enhancement.
 
@@ -33,6 +43,7 @@ def build_system_prompt(agent: Optional[Agent], has_dynamic_mcp: Optional[bool] 
     tool awareness information.
 
     Args:
+        db: Database session
         agent: The agent whose prompt to build
         has_dynamic_mcp: Optional override for MCP detection (if None, auto-detected)
 
@@ -46,7 +57,7 @@ def build_system_prompt(agent: Optional[Agent], has_dynamic_mcp: Optional[bool] 
 
     # Auto-detect MCP if not explicitly provided
     if has_dynamic_mcp is None:
-        has_dynamic_mcp = agent_has_dynamic_mcp(agent)
+        has_dynamic_mcp = await agent_has_dynamic_mcp(db, agent)
 
     # Add MCP enhancement if applicable
     if has_dynamic_mcp:

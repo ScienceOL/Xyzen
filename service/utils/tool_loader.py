@@ -4,10 +4,10 @@ from typing import Any, Dict, Optional
 
 from fastmcp import FastMCP
 from fastmcp.tools import FunctionTool
-from sqlmodel import Session, select
 
-from middleware.database.connection import engine
-from models import Tool, ToolFunction, ToolStatus, ToolVersion
+from middleware.database.connection import AsyncSessionLocal
+from models.tool import ToolFunction, ToolStatus, ToolVersion
+from repo.tool import ToolRepository
 from utils.parser import parse_requirements
 from utils.tool_proxy import ContainerToolProxy, ToolProxyManager
 
@@ -49,7 +49,7 @@ class DatabaseToolLoader:
                 logger.warning(f"Invalid JSON in output_schema for {name}, skipping.")
         return tool_data
 
-    def scan_and_load_tools(
+    async def scan_and_load_tools(
         self, user_id: Optional[str] = None, request_tool_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -69,23 +69,27 @@ class DatabaseToolLoader:
             logger.warning("No user_id provided to scan_and_load_tools, returning empty tools")
             return result
 
-        with Session(engine) as session:
-            # Query only this user's active tools
-            query = select(Tool).where(Tool.user_id == user_id, Tool.is_active)
+        async with AsyncSessionLocal() as session:
+            repo = ToolRepository(session)
 
-            # If specific tool requested, filter further
             if request_tool_name:
-                query = query.where(Tool.name == request_tool_name)
-
-            tools = session.exec(query).all()
+                tool = await repo.get_tool_by_user_and_name(user_id, request_tool_name)
+                tools = [tool] if tool and tool.is_active else []
+            else:
+                tools = await repo.list_tools_by_user(user_id, is_active=True)
 
             for tool in tools:
-                ready_versions = [v for v in (tool.versions or []) if v.status == ToolStatus.READY]
+                ready_versions = await repo.list_tool_versions_by_tool(tool.id, status=ToolStatus.READY)
                 if not ready_versions:
                     continue
+
+                # Get the latest ready version
                 latest_version = max(ready_versions, key=lambda v: v.version)
 
-                for tf in latest_version.functions or []:
+                # Get functions for this version
+                functions = await repo.list_tool_functions_by_version(latest_version.id)
+
+                for tf in functions:
                     tool_data = self._build_tool_data(tf, tool.name)
                     tool_name = tool_data["name"]
 
@@ -104,7 +108,7 @@ class DatabaseToolLoader:
         return result
 
     async def load_tools(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
-        return self.scan_and_load_tools(tool_name)
+        return await self.scan_and_load_tools(tool_name)
 
     def register_tools_to_mcp(
         self,
@@ -148,7 +152,7 @@ class DatabaseToolLoader:
     def register_tools(self, mcp: FastMCP, tools: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         return self.register_tools_to_mcp(mcp, tools, user_id)
 
-    def refresh_tools(self, mcp: FastMCP, user_id: str) -> Dict[str, Any]:
+    async def refresh_tools(self, mcp: FastMCP, user_id: str) -> Dict[str, Any]:
         """
         Refresh database tools for a specific user only.
         Preserves built-in tools and other users' tools.
@@ -164,10 +168,9 @@ class DatabaseToolLoader:
 
         # Get currently registered tools from MCP server
         existing_tools: Dict[str, FunctionTool] = mcp._tool_manager._tools  # type: ignore
-        current_tool_names = set(existing_tools.keys())
 
         # Scan database for this user's current tools
-        new_tools = self.scan_and_load_tools(user_id=user_id)
+        new_tools = await self.scan_and_load_tools(user_id=user_id)
         new_tool_names = set(new_tools.keys())
 
         # Identify which existing tools belong to this user using ownership registry

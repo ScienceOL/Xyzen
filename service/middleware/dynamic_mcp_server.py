@@ -61,7 +61,7 @@ class DynamicToolMiddleware(Middleware):
 
                     # Refresh user's tools
                     logger.info(f"Refreshing tools for user {user_id} before calling {tool_name}")
-                    result = tool_loader.refresh_tools(self.mcp, user_id=user_id)
+                    result = await tool_loader.refresh_tools(self.mcp, user_id=user_id)
                     logger.info(f"Tool refresh completed: {result}")
 
                 except PermissionError:
@@ -112,7 +112,7 @@ class DynamicToolMiddleware(Middleware):
                 user_id = user_info.id
 
                 logger.info(f"Refreshing tools for user {user_id} before list_tools")
-                result = tool_loader.refresh_tools(self.mcp, user_id=user_id)
+                result = await tool_loader.refresh_tools(self.mcp, user_id=user_id)
                 logger.info(f"Tool refresh result: {result}")
             except Exception as e:
                 logger.error(f"Error refreshing tools: {e}")

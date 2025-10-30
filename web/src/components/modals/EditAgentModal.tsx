@@ -26,7 +26,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   useEffect(() => {
     setAgent(agentToEdit);
     if (agentToEdit) {
-      setMcpServerIds(agentToEdit.mcp_servers.map((s) => s.id));
+      setMcpServerIds(agentToEdit.mcp_servers?.map((s) => s.id) || []);
     }
     if (isOpen) {
       fetchMcpServers();

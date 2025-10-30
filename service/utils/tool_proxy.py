@@ -12,9 +12,9 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from llm_sandbox import SandboxBackend, SandboxSession  # type: ignore
-from llm_sandbox.exceptions import SandboxTimeoutError  # type: ignore
-from llm_sandbox.security import (  # type: ignore
+from llm_sandbox import SandboxBackend, SandboxSession
+from llm_sandbox.exceptions import SandboxTimeoutError
+from llm_sandbox.security import (
     SecurityIssueSeverity,
     SecurityPattern,
     SecurityPolicy,
@@ -112,7 +112,7 @@ except Exception as e:
             execution_code = self._build_execution_code(args, kwargs)
 
             if configs.Env == "prod":
-                from kubernetes import client as k8s_client  # type: ignore
+                from kubernetes import client as k8s_client
                 from kubernetes import config as k8s_config
 
                 k8s_config.load_incluster_config()

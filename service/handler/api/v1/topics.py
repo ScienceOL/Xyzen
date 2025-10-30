@@ -1,128 +1,242 @@
 from typing import List
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from handler.api.v1.sessions import get_current_user
 from middleware.database import get_session
-from models.message import Message, MessageRead
-from models.sessions import Session
-from models.topic import Topic, TopicCreate, TopicRead
+from models.message import MessageRead
+from models.topic import Topic as TopicModel
+from models.topic import TopicCreate, TopicRead, TopicUpdate
+from repo import MessageRepository, SessionRepository, TopicRepository
 
 router = APIRouter()
 
 
-class TopicUpdate(BaseModel):
-    name: str
-
-
-@router.post("/", response_model=TopicRead)
-async def create_topic(topic_data: TopicCreate, db: AsyncSession = Depends(get_session)) -> Topic:
+async def _verify_topic_authorization(
+    topic_id: UUID, user: str, db: AsyncSession, allow_missing: bool = False
+) -> TopicModel | None:
     """
-    Create a new topic in an existing session.
+    Core authorization logic for topic access validation.
+
+    Args:
+        topic_id: UUID of the topic to verify
+        user: Authenticated user ID
+        db: Database session
+        allow_missing: If True, returns None for missing topics instead of raising 404
+
+    Returns:
+        Topic | None: The authorized topic instance, or None if not found and allow_missing=True
+
+    Raises:
+        HTTPException: 404 if topic/session not found (unless allow_missing=True for topic),
+                      403 if access denied
     """
-    # Verify that the session exists
-    session = await db.get(Session, topic_data.session_id)
+    topic_repo = TopicRepository(db)
+    session_repo = SessionRepository(db)
+
+    topic = await topic_repo.get_topic_by_id(topic_id)
+    if not topic:
+        if allow_missing:
+            return None
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    session = await session_repo.get_session_by_id(topic.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Create the topic
-    topic = Topic.model_validate(topic_data)
-    topic.id = uuid4()
-
-    db.add(topic)
-    await db.commit()
-    await db.refresh(topic)
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to access this topic")
 
     return topic
+
+
+async def get_authorized_topic(
+    topic_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
+) -> TopicModel:
+    """
+    FastAPI dependency that validates topic access authorization.
+
+    This dependency ensures the topic exists and belongs to a session
+    owned by the authenticated user. Used for operations that require
+    the topic to exist (GET, PUT).
+
+    Args:
+        topic_id: UUID from the path parameter
+        user: Authenticated user ID from get_current_user dependency
+        db: Database session from get_session dependency
+
+    Returns:
+        Topic: The authorized topic instance
+
+    Raises:
+        HTTPException: 404 if topic/session not found, 403 if access denied
+    """
+    topic = await _verify_topic_authorization(topic_id, user, db, allow_missing=False)
+    # Type checker can't infer that topic is not None here
+    return topic  # type: ignore
+
+
+async def get_authorized_topic_for_delete(
+    topic_id: UUID,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> TopicModel | None:
+    """
+    FastAPI dependency for delete operations with idempotent behavior.
+
+    Unlike the standard authorization dependency, this one returns None
+    when a topic doesn't exist rather than raising a 404 exception.
+    This enables idempotent DELETE operations where calling DELETE
+    on a non-existent resource still returns 204 No Content.
+
+    Args:
+        topic_id: UUID from the path parameter
+        user: Authenticated user ID from get_current_user dependency
+        db: Database session from get_session dependency
+
+    Returns:
+        Topic | None: The authorized topic instance, or None if topic doesn't exist
+
+    Raises:
+        HTTPException: 404 if session not found, 403 if access denied
+        (but NOT if topic doesn't exist - returns None instead)
+    """
+    return await _verify_topic_authorization(topic_id, user, db, allow_missing=True)
+
+
+@router.post("/", response_model=TopicRead)
+async def create_topic(
+    topic_data: TopicCreate,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> TopicRead:
+    """
+    Create a new topic within an existing session.
+
+    Validates that the target session exists and belongs to the authenticated user
+    before creating the topic. The topic will be created with the provided name,
+    description, and initial active status.
+
+    Args:
+        topic_data: Topic creation data including session_id, name, and description
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        TopicRead: The newly created topic with generated ID and timestamps
+
+    Raises:
+        HTTPException: 404 if session not found, 403 if user doesn't own session
+    """
+    session_repo = SessionRepository(db)
+    topic_repo = TopicRepository(db)
+    session = await session_repo.get_session_by_id(topic_data.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != user:
+        raise HTTPException(
+            status_code=403, detail="Access denied: You don't have permission to add topics to this session"
+        )
+
+    topic = await topic_repo.create_topic(topic_data)
+    await db.commit()
+    return TopicRead(**topic.model_dump())
 
 
 @router.put("/{topic_id}", response_model=TopicRead)
-async def update_topic(topic_id: UUID, topic_data: TopicUpdate, db: AsyncSession = Depends(get_session)) -> Topic:
+async def update_topic(
+    topic_data: TopicUpdate,
+    topic: TopicModel = Depends(get_authorized_topic),
+    db: AsyncSession = Depends(get_session),
+) -> TopicRead:
     """
-    Update a topic's name.
+    Update an existing topic's properties.
+
+    Allows modification of topic name, description, and active status.
+    Authorization is handled by the dependency which ensures the user
+    owns the session containing this topic.
+
+    Args:
+        topic_data: Partial update data (only provided fields will be updated)
+        topic: Authorized topic instance (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        TopicRead: The updated topic with new timestamps
+
+    Raises:
+        HTTPException: 404 if topic/session not found, 403 if access denied,
+                      500 if update operation fails unexpectedly
     """
-    topic = await db.get(Topic, topic_id)
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
+    topic_repo = TopicRepository(db)
+    updated_topic = await topic_repo.update_topic(topic.id, topic_data)
+    if not updated_topic:
+        raise HTTPException(status_code=500, detail="Failed to update topic")
 
-    # Update the topic name
-    topic.name = topic_data.name
-
-    db.add(topic)
     await db.commit()
-    await db.refresh(topic)
-
-    return topic
+    return TopicRead(**updated_topic.model_dump())
 
 
 @router.get("/{topic_id}/messages", response_model=List[MessageRead])
 async def get_topic_messages(
-    topic_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
-) -> list[Message]:
+    topic: TopicModel = Depends(get_authorized_topic),
+    db: AsyncSession = Depends(get_session),
+) -> List[MessageRead]:
     """
-    Get all messages for a specific topic, ordered by creation time.
-    Only returns messages if the current user owns the session that contains this topic.
+    Retrieve all messages within a topic, chronologically ordered.
+
+    Returns messages in order of creation time (oldest first) for the specified topic.
+    Authorization is handled by the dependency which ensures the user owns the
+    session containing this topic.
+
+    Args:
+        topic: Authorized topic instance (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[MessageRead]: Chronologically ordered list of messages in the topic
+
+    Raises:
+        HTTPException: 404 if topic/session not found, 403 if access denied
     """
-    # Get the topic first
-    topic = await db.get(Topic, topic_id)
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
-
-    # Get the session that contains this topic
-    session = await db.get(Session, topic.session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Verify that the current user owns this session
-    if session.user_id != user:
-        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to access this topic")
-
-    # Get messages for the topic
-    statement = select(Message).where(Message.topic_id == topic_id).order_by(Message.created_at)  # type: ignore
-    result = await db.exec(statement)
-    messages = result.all()
-    return list(messages)
+    message_repo = MessageRepository(db)
+    messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
+    return [MessageRead(**m.model_dump()) for m in messages]
 
 
 @router.delete("/{topic_id}", status_code=204)
 async def delete_topic(
-    topic_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
+    topic: TopicModel | None = Depends(get_authorized_topic_for_delete),
+    db: AsyncSession = Depends(get_session),
 ) -> None:
     """
-    Delete a topic and its associated messages.
-    Only allows deletion if the current user owns the session that contains this topic.
+    Delete a topic and all its associated messages (cascade delete).
+
+    This operation is idempotent - it will return 204 No Content even if the topic
+    doesn't exist. Messages are deleted first to maintain referential integrity,
+    followed by the topic itself. Authorization ensures only the session owner
+    can delete topics.
+
+    Args:
+        topic: Authorized topic instance or None if not found (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        None: Always returns 204 No Content status
+
+    Raises:
+        HTTPException: 404 if session not found, 403 if access denied
+        (but NOT if topic doesn't exist - returns 204 instead)
     """
-    # Get the topic first
-    topic = await db.get(Topic, topic_id)
-    if not topic:
-        # If the topic is already deleted, we can return a 204 status code.
+    if topic is None:
         return
 
-    # Get the session that contains this topic
-    session = await db.get(Session, topic.session_id)
-    if not session:
-        # This should not happen if the topic exists, but as a safeguard
-        raise HTTPException(status_code=404, detail="Session not found")
+    message_repo = MessageRepository(db)
+    topic_repo = TopicRepository(db)
 
-    # Verify that the current user owns this session
-    if session.user_id != user:
-        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to delete this topic")
-
-    # SQLModel does not support cascade deletes on the relationship yet,
-    # so we need to delete the messages manually.
-    # See: https://github.com/tiangolo/sqlmodel/issues/132
-    statement = select(Message).where(Message.topic_id == topic_id)
-    result = await db.exec(statement)
-    messages_to_delete = result.all()
-    for message in messages_to_delete:
-        await db.delete(message)
-
-    # Delete the topic itself
-    await db.delete(topic)
+    await message_repo.delete_messages_by_topic(topic.id)
+    await topic_repo.delete_topic(topic.id)
     await db.commit()
-
     return

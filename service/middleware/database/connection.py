@@ -104,6 +104,8 @@ async def create_db_and_tables() -> None:
         await asyncio.to_thread(run_migrations_sync)
     except Exception as e:
         error_msg = f"Database migration failed: {e}"
+        logger.error(error_msg)
+        raise
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

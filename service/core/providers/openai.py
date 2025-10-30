@@ -6,7 +6,12 @@ Standard OpenAI API support (use AzureOpenAIProvider for Azure).
 import logging
 from typing import Any, List, Optional
 
+from langchain_core.language_models import BaseChatModel
+from langchain_openai import ChatOpenAI
 from openai import AsyncOpenAI
+from pydantic import SecretStr
+
+from models.provider import OpenAIConfig
 
 from .base import (
     BaseLLMProvider,
@@ -25,7 +30,7 @@ class OpenAIProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: SecretStr,
         api_endpoint: Optional[str] = None,
         model: Optional[str] = None,
         max_tokens: int = 4096,
@@ -58,7 +63,7 @@ class OpenAIProvider(BaseLLMProvider):
         # Initialize OpenAI client
         logger.info(f"Initializing OpenAI client with endpoint: {api_endpoint or 'default'}")
         self.client = AsyncOpenAI(
-            api_key=self.api_key,
+            api_key=str(self.api_key),
             base_url=self.api_endpoint,
             timeout=self.timeout,
         )
@@ -118,3 +123,24 @@ class OpenAIProvider(BaseLLMProvider):
             "o1-preview",
             "o1-mini",
         ]
+
+    def to_langchain_model(self) -> BaseChatModel:
+        """
+        Convert this provider to a LangChain ChatOpenAI model instance.
+
+        Returns:
+            ChatOpenAI instance ready for use with LangChain
+        """
+        # Parse provider-specific config
+        config = OpenAIConfig(**self.config) if self.config else OpenAIConfig()
+
+        return ChatOpenAI(
+            api_key=self.api_key,
+            base_url=config.base_url or self.api_endpoint,
+            model=self.model,
+            temperature=self.temperature,
+            max_completion_tokens=self.max_tokens,
+            timeout=self.timeout,
+            organization=config.organization,
+            streaming=True,
+        )

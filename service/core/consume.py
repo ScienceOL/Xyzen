@@ -1,23 +1,23 @@
-"""消费服务核心模块
+"""Consumption service core module
 
-提供消费记录、远程扣费、统计等核心业务逻辑
+Provides core business logic for consumption records, remote billing, and statistics
 """
 
 import json
 import logging
-from typing import List, Optional
+from typing import Any
 from uuid import UUID
 
 import requests
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.exceptions import InsufficientBalanceError
-from models.consume import ConsumeRecord, UserConsumeSummary
+from models.consume import ConsumeRecord, ConsumeRecordCreate, ConsumeRecordUpdate, UserConsumeSummary
 from repo.consume import ConsumeRepository
 
 logger = logging.getLogger(__name__)
 
-# BohrApp 消费服务配置
+# BohrApp consumption service configuration
 BOHRAPP_CONSUME_API = "https://openapi.dp.tech/openapi/v1/api/integral/consume"
 BOHRAPP_X_APP_KEY = "xyzen-uuid1760783737"
 BOHRAPP_DEFAULT_SKU_ID = 10049
@@ -26,7 +26,7 @@ BOHRAPP_DEFAULT_CHANGE_TYPE = 1
 
 
 class ConsumeService:
-    """消费服务核心业务逻辑层"""
+    """Core business logic layer for consumption service"""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -37,36 +37,36 @@ class ConsumeService:
         user_id: str,
         amount: int,
         auth_provider: str,
-        access_key: Optional[str] = None,
-        sku_id: Optional[int] = None,
-        scene: Optional[str] = None,
-        session_id: Optional[UUID] = None,
-        topic_id: Optional[UUID] = None,
-        message_id: Optional[UUID] = None,
-        description: Optional[str] = None,
+        access_key: str | None = None,
+        sku_id: int | None = None,
+        scene: str | None = None,
+        session_id: UUID | None = None,
+        topic_id: UUID | None = None,
+        message_id: UUID | None = None,
+        description: str | None = None,
     ) -> ConsumeRecord:
         """
-        创建消费记录并执行远程扣费（如果需要）
+        Create consumption record and execute remote billing (if needed)
 
         Args:
-            user_id: 用户ID
-            amount: 消费金额
-            auth_provider: 认证提供商
-            access_key: 访问密钥（bohr_app时必需）
+            user_id: User ID
+            amount: Consumption amount
+            auth_provider: Authentication provider
+            access_key: Access key (required for bohr_app)
             sku_id: SKU ID
-            scene: 消费场景
-            session_id: 关联的会话ID
-            topic_id: 关联的主题ID
-            message_id: 关联的消息ID
-            description: 消费描述
+            scene: Consumption scene
+            session_id: Associated session ID
+            topic_id: Associated topic ID
+            message_id: Associated message ID
+            description: Consumption description
 
         Returns:
-            创建的消费记录
+            Created consumption record
         """
         logger.info(f"Creating consume record for user {user_id}, amount: {amount}, provider: {auth_provider}")
 
-        # 创建消费记录（初始状态为 pending）
-        record = ConsumeRecord(
+        # Create consumption record (initial state is pending)
+        record_data = ConsumeRecordCreate(
             user_id=user_id,
             amount=amount,
             auth_provider=auth_provider,
@@ -79,21 +79,21 @@ class ConsumeService:
             consume_state="pending",
         )
 
-        # 保存到数据库
-        record = await self.repo.create_consume_record(record)
+        # Save to database
+        record = await self.repo.create_consume_record(record_data, user_id)
 
-        # 仅在 bohr_app 认证时执行远程扣费
+        # Execute remote billing only for bohr_app authentication
         if auth_provider.lower() == "bohr_app":
             if not access_key:
                 logger.warning(f"Missing access_key for bohr_app consume, record {record.id} stays pending")
                 return record
 
-            # 执行远程扣费
+            # Execute remote billing
             await self._execute_remote_consume(record, access_key)
         else:
             logger.info(f"Non-bohr_app provider ({auth_provider}), skipping remote consume")
 
-        # 更新用户消费汇总
+        # Update user consumption summary
         await self.repo.increment_user_consume(
             user_id=user_id,
             auth_provider=auth_provider,
@@ -105,10 +105,10 @@ class ConsumeService:
 
     async def _execute_remote_consume(self, record: ConsumeRecord, access_key: str) -> None:
         """
-        执行远程扣费接口调用（BohrApp）
+        Execute remote billing API call (BohrApp)
         Args:
-            record: 消费记录
-            access_key: 用户的访问密钥
+            record: Consumption record
+            access_key: User's access key
         """
         try:
             logger.info(f"Executing remote consume for record {record.id}, amount: {record.amount}")
@@ -118,8 +118,8 @@ class ConsumeService:
                 "Content-Type": "application/json",
                 "Accept": "*/*",
             }
-            payload = {
-                "bizNo": record.biz_no,  # 现在直接使用整数
+            payload: dict[str, Any] = {
+                "bizNo": record.biz_no,  # Use integer directly
                 "changeType": BOHRAPP_DEFAULT_CHANGE_TYPE,
                 "eventValue": record.amount,
                 "skuId": record.sku_id or BOHRAPP_DEFAULT_SKU_ID,
@@ -134,46 +134,63 @@ class ConsumeService:
             )
             response_text = response.text
             logger.info(f"Remote consume response: status={response.status_code}, body={response_text}")
-            # 优化：严格处理BohrApp接口返回
+            # Optimize: Strict handling of BohrApp API response
             if response.status_code == 200:
                 try:
                     response_data = response.json()
                 except Exception as e:
+                    update_data = ConsumeRecordUpdate(
+                        consume_state="failed",
+                        remote_error=f"Invalid JSON response: {e}",
+                        remote_response=response_text,
+                    )
+                    logger.error(f"Remote consume JSON error: {e}")
+                    await self.repo.update_consume_record(record.id, update_data)
+                    # Update local record object for consistency
                     record.consume_state = "failed"
                     record.remote_error = f"Invalid JSON response: {e}"
                     record.remote_response = response_text
-                    logger.error(f"Remote consume JSON error: {e}")
-                    await self.repo.update_consume_record(record)
                     return
                 code = response_data.get("code")
                 if code == 0:
+                    update_data = ConsumeRecordUpdate(
+                        consume_state="success",
+                        remote_response=response_text,
+                    )
+                    await self.repo.update_consume_record(record.id, update_data)
+                    # Update local record object for consistency
                     record.consume_state = "success"
                     record.remote_response = response_text
                     logger.info(f"Remote consume succeeded for record {record.id}")
                 else:
-                    # 提取错误信息，处理可能的字典或字符串格式
-                    error_data = (
+                    # Extract error information, handle possible dict or string format
+                    error_data: dict[str, Any] | str = (
                         response_data.get("error") or response_data.get("msg") or "Unknown error from BohrApp API"
                     )
 
-                    # 如果error_data是字典，提取错误消息
+                    # If error_data is a dict, extract error message
                     if isinstance(error_data, dict):
                         error_message = error_data.get("msg") or error_data.get("message") or str(error_data)
-                        # 序列化完整的错误详情
+                        # Serialize complete error details
                         error_details_json = json.dumps(error_data, ensure_ascii=False)
                     else:
                         error_message = str(error_data)
                         error_details_json = error_message
 
+                    update_data = ConsumeRecordUpdate(
+                        consume_state="failed",
+                        remote_error=error_details_json,
+                        remote_response=response_text,
+                    )
+                    await self.repo.update_consume_record(record.id, update_data)
+                    # Update local record object for consistency
                     record.consume_state = "failed"
-                    record.remote_error = error_details_json  # 存储完整的错误详情（JSON字符串）
+                    record.remote_error = error_details_json  # Store complete error details (JSON string)
                     record.remote_response = response_text
                     logger.warning(f"Remote consume failed: {error_message}")
 
-                    # 检查是否是余额不足错误
+                    # Check if it's an insufficient balance error
                     if "余额不足" in error_message or "光子余额不足" in error_message:
-                        # 先更新记录，再抛出异常
-                        await self.repo.update_consume_record(record)
                         raise InsufficientBalanceError(
                             message=error_message,
                             error_code=str(response_data.get("code", "INSUFFICIENT_BALANCE")),
@@ -184,42 +201,55 @@ class ConsumeService:
                             },
                         )
             else:
+                update_data = ConsumeRecordUpdate(
+                    consume_state="failed",
+                    remote_error=f"HTTP {response.status_code}: {response_text}",
+                    remote_response=response_text,
+                )
+                await self.repo.update_consume_record(record.id, update_data)
+                # Update local record object for consistency
                 record.consume_state = "failed"
                 record.remote_error = f"HTTP {response.status_code}: {response_text}"
                 record.remote_response = response_text
                 logger.error(f"Remote consume HTTP error: {record.remote_error}")
         except InsufficientBalanceError:
-            # 余额不足错误已经在上面处理并更新了记录，直接重新抛出
+            # Insufficient balance error has been handled and record updated above, re-raise directly
             raise
         except requests.RequestException as e:
             logger.error(f"Remote consume network error for record {record.id}: {e}")
+            update_data = ConsumeRecordUpdate(
+                consume_state="failed",
+                remote_error=f"Network error: {str(e)}",
+            )
+            await self.repo.update_consume_record(record.id, update_data)
+            # Update local record object for consistency
             record.consume_state = "failed"
             record.remote_error = f"Network error: {str(e)}"
         except Exception as e:
             logger.error(f"Remote consume unexpected error for record {record.id}: {e}")
+            update_data = ConsumeRecordUpdate(
+                consume_state="failed",
+                remote_error=f"Unexpected error: {str(e)}",
+            )
+            await self.repo.update_consume_record(record.id, update_data)
+            # Update local record object for consistency
             record.consume_state = "failed"
             record.remote_error = f"Unexpected error: {str(e)}"
-        finally:
-            # 只有在非余额不足错误时才更新记录（余额不足已经在上面更新过了）
-            if record.consume_state != "success" and "余额不足" not in (record.remote_error or ""):
-                await self.repo.update_consume_record(record)
-            elif record.consume_state == "success":
-                await self.repo.update_consume_record(record)
 
-    async def get_consume_record_by_id(self, record_id: UUID) -> Optional[ConsumeRecord]:
-        """获取消费记录"""
+    async def get_consume_record_by_id(self, record_id: UUID) -> ConsumeRecord | None:
+        """Get consumption record"""
         return await self.repo.get_consume_record_by_id(record_id)
 
-    async def get_consume_record_by_biz_no(self, biz_no: int) -> Optional[ConsumeRecord]:
-        """通过业务ID获取消费记录（幂等检查）"""
+    async def get_consume_record_by_biz_no(self, biz_no: int) -> ConsumeRecord | None:
+        """Get consumption record by business ID (idempotency check)"""
         return await self.repo.get_consume_record_by_biz_no(biz_no)
 
-    async def get_user_consume_summary(self, user_id: str) -> Optional[UserConsumeSummary]:
-        """获取用户消费汇总"""
+    async def get_user_consume_summary(self, user_id: str) -> UserConsumeSummary | None:
+        """Get user consumption summary"""
         return await self.repo.get_user_consume_summary(user_id)
 
-    async def list_user_consume_records(self, user_id: str, limit: int = 100, offset: int = 0) -> List[ConsumeRecord]:
-        """获取用户消费记录列表"""
+    async def list_user_consume_records(self, user_id: str, limit: int = 100, offset: int = 0) -> list[ConsumeRecord]:
+        """Get user consumption record list"""
         return await self.repo.list_consume_records_by_user(user_id, limit, offset)
 
 
@@ -228,28 +258,28 @@ async def create_consume_for_chat(
     user_id: str,
     auth_provider: str,
     amount: int,
-    access_key: Optional[str] = None,
-    session_id: Optional[UUID] = None,
-    topic_id: Optional[UUID] = None,
-    message_id: Optional[UUID] = None,
-    description: Optional[str] = None,
+    access_key: str | None = None,
+    session_id: UUID | None = None,
+    topic_id: UUID | None = None,
+    message_id: UUID | None = None,
+    description: str | None = None,
 ) -> ConsumeRecord:
     """
-    为对话创建消费记录的便捷函数
+    Convenience function to create consumption record for chat
 
     Args:
-        db: 数据库会话
-        user_id: 用户ID
-        auth_provider: 认证提供商
-        amount: 消费金额
-        access_key: 访问密钥（bohr_app时必需）
-        session_id: 会话ID
-        topic_id: 主题ID
-        message_id: 消息ID
-        description: 描述
+        db: Database session
+        user_id: User ID
+        auth_provider: Authentication provider
+        amount: Consumption amount
+        access_key: Access key (required for bohr_app)
+        session_id: Session ID
+        topic_id: Topic ID
+        message_id: Message ID
+        description: Description
 
     Returns:
-        消费记录
+        Consumption record
     """
     service = ConsumeService(db)
     return await service.create_consume_record(

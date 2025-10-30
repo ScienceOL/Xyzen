@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-from typing import Optional
 from uuid import UUID
 
 import httpx
@@ -10,12 +9,12 @@ from fastmcp.client.auth import BearerAuth
 
 from core.websocket import mcp_websocket_manager
 from middleware.database.connection import get_session
-from models import McpServer
+from models.mcp import McpServer
 
 logger = logging.getLogger(__name__)
 
 
-async def _async_check_mcp_server_status(server_id: Optional[UUID]) -> None:
+async def async_check_mcp_server_status(server_id: UUID | None) -> None:
     """
     Asynchronously checks the status of an MCP server using fastmcp.Client.
     """
@@ -71,9 +70,9 @@ def check_mcp_server_status(server_id: UUID) -> None:
         loop = asyncio.get_running_loop()
         # If a loop is running, create a task on it.
         # This is the standard case when called from within an async app like FastAPI.
-        loop.create_task(_async_check_mcp_server_status(server_id))
+        loop.create_task(async_check_mcp_server_status(server_id))
     except RuntimeError:
         # This case should ideally not be hit in the FastAPI context,
         # but is a fallback for running this function in a purely sync context.
-        logger.warning("No running event loop found. Running _async_check_mcp_server_status in a new loop.")
-        asyncio.run(_async_check_mcp_server_status(server_id))
+        logger.warning("No running event loop found. Running async_check_mcp_server_status in a new loop.")
+        asyncio.run(async_check_mcp_server_status(server_id))

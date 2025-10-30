@@ -10,6 +10,11 @@ from typing import Any, List, Optional
 from anthropic import AsyncAnthropic
 from anthropic.types import MessageParam
 from anthropic.types.tool_param import ToolParam
+from langchain_anthropic import ChatAnthropic
+from langchain_core.language_models import BaseChatModel
+from pydantic import SecretStr
+
+from models.provider import AnthropicConfig
 
 from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse
 
@@ -24,7 +29,7 @@ class AnthropicProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: SecretStr,
         api_endpoint: Optional[str] = None,
         model: Optional[str] = None,
         max_tokens: int = 4096,
@@ -56,9 +61,9 @@ class AnthropicProvider(BaseLLMProvider):
 
         # Initialize Anthropic client
         if self.api_endpoint:
-            self.client = AsyncAnthropic(api_key=self.api_key, base_url=self.api_endpoint, timeout=self.timeout)
+            self.client = AsyncAnthropic(api_key=str(self.api_key), base_url=self.api_endpoint, timeout=self.timeout)
         else:
-            self.client = AsyncAnthropic(api_key=self.api_key, timeout=self.timeout)
+            self.client = AsyncAnthropic(api_key=str(self.api_key), timeout=self.timeout)
 
     async def chat_completion(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
         """
@@ -249,3 +254,24 @@ class AnthropicProvider(BaseLLMProvider):
             "claude-3-sonnet-20240229",
             "claude-3-haiku-20240307",
         ]
+
+    def to_langchain_model(self) -> BaseChatModel:
+        """
+        Convert this provider to a LangChain ChatAnthropic model instance.
+
+        Returns:
+            ChatAnthropic instance ready for use with LangChain
+        """
+        # Parse provider-specific config
+        config = AnthropicConfig(**self.config) if self.config else AnthropicConfig()
+
+        return ChatAnthropic(
+            api_key=self.api_key,
+            base_url=config.base_url or self.api_endpoint,
+            model_name=self.model,
+            temperature=self.temperature,
+            stop=None,
+            max_tokens_to_sample=self.max_tokens,
+            timeout=self.timeout,
+            streaming=True,
+        )

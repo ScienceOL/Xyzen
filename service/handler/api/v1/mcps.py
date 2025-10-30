@@ -6,11 +6,10 @@ from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from core.mcp import _async_check_mcp_server_status
+from core.mcp import async_check_mcp_server_status
 from middleware.auth import get_current_user
 from middleware.database.connection import get_session
-from models import McpServer
-from models.mcp import McpServerCreate, McpServerUpdate
+from models.mcp import McpServer, McpServerCreate, McpServerUpdate
 
 router = APIRouter()
 
@@ -45,7 +44,7 @@ async def create_mcp_server(
     await session.refresh(db_mcp_server)
 
     if db_mcp_server.id:
-        background_tasks.add_task(_async_check_mcp_server_status, db_mcp_server.id)
+        background_tasks.add_task(async_check_mcp_server_status, db_mcp_server.id)
 
     return db_mcp_server
 
@@ -197,9 +196,9 @@ async def test_mcp_tool(
     start_time = time.time()
     try:
         # Use the same tool execution logic as in chat.py
-        from core.chat.tools import _call_mcp_tool
+        from core.chat.tools import call_mcp_tool
 
-        result = await _call_mcp_tool(mcp_server, tool_name, test_request.parameters)
+        result = await call_mcp_tool(mcp_server, tool_name, test_request.parameters)
 
         end_time = time.time()
         execution_time_ms = int((end_time - start_time) * 1000)
@@ -233,6 +232,6 @@ async def refresh_all_mcp_servers(
 
     for server in mcp_servers:
         if server.id:
-            background_tasks.add_task(_async_check_mcp_server_status, server.id)
+            background_tasks.add_task(async_check_mcp_server_status, server.id)
 
     return {"ok": True}

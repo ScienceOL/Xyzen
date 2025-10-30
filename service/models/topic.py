@@ -1,50 +1,46 @@
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List
-from uuid import UUID
+from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
-from sqlalchemy import Column
-from sqlalchemy.dialects.postgresql import TIMESTAMP
-from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy import TIMESTAMP
+from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
-    from .message import Message
-    from .sessions import Session
+    from .message import MessageRead
 
 
 class TopicBase(SQLModel):
-    """
-    Base model for topics.
-    """
-
-    name: str
-    description: str | None = None
-    is_active: bool = True
-    session_id: UUID = Field(foreign_key="session.id")
+    name: str = Field(max_length=100)
+    description: str | None = Field(default=None, max_length=500)
+    is_active: bool = Field(default=True)
+    session_id: UUID = Field(index=True)
 
 
 class Topic(TopicBase, table=True):
-    id: UUID = Field(default=None, primary_key=True, index=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
-        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False, onupdate=lambda: datetime.now(timezone.utc)),
     )
-
-    session_id: UUID = Field(foreign_key="session.id")
-    session: "Session" = Relationship(back_populates="topics")
-    messages: List["Message"] = Relationship(back_populates="topic", sa_relationship_kwargs={"lazy": "selectin"})
 
 
 class TopicCreate(TopicBase):
-    session_id: UUID
+    pass
 
 
 class TopicRead(TopicBase):
     id: UUID
     updated_at: datetime
+
+
+class TopicReadWithMessages(TopicBase):
+    id: UUID
+    updated_at: datetime
+    messages: list["MessageRead"] = []
 
 
 class TopicUpdate(SQLModel):

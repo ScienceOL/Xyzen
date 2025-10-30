@@ -15,7 +15,7 @@ export type Agent = {
   name: string;
   description: string;
   prompt: string;
-  mcp_servers: { id: string }[];
+  mcp_servers?: { id: string }[];
   mcp_server_ids?: string[];
   user_id: string;
   require_tool_confirmation?: boolean;

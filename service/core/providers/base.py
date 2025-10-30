@@ -4,9 +4,10 @@ Defines the interface that all LLM providers must implement.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from langchain_core.language_models import BaseChatModel
+from pydantic import BaseModel, SecretStr
 
 
 class ChatMessage(BaseModel):
@@ -54,7 +55,7 @@ class BaseLLMProvider(ABC):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: SecretStr,
         api_endpoint: Optional[str] = None,
         model: Optional[str] = None,
         max_tokens: int = 4096,
@@ -151,5 +152,15 @@ class BaseLLMProvider(ABC):
 
         Returns:
             List of supported model names
+        """
+        pass
+
+    @abstractmethod
+    def to_langchain_model(self) -> BaseChatModel:
+        """
+        Convert this provider to a LangChain model instance.
+
+        Returns:
+            BaseChatModel instance ready for use with LangChain
         """
         pass

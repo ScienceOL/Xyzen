@@ -9,67 +9,91 @@ from typing import Any, Dict, List
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from core.mcp import _async_check_mcp_server_status
-from models import McpServer
-from models.topic import Topic as TopicModel
+from core.mcp import async_check_mcp_server_status
+from models.mcp import McpServer
+from repo.mcp import McpRepository
 
 logger = logging.getLogger(__name__)
 
 
-async def _prepare_mcp_tools(db: AsyncSession, topic: TopicModel) -> List[Dict[str, Any]]:
+async def prepare_mcp_tools(db: AsyncSession, agent: Any) -> List[Dict[str, Any]]:
     tools: List[Dict[str, Any]] = []
-    if topic.session.agent and topic.session.agent.mcp_servers:
-        logger.info("Updating MCP server tools before generating response...")
-        update_tasks = []
-        for server in topic.session.agent.mcp_servers:
-            update_tasks.append(_async_check_mcp_server_status(server.id))
-        await asyncio.gather(*update_tasks, return_exceptions=True)
-        logger.info("MCP server tools updated")
-        refreshed_servers = []
-        for server in topic.session.agent.mcp_servers:
-            refreshed_server = await db.get(type(server), server.id)
-            if refreshed_server:
-                refreshed_servers.append(refreshed_server)
-        for server in refreshed_servers:
-            if server.tools and server.status == "online":
-                for tool in server.tools:
-                    standard_tool = {
-                        "name": tool.get("name", ""),
-                        "description": tool.get("description", ""),
-                        "parameters": tool.get("inputSchema", {}),
-                    }
-                    tools.append(standard_tool)
-        if tools:
-            logger.info(f"Using {len(tools)} tools from {len(refreshed_servers)} servers")
+    if agent:
+        # Load MCP servers for the agent using AgentRepository
+        from repo.agent import AgentRepository
+
+        agent_repo = AgentRepository(db)
+        mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+
+        if mcp_servers:
+            logger.info("Updating MCP server tools before generating response...")
+            mcp_repo = McpRepository(db)
+
+            # Update server status for all servers
+            update_tasks = []
+            for server in mcp_servers:
+                update_tasks.append(async_check_mcp_server_status(server.id))
+            await asyncio.gather(*update_tasks, return_exceptions=True)
+            logger.info("MCP server tools updated")
+
+            # Get refreshed servers using repository
+            refreshed_servers = []
+            for server in mcp_servers:
+                refreshed_server = await mcp_repo.get_mcp_server_by_id(server.id)
+                if refreshed_server:
+                    refreshed_servers.append(refreshed_server)
+
+            # Extract tools from online servers
+            for server in refreshed_servers:
+                if server.tools and server.status == "online":
+                    for tool in server.tools:
+                        standard_tool = {
+                            "name": tool.get("name", ""),
+                            "description": tool.get("description", ""),
+                            "parameters": tool.get("inputSchema", {}),
+                        }
+                        tools.append(standard_tool)
+            if tools:
+                logger.info(f"Using {len(tools)} tools from {len(refreshed_servers)} servers")
     return tools
 
 
-async def _execute_tool_call(db: AsyncSession, tool_name: str, tool_args: str, topic: TopicModel) -> str:
+async def execute_tool_call(db: AsyncSession, tool_name: str, tool_args: str, agent: Any) -> str:
     try:
         try:
             args_dict = json.loads(tool_args) if tool_args else {}
         except json.JSONDecodeError:
             return f"Error: Invalid JSON arguments for tool '{tool_name}'"
         logger.info(f"Executing tool '{tool_name}' with arguments: {args_dict}")
-        if topic.session.agent and topic.session.agent.mcp_servers:
-            for server in topic.session.agent.mcp_servers:
-                refreshed_server = await db.get(type(server), server.id)
-                if refreshed_server and refreshed_server.tools and refreshed_server.status == "online":
-                    for tool in refreshed_server.tools:
-                        if tool.get("name") == tool_name:
-                            try:
-                                result = await _call_mcp_tool(refreshed_server, tool_name, args_dict)
-                                return str(result)
-                            except Exception as exec_error:
-                                logger.error(f"MCP tool execution failed: {exec_error}")
-                                return f"Error executing tool '{tool_name}': {exec_error}"
+
+        if agent:
+            # Load MCP servers for the agent using AgentRepository
+            from repo.agent import AgentRepository
+
+            agent_repo = AgentRepository(db)
+            mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+
+            if mcp_servers:
+                mcp_repo = McpRepository(db)
+
+                for server in mcp_servers:
+                    refreshed_server = await mcp_repo.get_mcp_server_by_id(server.id)
+                    if refreshed_server and refreshed_server.tools and refreshed_server.status == "online":
+                        for tool in refreshed_server.tools:
+                            if tool.get("name") == tool_name:
+                                try:
+                                    result = await call_mcp_tool(refreshed_server, tool_name, args_dict)
+                                    return str(result)
+                                except Exception as exec_error:
+                                    logger.error(f"MCP tool execution failed: {exec_error}")
+                                    return f"Error executing tool '{tool_name}': {exec_error}"
         return f"Tool '{tool_name}' not found or server not available"
     except Exception as e:
         logger.error(f"Tool execution error: {e}")
         return f"Error: {e}"
 
 
-async def _call_mcp_tool(server: McpServer, tool_name: str, args_dict: Dict[str, Any]) -> Any:
+async def call_mcp_tool(server: McpServer, tool_name: str, args_dict: Dict[str, Any]) -> Any:
     try:
         from fastmcp import Client
         from fastmcp.client.auth import BearerAuth
@@ -89,7 +113,7 @@ async def _call_mcp_tool(server: McpServer, tool_name: str, args_dict: Dict[str,
         raise e
 
 
-def _format_tool_result(tool_result: Any, tool_name: str) -> str:
+def format_tool_result(tool_result: Any, tool_name: str) -> str:
     try:
         if hasattr(tool_result, "content") and tool_result.content:
             content = tool_result.content
@@ -138,7 +162,7 @@ def _format_tool_result(tool_result: Any, tool_name: str) -> str:
         return f"Tool '{tool_name}' executed but result formatting failed: {e}"
 
 
-async def _execute_tool_calls(db: AsyncSession, tool_calls: List[Dict[str, Any]], topic: TopicModel) -> Dict[str, Any]:
+async def execute_tool_calls(db: AsyncSession, tool_calls: List[Dict[str, Any]], agent: Any) -> Dict[str, Any]:
     results = {}
     for tool_call in tool_calls:
         tool_call_id = tool_call.get("id", f"tool_{int(asyncio.get_event_loop().time() * 1000)}")
@@ -147,7 +171,7 @@ async def _execute_tool_calls(db: AsyncSession, tool_calls: List[Dict[str, Any]]
         tool_args = function_info.get("arguments", "{}")
         logger.info(f"Executing tool call {tool_call_id}: {tool_name}")
         try:
-            result = await _execute_tool_call(db, tool_name, tool_args, topic)
+            result = await execute_tool_call(db, tool_name, tool_args, agent)
             results[tool_call_id] = {"content": result}
         except Exception as e:
             logger.error(f"Failed to execute tool call {tool_call_id}: {e}")

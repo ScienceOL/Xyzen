@@ -1,108 +1,138 @@
-from datetime import datetime
 from typing import List
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from middleware.auth import get_current_user
 from middleware.database import get_session
-from models.message import Message
-from models.sessions import Session, SessionCreate, SessionRead
-from models.topic import Topic, TopicCreate
+from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics
+from models.topic import TopicCreate, TopicRead
+from repo import MessageRepository, SessionRepository, TopicRepository
+
+# Ensure forward references are resolved after importing both models
+try:
+    SessionReadWithTopics.model_rebuild()
+except Exception as e:
+    # If rebuild fails, log the error for debugging
+    import logging
+
+    logging.getLogger(__name__).warning(f"Failed to rebuild SessionReadWithTopics: {e}")
 
 router = APIRouter()
 
 
 @router.post("/", response_model=SessionRead)
 async def create_session_with_default_topic(
-    session_data: SessionCreate, db: AsyncSession = Depends(get_session), user: str = Depends(get_current_user)
-) -> Session:
+    session_data: SessionCreate,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> SessionRead:
     """
-    Create a new session and a default topic within it.
-    If agent_id is provided, the session will be associated with that agent.
-    Returns the newly created session with its topics.
-    The user_id is automatically extracted from the authenticated user.
+    Create a new session with a default topic.
+
+    Creates a new session for the authenticated user and automatically adds
+    a default topic named "新的聊天" to get the user started. If an agent_id
+    is provided, the session will be associated with that agent.
+
+    Args:
+        session_data: Session creation data including name, description, and optional agent_id
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        SessionRead: The newly created session with generated ID and timestamps
+
+    Raises:
+        HTTPException: 500 if session or topic creation fails
     """
-    # Create the session instance with user_id from authentication
-    session = Session(
-        id=uuid4(),
-        name=session_data.name,
-        description=session_data.description,
-        is_active=session_data.is_active,
-        user_id=user,  # Use authenticated user ID
-        agent_id=session_data.agent_id,
+    session_repo = SessionRepository(db)
+    topic_repo = TopicRepository(db)
+
+    session = await session_repo.create_session(session_data, user)
+    default_topic_data = TopicCreate(
+        name="新的聊天",
+        session_id=session.id,
     )
-
-    # Create a default topic for this session with a generic name
-    # The timestamp is now handled by the `updated_at` field and displayed correctly on the frontend.
-    default_topic = Topic.model_validate(
-        TopicCreate(
-            name="新的聊天",  # Changed from a timestamp-based name
-            session_id=session.id,
-        )
-    )
-    default_topic.id = uuid4()
-
-    db.add(session)
-    db.add(default_topic)
-
-    # Store the ID before the session object becomes expired after commit
-    new_session_id = session.id
+    await topic_repo.create_topic(default_topic_data)
 
     await db.commit()
-
-    # Re-query the session. Topics are now eagerly loaded due to the model's relationship configuration.
-    result = await db.exec(select(Session).where(Session.id == new_session_id))
-    new_session = result.one()
-
-    return new_session
+    return SessionRead(**session.model_dump())
 
 
 @router.get("/by-agent/{agent_id}", response_model=SessionRead)
 async def get_session_by_agent(
     agent_id: str, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
-) -> Session:
+) -> SessionRead:
     """
-    Get a session for the current user with a specific agent.
-    Returns 404 if no session is found for this user-agent combination.
+    Retrieve a session for the current user with a specific agent.
+
+    Finds a session associated with the given agent ID for the authenticated user.
+    The agent_id can be "default" for sessions without an agent, or a UUID string
+    for sessions with a specific agent.
+
+    Args:
+        agent_id: Agent identifier ("default" or UUID string)
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        SessionRead: The session associated with the user and agent
+
+    Raises:
+        HTTPException: 404 if no session found for this user-agent combination
     """
-    # Convert agent_id to UUID if it's a valid UUID string, otherwise treat as None for default agent
+    session_repo = SessionRepository(db)
+
+    # TODO: Legacy support for "default" agent
     try:
         agent_uuid = UUID(agent_id) if agent_id != "default" else None
     except ValueError:
         agent_uuid = None
 
-    statement = select(Session).where(Session.user_id == user, Session.agent_id == agent_uuid)
-    result = await db.exec(statement)
-    session = result.first()
-
+    session = await session_repo.get_session_by_user_and_agent(user, agent_uuid)
     if not session:
         raise HTTPException(status_code=404, detail="No session found for this user-agent combination")
 
-    return session
+    return SessionRead(**session.model_dump())
 
 
-@router.get("/", response_model=List[SessionRead])
+@router.get("/", response_model=List[SessionReadWithTopics])
 async def get_sessions(
     user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
-) -> List[Session]:
+) -> List[SessionReadWithTopics]:
     """
-    Get all sessions for the current user, ordered by the last update time of their topics.
+    Retrieve all sessions for the current user with their topics, ordered by recent activity.
+
+    Returns all sessions owned by the authenticated user, sorted by the most
+    recent topic activity (based on topic updated_at timestamps). Sessions
+    without topics are sorted to the end. Each session includes all its topics.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[SessionReadWithTopics]: List of user's sessions with topics, ordered by recent activity
+
+    Raises:
+        HTTPException: None - this endpoint always succeeds, returning empty list if no sessions
     """
-    # Filter sessions by the current user (user_id)
-    statement = select(Session).where(Session.user_id == user)
-    result = await db.exec(statement)
-    sessions = list(result.all())
+    session_repo = SessionRepository(db)
+    topic_repo = TopicRepository(db)
+    sessions = await session_repo.get_sessions_by_user_ordered_by_activity(user)
 
-    # Sort sessions in memory based on the most recent topic's updated_at
-    sessions.sort(
-        key=lambda s: max(t.updated_at for t in s.topics) if s.topics else datetime.min,
-        reverse=True,
-    )
+    # Load topics for each session
+    sessions_with_topics = []
+    for session in sessions:
+        topics = await topic_repo.get_topics_by_session(session.id, order_by_updated=True)
+        topic_reads = [TopicRead(**topic.model_dump()) for topic in topics]
 
-    return sessions
+        session_dict = session.model_dump()
+        session_dict["topics"] = topic_reads
+        sessions_with_topics.append(SessionReadWithTopics(**session_dict))
+
+    return sessions_with_topics
 
 
 @router.delete("/{session_id}/topics", status_code=204)
@@ -110,43 +140,43 @@ async def clear_session_topics(
     session_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
 ) -> None:
     """
-    Clear all topics in a session (keeping only one new empty topic).
-    Only allows clearing if the current user owns the session.
+    Clear all topics in a session and create a new empty topic.
+
+    Removes all existing topics and their associated messages from the session,
+    then creates a fresh default topic. Only allows clearing if the current user
+    owns the session. This is useful for starting fresh conversations.
+
+    Args:
+        session_id: UUID of the session to clear
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        None: Always returns 204 No Content status
+
+    Raises:
+        HTTPException: 404 if session not found, 403 if access denied
     """
-    # Get the session
-    session = await db.get(Session, session_id)
+    session_repo = SessionRepository(db)
+    topic_repo = TopicRepository(db)
+    message_repo = MessageRepository(db)
+
+    session = await session_repo.get_session_by_id(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-
-    # Verify that the current user owns this session
     if session.user_id != user:
         raise HTTPException(status_code=403, detail="Access denied: You don't have permission to clear this session")
 
-    # Get all topics for this session
-    statement = select(Topic).where(Topic.session_id == session_id)
-    result = await db.exec(statement)
-    topics = list(result.all())
-
-    # Delete all messages for each topic
+    topics = await topic_repo.get_topics_by_session(session_id)
     for topic in topics:
-        message_statement = select(Message).where(Message.topic_id == topic.id)
-        message_result = await db.exec(message_statement)
-        messages = list(message_result.all())
-        for message in messages:
-            await db.delete(message)
+        await message_repo.delete_messages_by_topic(topic.id)
+        await topic_repo.delete_topic(topic.id)
 
-        # Delete the topic
-        await db.delete(topic)
-
-    # Create a new default topic
-    default_topic = Topic.model_validate(
-        TopicCreate(
-            name="新的聊天",
-            session_id=session_id,
-        )
+    default_topic_data = TopicCreate(
+        name="新的聊天",
+        session_id=session_id,
     )
-    default_topic.id = uuid4()
-    db.add(default_topic)
+    await topic_repo.create_topic(default_topic_data)
 
     await db.commit()
     return

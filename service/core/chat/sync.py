@@ -11,7 +11,7 @@ from core.providers import ChatCompletionRequest, ChatMessage, get_user_provider
 from models.topic import Topic as TopicModel
 
 from .messages import build_system_prompt
-from .tools import _execute_tool_call, _format_tool_result, _prepare_mcp_tools
+from .tools import execute_tool_call, format_tool_result, prepare_mcp_tools
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +31,26 @@ async def get_ai_response(
         logger.error(f"Failed to get provider manager for user {user_id}: {e}")
         return "Sorry, no LLM providers configured. Please configure a provider first."
 
+    # Load session and agent for provider selection
+    from repo.agent import AgentRepository
+    from repo.session import SessionRepository
+
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(topic.session_id)
+
+    agent = None
+    if session and session.agent_id:
+        agent_repo = AgentRepository(db)
+        agent = await agent_repo.get_agent_by_id(session.agent_id)
+
     provider = None
-    if topic.session.agent and topic.session.agent.provider_id:
-        provider = user_provider_manager.get_provider(str(topic.session.agent.provider_id))
+    if agent and agent.provider_id:
+        provider = user_provider_manager.get_provider(str(agent.provider_id))
         if provider:
-            logger.info(f"Using agent-specific provider: {topic.session.agent.provider_id}")
+            logger.info(f"Using agent-specific provider: {agent.provider_id}")
         else:
             logger.warning(
-                f"Agent {topic.session.agent.id} has provider_id {topic.session.agent.provider_id} "
+                f"Agent {agent.id} has provider_id {agent.provider_id} "
                 f"but it's not available for user {user_id}. Falling back to default."
             )
     if not provider:
@@ -48,10 +60,16 @@ async def get_ai_response(
         logger.error(f"No LLM provider available for user {user_id}")
         return "Sorry, no AI provider is currently available."
 
-    system_prompt = build_system_prompt(topic.session.agent)
+    system_prompt = await build_system_prompt(db, agent)
+
+    # Load conversation history using MessageRepository
+    from repo.message import MessageRepository
+
+    message_repo = MessageRepository(db)
+    history_messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
 
     messages: List[ChatMessage] = [ChatMessage(role="system", content=system_prompt)]
-    for msg in topic.messages:
+    for msg in history_messages:
         messages.append(ChatMessage(role=msg.role, content=msg.content))
     messages.append(ChatMessage(role="user", content=message_text))
 
@@ -60,7 +78,7 @@ async def get_ai_response(
     try:
         model = provider.model
         logger.info(f"Using model: {model} with temperature: {provider.temperature}")
-        tools = await _prepare_mcp_tools(db, topic)
+        tools = await prepare_mcp_tools(db, agent)
         request = ChatCompletionRequest(
             messages=messages,
             model=model,
@@ -85,8 +103,8 @@ async def get_ai_response(
                 tool_id = tool_call.get("id", "") if isinstance(tool_call, dict) else ""
                 try:
                     logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
-                    tool_result = await _execute_tool_call(db, tool_name, tool_args, topic)
-                    formatted_result = _format_tool_result(tool_result, tool_name)
+                    tool_result = await execute_tool_call(db, tool_name, tool_args, agent)
+                    formatted_result = format_tool_result(tool_result, tool_name)
                     tool_results.append({"tool_call_id": tool_id, "content": formatted_result})
                     messages.append(ChatMessage(role="tool", content=formatted_result))
                     logger.info(f"Added tool result to conversation: {formatted_result[:200]}...")

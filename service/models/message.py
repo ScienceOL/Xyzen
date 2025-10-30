@@ -2,21 +2,18 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column
-from sqlalchemy.dialects.postgresql import TIMESTAMP
-from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy import TIMESTAMP
+from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
-    from .topic import Topic
+    from .topic import TopicRead
 
 
 class MessageBase(SQLModel):
-    """
-    Base model for messages.
-    """
-
-    role: str  # user, assistant, system, tool
+    # role can be 'user', 'assistant', 'system', 'tool', etc.
+    role: str
     content: str
+    topic_id: UUID = Field(index=True)
 
 
 class Message(MessageBase, table=True):
@@ -25,18 +22,21 @@ class Message(MessageBase, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
     )
-    topic_id: UUID = Field(foreign_key="topic.id")
-
-    topic: "Topic" = Relationship(back_populates="messages")
 
 
 class MessageCreate(MessageBase):
-    topic_id: UUID
+    pass
 
 
 class MessageRead(MessageBase):
     id: UUID
     created_at: datetime
+
+
+class MessageReadWithTopic(MessageBase):
+    id: UUID
+    created_at: datetime
+    topic: "TopicRead | None" = None
 
 
 class MessageUpdate(SQLModel):

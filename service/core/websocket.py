@@ -5,7 +5,7 @@ and broadcast messages to connected clients.
 """
 
 import json
-from typing import Any, List
+from typing import Any
 
 from fastapi import WebSocket
 
@@ -14,7 +14,7 @@ class ConnectionManager:
     """Manages active WebSocket connections."""
 
     def __init__(self) -> None:
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket) -> None:
         """Accept a new WebSocket connection and add it to active connections."""

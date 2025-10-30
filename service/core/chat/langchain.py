@@ -13,8 +13,6 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool, StructuredTool
 from langchain_openai import AzureChatOpenAI
 from pydantic import Field, create_model
-from sqlalchemy import asc
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import get_user_provider_manager
@@ -28,25 +26,16 @@ logger = logging.getLogger(__name__)
 ResponseT = TypeVar("ResponseT")
 
 
-def _create_langchain_model(provider: Any) -> AzureChatOpenAI:
-    """Create a LangChain AzureChatOpenAI model from our provider."""
-    return AzureChatOpenAI(
-        api_key=provider.api_key,
-        azure_endpoint=provider.api_endpoint,
-        api_version=getattr(provider, "api_version", "2025-03-01-preview"),
-        azure_deployment=provider.model,
-        # temperature=provider.temperature,
-        # max_completion_tokens=provider.max_tokens,
-        timeout=provider.timeout,
-        streaming=True,
-    )
+def _create_langchain_model(user_provider_manager: Any, provider_name: str | None = None) -> Any:
+    """Create a LangChain model from the provider manager."""
+    return user_provider_manager.create_langchain_model(provider_name)
 
 
-async def _prepare_langchain_tools(db: AsyncSession, topic: TopicModel) -> List[BaseTool]:
+async def _prepare_langchain_tools(db: AsyncSession, agent: Any) -> List[BaseTool]:
     """Prepare LangChain tools from MCP servers."""
-    from core.chat.tools import _execute_tool_call, _prepare_mcp_tools
+    from core.chat.tools import execute_tool_call, prepare_mcp_tools
 
-    mcp_tools = await _prepare_mcp_tools(db, topic)
+    mcp_tools = await prepare_mcp_tools(db, agent)
     langchain_tools: List[BaseTool] = []
 
     for tool in mcp_tools:
@@ -85,12 +74,12 @@ async def _prepare_langchain_tools(db: AsyncSession, topic: TopicModel) -> List[
         ArgsSchema = create_model(f"{tool_name}Args", **field_definitions)
 
         # Create tool execution function with closure
-        async def make_tool_func(t_name: str, t_db: AsyncSession, t_topic: TopicModel) -> Any:
+        async def make_tool_func(t_name: str, t_db: AsyncSession, t_agent: Any) -> Any:
             async def tool_func(**kwargs: Any) -> str:
                 """Execute the tool with given arguments."""
                 try:
                     args_json = json.dumps(kwargs)
-                    result = await _execute_tool_call(t_db, t_name, args_json, t_topic)
+                    result = await execute_tool_call(t_db, t_name, args_json, t_agent)
                     return str(result)
                 except Exception as e:
                     logger.error(f"Tool {t_name} execution failed: {e}")
@@ -98,7 +87,7 @@ async def _prepare_langchain_tools(db: AsyncSession, topic: TopicModel) -> List[
 
             return tool_func
 
-        tool_func = await make_tool_func(tool_name, db, topic)
+        tool_func = await make_tool_func(tool_name, db, agent)
 
         # Create structured tool
         structured_tool = StructuredTool(
@@ -120,20 +109,13 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
     with raw tool execution transcripts.
     """
     try:
-        # Local import to avoid circulars
-        from models.message import Message as MessageModel
+        from repo.message import MessageRepository
 
-        # Order by creation time to maintain chronology
-        stmt = (
-            select(MessageModel)
-            .where(MessageModel.topic_id == topic.id)
-            .order_by(asc(MessageModel.created_at))  # type: ignore
-        )
-        result = await db.exec(stmt)
-        rows = list(result.all())
+        message_repo = MessageRepository(db)
+        messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
 
         history: List[Any] = []
-        for m in rows:
+        for m in messages:
             role = (m.role or "").lower()
             content = m.content or ""
             if not content:
@@ -169,7 +151,7 @@ async def get_ai_response_stream_langchain(
     1. Step-by-step agent progress (LLM calls, tool executions)
     2. Token-by-token LLM streaming
     """
-    # Get provider
+    # Get provider manager
     try:
         user_provider_manager = await get_user_provider_manager(user_id, db)
     except ValueError as e:
@@ -177,13 +159,36 @@ async def get_ai_response_stream_langchain(
         yield {"type": ChatEventType.ERROR, "data": {"error": "No LLM providers configured."}}
         return
 
-    # Select provider
-    provider = None
-    if topic.session.agent and topic.session.agent.provider_id:
-        provider = user_provider_manager.get_provider(str(topic.session.agent.provider_id))
+    # Load session and agent first (needed for provider selection)
+    from repo.agent import AgentRepository
+    from repo.session import SessionRepository
 
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(topic.session_id)
+
+    agent = None
+    if session and session.agent_id:
+        agent_repo = AgentRepository(db)
+        agent = await agent_repo.get_agent_by_id(session.agent_id)
+
+    # Select provider using loaded agent or use active provider
+    provider_name = None
+    if agent and agent.provider_id:
+        provider_name = str(agent.provider_id)
+
+    # Verify provider is available
+    provider = user_provider_manager.get_provider(provider_name)
     if not provider:
+        logger.warning(
+            f"Requested provider {provider_name} not found for user {user_id}, falling back to active provider"
+        )
         provider = user_provider_manager.get_active_provider()
+        if provider:
+            # Update provider_name to match the fallback provider
+            for p_info in user_provider_manager.list_providers():
+                if p_info["active"]:
+                    provider_name = p_info["name"]
+                    break
 
     if not provider:
         logger.error(f"No provider available for user {user_id}")
@@ -191,15 +196,15 @@ async def get_ai_response_stream_langchain(
         return
 
     # Get system prompt with MCP awareness
-    system_prompt = build_system_prompt(topic.session.agent)
+    system_prompt = await build_system_prompt(db, agent)
 
     yield {"type": ChatEventType.PROCESSING, "data": {"status": ProcessingStatus.PREPARING_REQUEST}}
 
     try:
-        # Create agent
-        llm = _create_langchain_model(provider)
-        tools = await _prepare_langchain_tools(db, topic)
-        agent: Any = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
+        # Create langchain agent
+        llm = _create_langchain_model(user_provider_manager, provider_name)
+        tools = await _prepare_langchain_tools(db, agent)
+        langchain_agent: Any = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
 
         logger.info(f"Agent created with {len(tools)} tools")
 
@@ -214,7 +219,7 @@ async def get_ai_response_stream_langchain(
         # Load long-term memory (DB-backed) and include it in input
         history_messages = await _load_db_history(db, topic)
 
-        async for chunk in agent.astream(
+        async for chunk in langchain_agent.astream(
             {"messages": [*history_messages, HumanMessage(content=message_text)]},
             stream_mode=["updates", "messages"],
         ):

@@ -1,16 +1,107 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from middleware.auth import get_current_user
 from middleware.database.connection import get_session
-from models.provider import Provider, ProviderCreate, ProviderUpdate
+from models.provider import Provider, ProviderCreate, ProviderRead, ProviderUpdate
 from repo.provider import ProviderRepository
 from schemas.providers import PROVIDER_TEMPLATES, ProviderTemplate, ProviderType
 
 router = APIRouter()
+
+
+async def _verify_provider_authorization(
+    provider_id: UUID, user: str, db: AsyncSession, allow_system: bool = False
+) -> Provider | None:
+    """
+    Core authorization logic for provider access validation.
+
+    Args:
+        provider_id: UUID of the provider to verify
+        user: Authenticated user ID
+        db: Database session
+        allow_system: If True, allows access to system providers
+
+    Returns:
+        Provider: The authorized provider instance, or None if not found
+
+    Raises:
+        HTTPException: 403 if access denied
+    """
+    provider_repo = ProviderRepository(db)
+    provider = await provider_repo.get_provider_by_id(provider_id)
+
+    if not provider:
+        return None
+
+    # Check if user owns the provider
+    if provider.user_id == user:
+        return provider
+
+    # Check if it's a system provider and system access is allowed
+    if allow_system and provider.is_system:
+        return provider
+
+    # Access denied
+    raise HTTPException(status_code=403, detail="Access denied: You don't have permission to access this provider")
+
+
+async def get_authorized_provider(
+    provider_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
+) -> Provider:
+    """
+    FastAPI dependency that validates provider access authorization.
+
+    Users can access their own providers and system providers.
+
+    Args:
+        provider_id: UUID from the path parameter
+        user: Authenticated user ID from get_current_user dependency
+        db: Database session from get_session dependency
+
+    Returns:
+        Provider: The authorized provider instance
+
+    Raises:
+        HTTPException: 404 if provider not found, 403 if access denied
+    """
+    provider = await _verify_provider_authorization(provider_id, user, db, allow_system=True)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    return provider
+
+
+async def get_authorized_user_provider(
+    provider_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
+) -> Provider:
+    """
+    FastAPI dependency that validates user-owned provider access.
+
+    Users can only access their own providers (no system providers).
+    Used for operations that modify providers.
+
+    Args:
+        provider_id: UUID from the path parameter
+        user: Authenticated user ID from get_current_user dependency
+        db: Database session from get_session dependency
+
+    Returns:
+        Provider: The authorized user-owned provider instance
+
+    Raises:
+        HTTPException: 404 if provider not found, 403 if access denied or system provider
+    """
+    provider = await _verify_provider_authorization(provider_id, user, db, allow_system=False)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Provider not found")
+
+    if provider.is_system:
+        raise HTTPException(status_code=403, detail="Cannot modify system provider. System providers are read-only.")
+
+    return provider
 
 
 @router.get("/templates", response_model=List[ProviderTemplate])
@@ -22,207 +113,189 @@ async def get_provider_templates() -> List[ProviderTemplate]:
     return PROVIDER_TEMPLATES
 
 
-@router.get("/me", response_model=List[Provider])
+@router.get("/me", response_model=List[ProviderRead])
 async def get_my_providers(
-    *,
-    session: AsyncSession = Depends(get_session),
     user: str = Depends(get_current_user),
-) -> List[Provider]:
+    db: AsyncSession = Depends(get_session),
+) -> List[ProviderRead]:
     """
-    Get all providers for the current authenticated user.
-    Includes system provider (for selection in agents) but not user's own providers marked as system.
-    System provider API keys are masked for security.
+    Get all providers accessible to the current authenticated user.
+
+    Includes both user's own providers and system providers. System provider
+    API keys and endpoints are masked for security reasons.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[ProviderRead]: List of providers accessible to the user
+
+    Raises:
+        HTTPException: None - this endpoint always succeeds, returning empty list if no providers
     """
-    provider_repo = ProviderRepository(session)
-    # include_system=True so users can select system provider for their agents
+    provider_repo = ProviderRepository(db)
     providers = await provider_repo.get_providers_by_user(user, include_system=True)
 
-    # Mask API key for system providers
+    # Convert to response models and mask sensitive data for system providers
+    provider_reads = []
     for provider in providers:
+        provider_dict = provider.model_dump()
         if provider.is_system:
-            provider.key = "••••••••"
-            provider.api = "•••••••••••••••••"
+            provider_dict["key"] = "••••••••"
+            provider_dict["api"] = "•••••••••••••••••"
+        provider_reads.append(ProviderRead(**provider_dict))
 
-    return providers
-
-
-@router.get("/me/default", response_model=Provider)
-async def get_my_default_provider(
-    *,
-    session: AsyncSession = Depends(get_session),
-    user: str = Depends(get_current_user),
-) -> Provider:
-    """
-    Get the default provider for the current authenticated user.
-    System provider API keys are masked for security.
-    """
-    provider_repo = ProviderRepository(session)
-    provider = await provider_repo.get_default_provider(user)
-    if not provider:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No default provider found. Please set a default provider.",
-        )
-
-    # Mask API key for system provider
-    if provider.is_system:
-        provider.key = "••••••••"
-
-    return provider
+    return provider_reads
 
 
-@router.post("/me/default/{provider_id}", response_model=Provider)
-async def set_my_default_provider(
-    *,
-    session: AsyncSession = Depends(get_session),
-    user: str = Depends(get_current_user),
-    provider_id: UUID,
-) -> Provider:
-    """
-    Set a provider as the default for the current authenticated user.
-    This will unset any other default providers for the user.
-    """
-    provider_repo = ProviderRepository(session)
-    try:
-        provider = await provider_repo.set_default_provider(user, provider_id)
-        return provider
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-
-
-@router.post("/", response_model=Provider, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ProviderRead, status_code=201)
 async def create_provider(
-    *,
-    session: AsyncSession = Depends(get_session),
-    user: str = Depends(get_current_user),
     provider_data: ProviderCreate,
-) -> Provider:
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> ProviderRead:
     """
     Create a new provider for the current authenticated user.
-    The user_id is automatically set from the authenticated user.
+
+    The user_id is automatically set from the authenticated user context.
+    If this is the user's first provider, it will automatically be set as default.
+
+    Args:
+        provider_data: Provider creation data
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        ProviderRead: The newly created provider
+
+    Raises:
+        HTTPException: 400 if invalid provider_type, 500 if creation fails
     """
     # Validate provider_type
     try:
         ProviderType(provider_data.provider_type)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=400,
             detail=f"Invalid provider_type: {provider_data.provider_type}. "
             f"Must be one of: {[pt.value for pt in ProviderType]}",
         )
 
-    # Create provider with authenticated user_id
-    provider = Provider.model_validate(provider_data)
-    provider.user_id = user  # Override with authenticated user
+    provider_repo = ProviderRepository(db)
 
-    provider_repo = ProviderRepository(session)
-    created_provider = await provider_repo.create_provider(provider)
+    # Create provider using repository
+    created_provider = await provider_repo.create_provider(provider_data, user)
 
-    # If this is the user's first provider, set it as default
-    user_providers = await provider_repo.get_providers_by_user(user)
-    if len(user_providers) == 1:
-        await provider_repo.set_default_provider(user, created_provider.id)
-        await session.refresh(created_provider)
-
-    return created_provider
+    await db.commit()
+    return ProviderRead(**created_provider.model_dump())
 
 
-@router.get("/{provider_id}", response_model=Provider)
+@router.get("/{provider_id}", response_model=ProviderRead)
 async def get_provider(
-    *,
-    session: AsyncSession = Depends(get_session),
-    user: str = Depends(get_current_user),
-    provider_id: UUID,
-) -> Provider:
+    provider: Provider = Depends(get_authorized_provider),
+) -> ProviderRead:
     """
     Get a single provider by ID.
-    Users can only access their own providers or the system provider.
-    System provider API keys are masked for security.
+
+    Users can access their own providers and system providers. System provider
+    API keys and endpoints are masked for security reasons.
+
+    Args:
+        provider: Authorized provider instance (injected by dependency)
+
+    Returns:
+        ProviderRead: The requested provider with masked sensitive data
+
+    Raises:
+        HTTPException: 404 if provider not found, 403 if access denied
     """
-    provider_repo = ProviderRepository(session)
-    provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
-
-    # Also allow access to system provider
-    if not provider:
-        system_provider = await provider_repo.get_system_provider()
-        if system_provider and system_provider.id == provider_id:
-            provider = system_provider
-
-    if not provider:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
-
-    # Mask API key for system provider
+    # Authorization is handled by the dependency
+    # Convert to response model and mask sensitive data for system providers
+    provider_dict = provider.model_dump()
     if provider.is_system:
-        provider.key = "••••••••"
+        provider_dict["key"] = "••••••••"
+        provider_dict["api"] = "•••••••••••••••••"
 
-    return provider
+    return ProviderRead(**provider_dict)
 
 
-@router.patch("/{provider_id}", response_model=Provider)
+@router.patch("/{provider_id}", response_model=ProviderRead)
 async def update_provider(
-    *,
-    session: AsyncSession = Depends(get_session),
-    user: str = Depends(get_current_user),
-    provider_id: UUID,
     provider_data: ProviderUpdate,
-) -> Provider:
+    provider: Provider = Depends(get_authorized_user_provider),
+    db: AsyncSession = Depends(get_session),
+) -> ProviderRead:
     """
-    Update a provider.
+    Update an existing provider.
+
     Users can only update their own providers. System providers cannot be updated.
+    Authorization is handled by the dependency which ensures only user-owned
+    providers can be modified.
+
+    Args:
+        provider_data: Partial update data (only provided fields will be updated)
+        provider: Authorized user-owned provider instance (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        ProviderRead: The updated provider
+
+    Raises:
+        HTTPException: 404 if provider not found, 403 if access denied or system provider,
+                      400 if invalid provider_type, 500 if update fails
     """
-    provider_repo = ProviderRepository(session)
-    db_provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
-    if not db_provider:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
-
-    # Block updates to system provider
-    if db_provider.is_system:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot update system provider. System providers are read-only.",
-        )
-
+    # Authorization is handled by the dependency
     # Validate provider_type if being updated
     if provider_data.provider_type is not None:
         try:
             ProviderType(provider_data.provider_type)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid provider_type: {provider_data.provider_type}",
+                status_code=400,
+                detail=f"Invalid provider_type: {provider_data.provider_type}. "
+                f"Must be one of: {[pt.value for pt in ProviderType]}",
             )
 
-    # Update fields
-    update_data = provider_data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_provider, key, value)
+    provider_repo = ProviderRepository(db)
+    updated_provider = await provider_repo.update_provider(provider.id, provider_data)
+    if not updated_provider:
+        # This should theoretically never happen since the dependency verified the provider exists
+        raise HTTPException(status_code=500, detail="Failed to update provider")
 
-    updated_provider = await provider_repo.update_provider(db_provider)
-    return updated_provider
+    await db.commit()
+    return ProviderRead(**updated_provider.model_dump())
 
 
-@router.delete("/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{provider_id}", status_code=204)
 async def delete_provider(
-    *,
-    session: AsyncSession = Depends(get_session),
-    user: str = Depends(get_current_user),
-    provider_id: UUID,
+    provider: Provider = Depends(get_authorized_user_provider),
+    db: AsyncSession = Depends(get_session),
 ) -> None:
     """
     Delete a provider.
+
     Users can only delete their own providers. System providers cannot be deleted.
+    Authorization is handled by the dependency which ensures only user-owned
+    providers can be deleted.
+
+    Args:
+        provider: Authorized user-owned provider instance (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        None: Always returns 204 No Content status
+
+    Raises:
+        HTTPException: 404 if provider not found, 403 if access denied or system provider
     """
-    provider_repo = ProviderRepository(session)
-    provider = await provider_repo.get_provider_by_id(provider_id, user_id=user)
-    if not provider:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
+    # Authorization is handled by the dependency
+    provider_repo = ProviderRepository(db)
+    success = await provider_repo.delete_provider(provider.id)
 
-    # Block deletion of system provider
-    if provider.is_system:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot delete system provider. System providers are read-only.",
-        )
+    if not success:
+        # This should theoretically never happen since the dependency verified the provider exists
+        raise HTTPException(status_code=500, detail="Failed to delete provider")
 
-    await provider_repo.delete_provider(provider)
-    return None
+    await db.commit()
+    return

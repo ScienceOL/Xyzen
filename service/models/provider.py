@@ -1,12 +1,42 @@
-from typing import Optional
 from uuid import UUID, uuid4
 
+from pydantic import BaseModel
+from sqlalchemy import Column
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
-class ProviderBase(SQLModel):
-    """Base model for a provider with required fields for creation."""
+# Provider-specific configuration classes
+class OpenAIConfig(BaseModel):
+    """Configuration for OpenAI provider."""
 
+    organization: str | None = None
+    base_url: str | None = None
+
+
+class AnthropicConfig(BaseModel):
+    """Configuration for Anthropic provider."""
+
+    base_url: str | None = None
+
+
+class AzureOpenAIConfig(BaseModel):
+    """Configuration for Azure OpenAI provider."""
+
+    api_version: str = "2024-02-01"
+    azure_deployment: str | None = None
+    azure_endpoint: str | None = None
+
+
+class GoogleConfig(BaseModel):
+    """Configuration for Google provider."""
+
+    project_id: str | None = None
+    location: str = "us-central1"
+    base_url: str | None = None
+
+
+class ProviderBase(SQLModel):
     user_id: str = Field(
         index=True,
         description="The user ID from authentication provider (e.g., Casdoor user ID)",
@@ -33,7 +63,7 @@ class ProviderBase(SQLModel):
         le=300,
         description="Request timeout in seconds (1-300)",
     )
-    model: Optional[str] = Field(
+    model: str | None = Field(
         default=None,
         description="Default model name to use (e.g., 'gpt-4o', 'claude-3-5-sonnet-20241022')",
     )
@@ -49,20 +79,19 @@ class ProviderBase(SQLModel):
         le=2.0,
         description="Sampling temperature for response randomness (0.0-2.0)",
     )
-    is_default: bool = Field(
-        default=False,
-        description="Whether this is the user's default provider for new sessions",
-    )
     is_system: bool = Field(
         default=False,
         index=True,
         description="System-provided default provider (read-only for regular users)",
     )
+    provider_config: dict | None = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB),
+        description="Provider-specific configuration as JSON",
+    )
 
 
 class Provider(ProviderBase, table=True):
-    """Database model for a provider, inherits from ProviderBase."""
-
     id: UUID = Field(
         default_factory=uuid4,
         primary_key=True,
@@ -72,63 +101,57 @@ class Provider(ProviderBase, table=True):
 
 
 class ProviderRead(ProviderBase):
-    """Model for reading a provider, includes the ID."""
-
     id: UUID = Field(
         description="Unique identifier for this provider configuration",
     )
 
 
 class ProviderCreate(ProviderBase):
-    """Model for creating a provider."""
-
     pass
 
 
 class ProviderUpdate(SQLModel):
-    """Model for updating a provider. All fields are optional."""
-
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None,
         min_length=1,
         max_length=100,
         description="Display name for this provider configuration",
     )
-    provider_type: Optional[str] = Field(
+    provider_type: str | None = Field(
         default=None,
         description="Type of LLM provider: 'openai', 'azure_openai', 'anthropic', 'google'",
     )
-    api: Optional[str] = Field(
+    api: str | None = Field(
         default=None,
         description="API endpoint URL for the provider",
     )
-    key: Optional[str] = Field(
+    key: str | None = Field(
         default=None,
         description="API key or authentication token for the provider",
     )
-    timeout: Optional[int] = Field(
+    timeout: int | None = Field(
         default=None,
         ge=1,
         le=300,
         description="Request timeout in seconds (1-300)",
     )
-    model: Optional[str] = Field(
+    model: str | None = Field(
         default=None,
         description="Default model name to use",
     )
-    max_tokens: Optional[int] = Field(
+    max_tokens: int | None = Field(
         default=None,
         ge=1,
         le=128000,
         description="Maximum number of tokens in the response (1-128000)",
     )
-    temperature: Optional[float] = Field(
+    temperature: float | None = Field(
         default=None,
         ge=0.0,
         le=2.0,
         description="Sampling temperature for response randomness (0.0-2.0)",
     )
-    is_default: Optional[bool] = Field(
+    provider_config: dict | None = Field(
         default=None,
-        description="Whether this is the user's default provider",
+        description="Provider-specific configuration as JSON",
     )

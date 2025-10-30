@@ -6,7 +6,12 @@ Dedicated provider for Azure OpenAI (separate from standard OpenAI).
 import logging
 from typing import Any, List, Optional
 
+from langchain_core.language_models import BaseChatModel
+from langchain_openai import AzureChatOpenAI
 from openai import AsyncAzureOpenAI
+from pydantic import SecretStr
+
+from models.provider import AzureOpenAIConfig
 
 from .base import (
     BaseLLMProvider,
@@ -24,7 +29,7 @@ class AzureOpenAIProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: SecretStr,
         api_endpoint: Optional[str] = None,
         model: Optional[str] = None,
         max_tokens: int = 4096,
@@ -62,7 +67,7 @@ class AzureOpenAIProvider(BaseLLMProvider):
 
         # Initialize Azure OpenAI client
         self.client: AsyncAzureOpenAI = AsyncAzureOpenAI(
-            api_key=self.api_key,
+            api_key=str(self.api_key),
             api_version=self.api_version,
             azure_endpoint=self.api_endpoint,
             timeout=self.timeout,
@@ -121,3 +126,24 @@ class AzureOpenAIProvider(BaseLLMProvider):
             "gpt-3.5-turbo",
             "gpt-5",
         ]
+
+    def to_langchain_model(self) -> BaseChatModel:
+        """
+        Convert this provider to a LangChain AzureChatOpenAI model instance.
+
+        Returns:
+            AzureChatOpenAI instance ready for use with LangChain
+        """
+        # Parse provider-specific config
+        config = AzureOpenAIConfig(**self.config) if self.config else AzureOpenAIConfig()
+
+        return AzureChatOpenAI(
+            api_key=self.api_key,
+            azure_endpoint=config.azure_endpoint or self.api_endpoint,
+            azure_deployment=config.azure_deployment or self.model,
+            api_version=config.api_version,
+            temperature=self.temperature,
+            max_completion_tokens=self.max_tokens,
+            timeout=self.timeout,
+            streaming=True,
+        )

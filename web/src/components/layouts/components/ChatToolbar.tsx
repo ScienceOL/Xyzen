@@ -20,6 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { getProviderColor } from "@/utils/providerColors";
+import { getProviderSourceDescription } from "@/utils/providerPreferences";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -56,6 +57,9 @@ export default function ChatToolbar({
     updateAgent,
     updateAgentProvider,
     llmProviders,
+    resolveProviderForAgent,
+    userDefaultProviderId,
+    setUserDefaultProvider,
   } = useXyzen();
 
   // State for managing input height
@@ -75,7 +79,7 @@ export default function ChatToolbar({
     if (!agent?.mcp_servers?.length) return null;
 
     const connectedServers = mcpServers.filter((server) =>
-      agent.mcp_servers.some((mcpRef) => mcpRef.id === server.id),
+      agent.mcp_servers?.some((mcpRef) => mcpRef.id === server.id),
     );
 
     return {
@@ -101,33 +105,11 @@ export default function ChatToolbar({
     return agents.find((a) => a.id === channel.agentId) || null;
   }, [activeChatChannel, channels, agents]);
 
-  // Get current agent's provider (explicit or default/system fallback)
+  // Get current agent's provider using centralized resolution logic
   const currentProvider = useMemo(() => {
-    if (!currentAgent) return null;
+    return resolveProviderForAgent(currentAgent);
+  }, [currentAgent, resolveProviderForAgent]);
 
-    // If agent has explicit provider_id, use it
-    if (currentAgent.provider_id) {
-      return (
-        llmProviders.find((p) => p.id === currentAgent.provider_id) || null
-      );
-    }
-
-    // Otherwise fallback to: user default > system provider > first available
-    const defaultProvider = llmProviders.find(
-      (p) => p.is_default && !p.is_system,
-    );
-    if (defaultProvider) return defaultProvider;
-
-    const systemProvider = llmProviders.find((p) => p.is_system);
-    if (systemProvider) return systemProvider;
-
-    return llmProviders[0] || null;
-  }, [currentAgent, llmProviders]);
-
-  // Check if using agent-specific provider or fallback
-  const isUsingAgentProvider = useMemo(() => {
-    return currentAgent?.provider_id != null;
-  }, [currentAgent]);
 
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
@@ -150,31 +132,26 @@ export default function ChatToolbar({
     [currentAgent, updateAgentProvider],
   );
 
-  // Auto-select system provider if agent has no provider and only system provider exists
+  // Auto-assign provider to agent if needed
   useEffect(() => {
     if (!currentAgent || currentAgent.provider_id) return;
 
-    // If there are providers but agent doesn't have one set
-    if (llmProviders.length > 0) {
-      // Check if only system provider exists (no user providers)
-      const userProviders = llmProviders.filter((p) => !p.is_system);
-      const systemProvider = llmProviders.find((p) => p.is_system);
-
-      // Auto-select system provider only if there are no user providers
-      if (userProviders.length === 0 && systemProvider) {
-        handleProviderChange(systemProvider.id);
-      }
-      // If there's a user default provider, auto-select it
-      else {
-        const defaultProvider = llmProviders.find(
-          (p) => p.is_default && !p.is_system,
-        );
-        if (defaultProvider) {
-          handleProviderChange(defaultProvider.id);
+    // Only auto-assign if agent has no provider and we have a clear resolution
+    const resolvedProvider = resolveProviderForAgent(currentAgent);
+    if (resolvedProvider) {
+      // Only auto-assign system provider if no user providers exist
+      if (resolvedProvider.is_system) {
+        const userProviders = llmProviders.filter((p) => !p.is_system);
+        if (userProviders.length === 0) {
+          handleProviderChange(resolvedProvider.id);
         }
       }
+      // Auto-assign user's local default if available
+      else if (resolvedProvider.id === userDefaultProviderId) {
+        handleProviderChange(resolvedProvider.id);
+      }
     }
-  }, [currentAgent, llmProviders, handleProviderChange]);
+  }, [currentAgent, llmProviders, userDefaultProviderId, resolveProviderForAgent, handleProviderChange]);
 
   // Setup dnd sensors
   const sensors = useSensors(
@@ -305,14 +282,9 @@ export default function ChatToolbar({
                         className={`h-4 w-4 ${currentProvider ? getProviderColor(true).icon : getProviderColor(false).icon}`}
                       />
                       <span>{currentProvider?.name || "选择提供商"}</span>
-                      {currentProvider?.is_system && (
-                        <span className="text-[10px] opacity-70">(系统)</span>
-                      )}
-                      {!isUsingAgentProvider &&
-                        currentProvider &&
-                        !currentProvider.is_system && (
-                          <span className="text-[10px] opacity-70">(默认)</span>
-                        )}
+                      <span className="text-[10px] opacity-70">
+                        ({getProviderSourceDescription(currentAgent, currentProvider, llmProviders)})
+                      </span>
                     </button>
 
                     {/* Provider Dropdown */}
@@ -351,10 +323,10 @@ export default function ChatToolbar({
                                         系统
                                       </span>
                                     )}
-                                    {provider.is_default &&
+                                    {userDefaultProviderId === provider.id &&
                                       !provider.is_system && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400">
-                                          默认
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                          全局默认
                                         </span>
                                       )}
                                   </div>
@@ -371,6 +343,46 @@ export default function ChatToolbar({
                             </button>
                           );
                         })}
+                      </div>
+
+                      {/* Global Default Management */}
+                      <div className="border-t border-neutral-200 dark:border-neutral-700 pt-2 mt-2">
+                        <div className="text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-2 px-2">
+                          全局默认提供商
+                        </div>
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 px-2">
+                          未指定提供商的助手将使用此设置
+                        </div>
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => setUserDefaultProvider(null)}
+                            className={`w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
+                              !userDefaultProviderId
+                                ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
+                                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50"
+                            }`}
+                          >
+                            自动选择 (系统提供商优先)
+                          </button>
+                          {llmProviders.filter(p => !p.is_system).map(provider => (
+                            <button
+                              key={`default-${provider.id}`}
+                              onClick={() => setUserDefaultProvider(provider.id)}
+                              className={`w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
+                                userDefaultProviderId === provider.id
+                                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
+                                  : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>{provider.name}</span>
+                                {userDefaultProviderId === provider.id && (
+                                  <CheckIcon className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       {/* Arrow */}

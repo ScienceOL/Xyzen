@@ -9,31 +9,30 @@ This module provides functions for managing tools and functions in the MCP serve
 """
 
 import logging
+import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import AccessToken, get_access_token
-from sqlmodel import Session, desc, select, true
 
 from middleware.auth import AuthProvider, UserInfo
-from middleware.database.connection import engine
+from middleware.database.connection import AsyncSessionLocal
 from models.tool import (
-    Tool,
     ToolCreate,
-    ToolFunction,
     ToolFunctionCreate,
     ToolStatus,
-    ToolVersion,
+    ToolUpdate,
     ToolVersionCreate,
 )
+from repo.tool import ToolRepository
 from utils.code_analyzer import discover_functions_from_code, generate_basic_schema
 from utils.tool_loader import tool_loader
 
 logger = logging.getLogger(__name__)
 
 
-def error_response(message: str) -> Dict[str, Any]:
+def error_response(message: str) -> dict[str, Any]:
     return {
         "status": "error",
         "message": message,
@@ -58,12 +57,12 @@ def register_manage_tools(mcp: FastMCP) -> None:
     """Register all MCP tool management functions with the MCP server."""
 
     @mcp.tool
-    def create_tool(
+    async def create_tool(
         name: str,
         description: str,
         code_content: str,
         requirements: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new tool (script/module) with all its functions.
 
@@ -74,16 +73,14 @@ def register_manage_tools(mcp: FastMCP) -> None:
             requirements: Requirements.txt content (default: "")
 
         Returns:
-            Dictionary containing creation result and tool information
+            dictionary containing creation result and tool information
         """
         user_info = get_current_user()
 
         try:
-            # Basic validation
             if not name or not description or not code_content:
                 return error_response("Missing required fields: name, description, code_content")
 
-            # Discover functions in the code
             try:
                 functions = discover_functions_from_code(code_content)
                 if not functions:
@@ -93,9 +90,11 @@ def register_manage_tools(mcp: FastMCP) -> None:
             except ValueError as e:
                 return error_response(str(e))
 
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Check if tool name already exists
-                existing_tool = session.exec(select(Tool).where(Tool.name == name)).first()
+                existing_tool = await repo.get_tool_by_user_and_name(user_info.id, name)
                 if existing_tool:
                     return error_response(f"Tool with name '{name}' already exists")
 
@@ -107,14 +106,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     tags_json="[]",
                     is_active=True,
                 )
-                # Convert to Tool (table model) for database
-                tool = Tool.model_validate(tool_create)
-                session.add(tool)
-                session.commit()
-                session.refresh(tool)
-
-                # After refresh, tool.id is guaranteed to exist
-                assert tool.id is not None, "Tool ID must be set after commit"
+                tool = await repo.create_tool(tool_create, user_info.id)
 
                 # Create ToolVersion record
                 tool_version_create = ToolVersionCreate(
@@ -123,15 +115,9 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     requirements=requirements,
                     code_content=code_content,
                     status=ToolStatus.READY,
-                    tool_id=tool.id,  # Now type-safe
+                    tool_id=tool.id,
                 )
-                tool_version = ToolVersion.model_validate(tool_version_create)
-                session.add(tool_version)
-                session.commit()
-                session.refresh(tool_version)
-
-                # After refresh, tool_version.id is guaranteed to exist
-                assert tool_version.id is not None, "ToolVersion ID must be set after commit"
+                tool_version = await repo.create_tool_version(tool_version_create, user_info.id)
 
                 # Create ToolFunction records for each discovered function
                 created_functions = []
@@ -144,17 +130,16 @@ def register_manage_tools(mcp: FastMCP) -> None:
                         docstring=func_info["docstring"],
                         input_schema=schemas["input_schema"],
                         output_schema=schemas["output_schema"],
-                        tool_version_id=tool_version.id,  # Now type-safe
+                        tool_version_id=tool_version.id,
                     )
-                    tool_function = ToolFunction.model_validate(tool_function_create)
-                    session.add(tool_function)
+                    await repo.create_tool_function(tool_function_create, user_info.id)
                     created_functions.append(func_info["name"])
 
-                session.commit()
+                await session.commit()
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tools = await tool_loader.scan_and_load_tools(user_id=user_info.id)
                     tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after creating {name}")
                 except Exception as e:
@@ -172,8 +157,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error creating tool '{name}': {e}")
             return error_response(f"Error creating tool: {str(e)}")
 
+    _ = create_tool
+
     @mcp.tool
-    def create_function(tool_name: str, code_content: str) -> Dict[str, Any]:
+    async def create_function(tool_name: str, code_content: str) -> dict[str, Any]:
         """
         Add new function(s) to an existing tool by providing code content.
         The new code will be appended to the existing tool's code content.
@@ -184,7 +171,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
             code_content: Python code containing one or more functions to add
 
         Returns:
-            Dictionary containing creation result
+            dictionary containing creation result
         """
         user_info = get_current_user()
         try:
@@ -202,31 +189,23 @@ def register_manage_tools(mcp: FastMCP) -> None:
             except ValueError as e:
                 return error_response(str(e))
 
-            with Session(engine) as session:
-                # Get the tool by name and user_id
-                tool = session.exec(select(Tool).where(Tool.user_id == user_info.id, Tool.name == tool_name)).first()
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
 
+                # Get the tool by name and user_id
+                tool = await repo.get_tool_by_user_and_name(user_info.id, tool_name)
                 if not tool:
                     return error_response(f"Tool '{tool_name}' not found")
 
-                # Tool from query is guaranteed to have id
-                assert tool.id is not None, "Tool ID must exist when queried from database"
-
                 # Get the latest version
-                latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool.id).order_by(desc(ToolVersion.version))
-                ).first()
-
+                latest_version = await repo.get_latest_tool_version(tool.id)
                 if not latest_version:
                     return error_response(f"No versions found for tool '{tool_name}'")
 
                 # Check if any of the functions already exist
-                existing_functions = session.exec(
-                    select(ToolFunction).where(
-                        ToolFunction.tool_version_id == latest_version.id,
-                        ToolFunction.function_name.in_([f["name"] for f in functions]),  # type: ignore
-                    )
-                ).all()
+                existing_functions = await repo.get_functions_by_names(
+                    latest_version.id, [f["name"] for f in functions]
+                )
 
                 if existing_functions:
                     existing_names = [f.function_name for f in existing_functions]
@@ -241,27 +220,22 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     return error_response(f"Invalid syntax when combining code: {str(e)}")
 
                 # Create new version with combined code
-                new_version = ToolVersion(
+                tool_version_create = ToolVersionCreate(
                     user_id=user_info.id,
                     version=latest_version.version + 1,
                     requirements=latest_version.requirements,
-                    code_content=combined_code_content,  # Combined code
+                    code_content=combined_code_content,
                     status=ToolStatus.READY,
                     tool_id=tool.id,
                 )
-                session.add(new_version)
-                session.commit()
-                session.refresh(new_version)
-
-                # After refresh, new_version.id is guaranteed to be int
-                assert new_version.id is not None, "ToolVersion ID must be set after commit"
+                new_version = await repo.create_tool_version(tool_version_create, user_info.id)
 
                 # Create ToolFunction records for each discovered function
                 created_functions = []
                 for func_info in functions:
                     schemas = generate_basic_schema(func_info)
 
-                    tool_function = ToolFunction(
+                    tool_function_create = ToolFunctionCreate(
                         user_id=user_info.id,
                         function_name=func_info["name"],
                         docstring=func_info["docstring"],
@@ -269,14 +243,14 @@ def register_manage_tools(mcp: FastMCP) -> None:
                         output_schema=schemas["output_schema"],
                         tool_version_id=new_version.id,
                     )
-                    session.add(tool_function)
+                    await repo.create_tool_function(tool_function_create, user_info.id)
                     created_functions.append(func_info["name"])
 
-                session.commit()
+                await session.commit()
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tools = await tool_loader.scan_and_load_tools(user_id=user_info.id)
                     tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after adding functions {created_functions} to {tool.name}")
                 except Exception as e:
@@ -294,14 +268,16 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error adding function(s) to tool '{tool_name}': {e}")
             return error_response(f"Error adding function(s): {str(e)}")
 
+    _ = create_function
+
     @mcp.tool
-    def update_tool(
+    async def update_tool(
         tool_name: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        code_content: Optional[str] = None,
-        requirements: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        name: str | None = None,
+        description: str | None = None,
+        code_content: str | None = None,
+        requirements: str | None = None,
+    ) -> dict[str, Any]:
         """
         Update an existing tool.
 
@@ -313,45 +289,44 @@ def register_manage_tools(mcp: FastMCP) -> None:
             requirements: New requirements (optional)
 
         Returns:
-            Dictionary containing update result
+            dictionary containing update result
         """
         user_info = get_current_user()
 
         try:
-            with Session(engine) as session:
-                # Get the tool by name and user_id
-                tool = session.exec(select(Tool).where(Tool.user_id == user_info.id, Tool.name == tool_name)).first()
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
 
+                # Get the tool by name and user_id
+                tool = await repo.get_tool_by_user_and_name(user_info.id, tool_name)
                 if not tool:
                     return error_response(f"Tool '{tool_name}' not found")
 
-                # Tool from query is guaranteed to have id
-                assert tool.id is not None, "Tool ID must exist when queried from database"
-
                 # Update tool fields if provided
+                update_data = ToolUpdate()
                 if name is not None:
                     # Check if new name conflicts with existing tools for this user
-                    existing_tool = session.exec(
-                        select(Tool).where(Tool.user_id == user_info.id, Tool.name == name, Tool.id != tool.id)
-                    ).first()
-                    if existing_tool:
+                    existing_tool = await repo.get_tool_by_user_and_name(user_info.id, name)
+                    if existing_tool and existing_tool.id != tool.id:
                         return error_response(f"Tool with name '{name}' already exists")
-                    tool.name = name
+                    update_data.name = name
 
                 if description is not None:
-                    tool.description = description
+                    update_data.description = description
 
-                session.add(tool)
+                # Update tool if any fields were changed
+                if update_data.model_fields_set:
+                    tool = await repo.update_tool(tool.id, update_data)
+                    if not tool:
+                        return error_response(f"Failed to update tool '{tool_name}'")
 
                 # Get the latest version
-                latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool.id).order_by(desc(ToolVersion.version))
-                ).first()
-
+                latest_version = await repo.get_latest_tool_version(tool.id)
                 if not latest_version:
                     return error_response(f"No versions found for tool '{tool_name}'")
 
                 # Create new version if code or requirements are updated
+                new_version = latest_version
                 if code_content is not None or requirements is not None:
                     # Validate code if provided
                     if code_content:
@@ -360,23 +335,16 @@ def register_manage_tools(mcp: FastMCP) -> None:
                         except ValueError as e:
                             return error_response(str(e))
 
-                    next_version = latest_version.version + 1
-
                     # Create new ToolVersion
-                    new_version = ToolVersion(
+                    tool_version_create = ToolVersionCreate(
                         user_id=user_info.id,
-                        version=next_version,
+                        version=latest_version.version + 1,
                         requirements=requirements if requirements is not None else latest_version.requirements,
                         code_content=code_content if code_content is not None else latest_version.code_content,
                         status=ToolStatus.READY,
                         tool_id=tool.id,
                     )
-                    session.add(new_version)
-                    session.commit()
-                    session.refresh(new_version)
-
-                    # After refresh, new_version.id is guaranteed to be int
-                    assert new_version.id is not None, "ToolVersion ID must be set after commit"
+                    new_version = await repo.create_tool_version(tool_version_create, user_info.id)
 
                     # Re-discover functions and create ToolFunction records
                     if code_content:
@@ -385,7 +353,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                             for func_info in functions:
                                 schemas = generate_basic_schema(func_info)
 
-                                tool_function = ToolFunction(
+                                tool_function_create = ToolFunctionCreate(
                                     user_id=user_info.id,
                                     function_name=func_info["name"],
                                     docstring=func_info["docstring"],
@@ -393,15 +361,15 @@ def register_manage_tools(mcp: FastMCP) -> None:
                                     output_schema=schemas["output_schema"],
                                     tool_version_id=new_version.id,
                                 )
-                                session.add(tool_function)
+                                await repo.create_tool_function(tool_function_create, user_info.id)
                         except ValueError as e:
                             return error_response(str(e))
 
-                session.commit()
+                await session.commit()
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tools = await tool_loader.scan_and_load_tools(user_id=user_info.id)
                     tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after updating {tool.name}")
                 except Exception as e:
@@ -411,19 +379,17 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     "status": "success",
                     "message": f"Tool '{tool.name}' updated successfully",
                     "tool_name": tool.name,
-                    "version": (
-                        latest_version.version + 1
-                        if code_content is not None or requirements is not None
-                        else latest_version.version
-                    ),
+                    "version": new_version.version,
                 }
 
         except Exception as e:
             logger.error(f"Error updating tool '{tool_name}': {e}")
             return error_response(f"Error updating tool: {str(e)}")
 
+    _ = update_tool
+
     @mcp.tool
-    def update_function(tool_id: int, function_name: str, code_content: str) -> Dict[str, Any]:
+    async def update_function(tool_id: uuid.UUID, function_name: str, code_content: str) -> dict[str, Any]:
         """
         Update a function in an existing tool by providing new code content.
         The new code will be appended to the existing tool's code content.
@@ -435,7 +401,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
             code_content: Python code containing the updated function
 
         Returns:
-            Dictionary containing update result
+            dictionary containing update result
         """
         user_info = get_current_user()
 
@@ -461,9 +427,11 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     f"Function '{function_name}' not found in provided code. " f"Available functions: {function_names}"
                 )
 
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Get the tool
-                tool = session.get(Tool, tool_id)
+                tool = await repo.get_tool_by_id(tool_id)
                 if not tool:
                     return error_response(f"Tool with ID {tool_id} not found")
 
@@ -472,21 +440,12 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     return error_response("Permission denied: You don't have permission to update this tool")
 
                 # Get the latest version
-                latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool_id).order_by(desc(ToolVersion.version))
-                ).first()
-
+                latest_version = await repo.get_latest_tool_version(tool_id)
                 if not latest_version:
                     return error_response(f"No versions found for tool {tool_id}")
 
                 # Check if function exists in the current tool
-                existing_function = session.exec(
-                    select(ToolFunction).where(
-                        ToolFunction.tool_version_id == latest_version.id,
-                        ToolFunction.function_name == function_name,
-                    )
-                ).first()
-
+                existing_function = await repo.get_tool_function_by_version_and_name(latest_version.id, function_name)
                 if not existing_function:
                     return error_response(f"Function '{function_name}' not found in tool '{tool.name}'")
 
@@ -500,7 +459,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     return error_response(f"Invalid syntax when combining code: {str(e)}")
 
                 # Create new version with combined code
-                new_version = ToolVersion(
+                tool_version_create = ToolVersionCreate(
                     user_id=user_info.id,
                     version=latest_version.version + 1,
                     requirements=latest_version.requirements,
@@ -508,12 +467,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     status=ToolStatus.READY,
                     tool_id=tool_id,
                 )
-                session.add(new_version)
-                session.commit()
-                session.refresh(new_version)
-
-                # After refresh, new_version.id is guaranteed to be int
-                assert new_version.id is not None, "ToolVersion ID must be set after commit"
+                new_version = await repo.create_tool_version(tool_version_create, user_info.id)
 
                 # Get the updated function info from the new code
                 updated_function_info = None
@@ -529,7 +483,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 schemas = generate_basic_schema(updated_function_info)
 
                 # Create updated ToolFunction record
-                updated_tool_function = ToolFunction(
+                tool_function_create = ToolFunctionCreate(
                     user_id=user_info.id,
                     function_name=updated_function_info["name"],
                     docstring=updated_function_info["docstring"],
@@ -537,12 +491,13 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     output_schema=schemas["output_schema"],
                     tool_version_id=new_version.id,
                 )
-                session.add(updated_tool_function)
-                session.commit()
+                await repo.create_tool_function(tool_function_create, user_info.id)
+
+                await session.commit()
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tools = await tool_loader.scan_and_load_tools(user_id=user_info.id)
                     tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after updating function {function_name} in {tool.name}")
                 except Exception as e:
@@ -560,8 +515,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error updating function '{function_name}' in tool {tool_id}: {e}")
             return error_response(f"Error updating function: {str(e)}")
 
+    _ = update_function
+
     @mcp.tool
-    def delete_tool(tool_id: int) -> Dict[str, Any]:
+    async def delete_tool(tool_id: uuid.UUID) -> dict[str, Any]:
         """
         Delete an entire tool and all its functions.
 
@@ -569,14 +526,16 @@ def register_manage_tools(mcp: FastMCP) -> None:
             tool_id: ID of the tool to delete
 
         Returns:
-            Dictionary containing deletion result
+            dictionary containing deletion result
         """
         user_info = get_current_user()
 
         try:
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Get the tool
-                tool = session.get(Tool, tool_id)
+                tool = await repo.get_tool_by_id(tool_id)
                 if not tool:
                     return error_response(f"Tool with ID {tool_id} not found")
 
@@ -586,26 +545,20 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 tool_name = tool.name
 
-                # Manually delete related records in correct order due to missing CASCADE DELETE
-                # First delete all functions for all versions
-                for version in tool.versions:
-                    for function in version.functions:
-                        session.delete(function)
+                # Use repository method to hard delete tool and all related records
+                success = await repo.hard_delete_tool(tool_id)
+                if not success:
+                    return error_response(f"Failed to delete tool with ID {tool_id}")
 
-                # Then delete all versions
-                for version in tool.versions:
-                    session.delete(version)
-
-                # Finally delete the tool itself
-                session.delete(tool)
-                session.commit()
+                await session.commit()
 
                 # Refresh tools in the loader using the new refresh method
                 try:
-                    result = tool_loader.refresh_tools(mcp, user_id=user_info.id)
+                    result = await tool_loader.refresh_tools(mcp, user_id=user_info.id)
                     logger.info(f"Refreshed tools after deleting {tool_name}: {result}")
                 except Exception as e:
                     logger.warning(f"Failed to refresh tools after deleting {tool_name}: {e}")
+                    return error_response(f"Tool '{tool_name}' deleted but failed to refresh tools: {str(e)}")
 
                 return {
                     "status": "success",
@@ -617,8 +570,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error deleting tool {tool_id}: {e}")
             return error_response(f"Error deleting tool: {str(e)}")
 
+    _ = delete_tool
+
     @mcp.tool
-    def delete_function(tool_id: int, function_name: str) -> Dict[str, Any]:
+    async def delete_function(tool_id: uuid.UUID, function_name: str) -> dict[str, Any]:
         """
         Delete a specific function from a tool.
 
@@ -627,14 +582,16 @@ def register_manage_tools(mcp: FastMCP) -> None:
             function_name: Name of the function to delete
 
         Returns:
-            Dictionary containing deletion result
+            dictionary containing deletion result
         """
         user_info = get_current_user()
 
         try:
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Get the tool
-                tool = session.get(Tool, tool_id)
+                tool = await repo.get_tool_by_id(tool_id)
                 if not tool:
                     return error_response(f"Tool with ID {tool_id} not found")
 
@@ -643,31 +600,25 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     return error_response("Permission denied: You don't have permission to modify this tool")
 
                 # Get the latest version
-                latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool_id).order_by(desc(ToolVersion.version))
-                ).first()
-
+                latest_version = await repo.get_latest_tool_version(tool_id)
                 if not latest_version:
                     return error_response(f"No versions found for tool {tool_id}")
 
                 # Find the function
-                tool_function = session.exec(
-                    select(ToolFunction).where(
-                        ToolFunction.tool_version_id == latest_version.id,
-                        ToolFunction.function_name == function_name,
-                    )
-                ).first()
-
+                tool_function = await repo.get_tool_function_by_version_and_name(latest_version.id, function_name)
                 if not tool_function:
                     return error_response(f"Function '{function_name}' not found in tool '{tool.name}'")
 
                 # Delete the function
-                session.delete(tool_function)
-                session.commit()
+                success = await repo.delete_tool_function(tool_function.id)
+                if not success:
+                    return error_response(f"Failed to delete function '{function_name}'")
+
+                await session.commit()
 
                 # Refresh tools in the loader
                 try:
-                    tools = tool_loader.scan_and_load_tools(user_id=user_info.id)
+                    tools = await tool_loader.scan_and_load_tools(user_id=user_info.id)
                     tool_loader.register_tools_to_mcp(mcp, tools, user_id=user_info.id)
                     logger.info(f"Refreshed tools after deleting function {function_name} from {tool.name}")
                 except Exception as e:
@@ -684,8 +635,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error deleting function '{function_name}' from tool {tool_id}: {e}")
             return error_response(f"Error deleting function: {str(e)}")
 
+    _ = delete_function
+
     @mcp.tool
-    def list_tool_functions(tool_id: int) -> Dict[str, Any]:
+    async def list_tool_functions(tool_id: uuid.UUID) -> dict[str, Any]:
         """
         List all functions in a specific tool.
 
@@ -693,14 +646,16 @@ def register_manage_tools(mcp: FastMCP) -> None:
             tool_id: ID of the tool
 
         Returns:
-            Dictionary containing tool functions information
+            dictionary containing tool functions information
         """
         user_info = get_current_user()
 
         try:
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Get the tool
-                tool = session.get(Tool, tool_id)
+                tool = await repo.get_tool_by_id(tool_id)
                 if not tool:
                     return error_response(f"Tool with ID {tool_id} not found")
 
@@ -709,19 +664,14 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     return error_response("Permission denied: You don't have permission to view this tool")
 
                 # Get the latest version
-                latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool_id).order_by(desc(ToolVersion.version))
-                ).first()
-
+                latest_version = await repo.get_latest_tool_version(tool_id)
                 if not latest_version:
                     return error_response(f"No versions found for tool {tool_id}")
 
                 # Get all functions for this version
-                functions = session.exec(
-                    select(ToolFunction).where(ToolFunction.tool_version_id == latest_version.id)
-                ).all()
+                functions = await repo.list_tool_functions_by_version(latest_version.id)
 
-                function_list = []
+                function_list: list[dict[str, Any]] = []
                 for func in functions:
                     function_list.append(
                         {
@@ -745,8 +695,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error listing functions for tool {tool_id}: {e}")
             return error_response(f"Error listing functions: {str(e)}")
 
+    _ = list_tool_functions
+
     @mcp.tool
-    def get_tool_info(tool_id: int) -> Dict[str, Any]:
+    async def get_tool_info(tool_id: uuid.UUID) -> dict[str, Any]:
         """
         Get complete information about a tool and its functions.
 
@@ -754,14 +706,16 @@ def register_manage_tools(mcp: FastMCP) -> None:
             tool_id: ID of the tool
 
         Returns:
-            Dictionary containing complete tool information
+            dictionary containing complete tool information
         """
         user_info = get_current_user()
 
         try:
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Get the tool
-                tool = session.get(Tool, tool_id)
+                tool = await repo.get_tool_by_id(tool_id)
                 if not tool:
                     return error_response(f"Tool with ID {tool_id} not found")
 
@@ -770,19 +724,14 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     return error_response("Permission denied: You don't have permission to view this tool")
 
                 # Get the latest version
-                latest_version = session.exec(
-                    select(ToolVersion).where(ToolVersion.tool_id == tool_id).order_by(desc(ToolVersion.version))
-                ).first()
-
+                latest_version = await repo.get_latest_tool_version(tool_id)
                 if not latest_version:
                     return error_response(f"No versions found for tool {tool_id}")
 
                 # Get all functions for this version
-                functions = session.exec(
-                    select(ToolFunction).where(ToolFunction.tool_version_id == latest_version.id)
-                ).all()
+                functions = await repo.list_tool_functions_by_version(latest_version.id)
 
-                function_list = []
+                function_list: list[dict[str, Any]] = []
                 for func in functions:
                     function_list.append(
                         {
@@ -813,8 +762,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error getting tool info for {tool_id}: {e}")
             return error_response(f"Error getting tool info: {str(e)}")
 
+    _ = get_tool_info
+
     @mcp.tool
-    def get_tool_changes(hours: int = 24) -> Dict[str, Any]:
+    async def get_tool_changes(hours: int = 24) -> dict[str, Any]:
         """
         Get recent tool changes from the database.
 
@@ -822,40 +773,25 @@ def register_manage_tools(mcp: FastMCP) -> None:
             hours: Number of hours to look back for changes (default: 24)
 
         Returns:
-            Dictionary containing recent tool changes
+            dictionary containing recent tool changes
         """
         user_info = get_current_user()
 
         try:
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Calculate time threshold
                 time_threshold = datetime.now() - timedelta(hours=hours)
 
-                # Query recent tool changes
-                recent_tools = session.exec(
-                    select(Tool)
-                    .where(
-                        Tool.updated_at >= time_threshold,
-                        Tool.user_id == user_info.id,
-                    )
-                    .order_by(desc(Tool.updated_at))
-                    .limit(50)
-                ).all()
+                # Query recent tool changes using repository methods
+                recent_tools = await repo.get_tools_updated_since(user_info.id, time_threshold, limit=50)
 
-                # Query recent tool versions
-                recent_versions = session.exec(
-                    select(ToolVersion)
-                    .join(Tool)
-                    .where(
-                        ToolVersion.created_at >= time_threshold,
-                        Tool.user_id == user_info.id,
-                    )
-                    .order_by(desc(ToolVersion.created_at))
-                    .limit(50)
-                ).all()
+                # Query recent tool versions using repository methods
+                recent_versions = await repo.get_tool_versions_created_since(user_info.id, time_threshold, limit=50)
 
                 # Format tool changes
-                tool_changes = []
+                tool_changes: list[dict[str, Any]] = []
                 for tool in recent_tools:
                     tool_changes.append(
                         {
@@ -869,10 +805,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
                     )
 
                 # Format version changes
-                version_changes = []
+                version_changes: list[dict[str, Any]] = []
                 for version in recent_versions:
                     # Get the tool for this version
-                    tool_for_version: Optional[Tool] = session.get(Tool, version.tool_id)
+                    tool_for_version = await repo.get_tool_by_id(version.tool_id)
                     if tool_for_version:
                         version_changes.append(
                             {
@@ -889,15 +825,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 # Get function count for each tool
                 tool_function_counts = {}
                 for tool in recent_tools:
-                    latest_version = session.exec(
-                        select(ToolVersion).where(ToolVersion.tool_id == tool.id).order_by(desc(ToolVersion.version))
-                    ).first()
-
+                    latest_version = await repo.get_latest_tool_version(tool.id)
                     if latest_version:
-                        function_count = session.exec(
-                            select(ToolFunction).where(ToolFunction.tool_version_id == latest_version.id)
-                        ).all()
-                        tool_function_counts[tool.id] = len(function_count)
+                        functions = await repo.list_tool_functions_by_version(latest_version.id)
+                        tool_function_counts[str(tool.id)] = len(functions)
 
                 return {
                     "status": "success",
@@ -916,56 +847,45 @@ def register_manage_tools(mcp: FastMCP) -> None:
             logger.error(f"Error getting tool changes: {e}")
             return error_response(f"Error getting tool changes: {str(e)}")
 
+    _ = get_tool_changes
+
     @mcp.tool
-    def get_tool_statistics() -> Dict[str, Any]:
+    async def get_tool_statistics() -> dict[str, Any]:
         """
         Get comprehensive tool statistics from the database.
 
         Returns:
-            Dictionary containing tool statistics
+            dictionary containing tool statistics
         """
         user_info = get_current_user()
 
         try:
-            with Session(engine) as session:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+
                 # Get total tools count
-                total_tools = session.exec(select(Tool).where(Tool.user_id == user_info.id)).all()
+                total_tools = await repo.list_tools_by_user(user_info.id, limit=10000)  # High limit to get all
 
                 # Get active tools count
-                active_tools = session.exec(
-                    select(Tool).where(
-                        Tool.is_active == true(),
-                        Tool.user_id == user_info.id,
-                    )
-                ).all()
+                active_tools = await repo.list_tools_by_user(user_info.id, is_active=True, limit=10000)
 
                 # Get total versions count
-                total_versions = session.exec(select(ToolVersion).join(Tool).where(Tool.user_id == user_info.id)).all()
+                total_versions = await repo.get_all_tool_versions_by_user(user_info.id)
 
                 # Get total functions count
-                total_functions = session.exec(
-                    select(ToolFunction).join(ToolVersion).join(Tool).where(Tool.user_id == user_info.id)
-                ).all()
+                total_functions = await repo.get_all_tool_functions_by_user(user_info.id)
 
                 # Get tools by status
-                tools_by_status: Dict[str, int] = {}
+                tools_by_status: dict[str, int] = {}
                 for tool in total_tools:
-                    latest_version = session.exec(
-                        select(ToolVersion).where(ToolVersion.tool_id == tool.id).order_by(desc(ToolVersion.version))
-                    ).first()
-
+                    latest_version = await repo.get_latest_tool_version(tool.id)
                     if latest_version:
                         status = latest_version.status.value
                         tools_by_status[status] = tools_by_status.get(status, 0) + 1
 
                 # Get recent activity (last 7 days)
                 week_ago = datetime.now() - timedelta(days=7)
-                recent_activity = session.exec(
-                    select(Tool).where(
-                        Tool.updated_at >= week_ago,
-                        Tool.user_id == user_info.id,
-                    )
-                ).all()
+                recent_activity = await repo.get_tools_updated_since(user_info.id, week_ago, limit=1000)
 
                 return {
                     "status": "success",
@@ -994,3 +914,5 @@ def register_manage_tools(mcp: FastMCP) -> None:
         except Exception as e:
             logger.error(f"Error getting tool statistics: {e}")
             return error_response(f"Error getting tool statistics: {str(e)}")
+
+    _ = get_tool_statistics

@@ -9,6 +9,11 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from google import genai
 from google.genai import types
+from langchain_core.language_models import BaseChatModel
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import SecretStr
+
+from models.provider import GoogleConfig
 
 from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamChunk
 
@@ -23,7 +28,7 @@ class GoogleProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: SecretStr,
         api_endpoint: Optional[str] = None,
         model: Optional[str] = None,
         max_tokens: int = 4096,
@@ -73,7 +78,7 @@ class GoogleProvider(BaseLLMProvider):
                 credentials=None,  # Use default credentials
             )
         else:
-            self.client = genai.Client(api_key=self.api_key)
+            self.client = genai.Client(api_key=str(self.api_key))
 
         # Mark as supporting streaming
         self._streaming_supported = True
@@ -132,7 +137,7 @@ class GoogleProvider(BaseLLMProvider):
                 if tool_declarations:
                     tools.append(types.Tool(function_declarations=tool_declarations))
                     # Type casting to satisfy mypy - we know these are Google tools
-                    config.tools = tools  # type: ignore
+                    config.tools = tools
 
             # Make the API call
             try:
@@ -327,3 +332,22 @@ class GoogleProvider(BaseLLMProvider):
                 "gemini-1.0-pro-latest",
                 "gemini-1.0-pro",
             ]
+
+    def to_langchain_model(self) -> BaseChatModel:
+        """
+        Convert this provider to a LangChain ChatGoogleGenerativeAI model instance.
+
+        Returns:
+            ChatGoogleGenerativeAI instance ready for use with LangChain
+        """
+        # Parse provider-specific config
+        config = GoogleConfig(**self.config) if self.config else GoogleConfig()
+
+        return ChatGoogleGenerativeAI(
+            google_api_key=self.api_key,
+            model=self.model,
+            temperature=self.temperature,
+            max_output_tokens=self.max_tokens,
+            timeout=self.timeout,
+            streaming=True,
+        )

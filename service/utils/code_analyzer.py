@@ -1,9 +1,9 @@
 import ast
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 
-def discover_functions_from_code(code_content: str) -> List[Dict[str, Any]]:
+def discover_functions_from_code(code_content: str) -> list[dict[str, Any]]:
     """
     Discover all callable functions in Python code using AST parsing.
     Always keeps only the last occurrence of each function name to handle duplicates.
@@ -16,7 +16,7 @@ def discover_functions_from_code(code_content: str) -> List[Dict[str, Any]]:
     """
     try:
         tree = ast.parse(code_content)
-        functions = []
+        functions: list[dict[str, Any]] = []
 
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
@@ -43,7 +43,7 @@ def discover_functions_from_code(code_content: str) -> List[Dict[str, Any]]:
 
         # Always filter to keep only the last occurrence of each function name
         seen_names = set()
-        filtered_functions = []
+        filtered_functions: list[dict[str, Any]] = []
 
         # Process in reverse order to keep the last occurrence of each function
         for func in reversed(functions):
@@ -61,7 +61,7 @@ def discover_functions_from_code(code_content: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Error analyzing code: {e}")
 
 
-def convert_to_schema(arg_type: str) -> Dict[str, Any]:
+def convert_to_schema(arg_type: str) -> dict[str, Any]:
     """
     Convert a Python type string to a Pydantic type string.
     """
@@ -81,7 +81,7 @@ def convert_to_schema(arg_type: str) -> Dict[str, Any]:
         return {"type": "string"}
 
 
-def generate_basic_schema(function_info: Dict[str, Any]) -> Dict[str, str]:
+def generate_basic_schema(function_info: dict[str, Any]) -> dict[str, str]:
     """
     Generate basic JSON schemas for a function.
 

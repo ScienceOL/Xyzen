@@ -1,69 +1,83 @@
-from typing import TYPE_CHECKING, List, Optional
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlmodel import JSON, Column, Field, ForeignKey, Relationship, SQLModel
-
-from .links import AgentMcpServerLink
-from .mcp import McpServer
+from sqlalchemy import TIMESTAMP
+from sqlmodel import JSON, Column, Field, SQLModel
 
 if TYPE_CHECKING:
-    from .sessions import Session
+    from .mcp import McpServer
 
 
 class AgentBase(SQLModel):
     name: str
-    description: Optional[str] = None
-    avatar: Optional[str] = None
-    tags: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
-    model: Optional[str] = None
-    temperature: Optional[float] = None
-    prompt: Optional[str] = None
-    user_id: str = Field(index=True, description="The user ID from Casdoor")
-    require_tool_confirmation: bool = Field(
-        default=False, description="Whether to require user confirmation for tool calls"
-    )
-
-    provider_id: Optional[UUID] = Field(
-        default=None,
-        sa_column=Column(
-            ForeignKey("provider.id", ondelete="SET NULL"),
-            nullable=True,
-            index=True,
-        ),
-    )
+    description: str | None = None
+    avatar: str | None = None
+    tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    model: str | None = None
+    temperature: float | None = None
+    prompt: str | None = None
+    user_id: str = Field(index=True)
+    require_tool_confirmation: bool = Field(default=False)
+    provider_id: UUID | None = Field(default=None, index=True)
 
 
 class Agent(AgentBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
-    mcp_servers: List["McpServer"] = Relationship(
-        back_populates="agents",
-        link_model=AgentMcpServerLink,
-        sa_relationship_kwargs={"lazy": "selectin"},
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
     )
-    session: Optional["Session"] = Relationship(back_populates="agent")
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False, onupdate=lambda: datetime.now(timezone.utc)),
+    )
 
 
-class AgentCreate(AgentBase):
-    mcp_server_ids: List[UUID] = []
+class AgentCreate(SQLModel):
+    name: str
+    description: str | None = None
+    avatar: str | None = None
+    tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    model: str | None = None
+    temperature: float | None = None
+    prompt: str | None = None
+    require_tool_confirmation: bool = Field(default=False)
+    provider_id: UUID | None = Field(default=None, index=True)
+    mcp_server_ids: list[UUID] = []
 
 
 class AgentRead(AgentBase):
     id: UUID
-    mcp_servers: List["McpServer"] = []
+    updated_at: datetime
+
+
+class AgentReadWithDetails(AgentRead):
+    mcp_servers: list["McpServer"] = []
 
 
 class AgentUpdate(SQLModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    avatar: Optional[str] = None
-    tags: Optional[List[str]] = None
-    model: Optional[str] = None
-    temperature: Optional[float] = None
-    prompt: Optional[str] = None
-    require_tool_confirmation: Optional[bool] = None
-    provider_id: Optional[UUID] = None
-    mcp_server_ids: Optional[List[UUID]] = None
+    name: str | None = None
+    description: str | None = None
+    avatar: str | None = None
+    tags: list[str] | None = None
+    model: str | None = None
+    temperature: float | None = None
+    prompt: str | None = None
+    require_tool_confirmation: bool | None = None
+    provider_id: UUID | None = None
+    mcp_server_ids: list[UUID] | None = None
 
 
-Agent.model_rebuild()
-McpServer.model_rebuild()
+# Rebuild models after all definitions to resolve forward references
+def _rebuild_models():
+    """Rebuild Pydantic models to resolve forward references."""
+    try:
+        AgentReadWithDetails.model_rebuild()
+    except Exception:
+        # If rebuild fails, it might be due to import order - that's okay
+        pass
+
+
+# Call rebuild function
+_rebuild_models()

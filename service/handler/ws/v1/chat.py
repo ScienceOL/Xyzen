@@ -150,11 +150,11 @@ async def handle_tool_call_confirmation(
 
         # Import necessary functions
         from core.chat.sync import ChatCompletionRequest, ChatMessage
-        from core.chat.tools import _execute_tool_calls
+        from core.chat.tools import execute_tool_calls
 
         try:
             # Execute the tools using the same logic as immediate execution
-            tool_results = await _execute_tool_calls(message_repo.db, tool_calls, topic)
+            tool_results = await execute_tool_calls(message_repo.db, tool_calls, topic)
 
             # Send tool completion events for each tool call
             for tool_call in tool_calls:
@@ -509,7 +509,7 @@ async def chat_websocket(
                     ai_message = await message_repo.create_message(ai_message_create)
 
                     # Update topic's updated_at timestamp again after AI response
-                    await topic_repo.update_topic_timestamp(topic_refreshed)
+                    await topic_repo.update_topic_timestamp(topic_refreshed.id)
 
                     # === 创建消费记录 ===
                     try:
@@ -577,7 +577,15 @@ async def chat_websocket(
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for topic {connection_id}")
+        try:
+            await db.rollback()
+        except Exception:
+            pass  # Rollback failure is not critical for disconnect
     except Exception as e:
         logger.error(f"An error occurred in WebSocket for topic {connection_id}: {e}")
+        try:
+            await db.rollback()
+        except Exception as rollback_error:
+            logger.error(f"Failed to rollback transaction: {rollback_error}")
     finally:
         manager.disconnect(connection_id)

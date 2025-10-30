@@ -60,42 +60,6 @@ class LlmProviderService {
     return response.json();
   }
 
-  /**
-   * Get current user's default provider
-   */
-  async getMyDefaultProvider(): Promise<LlmProviderResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/providers/me/default`,
-      {
-        headers: this.createAuthHeaders(),
-      },
-    );
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error("No default provider set");
-      }
-      throw new Error("Failed to fetch default provider");
-    }
-    return response.json();
-  }
-
-  /**
-   * Set a provider as default
-   */
-  async setDefaultProvider(providerId: string): Promise<LlmProviderResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/providers/me/default/${providerId}`,
-      {
-        method: "POST",
-        headers: this.createAuthHeaders(),
-      },
-    );
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to set default provider: ${error}`);
-    }
-    return response.json();
-  }
 
   /**
    * Create a new provider

@@ -5,6 +5,7 @@ import type {
   LlmProviderUpdate,
   ProviderTemplate,
 } from "@/types/llmProvider";
+import { ProviderPreferencesManager, resolveProviderForAgent } from "@/utils/providerPreferences";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
 
@@ -13,16 +14,19 @@ export interface ProviderSlice {
   llmProvidersLoading: boolean;
   providerTemplates: ProviderTemplate[];
   templatesLoading: boolean;
-  defaultProvider: LlmProviderResponse | null;
-  defaultProviderLoading: boolean;
+  userDefaultProviderId: string | null;
 
   fetchProviderTemplates: () => Promise<void>;
   fetchMyProviders: () => Promise<void>;
-  fetchDefaultProvider: () => Promise<void>;
   addProvider: (provider: LlmProviderCreate) => Promise<void>;
   updateProvider: (id: string, provider: LlmProviderUpdate) => Promise<void>;
   removeProvider: (id: string) => Promise<void>;
-  setAsDefault: (id: string) => Promise<void>;
+
+  // New local default management methods
+  initializeProviderPreferences: () => void;
+  setUserDefaultProvider: (providerId: string | null) => void;
+  getUserDefaultProvider: () => LlmProviderResponse | null;
+  resolveProviderForAgent: (agent: { id: string; provider_id?: string | null } | null) => LlmProviderResponse | null;
 }
 
 export const createProviderSlice: StateCreator<
@@ -35,8 +39,7 @@ export const createProviderSlice: StateCreator<
   llmProvidersLoading: false,
   providerTemplates: [],
   templatesLoading: false,
-  defaultProvider: null,
-  defaultProviderLoading: false,
+  userDefaultProviderId: null,
 
   fetchProviderTemplates: async () => {
     set({ templatesLoading: true });
@@ -54,21 +57,35 @@ export const createProviderSlice: StateCreator<
     try {
       const providers = await llmProviderService.getMyProviders();
       set({ llmProviders: providers, llmProvidersLoading: false });
+
+      // Initialize preferences on first load and handle migration
+      get().initializeProviderPreferences();
+      ProviderPreferencesManager.migrateFromDatabaseDefault(providers);
     } catch (error) {
       console.error("Failed to fetch your providers:", error);
       set({ llmProvidersLoading: false });
     }
   },
 
-  fetchDefaultProvider: async () => {
-    set({ defaultProviderLoading: true });
-    try {
-      const provider = await llmProviderService.getMyDefaultProvider();
-      set({ defaultProvider: provider, defaultProviderLoading: false });
-    } catch (error) {
-      console.error("Failed to fetch default provider:", error);
-      set({ defaultProvider: null, defaultProviderLoading: false });
-    }
+  initializeProviderPreferences: () => {
+    const defaultProviderId = ProviderPreferencesManager.getDefaultProviderId();
+    set({ userDefaultProviderId: defaultProviderId });
+  },
+
+  setUserDefaultProvider: (providerId) => {
+    ProviderPreferencesManager.setDefaultProvider(providerId);
+    set({ userDefaultProviderId: providerId });
+  },
+
+  getUserDefaultProvider: () => {
+    const { llmProviders, userDefaultProviderId } = get();
+    if (!userDefaultProviderId) return null;
+    return llmProviders.find(p => p.id === userDefaultProviderId) || null;
+  },
+
+  resolveProviderForAgent: (agent) => {
+    const { llmProviders } = get();
+    return resolveProviderForAgent(agent, llmProviders);
   },
 
   addProvider: async (provider) => {
@@ -77,8 +94,14 @@ export const createProviderSlice: StateCreator<
       set((state: ProviderSlice) => {
         state.llmProviders.push(newProvider);
       });
-      // Refresh default provider in case this became the default
-      await get().fetchDefaultProvider();
+
+      // Auto-set as default if it's the first user provider and no default is set
+      const { llmProviders, userDefaultProviderId } = get();
+      const userProviders = llmProviders.filter(p => !p.is_system);
+      if (userProviders.length === 1 && !userDefaultProviderId) {
+        get().setUserDefaultProvider(newProvider.id);
+      }
+
       get().closeAddLlmProviderModal();
       get().closeSettingsModal();
     } catch (error) {
@@ -99,10 +122,6 @@ export const createProviderSlice: StateCreator<
           state.llmProviders[index] = updatedProvider;
         }
       });
-      // Refresh default if this was the default provider
-      if (get().defaultProvider?.id === id) {
-        await get().fetchDefaultProvider();
-      }
     } catch (error) {
       console.error("Failed to update provider:", error);
       throw error;
@@ -115,24 +134,14 @@ export const createProviderSlice: StateCreator<
       set((state: ProviderSlice) => {
         state.llmProviders = state.llmProviders.filter((p) => p.id !== id);
       });
-      // Refresh default provider if we deleted it
-      if (get().defaultProvider?.id === id) {
-        await get().fetchDefaultProvider();
+
+      // Clear default if we deleted the default provider
+      const { userDefaultProviderId } = get();
+      if (userDefaultProviderId === id) {
+        get().setUserDefaultProvider(null);
       }
     } catch (error) {
       console.error("Failed to remove provider:", error);
-      throw error;
-    }
-  },
-
-  setAsDefault: async (id) => {
-    try {
-      const updatedProvider = await llmProviderService.setDefaultProvider(id);
-      set({ defaultProvider: updatedProvider });
-      // Refresh all providers to update is_default flags
-      await get().fetchMyProviders();
-    } catch (error) {
-      console.error("Failed to set default provider:", error);
       throw error;
     }
   },
