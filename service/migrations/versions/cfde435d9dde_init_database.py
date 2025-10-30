@@ -1,8 +1,8 @@
-"""init_new_database
+"""init_database
 
-Revision ID: 8902c8025f3b
+Revision ID: cfde435d9dde
 Revises:
-Create Date: 2025-10-29 13:41:32.750792
+Create Date: 2025-10-30 12:01:13.591871
 
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "8902c8025f3b"
+revision: str = "cfde435d9dde"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -36,8 +36,8 @@ def upgrade() -> None:
         sa.Column("require_tool_confirmation", sa.Boolean(), nullable=False),
         sa.Column("provider_id", sa.Uuid(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_agent_id"), "agent", ["id"], unique=False)
@@ -67,8 +67,8 @@ def upgrade() -> None:
         sa.Column("remote_response", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("biz_no", sa.Integer(), autoincrement=True, nullable=True),
-        sa.Column("created_at", postgresql.TIMESTAMP(timezone=True), nullable=False),
-        sa.Column("updated_at", postgresql.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_consumerecord_auth_provider"), "consumerecord", ["auth_provider"], unique=False)
@@ -98,7 +98,7 @@ def upgrade() -> None:
         sa.Column("content", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("topic_id", sa.Uuid(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_message_id"), "message", ["id"], unique=False)
@@ -115,6 +115,7 @@ def upgrade() -> None:
         sa.Column("max_tokens", sa.Integer(), nullable=False),
         sa.Column("temperature", sa.Float(), nullable=False),
         sa.Column("is_system", sa.Boolean(), nullable=False),
+        sa.Column("provider_config", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -131,8 +132,8 @@ def upgrade() -> None:
         sa.Column("agent_id", sa.Uuid(), nullable=True),
         sa.Column("user_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_session_agent_id"), "session", ["agent_id"], unique=False)
@@ -146,8 +147,8 @@ def upgrade() -> None:
         sa.Column("tags_json", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", "name", name="uq_user_tool_name"),
     )
@@ -175,7 +176,7 @@ def upgrade() -> None:
         sa.Column("status", sa.Enum("BUILDING", "READY", "FAILED", "DEPRECATED", name="toolstatus"), nullable=False),
         sa.Column("tool_id", sa.Uuid(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=True),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_toolversion_status"), "toolversion", ["status"], unique=False)
@@ -189,8 +190,8 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=False),
         sa.Column("session_id", sa.Uuid(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_topic_id"), "topic", ["id"], unique=False)
@@ -204,8 +205,8 @@ def upgrade() -> None:
         sa.Column("success_count", sa.Integer(), nullable=False),
         sa.Column("failed_count", sa.Integer(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", postgresql.TIMESTAMP(timezone=True), nullable=False),
-        sa.Column("updated_at", postgresql.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_userconsumesummary_auth_provider"), "userconsumesummary", ["auth_provider"], unique=False)
