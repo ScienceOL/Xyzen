@@ -585,7 +585,7 @@ class ToolRepository:
         logger.debug(f"Fetching versions created since {since} for user_id: {user_id}")
         result = await self.db.exec(
             select(ToolVersion)
-            .join(Tool)
+            .join(Tool, ToolVersion.tool_id == Tool.id)  # type: ignore
             .where(Tool.user_id == user_id, ToolVersion.created_at >= since)
             .order_by(ToolVersion.created_at.desc())  # type: ignore
             .limit(limit)
@@ -604,7 +604,11 @@ class ToolRepository:
             List of ToolVersion instances.
         """
         logger.debug(f"Fetching all versions for user_id: {user_id}")
-        result = await self.db.exec(select(ToolVersion).join(Tool).where(Tool.user_id == user_id))
+        result = await self.db.exec(
+            select(ToolVersion)
+            .join(Tool, ToolVersion.tool_id == Tool.id)  # type: ignore
+            .where(Tool.user_id == user_id)
+        )
         versions = list(result.all())
         return versions
 
@@ -619,6 +623,11 @@ class ToolRepository:
             List of ToolFunction instances.
         """
         logger.debug(f"Fetching all functions for user_id: {user_id}")
-        result = await self.db.exec(select(ToolFunction).join(ToolVersion).join(Tool).where(Tool.user_id == user_id))
+        result = await self.db.exec(
+            select(ToolFunction)
+            .join(ToolVersion, ToolFunction.tool_version_id == ToolVersion.id)  # type: ignore
+            .join(Tool, ToolVersion.tool_id == Tool.id)  # type: ignore
+            .where(Tool.user_id == user_id)
+        )
         functions = list(result.all())
         return functions
