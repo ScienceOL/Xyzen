@@ -110,10 +110,6 @@ export default function ChatToolbar({
     return resolveProviderForAgent(currentAgent);
   }, [currentAgent, resolveProviderForAgent]);
 
-  // Check if using agent-specific provider or fallback
-  const isUsingAgentProvider = useMemo(() => {
-    return currentAgent?.provider_id != null;
-  }, [currentAgent]);
 
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);

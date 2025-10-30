@@ -13,7 +13,8 @@ export const ProviderConfigForm = () => {
     addProvider,
     updateProvider,
     removeProvider,
-    setAsDefault,
+    setUserDefaultProvider,
+    userDefaultProviderId,
   } = useXyzen();
 
   const [formData, setFormData] = useState<Partial<LlmProviderCreate>>({
@@ -229,7 +230,7 @@ export const ProviderConfigForm = () => {
     setLoading(true);
 
     try {
-      await setAsDefault(selectedProviderId);
+      setUserDefaultProvider(selectedProviderId);
       setSuccess("Provider set as default!");
     } catch (err) {
       setError(
@@ -428,17 +429,17 @@ export const ProviderConfigForm = () => {
                 Default Provider
               </Label>
               <Switch
-                checked={formData.is_default || false}
+                checked={userDefaultProviderId === selectedProviderId}
                 onChange={handleSetDefault}
                 className={`${
-                  formData.is_default
+                  userDefaultProviderId === selectedProviderId
                     ? "bg-indigo-600"
                     : "bg-neutral-300 dark:bg-neutral-700"
                 } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
                   className={`${
-                    formData.is_default ? "translate-x-6" : "translate-x-1"
+                    userDefaultProviderId === selectedProviderId ? "translate-x-6" : "translate-x-1"
                   } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
                 />
               </Switch>

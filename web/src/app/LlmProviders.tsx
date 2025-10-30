@@ -14,12 +14,14 @@ interface LlmProviderCardProps {
   provider: LlmProviderResponse;
   onRemove: (id: string) => void;
   onSetActive: (id: string) => void;
+  isDefault: boolean;
 }
 
 const LlmProviderCard: React.FC<LlmProviderCardProps> = ({
   provider,
   onRemove,
   onSetActive,
+  isDefault,
 }) => {
   const getProviderTypeDisplay = (type: string) => {
     switch (type) {
@@ -39,14 +41,14 @@ const LlmProviderCard: React.FC<LlmProviderCardProps> = ({
   return (
     <div
       className={`group relative flex items-center justify-between rounded-lg border p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 ${
-        provider.is_default
+        isDefault
           ? "border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/30"
           : "border-neutral-200 dark:border-neutral-800"
       }`}
     >
       <div className="flex-1 overflow-hidden">
         <div className="flex items-center">
-          {provider.is_default && (
+          {isDefault && (
             <CheckCircleIcon
               className="mr-2 h-4 w-4 text-green-500"
               title="Default Provider"
@@ -67,7 +69,7 @@ const LlmProviderCard: React.FC<LlmProviderCardProps> = ({
         <p className="mt-1 truncate text-xs text-neutral-400">{provider.api}</p>
       </div>
       <div className="ml-4 flex items-center space-x-2">
-        {!provider.is_default && (
+        {!isDefault && (
           <button
             onClick={() => onSetActive(provider.id)}
             className="invisible rounded px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-100 group-hover:visible dark:text-indigo-400 dark:hover:bg-indigo-900/50"
@@ -94,7 +96,8 @@ export function LlmProviders() {
     llmProvidersLoading,
     fetchMyProviders,
     removeProvider,
-    setAsDefault,
+    setUserDefaultProvider,
+    userDefaultProviderId,
     backendUrl,
     openAddLlmProviderModal,
   } = useXyzen();
@@ -107,7 +110,7 @@ export function LlmProviders() {
 
   const handleSetActive = async (id: string) => {
     try {
-      await setAsDefault(id);
+      setUserDefaultProvider(id);
     } catch (error) {
       console.error("Failed to set default provider:", error);
     }
@@ -144,6 +147,7 @@ export function LlmProviders() {
               provider={provider}
               onRemove={handleRemove}
               onSetActive={handleSetActive}
+              isDefault={userDefaultProviderId === provider.id}
             />
           ))}
         </div>
