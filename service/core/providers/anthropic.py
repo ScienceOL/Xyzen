@@ -12,13 +12,17 @@ from anthropic.types import MessageParam
 from anthropic.types.tool_param import ToolParam
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
-from pydantic import SecretStr
-
-from models.provider import AnthropicConfig
+from pydantic import BaseModel, SecretStr
 
 from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse
 
 logger = logging.getLogger(__name__)
+
+
+class AnthropicConfig(BaseModel):
+    """Configuration for Anthropic provider."""
+
+    base_url: str | None = None
 
 
 class AnthropicProvider(BaseLLMProvider):

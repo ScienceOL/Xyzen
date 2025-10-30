@@ -11,13 +11,19 @@ from google import genai
 from google.genai import types
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
-from pydantic import SecretStr
-
-from models.provider import GoogleConfig
+from pydantic import BaseModel, SecretStr
 
 from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamChunk
 
 logger = logging.getLogger(__name__)
+
+
+class GoogleConfig(BaseModel):
+    """Configuration for Google provider."""
+
+    project_id: str | None = None
+    location: str = "us-central1"
+    base_url: str | None = None
 
 
 class GoogleProvider(BaseLLMProvider):

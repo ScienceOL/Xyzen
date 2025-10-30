@@ -1,39 +1,10 @@
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
-
 # Provider-specific configuration classes
-class OpenAIConfig(BaseModel):
-    """Configuration for OpenAI provider."""
-
-    organization: str | None = None
-    base_url: str | None = None
-
-
-class AnthropicConfig(BaseModel):
-    """Configuration for Anthropic provider."""
-
-    base_url: str | None = None
-
-
-class AzureOpenAIConfig(BaseModel):
-    """Configuration for Azure OpenAI provider."""
-
-    api_version: str = "2024-02-01"
-    azure_deployment: str | None = None
-    azure_endpoint: str | None = None
-
-
-class GoogleConfig(BaseModel):
-    """Configuration for Google provider."""
-
-    project_id: str | None = None
-    location: str = "us-central1"
-    base_url: str | None = None
 
 
 class ProviderBase(SQLModel):

@@ -9,9 +9,7 @@ from typing import Any, List, Optional
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI
 from openai import AsyncAzureOpenAI
-from pydantic import SecretStr
-
-from models.provider import AzureOpenAIConfig
+from pydantic import BaseModel, SecretStr
 
 from .base import (
     BaseLLMProvider,
@@ -20,6 +18,14 @@ from .base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class AzureOpenAIConfig(BaseModel):
+    """Configuration for Azure OpenAI provider."""
+
+    api_version: str = "2024-02-01"
+    azure_deployment: str | None = None
+    azure_endpoint: str | None = None
 
 
 class AzureOpenAIProvider(BaseLLMProvider):

@@ -9,9 +9,7 @@ from typing import Any, List, Optional
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from openai import AsyncOpenAI
-from pydantic import SecretStr
-
-from models.provider import OpenAIConfig
+from pydantic import BaseModel, SecretStr
 
 from .base import (
     BaseLLMProvider,
@@ -20,6 +18,13 @@ from .base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class OpenAIConfig(BaseModel):
+    """Configuration for OpenAI provider."""
+
+    organization: str | None = None
+    base_url: str | None = None
 
 
 class OpenAIProvider(BaseLLMProvider):
