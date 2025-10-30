@@ -5,7 +5,7 @@ Supports Anthropic Claude models with proper message and tool format conversion.
 
 import json
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 from anthropic import AsyncAnthropic
 from anthropic.types import MessageParam
@@ -14,7 +14,12 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, SecretStr
 
-from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse
+from .base import (
+    BaseLLMProvider,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatMessage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,22 +39,22 @@ class AnthropicProvider(BaseLLMProvider):
     def __init__(
         self,
         api_key: SecretStr,
-        api_endpoint: Optional[str] = None,
-        model: Optional[str] = None,
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
+        api_endpoint: str | None = None,
+        model: str | None = None,
+        max_tokens: int | None = None,  # Now optional
+        temperature: float | None = None,  # Now optional
         timeout: int = 60,
         **kwargs: Any,
     ) -> None:
         """
-        Initialize the Anthropic provider.
+        Initialize the Anthropic provider with capability-aware parameters.
 
         Args:
             api_key: The API key for authentication
             api_endpoint: Optional API endpoint URL
             model: The default model name
-            max_tokens: Maximum tokens for responses
-            temperature: Sampling temperature
+            max_tokens: Maximum tokens for responses (optional)
+            temperature: Sampling temperature (optional)
             timeout: Request timeout in seconds
             **kwargs: Additional configuration
         """
@@ -69,9 +74,37 @@ class AnthropicProvider(BaseLLMProvider):
         else:
             self.client = AsyncAnthropic(api_key=str(self.api_key), timeout=self.timeout)
 
+    def _convert_messages(self, messages: list[ChatMessage]) -> tuple[list[MessageParam], str]:
+        """
+        Convert standard messages to Anthropic format.
+        Anthropic separates system messages from the conversation messages.
+
+        Args:
+            messages: List of standard chat messages
+
+        Returns:
+            Tuple of (anthropic_messages, system_message)
+        """
+        system_message = ""
+        anthropic_messages: list[MessageParam] = []
+
+        for msg in messages:
+            if msg.role == "system":
+                system_message = msg.content
+            elif msg.role == "user":
+                anthropic_messages.append({"role": "user", "content": msg.content})
+            elif msg.role == "assistant":
+                anthropic_messages.append({"role": "assistant", "content": msg.content})
+            elif msg.role == "tool":
+                # For Anthropic, tool results should be sent as user messages
+                # with a specific format indicating they are tool results
+                anthropic_messages.append({"role": "user", "content": f"Tool result: {msg.content}"})
+
+        return anthropic_messages, system_message
+
     async def chat_completion(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
         """
-        Generate a chat completion using Anthropic API.
+        Generate a chat completion using Anthropic API with capability-aware parameters.
 
         Args:
             request: The chat completion request
@@ -83,38 +116,37 @@ class AnthropicProvider(BaseLLMProvider):
             # Validate model
             if request.model not in self.supported_models:
                 logger.warning(f"Model {request.model} is not in the supported models list for {self.provider_name}")
-                # Don't raise an error, just log a warning - let API decide if model is valid
 
-            # Convert messages to Anthropic format
-            system_message = ""
-            messages: List[MessageParam] = []
+            # Convert messages to Anthropic format using the specialized method
+            messages, system_message = self._convert_messages(request.messages)
 
-            for msg in request.messages:
-                if msg.role == "system":
-                    system_message = msg.content
-                elif msg.role == "user":
-                    messages.append({"role": "user", "content": msg.content})
-                elif msg.role == "assistant":
-                    messages.append({"role": "assistant", "content": msg.content})
-                elif msg.role == "tool":
-                    # For Anthropic, tool results should be sent as user messages
-                    # with a specific format indicating they are tool results
-                    messages.append({"role": "user", "content": f"Tool result: {msg.content}"})
+            # Build API parameters using capability filtering
+            capabilities = self.get_model_capabilities(request.model)
 
-            # Prepare API call parameters
-            api_params = {
+            # Start with required parameters
+            api_params: dict[str, Any] = {
                 "model": request.model,
                 "messages": messages,
-                "max_tokens": request.max_tokens or 4096,
-                "temperature": request.temperature,
             }
 
+            # Add optional parameters based on capabilities
+            if capabilities.supports_max_tokens:
+                api_params["max_tokens"] = request.max_tokens or self.max_tokens or 4096
+            else:
+                api_params["max_tokens"] = 4096  # Required for Anthropic
+
+            if capabilities.supports_temperature and request.temperature is not None:
+                api_params["temperature"] = request.temperature
+            elif capabilities.supports_temperature and self.temperature is not None:
+                api_params["temperature"] = self.temperature
+
+            # Add system message if present
             if system_message:
                 api_params["system"] = system_message
 
-            # Handle tools if provided
-            anthropic_tools: List[ToolParam] = []
-            if request.tools:
+            # Handle tools if provided and supported
+            anthropic_tools: list[ToolParam] = []
+            if capabilities.supports_tools and request.tools:
                 for tool in request.tools:
                     anthropic_tool: ToolParam = {
                         "name": tool.get("name", ""),
@@ -123,43 +155,11 @@ class AnthropicProvider(BaseLLMProvider):
                     }
                     anthropic_tools.append(anthropic_tool)
 
-            # Make the API call with proper error handling
-            try:
-                if system_message and anthropic_tools:
-                    response = await self.client.messages.create(
-                        model=request.model,
-                        messages=messages,
-                        max_tokens=request.max_tokens or 4096,
-                        temperature=request.temperature,
-                        system=system_message,
-                        tools=anthropic_tools,
-                    )
-                elif system_message:
-                    response = await self.client.messages.create(
-                        model=request.model,
-                        messages=messages,
-                        max_tokens=request.max_tokens or 4096,
-                        temperature=request.temperature,
-                        system=system_message,
-                    )
-                elif anthropic_tools:
-                    response = await self.client.messages.create(
-                        model=request.model,
-                        messages=messages,
-                        max_tokens=request.max_tokens or 4096,
-                        temperature=request.temperature,
-                        tools=anthropic_tools,
-                    )
-                else:
-                    response = await self.client.messages.create(
-                        model=request.model,
-                        messages=messages,
-                        max_tokens=request.max_tokens or 4096,
-                        temperature=request.temperature,
-                    )
-            except Exception as api_error:
-                logger.error(f"Anthropic API request failed for model {request.model}: {api_error}")
-                raise ValueError(f"Anthropic API error: {api_error}")
+                if anthropic_tools:
+                    api_params["tools"] = anthropic_tools
+
+            # Make the API call
+            response = await self.client.messages.create(**api_params)
 
             # Validate response format
             if not hasattr(response, "content") or not response.content:
@@ -174,11 +174,9 @@ class AnthropicProvider(BaseLLMProvider):
                 for content_block in response.content:
                     if hasattr(content_block, "type"):
                         if content_block.type == "text":
-                            # content_block is a TextBlock object with .text attribute
                             if hasattr(content_block, "text"):
                                 content_text += content_block.text
                         elif content_block.type == "tool_use":
-                            # content_block is a ToolUseBlock object
                             tool_calls.append(
                                 {
                                     "id": getattr(content_block, "id", ""),
@@ -194,13 +192,13 @@ class AnthropicProvider(BaseLLMProvider):
                 # Fallback: try to extract text content differently
                 if hasattr(response, "content") and response.content:
                     try:
-                        # Try to get the first content block's text
                         first_content = response.content[0]
                         if hasattr(first_content, "text"):
                             content_text = getattr(first_content, "text", "")
                     except Exception:
                         content_text = str(response.content) if response.content else ""
 
+            # Extract usage information
             usage_info = None
             if hasattr(response, "usage") and response.usage:
                 usage_info = {
@@ -218,7 +216,7 @@ class AnthropicProvider(BaseLLMProvider):
 
         except Exception as e:
             logger.error(f"Anthropic API call failed: {e}")
-            raise e
+            raise
 
     def is_available(self) -> bool:
         """
@@ -243,7 +241,7 @@ class AnthropicProvider(BaseLLMProvider):
         return "anthropic"
 
     @property
-    def supported_models(self) -> List[str]:
+    def supported_models(self) -> list[str]:
         """
         Get the list of supported models for this provider.
 
@@ -261,7 +259,7 @@ class AnthropicProvider(BaseLLMProvider):
 
     def to_langchain_model(self) -> BaseChatModel:
         """
-        Convert this provider to a LangChain ChatAnthropic model instance.
+        Convert this provider to a LangChain ChatAnthropic model instance with capability-aware parameters.
 
         Returns:
             ChatAnthropic instance ready for use with LangChain
@@ -269,13 +267,33 @@ class AnthropicProvider(BaseLLMProvider):
         # Parse provider-specific config
         config = AnthropicConfig(**self.config) if self.config else AnthropicConfig()
 
-        return ChatAnthropic(
-            api_key=self.api_key,
-            base_url=config.base_url or self.api_endpoint,
-            model_name=self.model,
-            temperature=self.temperature,
-            stop=None,
-            max_tokens_to_sample=self.max_tokens,
-            timeout=self.timeout,
-            streaming=True,
-        )
+        # Get model capabilities
+        capabilities = self.get_model_capabilities(self.model)
+
+        # Base parameters
+        langchain_params: dict[str, Any] = {
+            "api_key": self.api_key,
+            "base_url": config.base_url or self.api_endpoint,
+            "model_name": self.model,
+            "timeout": self.timeout,
+            "streaming": True,
+        }
+
+        # Add optional parameters based on capabilities
+        if capabilities.supports_temperature and self.temperature is not None:
+            langchain_params["temperature"] = self.temperature
+
+        if capabilities.supports_max_tokens and self.max_tokens is not None:
+            langchain_params["max_tokens_to_sample"] = self.max_tokens
+
+        # Log filtered parameters for debugging
+        filtered_out = []
+        if not capabilities.supports_temperature and self.temperature is not None:
+            filtered_out.append("temperature")
+        if not capabilities.supports_max_tokens and self.max_tokens is not None:
+            filtered_out.append("max_tokens_to_sample")
+
+        if filtered_out:
+            logger.info(f"Filtered out unsupported LangChain parameters for {self.model}: {filtered_out}")
+
+        return ChatAnthropic(**langchain_params)

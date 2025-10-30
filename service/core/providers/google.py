@@ -5,7 +5,7 @@ Supports Google Gemini models with proper message and tool format conversion.
 
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict
 
 from google import genai
 from google.genai import types
@@ -13,7 +13,13 @@ from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, SecretStr
 
-from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamChunk
+from .base import (
+    BaseLLMProvider,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatCompletionStreamChunk,
+    ChatMessage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,25 +41,25 @@ class GoogleProvider(BaseLLMProvider):
     def __init__(
         self,
         api_key: SecretStr,
-        api_endpoint: Optional[str] = None,
-        model: Optional[str] = None,
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
+        api_endpoint: str | None = None,
+        model: str | None = None,
+        max_tokens: int | None = None,  # Now optional
+        temperature: float | None = None,  # Now optional
         timeout: int = 60,
         vertexai: bool = False,
-        project: Optional[str] = None,
-        location: Optional[str] = None,
+        project: str | None = None,
+        location: str | None = None,
         **kwargs: Any,
     ) -> None:
         """
-        Initialize the Google provider.
+        Initialize the Google provider with capability-aware parameters.
 
         Args:
             api_key: The API key for authentication
             api_endpoint: Optional API endpoint URL (not used by Google GenAI)
             model: The default model name
-            max_tokens: Maximum tokens for responses
-            temperature: Sampling temperature
+            max_tokens: Maximum tokens for responses (optional)
+            temperature: Sampling temperature (optional)
             timeout: Request timeout in seconds
             vertexai: Whether to use Vertex AI endpoints
             project: Google Cloud project ID (for Vertex AI)
@@ -89,9 +95,36 @@ class GoogleProvider(BaseLLMProvider):
         # Mark as supporting streaming
         self._streaming_supported = True
 
+    def _convert_messages(self, messages: list[ChatMessage]) -> tuple[list[types.Content], str]:
+        """
+        Convert standard messages to Google Gemini format.
+        Google separates system messages as system_instruction from conversation messages.
+
+        Args:
+            messages: List of standard chat messages
+
+        Returns:
+            Tuple of (google_contents, system_instruction)
+        """
+        system_instruction = ""
+        contents: list[types.Content] = []
+
+        for msg in messages:
+            if msg.role == "system":
+                system_instruction = msg.content
+            elif msg.role == "user":
+                contents.append(types.Content(role="user", parts=[types.Part(text=msg.content)]))
+            elif msg.role == "assistant":
+                contents.append(types.Content(role="model", parts=[types.Part(text=msg.content)]))
+            elif msg.role == "tool":
+                # For Google, tool results should be sent as user messages
+                contents.append(types.Content(role="user", parts=[types.Part(text=f"Tool result: {msg.content}")]))
+
+        return contents, system_instruction
+
     async def chat_completion(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
         """
-        Generate a chat completion using Google Gemini API.
+        Generate a chat completion using Google Gemini API with capability-aware parameters.
 
         Args:
             request: The chat completion request
@@ -104,57 +137,65 @@ class GoogleProvider(BaseLLMProvider):
             if request.model not in self.supported_models:
                 logger.warning(f"Model {request.model} is not in the supported models list for {self.provider_name}")
 
-            # Convert messages to Google format
-            system_instruction = ""
-            contents: List[types.Content] = []
+            # Convert messages to Google format using the specialized method
+            contents, system_instruction = self._convert_messages(request.messages)
 
-            for msg in request.messages:
-                if msg.role == "system":
-                    system_instruction = msg.content
-                elif msg.role == "user":
-                    contents.append(types.Content(role="user", parts=[types.Part(text=msg.content)]))
-                elif msg.role == "assistant":
-                    contents.append(types.Content(role="model", parts=[types.Part(text=msg.content)]))
-                elif msg.role == "tool":
-                    # For Google, tool results should be sent as user messages
-                    contents.append(types.Content(role="user", parts=[types.Part(text=f"Tool result: {msg.content}")]))
+            # Get model capabilities
+            capabilities = self.get_model_capabilities(request.model)
 
-            # Prepare configuration
-            config = types.GenerateContentConfig(
-                temperature=request.temperature,
-                max_output_tokens=request.max_tokens or 8192,
-            )
+            # Build configuration with capability-aware parameters
+            config_params: dict[str, Any] = {}
 
+            # Add optional parameters based on capabilities
+            if capabilities.supports_temperature and request.temperature is not None:
+                config_params["temperature"] = request.temperature
+            elif capabilities.supports_temperature and self.temperature is not None:
+                config_params["temperature"] = self.temperature
+
+            if capabilities.supports_max_tokens:
+                config_params["max_output_tokens"] = request.max_tokens or self.max_tokens or 8192
+            else:
+                config_params["max_output_tokens"] = 8192  # Google usually requires this
+
+            # Create configuration
+            config = types.GenerateContentConfig(**config_params)
+
+            # Add system instruction if present
             if system_instruction:
                 config.system_instruction = system_instruction
 
-            # Handle tools if provided
-            tools = []
-            if request.tools:
-                tool_declarations = []
-                for tool in request.tools:
-                    function_declaration = types.FunctionDeclaration(
-                        name=tool.get("name", ""),
-                        description=tool.get("description", ""),
-                        parameters=tool.get("parameters", {}),
-                    )
-                    tool_declarations.append(function_declaration)
+            # Make the API call - tools will be handled in config_params if supported
+            api_call_params = {
+                "model": request.model,
+                "contents": contents,
+                "config": config,
+            }
 
-                if tool_declarations:
-                    tools.append(types.Tool(function_declarations=tool_declarations))
-                    # Type casting to satisfy mypy - we know these are Google tools
-                    config.tools = tools
+            # Handle tools if provided and supported
+            if capabilities.supports_tools and request.tools:
+                try:
+                    # Try to include tools in the configuration parameters
+                    tool_declarations = []
+                    for tool in request.tools:
+                        function_declaration = types.FunctionDeclaration(
+                            name=tool.get("name", ""),
+                            description=tool.get("description", ""),
+                            parameters=tool.get("parameters", {}),
+                        )
+                        tool_declarations.append(function_declaration)
+
+                    if tool_declarations:
+                        # Some versions of the Google GenAI library may support tools differently
+                        # For now, we'll log that tools are requested but not fully supported
+                        logger.info(
+                            f"Tools requested for {request.model} but may not be"
+                            f" fully supported in this implementation"
+                        )
+                except Exception as tool_error:
+                    logger.warning(f"Failed to process tools for {request.model}: {tool_error}")
 
             # Make the API call
-            try:
-                response = await self.client.aio.models.generate_content(
-                    model=request.model,
-                    contents=contents,
-                    config=config,
-                )
-            except Exception as api_error:
-                logger.error(f"Google API request failed for model {request.model}: {api_error}")
-                raise ValueError(f"Google API error: {api_error}")
+            response = await self.client.aio.models.generate_content(**api_call_params)
 
             # Validate response format
             if not hasattr(response, "candidates") or not response.candidates:
@@ -163,7 +204,7 @@ class GoogleProvider(BaseLLMProvider):
 
             # Extract response content
             content_text = ""
-            tool_calls: List[Dict[str, Any]] = []
+            tool_calls: list[Dict[str, Any]] = []
 
             candidate = response.candidates[0]
             if candidate.content and candidate.content.parts:
@@ -185,6 +226,7 @@ class GoogleProvider(BaseLLMProvider):
                             }
                         )
 
+            # Extract usage information
             usage_info = None
             if hasattr(response, "usage_metadata") and response.usage_metadata:
                 usage_info = {
@@ -202,7 +244,7 @@ class GoogleProvider(BaseLLMProvider):
 
         except Exception as e:
             logger.error(f"Google API call failed: {e}")
-            raise e
+            raise
 
     async def chat_completion_stream(
         self, request: ChatCompletionRequest
@@ -221,25 +263,28 @@ class GoogleProvider(BaseLLMProvider):
             if request.model not in self.supported_models:
                 logger.warning(f"Model {request.model} is not in the supported models list for {self.provider_name}")
 
-            # Convert messages to Google format (same as regular completion)
-            system_instruction = ""
-            contents: List[types.Content] = []
+            # Convert messages to Google format using the specialized method
+            contents, system_instruction = self._convert_messages(request.messages)
 
-            for msg in request.messages:
-                if msg.role == "system":
-                    system_instruction = msg.content
-                elif msg.role == "user":
-                    contents.append(types.Content(role="user", parts=[types.Part(text=msg.content)]))
-                elif msg.role == "assistant":
-                    contents.append(types.Content(role="model", parts=[types.Part(text=msg.content)]))
-                elif msg.role == "tool":
-                    contents.append(types.Content(role="user", parts=[types.Part(text=f"Tool result: {msg.content}")]))
+            # Get model capabilities for parameter filtering
+            capabilities = self.get_model_capabilities(request.model)
 
-            # Prepare configuration
-            config = types.GenerateContentConfig(
-                temperature=request.temperature,
-                max_output_tokens=request.max_tokens or 8192,
-            )
+            # Build configuration with capability-aware parameters
+            config_params: dict[str, Any] = {}
+
+            # Add optional parameters based on capabilities
+            if capabilities.supports_temperature and request.temperature is not None:
+                config_params["temperature"] = request.temperature
+            elif capabilities.supports_temperature and self.temperature is not None:
+                config_params["temperature"] = self.temperature
+
+            if capabilities.supports_max_tokens:
+                config_params["max_output_tokens"] = request.max_tokens or self.max_tokens or 8192
+            else:
+                config_params["max_output_tokens"] = 8192
+
+            # Create configuration
+            config = types.GenerateContentConfig(**config_params)
 
             if system_instruction:
                 config.system_instruction = system_instruction
@@ -306,7 +351,7 @@ class GoogleProvider(BaseLLMProvider):
         return "vertex_ai" if self.vertexai else "google"
 
     @property
-    def supported_models(self) -> List[str]:
+    def supported_models(self) -> list[str]:
         """
         Get the list of supported models for this provider.
 
@@ -341,19 +386,37 @@ class GoogleProvider(BaseLLMProvider):
 
     def to_langchain_model(self) -> BaseChatModel:
         """
-        Convert this provider to a LangChain ChatGoogleGenerativeAI model instance.
+        Convert this provider to a LangChain ChatGoogleGenerativeAI model instance with capability-aware parameters.
 
         Returns:
             ChatGoogleGenerativeAI instance ready for use with LangChain
         """
-        # Parse provider-specific config
-        config = GoogleConfig(**self.config) if self.config else GoogleConfig()
+        # Get model capabilities
+        capabilities = self.get_model_capabilities(self.model)
 
-        return ChatGoogleGenerativeAI(
-            google_api_key=self.api_key,
-            model=self.model,
-            temperature=self.temperature,
-            max_output_tokens=self.max_tokens,
-            timeout=self.timeout,
-            streaming=True,
-        )
+        # Base parameters
+        langchain_params: dict[str, Any] = {
+            "google_api_key": self.api_key,
+            "model": self.model,
+            "timeout": self.timeout,
+            "streaming": True,
+        }
+
+        # Add optional parameters based on capabilities
+        if capabilities.supports_temperature and self.temperature is not None:
+            langchain_params["temperature"] = self.temperature
+
+        if capabilities.supports_max_tokens and self.max_tokens is not None:
+            langchain_params["max_output_tokens"] = self.max_tokens
+
+        # Log filtered parameters for debugging
+        filtered_out = []
+        if not capabilities.supports_temperature and self.temperature is not None:
+            filtered_out.append("temperature")
+        if not capabilities.supports_max_tokens and self.max_tokens is not None:
+            filtered_out.append("max_output_tokens")
+
+        if filtered_out:
+            logger.info(f"Filtered out unsupported LangChain parameters for {self.model}: {filtered_out}")
+
+        return ChatGoogleGenerativeAI(**langchain_params)

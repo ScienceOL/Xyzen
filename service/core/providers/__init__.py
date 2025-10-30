@@ -19,7 +19,14 @@ from schemas.providers import ProviderType
 
 from .anthropic import AnthropicProvider
 from .azure_openai import AzureOpenAIProvider
-from .base import BaseLLMProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from .base import (
+    BaseLLMProvider,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatMessage,
+    ModelCapabilities,
+    ModelRegistry,
+)
 from .google import GoogleProvider
 from .openai import OpenAIProvider
 
@@ -128,12 +135,12 @@ class LLMProviderFactory:
     @classmethod
     def create_provider(
         cls,
-        provider_type: Union[ProviderType, str],
+        provider_type: ProviderType | str,
         api_key: SecretStr,
         api_endpoint: str,
         model: str | None = None,
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
+        max_tokens: int | None = None,  # Now optional
+        temperature: float | None = None,  # Now optional
         timeout: int = 60,
         **kwargs: Any,
     ) -> BaseLLMProvider:
@@ -214,12 +221,12 @@ class LLMProviderManager:
     def add_provider(
         self,
         name: str,
-        provider_type: Union[ProviderType, str],
+        provider_type: ProviderType | str,
         api_key: SecretStr,
         api_endpoint: str,
         model: str | None = None,
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
+        max_tokens: int | None = None,  # Now optional
+        temperature: float | None = None,  # Now optional
         timeout: int = 60,
         **kwargs: Any,
     ) -> None:
@@ -443,6 +450,8 @@ __all__ = [
     "ChatMessage",
     "ChatCompletionRequest",
     "ChatCompletionResponse",
+    "ModelCapabilities",
+    "ModelRegistry",
     "OpenAIProvider",
     "AzureOpenAIProvider",
     "AnthropicProvider",
