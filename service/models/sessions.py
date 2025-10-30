@@ -9,14 +9,11 @@ if TYPE_CHECKING:
     from .topic import TopicRead
 
 
-class SessionCreateBase(SQLModel):
+class SessionBase(SQLModel):
     name: str = Field(max_length=100)
     description: str | None = Field(default=None, max_length=500)
     is_active: bool = True
     agent_id: UUID | None = Field(default=None, index=True)
-
-
-class SessionBase(SessionCreateBase):
     user_id: str = Field(index=True)
 
 
@@ -32,8 +29,11 @@ class Session(SessionBase, table=True):
     )
 
 
-class SessionCreate(SessionCreateBase):
-    pass
+class SessionCreate(SQLModel):
+    name: str = Field(max_length=100)
+    description: str | None = Field(default=None, max_length=500)
+    is_active: bool = True
+    agent_id: UUID | None = Field(default=None, index=True)
 
 
 class SessionRead(SessionBase):

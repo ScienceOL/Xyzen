@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .mcp import McpServer
 
 
-class AgentCreateBase(SQLModel):
+class AgentBase(SQLModel):
     name: str
     description: str | None = None
     avatar: str | None = None
@@ -20,10 +20,6 @@ class AgentCreateBase(SQLModel):
     user_id: str = Field(index=True)
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
-
-
-class AgentBase(AgentCreateBase):
-    user_id: str = Field(index=True)
 
 
 class Agent(AgentBase, table=True):
@@ -38,7 +34,16 @@ class Agent(AgentBase, table=True):
     )
 
 
-class AgentCreate(AgentCreateBase):
+class AgentCreate(SQLModel):
+    name: str
+    description: str | None = None
+    avatar: str | None = None
+    tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    model: str | None = None
+    temperature: float | None = None
+    prompt: str | None = None
+    require_tool_confirmation: bool = Field(default=False)
+    provider_id: UUID | None = Field(default=None, index=True)
     mcp_server_ids: list[UUID] = []
 
 
