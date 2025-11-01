@@ -131,3 +131,6 @@ docker-compose.override.yml
 !.gitkeep
 !.keep
 !.placeholder
+
+# ===== AI Editor 文件 =====
+CLAUDE.md

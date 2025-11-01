@@ -11,7 +11,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool, StructuredTool
-from langchain_openai import AzureChatOpenAI
 from pydantic import Field, create_model
 from sqlmodel.ext.asyncio.session import AsyncSession
 

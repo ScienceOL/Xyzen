@@ -1,5 +1,6 @@
 from .agent import Agent
 from .consume import ConsumeRecord
+from .graph import GraphAgent, GraphEdge, GraphNode
 from .links import AgentMcpServerLink
 from .mcp import McpServer
 from .message import Message
@@ -20,4 +21,7 @@ __all__ = [
     "ToolVersion",
     "ToolFunction",
     "Topic",
+    "GraphAgent",
+    "GraphNode",
+    "GraphEdge",
 ]
