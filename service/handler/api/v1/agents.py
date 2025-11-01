@@ -8,7 +8,6 @@ from middleware.auth import get_current_user
 from middleware.database import get_session
 from models.agent import Agent as AgentModel
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentUpdate
-from models.mcp import McpServer  # Import McpServer to resolve forward reference
 
 # Ensure forward references are resolved after importing both models
 try:
@@ -20,7 +19,7 @@ except Exception as e:
     logging.getLogger(__name__).warning(f"Failed to rebuild AgentReadWithDetails: {e}")
 from repo import AgentRepository, ProviderRepository
 
-router = APIRouter()
+router = APIRouter(tags=["agents"])
 
 
 async def _verify_agent_authorization(

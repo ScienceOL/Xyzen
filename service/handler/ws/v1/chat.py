@@ -19,7 +19,7 @@ from repo import MessageRepository, SessionRepository, TopicRepository
 # --- Logger Setup ---
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["Chat"])
 
 
 # --- Connection Manager ---

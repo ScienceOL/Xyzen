@@ -7,6 +7,9 @@ from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
     from .message import MessageRead
+else:
+    # Import at runtime for model_rebuild to work
+    MessageRead = "MessageRead"
 
 
 class TopicBase(SQLModel):

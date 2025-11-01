@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from core.websocket import mcp_websocket_manager
 
-router = APIRouter()
+router = APIRouter(tags=["MCP Updates"])
 
 
 @router.websocket("")

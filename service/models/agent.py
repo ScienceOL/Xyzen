@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
 
 from sqlalchemy import TIMESTAMP
@@ -7,6 +7,9 @@ from sqlmodel import JSON, Column, Field, SQLModel
 
 if TYPE_CHECKING:
     from .mcp import McpServer
+else:
+    # Import at runtime for model_rebuild to work
+    McpServer = "McpServer"
 
 
 class AgentBase(SQLModel):
@@ -53,7 +56,7 @@ class AgentRead(AgentBase):
 
 
 class AgentReadWithDetails(AgentRead):
-    mcp_servers: list["McpServer"] = []
+    mcp_servers: List["McpServer"] = []
 
 
 class AgentUpdate(SQLModel):
@@ -67,17 +70,3 @@ class AgentUpdate(SQLModel):
     require_tool_confirmation: bool | None = None
     provider_id: UUID | None = None
     mcp_server_ids: list[UUID] | None = None
-
-
-# Rebuild models after all definitions to resolve forward references
-def _rebuild_models():
-    """Rebuild Pydantic models to resolve forward references."""
-    try:
-        AgentReadWithDetails.model_rebuild()
-    except Exception:
-        # If rebuild fails, it might be due to import order - that's okay
-        pass
-
-
-# Call rebuild function
-_rebuild_models()

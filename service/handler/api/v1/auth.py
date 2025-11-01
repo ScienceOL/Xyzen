@@ -9,7 +9,7 @@ from middleware.auth import AuthProvider
 # 设置日志记录器
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["auth"])
 
 
 class AuthStatusResponse(BaseModel):

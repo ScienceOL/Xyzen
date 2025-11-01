@@ -11,7 +11,7 @@ from models.topic import Topic as TopicModel
 from models.topic import TopicCreate, TopicRead, TopicUpdate
 from repo import MessageRepository, SessionRepository, TopicRepository
 
-router = APIRouter()
+router = APIRouter(tags=["topics"])
 
 
 async def _verify_topic_authorization(

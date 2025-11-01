@@ -11,7 +11,7 @@ from middleware.auth import get_current_user
 from middleware.database.connection import get_session
 from models.mcp import McpServer, McpServerCreate, McpServerUpdate
 
-router = APIRouter()
+router = APIRouter(tags=["mcps"])
 
 
 class ToolTestRequest(BaseModel):

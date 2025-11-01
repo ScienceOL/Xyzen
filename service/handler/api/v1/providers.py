@@ -10,7 +10,7 @@ from models.provider import Provider, ProviderCreate, ProviderRead, ProviderUpda
 from repo.provider import ProviderRepository
 from schemas.providers import PROVIDER_TEMPLATES, ProviderTemplate, ProviderType
 
-router = APIRouter()
+router = APIRouter(tags=["providers"])
 
 
 async def _verify_provider_authorization(

@@ -19,7 +19,7 @@ except Exception as e:
 
     logging.getLogger(__name__).warning(f"Failed to rebuild SessionReadWithTopics: {e}")
 
-router = APIRouter()
+router = APIRouter(tags=["sessions"])
 
 
 @router.post("/", response_model=SessionRead)
