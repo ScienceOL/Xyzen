@@ -15,6 +15,7 @@ export interface UiSlice {
   activeSettingsCategory: string;
   activeUiSetting: UiSettingType;
   selectedProviderId: string | null;
+  pendingInput: string;
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -33,6 +34,8 @@ export interface UiSlice {
   setActiveSettingsCategory: (category: string) => void;
   setActiveUiSetting: (setting: UiSettingType) => void;
   setSelectedProvider: (id: string | null) => void;
+  setPendingInput: (input: string) => void;
+  submitInput: () => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -54,6 +57,7 @@ export const createUiSlice: StateCreator<
   activeSettingsCategory: "provider",
   activeUiSetting: "theme",
   selectedProviderId: null,
+  pendingInput: "",
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -91,4 +95,11 @@ export const createUiSlice: StateCreator<
     set({ activeSettingsCategory: category }),
   setActiveUiSetting: (setting) => set({ activeUiSetting: setting }),
   setSelectedProvider: (id) => set({ selectedProviderId: id }),
+  setPendingInput: (input) => set({ pendingInput: input }),
+  submitInput: () =>
+    set(() => ({
+      isXyzenOpen: true,
+      activeTabIndex: 1, // Switch to Chat tab
+      // Keep the pendingInput so it can be used by the chat component
+    })),
 });

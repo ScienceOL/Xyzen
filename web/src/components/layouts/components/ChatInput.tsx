@@ -1,11 +1,12 @@
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
   placeholder?: string;
   height?: number; // Accept height from parent instead of managing internally
+  initialValue?: string; // Add initial value prop
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -13,10 +14,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   disabled = false,
   placeholder = "输入消息...",
   height = 80, // Default height if not provided
+  initialValue = "",
 }) => {
-  const [inputMessage, setInputMessage] = useState("");
+  const [inputMessage, setInputMessage] = useState(initialValue);
   // 添加一个状态来跟踪输入法的组合状态
   const [isComposing, setIsComposing] = useState(false);
+
+  // Use effect to update input when initialValue changes
+  useEffect(() => {
+    if (initialValue && initialValue !== inputMessage) {
+      setInputMessage(initialValue);
+    }
+  }, [initialValue]);
 
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;

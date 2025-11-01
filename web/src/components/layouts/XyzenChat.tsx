@@ -26,6 +26,8 @@ export default function XyzenChat() {
     llmProviders,
     notification,
     closeNotification,
+    pendingInput,
+    setPendingInput,
   } = useXyzen();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,6 +81,10 @@ export default function XyzenChat() {
       return;
     }
     sendMessage(inputMessage);
+    // Clear pending input after sending
+    if (pendingInput) {
+      setPendingInput("");
+    }
     setAutoScroll(true);
     setTimeout(() => scrollToBottom(true), 100);
   };
@@ -345,6 +351,7 @@ export default function XyzenChat() {
                 responding ? "AI 正在回复中，暂时无法发送…" : "输入消息..."
               }
               height={inputHeight}
+              initialValue={pendingInput}
             />
           </div>
         </>
