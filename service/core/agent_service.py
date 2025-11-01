@@ -38,6 +38,7 @@ class UnifiedAgentRead(BaseModel):
     is_active: bool = True
     created_at: str
     updated_at: str
+    mcp_servers: list[dict[str, Any]] = []
 
     # Graph-specific fields (only populated for graph agents)
     state_schema: dict[str, Any] | None = None
@@ -76,6 +77,10 @@ class AgentService:
         # Get regular agents
         regular_agents = await self.agent_repo.get_agents_by_user(user_id)
         for agent in regular_agents:
+            # Get MCP servers for this regular agent
+            mcp_servers = await self.agent_repo.get_agent_mcp_servers(agent.id)
+            mcp_servers_dict = [server.model_dump() for server in mcp_servers]
+
             unified_agent = UnifiedAgentRead(
                 id=str(agent.id),
                 name=agent.name,
@@ -91,6 +96,7 @@ class AgentService:
                 is_active=True,  # Regular agents don't have is_active field
                 created_at=agent.created_at.isoformat(),
                 updated_at=agent.updated_at.isoformat(),
+                mcp_servers=mcp_servers_dict,
             )
             unified_agents.append(unified_agent)
 
@@ -142,6 +148,10 @@ class AgentService:
         # Try regular agent first
         regular_agent = await self.agent_repo.get_agent_by_id(agent_id)
         if regular_agent and regular_agent.user_id == user_id:
+            # Get MCP servers for this regular agent
+            mcp_servers = await self.agent_repo.get_agent_mcp_servers(regular_agent.id)
+            mcp_servers_dict = [server.model_dump() for server in mcp_servers]
+
             return UnifiedAgentRead(
                 id=str(regular_agent.id),
                 name=regular_agent.name,
@@ -157,6 +167,7 @@ class AgentService:
                 is_active=True,
                 created_at=regular_agent.created_at.isoformat(),
                 updated_at=regular_agent.updated_at.isoformat(),
+                mcp_servers=mcp_servers_dict,
             )
 
         # Try graph agent

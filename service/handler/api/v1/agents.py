@@ -236,12 +236,12 @@ async def get_agent(
     return AgentRead(**agent.model_dump())
 
 
-@router.patch("/{agent_id}", response_model=AgentRead)
+@router.patch("/{agent_id}", response_model=AgentReadWithDetails)
 async def update_agent(
     agent_data: AgentUpdate,
     agent: AgentModel = Depends(get_authorized_agent),
     db: AsyncSession = Depends(get_session),
-) -> AgentRead:
+) -> AgentReadWithDetails:
     """
     Update an existing agent's properties.
 
@@ -255,7 +255,7 @@ async def update_agent(
         db: Database session (injected by dependency)
 
     Returns:
-        AgentRead: The updated agent with new timestamps
+        AgentReadWithDetails: The updated agent with new timestamps and MCP servers
 
     Raises:
         HTTPException: 404 if agent not found, 403 if access denied,
@@ -276,7 +276,14 @@ async def update_agent(
         raise HTTPException(status_code=500, detail="Failed to update agent")
 
     await db.commit()
-    return AgentRead(**updated_agent.model_dump())
+
+    # Get MCP servers for the updated agent
+    mcp_servers = await agent_repo.get_agent_mcp_servers(updated_agent.id)
+
+    # Create agent dict with MCP servers
+    agent_dict = updated_agent.model_dump()
+    agent_dict["mcp_servers"] = mcp_servers
+    return AgentReadWithDetails(**agent_dict)
 
 
 @router.delete("/{agent_id}", status_code=204)
