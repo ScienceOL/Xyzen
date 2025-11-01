@@ -3,6 +3,7 @@ import clsx from "clsx";
 import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { ChartDisplay } from "../charts/ChartDisplay";
 
 interface JsonDisplayProps {
   data: unknown;
@@ -10,9 +11,10 @@ interface JsonDisplayProps {
   compact?: boolean; // for smaller displays in tool cards
   variant?: 'default' | 'success' | 'error'; // color theme variants
   hideHeader?: boolean; // option to hide the json header
+  enableCharts?: boolean; // enable automatic chart detection and rendering
 }
 
-const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compact = false, variant = 'default', hideHeader = false }) => {
+export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compact = false, variant = 'default', hideHeader = false, enableCharts = false }) => {
   const [copied, setCopied] = useState(false);
   const [isDark, setIsDark] = React.useState(false);
 
@@ -102,6 +104,21 @@ const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compact = fa
     }
   };
 
+  // If charts are enabled, use ChartDisplay which handles both charts and JSON fallback
+  if (enableCharts) {
+    return (
+      <div className={className}>
+        <ChartDisplay
+          data={data}
+          compact={compact}
+          variant={variant}
+          fallbackToJson={true}
+        />
+      </div>
+    );
+  }
+
+  // Standard JSON display
   const variantColors = getVariantColors();
   const containerClasses = variantColors.container;
   const contentClasses = compact ? "relative p-2" : "code-block-content";

@@ -233,6 +233,7 @@ export default function ToolCallCard({
                     compact
                     variant={jsonVariant}
                     hideHeader
+                    enableCharts={true}
                   />
                 </div>
               )}
