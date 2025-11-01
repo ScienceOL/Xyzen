@@ -6,6 +6,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import type { Agent } from "../layouts/XyzenAgent";
 import { McpServerItem } from "./McpServerItem";
+import { authService } from "@/service/authService";
 
 interface AddAgentModalProps {
   isOpen: boolean;
@@ -15,30 +16,75 @@ interface AddAgentModalProps {
 const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const {
     createAgent,
+    agents,
+    fetchAgents,
+    addGraphAgentToSidebar,
+    hiddenGraphAgentIds,
     mcpServers,
     builtinMcpServers,
     fetchMcpServers,
     fetchBuiltinMcpServers,
     quickAddBuiltinServer,
     openAddMcpServerModal,
+    backendUrl,
   } = useXyzen();
+  const [mode, setMode] = useState<'create' | 'add'>('create');
+  const [selectedExistingAgent, setSelectedExistingAgent] = useState<Agent | null>(null);
+  const [allAvailableGraphAgents, setAllAvailableGraphAgents] = useState<Agent[]>([]);
   const [agent, setAgent] = useState<
     Omit<Agent, "id" | "user_id" | "mcp_servers" | "mcp_server_ids">
   >({
     name: "",
     description: "",
     prompt: "",
+    agent_type: 'regular' as any, // Will be overridden by agentType
   });
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isAutoAddingDefaultMcp, setIsAutoAddingDefaultMcp] = useState(false);
 
-  // Fetch MCP servers and built-in servers when modal opens
+  // Create auth headers helper (same as agentSlice)
+  const createAuthHeaders = (): HeadersInit => {
+    const token = authService.getToken();
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+  };
+
+  // Fetch all available graph agents (including hidden ones) for add mode
+  const fetchAllGraphAgents = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/xyzen/api/v1/agents/all/unified`, {
+        headers: createAuthHeaders(),
+      });
+      if (response.ok) {
+        const allAgents: Agent[] = await response.json();
+        const graphAgents = allAgents.filter(agent =>
+          agent.agent_type === 'graph' && agent.id !== 'default-chat'
+        );
+        setAllAvailableGraphAgents(graphAgents);
+      } else {
+        console.error("Failed to fetch agents, status:", response.status);
+      }
+    } catch (error) {
+      console.error("Failed to fetch all graph agents:", error);
+    }
+  };
+
+  // Fetch MCP servers, built-in servers, and agents when modal opens
   useEffect(() => {
     if (isOpen) {
+      fetchAgents();
+      fetchAllGraphAgents();
       fetchMcpServers();
       fetchBuiltinMcpServers();
     }
-  }, [isOpen, fetchMcpServers, fetchBuiltinMcpServers]);
+  }, [isOpen, fetchAgents, fetchMcpServers, fetchBuiltinMcpServers]);
 
   // Auto-add and select default MCP server (DynamicMCPServer)
   useEffect(() => {
@@ -114,11 +160,26 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (mode === 'add') {
+      // Add existing agent mode
+      if (!selectedExistingAgent) {
+        alert("请选择要添加的助手");
+        return;
+      }
+      // Add the graph agent back to sidebar
+      addGraphAgentToSidebar(selectedExistingAgent.id);
+      handleClose();
+      return;
+    }
+
+    // Create new regular agent mode
     if (!agent.name) {
       alert("助手名称不能为空");
       return;
     }
     try {
+      // Create regular agent only
       await createAgent({
         ...agent,
         mcp_server_ids: mcpServerIds,
@@ -133,18 +194,55 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleClose = () => {
-    setAgent({ name: "", description: "", prompt: "" });
+    setMode('create');
+    setAgent({ name: "", description: "", prompt: "", agent_type: 'regular' as any });
+    setSelectedExistingAgent(null);
     setMcpServerIds([]);
     setIsAutoAddingDefaultMcp(false);
     onClose();
   };
 
+  // Filter existing agents (exclude default agent)
+  const existingAgents = agents.filter(agent => agent.id !== 'default-chat');
+  const regularAgents = existingAgents.filter(agent => agent.agent_type === 'regular');
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="添加新助手">
+    <Modal isOpen={isOpen} onClose={handleClose} title="添加助手">
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        创建一个新的助手来协助您完成任务。
+        创建普通助手或从 Agent Explorer 中添加图形助手到您的侧边栏。
       </p>
+
+      {/* Mode Selection */}
+      <div className="mt-4 flex gap-2 border-b border-neutral-200 dark:border-neutral-700">
+        <button
+          type="button"
+          onClick={() => setMode('create')}
+          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+            mode === 'create'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+          }`}
+        >
+          💬 创建普通助手
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('add')}
+          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+            mode === 'add'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+          }`}
+        >
+          📊 Agent Explorer
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        {mode === 'create' ? (
+          <>
+            {/* Create Mode - Regular Agent Only */}
+
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             名称
@@ -169,6 +267,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
             className="w-full rounded-md border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
           />
         </Field>
+
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             系统提示
@@ -182,6 +281,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
             className="w-full rounded-md border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
           />
         </Field>
+
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             连接的 MCP 服务器
@@ -216,6 +316,82 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
             )}
           </div>
         </Field>
+          </>
+        ) : (
+          <>
+            {/* Agent Explorer Mode */}
+            <div className="space-y-4">
+              {allAvailableGraphAgents.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-neutral-500 dark:text-neutral-400">
+                    No Graph Agents Available
+                  </p>
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                    Graph agents are created using MCP graph tools with complex workflows involving nodes and edges
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setMode('create')}
+                    className="mt-3 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
+                  >
+                    Create Regular Agent Instead
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
+                    📊 Available Graph Agents
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {allAvailableGraphAgents.map((agent) => (
+                      <div
+                        key={agent.id}
+                        onClick={() => setSelectedExistingAgent(agent)}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedExistingAgent?.id === agent.id
+                            ? 'border-indigo-200 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/20'
+                            : 'border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-750'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                              {agent.name}
+                            </h4>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                              {agent.description}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs text-indigo-600 dark:text-indigo-400">
+                                {agent.node_count || 0} 节点
+                              </span>
+                              <span className="text-xs text-indigo-600 dark:text-indigo-400">
+                                {agent.edge_count || 0} 边
+                              </span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                agent.is_active
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
+                                  : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300'
+                              }`}>
+                                {agent.is_active ? 'Ready' : 'Building'}
+                              </span>
+                              {!hiddenGraphAgentIds.includes(agent.id) && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
+                                  已添加
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         <div className="mt-6 flex justify-end gap-4">
           <Button
             type="button"
@@ -226,9 +402,23 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           </Button>
           <Button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-md bg-indigo-600 py-1.5 px-3 text-sm/6 font-semibold text-white shadow-inner shadow-white/10 focus:outline-none data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
+            disabled={mode === 'add' && selectedExistingAgent && !hiddenGraphAgentIds.includes(selectedExistingAgent.id)}
+            className={`inline-flex items-center gap-2 rounded-md py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
+              mode === 'add' && selectedExistingAgent && !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
+                : 'bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400'
+            }`}
           >
-            创建助手
+            {mode === 'add'
+              ? (selectedExistingAgent
+                  ? (hiddenGraphAgentIds.includes(selectedExistingAgent.id)
+                      ? `Add ${selectedExistingAgent.name}`
+                      : `${selectedExistingAgent.name} - Already Added`
+                    )
+                  : 'Select Agent'
+                )
+              : '创建普通助手'
+            }
           </Button>
         </div>
       </form>

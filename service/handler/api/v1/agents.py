@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from core.agent_service import AgentService, UnifiedAgentRead
 from middleware.auth import get_current_user
 from middleware.database import get_session
 from models.agent import Agent as AgentModel
@@ -184,6 +185,32 @@ async def get_agents(
         agents_with_details.append(AgentReadWithDetails(**agent_dict))
 
     return agents_with_details
+
+
+@router.get("/all/unified", response_model=List[UnifiedAgentRead])
+async def get_all_agents_unified(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> List[UnifiedAgentRead]:
+    """
+    Get all agents (both regular and graph) for the current authenticated user.
+
+    Returns a unified list that includes both regular agents and graph agents,
+    with consistent formatting and type indicators. This endpoint is designed
+    for frontend consumption where both agent types should be displayed together.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[UnifiedAgentRead]: Unified list of all agents owned by the user
+
+    Raises:
+        HTTPException: None - this endpoint always succeeds, returning empty list if no agents
+    """
+    agent_service = AgentService(db)
+    return await agent_service.get_all_agents_for_user(user)
 
 
 @router.get("/{agent_id}", response_model=AgentRead)

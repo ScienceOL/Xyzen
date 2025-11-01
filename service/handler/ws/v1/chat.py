@@ -161,12 +161,16 @@ async def handle_tool_call_confirmation(
                 tc_id = tool_call.get("id", f"tool_{int(asyncio.get_event_loop().time() * 1000)}")
                 result = tool_results.get(tc_id)
                 if result:
+                    # Format result for frontend display using the utility function
+                    from core.chat.content_utils import format_tool_result_for_display
+
+                    formatted_result = format_tool_result_for_display(result)
                     completion_event = {
                         "type": "tool_call_response",
                         "data": {
                             "toolCallId": tc_id,
                             "status": "completed",
-                            "result": result,
+                            "result": formatted_result,
                         },
                     }
                     await manager.send_personal_message(json.dumps(completion_event), connection_id)
@@ -196,30 +200,10 @@ async def handle_tool_call_confirmation(
 
             tool_result_messages = []
             for tool_call_id_inner, result in tool_results.items():
-                # Extract clean result for AI consumption
-                if isinstance(result, dict):
-                    if "content" in result:
-                        # Try to extract the actual result value
-                        content = result["content"]
-                        if isinstance(content, str) and content.startswith("[TextContent"):
-                            # Parse the TextContent result to get the actual value
-                            try:
-                                import re
+                # Extract clean result for AI consumption using the utility function
+                from core.chat.content_utils import format_tool_result_for_ai
 
-                                match = re.search(r"text='([^']*)'", content)
-                                if match:
-                                    result_content = match.group(1)
-                                else:
-                                    result_content = str(result)
-                            except Exception:
-                                result_content = str(result)
-                        else:
-                            result_content = str(content)
-                    else:
-                        result_content = str(result)
-                else:
-                    result_content = str(result)
-
+                result_content = format_tool_result_for_ai(result)
                 logger.info(f"Processed tool result for AI: {result_content}")
                 tool_result_messages.append(
                     ChatMessage(role="user", content=f"Tool execution result: {result_content}")

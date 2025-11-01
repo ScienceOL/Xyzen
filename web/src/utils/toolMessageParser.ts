@@ -94,10 +94,17 @@ export function groupToolEvents(
         // Update status based on response (completed or failed)
         existing.status = (event.status as ToolCall["status"]) || "completed";
         if (event.result !== undefined) {
-          existing.result =
-            typeof event.result === "string"
-              ? event.result
-              : JSON.stringify(event.result);
+          // Handle both old format (string/raw) and new structured format from backend
+          if (typeof event.result === "object" && event.result !== null && "content" in event.result) {
+            // New structured format: { type: "json", content: {...}, raw: "..." }
+            existing.result = JSON.stringify(event.result.content, null, 2);
+          } else {
+            // Legacy format: string or direct object
+            existing.result =
+              typeof event.result === "string"
+                ? event.result
+                : JSON.stringify(event.result);
+          }
         }
         if (event.error) {
           existing.error = event.error;

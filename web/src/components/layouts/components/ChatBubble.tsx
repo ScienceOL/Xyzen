@@ -1,4 +1,5 @@
 import ProfileIcon from "@/assets/ProfileIcon";
+import JsonDisplay from "@/components/shared/JsonDisplay";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message, ToolCall } from "@/store/types";
@@ -157,9 +158,18 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
 
           {/* Raw JSON display */}
           <div className="w-full border-l-2 border-orange-400 bg-orange-50/50 dark:border-orange-600 dark:bg-orange-900/20 p-3 rounded-none">
-            <pre className="text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto whitespace-pre-wrap">
-              {content}
-            </pre>
+            <JsonDisplay
+              data={(() => {
+                try {
+                  return JSON.parse(content);
+                } catch {
+                  return content;
+                }
+              })()}
+              compact
+              variant="default"
+              className="bg-transparent border-0"
+            />
           </div>
         </motion.div>
       );

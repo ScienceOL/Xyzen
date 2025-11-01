@@ -14,12 +14,25 @@ export type Agent = {
   id: string;
   name: string;
   description: string;
-  prompt: string;
+  prompt?: string;
   mcp_servers?: { id: string }[];
   mcp_server_ids?: string[];
   user_id: string;
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
+  // New fields for unified agent support
+  agent_type: 'regular' | 'graph';
+  avatar?: string | null;
+  tags?: string[] | null;
+  model?: string | null;
+  temperature?: number | null;
+  is_active?: boolean;
+  created_at: string;
+  updated_at: string;
+  // Graph-specific fields
+  state_schema?: any;
+  node_count?: number;
+  edge_count?: number;
 };
 
 interface AgentCardProps {
@@ -51,6 +64,7 @@ interface ContextMenuProps {
   onDelete: () => void;
   onClose: () => void;
   isDefaultAgent?: boolean;
+  agent?: Agent;
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -60,6 +74,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onDelete,
   onClose,
   isDefaultAgent = false,
+  agent,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -121,7 +136,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
             className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
           >
             <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-            删除助手
+            {agent?.agent_type === 'graph' ? '移除助手' : '删除助手'}
           </button>
         </>
       )}
@@ -186,6 +201,18 @@ const AgentCard: React.FC<AgentCardProps> = ({
             >
               {agent.name}
             </h3>
+
+            {/* Agent type badge */}
+            {agent.agent_type === 'graph' && (
+              <Badge
+                variant="indigo"
+                className="flex items-center gap-1 flex-shrink-0"
+              >
+                📊 {agent.node_count || 0} nodes
+              </Badge>
+            )}
+
+            {/* MCP servers badge */}
             {agent.mcp_servers && agent.mcp_servers.length > 0 && (
               <Badge
                 variant="blue"
@@ -212,6 +239,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
           onDelete={() => onDelete?.(agent)}
           onClose={() => setContextMenu(null)}
           isDefaultAgent={agent.id === "default-chat"}
+          agent={agent}
         />
       )}
     </>
@@ -240,6 +268,7 @@ export default function XyzenAgent() {
     fetchAgents,
     createDefaultChannel,
     deleteAgent,
+    removeGraphAgentFromSidebar,
     chatHistory,
     channels,
     activateChannel,
@@ -253,6 +282,16 @@ export default function XyzenAgent() {
     prompt: "",
     mcp_servers: [],
     user_id: "system",
+    agent_type: "regular",
+    avatar: null,
+    tags: null,
+    model: null,
+    temperature: null,
+    require_tool_confirmation: false,
+    provider_id: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
   useEffect(() => {
@@ -373,12 +412,22 @@ export default function XyzenAgent() {
           isOpen={isConfirmModalOpen}
           onClose={() => setConfirmModalOpen(false)}
           onConfirm={() => {
-            deleteAgent(agentToDelete.id);
+            if (agentToDelete.agent_type === 'graph') {
+              // Remove graph agent from sidebar only
+              removeGraphAgentFromSidebar(agentToDelete.id);
+            } else {
+              // Delete regular agent permanently
+              deleteAgent(agentToDelete.id);
+            }
             setConfirmModalOpen(false);
             setAgentToDelete(null);
           }}
-          title="Delete Agent"
-          message={`Are you sure you want to delete the agent "${agentToDelete.name}"?`}
+          title={agentToDelete.agent_type === 'graph' ? "Remove Graph Agent" : "Delete Agent"}
+          message={
+            agentToDelete.agent_type === 'graph'
+              ? `Are you sure you want to remove "${agentToDelete.name}" from the sidebar? The graph agent will still exist and can be added back later.`
+              : `Are you sure you want to permanently delete the agent "${agentToDelete.name}"? This action cannot be undone.`
+          }
         />
       )}
     </motion.div>

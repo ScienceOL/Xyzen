@@ -1,4 +1,5 @@
 import type { ToolCall } from "@/store/types";
+import JsonDisplay from "@/components/shared/JsonDisplay";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
   CheckCircleIcon,
@@ -87,15 +88,16 @@ export default function ToolCallCard({
     toolCall.status === "completed" || toolCall.status === "failed";
   const [isExpanded, setIsExpanded] = useState(isHistoryMode);
 
-  const formatArguments = (args: Record<string, unknown>) => {
-    try {
-      return JSON.stringify(args, null, 2);
-    } catch {
-      return String(args);
-    }
+  const isWaitingConfirmation = toolCall.status === "waiting_confirmation";
+
+  // Get JsonDisplay variant based on tool call status
+  const getJsonVariant = (): 'success' | 'error' | 'default' => {
+    if (toolCall.status === "completed") return 'success';
+    if (toolCall.status === "failed") return 'error';
+    return 'default';
   };
 
-  const isWaitingConfirmation = toolCall.status === "waiting_confirmation";
+  const jsonVariant = getJsonVariant();
 
   return (
     <motion.div
@@ -179,11 +181,7 @@ export default function ToolCallCard({
           <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             即将执行的参数:
           </h4>
-          <div className="rounded-md bg-neutral-100 p-2 dark:bg-neutral-800">
-            <pre className="text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto">
-              {formatArguments(toolCall.arguments)}
-            </pre>
-          </div>
+          <JsonDisplay data={toolCall.arguments} compact variant={jsonVariant} hideHeader />
         </div>
       )}
 
@@ -204,25 +202,38 @@ export default function ToolCallCard({
                   <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     调用参数:
                   </h4>
-                  <div className="rounded-md bg-neutral-100 p-2 dark:bg-neutral-800">
-                    <pre className="text-xs text-neutral-700 dark:text-neutral-300 overflow-x-auto">
-                      {formatArguments(toolCall.arguments)}
-                    </pre>
-                  </div>
+                  <JsonDisplay data={toolCall.arguments} compact variant={jsonVariant} hideHeader />
                 </div>
               )}
 
               {/* Result */}
               {toolCall.result && (
                 <div className="mb-3">
-                  <h4 className="text-xs font-medium text-green-700 dark:text-green-300 mb-2">
+                  <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     执行结果:
                   </h4>
-                  <div className="rounded-md bg-green-50 p-2 dark:bg-green-900/20">
-                    <pre className="text-xs text-green-800 dark:text-green-200 overflow-x-auto whitespace-pre-wrap">
-                      {toolCall.result}
-                    </pre>
-                  </div>
+                  <JsonDisplay
+                    data={(() => {
+                      // Handle both old format (string) and new format (structured object)
+                      if (typeof toolCall.result === 'string') {
+                        try {
+                          return JSON.parse(toolCall.result);
+                        } catch {
+                          return toolCall.result;
+                        }
+                      } else if (typeof toolCall.result === 'object' && toolCall.result !== null) {
+                        // New structured format from backend
+                        if ('content' in toolCall.result) {
+                          return toolCall.result.content;
+                        }
+                        return toolCall.result;
+                      }
+                      return toolCall.result;
+                    })()}
+                    compact
+                    variant={jsonVariant}
+                    hideHeader
+                  />
                 </div>
               )}
 

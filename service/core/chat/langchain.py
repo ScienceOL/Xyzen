@@ -79,7 +79,10 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Any) -> List[BaseToo
                 try:
                     args_json = json.dumps(kwargs)
                     result = await execute_tool_call(t_db, t_name, args_json, t_agent)
-                    return str(result)
+                    # Format result for AI consumption using the utility function
+                    from core.chat.content_utils import format_tool_result_for_ai
+
+                    return format_tool_result_for_ai(result)
                 except Exception as e:
                     logger.error(f"Tool {t_name} execution failed: {e}")
                     return f"Error: {e}"
@@ -281,12 +284,16 @@ async def get_ai_response_stream_langchain(
                             tool_call_id,
                             last_message.content,
                         )
+                        # Format result for frontend display using the utility function
+                        from core.chat.content_utils import format_tool_result_for_display
+
+                        formatted_result = format_tool_result_for_display(last_message.content)
                         yield {
                             "type": ChatEventType.TOOL_CALL_RESPONSE,
                             "data": {
                                 "toolCallId": tool_call_id,
                                 "status": ToolCallStatus.COMPLETED,
-                                "result": {"content": str(last_message.content)},
+                                "result": formatted_result,
                             },
                         }
 

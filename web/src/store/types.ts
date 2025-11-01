@@ -21,7 +21,7 @@ export interface ToolCall {
     | "executing"
     | "completed"
     | "failed";
-  result?: string;
+  result?: string | { type: string; content: unknown; raw: string };
   error?: string;
   timestamp: string;
 }

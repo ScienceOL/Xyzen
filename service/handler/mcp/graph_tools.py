@@ -1,29 +1,81 @@
 """
-MCP Server for Graph Agent Tools - Base Agent Operations
+MCP Server for Graph Agent Tools - Simple AI Agent Creation
 
-This module provides comprehensive tools for creating, managing, and executing graph-based agents.
-Graph agents are composed of nodes (processing units) and edges (connections) that define
-the flow of execution and data processing.
+This module provides tools for creating graph-based AI agents. Use `create_agent_with_graph`
+for the simplest approach, then `inspect_agent` to verify and `run_agent` to test.
 
-## Node Types Available:
-- 'llm': Language model nodes for text generation and processing
-- 'tool': Function/tool execution nodes for specific operations
-- 'router': Decision-making nodes that route execution based on conditions
-- 'subagent': Nested agent execution nodes
-- 'start': Entry point nodes (required for each graph)
-- 'end': Exit point nodes (required for each graph)
+## 🚀 RECOMMENDED: CREATE COMPLETE AGENT IN ONE CALL
 
-## Common Node Configurations:
-- LLM nodes: {"model": "gpt-5", "system_prompt": "..."}
-- Tool nodes: {"tool_name": "search", "parameters": {...}}
-- Router nodes: {"conditions": [{"field": "intent", "value": "search", "target": "search_node"}]}
-- Start/End nodes: {} (minimal config required)
+Use `create_agent_with_graph()` - it's the easiest way to create working agents:
 
-## State Schema Guidelines:
-The state schema defines the data structure that flows between nodes. Common patterns:
-- Always include "messages" array for conversation history
-- Include "current_step" for tracking execution flow
-- Add domain-specific fields based on your use case
+```python
+create_agent_with_graph(
+    name="Q&A Assistant",
+    description="Answers user questions",
+    state_schema={
+        "type": "object",
+        "properties": {
+            "messages": {"type": "array"},
+            "current_step": {"type": "string"},
+            "user_input": {"type": "string"},
+            "final_output": {"type": "string"}
+        },
+        "required": ["messages", "current_step"]
+    },
+    nodes=[
+        {"name": "start", "node_type": "start", "config": {}},
+        {
+            "name": "assistant",
+            "node_type": "llm",
+            "config": {
+                "model": "gpt-5",
+                "provider_name": "system",
+                "system_prompt": "You are a helpful assistant. Answer questions clearly."
+            }
+        },
+        {"name": "end", "node_type": "end", "config": {}}
+    ],
+    edges=[
+        {"from_node": "start", "to_node": "assistant"},
+        {"from_node": "assistant", "to_node": "end"}
+    ]
+)
+```
+
+Then ALWAYS use `inspect_agent(agent_id)` to verify your agent before running it!
+
+## 🚨 CRITICAL: ALWAYS USE SYSTEM PROVIDER
+
+For ALL LLM nodes: `"provider_name": "system"` is REQUIRED!
+
+## 📈 WORKFLOW: CREATE → INSPECT → RUN
+
+1. **Create**: Use `create_agent_with_graph()` (copy the template above)
+2. **Inspect**: Use `inspect_agent(agent_id)` to verify structure
+3. **Run**: Use `run_agent(agent_id, input_state)` to test
+
+## 📋 QUICK NODE REFERENCE
+
+- **"start"**: Entry point, config: `{}`
+- **"llm"**: AI processing, config: `{"model": "gpt-5", "provider_name": "system", "system_prompt": "..."}`
+- **"tool"**: Function calls, config: `{"tool_name": "function_name"}`
+- **"router"**: Branching logic, config: `{"conditions": [...], "default_target": "node_name"}`
+- **"end"**: Exit point, config: `{}`
+
+## 🔧 ADVANCED: Individual Functions
+
+If you need to build agents step-by-step instead of using `create_agent_with_graph`:
+- `create_agent()`: Create empty agent
+- `add_node()`: Add individual nodes
+- `add_edge()`: Connect nodes
+- `define_state()`: Customize state schema
+
+## 🛠️ ESSENTIAL TOOLS
+
+- `inspect_agent(agent_id)`: **ALWAYS use this to verify your agent!**
+- `validate_agent_structure(agent_id)`: Check for problems
+- `list_agents()`: See all your agents
+- `run_agent(agent_id, input_state)`: Execute your agent
 """
 
 import json
@@ -115,6 +167,7 @@ def get_node_config_template(node_type: str) -> dict[str, Any]:
     templates = {
         "llm": {
             "model": "gpt-5",
+            "provider_name": "system",
             "system_prompt": "You are a helpful assistant. Process the input and provide a response.",
         },
         "tool": {"tool_name": "example_tool", "parameters": {}, "timeout_seconds": 30},
@@ -146,30 +199,19 @@ async def create_agent(
     description: str,
 ) -> str:
     """
-    Create a new empty graph agent with a basic state schema.
+    ⚠️ ADVANCED: Create empty agent (requires more steps)
 
-    This creates an agent with minimal configuration that you can then build upon
-    by adding nodes and edges. The agent starts with a default state schema that
-    includes common fields like messages, current_step, user_input, etc.
+    Creates an empty agent that you must build manually with add_node() and add_edge().
+    Most users should use create_agent_with_graph() instead for simpler workflow.
 
     Args:
-        name: Name of the graph agent (e.g., "Customer Support Bot", "Data Processor")
-        description: Detailed description of what the agent does and its purpose
-                    (e.g., "Handles customer inquiries and routes to appropriate departments")
+        name: Agent name
+        description: What the agent does
 
     Returns:
-        JSON string with:
-        - status: "success" or "error"
-        - message: Human-readable result message
-        - agent_id: UUID of the created agent (use this for further operations)
-        - name: Confirmed agent name
-        - description: Confirmed agent description
+        JSON with agent_id for use in add_node() and add_edge() calls
 
-    Example Usage:
-        create_agent(
-            name="Research Assistant",
-            description="Helps users research topics by searching and summarizing information"
-        )
+    💡 RECOMMENDED: Use create_agent_with_graph() instead for easier agent creation!
     """
     user_info = get_current_user()
 
@@ -219,36 +261,16 @@ async def create_agent(
 @mcp.tool
 async def define_state(agent_id: str, state_schema: dict[str, Any]) -> str:
     """
-    Define or update the state schema for a graph agent.
+    ⚠️ ADVANCED: Customize state schema (rarely needed)
 
-    The state schema defines the structure of data that flows between nodes in your
-    graph agent. This is crucial for validation and ensuring nodes can properly
-    communicate with each other.
+    Updates the data structure that flows between nodes. Most users should skip this
+    since create_agent_with_graph() includes a good default schema.
 
     Args:
-        agent_id: UUID of the graph agent to update
-        state_schema: JSON Schema object defining the state structure.
-                     Must include "type": "object" and "properties" field.
+        agent_id: Agent ID from create_agent()
+        state_schema: JSON schema object
 
-    Returns:
-        JSON string with operation result
-
-    Example Usage:
-        define_state(
-            agent_id="12345678-1234-1234-1234-123456789abc",
-            state_schema={
-                "type": "object",
-                "properties": {
-                    "messages": {"type": "array", "items": {"type": "object"}},
-                    "current_step": {"type": "string"},
-                    "user_query": {"type": "string"},
-                    "search_results": {"type": "array"},
-                    "final_answer": {"type": "string"},
-                    "confidence_score": {"type": "number", "minimum": 0, "maximum": 1}
-                },
-                "required": ["messages", "current_step"]
-            }
-        )
+    💡 RECOMMENDED: Use create_agent_with_graph() with default schema instead!
     """
     user_info = get_current_user()
 
@@ -300,93 +322,18 @@ async def add_node(
     position_y: float | None = None,
 ) -> str:
     """
-    Add a node to a graph agent.
+    ⚠️ ADVANCED: Add individual nodes (manual method)
 
-    Nodes are the processing units in your graph agent. Each node type has specific
-    configuration requirements and capabilities.
+    Adds a single node to an agent created with create_agent().
+    Most users should use create_agent_with_graph() instead for simpler workflow.
 
     Args:
-        agent_id: UUID of the graph agent to add the node to
-        name: Unique name for the node within the agent (used for connecting edges)
-        node_type: Type of node - one of: 'llm', 'tool', 'router', 'subagent', 'start', 'end'
-        config: Configuration dict specific to the node type (see examples below)
-        position_x: X coordinate for visual layout (optional, for UI)
-        position_y: Y coordinate for visual layout (optional, for UI)
+        agent_id: Agent ID from create_agent()
+        name: Unique node name
+        node_type: "start", "llm", "tool", "router", "end"
+        config: Node configuration (LLM nodes need "provider_name": "system")
 
-    Returns:
-        JSON string with node creation result and assigned node_id
-
-    Node Type Configuration Examples:
-
-    LLM Node:
-        add_node(
-            agent_id="...",
-            name="analyzer",
-            node_type="llm",
-            config={
-                "model": "gpt-5",
-                "system_prompt": "You are an expert data analyst. Analyze the input and provide insights."
-            }
-        )
-
-    LLM Node with Specific Provider:
-        add_node(
-            agent_id="...",
-            name="analyzer",
-            node_type="llm",
-            config={
-                "model": "gpt-5",
-                "provider_name": "system",  # Use system provider
-                "system_prompt": "You are an expert data analyst. Analyze the input and provide insights."
-            }
-        )
-
-    Tool Node:
-        add_node(
-            agent_id="...",
-            name="web_search",
-            node_type="tool",
-            config={
-                "tool_name": "search_web",
-                "parameters": {
-                    "max_results": 5,
-                    "include_snippets": True
-                }
-            }
-        )
-
-    Router Node:
-        add_node(
-            agent_id="...",
-            name="intent_router",
-            node_type="router",
-            config={
-                "conditions": [
-                    {"field": "user_intent", "operator": "equals", "value": "search", "target": "search_node"},
-                    {"field": "user_intent", "operator": "equals", "value": "summarize", "target": "summary_node"}
-                ],
-                "default_target": "help_node"
-            }
-        )
-
-    Start Node:
-        add_node(
-            agent_id="...",
-            name="start",
-            node_type="start",
-            config={}  # Minimal config for start nodes
-        )
-
-    End Node:
-        add_node(
-            agent_id="...",
-            name="end",
-            node_type="end",
-            config={
-                "output_format": "json",  # Optional: specify output formatting
-                "cleanup_actions": ["save_logs"]  # Optional: cleanup tasks
-            }
-        )
+    💡 RECOMMENDED: Use create_agent_with_graph() instead for easier agent creation!
     """
     user_info = get_current_user()
 
@@ -464,17 +411,17 @@ async def add_edge(
     label: str | None = None,
 ) -> str:
     """
-    Add an edge between two nodes in a graph agent.
+    ⚠️ ADVANCED: Connect nodes manually
+
+    Connects nodes created with add_node(). Node names must match exactly.
+    Most users should use create_agent_with_graph() instead for simpler workflow.
 
     Args:
-        agent_id: ID of the graph agent
-        from_node: Name of the source node
-        to_node: Name of the target node
-        condition: Optional condition for routing
-        label: Optional label for the edge
+        agent_id: Agent ID from create_agent()
+        from_node: Source node name (must exist)
+        to_node: Target node name (must exist)
 
-    Returns:
-        JSON string containing creation result
+    💡 RECOMMENDED: Use create_agent_with_graph() instead for easier agent creation!
     """
     user_info = get_current_user()
 
@@ -531,14 +478,29 @@ async def add_edge(
 @mcp.tool
 async def run_agent(agent_id: str, input_state: dict[str, Any]) -> str:
     """
-    Execute a graph agent with the given input state.
+    🚀 ESSENTIAL: Execute your agent
+
+    Runs your agent with the provided input. Use this to test and interact with your agent.
 
     Args:
-        agent_id: ID of the graph agent to execute
-        input_state: Initial state for execution
+        agent_id: Agent ID from create_agent_with_graph()
+        input_state: Input data - MUST include these fields:
+                    {"user_input": "question", "messages": [], "current_step": "start"}
 
     Returns:
-        JSON string containing execution result
+        JSON with execution results and the agent's response
+
+    ✅ EXAMPLE:
+    run_agent(
+        agent_id="your-agent-id",
+        input_state={
+            "user_input": "Hello, how are you?",
+            "messages": [],
+            "current_step": "start"
+        }
+    )
+
+    💡 TIP: Use inspect_agent() first to verify your agent is properly structured!
     """
     user_info = get_current_user()
 
@@ -655,17 +617,67 @@ async def create_agent_with_graph(
     edges: list[dict[str, Any]],
 ) -> str:
     """
-    Create a complete graph agent with nodes and edges in a single operation.
+    🚀 RECOMMENDED: Create a complete working agent in one call
+
+    This is the easiest and most reliable way to create graph agents.
+    Copy the template below and modify it for your needs.
 
     Args:
-        name: Name of the graph agent
-        description: Description of what the agent does
-        state_schema: JSON schema definition for the agent state
-        nodes: List of nodes to create
-        edges: List of edges to create
+        name: Short name for your agent
+        description: What the agent does
+        state_schema: Use the template below (copy exactly)
+        nodes: List of nodes (start, processing nodes, end)
+        edges: List of connections between nodes
 
     Returns:
-        JSON string containing creation result
+        JSON with agent_id and creation confirmation
+
+    ✅ COPY THIS TEMPLATE (works every time):
+
+    create_agent_with_graph(
+        name="Your Agent Name",
+        description="What your agent does",
+        state_schema={
+            "type": "object",
+            "properties": {
+                "messages": {"type": "array"},
+                "current_step": {"type": "string"},
+                "user_input": {"type": "string"},
+                "final_output": {"type": "string"}
+            },
+            "required": ["messages", "current_step"]
+        },
+        nodes=[
+            {"name": "start", "node_type": "start", "config": {}},
+            {
+                "name": "assistant",
+                "node_type": "llm",
+                "config": {
+                    "model": "gpt-5",
+                    "provider_name": "system",
+                    "system_prompt": "Your custom prompt here"
+                }
+            },
+            {"name": "end", "node_type": "end", "config": {}}
+        ],
+        edges=[
+            {"from_node": "start", "to_node": "assistant"},
+            {"from_node": "assistant", "to_node": "end"}
+        ]
+    )
+
+    🔧 CUSTOMIZE:
+    - Change the agent name and description
+    - Modify the system_prompt for your use case
+    - Add more nodes between "start" and "end" if needed
+    - Connect new nodes with additional edges
+
+    ⚠️ CRITICAL: Always include "provider_name": "system" for LLM nodes!
+
+    📋 NEXT STEPS:
+    1. Run this function to get agent_id
+    2. Use inspect_agent(agent_id) to verify
+    3. Use run_agent(agent_id, input_state) to test
     """
     user_info = get_current_user()
 
@@ -745,23 +757,29 @@ async def create_agent_with_graph(
 @mcp.tool
 async def inspect_agent(agent_id: str) -> str:
     """
-    Get detailed information about a graph agent including its structure.
+    🔍 ESSENTIAL: View your agent structure (ALWAYS use this!)
 
-    This tool provides comprehensive information about an agent's configuration,
-    nodes, edges, and overall structure for debugging and understanding purposes.
+    This shows you exactly what your agent looks like - its nodes, connections,
+    and whether it's properly structured. Use this after creating any agent!
 
     Args:
-        agent_id: UUID of the graph agent to inspect
+        agent_id: The agent_id from create_agent_with_graph() result
 
     Returns:
-        JSON string with complete agent details including:
-        - Agent metadata (name, description, state schema)
-        - List of all nodes with their configurations
-        - List of all edges with their conditions
-        - Graph statistics and validation info
+        Complete agent information including:
+        - All nodes and their configurations
+        - All connections (edges)
+        - Validation status (errors/warnings)
+        - Structure overview
 
-    Example Usage:
-        inspect_agent(agent_id="12345678-1234-1234-1234-123456789abc")
+    💡 USE THIS TO:
+    - Verify your agent was created correctly
+    - Debug connection issues
+    - Check node configurations
+    - Confirm the agent is ready to run
+
+    Example:
+        inspect_agent(agent_id="your-agent-id-here")
     """
     user_info = get_current_user()
 
