@@ -6,7 +6,7 @@ Uses LangChain's create_agent for automatic tool execution and conversation mana
 import asyncio
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, TypeVar
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -19,6 +19,10 @@ from models.topic import Topic as TopicModel
 from schemas.chat_events import ChatEventType, ProcessingStatus, ToolCallStatus
 
 from .messages import build_system_prompt
+
+if TYPE_CHECKING:
+    from handler.ws.v1.chat import ConnectionManager
+    from models.agent import Agent
 
 logger = logging.getLogger(__name__)
 
@@ -142,9 +146,47 @@ async def get_ai_response_stream_langchain(
     message_text: str,
     topic: TopicModel,
     user_id: str,
-    connection_manager: Optional[Any] = None,
-    connection_id: Optional[str] = None,
-) -> AsyncGenerator[Dict[str, Any], None]:
+    connection_manager: "ConnectionManager | None" = None,
+    connection_id: str | None = None,
+) -> AsyncGenerator[dict[str, Any], None]:
+    """
+    Gets a streaming response using the execution router.
+    Routes to appropriate agent handler based on agent type.
+    """
+    try:
+        # Import here to avoid circular imports
+        from core.chat.execution_router import ChatExecutionRouter
+        from repo.session import SessionRepository
+
+        # Get agent_id from session
+        session_repo = SessionRepository(db)
+        session = await session_repo.get_session_by_id(topic.session_id)
+        agent_id = session.agent_id if session else None
+
+        # Route execution based on agent type
+        router = ChatExecutionRouter(db)
+        async for event in router.route_execution_stream(
+            message_text, topic, user_id, agent_id, connection_manager, connection_id
+        ):
+            yield event
+
+    except Exception as e:
+        logger.error(f"Failed to get AI response stream: {e}")
+        yield {
+            "type": ChatEventType.ERROR,
+            "data": {"error": f"I'm sorry, but I encountered an error while processing your request: {e}"},
+        }
+
+
+async def get_ai_response_stream_langchain_legacy(
+    db: AsyncSession,
+    message_text: str,
+    topic: TopicModel,
+    user_id: str,
+    agent: "Agent | None" = None,
+    connection_manager: "ConnectionManager | None" = None,
+    connection_id: str | None = None,
+) -> AsyncGenerator[dict[str, Any], None]:
     """
     Gets a streaming response using LangChain Agent.
     Supports multi-turn conversation with automatic tool execution.
@@ -161,17 +203,18 @@ async def get_ai_response_stream_langchain(
         yield {"type": ChatEventType.ERROR, "data": {"error": "No LLM providers configured."}}
         return
 
-    # Load session and agent first (needed for provider selection)
-    from repo.agent import AgentRepository
-    from repo.session import SessionRepository
+    # Use the provided agent parameter (for legacy compatibility)
+    # If no agent provided, try to load from session
+    if agent is None:
+        from repo.agent import AgentRepository
+        from repo.session import SessionRepository
 
-    session_repo = SessionRepository(db)
-    session = await session_repo.get_session_by_id(topic.session_id)
+        session_repo = SessionRepository(db)
+        session = await session_repo.get_session_by_id(topic.session_id)
 
-    agent = None
-    if session and session.agent_id:
-        agent_repo = AgentRepository(db)
-        agent = await agent_repo.get_agent_by_id(session.agent_id)
+        if session and session.agent_id:
+            agent_repo = AgentRepository(db)
+            agent = await agent_repo.get_agent_by_id(session.agent_id)
 
     # Select provider using loaded agent or use active provider
     provider_name = None

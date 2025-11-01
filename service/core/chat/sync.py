@@ -8,6 +8,7 @@ from typing import List
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import ChatCompletionRequest, ChatMessage, get_user_provider_manager
+from models.agent import Agent
 from models.topic import Topic as TopicModel
 
 from .messages import build_system_prompt
@@ -24,6 +25,36 @@ async def get_ai_response(
 ) -> str:
     """
     Gets a response from the AI model based on the message and chat history.
+    Routes to appropriate execution engine (regular vs graph agents).
+    """
+    try:
+        # Import here to avoid circular imports
+        from core.chat.execution_router import ChatExecutionRouter
+        from repo.session import SessionRepository
+
+        # Get agent_id from session
+        session_repo = SessionRepository(db)
+        session = await session_repo.get_session_by_id(topic.session_id)
+        agent_id = session.agent_id if session else None
+
+        # Route execution based on agent type
+        router = ChatExecutionRouter(db)
+        return await router.route_execution(message_text, topic, user_id, agent_id)
+
+    except Exception as e:
+        logger.error(f"Failed to get AI response: {e}")
+        return f"I'm sorry, but I encountered an error while processing your request: {e}"
+
+
+async def get_ai_response_legacy(
+    db: AsyncSession,
+    message_text: str,
+    topic: TopicModel,
+    user_id: str,
+    agent: Agent | None = None,
+) -> str:
+    """
+    Gets a response from the AI model based on the message and chat history.
     """
     try:
         user_provider_manager = await get_user_provider_manager(user_id, db)
@@ -31,17 +62,18 @@ async def get_ai_response(
         logger.error(f"Failed to get provider manager for user {user_id}: {e}")
         return "Sorry, no LLM providers configured. Please configure a provider first."
 
-    # Load session and agent for provider selection
-    from repo.agent import AgentRepository
-    from repo.session import SessionRepository
+    # Use the provided agent parameter (for legacy compatibility)
+    # If no agent provided, try to load from session
+    if agent is None:
+        from repo.agent import AgentRepository
+        from repo.session import SessionRepository
 
-    session_repo = SessionRepository(db)
-    session = await session_repo.get_session_by_id(topic.session_id)
+        session_repo = SessionRepository(db)
+        session = await session_repo.get_session_by_id(topic.session_id)
 
-    agent = None
-    if session and session.agent_id:
-        agent_repo = AgentRepository(db)
-        agent = await agent_repo.get_agent_by_id(session.agent_id)
+        if session and session.agent_id:
+            agent_repo = AgentRepository(db)
+            agent = await agent_repo.get_agent_by_id(session.agent_id)
 
     provider = None
     if agent and agent.provider_id:

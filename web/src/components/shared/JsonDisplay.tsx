@@ -66,11 +66,11 @@ const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compact = fa
       case 'success':
         return {
           container: compact
-            ? "rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700"
-            : "code-block-container bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700",
+            ? "rounded-md bg-green-50/50 dark:bg-green-900/10 border border-green-200/60 dark:border-green-700/60"
+            : "code-block-container bg-green-50/50 dark:bg-green-900/10 border-green-200/60 dark:border-green-700/60",
           header: compact
-            ? "flex items-center justify-between px-2 py-1 bg-green-100 dark:bg-green-800/50 border-b border-green-200 dark:border-green-600 rounded-t-md"
-            : "code-block-header bg-green-100 dark:bg-green-800/50",
+            ? "flex items-center justify-between px-2 py-1 bg-green-100/60 dark:bg-green-800/30 border-b border-green-200/60 dark:border-green-600/60 rounded-t-md"
+            : "code-block-header bg-green-100/60 dark:bg-green-800/30",
           text: compact
             ? "text-xs font-mono text-green-700 dark:text-green-300"
             : "code-block-header__label text-green-700 dark:text-green-300"
