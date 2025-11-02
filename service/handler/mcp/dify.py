@@ -3,7 +3,6 @@ import logging
 
 import requests
 from fastmcp import FastMCP
-from fastmcp.server.dependencies import AccessToken, get_access_token
 
 from internal import configs
 

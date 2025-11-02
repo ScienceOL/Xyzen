@@ -152,7 +152,8 @@ class SessionRepository:
         max_topic_activity = (
             select(Topic.session_id, func.max(Topic.updated_at).label("latest_activity"))
             # Type UUID is not compatible with accepted types
-            .group_by(Topic.session_id).subquery()  # pyright: ignore[reportArgumentType]
+            .group_by(Topic.session_id)  # pyright: ignore[reportArgumentType]
+            .subquery()  # pyright: ignore[reportArgumentType]
         )
         statement = (
             select(SessionModel)

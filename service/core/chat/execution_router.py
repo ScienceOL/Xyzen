@@ -196,8 +196,7 @@ class ChatExecutionRouter:
                     "type": ChatEventType.ERROR,
                     "data": {
                         "error": (
-                            "I'm sorry, but I couldn't find the specified agent or "
-                            "you don't have permission to use it."
+                            "I'm sorry, but I couldn't find the specified agent or you don't have permission to use it."
                         )
                     },
                 }
@@ -209,13 +208,23 @@ class ChatExecutionRouter:
             if agent_type == "graph":
                 logger.info(f"Routing to graph agent execution for agent {agent_id}")
                 async for event in self._execute_graph_agent_stream(
-                    message_text, topic, user_id, agent, connection_manager, connection_id  # type: ignore
+                    message_text,
+                    topic,
+                    user_id,
+                    agent,  # type: ignore
+                    connection_manager,
+                    connection_id,  # type: ignore
                 ):
                     yield event
             else:
                 logger.info(f"Routing to regular agent execution for agent {agent_id}")
                 async for event in self._execute_regular_agent_stream(
-                    message_text, topic, user_id, agent, connection_manager, connection_id  # type: ignore
+                    message_text,
+                    topic,
+                    user_id,
+                    agent,  # type: ignore
+                    connection_manager,
+                    connection_id,  # type: ignore
                 ):
                     yield event
 

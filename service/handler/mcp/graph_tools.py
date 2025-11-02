@@ -737,8 +737,7 @@ async def create_agent_with_graph(
                 {
                     "status": "success",
                     "message": (
-                        f"Successfully created graph agent '{name}' with {len(nodes)} nodes "
-                        f"and {edges_created} edges"
+                        f"Successfully created graph agent '{name}' with {len(nodes)} nodes and {edges_created} edges"
                     ),
                     "agent_id": str(agent.id),
                     "name": name,

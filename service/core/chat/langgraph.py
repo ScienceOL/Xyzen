@@ -342,8 +342,7 @@ class LangGraphExecutor:
                 # Log the model being used
                 if model_name:
                     logger.debug(
-                        f"LLM node '{node.name}' using model '{model_name}'"
-                        f" with provider '{provider_name or 'active'}'"
+                        f"LLM node '{node.name}' using model '{model_name}' with provider '{provider_name or 'active'}'"
                     )
 
                 # Create LangChain model

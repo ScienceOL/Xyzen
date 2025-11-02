@@ -1,6 +1,5 @@
 # TODO: 1. 从 Studio 获取实验室设备及相关动作逻辑
 class LaboratoryService:
-
     def __init__(self) -> None:
         # 初始化实验室服务
         raise NotImplementedError("This service is not implemented yet.")

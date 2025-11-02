@@ -145,7 +145,7 @@ async def handle_tool_call_confirmation(
         topic = pending_info["topic"]
         messages = pending_info["messages"]
         provider = pending_info["provider"]
-        message_id = pending_info["message_id"]
+        # message_id = pending_info["message_id"]
         model = pending_info["model"]
 
         # Import necessary functions
@@ -221,7 +221,7 @@ async def handle_tool_call_confirmation(
             # Log the complete message history being sent to AI
             logger.info(f"Sending {len(final_messages)} messages to AI for final response:")
             for i, msg in enumerate(final_messages):
-                logger.info(f"Message {i+1}: role={msg.role}, content={msg.content[:200]}...")
+                logger.info(f"Message {i + 1}: role={msg.role}, content={msg.content[:200]}...")
 
             # Use streaming for the final AI response if supported
             if provider.supports_streaming():

@@ -3,12 +3,13 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
 
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
 
     "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit",
-      "source.unusedImports": "explicit"
+      "source.unusedImports": "explicit",
+      "source.fixAll.ruff": "explicit"
     }
   },
 
@@ -122,14 +123,7 @@
     "reportImplicitStringConcatenation": "none"
   },
 
-  "black-formatter.args": ["--line-length", "119"],
-
-  "flake8.args": [
-    "--max-line-length",
-    "119",
-    "--ignore",
-    "F401 W503 F541 F841 E226"
-  ],
+  // Ruff configuration is handled via service/pyproject.toml
 
   "todo-tree.highlights.defaultHighlight": {
     "icon": "alert",

@@ -83,9 +83,7 @@ class McpRepository:
             List of online McpServer instances.
         """
         logger.debug(f"Fetching online MCP servers for user_id: {user_id}")
-        result = await self.db.exec(
-            select(McpServer).where(McpServer.user_id == user_id, McpServer.status == "online")
-        )
+        result = await self.db.exec(select(McpServer).where(McpServer.user_id == user_id, McpServer.status == "online"))
         servers = list(result.all())
         logger.debug(f"Found {len(servers)} online MCP servers for user {user_id}")
         return servers

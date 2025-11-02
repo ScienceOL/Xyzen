@@ -640,7 +640,6 @@ def get_workflow_list(
             "Authorization": f"Bearer {access_token.token}",
             "Accept": "application/json",
         }
-        from typing import Iterable, Mapping, Union
 
         params: ParamsType = {
             "page": page,

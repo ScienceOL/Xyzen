@@ -162,7 +162,7 @@ async def get_ai_response_legacy(
                     f"tool_calls={final_response.tool_calls}"
                 )
                 if final_response.content:
-                    logger.info(f"Received final AI response after tool execution")
+                    logger.info("Received final AI response after tool execution")
                     return final_response.content
                 else:
                     logger.warning(f"Final response had no content: {final_response}")

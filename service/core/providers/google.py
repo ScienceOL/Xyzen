@@ -188,8 +188,7 @@ class GoogleProvider(BaseLLMProvider):
                         # Some versions of the Google GenAI library may support tools differently
                         # For now, we'll log that tools are requested but not fully supported
                         logger.info(
-                            f"Tools requested for {request.model} but may not be"
-                            f" fully supported in this implementation"
+                            f"Tools requested for {request.model} but may not be fully supported in this implementation"
                         )
                 except Exception as tool_error:
                     logger.warning(f"Failed to process tools for {request.model}: {tool_error}")

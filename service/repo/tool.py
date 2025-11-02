@@ -138,9 +138,7 @@ class ToolRepository:
         Returns:
             List of Tool instances ordered by creation time (desc).
         """
-        logger.debug(
-            f"Fetching tools for user_id: {user_id}, is_active: {is_active}, limit: {limit}, offset: {offset}"
-        )
+        logger.debug(f"Fetching tools for user_id: {user_id}, is_active: {is_active}, limit: {limit}, offset: {offset}")
 
         query = select(Tool).where(Tool.user_id == user_id)
         if is_active is not None:
@@ -316,9 +314,7 @@ class ToolRepository:
         Returns:
             The newly created ToolFunction instance.
         """
-        logger.debug(
-            f"Creating new tool function for user_id: {user_id}, function_name: {function_data.function_name}"
-        )
+        logger.debug(f"Creating new tool function for user_id: {user_id}, function_name: {function_data.function_name}")
         function_dict = function_data.model_dump()
         function_dict["user_id"] = user_id
         function = ToolFunction(**function_dict)
@@ -487,9 +483,7 @@ class ToolRepository:
         function = result.one_or_none()
         return function
 
-    async def get_functions_by_names(
-        self, tool_version_id: uuid.UUID, function_names: list[str]
-    ) -> list[ToolFunction]:
+    async def get_functions_by_names(self, tool_version_id: uuid.UUID, function_names: list[str]) -> list[ToolFunction]:
         """
         Get tool functions by version ID and list of function names.
 

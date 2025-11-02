@@ -255,9 +255,9 @@ async def get_ai_response_stream_langchain_legacy(
 
         stream_id = f"stream_{int(asyncio.get_event_loop().time() * 1000)}"
         is_streaming = False
-        current_step = None
+        # current_step = None
         assistant_buffer: List[str] = []  # collect tokens/final text for persistence
-        got_stream_tokens = False  # whether we received token-by-token chunks
+        # got_stream_tokens = False  # whether we received token-by-token chunks
 
         # Use astream with multiple stream modes: "updates" for step progress, "messages" for token streaming
         logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
@@ -284,7 +284,7 @@ async def get_ai_response_stream_langchain_legacy(
                     continue
 
                 for step_name, step_data in data.items():
-                    current_step = step_name
+                    # current_step = step_name
                     logger.debug("Update step: %s", step_name)
                     logger.debug("Step data: %s", step_data)
 
@@ -398,7 +398,7 @@ async def get_ai_response_stream_langchain_legacy(
                         "data": {"id": stream_id, "content": token_text},
                     }
                     assistant_buffer.append(token_text)
-                    got_stream_tokens = True
+                    # got_stream_tokens = True
 
         # Finalize streaming after processing all chunks
         if is_streaming:

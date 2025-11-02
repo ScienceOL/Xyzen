@@ -165,9 +165,7 @@ class ConsumeRepository:
         """
         logger.debug(f"Fetching consume records for topic_id: {topic_id}")
         result = await self.db.exec(
-            select(ConsumeRecord)
-            .where(ConsumeRecord.topic_id == topic_id)
-            .order_by(ConsumeRecord.created_at.desc())  # type: ignore
+            select(ConsumeRecord).where(ConsumeRecord.topic_id == topic_id).order_by(ConsumeRecord.created_at.desc())  # type: ignore
         )
         records = list(result.all())
         logger.debug(f"Found {len(records)} consume records for topic {topic_id}")

@@ -4,7 +4,7 @@ Provides abstract base classes and concrete implementations for different LLM pr
 """
 
 import logging
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, Type
 
 from langchain_core.language_models import BaseChatModel
 from pydantic import SecretStr

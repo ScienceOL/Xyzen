@@ -132,14 +132,14 @@ def format_tool_result(tool_result: Any, tool_name: str) -> str:
             if tool_name == "tool_environment_current_functions" and isinstance(data, dict):
                 if "summary" in data:
                     summary = data["summary"]
-                    formatted = f"Tool Environment Status:\n"
+                    formatted = "Tool Environment Status:\n"
                     formatted += f"• Total Functions: {summary.get('total_functions', 'N/A')}\n"
                     formatted += f"• Built-in Tools: {summary.get('builtin_tools', 'N/A')}\n"
                     formatted += f"• Dynamic Tools: {summary.get('dynamic_tools', 'N/A')}\n"
                     formatted += f"• Proxy Tools: {summary.get('proxy_tools', 'N/A')}\n"
                     formatted += f"• Tool Environments: {summary.get('tool_environments', 'N/A')}\n"
                     if "builtin_tools" in data and isinstance(data["builtin_tools"], dict):
-                        formatted += f"\nAvailable Built-in Tools:\n"
+                        formatted += "\nAvailable Built-in Tools:\n"
                         for tool, info in list(data["builtin_tools"].items())[:5]:
                             formatted += f"• {tool}: {info.get('description', 'No description')[:100]}...\n"
                         if len(data["builtin_tools"]) > 5:

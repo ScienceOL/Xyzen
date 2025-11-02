@@ -56,7 +56,7 @@ async def get_auth_status() -> AuthStatusResponse:
 
 @router.post("/validate", response_model=AuthValidationResponse)
 async def validate_token(
-    authorization: Optional[str] = Header(None, description="Bearer token")
+    authorization: Optional[str] = Header(None, description="Bearer token"),
 ) -> AuthValidationResponse:
     """验证 access_token 并返回用户信息"""
     logger.info("开始验证 access_token")
@@ -118,9 +118,7 @@ async def validate_token(
 
 
 @router.get("/me", response_model=UserInfoResponse)
-async def get_current_user(
-    authorization: Optional[str] = Header(None, description="Bearer token")
-) -> UserInfoResponse:
+async def get_current_user(authorization: Optional[str] = Header(None, description="Bearer token")) -> UserInfoResponse:
     """获取当前用户信息（需要有效的 token）"""
 
     # 先验证 token

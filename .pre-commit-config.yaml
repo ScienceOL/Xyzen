@@ -7,39 +7,18 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
 
-  # Python后端检查
-  - repo: https://github.com/psf/black
-    rev: 25.9.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.3
     hooks:
-      - id: black
-        args: [--line-length=119, --config=service/pyproject.toml]
+      - id: ruff-check
+        args: [--config=service/pyproject.toml, --fix]
+        files: ^service/
+      - id: ruff-format
+        args: [--config=service/pyproject.toml]
         files: ^service/
 
-  - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
-    hooks:
-      - id: isort
-        args:
-          [
-            "--profile",
-            "black",
-            "--line-length=119",
-            "--settings-path=service/pyproject.toml",
-          ]
-        files: ^service/
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-        args:
-          - --max-line-length=119
-          - --extend-ignore=F401,W503,F541,F841,E226
-        files: ^service/
-
-  # Python类型检查 - 使用 Pyright
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.406
+    rev: v1.1.407
     hooks:
       - id: pyright
         args:

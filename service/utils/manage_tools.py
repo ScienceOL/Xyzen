@@ -501,7 +501,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
             function_names = [f["name"] for f in functions]
             if function_name not in function_names:
                 return error_response(
-                    f"Function '{function_name}' not found in provided code. " f"Available functions: {function_names}"
+                    f"Function '{function_name}' not found in provided code. Available functions: {function_names}"
                 )
 
             async with AsyncSessionLocal() as session:
