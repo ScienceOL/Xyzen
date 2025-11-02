@@ -16,7 +16,6 @@ interface AddAgentModalProps {
 const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const {
     createAgent,
-    agents,
     fetchAgents,
     addGraphAgentToSidebar,
     hiddenGraphAgentIds,
@@ -32,7 +31,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const [selectedExistingAgent, setSelectedExistingAgent] = useState<Agent | null>(null);
   const [allAvailableGraphAgents, setAllAvailableGraphAgents] = useState<Agent[]>([]);
   const [agent, setAgent] = useState<
-    Omit<Agent, "id" | "user_id" | "mcp_servers" | "mcp_server_ids">
+    Omit<Agent, "id" | "user_id" | "mcp_servers" | "mcp_server_ids" | "created_at" | "updated_at">
   >({
     name: "",
     description: "",
@@ -185,6 +184,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
         mcp_server_ids: mcpServerIds,
         user_id: "temp", // TODO: 应该由后端从认证token中获取
         mcp_servers: [], // 后端会自动处理关联
+        created_at: new Date().toISOString(), // Will be overridden by backend
+        updated_at: new Date().toISOString(), // Will be overridden by backend
       });
       handleClose();
     } catch (error) {
@@ -202,9 +203,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  // Filter existing agents (exclude default agent)
-  const existingAgents = agents.filter(agent => agent.id !== 'default-chat');
-  const regularAgents = existingAgents.filter(agent => agent.agent_type === 'regular');
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="添加助手">
@@ -402,7 +400,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           </Button>
           <Button
             type="submit"
-            disabled={mode === 'add' && selectedExistingAgent && !hiddenGraphAgentIds.includes(selectedExistingAgent.id)}
+            disabled={Boolean(mode === 'add' && selectedExistingAgent && !hiddenGraphAgentIds.includes(selectedExistingAgent.id))}
             className={`inline-flex items-center gap-2 rounded-md py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
               mode === 'add' && selectedExistingAgent && !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
                 ? 'bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'

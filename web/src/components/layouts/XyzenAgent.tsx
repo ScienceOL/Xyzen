@@ -205,7 +205,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
             {/* Agent type badge */}
             {agent.agent_type === 'graph' && (
               <Badge
-                variant="indigo"
+                variant="blue"
                 className="flex items-center gap-1 flex-shrink-0"
               >
                 📊 {agent.node_count || 0} nodes
