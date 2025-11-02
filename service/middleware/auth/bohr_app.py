@@ -158,11 +158,11 @@ class BohrAppAuthProvider(BaseAuthProvider):
         logger.info("BohrApp: 解析 token payload 中的用户信息 (仅用于兼容性)")
         logger.info(f"BohrApp: payload 内容: {token_payload}")
 
-        user_id = str(token_payload.get("user_id", token_payload.get("sub", "")))
+        user_id = str(token_payload.get("bohr_user_id", token_payload.get("user_id", token_payload.get("sub", ""))))
 
         user_info = UserInfo(
             id=user_id,
-            username=token_payload.get("username", user_id),
+            username=token_payload.get("user_id", user_id),
             email=token_payload.get("email"),
             display_name=token_payload.get("name", token_payload.get("username", "")),
             avatar_url=token_payload.get("avatar"),

@@ -146,9 +146,8 @@ class BohriumAuthProvider(BaseAuthProvider):
         logger.info("Bohrium: 解析token payload中的用户信息")
         logger.info(f"Bohrium: payload内容: {token_payload}")
 
-        # 从 JWT token 中获取基本信息（如果可用）
         identity = token_payload.get("identity", {})
-        user_id = str(identity.get("userId", token_payload.get("sub", "")))  # 确保 user_id 是字符串
+        user_id = str(identity.get("userId") or token_payload.get("userId") or token_payload.get("sub", ""))
 
         user_info = UserInfo(
             id=user_id,

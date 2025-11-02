@@ -91,18 +91,19 @@ class BohrAppTokenVerifier(TokenVerifier):
                     return None
 
                 # 4. 构建 AccessToken
-                # 注意：FastMCP 需要的字段
+                claims_data = {  # 额外信息放这里
+                    "bohr_user_id": bohr_user_id,
+                    "name": user_data.get("name"),
+                    "user_id": user_data.get("user_id"),
+                    "org_id": user_data.get("org_id"),
+                }
+
                 access_token = AccessToken(
                     token=token,
                     client_id=str(bohr_user_id),  # 必需：用户标识
                     scopes=[],  # BohrApp 没有 scopes 概念，可以为空或自定义
                     expires_at=None,  # BohrApp API 没返回过期时间
-                    claims={  # 额外信息放这里
-                        "bohr_user_id": bohr_user_id,
-                        "name": user_data.get("name"),
-                        "user_id": user_data.get("user_id"),
-                        "org_id": user_data.get("org_id"),
-                    },
+                    claims=claims_data,
                 )
 
                 # 5. 缓存结果
