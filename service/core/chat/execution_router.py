@@ -31,10 +31,12 @@ class ChatExecutionRouter:
     Routes chat execution to appropriate handler based on agent type.
     """
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, enable_graph_streaming_chunks: bool = False, graph_chunk_size: int = 100):
         self.db = db
         self.agent_detector = AgentTypeDetector(db)
         self.state_converter = GraphStateConverter(db)
+        self.enable_graph_streaming_chunks = enable_graph_streaming_chunks
+        self.graph_chunk_size = graph_chunk_size
 
     async def route_execution(
         self,
@@ -270,12 +272,12 @@ class ChatExecutionRouter:
             if result.success:
                 logger.info(f"Graph agent executed successfully in {result.execution_time_ms}ms")
 
-                # Stream the response as chunks (simulate streaming for graph agents)
-                chunk_size = 50  # Characters per chunk
-                for i in range(0, len(response_text), chunk_size):
-                    chunk = response_text[i : i + chunk_size]  # noqa: E203
-                    yield {"type": "streaming_chunk", "data": {"id": message_id, "content": chunk}}
-                    await asyncio.sleep(0.01)  # Small delay to simulate streaming
+                if self.enable_graph_streaming_chunks and len(response_text) > self.graph_chunk_size:
+                    for i in range(0, len(response_text), self.graph_chunk_size):
+                        chunk = response_text[i : i + self.graph_chunk_size]  # noqa: E203
+                        yield {"type": "streaming_chunk", "data": {"id": message_id, "content": chunk}}
+                else:
+                    yield {"type": "streaming_chunk", "data": {"id": message_id, "content": response_text}}
 
                 # End streaming
                 yield {

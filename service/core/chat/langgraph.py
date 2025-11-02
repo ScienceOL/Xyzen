@@ -276,12 +276,27 @@ class LangGraphExecutor:
 
             yield {"type": ChatEventType.ERROR, "data": {"error": error_msg}}
 
-    def _build_state_schema(self, schema_dict: dict[str, Any]) -> type:
-        """Build Pydantic state schema from JSON schema"""
-        # For now, use the base GraphState
-        # Future: dynamically create schema from schema_dict when needed
-        # The schema_dict parameter is preserved for future implementation
-        _ = schema_dict  # Mark as intentionally unused for now
+    def _build_state_schema(self, schema_dict: dict[str, Any] | None) -> type:
+        """
+        Build Pydantic state schema from JSON schema.
+
+        Currently returns base GraphState for all agents.
+        TODO: Implement dynamic schema generation when custom state fields are needed.
+
+        Args:
+            schema_dict: Optional custom state schema configuration
+
+        Returns:
+            GraphState class (base implementation for now)
+        """
+        if not schema_dict:
+            return GraphState
+
+        # Log that custom schemas aren't yet supported but preserve the data
+        logger.debug(f"Custom state schema provided but not yet implemented: {schema_dict}")
+
+        # For now, return base schema but preserve schema_dict for future use
+        # Future implementation would dynamically create Pydantic model here
         return GraphState
 
     async def _create_node_function(

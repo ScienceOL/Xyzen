@@ -111,10 +111,14 @@ function getDetectionPatterns(): DetectionPattern[] {
         const points = data as TimeSeriesPoint[];
         return {
           type: 'line' as const,
-          data: points.map(point => ({
-            x: point.timestamp || (point as any).time || (point as any).date,
-            y: point.value || (point as any).y,
-          })),
+          data: points.map(point => {
+            // Type-safe access to alternative property names
+            const pointRecord = point as Record<string, unknown>;
+            return {
+              x: (point.timestamp || pointRecord.time || pointRecord.date) as string | number,
+              y: (point.value || (typeof pointRecord.y === 'number' ? pointRecord.y : 0)) as number,
+            };
+          }),
           xAxis: { type: 'time' },
           yAxis: { type: 'value' },
         };
@@ -253,7 +257,9 @@ function getDetectionPatterns(): DetectionPattern[] {
       transform: (data: unknown) => {
         const obj = data as ChartableOutput;
         const chartType = extractChartType(obj.chart_type || obj.visualization);
-        const chartData = obj.data || (obj as any).values || (obj as any).points;
+        // Type-safe access to alternative data property names
+        const objRecord = obj as Record<string, unknown>;
+        const chartData = obj.data || objRecord.values || objRecord.points;
 
         if (!Array.isArray(chartData)) return null;
 
