@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
+from typing import Any, Mapping
 
 import uvicorn
 from fastapi import FastAPI
@@ -30,7 +31,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from handler.mcp import registry
 
     mcp_apps = {}
-    lifespan_contexts = []
+    lifespan_contexts: list[
+        AbstractAsyncContextManager[Mapping[str, Any], bool | None] | AbstractAsyncContextManager[None, bool | None]
+    ] = []
 
     try:
         # 为每个注册的 MCP 服务器创建应用

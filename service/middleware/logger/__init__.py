@@ -1,6 +1,8 @@
+from typing import Any
+
 from internal import configs
 
-LOGGING_CONFIG = {
+LOGGING_CONFIG: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {

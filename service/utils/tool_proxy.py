@@ -10,7 +10,7 @@ Tool Proxy - 工具代理模块
 
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from llm_sandbox import SandboxBackend, SandboxSession
 from llm_sandbox.exceptions import SandboxTimeoutError
@@ -46,9 +46,9 @@ class ContainerToolProxy:
 
     def __init__(
         self,
-        tool_data: Dict[str, Any],
+        tool_data: dict[str, Any],
         code_content: str,
-        requirements: Optional[list[str]] = None,
+        requirements: list[str] | None = None,
     ) -> None:
         self.tool_data = tool_data  # FunctionTool序列化数据
         self.code_content = code_content  # 从数据库获取的原始代码
@@ -61,7 +61,7 @@ class ContainerToolProxy:
         else:
             self.function_name = tool_data["name"].split(".")[-1]
 
-    def _build_execution_code(self, args: tuple, kwargs: dict) -> str:
+    def _build_execution_code(self, args: tuple[Any], kwargs: dict[str, Any]) -> str:
         """Build the execution code for container execution."""
         return f"""
 {self.code_content}
@@ -117,7 +117,7 @@ except Exception as e:
 
                 k8s_config.load_incluster_config()
                 k8s_api = k8s_client.CoreV1Api()
-                session_kwargs = {
+                session_kwargs: dict[str, Any] = {
                     "backend": SandboxBackend.KUBERNETES,
                     "lang": "python",
                     "kube_namespace": configs.DynamicMCP.kubeNamespace,
@@ -127,7 +127,7 @@ except Exception as e:
                     "client": k8s_api,
                 }
             else:
-                session_kwargs = {
+                session_kwargs: dict[str, Any] = {
                     "backend": SandboxBackend.DOCKER,
                     "lang": "python",
                     "libraries": self.requirements,
@@ -188,13 +188,13 @@ class ToolProxyManager:
     """工具代理管理器"""
 
     def __init__(self) -> None:
-        self.proxies: Dict[str, ContainerToolProxy] = {}
+        self.proxies: dict[str, ContainerToolProxy] = {}
 
     def create_proxy(
         self,
-        tool_data: Dict[str, Any],
+        tool_data: dict[str, Any],
         code_content: str,
-        requirements: Optional[list[str]] = None,
+        requirements: list[str] | None = None,
     ) -> ContainerToolProxy:
         """创建工具代理"""
         tool_name = tool_data["name"]
@@ -216,7 +216,7 @@ class ToolProxyManager:
             removed = True
         return removed
 
-    def list_proxies(self) -> List[str]:
+    def list_proxies(self) -> list[str]:
         """列出所有代理工具"""
         return list(self.proxies.keys())
 

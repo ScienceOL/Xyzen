@@ -148,7 +148,7 @@ def _extract_from_dict_content(content: dict[str, Any]) -> str:
     return _format_parsed_json(content)
 
 
-def _extract_from_list_content(content: list) -> str:
+def _extract_from_list_content(content: Any) -> str:
     """Extract content from list structures."""
     if not content:
         return ""

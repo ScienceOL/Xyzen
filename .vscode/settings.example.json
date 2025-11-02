@@ -13,71 +13,14 @@
     }
   },
 
-  // ============================================================================
-  // Python Language Server Configuration (Manual sync with service/pyproject.toml)
-  // ============================================================================
-  // ⚠️ Important: These settings must be manually synchronized with [tool.pyright] in service/pyproject.toml
-  //
-  // Why manual sync is needed?
-  // - Workspace root is /Xyzen
-  // - pyproject.toml is located in /Xyzen/service/ subdirectory
-  // - Pylance cannot automatically read pyproject.toml from subdirectories
-  //
-  // How to keep in sync?
-  // 1. After modifying [tool.pyright] in service/pyproject.toml
-  // 2. Update corresponding python.analysis.* settings in this file
-  // 3. Reload VS Code window (⇧⌘P -> Developer: Reload Window)
-  //
-  // How to verify it works?
-  // - Run `cd service && uv run pyright .`
-  // - Check if IDE shows the same errors
   "python.languageServer": "Pylance",
-
-  // Type checking mode: corresponds to typeCheckingMode = "standard" in pyproject.toml
   "python.analysis.typeCheckingMode": "standard",
-
-  // Paths to include in analysis
   "python.analysis.include": ["service"],
-
-  // Exclude directories from type checking (corresponds to exclude in pyproject.toml)
-  "python.analysis.exclude": [
-    "**/__pycache__",
-    "**/.pytest_cache",
-    "**/migrations",
-    "service/migrations",
-    "**/.venv",
-    "**/venv",
-    "**/build",
-    "**/dist",
-    // Additional exclusions for non-Python project directories
-    "web/**",
-    "docker/**",
-    "infra/**",
-    "launch/**"
-  ],
-
-  // Python module search paths (corresponds to extraPaths in pyproject.toml)
-  // Disable auto search to avoid using workspace root as import prefix (prevents "service.*")
+  "python.analysis.ignore": ["**/migrations"],
   "python.analysis.autoSearchPaths": false,
-  // Explicitly treat service as import root so completions use "app.*" instead of "service.app.*"
-  "python.analysis.extraPaths": ["./service"],
   "python.analysis.autoImportCompletions": true,
-
-  // Diagnostic mode: check only open files
   "python.analysis.diagnosticMode": "openFilesOnly",
-
-  // ============================================================================
-  // Diagnostic Severity Overrides (Synced with service/pyproject.toml)
-  // ============================================================================
-  // Note: The following strict mode settings are NOT supported in settings.json:
-  // - strictListInference
-  // - strictDictionaryInference
-  // - strictSetInference
-  // - strictParameterNoneValue
-  // These are configured in service/pyproject.toml only
-  // ============================================================================
   "python.analysis.diagnosticSeverityOverrides": {
-    // Error level (error)
     "reportMissingImports": "error",
     "reportDuplicateImport": "error",
     "reportOptionalSubscript": "error",
@@ -95,7 +38,6 @@
     "reportMissingParameterType": "error",
     "reportUnknownLambdaType": "error",
 
-    // Warning level (warning)
     "reportUnusedImport": "warning",
     "reportUnusedClass": "warning",
     "reportUnusedFunction": "warning",
@@ -111,7 +53,6 @@
     "reportUnknownParameterType": "warning",
     "reportUnknownArgumentType": "warning",
 
-    // Disabled items (none)
     "reportMissingTypeStubs": "none",
     "reportUntypedFunctionDecorator": "none",
     "reportUntypedClassDecorator": "none",
@@ -122,8 +63,6 @@
     "reportCallInDefaultInitializer": "none",
     "reportImplicitStringConcatenation": "none"
   },
-
-  // Ruff configuration is handled via service/pyproject.toml
 
   "todo-tree.highlights.defaultHighlight": {
     "icon": "alert",
