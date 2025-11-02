@@ -213,7 +213,7 @@ class ChatExecutionRouter:
                     user_id,
                     agent,  # type: ignore
                     connection_manager,
-                    connection_id,  # type: ignore
+                    connection_id,
                 ):
                     yield event
             else:
@@ -224,7 +224,7 @@ class ChatExecutionRouter:
                     user_id,
                     agent,  # type: ignore
                     connection_manager,
-                    connection_id,  # type: ignore
+                    connection_id,
                 ):
                     yield event
 

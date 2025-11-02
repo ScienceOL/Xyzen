@@ -283,7 +283,7 @@ async def execute_graph_agent(
     """
     try:
         # Add user_id to input state for execution context
-        enhanced_input_state = {
+        enhanced_input_state: dict[str, Any] = {
             **input_state,
             "execution_context": {**input_state.get("execution_context", {}), "user_id": user},
         }
