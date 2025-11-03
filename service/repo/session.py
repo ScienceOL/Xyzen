@@ -74,12 +74,18 @@ class SessionRepository:
             The newly created SessionModel instance.
         """
         logger.debug(f"Creating new session for user_id: {user_id}")
+
+        # Ensure agent_id is UUID or None (not string)
+        agent_id = session_data.agent_id
+        if isinstance(agent_id, str):
+            raise ValueError(f"SessionRepository expects agent_id to be UUID or None, got string: {agent_id}")
+
         session = SessionModel(
             name=session_data.name,
             description=session_data.description,
             is_active=session_data.is_active,
             user_id=user_id,
-            agent_id=session_data.agent_id,
+            agent_id=agent_id,
         )
         self.db.add(session)
         await self.db.flush()

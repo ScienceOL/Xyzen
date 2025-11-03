@@ -27,7 +27,7 @@ export interface AgentSlice {
 export interface GraphAgentCreate {
   name: string;
   description: string;
-  state_schema?: any;
+  state_schema?: Record<string, unknown>;
 }
 
 // 创建带认证头的请求选项

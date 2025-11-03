@@ -30,7 +30,7 @@ export type Agent = {
   created_at: string;
   updated_at: string;
   // Graph-specific fields
-  state_schema?: any;
+  state_schema?: Record<string, unknown>;
   node_count?: number;
   edge_count?: number;
 };

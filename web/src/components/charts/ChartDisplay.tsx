@@ -23,9 +23,35 @@ export const ChartDisplay: React.FC<ChartDisplayProps> = ({
 
   // Determine what to render
   const shouldRenderChart = useMemo(() => {
-    if (forceJsonView) return false;
-    if (!detection.isChartable || !detection.data) return false;
-    return validateChartData(detection.data);
+    console.log('🔍 ChartDisplay shouldRenderChart check:');
+    console.log('  forceJsonView:', forceJsonView);
+    console.log('  detection.isChartable:', detection.isChartable);
+    console.log('  detection.data:', detection.data);
+
+    if (forceJsonView) {
+      console.log('  ❌ Forced JSON view');
+      return false;
+    }
+    if (!detection.isChartable || !detection.data) {
+      console.log('  ❌ Not chartable or no data');
+      return false;
+    }
+
+    const validationResult = validateChartData(detection.data);
+    console.log('  validateChartData result:', validationResult);
+    console.log('  validation details:');
+    console.log('    - config exists:', !!detection.data);
+    console.log('    - type exists:', !!detection.data?.type);
+    console.log('    - data exists:', !!detection.data?.data);
+    console.log('    - data length:', Array.isArray(detection.data?.data) ? detection.data.data.length : 'not array');
+
+    if (validationResult) {
+      console.log('  ✅ Should render chart!');
+    } else {
+      console.log('  ❌ Validation failed');
+    }
+
+    return validationResult;
   }, [detection, forceJsonView]);
 
   const renderContent = () => {

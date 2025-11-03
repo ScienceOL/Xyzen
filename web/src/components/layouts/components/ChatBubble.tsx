@@ -1,5 +1,6 @@
 import ProfileIcon from "@/assets/ProfileIcon";
 import JsonDisplay from "@/components/shared/JsonDisplay";
+import { ChartRenderer } from "@/components/charts/ChartRenderer";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message, ToolCall } from "@/store/types";
@@ -7,6 +8,7 @@ import {
   parseToolMessage,
   toolEventToToolCall,
 } from "@/utils/toolMessageParser";
+import { detectChart } from "@/utils/chartDetection";
 import LoadingMessage from "./LoadingMessage";
 import ToolCallCard from "./ToolCallCard";
 
@@ -34,24 +36,93 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
     return null;
   }, [role, content]);
 
+  // Detect if assistant message contains chart data
+  const chartDetection = React.useMemo(() => {
+    if (role === "assistant" && content && !isLoading && !isStreaming) {
+      try {
+        // Try to parse the entire content as JSON first
+        const parsed = JSON.parse(content);
+        return detectChart(parsed);
+      } catch {
+        // Check for JSON code blocks in markdown
+        const jsonBlockRegex = /```json\s*\n([\s\S]*?)\n```/g;
+        let matches = Array.from(content.matchAll(jsonBlockRegex));
+
+        for (const match of matches) {
+          try {
+            const parsed = JSON.parse(match[1]);
+            const detection = detectChart(parsed);
+            if (detection.isChartable) {
+              return detection;
+            }
+          } catch {
+            continue;
+          }
+        }
+
+        // Check for JSON objects embedded in text - more robust regex for nested objects
+        const jsonObjectRegex =
+          /(\{"chart":\s*\{[^}]*(?:\{[^}]*\}[^}]*)*\}[^}]*\})/g;
+        matches = Array.from(content.matchAll(jsonObjectRegex));
+
+        for (const match of matches) {
+          try {
+            const parsed = JSON.parse(match[1]);
+            const detection = detectChart(parsed);
+            if (detection.isChartable) {
+              return detection;
+            }
+          } catch {
+            continue;
+          }
+        }
+
+        // More aggressive JSON detection - look for lines that might contain complete JSON
+        const lines = content.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          // Try to find lines that start with {"chart": and might be complete JSON
+          if (line.startsWith('{"chart":') || line.startsWith('{ "chart":')) {
+            try {
+              const parsed = JSON.parse(line);
+              const detection = detectChart(parsed);
+              if (detection.isChartable) {
+                return detection;
+              }
+            } catch {
+              continue;
+            }
+          }
+        }
+
+        // Last resort: try to extract any JSON-like structure
+        const jsonLikeRegex = /\{[\s\S]*?"chart"[\s\S]*?\}/g;
+        matches = Array.from(content.matchAll(jsonLikeRegex));
+
+        for (const match of matches) {
+          try {
+            const parsed = JSON.parse(match[0]);
+            const detection = detectChart(parsed);
+            if (detection.isChartable) {
+              return detection;
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+    }
+    return {
+      isChartable: false,
+      chartType: null,
+      confidence: 0,
+      data: null,
+      reason: "No chart detected",
+    };
+  }, [role, content, isLoading, isStreaming]);
+
   const isUserMessage = role === "user";
   const isToolMessage = role === "tool";
-
-  // Debug logging for tool calls
-  React.useEffect(() => {
-    if (toolCalls && toolCalls.length > 0) {
-      console.log(
-        `ChatBubble: Message ${message.id} has ${toolCalls.length} tool calls:`,
-        toolCalls,
-      );
-    }
-    if (parsedToolCall) {
-      console.log(
-        `ChatBubble: Parsed tool message ${message.id}:`,
-        parsedToolCall,
-      );
-    }
-  }, [toolCalls, message.id, parsedToolCall]);
 
   // Updated time format to include seconds
   const formattedTime = new Date(created_at).toLocaleTimeString([], {
@@ -59,6 +130,71 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
     minute: "2-digit",
     second: "2-digit",
   });
+
+  // Clean chart loading component
+  const ChartLoadingState = () => (
+    <div className="w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="h-96 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center space-x-1">
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Generating visualization...
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render message content based on type and chart detection
+  const renderMessageContent = React.useCallback(() => {
+    if (isLoading) {
+      return role === "assistant" ? <ChartLoadingState /> : <LoadingMessage />;
+    } else if (isUserMessage) {
+      return <p>{content}</p>;
+    } else if (chartDetection.isChartable && chartDetection.data) {
+      // Validate chart data before rendering
+      if (!chartDetection.data || typeof chartDetection.data !== "object") {
+        return (
+          <div className="space-y-3">
+            <div className="text-red-600 p-3 bg-red-50 dark:bg-red-900/20 rounded">
+              Chart Error: Invalid data format
+            </div>
+          </div>
+        );
+      }
+
+      // Extract text content before the JSON
+      const jsonMatch = content.match(/\{"chart":/);
+      const textBeforeJson = jsonMatch
+        ? content.substring(0, jsonMatch.index).trim()
+        : "";
+
+      return (
+        <div className="space-y-3">
+          {textBeforeJson && (
+            <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              <Markdown content={textBeforeJson} />
+            </div>
+          )}
+
+          {/* Clean Chart Container */}
+          <div className="w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <ChartRenderer
+              data={chartDetection.data}
+              height={450}
+              className="w-full"
+            />
+          </div>
+        </div>
+      );
+    } else {
+      return <Markdown content={content} />;
+    }
+  }, [isLoading, isUserMessage, chartDetection, content, role]);
 
   // Different styles for user vs AI messages
   const messageStyles = isUserMessage
@@ -205,13 +341,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
                 : "text-sm text-neutral-700 dark:text-neutral-300"
             }`}
           >
-            {isLoading ? (
-              <LoadingMessage />
-            ) : isUserMessage ? (
-              <p>{content}</p>
-            ) : (
-              <Markdown content={content} />
-            )}
+            {renderMessageContent()}
             {isStreaming && !isLoading && (
               <motion.span
                 animate={{ opacity: [0.3, 1, 0.3] }}

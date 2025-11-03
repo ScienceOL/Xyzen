@@ -213,27 +213,60 @@ async def get_all_agents_unified(
     return await agent_service.get_all_agents_for_user(user)
 
 
-@router.get("/{agent_id}", response_model=AgentRead)
+@router.get("/{agent_id}", response_model=UnifiedAgentRead)
 async def get_agent(
-    agent: AgentModel = Depends(get_authorized_agent),
-) -> AgentRead:
+    agent_id: str,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> UnifiedAgentRead:
     """
-    Get a single agent by ID.
+    Get a single agent by ID (supports regular, graph, and builtin agents).
 
     Returns the requested agent with full configuration details.
-    Authorization is handled by the dependency which ensures the user
-    owns the agent.
+    For regular and graph agents, authorization ensures the user owns the agent.
+    Builtin agents are available to all users.
 
     Args:
-        agent: Authorized agent instance (injected by dependency)
+        agent_id: Agent identifier (UUID string for regular/graph, or builtin agent ID)
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
 
     Returns:
-        AgentRead: The requested agent with full details
+        UnifiedAgentRead: The requested agent with unified format
 
     Raises:
         HTTPException: 404 if agent not found, 403 if access denied
     """
-    return AgentRead(**agent.model_dump())
+    agent_service = AgentService(db)
+
+    # Handle builtin agents
+    if agent_id.startswith("builtin_"):
+        agent = await agent_service.get_agent_by_id(agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Builtin agent not found")
+        return agent
+
+    # Handle regular/graph agents
+    try:
+        agent_uuid = UUID(agent_id)
+        agent = await agent_service.get_agent_by_id(agent_uuid, user)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+
+        # For regular/graph agents, verify ownership
+        if agent.agent_type in ["regular", "graph"]:
+            # Get the actual agent model to check ownership
+            from core.agent_type_detector import AgentTypeDetector
+
+            detector = AgentTypeDetector(db)
+
+            agent_with_type = await detector.get_agent_with_type(agent_uuid, user)
+            if not agent_with_type:
+                raise HTTPException(status_code=404, detail="Agent not found or access denied")
+
+        return agent
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid agent ID format")
 
 
 @router.patch("/{agent_id}", response_model=AgentReadWithDetails)

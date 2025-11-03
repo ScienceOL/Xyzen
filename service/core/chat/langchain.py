@@ -163,10 +163,19 @@ async def get_ai_response_stream_langchain(
         session = await session_repo.get_session_by_id(topic.session_id)
         agent_id = session.agent_id if session else None
 
+        # Convert UUID back to builtin agent string ID if applicable
+        builtin_agent_id = None
+        if agent_id is not None:
+            from models.sessions import uuid_to_builtin_agent_id
+
+            builtin_agent_id = uuid_to_builtin_agent_id(agent_id)
+
         # Route execution based on agent type
         router = ChatExecutionRouter(db)
+        # For builtin agents, pass the UUID but tell the router about the builtin ID
+        final_agent_id = agent_id if builtin_agent_id is None else agent_id
         async for event in router.route_execution_stream(
-            message_text, topic, user_id, agent_id, connection_manager, connection_id
+            message_text, topic, user_id, final_agent_id, connection_manager, connection_id
         ):
             yield event
 

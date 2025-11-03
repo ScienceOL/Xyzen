@@ -22,7 +22,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   // Use effect to update input when initialValue changes
   useEffect(() => {
-    if (initialValue && initialValue !== inputMessage) {
+    if (initialValue) {
       setInputMessage(initialValue);
     }
   }, [initialValue]);

@@ -3,7 +3,7 @@ import { Modal } from "@/components/base/Modal";
 import { useXyzen } from "@/store";
 import { Button, Field, Label } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { Agent } from "../layouts/XyzenAgent";
 import { McpServerItem } from "./McpServerItem";
 import { authService } from "@/service/authService";
@@ -36,7 +36,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     name: "",
     description: "",
     prompt: "",
-    agent_type: 'regular' as any, // Will be overridden by agentType
+    agent_type: 'regular' as const,
   });
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isAutoAddingDefaultMcp, setIsAutoAddingDefaultMcp] = useState(false);
@@ -56,7 +56,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   };
 
   // Fetch all available graph agents (including hidden ones) for add mode
-  const fetchAllGraphAgents = async () => {
+  const fetchAllGraphAgents = useCallback(async () => {
     try {
       const response = await fetch(`${backendUrl}/xyzen/api/v1/agents/all/unified`, {
         headers: createAuthHeaders(),
@@ -73,7 +73,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     } catch (error) {
       console.error("Failed to fetch all graph agents:", error);
     }
-  };
+  }, [backendUrl]);
 
   // Fetch MCP servers, built-in servers, and agents when modal opens
   useEffect(() => {
@@ -83,7 +83,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       fetchMcpServers();
       fetchBuiltinMcpServers();
     }
-  }, [isOpen, fetchAgents, fetchMcpServers, fetchBuiltinMcpServers]);
+  }, [isOpen, fetchAgents, fetchAllGraphAgents, fetchMcpServers, fetchBuiltinMcpServers]);
 
   // Auto-add and select default MCP server (DynamicMCPServer)
   useEffect(() => {
@@ -196,7 +196,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
 
   const handleClose = () => {
     setMode('create');
-    setAgent({ name: "", description: "", prompt: "", agent_type: 'regular' as any });
+    setAgent({ name: "", description: "", prompt: "", agent_type: 'regular' as const });
     setSelectedExistingAgent(null);
     setMcpServerIds([]);
     setIsAutoAddingDefaultMcp(false);

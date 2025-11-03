@@ -9,6 +9,7 @@ from middleware.database import get_session
 from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics
 from models.topic import TopicCreate, TopicRead
 from repo import MessageRepository, SessionRepository, TopicRepository
+from core.agent_type_detector import AgentTypeDetector
 
 # Ensure forward references are resolved after importing both models
 try:
@@ -33,7 +34,8 @@ async def create_session_with_default_topic(
 
     Creates a new session for the authenticated user and automatically adds
     a default topic named "新的聊天" to get the user started. If an agent_id
-    is provided, the session will be associated with that agent.
+    is provided, the session will be associated with that agent. Builtin agents
+    are handled specially and stored with agent_id=None.
 
     Args:
         session_data: Session creation data including name, description, and optional agent_id
@@ -44,12 +46,45 @@ async def create_session_with_default_topic(
         SessionRead: The newly created session with generated ID and timestamps
 
     Raises:
-        HTTPException: 500 if session or topic creation fails
+        HTTPException: 400 if agent validation fails, 500 if session or topic creation fails
     """
     session_repo = SessionRepository(db)
     topic_repo = TopicRepository(db)
 
-    session = await session_repo.create_session(session_data, user)
+    # Validate agent_id if provided - handle builtin agents
+    if session_data.agent_id is not None:
+        agent_detector = AgentTypeDetector(db)
+
+        try:
+            # Check if it's a valid agent
+            agent_type = await agent_detector.detect_agent_type(session_data.agent_id)
+            if agent_type is None:
+                raise HTTPException(status_code=400, detail=f"Agent not found: {session_data.agent_id}")
+
+            # For builtin agents, convert string ID to UUID for database storage
+            if agent_type == "builtin":
+                from models.sessions import builtin_agent_id_to_uuid
+
+                # Ensure agent_id is a string for builtin agents
+                if not isinstance(session_data.agent_id, str):
+                    raise HTTPException(status_code=400, detail="Builtin agent ID must be a string")
+
+                builtin_uuid = builtin_agent_id_to_uuid(session_data.agent_id)
+                validated_session_data = SessionCreate(
+                    name=session_data.name,
+                    description=session_data.description,
+                    is_active=session_data.is_active,
+                    agent_id=builtin_uuid,
+                )
+            else:
+                # Regular/graph agents use UUID as-is
+                validated_session_data = session_data
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Invalid agent ID: {session_data.agent_id}")
+    else:
+        validated_session_data = session_data
+
+    session = await session_repo.create_session(validated_session_data, user)
     default_topic_data = TopicCreate(
         name="新的聊天",
         session_id=session.id,
@@ -68,11 +103,11 @@ async def get_session_by_agent(
     Retrieve a session for the current user with a specific agent.
 
     Finds a session associated with the given agent ID for the authenticated user.
-    The agent_id can be "default" for sessions without an agent, or a UUID string
-    for sessions with a specific agent.
+    The agent_id can be "default" for sessions without an agent, a UUID string
+    for sessions with a specific agent, or a builtin agent string ID.
 
     Args:
-        agent_id: Agent identifier ("default" or UUID string)
+        agent_id: Agent identifier ("default", UUID string, or builtin agent ID)
         user: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
@@ -83,12 +118,34 @@ async def get_session_by_agent(
         HTTPException: 404 if no session found for this user-agent combination
     """
     session_repo = SessionRepository(db)
+    agent_detector = AgentTypeDetector(db)
 
-    # TODO: Legacy support for "default" agent
-    try:
-        agent_uuid = UUID(agent_id) if agent_id != "default" else None
-    except ValueError:
+    # Handle different agent ID types
+    agent_uuid = None
+
+    if agent_id == "default":
+        # Default agent case
         agent_uuid = None
+    elif agent_id.startswith("builtin_"):
+        # Builtin agent case - verify it exists using the builtin registry
+        from handler.builtin_agents import registry as builtin_registry
+        from models.sessions import builtin_agent_id_to_uuid
+
+        agent_name = agent_id[8:]  # Remove "builtin_" prefix
+        if not builtin_registry.get_agent(agent_name):
+            raise HTTPException(status_code=404, detail=f"Builtin agent '{agent_id}' not found")
+        # Convert builtin agent ID to UUID for database lookup
+        agent_uuid = builtin_agent_id_to_uuid(agent_id)
+    else:
+        # Regular/Graph agent case - try to parse as UUID
+        try:
+            agent_uuid = UUID(agent_id)
+            # Verify the agent exists
+            agent_type = await agent_detector.detect_agent_type(agent_uuid)
+            if agent_type is None:
+                raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid agent ID format: '{agent_id}'")
 
     session = await session_repo.get_session_by_user_and_agent(user, agent_uuid)
     if not session:

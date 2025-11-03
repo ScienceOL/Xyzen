@@ -12,8 +12,9 @@ from uuid import UUID
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from repo import AgentRepository
+from repo.agent import AgentRepository
 from repo.graph import GraphRepository
+from handler.builtin_agents import registry as builtin_registry
 
 
 class UnifiedAgentRead(BaseModel):
@@ -28,7 +29,7 @@ class UnifiedAgentRead(BaseModel):
     name: str
     description: str | None = None
     avatar: str | None = None
-    agent_type: Literal["regular", "graph"]
+    agent_type: Literal["regular", "graph", "builtin"]
     tags: list[str] | None = None
     model: str | None = None
     temperature: float | None = None
@@ -129,24 +130,94 @@ class AgentService:
             )
             unified_agents.append(unified_agent)
 
+        # Get builtin agents (available to all users)
+        for agent_name, agent_config in builtin_registry.get_all_configs().items():
+            agent_instance = agent_config["agent"]
+            metadata = agent_config["metadata"]
+
+            unified_agent = UnifiedAgentRead(
+                id=f"builtin_{agent_name}",
+                name=metadata.get("name", agent_name),
+                description=metadata.get("description", ""),
+                avatar=None,  # Builtin agents use icons instead
+                agent_type="builtin",
+                tags=metadata.get("tags", []),
+                model=None,  # Builtin agents may use multiple models internally
+                temperature=None,  # Builtin agents handle their own parameters
+                prompt=None,  # Builtin agents use state schemas
+                require_tool_confirmation=False,  # Builtin agents handle this internally
+                provider_id=None,  # Builtin agents may use multiple providers
+                is_active=True,  # Builtin agents are always active
+                created_at="2024-01-01T00:00:00Z",  # Static timestamp for builtin agents
+                updated_at="2024-01-01T00:00:00Z",  # Static timestamp for builtin agents
+                mcp_servers=[],  # Builtin agents don't use MCP servers directly
+                state_schema=agent_instance.get_state_schema(),
+                node_count=0,  # Not applicable for builtin agents
+                edge_count=0,  # Not applicable for builtin agents
+            )
+            unified_agents.append(unified_agent)
+
         # Sort by updated_at descending (most recently updated first)
+        # Note: Builtin agents will appear at the bottom due to static timestamps
         unified_agents.sort(key=lambda a: a.updated_at, reverse=True)
 
         return unified_agents
 
-    async def get_agent_by_id(self, agent_id: UUID, user_id: str) -> UnifiedAgentRead | None:
+    async def get_agent_by_id(self, agent_id: UUID | str, user_id: str | None = None) -> UnifiedAgentRead | None:
         """
         Get a specific agent by ID, regardless of type.
 
         Args:
-            agent_id: The agent ID to fetch
-            user_id: The user ID for authorization
+            agent_id: The agent ID to fetch (UUID for regular/graph agents, string for builtin agents)
+            user_id: The user ID for authorization (optional for builtin agents)
 
         Returns:
             UnifiedAgentRead object or None if not found/unauthorized
         """
+        # Check if it's a builtin agent first (string ID starting with "builtin_")
+        if isinstance(agent_id, str) and agent_id.startswith("builtin_"):
+            agent_name = agent_id[8:]  # Remove "builtin_" prefix
+            agent_config = builtin_registry.get_agent_config(agent_name)
+
+            if agent_config:
+                agent_instance = agent_config["agent"]
+                metadata = agent_config["metadata"]
+
+                return UnifiedAgentRead(
+                    id=agent_id,
+                    name=metadata.get("name", agent_name),
+                    description=metadata.get("description", ""),
+                    avatar=None,
+                    agent_type="builtin",
+                    tags=metadata.get("tags", []),
+                    model=None,
+                    temperature=None,
+                    prompt=None,
+                    require_tool_confirmation=False,
+                    provider_id=None,
+                    is_active=True,
+                    created_at="2024-01-01T00:00:00Z",
+                    updated_at="2024-01-01T00:00:00Z",
+                    mcp_servers=[],
+                    state_schema=agent_instance.get_state_schema(),
+                    node_count=0,
+                    edge_count=0,
+                )
+
+        # For regular and graph agents, we need UUID and user authorization
+        if isinstance(agent_id, str):
+            try:
+                agent_uuid = UUID(agent_id)
+            except ValueError:
+                return None  # Invalid UUID format
+        else:
+            agent_uuid = agent_id
+
+        if user_id is None:
+            return None  # Regular/graph agents require user authorization
+
         # Try regular agent first
-        regular_agent = await self.agent_repo.get_agent_by_id(agent_id)
+        regular_agent = await self.agent_repo.get_agent_by_id(agent_uuid)
         if regular_agent and regular_agent.user_id == user_id:
             # Get MCP servers for this regular agent
             mcp_servers = await self.agent_repo.get_agent_mcp_servers(regular_agent.id)
@@ -171,10 +242,10 @@ class AgentService:
             )
 
         # Try graph agent
-        graph_agent = await self.graph_repo.get_graph_agent_by_id(agent_id)
+        graph_agent = await self.graph_repo.get_graph_agent_by_id(agent_uuid)
         if graph_agent and graph_agent.user_id == user_id:
             # Get node and edge counts
-            agent_with_graph = await self.graph_repo.get_graph_agent_with_graph(agent_id)
+            agent_with_graph = await self.graph_repo.get_graph_agent_with_graph(agent_uuid)
             node_count = len(agent_with_graph.nodes) if agent_with_graph else 0
             edge_count = len(agent_with_graph.edges) if agent_with_graph else 0
 

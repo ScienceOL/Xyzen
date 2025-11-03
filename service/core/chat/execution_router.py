@@ -76,6 +76,9 @@ class ChatExecutionRouter:
             if agent_type == "graph":
                 logger.info(f"Routing to graph agent execution for agent {agent_id}")
                 return await self._execute_graph_agent(message_text, topic, user_id, agent)  # type: ignore
+            elif agent_type == "builtin":
+                logger.info(f"Routing to builtin agent execution for agent {agent_id}")
+                return await self._execute_builtin_agent(message_text, topic, user_id, agent)  # type: ignore
             else:
                 logger.info(f"Routing to regular agent execution for agent {agent_id}")
                 return await self._execute_regular_agent(message_text, topic, user_id, agent)  # type: ignore
@@ -123,6 +126,85 @@ class ChatExecutionRouter:
         except Exception as e:
             logger.error(f"Failed to execute graph agent {agent.id}: {e}")
             return f"I'm sorry, but I encountered an error while executing the graph agent: {e}"
+
+    async def _execute_builtin_agent(
+        self,
+        message_text: str,
+        topic: TopicModel,
+        user_id: str,
+        agent: Any,  # BaseBuiltinGraphAgent instance
+    ) -> str:
+        """
+        Execute a builtin graph agent with the provided message.
+
+        Args:
+            message_text: The user's message
+            topic: The conversation topic
+            user_id: The user ID
+            agent: The builtin graph agent instance
+
+        Returns:
+            AI response string
+        """
+        try:
+            from handler.builtin_agents.base_graph_agent import BaseBuiltinGraphAgent
+            from core.chat.langgraph import GraphState
+
+            if not isinstance(agent, BaseBuiltinGraphAgent):
+                raise ValueError(f"Expected BaseBuiltinGraphAgent, got {type(agent)}")
+
+            # Build the graph for execution
+            graph = agent.build_graph()
+
+            # Create initial state for the builtin agent
+            initial_state = GraphState(
+                messages=[],
+                current_step="start",
+                execution_context={},
+                user_input=message_text,
+                final_output="",
+                error=None,
+            )
+
+            # Execute the graph
+            logger.info(f"Executing builtin agent graph for: {agent.name}")
+            result = await graph.ainvoke(initial_state)
+
+            # Extract the final output
+            response_text = None
+
+            # Try final_output attribute (for dict result)
+            if isinstance(result, dict) and "final_output" in result and result["final_output"]:
+                response_text = result["final_output"]
+            # Try messages attribute (for dict result)
+            elif isinstance(result, dict) and "messages" in result and result["messages"]:
+                last_message = result["messages"][-1]
+                if hasattr(last_message, "content"):
+                    response_text = last_message.content
+                else:
+                    response_text = str(last_message)
+            # Try accessing as dict
+            elif isinstance(result, dict):
+                if "final_output" in result and result["final_output"]:
+                    response_text = result["final_output"]
+                elif "messages" in result and result["messages"]:
+                    last_message = result["messages"][-1]
+                    if hasattr(last_message, "content"):
+                        response_text = last_message.content
+                    else:
+                        response_text = str(last_message)
+
+            # Fallback
+            if not response_text:
+                response_text = "I completed the task, but no output was generated."
+                logger.warning("Could not extract output from builtin agent result")
+
+            logger.info("Builtin agent executed successfully")
+            return response_text
+
+        except Exception as e:
+            logger.error(f"Failed to execute builtin agent {agent}: {e}")
+            return f"I'm sorry, but I encountered an error while executing the builtin agent: {e}"
 
     async def _execute_regular_agent(
         self,
@@ -208,6 +290,17 @@ class ChatExecutionRouter:
             if agent_type == "graph":
                 logger.info(f"Routing to graph agent execution for agent {agent_id}")
                 async for event in self._execute_graph_agent_stream(
+                    message_text,
+                    topic,
+                    user_id,
+                    agent,  # type: ignore
+                    connection_manager,
+                    connection_id,
+                ):
+                    yield event
+            elif agent_type == "builtin":
+                logger.info(f"Routing to builtin agent execution for agent {agent_id}")
+                async for event in self._execute_builtin_agent_stream(
                     message_text,
                     topic,
                     user_id,
@@ -306,6 +399,131 @@ class ChatExecutionRouter:
             yield {
                 "type": ChatEventType.ERROR,
                 "data": {"error": f"I'm sorry, but I encountered an error while executing the graph agent: {e}"},
+            }
+
+    async def _execute_builtin_agent_stream(
+        self,
+        message_text: str,
+        topic: TopicModel,
+        user_id: str,
+        agent: Any,  # BaseBuiltinGraphAgent instance
+        connection_manager: "ConnectionManager | None" = None,
+        connection_id: str | None = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """
+        Execute a builtin graph agent with streaming support.
+
+        Args:
+            message_text: The user's message
+            topic: The conversation topic
+            user_id: The user ID
+            agent: The builtin graph agent instance
+            connection_manager: WebSocket connection manager
+            connection_id: Connection ID for WebSocket
+
+        Yields:
+            Chat event dictionaries for streaming response
+        """
+        try:
+            import asyncio
+            from datetime import datetime, timezone
+            from handler.builtin_agents.base_graph_agent import BaseBuiltinGraphAgent
+            from core.chat.langgraph import GraphState
+
+            if not isinstance(agent, BaseBuiltinGraphAgent):
+                raise ValueError(f"Expected BaseBuiltinGraphAgent, got {type(agent)}")
+
+            # Yield processing start
+            yield {"type": ChatEventType.PROCESSING, "data": {"status": "preparing_builtin_agent_execution"}}
+
+            # Build the graph for execution
+            graph = agent.build_graph()
+
+            # Create initial state for the builtin agent
+            initial_state = GraphState(
+                messages=[],
+                current_step="start",
+                execution_context={},
+                user_input=message_text,
+                final_output="",
+                error=None,
+            )
+
+            # Yield execution start
+            message_id = f"builtin_{int(asyncio.get_event_loop().time() * 1000)}"
+            yield {"type": "streaming_start", "data": {"id": message_id}}
+
+            # Execute the graph
+            logger.info(f"Executing builtin agent graph for: {agent.name}")
+            result = await graph.ainvoke(initial_state)
+
+            # Debug the result structure
+            logger.info(f"LangGraph result type: {type(result)}")
+            logger.info(f"LangGraph result attributes: {dir(result)}")
+            if hasattr(result, "__dict__"):
+                logger.info(f"LangGraph result dict: {result.__dict__}")
+
+            # Extract the final output - try multiple approaches
+            response_text = None
+
+            # Try final_output attribute (for dict result)
+            if isinstance(result, dict) and "final_output" in result and result["final_output"]:
+                response_text = result["final_output"]
+                logger.info(f"Got response from final_output: {response_text[:100]}...")
+
+            # Try messages attribute (for dict result)
+            elif isinstance(result, dict) and "messages" in result and result["messages"]:
+                last_message = result["messages"][-1]
+                if hasattr(last_message, "content"):
+                    response_text = last_message.content
+                    logger.info(f"Got response from messages[0].content: {response_text[:100]}...")
+                else:
+                    response_text = str(last_message)
+                    logger.info(f"Got response from str(messages[0]): {response_text[:100]}...")
+
+            # Try accessing as dict
+            elif isinstance(result, dict):
+                if "final_output" in result and result["final_output"]:
+                    response_text = result["final_output"]
+                    logger.info(f"Got response from dict['final_output']: {response_text[:100]}...")
+                elif "messages" in result and result["messages"]:
+                    last_message = result["messages"][-1]
+                    if hasattr(last_message, "content"):
+                        response_text = last_message.content
+                    else:
+                        response_text = str(last_message)
+                    logger.info(f"Got response from dict['messages']: {response_text[:100]}...")
+
+            # Fallback
+            if not response_text:
+                response_text = "I completed the task, but no output was generated."
+                logger.warning(f"Could not extract output from result: {result}")
+
+            logger.info(f"Builtin agent executed successfully with output length: {len(response_text)}")
+
+            # Stream the response (optionally chunked for large responses)
+            if self.enable_graph_streaming_chunks and len(response_text) > self.graph_chunk_size:
+                for i in range(0, len(response_text), self.graph_chunk_size):
+                    chunk = response_text[i : i + self.graph_chunk_size]  # noqa: E203
+                    yield {"type": "streaming_chunk", "data": {"id": message_id, "content": chunk}}
+            else:
+                yield {"type": "streaming_chunk", "data": {"id": message_id, "content": response_text}}
+
+            # End streaming
+            yield {
+                "type": "streaming_end",
+                "data": {
+                    "id": message_id,
+                    "content": response_text,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to execute builtin agent {agent}: {e}")
+            yield {
+                "type": ChatEventType.ERROR,
+                "data": {"error": f"I'm sorry, but I encountered an error while executing the builtin agent: {e}"},
             }
 
     async def _execute_regular_agent_stream(

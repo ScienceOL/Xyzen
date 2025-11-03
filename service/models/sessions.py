@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -7,9 +8,61 @@ from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
     from .topic import TopicRead
-else:
-    # Import at runtime for model_rebuild to work
-    TopicRead = "TopicRead"
+
+
+def builtin_agent_id_to_uuid(agent_id: str) -> UUID:
+    """
+    Convert a builtin agent string ID to a deterministic UUID.
+
+    This allows storing builtin agent IDs in the database UUID field
+    while maintaining consistency.
+
+    Args:
+        agent_id: Builtin agent ID (e.g., "builtin_scientific_figure_generator")
+
+    Returns:
+        Deterministic UUID based on the agent ID
+    """
+    # Create a deterministic UUID from the string using SHA256 hash
+    hash_bytes = hashlib.sha256(agent_id.encode("utf-8")).digest()[:16]
+    return UUID(bytes=hash_bytes)
+
+
+def is_builtin_agent_uuid(agent_uuid: UUID, agent_id: str) -> bool:
+    """
+    Check if a UUID corresponds to a specific builtin agent ID.
+
+    Args:
+        agent_uuid: The UUID to check
+        agent_id: The builtin agent string ID to compare against
+
+    Returns:
+        True if the UUID matches the builtin agent ID
+    """
+    return agent_uuid == builtin_agent_id_to_uuid(agent_id)
+
+
+def uuid_to_builtin_agent_id(agent_uuid: UUID) -> str | None:
+    """
+    Convert a UUID back to a builtin agent string ID if it matches any registered builtin agent.
+
+    Args:
+        agent_uuid: The UUID to check
+
+    Returns:
+        The original builtin agent string ID if found, None otherwise
+    """
+    try:
+        from handler.builtin_agents import registry as builtin_registry
+
+        # Check all registered builtin agents
+        for agent_name in builtin_registry.list_agent_names():
+            builtin_agent_id = f"builtin_{agent_name}"
+            if builtin_agent_id_to_uuid(builtin_agent_id) == agent_uuid:
+                return builtin_agent_id
+        return None
+    except Exception:
+        return None
 
 
 class SessionBase(SQLModel):
@@ -36,7 +89,7 @@ class SessionCreate(SQLModel):
     name: str = Field(max_length=100)
     description: str | None = Field(default=None, max_length=500)
     is_active: bool = True
-    agent_id: UUID | None = Field(default=None, index=True)
+    agent_id: str | UUID | None = Field(default=None)
 
 
 class SessionRead(SessionBase):
