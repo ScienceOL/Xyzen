@@ -33,11 +33,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "pyright>=1.1.390",
-    "pre-commit>=4.2.0",
-    "ruff>=0.14.3",
-]
+dev = ["pyright>=1.1.390", "pre-commit>=4.2.0", "ruff>=0.14.3"]
 
 [tool.ruff]
 target-version = "py313"
@@ -51,37 +47,24 @@ ignore = []
 quote-style = "double"
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "core", "handler", "repo", "models", "schemas", "utils", "common", "internal", "middleware"]
-
-# ============================================================================
-# Pyright/Pylance 类型检查配置
-# ============================================================================
-# 这个配置同时用于:
-# 1. VS Code 的 Pylance 扩展（实时类型检查）
-# 2. 命令行工具 `pyright` 或 `uv run pyright .`（CI/CD 和本地验证）
-# 3. pre-commit 钩子（提交前验证）
-[tool.pyright]
-# ---------- 基础配置 ----------
-include = ["."]  # 包含当前目录下的所有文件
-exclude = [
-    "**/__pycache__",      # Python 编译缓存
-    "**/.pytest_cache",    # Pytest 缓存
-    "**/migrations",       # 数据库迁移文件（自动生成，无需类型检查）
-    "migrations",
-    ".venv",               # 虚拟环境
-    "build",               # 构建输出
-    "dist"                 # 分发包
+known-first-party = [
+    "app",
+    "core",
+    "handler",
+    "repo",
+    "models",
+    "schemas",
+    "utils",
+    "common",
+    "internal",
+    "middleware",
 ]
-extraPaths = ["."]         # 额外的模块搜索路径
-pythonVersion = "3.13"     # 项目使用的 Python 版本
-pythonPlatform = "All"     # 目标平台（All 表示跨平台）
 
-# ---------- 类型检查严格程度 ----------
-# 可选值: "off" | "basic" | "standard" | "strict"
-# - off: 关闭类型检查
-# - basic: 基础检查，适合迁移项目
-# - standard: 标准检查，平衡严格性和实用性（推荐）
-# - strict: 最严格检查，要求完整类型注解
+[tool.pyright]
+include = ["."]
+ignore = ["**/migrations"]
+pythonVersion = "3.13"
+pythonPlatform = "All"
 typeCheckingMode = "standard"
 
 # ---------- 严格模式细节配置 ----------
