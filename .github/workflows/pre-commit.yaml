@@ -43,8 +43,7 @@ jobs:
         working-directory: ./service
         run: |
           echo "Installing Python dependencies..."
-          uv sync --dev
-          uv tool install pre-commit
+          uv sync --all-groups
           echo "Python dependencies installed successfully"
 
       - name: Install frontend dependencies
