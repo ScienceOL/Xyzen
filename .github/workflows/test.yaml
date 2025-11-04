@@ -54,17 +54,6 @@ jobs:
           uv run pytest --cov=src --cov=examples --cov-report=html --cov-report=xml --cov-report=term-missing --tb=short -v --cov-fail-under=0
           echo "Tests and coverage completed successfully"
 
-      - name: Upload coverage to Codecov
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./service/coverage.xml
-          directory: ./service
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-
       - name: Upload coverage reports as artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -83,8 +72,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.13"]
-        # Add more Python versions when needed
-        # python-version: ['3.11', '3.12', '3.13']
 
     steps:
       - name: Checkout code
@@ -149,7 +136,7 @@ jobs:
       - name: Install dependencies
         working-directory: ./service
         run: |
-          uv sync --dev
+          uv sync --all-groups
 
       - name: Run integration tests
         working-directory: ./service
