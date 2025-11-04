@@ -60,7 +60,6 @@ class LlmProviderService {
     return response.json();
   }
 
-
   /**
    * Create a new provider
    */

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,7 +13,7 @@ from schemas.providers import PROVIDER_TEMPLATES, ProviderTemplate, ProviderType
 router = APIRouter(tags=["providers"])
 
 
-async def _verify_provider_authorization(
+async def verify_provider_authorization(
     provider_id: UUID, user: str, db: AsyncSession, allow_system: bool = False
 ) -> Provider | None:
     """
@@ -68,7 +68,7 @@ async def get_authorized_provider(
     Raises:
         HTTPException: 404 if provider not found, 403 if access denied
     """
-    provider = await _verify_provider_authorization(provider_id, user, db, allow_system=True)
+    provider = await verify_provider_authorization(provider_id, user, db, allow_system=True)
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
     return provider
@@ -94,7 +94,7 @@ async def get_authorized_user_provider(
     Raises:
         HTTPException: 404 if provider not found, 403 if access denied or system provider
     """
-    provider = await _verify_provider_authorization(provider_id, user, db, allow_system=False)
+    provider = await verify_provider_authorization(provider_id, user, db, allow_system=False)
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -104,8 +104,8 @@ async def get_authorized_user_provider(
     return provider
 
 
-@router.get("/templates", response_model=List[ProviderTemplate])
-async def get_provider_templates() -> List[ProviderTemplate]:
+@router.get("/templates", response_model=list[ProviderTemplate])
+async def get_provider_templates() -> list[ProviderTemplate]:
     """
     Get available provider templates with metadata for the UI.
     Returns configuration templates for all supported LLM providers.
@@ -113,11 +113,11 @@ async def get_provider_templates() -> List[ProviderTemplate]:
     return PROVIDER_TEMPLATES
 
 
-@router.get("/me", response_model=List[ProviderRead])
+@router.get("/me", response_model=list[ProviderRead])
 async def get_my_providers(
     user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> List[ProviderRead]:
+) -> list[ProviderRead]:
     """
     Get all providers accessible to the current authenticated user.
 
@@ -187,8 +187,25 @@ async def create_provider(
     # Create provider using repository
     created_provider = await provider_repo.create_provider(provider_data, user)
 
+    # Convert to ProviderRead by constructing the dict manually
+    # BEFORE committing, to avoid detached SQLAlchemy instance issues
+    provider_dict: dict[str, Any] = {
+        "id": created_provider.id,
+        "user_id": created_provider.user_id,
+        "name": created_provider.name,
+        "provider_type": created_provider.provider_type,
+        "api": created_provider.api,
+        "key": created_provider.key,
+        "timeout": created_provider.timeout,
+        "model": created_provider.model,
+        "max_tokens": created_provider.max_tokens,
+        "temperature": created_provider.temperature,
+        "is_system": created_provider.is_system,
+        "provider_config": created_provider.provider_config,
+    }
+
     await db.commit()
-    return ProviderRead(**created_provider.model_dump())
+    return ProviderRead(**provider_dict)
 
 
 @router.get("/{provider_id}", response_model=ProviderRead)
@@ -263,8 +280,25 @@ async def update_provider(
         # This should theoretically never happen since the dependency verified the provider exists
         raise HTTPException(status_code=500, detail="Failed to update provider")
 
+    # Convert to ProviderRead by constructing the dict manually
+    # BEFORE committing, to avoid detached SQLAlchemy instance issues
+    provider_dict: dict[str, Any] = {
+        "id": updated_provider.id,
+        "user_id": updated_provider.user_id,
+        "name": updated_provider.name,
+        "provider_type": updated_provider.provider_type,
+        "api": updated_provider.api,
+        "key": updated_provider.key,
+        "timeout": updated_provider.timeout,
+        "model": updated_provider.model,
+        "max_tokens": updated_provider.max_tokens,
+        "temperature": updated_provider.temperature,
+        "is_system": updated_provider.is_system,
+        "provider_config": updated_provider.provider_config,
+    }
+
     await db.commit()
-    return ProviderRead(**updated_provider.model_dump())
+    return ProviderRead(**provider_dict)
 
 
 @router.delete("/{provider_id}", status_code=204)

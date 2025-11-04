@@ -1,53 +1,53 @@
 .markdown {
-    .dark & {
-        color: rgb(230, 230, 230);
+  .dark & {
+    color: rgb(230, 230, 230);
 
-        h1,
-        h2,
-        h3,
-        h4,
-        h5,
-        h6 {
-            color: #f1f1f1;
-        }
-
-        code {
-            overflow: hidden;
-            transition: all 0.15s ease-in-out;
-            padding: 2px 4px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            background-color: #343434;
-            border-radius: 3px;
-            color: #ffffff;
-        }
-
-        code:hover {
-            background-color: rgb(67, 56, 202);
-            color: #fff;
-        }
-
-        img {
-            margin: 1rem 0 1.5rem 0;
-            max-width: 100%;
-            border: rgba(60, 60, 60, 0.6) 1px solid;
-            /* box-shadow: 0 4px 6px rgba(60, 60, 60, 0.4), 0 1px 3px rgba(60, 60, 60, 0.3); */
-            display: block;
-            box-sizing: content-box;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        a {
-            color: rgb(148, 169, 253);
-        }
-
-        hr {
-            background-color: #505050;
-        }
-
-        p {
-            color: rgb(240, 240, 240);
-        }
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      color: #f1f1f1;
     }
+
+    code {
+      overflow: hidden;
+      transition: all 0.15s ease-in-out;
+      padding: 2px 4px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background-color: #343434;
+      border-radius: 3px;
+      color: #ffffff;
+    }
+
+    code:hover {
+      background-color: rgb(67, 56, 202);
+      color: #fff;
+    }
+
+    img {
+      margin: 1rem 0 1.5rem 0;
+      max-width: 100%;
+      border: rgba(60, 60, 60, 0.6) 1px solid;
+      /* box-shadow: 0 4px 6px rgba(60, 60, 60, 0.4), 0 1px 3px rgba(60, 60, 60, 0.3); */
+      display: block;
+      box-sizing: content-box;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    a {
+      color: rgb(148, 169, 253);
+    }
+
+    hr {
+      background-color: #505050;
+    }
+
+    p {
+      color: rgb(240, 240, 240);
+    }
+  }
 }

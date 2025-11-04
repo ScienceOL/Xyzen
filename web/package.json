@@ -40,6 +40,7 @@
     "build:lib": "rimraf dist && cross-env BUILD_MODE=library vite build",
     "image:bohr": "docker buildx build . --build-arg VITE_XYZEN_BACKEND_URL=https://uni-xyzen.test.bohrium.com --platform linux/amd64 -t registry.dp.tech/public/xyzen-web:latest --push",
     "lint": "eslint .",
+    "type-check": "tsc --noEmit",
     "preview": "vite preview",
     "publish": "yarn npm publish"
   },

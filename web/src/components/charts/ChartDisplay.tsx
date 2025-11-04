@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import clsx from 'clsx';
+import React, { useMemo, useState } from "react";
+import clsx from "clsx";
 
-import { ChartRenderer } from './ChartRenderer';
-import { JsonDisplay } from '../shared/JsonDisplay';
-import { detectChart, validateChartData } from '../../utils/chartDetection';
-import type { ChartDisplayProps } from '../../types/chartTypes';
+import { ChartRenderer } from "./ChartRenderer";
+import { JsonDisplay } from "../shared/JsonDisplay";
+import { detectChart, validateChartData } from "../../utils/chartDetection";
+import type { ChartDisplayProps } from "../../types/chartTypes";
 
 /**
  * High-level component that decides whether to render data as a chart or JSON
@@ -12,7 +12,7 @@ import type { ChartDisplayProps } from '../../types/chartTypes';
 export const ChartDisplay: React.FC<ChartDisplayProps> = ({
   data,
   compact = false,
-  variant = 'default',
+  variant = "default",
   className,
   fallbackToJson = true,
 }) => {
@@ -23,32 +23,37 @@ export const ChartDisplay: React.FC<ChartDisplayProps> = ({
 
   // Determine what to render
   const shouldRenderChart = useMemo(() => {
-    console.log('🔍 ChartDisplay shouldRenderChart check:');
-    console.log('  forceJsonView:', forceJsonView);
-    console.log('  detection.isChartable:', detection.isChartable);
-    console.log('  detection.data:', detection.data);
+    console.log("🔍 ChartDisplay shouldRenderChart check:");
+    console.log("  forceJsonView:", forceJsonView);
+    console.log("  detection.isChartable:", detection.isChartable);
+    console.log("  detection.data:", detection.data);
 
     if (forceJsonView) {
-      console.log('  ❌ Forced JSON view');
+      console.log("  ❌ Forced JSON view");
       return false;
     }
     if (!detection.isChartable || !detection.data) {
-      console.log('  ❌ Not chartable or no data');
+      console.log("  ❌ Not chartable or no data");
       return false;
     }
 
     const validationResult = validateChartData(detection.data);
-    console.log('  validateChartData result:', validationResult);
-    console.log('  validation details:');
-    console.log('    - config exists:', !!detection.data);
-    console.log('    - type exists:', !!detection.data?.type);
-    console.log('    - data exists:', !!detection.data?.data);
-    console.log('    - data length:', Array.isArray(detection.data?.data) ? detection.data.data.length : 'not array');
+    console.log("  validateChartData result:", validationResult);
+    console.log("  validation details:");
+    console.log("    - config exists:", !!detection.data);
+    console.log("    - type exists:", !!detection.data?.type);
+    console.log("    - data exists:", !!detection.data?.data);
+    console.log(
+      "    - data length:",
+      Array.isArray(detection.data?.data)
+        ? detection.data.data.length
+        : "not array",
+    );
 
     if (validationResult) {
-      console.log('  ✅ Should render chart!');
+      console.log("  ✅ Should render chart!");
     } else {
-      console.log('  ❌ Validation failed');
+      console.log("  ❌ Validation failed");
     }
 
     return validationResult;
@@ -131,11 +136,7 @@ export const ChartDisplay: React.FC<ChartDisplayProps> = ({
             </div>
           )}
 
-          <JsonDisplay
-            data={data}
-            compact={compact}
-            variant={variant}
-          />
+          <JsonDisplay data={data} compact={compact} variant={variant} />
         </div>
       );
     }
@@ -149,9 +150,7 @@ export const ChartDisplay: React.FC<ChartDisplayProps> = ({
   };
 
   return (
-    <div className={clsx('chart-display', className)}>
-      {renderContent()}
-    </div>
+    <div className={clsx("chart-display", className)}>{renderContent()}</div>
   );
 };
 
@@ -163,17 +162,18 @@ export const SimpleChartDisplay: React.FC<{
   title?: string;
   height?: number;
   className?: string;
-}> = ({
-  data,
-  title,
-  height = 400,
-  className,
-}) => {
+}> = ({ data, title, height = 400, className }) => {
   const detection = useMemo(() => detectChart(data), [data]);
 
-  if (!detection.isChartable || !detection.data || !validateChartData(detection.data)) {
+  if (
+    !detection.isChartable ||
+    !detection.data ||
+    !validateChartData(detection.data)
+  ) {
     return (
-      <div className={clsx('text-sm text-gray-500 dark:text-gray-400', className)}>
+      <div
+        className={clsx("text-sm text-gray-500 dark:text-gray-400", className)}
+      >
         Unable to render chart
       </div>
     );
@@ -182,7 +182,7 @@ export const SimpleChartDisplay: React.FC<{
   const chartData = title ? { ...detection.data, title } : detection.data;
 
   return (
-    <div className={clsx('simple-chart-display', className)}>
+    <div className={clsx("simple-chart-display", className)}>
       <ChartRenderer
         data={chartData}
         height={height}

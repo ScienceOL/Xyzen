@@ -110,7 +110,6 @@ export default function ChatToolbar({
     return resolveProviderForAgent(currentAgent);
   }, [currentAgent, resolveProviderForAgent]);
 
-
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
@@ -151,7 +150,13 @@ export default function ChatToolbar({
         handleProviderChange(resolvedProvider.id);
       }
     }
-  }, [currentAgent, llmProviders, userDefaultProviderId, resolveProviderForAgent, handleProviderChange]);
+  }, [
+    currentAgent,
+    llmProviders,
+    userDefaultProviderId,
+    resolveProviderForAgent,
+    handleProviderChange,
+  ]);
 
   // Setup dnd sensors
   const sensors = useSensors(
@@ -283,7 +288,13 @@ export default function ChatToolbar({
                       />
                       <span>{currentProvider?.name || "选择提供商"}</span>
                       <span className="text-[10px] opacity-70">
-                        ({getProviderSourceDescription(currentAgent, currentProvider, llmProviders)})
+                        (
+                        {getProviderSourceDescription(
+                          currentAgent,
+                          currentProvider,
+                          llmProviders,
+                        )}
+                        )
                       </span>
                     </button>
 
@@ -364,24 +375,28 @@ export default function ChatToolbar({
                           >
                             自动选择 (系统提供商优先)
                           </button>
-                          {llmProviders.filter(p => !p.is_system).map(provider => (
-                            <button
-                              key={`default-${provider.id}`}
-                              onClick={() => setUserDefaultProvider(provider.id)}
-                              className={`w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
-                                userDefaultProviderId === provider.id
-                                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
-                                  : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span>{provider.name}</span>
-                                {userDefaultProviderId === provider.id && (
-                                  <CheckIcon className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
-                                )}
-                              </div>
-                            </button>
-                          ))}
+                          {llmProviders
+                            .filter((p) => !p.is_system)
+                            .map((provider) => (
+                              <button
+                                key={`default-${provider.id}`}
+                                onClick={() =>
+                                  setUserDefaultProvider(provider.id)
+                                }
+                                className={`w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
+                                  userDefaultProviderId === provider.id
+                                    ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
+                                    : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span>{provider.name}</span>
+                                  {userDefaultProviderId === provider.id && (
+                                    <CheckIcon className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+                                  )}
+                                </div>
+                              </button>
+                            ))}
                         </div>
                       </div>
 

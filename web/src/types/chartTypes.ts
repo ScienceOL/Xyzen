@@ -1,4 +1,4 @@
-import type { EChartsOption } from 'echarts';
+import type { EChartsOption } from "echarts";
 
 // Basic chart data point interfaces
 export interface ChartDataPoint {
@@ -10,7 +10,7 @@ export interface ChartDataPoint {
 export interface SeriesData {
   name: string;
   data: number[] | ChartDataPoint[];
-  type?: 'line' | 'bar' | 'pie' | 'scatter' | 'area';
+  type?: "line" | "bar" | "pie" | "scatter" | "area";
 }
 
 export interface TimeSeriesPoint {
@@ -21,16 +21,16 @@ export interface TimeSeriesPoint {
 
 // Chart configuration interfaces
 export interface ChartConfig {
-  type: 'line' | 'bar' | 'pie' | 'scatter' | 'area' | 'heatmap';
+  type: "line" | "bar" | "pie" | "scatter" | "area" | "heatmap";
   title?: string;
   data: ChartDataPoint[] | SeriesData[] | TimeSeriesPoint[] | number[];
   labels?: string[];
   xAxis?: {
-    type?: 'category' | 'value' | 'time';
+    type?: "category" | "value" | "time";
     name?: string;
   };
   yAxis?: {
-    type?: 'category' | 'value' | 'log';
+    type?: "category" | "value" | "log";
     name?: string;
   };
   options?: Partial<EChartsOption>;
@@ -59,7 +59,7 @@ export interface ChartableOutput {
 // Chart detection result
 export interface ChartDetectionResult {
   isChartable: boolean;
-  chartType: ChartConfig['type'] | null;
+  chartType: ChartConfig["type"] | null;
   confidence: number; // 0-1 score
   data: ChartConfig | null;
   reason?: string; // Why it was or wasn't detected as chartable
@@ -77,7 +77,7 @@ export interface ChartTheme {
 // Component props
 export interface ChartRendererProps {
   data: ChartConfig | EChartsOption;
-  theme?: 'light' | 'dark';
+  theme?: "light" | "dark";
   height?: string | number;
   width?: string | number;
   className?: string;
@@ -87,7 +87,7 @@ export interface ChartRendererProps {
 export interface ChartDisplayProps {
   data: unknown;
   compact?: boolean;
-  variant?: 'default' | 'success' | 'error';
+  variant?: "default" | "success" | "error";
   className?: string;
   fallbackToJson?: boolean;
 }

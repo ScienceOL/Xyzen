@@ -93,6 +93,7 @@ class ProviderRepository:
             max_tokens=provider_data.max_tokens,
             temperature=provider_data.temperature,
             is_system=provider_data.is_system,
+            provider_config=provider_data.provider_config,
         )
         self.db.add(provider)
         await self.db.flush()

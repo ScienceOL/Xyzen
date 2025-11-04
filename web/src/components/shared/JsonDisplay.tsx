@@ -9,12 +9,19 @@ interface JsonDisplayProps {
   data: unknown;
   className?: string;
   compact?: boolean; // for smaller displays in tool cards
-  variant?: 'default' | 'success' | 'error'; // color theme variants
+  variant?: "default" | "success" | "error"; // color theme variants
   hideHeader?: boolean; // option to hide the json header
   enableCharts?: boolean; // enable automatic chart detection and rendering
 }
 
-export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compact = false, variant = 'default', hideHeader = false, enableCharts = false }) => {
+export const JsonDisplay: React.FC<JsonDisplayProps> = ({
+  data,
+  className,
+  compact = false,
+  variant = "default",
+  hideHeader = false,
+  enableCharts = false,
+}) => {
   const [copied, setCopied] = useState(false);
   const [isDark, setIsDark] = React.useState(false);
 
@@ -65,7 +72,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compa
   // Get variant-based colors
   const getVariantColors = () => {
     switch (variant) {
-      case 'success':
+      case "success":
         return {
           container: compact
             ? "rounded-md bg-green-50/50 dark:bg-green-900/10 border border-green-200/60 dark:border-green-700/60"
@@ -75,9 +82,9 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compa
             : "code-block-header bg-green-100/60 dark:bg-green-800/30",
           text: compact
             ? "text-xs font-mono text-green-700 dark:text-green-300"
-            : "code-block-header__label text-green-700 dark:text-green-300"
+            : "code-block-header__label text-green-700 dark:text-green-300",
         };
-      case 'error':
+      case "error":
         return {
           container: compact
             ? "rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700"
@@ -87,7 +94,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compa
             : "code-block-header bg-red-100 dark:bg-red-800/50",
           text: compact
             ? "text-xs font-mono text-red-700 dark:text-red-300"
-            : "code-block-header__label text-red-700 dark:text-red-300"
+            : "code-block-header__label text-red-700 dark:text-red-300",
         };
       default:
         return {
@@ -99,7 +106,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compa
             : "code-block-header",
           text: compact
             ? "text-xs font-mono text-neutral-600 dark:text-neutral-400"
-            : "code-block-header__label"
+            : "code-block-header__label",
         };
     }
   };
@@ -129,9 +136,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compa
       {/* Header - conditionally rendered */}
       {!hideHeader && (
         <div className={headerClasses}>
-          <span className={variantColors.text}>
-            json
-          </span>
+          <span className={variantColors.text}>json</span>
         </div>
       )}
 
@@ -140,8 +145,10 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({ data, className, compa
         <button
           onClick={copyToClipboard}
           className={clsx(
-            compact ? "absolute top-1 right-1 w-6 h-6" : "code-block-copy-button",
-            copied && "copied"
+            compact
+              ? "absolute top-1 right-1 w-6 h-6"
+              : "code-block-copy-button",
+            copied && "copied",
           )}
           aria-label={copied ? "Copied" : "Copy JSON"}
           title={copied ? "Copied" : "Copy JSON"}

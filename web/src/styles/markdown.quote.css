@@ -1,21 +1,21 @@
 .markdown {
-    blockquote {
-        /* background-color: #e5e7eb; */
-        border-left: 2px solid rgb(229, 231, 235);
-        color: rgb(82, 82, 91);
-        padding: 0.5rem 1.5rem;
-        margin: 1.5rem 0;
-        font-style: italic;
-    }
+  blockquote {
+    /* background-color: #e5e7eb; */
+    border-left: 2px solid rgb(229, 231, 235);
+    color: rgb(82, 82, 91);
+    padding: 0.5rem 1.5rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+  }
 
-    .dark & {
-        blockquote {
-            /* background-color: #343434; */
-            border-left: 3px solid rgb(113, 113, 122);
-            color: rgb(161, 161, 170);
-            padding: 0.5rem 1.5rem;
-            margin: 1.5rem 0;
-            font-style: italic;
-        }
+  .dark & {
+    blockquote {
+      /* background-color: #343434; */
+      border-left: 3px solid rgb(113, 113, 122);
+      color: rgb(161, 161, 170);
+      padding: 0.5rem 1.5rem;
+      margin: 1.5rem 0;
+      font-style: italic;
     }
+  }
 }

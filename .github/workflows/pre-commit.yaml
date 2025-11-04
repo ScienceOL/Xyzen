@@ -1,41 +1,60 @@
-name: Pre-commit Checks
+name: Code Quality Checks
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - 'service/**'
-      - '.pre-commit-config.yaml'
-      - '.github/workflows/pre-commit.yml'
+      - "service/**"
+      - "web/**"
+      - ".pre-commit-config.yaml"
+      - ".github/workflows/pre-commit.yaml"
 
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
-    name: Run pre-commit hooks
+    name: Pre-commit Hooks
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 获取完整的 git 历史记录
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v4
         with:
-          version: 'latest'
+          version: "latest"
           enable-cache: true
 
-      - name: Install dependencies and Run
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable Corepack for Yarn
+        run: corepack enable
+
+      - name: Install Python dependencies
         working-directory: ./service
         run: |
-          echo "Syncing dependencies..."
+          echo "Installing Python dependencies..."
           uv sync --dev
-          echo "Dependencies installed successfully"
-          uv run pre-commit install
-          echo "Pre-commit hooks installed successfully"
+          echo "Python dependencies installed successfully"
+
+      - name: Install frontend dependencies
+        working-directory: ./web
+        run: |
+          echo "Installing frontend dependencies..."
+          yarn install --frozen-lockfile
+          echo "Frontend dependencies installed successfully"
+
+      - name: Run pre-commit hooks
+        run: |
+          echo "Running all pre-commit hooks (Backend + Frontend)..."
           uv run pre-commit run --all-files
+          echo "All pre-commit hooks completed successfully"

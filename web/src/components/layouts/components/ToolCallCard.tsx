@@ -91,10 +91,10 @@ export default function ToolCallCard({
   const isWaitingConfirmation = toolCall.status === "waiting_confirmation";
 
   // Get JsonDisplay variant based on tool call status
-  const getJsonVariant = (): 'success' | 'error' | 'default' => {
-    if (toolCall.status === "completed") return 'success';
-    if (toolCall.status === "failed") return 'error';
-    return 'default';
+  const getJsonVariant = (): "success" | "error" | "default" => {
+    if (toolCall.status === "completed") return "success";
+    if (toolCall.status === "failed") return "error";
+    return "default";
   };
 
   const jsonVariant = getJsonVariant();
@@ -181,7 +181,12 @@ export default function ToolCallCard({
           <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             即将执行的参数:
           </h4>
-          <JsonDisplay data={toolCall.arguments} compact variant={jsonVariant} hideHeader />
+          <JsonDisplay
+            data={toolCall.arguments}
+            compact
+            variant={jsonVariant}
+            hideHeader
+          />
         </div>
       )}
 
@@ -202,7 +207,12 @@ export default function ToolCallCard({
                   <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     调用参数:
                   </h4>
-                  <JsonDisplay data={toolCall.arguments} compact variant={jsonVariant} hideHeader />
+                  <JsonDisplay
+                    data={toolCall.arguments}
+                    compact
+                    variant={jsonVariant}
+                    hideHeader
+                  />
                 </div>
               )}
 
@@ -215,15 +225,18 @@ export default function ToolCallCard({
                   <JsonDisplay
                     data={(() => {
                       // Handle both old format (string) and new format (structured object)
-                      if (typeof toolCall.result === 'string') {
+                      if (typeof toolCall.result === "string") {
                         try {
                           return JSON.parse(toolCall.result);
                         } catch {
                           return toolCall.result;
                         }
-                      } else if (typeof toolCall.result === 'object' && toolCall.result !== null) {
+                      } else if (
+                        typeof toolCall.result === "object" &&
+                        toolCall.result !== null
+                      ) {
                         // New structured format from backend
-                        if ('content' in toolCall.result) {
+                        if ("content" in toolCall.result) {
                           return toolCall.result.content;
                         }
                         return toolCall.result;

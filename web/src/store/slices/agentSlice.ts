@@ -45,7 +45,7 @@ const createAuthHeaders = (): HeadersInit => {
 };
 
 // Helper functions for localStorage persistence
-const HIDDEN_GRAPH_AGENTS_KEY = 'xyzen_hidden_graph_agents';
+const HIDDEN_GRAPH_AGENTS_KEY = "xyzen_hidden_graph_agents";
 
 const loadHiddenGraphAgentIds = (): string[] => {
   try {
@@ -77,9 +77,12 @@ export const createAgentSlice: StateCreator<
     set({ agentsLoading: true });
     try {
       // Use unified endpoint that returns both regular and graph agents
-      const response = await fetch(`${get().backendUrl}/xyzen/api/v1/agents/all/unified`, {
-        headers: createAuthHeaders(),
-      });
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/all/unified`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch agents");
       }
@@ -87,9 +90,9 @@ export const createAgentSlice: StateCreator<
 
       // Filter out hidden graph agents
       const { hiddenGraphAgentIds } = get();
-      const visibleAgents = allAgents.filter(agent => {
+      const visibleAgents = allAgents.filter((agent) => {
         // Keep all regular agents
-        if (agent.agent_type === 'regular') return true;
+        if (agent.agent_type === "regular") return true;
         // Keep graph agents that are not hidden
         return !hiddenGraphAgentIds.includes(agent.id);
       });
@@ -166,23 +169,26 @@ export const createAgentSlice: StateCreator<
   },
   createGraphAgent: async (graphAgent) => {
     try {
-      const response = await fetch(`${get().backendUrl}/xyzen/api/v1/graph-agents/`, {
-        method: "POST",
-        headers: createAuthHeaders(),
-        body: JSON.stringify({
-          ...graphAgent,
-          state_schema: graphAgent.state_schema || {
-            type: "object",
-            properties: {
-              messages: { type: "array" },
-              current_step: { type: "string" },
-              user_input: { type: "string" },
-              final_output: { type: "string" },
-              execution_context: { type: "object" },
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/graph-agents/`,
+        {
+          method: "POST",
+          headers: createAuthHeaders(),
+          body: JSON.stringify({
+            ...graphAgent,
+            state_schema: graphAgent.state_schema || {
+              type: "object",
+              properties: {
+                messages: { type: "array" },
+                current_step: { type: "string" },
+                user_input: { type: "string" },
+                final_output: { type: "string" },
+                execution_context: { type: "object" },
+              },
             },
-          },
-        }),
-      });
+          }),
+        },
+      );
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Failed to create graph agent: ${errorText}`);
@@ -218,7 +224,7 @@ export const createAgentSlice: StateCreator<
       if (!state.hiddenGraphAgentIds.includes(id)) {
         state.hiddenGraphAgentIds.push(id);
       }
-      state.agents = state.agents.filter(agent => agent.id !== id);
+      state.agents = state.agents.filter((agent) => agent.id !== id);
     });
     // Persist to localStorage
     saveHiddenGraphAgentIds(get().hiddenGraphAgentIds);
@@ -226,7 +232,9 @@ export const createAgentSlice: StateCreator<
   addGraphAgentToSidebar: (id: string) => {
     // Remove from hidden list and refresh agents
     set((state) => {
-      state.hiddenGraphAgentIds = state.hiddenGraphAgentIds.filter(hiddenId => hiddenId !== id);
+      state.hiddenGraphAgentIds = state.hiddenGraphAgentIds.filter(
+        (hiddenId) => hiddenId !== id,
+      );
     });
     // Persist to localStorage
     saveHiddenGraphAgentIds(get().hiddenGraphAgentIds);
@@ -235,9 +243,9 @@ export const createAgentSlice: StateCreator<
   },
   // Helper methods for filtering by agent type
   getRegularAgents: () => {
-    return get().agents.filter(agent => agent.agent_type === 'regular');
+    return get().agents.filter((agent) => agent.agent_type === "regular");
   },
   getGraphAgents: () => {
-    return get().agents.filter(agent => agent.agent_type === 'graph');
+    return get().agents.filter((agent) => agent.agent_type === "graph");
   },
 });

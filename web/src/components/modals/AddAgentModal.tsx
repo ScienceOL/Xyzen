@@ -27,16 +27,27 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     openAddMcpServerModal,
     backendUrl,
   } = useXyzen();
-  const [mode, setMode] = useState<'create' | 'add'>('create');
-  const [selectedExistingAgent, setSelectedExistingAgent] = useState<Agent | null>(null);
-  const [allAvailableGraphAgents, setAllAvailableGraphAgents] = useState<Agent[]>([]);
+  const [mode, setMode] = useState<"create" | "add">("create");
+  const [selectedExistingAgent, setSelectedExistingAgent] =
+    useState<Agent | null>(null);
+  const [allAvailableGraphAgents, setAllAvailableGraphAgents] = useState<
+    Agent[]
+  >([]);
   const [agent, setAgent] = useState<
-    Omit<Agent, "id" | "user_id" | "mcp_servers" | "mcp_server_ids" | "created_at" | "updated_at">
+    Omit<
+      Agent,
+      | "id"
+      | "user_id"
+      | "mcp_servers"
+      | "mcp_server_ids"
+      | "created_at"
+      | "updated_at"
+    >
   >({
     name: "",
     description: "",
     prompt: "",
-    agent_type: 'regular' as const,
+    agent_type: "regular" as const,
   });
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isAutoAddingDefaultMcp, setIsAutoAddingDefaultMcp] = useState(false);
@@ -58,13 +69,17 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   // Fetch all available graph agents (including hidden ones) for add mode
   const fetchAllGraphAgents = useCallback(async () => {
     try {
-      const response = await fetch(`${backendUrl}/xyzen/api/v1/agents/all/unified`, {
-        headers: createAuthHeaders(),
-      });
+      const response = await fetch(
+        `${backendUrl}/xyzen/api/v1/agents/all/unified`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
       if (response.ok) {
         const allAgents: Agent[] = await response.json();
-        const graphAgents = allAgents.filter(agent =>
-          agent.agent_type === 'graph' && agent.id !== 'default-chat'
+        const graphAgents = allAgents.filter(
+          (agent) =>
+            agent.agent_type === "graph" && agent.id !== "default-chat",
         );
         setAllAvailableGraphAgents(graphAgents);
       } else {
@@ -83,7 +98,13 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       fetchMcpServers();
       fetchBuiltinMcpServers();
     }
-  }, [isOpen, fetchAgents, fetchAllGraphAgents, fetchMcpServers, fetchBuiltinMcpServers]);
+  }, [
+    isOpen,
+    fetchAgents,
+    fetchAllGraphAgents,
+    fetchMcpServers,
+    fetchBuiltinMcpServers,
+  ]);
 
   // Auto-add and select default MCP server (DynamicMCPServer)
   useEffect(() => {
@@ -160,7 +181,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (mode === 'add') {
+    if (mode === "add") {
       // Add existing agent mode
       if (!selectedExistingAgent) {
         alert("请选择要添加的助手");
@@ -195,14 +216,18 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleClose = () => {
-    setMode('create');
-    setAgent({ name: "", description: "", prompt: "", agent_type: 'regular' as const });
+    setMode("create");
+    setAgent({
+      name: "",
+      description: "",
+      prompt: "",
+      agent_type: "regular" as const,
+    });
     setSelectedExistingAgent(null);
     setMcpServerIds([]);
     setIsAutoAddingDefaultMcp(false);
     onClose();
   };
-
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="添加助手">
@@ -214,22 +239,22 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       <div className="mt-4 flex gap-2 border-b border-neutral-200 dark:border-neutral-700">
         <button
           type="button"
-          onClick={() => setMode('create')}
+          onClick={() => setMode("create")}
           className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-            mode === 'create'
-              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+            mode === "create"
+              ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+              : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300"
           }`}
         >
           💬 创建普通助手
         </button>
         <button
           type="button"
-          onClick={() => setMode('add')}
+          onClick={() => setMode("add")}
           className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-            mode === 'add'
-              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+            mode === "add"
+              ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+              : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300"
           }`}
         >
           📊 Agent Explorer
@@ -237,83 +262,83 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        {mode === 'create' ? (
+        {mode === "create" ? (
           <>
             {/* Create Mode - Regular Agent Only */}
 
-        <Field>
-          <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            名称
-          </Label>
-          <Input
-            name="name"
-            value={agent.name}
-            onChange={handleChange}
-            placeholder="例如：研究助手"
-            required
-          />
-        </Field>
-        <Field>
-          <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            描述
-          </Label>
-          <textarea
-            name="description"
-            value={agent.description}
-            onChange={handleChange}
-            placeholder="助手的目的简要描述"
-            className="w-full rounded-md border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
-          />
-        </Field>
+            <Field>
+              <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                名称
+              </Label>
+              <Input
+                name="name"
+                value={agent.name}
+                onChange={handleChange}
+                placeholder="例如：研究助手"
+                required
+              />
+            </Field>
+            <Field>
+              <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                描述
+              </Label>
+              <textarea
+                name="description"
+                value={agent.description}
+                onChange={handleChange}
+                placeholder="助手的目的简要描述"
+                className="w-full rounded-md border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
+              />
+            </Field>
 
-        <Field>
-          <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            系统提示
-          </Label>
-          <textarea
-            name="prompt"
-            value={agent.prompt}
-            onChange={handleChange}
-            placeholder="定义助手的行为和个性"
-            rows={4}
-            className="w-full rounded-md border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
-          />
-        </Field>
+            <Field>
+              <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                系统提示
+              </Label>
+              <textarea
+                name="prompt"
+                value={agent.prompt}
+                onChange={handleChange}
+                placeholder="定义助手的行为和个性"
+                rows={4}
+                className="w-full rounded-md border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
+              />
+            </Field>
 
-        <Field>
-          <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            连接的 MCP 服务器
-          </Label>
-          <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-md border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
-            {mcpServers.length > 0 ? (
-              mcpServers.map((server) => (
-                <McpServerItem
-                  key={server.id}
-                  mcp={server}
-                  isSelected={mcpServerIds.includes(server.id)}
-                  onSelectionChange={() => handleMcpServerChange(server.id)}
-                />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center p-4 text-center">
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  No MCP servers available.
-                </p>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    handleClose(); // Close current modal with cleanup
-                    openAddMcpServerModal(); // Open add server modal
-                  }}
-                  className="mt-2 inline-flex items-center gap-2 rounded-md bg-indigo-100 py-1.5 px-3 text-sm/6 font-semibold text-indigo-600 focus:outline-none data-[hover]:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:data-[hover]:bg-indigo-900"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Create MCP Server
-                </Button>
+            <Field>
+              <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                连接的 MCP 服务器
+              </Label>
+              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-md border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
+                {mcpServers.length > 0 ? (
+                  mcpServers.map((server) => (
+                    <McpServerItem
+                      key={server.id}
+                      mcp={server}
+                      isSelected={mcpServerIds.includes(server.id)}
+                      onSelectionChange={() => handleMcpServerChange(server.id)}
+                    />
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-4 text-center">
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                      No MCP servers available.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        handleClose(); // Close current modal with cleanup
+                        openAddMcpServerModal(); // Open add server modal
+                      }}
+                      className="mt-2 inline-flex items-center gap-2 rounded-md bg-indigo-100 py-1.5 px-3 text-sm/6 font-semibold text-indigo-600 focus:outline-none data-[hover]:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:data-[hover]:bg-indigo-900"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      Create MCP Server
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </Field>
+            </Field>
           </>
         ) : (
           <>
@@ -325,11 +350,12 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                     No Graph Agents Available
                   </p>
                   <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                    Graph agents are created using MCP graph tools with complex workflows involving nodes and edges
+                    Graph agents are created using MCP graph tools with complex
+                    workflows involving nodes and edges
                   </p>
                   <button
                     type="button"
-                    onClick={() => setMode('create')}
+                    onClick={() => setMode("create")}
                     className="mt-3 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
                   >
                     Create Regular Agent Instead
@@ -347,8 +373,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                         onClick={() => setSelectedExistingAgent(agent)}
                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                           selectedExistingAgent?.id === agent.id
-                            ? 'border-indigo-200 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/20'
-                            : 'border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-750'
+                            ? "border-indigo-200 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/20"
+                            : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-750"
                         }`}
                       >
                         <div className="flex items-start justify-between">
@@ -366,12 +392,14 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                               <span className="text-xs text-indigo-600 dark:text-indigo-400">
                                 {agent.edge_count || 0} 边
                               </span>
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                agent.is_active
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
-                                  : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300'
-                              }`}>
-                                {agent.is_active ? 'Ready' : 'Building'}
+                              <span
+                                className={`text-xs px-1.5 py-0.5 rounded ${
+                                  agent.is_active
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300"
+                                    : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300"
+                                }`}
+                              >
+                                {agent.is_active ? "Ready" : "Building"}
                               </span>
                               {!hiddenGraphAgentIds.includes(agent.id) && (
                                 <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
@@ -400,23 +428,26 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           </Button>
           <Button
             type="submit"
-            disabled={Boolean(mode === 'add' && selectedExistingAgent && !hiddenGraphAgentIds.includes(selectedExistingAgent.id))}
+            disabled={Boolean(
+              mode === "add" &&
+                selectedExistingAgent &&
+                !hiddenGraphAgentIds.includes(selectedExistingAgent.id),
+            )}
             className={`inline-flex items-center gap-2 rounded-md py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
-              mode === 'add' && selectedExistingAgent && !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
-                ? 'bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
-                : 'bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400'
+              mode === "add" &&
+              selectedExistingAgent &&
+              !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
+                ? "bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
+                : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
             }`}
           >
-            {mode === 'add'
-              ? (selectedExistingAgent
-                  ? (hiddenGraphAgentIds.includes(selectedExistingAgent.id)
-                      ? `Add ${selectedExistingAgent.name}`
-                      : `${selectedExistingAgent.name} - Already Added`
-                    )
-                  : 'Select Agent'
-                )
-              : '创建普通助手'
-            }
+            {mode === "add"
+              ? selectedExistingAgent
+                ? hiddenGraphAgentIds.includes(selectedExistingAgent.id)
+                  ? `Add ${selectedExistingAgent.name}`
+                  : `${selectedExistingAgent.name} - Already Added`
+                : "Select Agent"
+              : "创建普通助手"}
           </Button>
         </div>
       </form>

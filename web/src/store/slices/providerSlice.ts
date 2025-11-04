@@ -5,7 +5,10 @@ import type {
   LlmProviderUpdate,
   ProviderTemplate,
 } from "@/types/llmProvider";
-import { ProviderPreferencesManager, resolveProviderForAgent } from "@/utils/providerPreferences";
+import {
+  ProviderPreferencesManager,
+  resolveProviderForAgent,
+} from "@/utils/providerPreferences";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
 
@@ -26,7 +29,9 @@ export interface ProviderSlice {
   initializeProviderPreferences: () => void;
   setUserDefaultProvider: (providerId: string | null) => void;
   getUserDefaultProvider: () => LlmProviderResponse | null;
-  resolveProviderForAgent: (agent: { id: string; provider_id?: string | null } | null) => LlmProviderResponse | null;
+  resolveProviderForAgent: (
+    agent: { id: string; provider_id?: string | null } | null,
+  ) => LlmProviderResponse | null;
 }
 
 export const createProviderSlice: StateCreator<
@@ -80,7 +85,7 @@ export const createProviderSlice: StateCreator<
   getUserDefaultProvider: () => {
     const { llmProviders, userDefaultProviderId } = get();
     if (!userDefaultProviderId) return null;
-    return llmProviders.find(p => p.id === userDefaultProviderId) || null;
+    return llmProviders.find((p) => p.id === userDefaultProviderId) || null;
   },
 
   resolveProviderForAgent: (agent) => {
@@ -97,7 +102,7 @@ export const createProviderSlice: StateCreator<
 
       // Auto-set as default if it's the first user provider and no default is set
       const { llmProviders, userDefaultProviderId } = get();
-      const userProviders = llmProviders.filter(p => !p.is_system);
+      const userProviders = llmProviders.filter((p) => !p.is_system);
       if (userProviders.length === 1 && !userDefaultProviderId) {
         get().setUserDefaultProvider(newProvider.id);
       }

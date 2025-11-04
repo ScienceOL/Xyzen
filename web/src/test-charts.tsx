@@ -1,6 +1,6 @@
-import React from 'react';
-import { JsonDisplay } from './components/shared/JsonDisplay';
-import { SimpleChartDisplay } from './components/charts/ChartDisplay';
+import React from "react";
+import { JsonDisplay } from "./components/shared/JsonDisplay";
+import { SimpleChartDisplay } from "./components/charts/ChartDisplay";
 
 // Test data samples
 const testData = {
@@ -10,7 +10,7 @@ const testData = {
     { x: "Feb", y: 150 },
     { x: "Mar", y: 120 },
     { x: "Apr", y: 180 },
-    { x: "May", y: 200 }
+    { x: "May", y: 200 },
   ],
 
   // Time series data
@@ -19,13 +19,13 @@ const testData = {
     { timestamp: "2024-01-02", value: 150 },
     { timestamp: "2024-01-03", value: 120 },
     { timestamp: "2024-01-04", value: 180 },
-    { timestamp: "2024-01-05", value: 200 }
+    { timestamp: "2024-01-05", value: 200 },
   ],
 
   // Multi-series data
   multiSeriesData: [
     { name: "Series A", data: [100, 150, 120, 180, 200] },
-    { name: "Series B", data: [80, 120, 140, 160, 180] }
+    { name: "Series B", data: [80, 120, 140, 160, 180] },
   ],
 
   // Pie chart data
@@ -33,38 +33,40 @@ const testData = {
     { x: "Chrome", y: 45 },
     { x: "Firefox", y: 25 },
     { x: "Safari", y: 20 },
-    { x: "Edge", y: 10 }
+    { x: "Edge", y: 10 },
   ],
 
   // Direct ECharts config
   echartsConfig: {
     xAxis: {
-      type: 'category',
-      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      type: "category",
+      data: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     },
     yAxis: {
-      type: 'value'
+      type: "value",
     },
-    series: [{
-      data: [120, 200, 150, 80, 70, 110, 130],
-      type: 'bar'
-    }]
+    series: [
+      {
+        data: [120, 200, 150, 80, 70, 110, 130],
+        type: "bar",
+      },
+    ],
   },
 
   // Structured chart config
   structuredChart: {
     chart: {
-      type: 'line' as const,
-      title: 'Monthly Sales',
+      type: "line" as const,
+      title: "Monthly Sales",
       data: [
         { x: "Q1", y: 1200 },
         { x: "Q2", y: 1800 },
         { x: "Q3", y: 1600 },
-        { x: "Q4", y: 2000 }
+        { x: "Q4", y: 2000 },
       ],
-      xAxis: { name: 'Quarter' },
-      yAxis: { name: 'Sales ($)' }
-    }
+      xAxis: { name: "Quarter" },
+      yAxis: { name: "Sales ($)" },
+    },
   },
 
   // Non-chart data (should fall back to JSON)
@@ -73,9 +75,9 @@ const testData = {
     status: "success",
     metadata: {
       version: "1.0.0",
-      author: "AI Assistant"
-    }
-  }
+      author: "AI Assistant",
+    },
+  },
 };
 
 /**
@@ -126,7 +128,9 @@ export const ChartTestComponent: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-lg font-medium">Non-Chart Data (JSON Fallback)</h3>
+            <h3 className="text-lg font-medium">
+              Non-Chart Data (JSON Fallback)
+            </h3>
             <JsonDisplay data={testData.nonChartData} enableCharts={true} />
           </div>
         </div>

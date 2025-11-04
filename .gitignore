@@ -1,5 +1,5 @@
 # ========================
-# PROTIUM GITIGNORE
+# XYZEN PROJECT GITIGNORE
 # ========================
 
 # ===== 通用忽略 =====
@@ -108,11 +108,30 @@ tsconfig.tsbuildinfo*
 !bak.db
 
 # ===== 测试相关 =====
+# Python 测试和覆盖率
+.coverage
+.coverage.*
 coverage/
+htmlcov/
+.pytest_cache/
+.tox/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# JavaScript 测试
 .nyc_output/
 *.lcov
 /test-reports/
 .temp/
+
+# 测试数据库
+test.db
+test.sqlite
+test.sqlite3
+*.test.db
 
 # ===== 容器化配置 =====
 docker-compose.yml

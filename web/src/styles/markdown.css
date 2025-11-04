@@ -1,7 +1,7 @@
 .markdown {
   font-feature-settings:
-    'lnum' 1,
-    'tnum' 1;
+    "lnum" 1,
+    "tnum" 1;
   font-size: 16px;
   line-height: 1.6;
   letter-spacing: 0px;
@@ -15,13 +15,14 @@
     max-width: 100%;
     border: rgba(139, 139, 139, 0.2) 1px solid;
     border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow:
+      0 4px 6px rgba(0, 0, 0, 0.1),
+      0 1px 3px rgba(0, 0, 0, 0.08);
     display: block;
     box-sizing: content-box;
     margin-left: auto;
     margin-right: auto;
   }
-
 
   h1,
   h2,
@@ -99,9 +100,8 @@
     vertical-align: middle;
   }
 
-
   a::before {
-    content: '';
+    content: "";
     position: absolute;
     width: 100%;
     height: 1.5px;
@@ -153,15 +153,14 @@
   }
 
   /* 代码块第一行有一个奇怪的缩进 */
-  code>span:first-child {
+  code > span:first-child {
     margin-left: -4px;
   }
 
   code:hover {
-    background-color: #4C6EF5;
+    background-color: #4c6ef5;
     color: #fff;
   }
-
 
   table {
     display: block;

@@ -1,3 +1,11 @@
+# Pre-commit hooks for both backend and frontend
+# Run locally: uv run pre-commit run --all-files
+# Install locally: uv run pre-commit install
+#
+# REPO CHOICE GUIDE:
+# - External repos (preferred): For tools that work in isolation (ruff, prettier)
+# - Local repos (when needed): For tools requiring project dependencies/config (pyright, eslint, typescript)
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -6,6 +14,9 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.3
@@ -13,15 +24,48 @@ repos:
       - id: ruff-check
         args: [--config=service/pyproject.toml, --fix]
         files: ^service/
+        name: Ruff linting (Python)
       - id: ruff-format
         args: [--config=service/pyproject.toml]
         files: ^service/
+        name: Ruff formatting (Python)
 
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.407
+  - repo: local
     hooks:
       - id: pyright
+        language: system
         args:
           - --project=service/pyproject.toml
         files: ^service/
         entry: bash -c 'cd service && uv run --active pyright .'
+        name: Pyright type checking (Python)
+
+  # Frontend code quality
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: ^web/
+        types_or: [javascript, jsx, ts, tsx, json, css, scss, yaml, markdown]
+        args: [--config=web/.prettierrc]
+        name: Prettier formatting (Frontend)
+
+  # ESLint (local repo needed for project dependencies and plugins)
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint linting (Frontend)
+        entry: bash -c 'cd web && yarn lint --fix'
+        language: system
+        files: ^web/src/.*\.[jt]sx?$
+        pass_filenames: false
+
+  # TypeScript type checking for frontend
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: TypeScript type checking (Frontend)
+        entry: bash -c 'cd web && yarn type-check'
+        language: system
+        files: ^web/.*\.tsx?$
+        pass_filenames: false

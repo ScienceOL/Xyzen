@@ -1,7 +1,6 @@
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, JSON
 from sqlmodel import Field, SQLModel
 
 # Provider-specific configuration classes
@@ -56,8 +55,8 @@ class ProviderBase(SQLModel):
         description="System-provided default provider (read-only for regular users)",
     )
     provider_config: dict | None = Field(
-        default_factory=dict,
-        sa_column=Column(JSONB),
+        default=None,
+        sa_column=Column(JSON),
         description="Provider-specific configuration as JSON",
     )
 

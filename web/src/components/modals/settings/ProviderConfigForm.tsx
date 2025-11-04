@@ -439,7 +439,9 @@ export const ProviderConfigForm = () => {
               >
                 <span
                   className={`${
-                    userDefaultProviderId === selectedProviderId ? "translate-x-6" : "translate-x-1"
+                    userDefaultProviderId === selectedProviderId
+                      ? "translate-x-6"
+                      : "translate-x-1"
                   } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
                 />
               </Switch>

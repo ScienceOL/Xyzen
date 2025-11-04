@@ -21,7 +21,7 @@ export type Agent = {
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
   // New fields for unified agent support
-  agent_type: 'regular' | 'graph';
+  agent_type: "regular" | "graph";
   avatar?: string | null;
   tags?: string[] | null;
   model?: string | null;
@@ -136,7 +136,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
             className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
           >
             <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-            {agent?.agent_type === 'graph' ? '移除助手' : '删除助手'}
+            {agent?.agent_type === "graph" ? "移除助手" : "删除助手"}
           </button>
         </>
       )}
@@ -203,7 +203,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
             </h3>
 
             {/* Agent type badge */}
-            {agent.agent_type === 'graph' && (
+            {agent.agent_type === "graph" && (
               <Badge
                 variant="blue"
                 className="flex items-center gap-1 flex-shrink-0"
@@ -412,7 +412,7 @@ export default function XyzenAgent() {
           isOpen={isConfirmModalOpen}
           onClose={() => setConfirmModalOpen(false)}
           onConfirm={() => {
-            if (agentToDelete.agent_type === 'graph') {
+            if (agentToDelete.agent_type === "graph") {
               // Remove graph agent from sidebar only
               removeGraphAgentFromSidebar(agentToDelete.id);
             } else {
@@ -422,9 +422,13 @@ export default function XyzenAgent() {
             setConfirmModalOpen(false);
             setAgentToDelete(null);
           }}
-          title={agentToDelete.agent_type === 'graph' ? "Remove Graph Agent" : "Delete Agent"}
+          title={
+            agentToDelete.agent_type === "graph"
+              ? "Remove Graph Agent"
+              : "Delete Agent"
+          }
           message={
-            agentToDelete.agent_type === 'graph'
+            agentToDelete.agent_type === "graph"
               ? `Are you sure you want to remove "${agentToDelete.name}" from the sidebar? The graph agent will still exist and can be added back later.`
               : `Are you sure you want to permanently delete the agent "${agentToDelete.name}"? This action cannot be undone.`
           }

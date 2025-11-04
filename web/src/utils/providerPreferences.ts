@@ -66,7 +66,7 @@ export class ProviderPreferencesManager {
    * Get the user's global default provider from available providers
    */
   static getDefaultProvider(
-    availableProviders: LlmProviderResponse[]
+    availableProviders: LlmProviderResponse[],
   ): LlmProviderResponse | null {
     const defaultId = this.getDefaultProviderId();
     if (!defaultId) return null;
@@ -79,7 +79,7 @@ export class ProviderPreferencesManager {
    */
   static setLastUsedProviderForAgent(
     agentId: string,
-    providerId: string
+    providerId: string,
   ): void {
     const preferences = this.getPreferences();
     preferences.lastUsedProviders[agentId] = providerId;
@@ -108,22 +108,20 @@ export class ProviderPreferencesManager {
    * Migrate from database-based defaults (temporary migration helper)
    * Call this once when providers are first loaded
    */
-  static migrateFromDatabaseDefault(
-    providers: LlmProviderResponse[]
-  ): void {
+  static migrateFromDatabaseDefault(providers: LlmProviderResponse[]): void {
     const preferences = this.getPreferences();
 
     // Only migrate if no local default is set
     if (!preferences.defaultProviderId) {
       // Find the database default (if any exists from old data)
       const databaseDefault = providers.find(
-        (p) => p.is_default && !p.is_system
+        (p) => p.is_default && !p.is_system,
       );
 
       if (databaseDefault) {
         console.info(
           "Migrating database default provider to local preferences:",
-          databaseDefault.name
+          databaseDefault.name,
         );
         this.setDefaultProvider(databaseDefault.id);
       }
@@ -136,12 +134,12 @@ export class ProviderPreferencesManager {
  */
 export function resolveProviderForAgent(
   agent: { id: string; provider_id?: string | null } | null,
-  availableProviders: LlmProviderResponse[]
+  availableProviders: LlmProviderResponse[],
 ): LlmProviderResponse | null {
   // 1. Agent has explicit provider
   if (agent?.provider_id) {
     const agentProvider = availableProviders.find(
-      (p) => p.id === agent.provider_id
+      (p) => p.id === agent.provider_id,
     );
     if (agentProvider) {
       return agentProvider;
@@ -149,9 +147,8 @@ export function resolveProviderForAgent(
   }
 
   // 2. User's local default preference
-  const userDefault = ProviderPreferencesManager.getDefaultProvider(
-    availableProviders
-  );
+  const userDefault =
+    ProviderPreferencesManager.getDefaultProvider(availableProviders);
   if (userDefault && !userDefault.is_system) {
     return userDefault;
   }
@@ -173,7 +170,7 @@ export function resolveProviderForAgent(
 export function getProviderSourceDescription(
   agent: { id: string; provider_id?: string | null } | null,
   provider: LlmProviderResponse | null,
-  availableProviders: LlmProviderResponse[]
+  availableProviders: LlmProviderResponse[],
 ): string {
   if (!provider) return "无提供商";
 
@@ -183,9 +180,8 @@ export function getProviderSourceDescription(
   }
 
   // User's global default
-  const userDefault = ProviderPreferencesManager.getDefaultProvider(
-    availableProviders
-  );
+  const userDefault =
+    ProviderPreferencesManager.getDefaultProvider(availableProviders);
   if (userDefault?.id === provider.id && !provider.is_system) {
     return "全局默认";
   }

@@ -1,0 +1,200 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "service/**"
+      - ".github/workflows/test.yaml"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "service/**"
+      - ".github/workflows/test.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: ./service
+        run: |
+          echo "Syncing dependencies..."
+          uv sync --dev --group test
+          echo "Dependencies installed successfully"
+
+      - name: Run tests with coverage
+        working-directory: ./service
+        run: |
+          echo "Running tests with coverage..."
+          # Run tests with coverage - single run for efficiency
+          # Override coverage failure threshold for CI (don't fail on low coverage)
+          uv run pytest --cov=src --cov=examples --cov-report=html --cov-report=xml --cov-report=term-missing --tb=short -v --cov-fail-under=0
+          echo "Tests and coverage completed successfully"
+
+      - name: Upload coverage to Codecov
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./service/coverage.xml
+          directory: ./service
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage reports as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            service/htmlcov/
+            service/coverage.xml
+          retention-days: 7
+
+  test-matrix:
+    runs-on: ubuntu-latest
+    name: Test Matrix (Python versions)
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+        # Add more Python versions when needed
+        # python-version: ['3.11', '3.12', '3.13']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: ./service
+        run: |
+          uv sync --dev --group test
+
+      - name: Run tests
+        working-directory: ./service
+        run: |
+          # Run core tests without coverage for matrix testing
+          uv run pytest tests/ --tb=short -x --no-cov
+
+  integration-test:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: xyzen_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: ./service
+        run: |
+          uv sync --dev
+
+      - name: Run integration tests
+        working-directory: ./service
+        env:
+          # Use PostgreSQL for integration tests
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/xyzen_test
+          TESTING: true
+        run: |
+          # Run integration tests (if you have them)
+          uv run pytest tests/test_integration.py -v --tb=short --no-cov
+
+  test-summary:
+    needs: [test, test-matrix, integration-test]
+    runs-on: ubuntu-latest
+    if: always()
+    name: Test Summary
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.test.result }}" == "success" ]; then
+            echo "✅ **Main Test Suite**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Main Test Suite**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-matrix.result }}" == "success" ]; then
+            echo "✅ **Matrix Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Matrix Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.integration-test.result }}" == "success" ]; then
+            echo "✅ **Integration Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Integration Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Coverage Reports" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage reports are uploaded as artifacts and available for download." >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if any test job failed
+        if: needs.test.result == 'failure' || needs.test-matrix.result == 'failure' || needs.integration-test.result == 'failure'
+        run: exit 1

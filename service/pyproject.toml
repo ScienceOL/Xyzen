@@ -11,6 +11,7 @@ dependencies = [
     "fastapi[standard]>=0.116.1",
     "fastmcp>=2.12.3",
     "google-genai>=1.38.0",
+    "greenlet>=3.2.3",
     "httpx>=0.28.1",
     "langchain>=1.0.2",
     "langchain-anthropic>=1.0.0",
@@ -34,6 +35,14 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pyright>=1.1.390", "pre-commit>=4.2.0", "ruff>=0.14.3"]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.12.0",
+    "httpx>=0.28.1",
+    "aiosqlite>=0.20.0",
+]
 
 [tool.ruff]
 target-version = "py313"
@@ -129,3 +138,60 @@ reportUnknownMemberType = "none"             # 成员类型未知
 reportMissingSuperCall = "none"              # 子类方法中缺少 super() 调用
 reportCallInDefaultInitializer = "none"      # 在默认参数中调用函数
 reportImplicitStringConcatenation = "none"   # 隐式字符串拼接（如 "a" "b"）
+
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=.",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=85",
+    "-v",
+    "--tb=short",
+    "--maxfail=10",
+    "--durations=10",
+    "--color=yes",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "migrations/*",
+    "**/__pycache__/*",
+    ".venv/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
