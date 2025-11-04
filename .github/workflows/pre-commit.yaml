@@ -44,6 +44,7 @@ jobs:
         run: |
           echo "Installing Python dependencies..."
           uv sync --dev
+          uv tool add pre-commit
           echo "Python dependencies installed successfully"
 
       - name: Install frontend dependencies
@@ -56,6 +57,5 @@ jobs:
       - name: Run pre-commit hooks
         run: |
           echo "Running all pre-commit hooks (Backend + Frontend)..."
-          uv add pre-commit
           uv run pre-commit run --all-files
           echo "All pre-commit hooks completed successfully"
