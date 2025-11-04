@@ -44,7 +44,7 @@ jobs:
         run: |
           echo "Installing Python dependencies..."
           uv sync --dev
-          uv tool add pre-commit
+          uv tool install pre-commit
           echo "Python dependencies installed successfully"
 
       - name: Install frontend dependencies
