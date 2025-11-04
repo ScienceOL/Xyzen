@@ -56,6 +56,6 @@ jobs:
       - name: Run pre-commit hooks
         run: |
           echo "Running all pre-commit hooks (Backend + Frontend)..."
-          uv install pre-commit
+          uv add pre-commit
           uv run pre-commit run --all-files
           echo "All pre-commit hooks completed successfully"
