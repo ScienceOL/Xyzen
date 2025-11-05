@@ -22,11 +22,16 @@ repos:
     rev: v0.14.3
     hooks:
       - id: ruff-check
-        args: [--config=service/pyproject.toml, --fix]
+        args:
+          [
+            --config=service/pyproject.toml,
+            --fix,
+            --cache-dir=service/.ruff_cache,
+          ]
         files: ^service/
         name: Ruff linting (Python)
       - id: ruff-format
-        args: [--config=service/pyproject.toml]
+        args: [--config=service/pyproject.toml, --cache-dir=service/.ruff_cache]
         files: ^service/
         name: Ruff formatting (Python)
 
@@ -49,6 +54,7 @@ repos:
         types_or: [javascript, jsx, ts, tsx, json, css, scss, yaml, markdown]
         args: [--config=web/.prettierrc]
         name: Prettier formatting (Frontend)
+        entry: bash -c 'cd web && yarn prettier --write'
 
   # ESLint (local repo needed for project dependencies and plugins)
   - repo: local

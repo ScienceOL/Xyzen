@@ -42,7 +42,8 @@
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "preview": "vite preview",
-    "publish": "yarn npm publish"
+    "publish": "yarn npm publish",
+    "prettier": "prettier --write ."
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
