@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.agent_service import AgentService, UnifiedAgentRead
+from core.system_agent import SystemAgentManager
 from middleware.auth import get_current_user
 from middleware.database import get_session
 from models.agent import Agent as AgentModel
@@ -349,3 +350,117 @@ async def delete_agent(
     await agent_repo.delete_agent(agent.id)
     await db.commit()
     return
+
+
+# System Agent Endpoints
+
+
+@router.get("/system/chat", response_model=AgentReadWithDetails)
+async def get_system_chat_agent(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentReadWithDetails:
+    """
+    Get the system chat agent available to all users.
+
+    Returns the "随便聊聊" system agent with MCP server details.
+    This agent is available to all authenticated users.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        AgentReadWithDetails: The system chat agent with MCP server details
+
+    Raises:
+        HTTPException: 404 if system chat agent not found
+    """
+    system_manager = SystemAgentManager(db)
+    chat_agent = await system_manager.get_system_agent("chat")
+
+    if not chat_agent:
+        raise HTTPException(status_code=404, detail="System chat agent not found")
+
+    # Get MCP servers for the system agent
+    agent_repo = AgentRepository(db)
+    mcp_servers = await agent_repo.get_agent_mcp_servers(chat_agent.id)
+
+    # Create agent dict with MCP servers
+    agent_dict = chat_agent.model_dump()
+    agent_dict["mcp_servers"] = mcp_servers
+    return AgentReadWithDetails(**agent_dict)
+
+
+@router.get("/system/workshop", response_model=AgentReadWithDetails)
+async def get_system_workshop_agent(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentReadWithDetails:
+    """
+    Get the system workshop agent available to all users.
+
+    Returns the "创作工坊" system agent with MCP server details.
+    This agent is available to all authenticated users.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        AgentReadWithDetails: The system workshop agent with MCP server details
+
+    Raises:
+        HTTPException: 404 if system workshop agent not found
+    """
+    system_manager = SystemAgentManager(db)
+    workshop_agent = await system_manager.get_system_agent("workshop")
+
+    if not workshop_agent:
+        raise HTTPException(status_code=404, detail="System workshop agent not found")
+
+    # Get MCP servers for the system agent
+    agent_repo = AgentRepository(db)
+    mcp_servers = await agent_repo.get_agent_mcp_servers(workshop_agent.id)
+
+    # Create agent dict with MCP servers
+    agent_dict = workshop_agent.model_dump()
+    agent_dict["mcp_servers"] = mcp_servers
+    return AgentReadWithDetails(**agent_dict)
+
+
+@router.get("/system/all", response_model=List[AgentReadWithDetails])
+async def get_all_system_agents(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> List[AgentReadWithDetails]:
+    """
+    Get all system agents available to all users.
+
+    Returns both the chat and workshop system agents with MCP server details.
+    These agents are available to all authenticated users.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[AgentReadWithDetails]: List of all system agents with MCP server details
+    """
+    system_manager = SystemAgentManager(db)
+    system_agents = await system_manager.get_all_system_agents()
+
+    # Load MCP servers for each system agent
+    agent_repo = AgentRepository(db)
+    agents_with_details = []
+
+    for agent in system_agents:
+        # Get MCP servers for this agent
+        mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+
+        # Create agent dict with MCP servers
+        agent_dict = agent.model_dump()
+        agent_dict["mcp_servers"] = mcp_servers
+        agents_with_details.append(AgentReadWithDetails(**agent_dict))
+
+    return agents_with_details

@@ -146,6 +146,50 @@ class AgentRepository:
 
         return agent
 
+    async def create_agent_with_fixed_id(self, agent_id: UUID, agent_data: AgentCreate, user_id: str) -> Agent:
+        """
+        Creates a new agent with a specific UUID (for system agents).
+        This function does NOT commit the transaction, but it does flush the session
+        to ensure the agent object is populated with DB-defaults before being returned.
+
+        Args:
+            agent_id: The specific UUID to use for the agent.
+            agent_data: The Pydantic model containing the data for the new agent.
+            user_id: The user ID (from authentication).
+
+        Returns:
+            The newly created Agent instance with the specified UUID.
+        """
+        logger.debug(f"Creating new agent with fixed ID {agent_id} for user_id: {user_id}")
+
+        # Check if agent with this ID already exists
+        existing = await self.db.get(Agent, agent_id)
+        if existing:
+            raise ValueError(f"Agent with ID {agent_id} already exists")
+
+        # Extract MCP server IDs before creating agent
+        mcp_server_ids = agent_data.mcp_server_ids
+
+        # Create agent without mcp_server_ids (which isn't a model field)
+        agent_dict = agent_data.model_dump(exclude={"mcp_server_ids"})
+        agent_dict["user_id"] = user_id
+        agent_dict["id"] = agent_id  # Set the specific UUID
+        agent = Agent(**agent_dict)
+
+        self.db.add(agent)
+        await self.db.flush()
+        await self.db.refresh(agent)
+
+        # Create links to MCP servers
+        if mcp_server_ids:
+            for server_id in mcp_server_ids:
+                link = AgentMcpServerLink(agent_id=agent.id, mcp_server_id=server_id)
+                self.db.add(link)
+            await self.db.flush()
+
+        logger.info(f"Created agent with fixed ID: {agent.id} - {agent.name}")
+        return agent
+
     async def update_agent(self, agent_id: UUID, agent_data: AgentUpdate) -> Agent | None:
         """
         Updates an existing agent.

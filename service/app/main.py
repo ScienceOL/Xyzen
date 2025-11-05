@@ -1,7 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from typing import Any, Mapping
-
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +25,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from core.providers import initialize_providers_on_startup
 
     await initialize_providers_on_startup()
+
+    # Initialize system agents (Chat and Workshop agents)
+    from core.system_agent import SystemAgentManager
+    from middleware.database.connection import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        try:
+            system_manager = SystemAgentManager(db)
+            system_agents = await system_manager.ensure_system_agents()
+            await db.commit()
+
+            agent_names = [agent.name for agent in system_agents.values()]
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(f"System agents initialized: {', '.join(agent_names)}")
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to initialize system agents: {e}")
+            await db.rollback()
+            # Don't fail startup if system agents can't be created
+            pass
 
     # 自动创建和管理所有 MCP 服务器
     from handler.mcp import registry
