@@ -1,4 +1,4 @@
-import type { BaseChatConfig } from "@/hooks/useBaseChat";
+import type { WorkShopChatConfig } from "@/hooks/useWorkShopChat";
 
 export const CHAT_THEMES = {
   xyzen: {
@@ -66,6 +66,6 @@ export const CHAT_THEMES = {
       tags: ["描述你的想法", "定义功能需求", "设计交互流程"],
     },
   },
-} as const satisfies Record<string, BaseChatConfig>;
+} as const satisfies Record<string, WorkShopChatConfig>;
 
 export type ChatThemeKey = keyof typeof CHAT_THEMES;

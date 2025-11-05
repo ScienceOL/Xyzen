@@ -2,7 +2,7 @@ import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export interface BaseChatConfig {
+export interface WorkShopChatConfig {
   theme: "indigo" | "purple";
   systemAgentId: string;
   storageKeys: {
@@ -36,7 +36,7 @@ export interface BaseChatConfig {
   };
 }
 
-export function useBaseChat(config: BaseChatConfig) {
+export function useWorkShopChat(config: WorkShopChatConfig) {
   const {
     activeChatChannel,
     channels,
