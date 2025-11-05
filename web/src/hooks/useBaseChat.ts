@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface BaseChatConfig {
   theme: "indigo" | "purple";
+  systemAgentId: string;
   storageKeys: {
     inputHeight: string;
     historyPinned?: string;
@@ -40,10 +41,14 @@ export function useBaseChat(config: BaseChatConfig) {
     activeChatChannel,
     channels,
     agents,
+    systemAgents,
     sendMessage,
     connectToChannel,
     updateTopicName,
     fetchMyProviders,
+    fetchSystemAgents,
+    createDefaultChannel,
+    activateChannel,
     llmProviders,
     notification,
     closeNotification,
@@ -76,7 +81,8 @@ export function useBaseChat(config: BaseChatConfig) {
   // Computed values
   const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
   const currentAgent = currentChannel?.agentId
-    ? agents.find((a) => a.id === currentChannel.agentId)
+    ? agents.find((a) => a.id === currentChannel.agentId) ||
+      systemAgents.find((a) => a.id === currentChannel.agentId)
     : null;
   const messages: Message[] = currentChannel?.messages || [];
   const connected = currentChannel?.connected || false;
@@ -153,7 +159,7 @@ export function useBaseChat(config: BaseChatConfig) {
   }, [config.storageKeys.historyPinned]);
 
   const handleSelectTopic = useCallback((_topicId: string) => {
-    setShowHistory(false);
+    // Keep history panel open when selecting a topic for better UX
   }, []);
 
   const handleInputHeightChange = useCallback(
@@ -193,6 +199,73 @@ export function useBaseChat(config: BaseChatConfig) {
       });
     }
   }, [llmProviders.length, fetchMyProviders]);
+
+  // Fetch system agents on mount if not already loaded
+  useEffect(() => {
+    if (systemAgents.length === 0) {
+      fetchSystemAgents().catch((error) => {
+        console.error("Failed to fetch system agents:", error);
+      });
+    }
+  }, [systemAgents.length, fetchSystemAgents]);
+
+  // Auto-switch to correct system agent channel for this panel
+  useEffect(() => {
+    if (systemAgents.length > 0) {
+      const targetSystemAgent = systemAgents.find(
+        (agent) => agent.id === config.systemAgentId,
+      );
+      if (targetSystemAgent) {
+        // Check if we need to create/switch to the correct channel for this panel
+        const needsCorrectChannel =
+          !activeChatChannel ||
+          (currentChannel &&
+            currentChannel.agentId !== config.systemAgentId &&
+            // Only switch if current agent is a system agent (not user's regular/graph agent)
+            // This preserves user's regular/graph agent selections while allowing panel switching
+            (currentChannel.agentId ===
+              "00000000-0000-0000-0000-000000000001" ||
+              currentChannel.agentId ===
+                "00000000-0000-0000-0000-000000000002"));
+
+        if (needsCorrectChannel) {
+          // Look for existing channel with this system agent first
+          const existingChannel = Object.values(channels).find(
+            (channel) => channel.agentId === config.systemAgentId,
+          );
+
+          if (existingChannel) {
+            // Switch to existing channel for this system agent
+            console.log(
+              `Switching to existing channel for system agent: ${config.systemAgentId}`,
+            );
+            activateChannel(existingChannel.id).catch((error) => {
+              console.error("Failed to activate existing channel:", error);
+            });
+          } else {
+            // Create new channel for this system agent
+            console.log(
+              `Creating new channel for system agent: ${config.systemAgentId}`,
+            );
+            createDefaultChannel(config.systemAgentId).catch((error) => {
+              console.error(
+                "Failed to create default channel with system agent:",
+                error,
+              );
+            });
+          }
+        }
+      }
+    }
+  }, [
+    systemAgents,
+    config.systemAgentId,
+    createDefaultChannel,
+    activeChatChannel,
+    currentChannel,
+    channels,
+    activateChannel,
+  ]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;

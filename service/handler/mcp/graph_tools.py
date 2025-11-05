@@ -962,6 +962,79 @@ async def list_user_providers() -> str:
 
 
 @mcp.tool
+async def delete_agent(agent_id: str) -> str:
+    """
+    🗑️ DELETE: Remove an agent permanently
+
+    Permanently deletes a graph agent and all its nodes and edges. This action cannot be undone!
+
+    Args:
+        agent_id: The agent_id from create_agent_with_graph() or list_agents()
+
+    Returns:
+        JSON confirmation of deletion
+
+    ⚠️ WARNING: This action is PERMANENT and cannot be undone!
+
+    💡 SAFETY TIP: Use inspect_agent() first to verify you're deleting the correct agent
+
+    Example:
+        delete_agent(agent_id="12345678-1234-1234-1234-123456789abc")
+    """
+    user_info = get_current_user()
+
+    try:
+        if not agent_id:
+            return error_response("Missing required field: agent_id")
+
+        async with AsyncSessionLocal() as session:
+            repo = GraphRepository(session)
+
+            # Check agent exists and user has permission
+            agent = await repo.get_graph_agent_by_id(UUID(agent_id))
+            if not agent:
+                return error_response(f"Agent {agent_id} not found")
+
+            if agent.user_id != user_info.id:
+                return error_response("Permission denied: You don't have permission to delete this agent")
+
+            # Get agent details for confirmation message
+            agent_name = agent.name
+
+            # Get counts for confirmation
+            nodes = await repo.get_nodes_by_agent(UUID(agent_id))
+            edges = await repo.get_edges_by_agent(UUID(agent_id))
+            node_count = len(nodes)
+            edge_count = len(edges)
+
+            # Delete the agent (this should cascade to delete nodes and edges)
+            success = await repo.delete_graph_agent(UUID(agent_id))
+
+            if not success:
+                return error_response(f"Failed to delete agent {agent_id}")
+
+            await session.commit()
+
+            logger.info(
+                f"Deleted graph agent: {agent_id} ('{agent_name}') with {node_count} nodes and {edge_count} edges"
+            )
+            return success_response(
+                f"Successfully deleted agent '{agent_name}' and all its components",
+                {
+                    "agent_id": agent_id,
+                    "agent_name": agent_name,
+                    "nodes_deleted": node_count,
+                    "edges_deleted": edge_count,
+                    "deletion_time": "permanent",
+                },
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to delete agent: {e}")
+        return error_response(f"Error deleting agent: {str(e)}")
+
+
+@mcp.tool
 async def validate_agent_structure(agent_id: str) -> str:
     """
     Validate the structure and configuration of a graph agent.

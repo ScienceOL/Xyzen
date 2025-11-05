@@ -105,7 +105,7 @@ export default function ToolCallCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`rounded-lg border ${getStatusColor(toolCall.status)} ${className}`}
+      className={`rounded-lg border min-w-0 overflow-hidden ${getStatusColor(toolCall.status)} ${className}`}
     >
       {/* Header - Always visible */}
       <div

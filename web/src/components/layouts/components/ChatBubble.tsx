@@ -158,7 +158,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   // Render message content based on type and chart detection
   const renderMessageContent = React.useCallback(() => {
     if (isLoading) {
-      return role === "assistant" ? <ChartLoadingState /> : <LoadingMessage />;
+      return <LoadingMessage />;
     } else if (isUserMessage) {
       return <p>{content}</p>;
     } else if (chartDetection.isChartable && chartDetection.data) {
@@ -337,11 +337,11 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
 
       {/* Message content */}
       <div
-        className={`w-full rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
+        className={`w-full min-w-0 rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
       >
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 min-w-0">
           <div
-            className={`prose prose-neutral dark:prose-invert prose-sm max-w-none ${
+            className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto ${
               isUserMessage
                 ? "text-sm text-neutral-800 dark:text-neutral-200"
                 : "text-sm text-neutral-700 dark:text-neutral-300"

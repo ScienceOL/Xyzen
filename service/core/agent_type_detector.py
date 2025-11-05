@@ -111,8 +111,15 @@ class AgentTypeDetector:
 
             # Check regular agents
             regular_agent = await self.agent_repo.get_agent_by_id(agent_uuid)
-            if regular_agent and regular_agent.user_id == user_id:
-                return regular_agent, "regular"
+            if regular_agent:
+                # System agents are accessible to all users
+                from core.system_agent import SYSTEM_CHAT_AGENT_ID, SYSTEM_WORKSHOP_AGENT_ID
+
+                if agent_uuid in [SYSTEM_CHAT_AGENT_ID, SYSTEM_WORKSHOP_AGENT_ID]:
+                    return regular_agent, "regular"
+                # Regular agents require user ownership
+                elif regular_agent.user_id == user_id:
+                    return regular_agent, "regular"
 
             # Check graph agents
             graph_agent = await self.graph_repo.get_graph_agent_by_id(agent_uuid)

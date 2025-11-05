@@ -171,7 +171,9 @@ export function AppFullscreen({
 
                     {/* Content based on active panel */}
                     <div className="flex-1 overflow-y-auto py-4">
-                      {activePanel === "chat" && <XyzenAgent />}
+                      {activePanel === "chat" && (
+                        <XyzenAgent systemAgentType="chat" />
+                      )}
                       {activePanel === "workshop" && <Workshop />}
                     </div>
                   </div>

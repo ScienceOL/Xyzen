@@ -7,7 +7,12 @@ export interface AgentSlice {
   agents: Agent[];
   agentsLoading: boolean;
   hiddenGraphAgentIds: string[];
+  systemAgents: Agent[];
+  systemAgentsLoading: boolean;
   fetchAgents: () => Promise<void>;
+  fetchSystemAgents: () => Promise<void>;
+  getSystemChatAgent: () => Promise<Agent>;
+  getSystemWorkshopAgent: () => Promise<Agent>;
   createAgent: (agent: Omit<Agent, "id">) => Promise<void>;
   createGraphAgent: (graphAgent: GraphAgentCreate) => Promise<void>;
   updateAgent: (agent: Agent) => Promise<void>;
@@ -21,6 +26,7 @@ export interface AgentSlice {
   // Helper methods for filtering by type
   getRegularAgents: () => Agent[];
   getGraphAgents: () => Agent[];
+  getSystemAgents: () => Agent[];
 }
 
 // Graph agent creation interface
@@ -73,6 +79,8 @@ export const createAgentSlice: StateCreator<
   agents: [],
   agentsLoading: false,
   hiddenGraphAgentIds: loadHiddenGraphAgentIds(),
+  systemAgents: [],
+  systemAgentsLoading: false,
   fetchAgents: async () => {
     set({ agentsLoading: true });
     try {
@@ -241,11 +249,68 @@ export const createAgentSlice: StateCreator<
     // Refresh agents to show the newly unhidden agent
     get().fetchAgents();
   },
+  fetchSystemAgents: async () => {
+    set({ systemAgentsLoading: true });
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/system/all`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch system agents");
+      }
+      const systemAgents: Agent[] = await response.json();
+      set({ systemAgents, systemAgentsLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch system agents:", error);
+      set({ systemAgentsLoading: false });
+      throw error;
+    }
+  },
+  getSystemChatAgent: async () => {
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/system/chat`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch system chat agent");
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to fetch system chat agent:", error);
+      throw error;
+    }
+  },
+  getSystemWorkshopAgent: async () => {
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/system/workshop`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch system workshop agent");
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to fetch system workshop agent:", error);
+      throw error;
+    }
+  },
   // Helper methods for filtering by agent type
   getRegularAgents: () => {
     return get().agents.filter((agent) => agent.agent_type === "regular");
   },
   getGraphAgents: () => {
     return get().agents.filter((agent) => agent.agent_type === "graph");
+  },
+  getSystemAgents: () => {
+    return get().systemAgents;
   },
 });

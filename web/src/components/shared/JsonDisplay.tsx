@@ -160,7 +160,12 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
           )}
         </button>
 
-        <div className={clsx("syntax-highlighter-wrapper", isDark && "dark")}>
+        <div
+          className={clsx(
+            "syntax-highlighter-wrapper overflow-x-auto",
+            isDark && "dark",
+          )}
+        >
           <SyntaxHighlighter
             style={vscDarkPlus}
             language="json"
@@ -170,6 +175,8 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
               margin: 0,
               padding: 0,
               fontSize: compact ? "0.75rem" : "0.875rem",
+              overflowX: "auto",
+              maxWidth: "100%",
             }}
             showLineNumbers={!compact}
             wrapLines={true}

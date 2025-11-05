@@ -140,7 +140,7 @@ export default function SessionHistory({
     // 激活选中的频道，建立WebSocket连接
     await activateChannel(chatId);
     onSelectTopic?.(chatId);
-    onClose(); // 选择topic后关闭侧边栏
+    // Keep history panel open for better UX - removed onClose()
   };
 
   // 切换置顶状态

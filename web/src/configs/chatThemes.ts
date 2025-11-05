@@ -3,6 +3,7 @@ import type { BaseChatConfig } from "@/hooks/useBaseChat";
 export const CHAT_THEMES = {
   xyzen: {
     theme: "indigo" as const,
+    systemAgentId: "00000000-0000-0000-0000-000000000001", // System Chat Agent
     storageKeys: {
       inputHeight: "chatInputHeight",
       historyPinned: "chatHistoryPinned",
@@ -34,8 +35,10 @@ export const CHAT_THEMES = {
   },
   workshop: {
     theme: "purple" as const,
+    systemAgentId: "00000000-0000-0000-0000-000000000002", // System Workshop Agent
     storageKeys: {
       inputHeight: "workshopChatInputHeight",
+      historyPinned: "workshopChatHistoryPinned",
     },
     defaultTitle: "新的工作坊会话",
     placeholders: {

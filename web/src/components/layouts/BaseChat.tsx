@@ -4,7 +4,7 @@ import NotificationModal from "@/components/modals/NotificationModal";
 import type { BaseChatConfig } from "@/hooks/useBaseChat";
 import { useBaseChat } from "@/hooks/useBaseChat";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 import ChatBubble from "./components/ChatBubble";
 import ChatInput from "./components/ChatInput";
@@ -44,24 +44,47 @@ const ThemedEmptyState: React.FC<{ config: BaseChatConfig }> = ({ config }) => {
     return <EmptyChat />;
   }
 
+  // Workshop theme with motion animations
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="text-6xl mb-4">{config.emptyState.icon}</div>
-      <h3 className="text-lg font-semibold text-neutral-800 dark:text-white mb-2">
-        {config.emptyState.title}
-      </h3>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-        {config.emptyState.description}
-      </p>
+    <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="rounded-full bg-purple-100 p-4 dark:bg-purple-900/20"
+      >
+        <div className="text-4xl">{config.emptyState.icon}</div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+      >
+        <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
+          {config.emptyState.title}
+        </h3>
+        <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-300">
+          {config.emptyState.description}
+        </p>
+      </motion.div>
+
       {config.emptyState.features && (
-        <div className="flex items-center justify-center gap-4 text-xs text-neutral-400 dark:text-neutral-500">
-          {config.emptyState.features.map((feature, index) => (
-            <span key={feature}>
-              {index > 0 && <span className="mr-4">•</span>}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="flex flex-wrap items-center justify-center gap-4 text-xs text-neutral-400 dark:text-neutral-500"
+        >
+          {config.emptyState.features.map((feature, _index) => (
+            <span
+              key={feature}
+              className="bg-purple-100 text-purple-700 px-2 py-1 rounded dark:bg-purple-900/30 dark:text-purple-400"
+            >
               {feature}
             </span>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );
@@ -77,25 +100,45 @@ const ThemedWelcomeMessage: React.FC<{ config: BaseChatConfig }> = ({
 
   const { welcomeMessage } = config;
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="text-6xl mb-4">{welcomeMessage.icon}</div>
-      <h3 className="text-lg font-semibold text-neutral-800 dark:text-white mb-2">
-        {welcomeMessage.title}
-      </h3>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-        {welcomeMessage.description}
-      </p>
+    <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="rounded-full bg-purple-100 p-4 dark:bg-purple-900/20"
+      >
+        <div className="text-4xl">{welcomeMessage.icon}</div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+      >
+        <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
+          {welcomeMessage.title}
+        </h3>
+        <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-300">
+          {welcomeMessage.description}
+        </p>
+      </motion.div>
+
       {welcomeMessage.tags && (
-        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="flex flex-wrap items-center justify-center gap-2 text-xs"
+        >
           {welcomeMessage.tags.map((tag) => (
             <span
               key={tag}
-              className="bg-purple-100 text-purple-700 px-2 py-1 rounded dark:bg-purple-900/30 dark:text-purple-400"
+              className="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full dark:bg-purple-900/30 dark:text-purple-400 font-medium"
             >
               {tag}
             </span>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );
@@ -168,7 +211,7 @@ export default function BaseChat({
     >
       {/* Main Chat Content Wrapper */}
       <div
-        className={`${showHistory && historyEnabled ? "flex-1" : ""} flex flex-col h-full`}
+        className={`${showHistory && historyEnabled ? "flex-1 min-w-0 overflow-hidden" : ""} flex flex-col h-full`}
       >
         {/* Agent Header */}
         {currentAgent ? (
@@ -176,9 +219,12 @@ export default function BaseChat({
             <div className="flex items-start gap-3">
               <img
                 src={
-                  currentAgent.id === "default-chat"
-                    ? "https://avatars.githubusercontent.com/u/176685?v=4"
-                    : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png"
+                  currentAgent.avatar ||
+                  (currentAgent.agent_type === "builtin"
+                    ? currentAgent.id === "00000000-0000-0000-0000-000000000001"
+                      ? "https://avatars.githubusercontent.com/u/176685?v=4" // Chat agent fallback
+                      : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png" // Workshop agent fallback
+                    : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png") // Regular agent fallback
                 }
                 alt={currentAgent.name}
                 className={`mt-1 h-8 w-8 flex-shrink-0 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
@@ -296,13 +342,13 @@ export default function BaseChat({
         )}
 
         {/* Messages Area */}
-        <div className="relative flex-grow overflow-y-auto">
+        <div className="relative flex-grow overflow-y-auto min-w-0">
           <div
             ref={messagesContainerRef}
-            className="h-full overflow-y-auto rounded-lg bg-neutral-50 pt-6 dark:bg-black custom-scrollbar"
+            className="h-full overflow-y-auto overflow-x-hidden rounded-lg bg-neutral-50 pt-6 dark:bg-black custom-scrollbar"
             onScroll={handleScroll}
           >
-            <div className="px-3">
+            <div className="px-3 min-w-0">
               {messages.length === 0 ? (
                 <ThemedWelcomeMessage config={config} />
               ) : (

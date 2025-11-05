@@ -5,6 +5,7 @@ import { PlusIcon, PlayIcon, StopIcon } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useState } from "react";
 import type { Agent } from "./XyzenAgent";
+import type { BuiltinMcpServer } from "@/types/mcp";
 
 // Animation variants
 const itemVariants: Variants = {
@@ -98,15 +99,8 @@ const ExplorerAgentCard: React.FC<{
   );
 };
 
-// MCP Server type
-interface McpServer {
-  name: string;
-  description: string;
-  url: string;
-}
-
-// MCP Server Card for Explorer
-const ExplorerMcpCard: React.FC<{ mcp: McpServer }> = ({ mcp }) => {
+// MCP Server Card for Explorer (display only)
+const ExplorerMcpCard: React.FC<{ mcp: BuiltinMcpServer }> = ({ mcp }) => {
   return (
     <motion.div
       variants={itemVariants}
@@ -122,14 +116,19 @@ const ExplorerMcpCard: React.FC<{ mcp: McpServer }> = ({ mcp }) => {
             <Badge variant="blue" className="text-xs">
               MCP
             </Badge>
+            {mcp.requires_auth && (
+              <Badge variant="yellow" className="text-xs">
+                Auth
+              </Badge>
+            )}
           </div>
 
           <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-2">
-            {mcp.description || "MCP Server"}
+            {mcp.description}
           </p>
 
           <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
-            <span>🔧 {mcp.url}</span>
+            <span>📦 {mcp.module_name}</span>
           </div>
         </div>
       </div>
@@ -146,27 +145,18 @@ export default function Explorer() {
     createDefaultChannel,
     user,
     backendUrl,
+    builtinMcpServers,
+    fetchBuiltinMcpServers,
   } = useXyzen();
 
   const [activeTab, setActiveTab] = useState<"agents" | "mcp">("agents");
-  const [mcpServers] = useState<McpServer[]>([
-    {
-      name: "GitHub MCP",
-      description: "Access GitHub repositories and issues",
-      url: "github.com",
-    },
-    {
-      name: "File System MCP",
-      description: "File system operations and management",
-      url: "filesystem",
-    },
-  ]);
 
   useEffect(() => {
     if (user && backendUrl) {
       fetchAgents();
+      fetchBuiltinMcpServers();
     }
-  }, [fetchAgents, user, backendUrl]);
+  }, [fetchAgents, fetchBuiltinMcpServers, user, backendUrl]);
 
   const handleAddToChat = async (agent: Agent) => {
     // Add graph agent to sidebar
@@ -211,7 +201,7 @@ export default function Explorer() {
                   : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
               }`}
             >
-              MCP ({mcpServers.length})
+              MCP Market ({builtinMcpServers.length})
             </button>
           </div>
         </div>
@@ -253,9 +243,21 @@ export default function Explorer() {
             initial="hidden"
             animate="visible"
           >
-            {mcpServers.map((mcp, index) => (
-              <ExplorerMcpCard key={index} mcp={mcp} />
-            ))}
+            {builtinMcpServers.length > 0 ? (
+              builtinMcpServers.map((mcp, _index) => (
+                <ExplorerMcpCard key={mcp.module_name} mcp={mcp} />
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">📦</div>
+                <h3 className="text-lg font-semibold text-neutral-800 dark:text-white mb-2">
+                  MCP Market
+                </h3>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  Discover available MCP servers and their capabilities
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
       </div>

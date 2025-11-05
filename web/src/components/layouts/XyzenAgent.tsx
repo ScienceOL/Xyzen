@@ -21,7 +21,7 @@ export type Agent = {
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
   // New fields for unified agent support
-  agent_type: "regular" | "graph";
+  agent_type: "regular" | "graph" | "builtin";
   avatar?: string | null;
   tags?: string[] | null;
   model?: string | null;
@@ -184,9 +184,12 @@ const AgentCard: React.FC<AgentCardProps> = ({
         {/* 头像 */}
         <img
           src={
-            agent.id === "default-chat"
-              ? "https://avatars.githubusercontent.com/u/176685?v=4" // 使用一个友好的默认头像
-              : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png"
+            agent.avatar ||
+            (agent.agent_type === "builtin"
+              ? agent.id === "00000000-0000-0000-0000-000000000001"
+                ? "https://avatars.githubusercontent.com/u/176685?v=4" // Chat agent fallback
+                : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png" // Workshop agent fallback
+              : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png") // Regular agent fallback
           }
           alt={agent.name}
           className="h-10 w-10 flex-shrink-0 rounded-full border border-neutral-200 object-cover dark:border-neutral-700"
@@ -238,7 +241,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
           onEdit={() => onEdit?.(agent)}
           onDelete={() => onDelete?.(agent)}
           onClose={() => setContextMenu(null)}
-          isDefaultAgent={agent.id === "default-chat"}
+          isDefaultAgent={agent.agent_type === "builtin"}
           agent={agent}
         />
       )}
@@ -257,7 +260,13 @@ const containerVariants: Variants = {
   },
 };
 
-export default function XyzenAgent() {
+interface XyzenAgentProps {
+  systemAgentType?: "chat" | "workshop" | "all";
+}
+
+export default function XyzenAgent({
+  systemAgentType = "all",
+}: XyzenAgentProps) {
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -265,66 +274,40 @@ export default function XyzenAgent() {
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
   const {
     agents,
+    systemAgents,
     fetchAgents,
+    fetchSystemAgents,
     createDefaultChannel,
     deleteAgent,
     removeGraphAgentFromSidebar,
     chatHistory,
     channels,
     activateChannel,
+    hiddenGraphAgentIds,
   } = useXyzen();
-
-  // 默认的"随便聊聊"助手
-  const defaultAgent: Agent = {
-    id: "default-chat",
-    name: "随便聊聊",
-    description: "与AI助手自由对话，无需特定的设定或工具",
-    prompt: "",
-    mcp_servers: [],
-    user_id: "system",
-    agent_type: "regular",
-    avatar: null,
-    tags: null,
-    model: null,
-    temperature: null,
-    require_tool_confirmation: false,
-    provider_id: null,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
 
   useEffect(() => {
     fetchAgents();
   }, [fetchAgents]);
 
+  useEffect(() => {
+    fetchSystemAgents();
+  }, [fetchSystemAgents]);
+
   const handleAgentClick = async (agent: Agent) => {
-    // 确定 agentId（默认助手使用 undefined，其他使用实际 id）
-    const agentId = agent.id === "default-chat" ? undefined : agent.id;
+    // 使用实际的 agent ID（系统助手和普通助手都有真实的 ID）
+    const agentId = agent.id;
 
     // 1. 从 chatHistory 中找到该 agent 的所有 topics
     const agentTopics = chatHistory.filter((topic) => {
       const channel = channels[topic.id];
       if (!channel) return false;
 
-      // 匹配逻辑：考虑 null 和 undefined 的情况
-      // 当 agentId 为 undefined/null 时，匹配 channel.agentId 也为 undefined/null 的情况
-      // 否则严格匹配 agentId
-      const channelAgentId = channel.agentId;
-      const isDefaultAgent = agentId === undefined || agentId === null;
-      const isDefaultChannel =
-        channelAgentId === undefined || channelAgentId === null;
-
-      if (isDefaultAgent && isDefaultChannel) {
-        return true; // 都是默认 agent
-      }
-
-      return channelAgentId === agentId; // 严格匹配
+      // 严格匹配 agentId
+      return channel.agentId === agentId;
     });
 
-    console.log(
-      `找到 ${agentTopics.length} 个属于 agent ${agentId || "default"} 的对话`,
-    );
+    console.log(`找到 ${agentTopics.length} 个属于 agent ${agentId} 的对话`);
 
     // 2. 找到最近的空 topic（消息数 <= 1，只有系统消息或完全为空）
     const emptyTopic = agentTopics
@@ -345,19 +328,17 @@ export default function XyzenAgent() {
 
     // 3. 如果有空 topic 就复用，否则创建新的
     if (emptyTopic) {
-      console.log(
-        `复用现有空对话: ${emptyTopic.id} for agent: ${agentId || "default"}`,
-      );
+      console.log(`复用现有空对话: ${emptyTopic.id} for agent: ${agentId}`);
       await activateChannel(emptyTopic.id);
     } else {
-      console.log(`创建新对话 for agent: ${agentId || "default"}`);
+      console.log(`创建新对话 for agent: ${agentId}`);
       await createDefaultChannel(agentId);
     }
   };
 
   const handleEditClick = (agent: Agent) => {
-    // 默认助手不可编辑
-    if (agent.id === "default-chat") {
+    // 系统助手不可编辑
+    if (agent.agent_type === "builtin") {
       return;
     }
     setEditingAgent(agent);
@@ -365,19 +346,39 @@ export default function XyzenAgent() {
   };
 
   const handleDeleteClick = (agent: Agent) => {
-    // 默认助手不可删除
-    if (agent.id === "default-chat") {
+    // 系统助手不可删除
+    if (agent.agent_type === "builtin") {
       return;
     }
     setAgentToDelete(agent);
     setConfirmModalOpen(true);
   };
 
-  // 合并默认助手和用户助手，过滤掉图形助手（它们现在在 Agent Explorer 中）
+  // 过滤系统助手基于当前面板类型
+  const filteredSystemAgents = systemAgents.filter((agent) => {
+    if (systemAgentType === "all") return true;
+    if (systemAgentType === "chat") {
+      return agent.id === "00000000-0000-0000-0000-000000000001"; // System Chat Agent
+    }
+    if (systemAgentType === "workshop") {
+      return agent.id === "00000000-0000-0000-0000-000000000002"; // System Workshop Agent
+    }
+    return false;
+  });
+
+  // 合并过滤后的系统助手、用户助手和可见的图形助手
   const regularAgents = agents.filter(
     (agent) => agent.agent_type === "regular",
   );
-  const allAgents = [defaultAgent, ...regularAgents];
+  const visibleGraphAgents = agents.filter(
+    (agent) =>
+      agent.agent_type === "graph" && !hiddenGraphAgentIds.includes(agent.id),
+  );
+  const allAgents = [
+    ...filteredSystemAgents,
+    ...regularAgents,
+    ...visibleGraphAgents,
+  ];
 
   return (
     <motion.div
