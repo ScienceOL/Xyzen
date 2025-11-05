@@ -1,0 +1,251 @@
+import { useXyzen } from "@/store";
+import type { Message } from "@/store/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export interface BaseChatConfig {
+  theme: "indigo" | "purple";
+  storageKeys: {
+    inputHeight: string;
+    historyPinned?: string;
+  };
+  defaultTitle: string;
+  placeholders: {
+    responding: string;
+    default: string;
+  };
+  connectionMessages: {
+    connecting: string;
+    retrying: string;
+  };
+  responseMessages: {
+    generating: string;
+    creating: string;
+  };
+  emptyState: {
+    title: string;
+    description: string;
+    icon: string;
+    features?: string[];
+  };
+  welcomeMessage?: {
+    title: string;
+    description: string;
+    icon: string;
+    tags?: string[];
+  };
+}
+
+export function useBaseChat(config: BaseChatConfig) {
+  const {
+    activeChatChannel,
+    channels,
+    agents,
+    sendMessage,
+    connectToChannel,
+    updateTopicName,
+    fetchMyProviders,
+    llmProviders,
+    notification,
+    closeNotification,
+    pendingInput,
+    setPendingInput,
+  } = useXyzen();
+
+  // Refs
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // State
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [showHistory, setShowHistory] = useState(() => {
+    if (config.storageKeys.historyPinned) {
+      const savedHistoryState = localStorage.getItem(
+        config.storageKeys.historyPinned,
+      );
+      return savedHistoryState === "true";
+    }
+    return false;
+  });
+  const [inputHeight, setInputHeight] = useState(() => {
+    const savedHeight = localStorage.getItem(config.storageKeys.inputHeight);
+    return savedHeight ? parseInt(savedHeight, 10) : 80;
+  });
+  const [sendBlocked, setSendBlocked] = useState(false);
+
+  // Computed values
+  const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
+  const currentAgent = currentChannel?.agentId
+    ? agents.find((a) => a.id === currentChannel.agentId)
+    : null;
+  const messages: Message[] = currentChannel?.messages || [];
+  const connected = currentChannel?.connected || false;
+  const error = currentChannel?.error || null;
+  const responding = currentChannel?.responding || false;
+
+  // Scroll management
+  const scrollToBottom = useCallback(
+    (force = false) => {
+      if (!autoScroll && !force) return;
+      setTimeout(() => {
+        messagesContainerRef.current?.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: force ? "auto" : "smooth",
+        });
+      }, 50);
+    },
+    [autoScroll],
+  );
+
+  const handleScroll = useCallback(() => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } =
+        messagesContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 80;
+      setAutoScroll(isNearBottom);
+    }
+  }, []);
+
+  // Event handlers
+  const handleSendMessage = useCallback(
+    (inputMessage: string) => {
+      if (!inputMessage.trim() || !activeChatChannel) return;
+      if (responding) {
+        setSendBlocked(true);
+        // Auto-hide the hint after 2 seconds
+        window.setTimeout(() => setSendBlocked(false), 2000);
+        return;
+      }
+      sendMessage(inputMessage);
+      // Clear pending input after sending
+      if (pendingInput) {
+        setPendingInput("");
+      }
+      setAutoScroll(true);
+      setTimeout(() => scrollToBottom(true), 100);
+    },
+    [
+      activeChatChannel,
+      responding,
+      sendMessage,
+      pendingInput,
+      setPendingInput,
+      scrollToBottom,
+    ],
+  );
+
+  const handleToggleHistory = useCallback(() => {
+    const newState = !showHistory;
+    setShowHistory(newState);
+    if (config.storageKeys.historyPinned) {
+      localStorage.setItem(
+        config.storageKeys.historyPinned,
+        newState.toString(),
+      );
+    }
+  }, [showHistory, config.storageKeys.historyPinned]);
+
+  const handleCloseHistory = useCallback(() => {
+    setShowHistory(false);
+    if (config.storageKeys.historyPinned) {
+      localStorage.setItem(config.storageKeys.historyPinned, "false");
+    }
+  }, [config.storageKeys.historyPinned]);
+
+  const handleSelectTopic = useCallback((_topicId: string) => {
+    setShowHistory(false);
+  }, []);
+
+  const handleInputHeightChange = useCallback(
+    (height: number) => {
+      setInputHeight(height);
+      localStorage.setItem(config.storageKeys.inputHeight, height.toString());
+    },
+    [config.storageKeys.inputHeight],
+  );
+
+  const handleRetryConnection = useCallback(() => {
+    if (!currentChannel) return;
+    setIsRetrying(true);
+    connectToChannel(currentChannel.sessionId, currentChannel.id);
+    setTimeout(() => {
+      setIsRetrying(false);
+    }, 2000);
+  }, [currentChannel, connectToChannel]);
+
+  const handleScrollToBottom = useCallback(() => {
+    setAutoScroll(true);
+    scrollToBottom(true);
+  }, [scrollToBottom]);
+
+  // Effects
+  useEffect(() => {
+    if (autoScroll) {
+      scrollToBottom();
+    }
+  }, [messages.length, autoScroll, scrollToBottom]);
+
+  // Fetch providers on mount if not already loaded
+  useEffect(() => {
+    if (llmProviders.length === 0) {
+      fetchMyProviders().catch((error) => {
+        console.error("Failed to fetch providers:", error);
+      });
+    }
+  }, [llmProviders.length, fetchMyProviders]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      setAutoScroll(true);
+      // Force scroll to bottom on channel change
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop =
+            messagesContainerRef.current.scrollHeight;
+        }
+      }, 50);
+
+      container.addEventListener("scroll", handleScroll, { passive: true });
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, [activeChatChannel, handleScroll]);
+
+  return {
+    // State
+    autoScroll,
+    isRetrying,
+    showHistory,
+    inputHeight,
+    sendBlocked,
+
+    // Computed
+    currentChannel,
+    currentAgent,
+    messages,
+    connected,
+    error,
+    responding,
+
+    // Refs
+    messagesEndRef,
+    messagesContainerRef,
+
+    // Handlers
+    handleSendMessage,
+    handleToggleHistory,
+    handleCloseHistory,
+    handleSelectTopic,
+    handleInputHeightChange,
+    handleRetryConnection,
+    handleScrollToBottom,
+    handleScroll,
+
+    // Store values
+    activeChatChannel,
+    notification,
+    closeNotification,
+    pendingInput,
+    updateTopicName,
+  };
+}
