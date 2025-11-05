@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
@@ -102,7 +102,7 @@ class BohriumAuthProvider(BaseAuthProvider):
                 success=False, error_code="TOKEN_VALIDATION_ERROR", error_message=f"Token validation failed: {str(e)}"
             )
 
-    def parse_userinfo_response(self, userinfo_data: Dict[str, Any]) -> UserInfo:
+    def parse_userinfo_response(self, userinfo_data: dict[str, Any]) -> UserInfo:
         """从 Bohrium userinfo API 响应解析用户信息"""
         logger.info("Bohrium: 解析 userinfo API 响应中的用户信息")
         logger.info(f"Bohrium: userinfo 数据: {userinfo_data}")
@@ -138,7 +138,7 @@ class BohriumAuthProvider(BaseAuthProvider):
         logger.info(f"Bohrium: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 邮箱: {user_info.email}")
         return user_info
 
-    def parse_user_info(self, token_payload: Dict[str, Any]) -> UserInfo:
+    def parse_user_info(self, token_payload: dict[str, Any]) -> UserInfo:
         """
         从 token payload 解析用户信息 - Bohrium 主要通过 API 获取用户信息
         """

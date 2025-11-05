@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
@@ -105,7 +105,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
                 error_message=f"AccessKey validation failed: {str(e)}",
             )
 
-    def parse_userinfo_response(self, userinfo_data: Dict[str, Any]) -> UserInfo:
+    def parse_userinfo_response(self, userinfo_data: dict[str, Any]) -> UserInfo:
         """从 BohrApp userinfo API 响应解析用户信息
 
         响应格式示例:
@@ -148,7 +148,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
         )
         return user_info
 
-    def parse_user_info(self, token_payload: Dict[str, Any]) -> UserInfo:
+    def parse_user_info(self, token_payload: dict[str, Any]) -> UserInfo:
         """
         从 token payload 解析用户信息
 

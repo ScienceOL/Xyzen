@@ -5,7 +5,7 @@
 import logging
 import time
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable
 
 from . import AuthResult
 
@@ -17,7 +17,7 @@ class SimpleTokenCache:
 
     def __init__(self, ttl_seconds: int = 300):  # 默认5分钟TTL
         self.ttl_seconds = ttl_seconds
-        self._cache: Dict[str, Tuple[AuthResult, float]] = {}
+        self._cache: dict[str, tuple[AuthResult, float]] = {}
         self._max_size = 1000
 
     def _get_cache_key(self, token: str, provider: str) -> str:
@@ -27,7 +27,7 @@ class SimpleTokenCache:
         token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
         return f"{provider}:{token_hash}"
 
-    def get(self, token: str, provider: str) -> Optional[AuthResult]:
+    def get(self, token: str, provider: str) -> AuthResult | None:
         """获取缓存的认证结果"""
         cache_key = self._get_cache_key(token, provider)
         cached_item = self._cache.get(cache_key)
@@ -68,7 +68,7 @@ class SimpleTokenCache:
     def _cleanup_expired(self) -> None:
         """清理过期条目"""
         current_time = time.time()
-        expired_keys = []
+        expired_keys: list[str] = []
 
         for key, (_, timestamp) in self._cache.items():
             if current_time - timestamp > self.ttl_seconds:
@@ -85,13 +85,13 @@ class SimpleTokenCache:
         self._cache.clear()
         logger.info("Token cache cleared")
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """获取缓存统计"""
         return {"cache_size": len(self._cache), "max_size": self._max_size, "ttl_seconds": self.ttl_seconds}
 
 
 # 全局缓存实例
-_simple_token_cache: Optional[SimpleTokenCache] = None
+_simple_token_cache: SimpleTokenCache | None = None
 
 
 def get_simple_token_cache() -> SimpleTokenCache:

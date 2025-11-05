@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import jwt
 import requests
@@ -20,11 +20,11 @@ class UserInfo:
 
     id: str
     username: str
-    email: Optional[str] = None
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    roles: Optional[list] = None
-    extra: Optional[Dict[str, Any]] = None
+    email: str | None = None
+    display_name: str | None = None
+    avatar_url: str | None = None
+    roles: list | None = None
+    extra: dict[str, Any] | None = None
 
 
 @dataclass
@@ -32,9 +32,9 @@ class AuthResult:
     """Authentication result data class"""
 
     success: bool
-    user_info: Optional[UserInfo] = None
-    error_message: Optional[str] = None
-    error_code: Optional[str] = None
+    user_info: UserInfo | None = None
+    error_message: str | None = None
+    error_code: str | None = None
 
 
 @dataclass
@@ -68,16 +68,16 @@ class BaseAuthProvider(ABC):
         pass
 
     @abstractmethod
-    def parse_user_info(self, token_payload: Dict[str, Any]) -> UserInfo:
+    def parse_user_info(self, token_payload: dict[str, Any]) -> UserInfo:
         """Parse user information from the token payload"""
         pass
 
     @abstractmethod
-    def parse_userinfo_response(self, userinfo_data: Dict[str, Any]) -> UserInfo:
+    def parse_userinfo_response(self, userinfo_data: dict[str, Any]) -> UserInfo:
         """Parse user information from the userinfo API response"""
         pass
 
-    def get_jwks(self) -> Optional[Dict[str, Any]]:
+    def get_jwks(self) -> dict[str, Any] | None:
         """Get JWKS public key information"""
         if not self.jwks_uri:
             logger.warning("JWKS URI not configured")
@@ -99,7 +99,7 @@ class BaseAuthProvider(ABC):
             logger.error(f"Failed to get JWKS from {self.jwks_uri}: {e}")
             return None
 
-    def decode_jwt_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def decode_jwt_token(self, token: str) -> dict[str, Any] | None:
         """Decode JWT token"""
         logger.info("Start decoding JWT token")
         try:
@@ -224,7 +224,7 @@ except ValueError as e:
 
 
 # === Unified Authentication Dependency Function ===
-async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
+async def get_current_user(authorization: str | None = Header(None)) -> str:
     """Get the current user ID from the Authorization header (for HTTP API)"""
 
     # Check Authorization header
@@ -248,7 +248,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
     return auth_result.user_info.id
 
 
-async def get_current_user_websocket(token: Optional[str] = Query(None, alias="token")) -> str:
+async def get_current_user_websocket(token: str | None = Query(None, alias="token")) -> str:
     """Get the current user ID from the token in the query parameters (for WebSocket)"""
 
     # Check token
@@ -263,7 +263,7 @@ async def get_current_user_websocket(token: Optional[str] = Query(None, alias="t
     return auth_result.user_info.id
 
 
-async def get_auth_context_websocket(token: Optional[str] = Query(None, alias="token")) -> AuthContext:
+async def get_auth_context_websocket(token: str | None = Query(None, alias="token")) -> AuthContext:
     """Get the complete authentication context from the token in the query parameters (for WebSocket)"""
 
     # Check token

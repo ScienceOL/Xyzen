@@ -3,7 +3,7 @@ import time
 
 import httpx
 from fastmcp.server.auth import AccessToken, TokenVerifier
-from typing_extensions import TypedDict
+from typing import TypedDict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class BohrAppTokenVerifier(TokenVerifier):
                     return None
 
                 # 4. 构建 AccessToken
-                claims_data = {  # 额外信息放这里
+                claims_data: dict[str, Any] = {  # 额外信息放这里
                     "bohr_user_id": bohr_user_id,
                     "name": user_data.get("name"),
                     "user_id": user_data.get("user_id"),

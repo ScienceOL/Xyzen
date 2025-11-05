@@ -6,7 +6,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Any
 
 from . import AuthResult
 
@@ -19,7 +19,7 @@ class CachedAuthResult:
 
     auth_result: AuthResult
     cached_at: datetime = field(default_factory=datetime.now)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     def is_expired(self) -> bool:
         """检查缓存是否过期"""
@@ -35,7 +35,7 @@ class TokenCache:
     def __init__(self, default_ttl_minutes: int = 5, max_size: int = 1000):
         self.default_ttl_minutes = default_ttl_minutes
         self.max_size = max_size
-        self._cache: Dict[str, CachedAuthResult] = {}
+        self._cache: dict[str, CachedAuthResult] = {}
         self._lock = asyncio.Lock()
 
         # 启动定期清理任务
@@ -48,7 +48,7 @@ class TokenCache:
         token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
         return f"{provider}:{token_hash}"
 
-    async def get(self, token: str, provider: str) -> Optional[AuthResult]:
+    async def get(self, token: str, provider: str) -> AuthResult | None:
         """从缓存获取认证结果"""
         cache_key = self._get_cache_key(token, provider)
 
@@ -68,7 +68,7 @@ class TokenCache:
             )
             return cached_result.auth_result
 
-    async def set(self, token: str, provider: str, auth_result: AuthResult, ttl_minutes: Optional[int] = None) -> None:
+    async def set(self, token: str, provider: str, auth_result: AuthResult, ttl_minutes: int | None = None) -> None:
         """设置缓存"""
         if not auth_result.success:
             # 不缓存失败的结果
@@ -107,7 +107,7 @@ class TokenCache:
 
     async def _cleanup_expired(self) -> None:
         """清理过期的缓存条目"""
-        expired_keys = []
+        expired_keys: list[str] = []
         for key, cached_result in self._cache.items():
             if cached_result.is_expired():
                 expired_keys.append(key)
@@ -128,7 +128,7 @@ class TokenCache:
             except Exception as e:
                 logger.error(f"Token cache cleanup task error: {e}")
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """获取缓存统计信息"""
         return {
             "cache_size": len(self._cache),
@@ -138,7 +138,7 @@ class TokenCache:
 
 
 # 全局缓存实例
-_token_cache: Optional[TokenCache] = None
+_token_cache: TokenCache | None = None
 
 
 def get_token_cache() -> TokenCache:
