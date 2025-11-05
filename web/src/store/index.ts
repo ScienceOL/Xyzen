@@ -31,6 +31,7 @@ export const useXyzen = create<XyzenState>()(
       partialize: (state) => ({
         isXyzenOpen: state.isXyzenOpen,
         panelWidth: state.panelWidth,
+        activePanel: state.activePanel,
         theme: state.theme,
         token: state.token,
         user: state.user, // 持久化用户数据

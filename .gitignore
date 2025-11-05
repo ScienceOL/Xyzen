@@ -38,6 +38,7 @@ venv/
 .venv/
 .python-version
 .mypy_cache
+.ruff_cache
 celerybeat-schedule
 **/media/
 **/static/

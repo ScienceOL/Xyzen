@@ -2,11 +2,14 @@ import xyzenService from "@/service/xyzenService";
 import type { StateCreator } from "zustand";
 import type { Theme, XyzenState, LayoutStyle, UiSettingType } from "../types";
 
+export type ActivityPanel = "chat" | "explorer" | "workshop";
+
 export interface UiSlice {
   backendUrl: string;
   isXyzenOpen: boolean;
   panelWidth: number;
   activeTabIndex: number;
+  activePanel: ActivityPanel;
   theme: Theme;
   layoutStyle: LayoutStyle;
   isAddMcpServerModalOpen: boolean;
@@ -22,6 +25,7 @@ export interface UiSlice {
   closeXyzen: () => void;
   setPanelWidth: (width: number) => void;
   setTabIndex: (index: number) => void;
+  setActivePanel: (panel: ActivityPanel) => void;
   setTheme: (theme: Theme) => void;
   setLayoutStyle: (style: LayoutStyle) => void;
   setBackendUrl: (url: string) => void;
@@ -48,6 +52,7 @@ export const createUiSlice: StateCreator<
   isXyzenOpen: false,
   panelWidth: 380,
   activeTabIndex: 0,
+  activePanel: "chat",
   theme: (localStorage.getItem("theme") as Theme) || "system",
   layoutStyle:
     (localStorage.getItem("layoutStyle") as LayoutStyle) || "fullscreen",
@@ -67,6 +72,7 @@ export const createUiSlice: StateCreator<
   closeXyzen: () => set({ isXyzenOpen: false }),
   setPanelWidth: (width) => set({ panelWidth: width }),
   setTabIndex: (index) => set({ activeTabIndex: index }),
+  setActivePanel: (panel) => set({ activePanel: panel }),
   setTheme: (theme) => {
     if (typeof window !== "undefined") {
       localStorage.setItem("theme", theme);
@@ -99,7 +105,8 @@ export const createUiSlice: StateCreator<
   submitInput: () =>
     set(() => ({
       isXyzenOpen: true,
-      activeTabIndex: 1, // Switch to Chat tab
+      activeTabIndex: 1, // Switch to Chat tab (legacy support)
+      activePanel: "chat", // Switch to Chat panel
       // Keep the pendingInput so it can be used by the chat component
     })),
 });

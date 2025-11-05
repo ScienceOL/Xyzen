@@ -11,9 +11,12 @@ import { Mcp } from "@/app/Mcp";
 import { LlmProviders } from "@/app/LlmProviders";
 import McpIcon from "@/assets/McpIcon";
 import { AuthStatus, SettingsButton } from "@/components/features";
+import ActivityBar from "@/components/layouts/ActivityBar";
+import Explorer from "@/components/layouts/Explorer";
+import Workshop from "@/components/layouts/Workshop";
+import WorkshopChat from "@/components/layouts/WorkshopChat";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
-import XyzenTopics from "@/components/layouts/XyzenTopics";
 import { AddLlmProviderModal } from "@/components/modals/AddLlmProviderModal";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
@@ -34,6 +37,8 @@ export function AppFullscreen({
     fetchMcpServers,
     fetchUserByToken,
     setBackendUrl,
+    activePanel,
+    setActivePanel,
   } = useXyzen();
 
   const [mounted, setMounted] = useState(false);
@@ -74,6 +79,8 @@ export function AppFullscreen({
   const handleFloaterDragEnd = (_event: DragEndEvent) => {
     // No-op for fullscreen
   };
+
+  // Panel content is now handled directly in the JSX
 
   if (!mounted) {
     return null;
@@ -118,34 +125,65 @@ export function AppFullscreen({
             </div>
           </header>
 
-          {/* Main Content: 3-Column Layout */}
+          {/* Main Content: VSCode-like Layout */}
           <main className="flex flex-1 overflow-hidden">
-            {/* Left Column: Agents */}
-            <aside className="w-80 flex-shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex h-full flex-col">
+            {/* Activity Bar - Leftmost Column */}
+            <div className="w-16 flex-shrink-0 border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
+              <ActivityBar
+                activePanel={activePanel}
+                onPanelChange={setActivePanel}
+              />
+            </div>
+
+            {/* Explorer takes full width in fullscreen */}
+            {activePanel === "explorer" && (
+              <section className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
                 <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
                   <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                    Assistants
+                    Explorer
                   </h2>
                   <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    Choose an agent to start
+                    Discover agents and MCP servers
                   </p>
                 </div>
-                <div className="flex-1 overflow-y-auto py-4">
-                  <XyzenAgent key="fullscreen-agent" />
+                <div className="flex-1 overflow-hidden">
+                  <Explorer />
                 </div>
-              </div>
-            </aside>
+              </section>
+            )}
 
-            {/* Center Column: Chat */}
-            <section className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
-              <XyzenChat key="fullscreen-chat" />
-            </section>
+            {/* Chat and Workshop use sidebar-style layout */}
+            {(activePanel === "chat" || activePanel === "workshop") && (
+              <>
+                {/* Middle Column: Content Panel */}
+                <aside className="w-80 flex-shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+                  <div className="flex h-full flex-col">
+                    <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
+                      <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                        {activePanel === "chat" ? "Assistants" : "Workshop"}
+                      </h2>
+                      <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                        {activePanel === "chat"
+                          ? "Choose an agent to start"
+                          : "Create and design new agents"}
+                      </p>
+                    </div>
 
-            {/* Right Column: Topics */}
-            <aside className="w-80 flex-shrink-0 border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-              <XyzenTopics key="fullscreen-topics" />
-            </aside>
+                    {/* Content based on active panel */}
+                    <div className="flex-1 overflow-y-auto py-4">
+                      {activePanel === "chat" && <XyzenAgent />}
+                      {activePanel === "workshop" && <Workshop />}
+                    </div>
+                  </div>
+                </aside>
+
+                {/* Right Column: Chat Interface */}
+                <section className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
+                  {activePanel === "chat" && <XyzenChat />}
+                  {activePanel === "workshop" && <WorkshopChat />}
+                </section>
+              </>
+            )}
           </main>
         </div>
       </DndContext>

@@ -19,7 +19,6 @@ import "@/styles/prose.css";
 import {
   Dialog,
   DialogPanel,
-  Tab,
   Transition,
   TransitionChild,
 } from "@headlessui/react";
@@ -35,6 +34,9 @@ import {
   SettingsButton,
   CenteredInput,
 } from "@/components/features";
+import ActivityBar from "@/components/layouts/ActivityBar";
+import Explorer from "@/components/layouts/Explorer";
+import Workshop from "@/components/layouts/Workshop";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { AddLlmProviderModal } from "@/components/modals/AddLlmProviderModal";
@@ -116,8 +118,8 @@ function XyzenSidebar({
     closeXyzen,
     panelWidth,
     setPanelWidth,
-    activeTabIndex,
-    setTabIndex,
+    activePanel,
+    setActivePanel,
     setBackendUrl,
     user,
     fetchAgents,
@@ -130,11 +132,7 @@ function XyzenSidebar({
   const [isLlmProvidersOpen, setIsLlmProvidersOpen] = useState(false);
   const lastWidthRef = useRef(panelWidth);
 
-  // Tab选项
-  const tabs = [
-    { id: "agent", title: "助手", component: <XyzenAgent /> },
-    { id: "chat", title: "聊天", component: <XyzenChat /> },
-  ];
+  // Note: Legacy tab system replaced with ActivityBar
 
   // 初始化：设置后端URL和获取用户信息
   useEffect(() => {
@@ -232,69 +230,87 @@ function XyzenSidebar({
           onDoubleClick={handleResizeDoubleClick}
         />
 
-        <Tab.Group
-          as="div"
-          selectedIndex={activeTabIndex}
-          onChange={setTabIndex}
-          className="flex h-full flex-col"
-        >
-          <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
-            <Tab.List className="flex items-center space-x-1">
-              {tabs.map((tab) => (
-                <Tab
-                  key={tab.id}
-                  className={({ selected }) =>
-                    `whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors duration-200 ${
-                      selected
-                        ? "bg-neutral-100 text-indigo-600 dark:bg-neutral-900 dark:text-indigo-400"
-                        : "text-neutral-500 hover:bg-neutral-100/50 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
-                    }`
-                  }
-                >
-                  {tab.title}
-                </Tab>
-              ))}
-            </Tab.List>
-            <div className="flex items-center space-x-1">
-              <SettingsButton />
-              <button
-                className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                title="MCP 管理"
-                onClick={() => setIsMcpOpen(true)}
-              >
-                <McpIcon className="h-5 w-5" />
-              </button>
-              {showLlmProvider && (
-                <button
-                  className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                  title="LLM 提供商"
-                  onClick={() => setIsLlmProvidersOpen(true)}
-                >
-                  <CogIcon className="h-5 w-5" />
-                </button>
-              )}
-              <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700"></div>
-              <AuthStatus className="ml-2" />
-              <button
-                onClick={closeXyzen}
-                className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                title="关闭"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
+        <div className="flex h-full">
+          {/* VSCode-like Activity Bar - Leftmost vertical bar */}
+          <div className="w-16 flex-shrink-0 border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
+            <ActivityBar
+              activePanel={activePanel}
+              onPanelChange={setActivePanel}
+            />
           </div>
 
-          <div className="flex-grow overflow-y-auto py-4">
-            <Tab.Panels className="h-full">
-              {tabs.map((tab) => (
-                <Tab.Panel key={tab.id} className="h-full" unmount={false}>
-                  {tab.component}
-                </Tab.Panel>
-              ))}
-            </Tab.Panels>
+          {/* Main Content Area */}
+          <div className="flex flex-1 flex-col">
+            {/* Header Bar */}
+            <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
+              <div className="flex items-center">
+                <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {activePanel === "chat"
+                    ? "Chat"
+                    : activePanel === "explorer"
+                      ? "Explorer"
+                      : "Workshop"}
+                </h3>
+              </div>
+              <div className="flex items-center space-x-1">
+                <SettingsButton />
+                <button
+                  className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                  title="MCP 管理"
+                  onClick={() => setIsMcpOpen(true)}
+                >
+                  <McpIcon className="h-5 w-5" />
+                </button>
+                {showLlmProvider && (
+                  <button
+                    className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    title="LLM 提供商"
+                    onClick={() => setIsLlmProvidersOpen(true)}
+                  >
+                    <CogIcon className="h-5 w-5" />
+                  </button>
+                )}
+                <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700"></div>
+                <AuthStatus className="ml-2" />
+                <button
+                  onClick={closeXyzen}
+                  className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                  title="关闭"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden">
+              {activePanel === "chat" && (
+                <div className="flex h-full">
+                  {/* Left: Agents */}
+                  <div className="w-80 flex-shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 flex flex-col">
+                    <div className="border-b border-neutral-200 p-4 dark:border-neutral-800 flex-shrink-0">
+                      <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                        Assistants
+                      </h2>
+                      <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                        Choose an agent to start
+                      </p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto py-4">
+                      <XyzenAgent />
+                    </div>
+                  </div>
+                  {/* Right: Chat */}
+                  <div className="flex-1 bg-white dark:bg-black">
+                    <XyzenChat />
+                  </div>
+                </div>
+              )}
+              {activePanel === "explorer" && <Explorer />}
+              {activePanel === "workshop" && <Workshop />}
+            </div>
           </div>
-        </Tab.Group>
+        </div>
 
         <Transition appear show={isMcpOpen} as={Fragment}>
           <Dialog

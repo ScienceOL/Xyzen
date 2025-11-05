@@ -373,8 +373,11 @@ export default function XyzenAgent() {
     setConfirmModalOpen(true);
   };
 
-  // 合并默认助手和用户助手
-  const allAgents = [defaultAgent, ...agents];
+  // 合并默认助手和用户助手，过滤掉图形助手（它们现在在 Agent Explorer 中）
+  const regularAgents = agents.filter(
+    (agent) => agent.agent_type === "regular",
+  );
+  const allAgents = [defaultAgent, ...regularAgents];
 
   return (
     <motion.div

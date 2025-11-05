@@ -6,7 +6,7 @@ import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { formatTime } from "@/lib/formatDate";
 import { useXyzen } from "@/store";
 import type { ChatHistoryItem } from "@/store/types";
-import { Transition } from "@headlessui/react";
+
 import { MapPinIcon } from "@heroicons/react/20/solid";
 import {
   ChevronRightIcon,
@@ -17,7 +17,7 @@ import {
   MagnifyingGlassIcon,
   ArchiveBoxXMarkIcon,
 } from "@heroicons/react/24/outline";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface SessionHistoryProps {
   isOpen: boolean;
@@ -365,59 +365,33 @@ export default function SessionHistory({
 
   return (
     <>
-      {/* 背景遮罩 */}
-      <Transition
-        show={isOpen}
-        as={Fragment}
-        enter="ease-out duration-300"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="ease-in duration-200"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-      >
-        <div
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
-          onClick={onClose}
-        />
-      </Transition>
+      <div className="h-full bg-white dark:bg-neutral-900">
+        {/* Simple container without overlay/positioning */}
+        {(() => {
+          console.log("SessionHistory: Render decision", {
+            isUserLoggedIn,
+            chatHistoryLoading,
+            sortedHistoryLength: sortedHistory.length,
+          });
 
-      {/* 侧边栏 */}
-      <Transition
-        show={isOpen}
-        as={Fragment}
-        enter="transform transition ease-in-out duration-300"
-        enterFrom="translate-x-full"
-        enterTo="translate-x-0"
-        leave="transform transition ease-in-out duration-300"
-        leaveFrom="translate-x-0"
-        leaveTo="translate-x-full"
-      >
-        <div className="fixed inset-y-0 right-0 z-50 w-80 bg-white shadow-2xl dark:bg-neutral-900">
-          {(() => {
-            console.log("SessionHistory: Render decision", {
-              isUserLoggedIn,
-              chatHistoryLoading,
-              sortedHistoryLength: sortedHistory.length,
-            });
+          if (!isUserLoggedIn) {
+            console.log("SessionHistory: Rendering login prompt");
+            return renderLoginPrompt();
+          }
+          if (chatHistoryLoading) {
+            console.log("SessionHistory: Rendering loading state");
+            return renderLoading();
+          }
+          if (sortedHistory.length === 0) {
+            console.log("SessionHistory: Rendering empty state");
+            return renderEmpty();
+          }
+          console.log("SessionHistory: Rendering history list");
+          return renderHistoryList();
+        })()}
+      </div>
 
-            if (!isUserLoggedIn) {
-              console.log("SessionHistory: Rendering login prompt");
-              return renderLoginPrompt();
-            }
-            if (chatHistoryLoading) {
-              console.log("SessionHistory: Rendering loading state");
-              return renderLoading();
-            }
-            if (sortedHistory.length === 0) {
-              console.log("SessionHistory: Rendering empty state");
-              return renderEmpty();
-            }
-            console.log("SessionHistory: Rendering history list");
-            return renderHistoryList();
-          })()}
-        </div>
-      </Transition>
+      {/* Modals remain at component level */}
       {topicToDelete && (
         <ConfirmationModal
           isOpen={isConfirmModalOpen}
