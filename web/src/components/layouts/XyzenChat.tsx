@@ -2,8 +2,8 @@ import { CHAT_THEMES } from "@/configs/chatThemes";
 
 import EditableTitle from "@/components/base/EditableTitle";
 import NotificationModal from "@/components/modals/NotificationModal";
-import type { WorkShopChatConfig } from "@/hooks/useWorkShopChat";
-import { useWorkShopChat } from "@/hooks/useWorkShopChat";
+import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
+import { useXyzenChat } from "@/hooks/useXyzenChat";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -15,7 +15,7 @@ import SessionHistory from "./components/SessionHistory";
 import WelcomeMessage from "./components/WelcomeMessage";
 
 interface BaseChatProps {
-  config: WorkShopChatConfig;
+  config: XyzenChatConfig;
   historyEnabled?: boolean;
 }
 
@@ -40,7 +40,7 @@ const getThemeStyles = (theme: "indigo" | "purple") => {
 };
 
 // Empty state component for different themes
-const ThemedEmptyState: React.FC<{ config: WorkShopChatConfig }> = ({
+const ThemedEmptyState: React.FC<{ config: XyzenChatConfig }> = ({
   config,
 }) => {
   if (config.theme === "indigo") {
@@ -94,7 +94,7 @@ const ThemedEmptyState: React.FC<{ config: WorkShopChatConfig }> = ({
 };
 
 // Welcome message component for different themes
-const ThemedWelcomeMessage: React.FC<{ config: WorkShopChatConfig }> = ({
+const ThemedWelcomeMessage: React.FC<{ config: XyzenChatConfig }> = ({
   config,
 }) => {
   if (!config.welcomeMessage || config.theme === "indigo") {
@@ -184,7 +184,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     closeNotification,
     pendingInput,
     updateTopicName,
-  } = useWorkShopChat(config);
+  } = useXyzenChat(config);
 
   const themeStyles = getThemeStyles(config.theme);
 
