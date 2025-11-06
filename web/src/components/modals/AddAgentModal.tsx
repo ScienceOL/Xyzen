@@ -1,10 +1,9 @@
 import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
-import { authService } from "@/service/authService";
 import { useXyzen } from "@/store";
 import { Button, Field, Label } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { Agent } from "../layouts/XyzenAgent";
 import { McpServerItem } from "./McpServerItem";
 
@@ -25,14 +24,14 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     fetchBuiltinMcpServers,
     quickAddBuiltinServer,
     openAddMcpServerModal,
-    backendUrl,
+    publishedAgents,
+    officialAgents,
+    fetchPublishedGraphAgents,
+    fetchOfficialGraphAgents,
   } = useXyzen();
   const [mode, setMode] = useState<"create" | "add">("create");
   const [selectedExistingAgent, setSelectedExistingAgent] =
     useState<Agent | null>(null);
-  const [allAvailableGraphAgents, setAllAvailableGraphAgents] = useState<
-    Agent[]
-  >([]);
   const [agent, setAgent] = useState<
     Omit<
       Agent,
@@ -52,56 +51,34 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isAutoAddingDefaultMcp, setIsAutoAddingDefaultMcp] = useState(false);
 
-  // Create auth headers helper (same as agentSlice)
-  const createAuthHeaders = (): HeadersInit => {
-    const token = authService.getToken();
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
+  // Combine published and official agents (official agents are published by default)
+  const availableGraphAgents = React.useMemo(() => {
+    // Merge published and official agents, removing duplicates
+    const agentMap = new Map<string, Agent>();
 
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    return headers;
-  };
-
-  // Fetch all available graph agents (including hidden ones) for add mode
-  const fetchAllGraphAgents = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `${backendUrl}/xyzen/api/v1/agents/all/unified`,
-        {
-          headers: createAuthHeaders(),
-        },
-      );
-      if (response.ok) {
-        const allAgents: Agent[] = await response.json();
-        const graphAgents = allAgents.filter(
-          (agent) =>
-            agent.agent_type === "graph" && agent.id !== "default-chat",
-        );
-        setAllAvailableGraphAgents(graphAgents);
-      } else {
-        console.error("Failed to fetch agents, status:", response.status);
+    [...publishedAgents, ...officialAgents].forEach((agent) => {
+      if (agent.agent_type === "graph" && agent.id !== "default-chat") {
+        agentMap.set(agent.id, agent);
       }
-    } catch (error) {
-      console.error("Failed to fetch all graph agents:", error);
-    }
-  }, [backendUrl]);
+    });
 
-  // Fetch MCP servers, built-in servers, and agents when modal opens
+    return Array.from(agentMap.values());
+  }, [publishedAgents, officialAgents]);
+
+  // Fetch published and official agents when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchAgents();
-      fetchAllGraphAgents();
+      fetchPublishedGraphAgents();
+      fetchOfficialGraphAgents();
       fetchMcpServers();
       fetchBuiltinMcpServers();
     }
   }, [
     isOpen,
     fetchAgents,
-    fetchAllGraphAgents,
+    fetchPublishedGraphAgents,
+    fetchOfficialGraphAgents,
     fetchMcpServers,
     fetchBuiltinMcpServers,
   ]);
@@ -344,14 +321,14 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           <>
             {/* Agent Explorer Mode */}
             <div className="space-y-4">
-              {allAvailableGraphAgents.length === 0 ? (
+              {availableGraphAgents.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-neutral-500 dark:text-neutral-400">
-                    No Graph Agents Available
+                    No Published Graph Agents Available
                   </p>
                   <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                    Graph agents are created using MCP graph tools with complex
-                    workflows involving nodes and edges
+                    Published graph agents from the community and official
+                    agents will appear here
                   </p>
                   <button
                     type="button"
@@ -364,10 +341,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
               ) : (
                 <div>
                   <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
-                    📊 Available Graph Agents
+                    📊 Published Graph Agents
                   </h3>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {allAvailableGraphAgents.map((agent) => (
+                    {availableGraphAgents.map((agent) => (
                       <div
                         key={agent.id}
                         onClick={() => setSelectedExistingAgent(agent)}
@@ -379,13 +356,20 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                              {agent.name}
-                            </h4>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                                {agent.name}
+                              </h4>
+                              {agent.is_official && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 font-medium">
+                                  ✓ Official
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
                               {agent.description}
                             </p>
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
                               <span className="text-xs text-indigo-600 dark:text-indigo-400">
                                 {agent.node_count || 0} 节点
                               </span>

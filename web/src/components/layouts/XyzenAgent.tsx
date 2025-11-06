@@ -21,7 +21,7 @@ export type Agent = {
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
   // New fields for unified agent support
-  agent_type: "regular" | "graph" | "builtin";
+  agent_type: "regular" | "graph" | "builtin" | "system";
   avatar?: string | null;
   tags?: string[] | null;
   model?: string | null;

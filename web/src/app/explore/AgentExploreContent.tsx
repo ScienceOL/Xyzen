@@ -4,7 +4,7 @@ import { cardHover, containerVariants, itemVariants } from "@/lib/animations";
 import { useXyzen } from "@/store";
 import { PlayIcon, PlusIcon, StopIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import type { Agent } from "../../components/layouts/XyzenAgent";
 
 const ExplorerAgentCard: React.FC<{
@@ -22,10 +22,15 @@ const ExplorerAgentCard: React.FC<{
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <h4 className="text-sm font-semibold text-neutral-800 dark:text-white truncate">
               {agent.name}
             </h4>
+            {agent.is_official && (
+              <Badge variant="blue" className="flex items-center gap-1">
+                ✓ Official
+              </Badge>
+            )}
             {agent.agent_type === "graph" && (
               <>
                 {agent.is_active ? (
@@ -76,12 +81,42 @@ const ExplorerAgentCard: React.FC<{
 const AgentExploreContent: React.FC = () => {
   const {
     agents,
+    publishedAgents,
+    officialAgents,
+    fetchAgents,
+    fetchPublishedGraphAgents,
+    fetchOfficialGraphAgents,
     addGraphAgentToSidebar,
     setActivePanel,
     createDefaultChannel,
+    user,
+    backendUrl,
   } = useXyzen();
 
-  const graphAgents = agents.filter((agent) => agent.agent_type === "graph");
+  // Combine published and official agents (official agents are published by default)
+  const graphAgents = useMemo(() => {
+    const agentMap = new Map<string, Agent>();
+    [...agents, ...publishedAgents, ...officialAgents].forEach((agent) => {
+      if (agent.agent_type === "graph") {
+        agentMap.set(agent.id, agent);
+      }
+    });
+    return Array.from(agentMap.values());
+  }, [agents, publishedAgents, officialAgents]);
+
+  useEffect(() => {
+    if (user && backendUrl) {
+      fetchAgents();
+      fetchPublishedGraphAgents();
+      fetchOfficialGraphAgents();
+    }
+  }, [
+    fetchAgents,
+    fetchPublishedGraphAgents,
+    fetchOfficialGraphAgents,
+    user,
+    backendUrl,
+  ]);
 
   const handleAddToChat = async (agent: Agent) => {
     addGraphAgentToSidebar(agent.id);
@@ -106,12 +141,13 @@ const AgentExploreContent: React.FC = () => {
         ))
       ) : (
         <div className="text-center py-8">
-          <div className="text-4xl mb-4">📊</div>
+          <div className="text-4xl mb-4">🔍</div>
           <h3 className="text-lg font-semibold text-neutral-800 dark:text-white mb-2">
-            No Graph Agents Found
+            No Published Graph Agents
           </h3>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Graph agents will appear here when available
+            Published graph agents from the community and official agents will
+            appear here
           </p>
         </div>
       )}

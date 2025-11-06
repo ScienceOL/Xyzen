@@ -147,10 +147,15 @@ const GraphAgentCard: React.FC<GraphAgentCardProps> = ({
       >
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h3 className="text-sm font-semibold text-neutral-800 dark:text-white truncate">
                 {agent.name}
               </h3>
+              {agent.is_official && (
+                <Badge variant="blue" className="flex items-center gap-1">
+                  ✓ Official
+                </Badge>
+              )}
               {agent.is_active ? (
                 <Badge variant="green" className="flex items-center gap-1">
                   <PlayIcon className="h-3 w-3" />
@@ -214,15 +219,34 @@ const GraphAgentCard: React.FC<GraphAgentCardProps> = ({
 };
 
 export default function AgentExplorer() {
-  const { agents, fetchAgents, addGraphAgentToSidebar, user, backendUrl } =
-    useXyzen();
+  const {
+    agents,
+    // publishedAgents,
+    // officialAgents,
+    fetchAgents,
+    // fetchPublishedGraphAgents,
+    // fetchOfficialGraphAgents,
+    addGraphAgentToSidebar,
+    user,
+    backendUrl,
+  } = useXyzen();
 
-  // Filter to show only graph agents
-  const graphAgents = agents.filter((agent) => agent.agent_type === "graph");
+  // Combine published and official agents (official agents are published by default)
+  const graphAgents = React.useMemo(() => {
+    const agentMap = new Map<string, Agent>();
+    agents.forEach((agent) => {
+      // if (agent.agent_type === "graph") {
+      agentMap.set(agent.id, agent);
+      // }
+    });
+    return Array.from(agentMap.values());
+  }, [agents]);
 
   useEffect(() => {
     if (user && backendUrl) {
       fetchAgents();
+      // fetchPublishedGraphAgents();
+      // fetchOfficialGraphAgents();
     }
   }, [fetchAgents, user, backendUrl]);
 
@@ -236,15 +260,15 @@ export default function AgentExplorer() {
         <div className="text-center">
           <div className="text-4xl mb-4">🔍</div>
           <h3 className="text-lg font-semibold text-neutral-800 dark:text-white mb-2">
-            No Graph Agents
+            No Published Graph Agents
           </h3>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-            Graph agents are created using MCP tools with complex workflows
-            involving nodes and edges.
+            Published graph agents from the community and official agents will
+            appear here.
           </p>
           <p className="text-xs text-neutral-400 dark:text-neutral-500">
-            Create graph agents through the chat interface with appropriate MCP
-            tools.
+            Create your own graph agents in the Workshop and publish them to
+            share with others.
           </p>
         </div>
       </div>

@@ -115,7 +115,7 @@ export const createAgentSlice: StateCreator<
       // Filter out hidden graph agents
       const { hiddenGraphAgentIds } = get();
       const visibleAgents = allAgents.filter((agent) => {
-        // Keep all regular agents
+        // Keep all regular and graph agents
         if (agent.agent_type === "regular") return true;
         // Keep graph agents that are not hidden
         return !hiddenGraphAgentIds.includes(agent.id);
