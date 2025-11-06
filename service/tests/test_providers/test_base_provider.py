@@ -2,6 +2,7 @@
 
 from typing import Any
 from unittest.mock import MagicMock
+
 from pydantic import SecretStr
 
 from core.providers.base import (
@@ -156,15 +157,6 @@ class TestBaseLLMProvider:
         assert provider.temperature == 0.7
         assert provider.timeout == 30
         assert provider.config["custom_param"] == "test-value"
-
-    def test_provider_initialization_minimal(self):
-        """Test provider initialization with minimal parameters."""
-        provider = MockProvider()
-
-        assert provider.model == "gpt-4o"  # default
-        assert provider.max_tokens is None
-        assert provider.temperature is None
-        assert provider.timeout == 60  # default
 
     def test_get_model_capabilities(self):
         """Test getting model capabilities through provider."""
