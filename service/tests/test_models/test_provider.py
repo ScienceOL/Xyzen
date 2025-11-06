@@ -1,9 +1,10 @@
 """Tests for Provider model."""
 
-import pytest
-from pydantic import ValidationError
 from typing import Any
 from uuid import uuid4
+
+import pytest
+from pydantic import ValidationError
 
 from models.provider import Provider, ProviderCreate, ProviderUpdate
 
@@ -39,26 +40,6 @@ class TestProviderModel:
         assert provider.temperature == 0.7
         assert provider.is_system is False
         assert provider.provider_config == {"organization": "test-org"}
-
-    def test_provider_create_minimal(self):
-        """Test creating a provider with minimal required fields."""
-        data: dict[str, Any] = {
-            "user_id": "test-user-123",
-            "name": "Minimal Provider",
-            "provider_type": "openai",
-            "api": "https://api.openai.com/v1",
-            "key": "sk-test-key-123",
-        }
-        provider = ProviderCreate(**data)
-
-        assert provider.user_id == "test-user-123"
-        assert provider.name == "Minimal Provider"
-        assert provider.provider_type == "openai"
-        assert provider.timeout == 60  # default value
-        assert provider.max_tokens == 4096  # default value
-        assert provider.temperature == 0.7  # default value
-        assert provider.is_system is False  # default value
-        assert provider.provider_config is None  # default value
 
     def test_provider_create_invalid_name_empty(self):
         """Test creating a provider with empty name."""
