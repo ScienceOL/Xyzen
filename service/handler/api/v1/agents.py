@@ -4,11 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from common.code import ErrCodeError, handle_auth_error
 from core.agent_service import AgentService, UnifiedAgentRead
 from core.system_agent import SystemAgentManager
+from core.auth import AuthorizationService, get_auth_service
 from middleware.auth import get_current_user
 from middleware.database import get_session
-from models.agent import Agent as AgentModel
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentUpdate
 
 # Ensure forward references are resolved after importing both models
@@ -24,97 +25,11 @@ from repo import AgentRepository, ProviderRepository
 router = APIRouter(tags=["agents"])
 
 
-async def _verify_agent_authorization(
-    agent_id: UUID, user: str, db: AsyncSession, allow_missing: bool = False
-) -> AgentModel | None:
-    """
-    Core authorization logic for agent access validation.
-
-    Args:
-        agent_id: UUID of the agent to verify
-        user: Authenticated user ID
-        db: Database session
-        allow_missing: If True, returns None for missing agents instead of raising 404
-
-    Returns:
-        Agent | None: The authorized agent instance, or None if not found and allow_missing=True
-
-    Raises:
-        HTTPException: 404 if agent not found (unless allow_missing=True),
-                      403 if access denied
-    """
-    agent_repo = AgentRepository(db)
-    agent = await agent_repo.get_agent_by_id(agent_id)
-
-    if not agent:
-        if allow_missing:
-            return None
-        raise HTTPException(status_code=404, detail="Agent not found")
-
-    if agent.user_id != user:
-        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to access this agent")
-
-    return agent
-
-
-async def get_authorized_agent(
-    agent_id: UUID, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
-) -> AgentModel:
-    """
-    FastAPI dependency that validates agent access authorization.
-
-    This dependency ensures the agent exists and belongs to the
-    authenticated user. Used for operations that require
-    the agent to exist (GET, PATCH).
-
-    Args:
-        agent_id: UUID from the path parameter
-        user: Authenticated user ID from get_current_user dependency
-        db: Database session from get_session dependency
-
-    Returns:
-        Agent: The authorized agent instance
-
-    Raises:
-        HTTPException: 404 if agent not found, 403 if access denied
-    """
-    agent = await _verify_agent_authorization(agent_id, user, db, allow_missing=False)
-    # Type checker can't infer that agent is not None here
-    return agent  # type: ignore
-
-
-async def get_authorized_agent_for_delete(
-    agent_id: UUID,
-    user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-) -> AgentModel | None:
-    """
-    FastAPI dependency for delete operations with idempotent behavior.
-
-    Unlike the standard authorization dependency, this one returns None
-    when an agent doesn't exist rather than raising a 404 exception.
-    This enables idempotent DELETE operations where calling DELETE
-    on a non-existent resource still returns 204 No Content.
-
-    Args:
-        agent_id: UUID from the path parameter
-        user: Authenticated user ID from get_current_user dependency
-        db: Database session from get_session dependency
-
-    Returns:
-        Agent | None: The authorized agent instance, or None if agent doesn't exist
-
-    Raises:
-        HTTPException: 403 if access denied
-        (but NOT if agent doesn't exist - returns None instead)
-    """
-    return await _verify_agent_authorization(agent_id, user, db, allow_missing=True)
-
-
 @router.post("/", response_model=AgentRead)
 async def create_agent(
     agent_data: AgentCreate,
-    user: str = Depends(get_current_user),
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_session),
 ) -> AgentRead:
     """
@@ -136,15 +51,13 @@ async def create_agent(
         HTTPException: 400 if provider not found, 403 if provider access denied
     """
     if agent_data.provider_id:
-        provider_repo = ProviderRepository(db)
-        provider = await provider_repo.get_provider_by_id(agent_data.provider_id)
-        if not provider:
-            raise HTTPException(status_code=400, detail="Provider not found")
-        if provider.user_id != user and not provider.is_system:
-            raise HTTPException(status_code=403, detail="Provider access denied")
+        try:
+            await auth_service.authorize_provider_read(agent_data.provider_id, user_id)
+        except ErrCodeError as e:
+            raise handle_auth_error(e)
 
     agent_repo = AgentRepository(db)
-    created_agent = await agent_repo.create_agent(agent_data, user)
+    created_agent = await agent_repo.create_agent(agent_data, user_id)
 
     await db.commit()
     return AgentRead(**created_agent.model_dump())
@@ -217,7 +130,8 @@ async def get_all_agents_unified(
 @router.get("/{agent_id}", response_model=UnifiedAgentRead)
 async def get_agent(
     agent_id: str,
-    user: str = Depends(get_current_user),
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_session),
 ) -> UnifiedAgentRead:
     """
@@ -250,7 +164,7 @@ async def get_agent(
     # Handle regular/graph agents
     try:
         agent_uuid = UUID(agent_id)
-        agent = await agent_service.get_agent_by_id(agent_uuid, user)
+        agent = await agent_service.get_agent_by_id(agent_uuid, user_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -261,7 +175,7 @@ async def get_agent(
 
             detector = AgentTypeDetector(db)
 
-            agent_with_type = await detector.get_agent_with_type(agent_uuid, user)
+            agent_with_type = await detector.get_agent_with_type(agent_uuid, user_id)
             if not agent_with_type:
                 raise HTTPException(status_code=404, detail="Agent not found or access denied")
 
@@ -272,8 +186,10 @@ async def get_agent(
 
 @router.patch("/{agent_id}", response_model=AgentReadWithDetails)
 async def update_agent(
+    agent_id: UUID,
     agent_data: AgentUpdate,
-    agent: AgentModel = Depends(get_authorized_agent),
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_session),
 ) -> AgentReadWithDetails:
     """
@@ -295,34 +211,41 @@ async def update_agent(
         HTTPException: 404 if agent not found, 403 if access denied,
                       400 if provider not found, 500 if update operation fails unexpectedly
     """
-    if agent_data.provider_id is not None:
-        provider_repo = ProviderRepository(db)
-        provider = await provider_repo.get_provider_by_id(agent_data.provider_id)
-        if not provider:
-            raise HTTPException(status_code=400, detail="Provider not found")
-        # Check if user can access this provider (own or system)
-        if provider.user_id != agent.user_id and not provider.is_system:
-            raise HTTPException(status_code=403, detail="Provider access denied")
+    try:
+        agent = await auth_service.authorize_agent_write(agent_id, user_id)
 
-    agent_repo = AgentRepository(db)
-    updated_agent = await agent_repo.update_agent(agent.id, agent_data)
-    if not updated_agent:
-        raise HTTPException(status_code=500, detail="Failed to update agent")
+        if agent_data.provider_id is not None:
+            provider_repo = ProviderRepository(db)
+            provider = await provider_repo.get_provider_by_id(agent_data.provider_id)
+            if not provider:
+                raise HTTPException(status_code=400, detail="Provider not found")
+            # Check if user can access this provider (own or system)
+            if provider.user_id != agent.user_id and not provider.is_system:
+                raise HTTPException(status_code=403, detail="Provider access denied")
 
-    await db.commit()
+        agent_repo = AgentRepository(db)
+        updated_agent = await agent_repo.update_agent(agent.id, agent_data)
+        if not updated_agent:
+            raise HTTPException(status_code=500, detail="Failed to update agent")
 
-    # Get MCP servers for the updated agent
-    mcp_servers = await agent_repo.get_agent_mcp_servers(updated_agent.id)
+        await db.commit()
 
-    # Create agent dict with MCP servers
-    agent_dict = updated_agent.model_dump()
-    agent_dict["mcp_servers"] = mcp_servers
-    return AgentReadWithDetails(**agent_dict)
+        # Get MCP servers for the updated agent
+        mcp_servers = await agent_repo.get_agent_mcp_servers(updated_agent.id)
+
+        # Create agent dict with MCP servers
+        agent_dict = updated_agent.model_dump()
+        agent_dict["mcp_servers"] = mcp_servers
+        return AgentReadWithDetails(**agent_dict)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
 
 
 @router.delete("/{agent_id}", status_code=204)
 async def delete_agent(
-    agent: AgentModel | None = Depends(get_authorized_agent_for_delete),
+    agent_id: UUID,
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_session),
 ) -> None:
     """
@@ -344,15 +267,13 @@ async def delete_agent(
         HTTPException: 403 if access denied
         (but NOT if agent doesn't exist - returns 204 instead)
     """
-    if agent is None:
-        return
-    agent_repo = AgentRepository(db)
-    await agent_repo.delete_agent(agent.id)
-    await db.commit()
-    return
-
-
-# System Agent Endpoints
+    try:
+        agent = await auth_service.authorize_agent_delete(agent_id, user_id)
+        agent_repo = AgentRepository(db)
+        await agent_repo.delete_agent(agent.id)
+        await db.commit()
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
 
 
 @router.get("/system/chat", response_model=AgentReadWithDetails)

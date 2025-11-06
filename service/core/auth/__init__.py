@@ -1,18 +1,20 @@
 from uuid import UUID
 
+from fastapi import Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from middleware.database import get_session
 from models.agent import Agent
 from models.graph import GraphAgent
 from models.provider import Provider
-from models.topic import Topic
 from models.sessions import Session
+from models.topic import Topic
 
 from .policies.agent_policy import AgentPolicy
 from .policies.graph_agent_policy import GraphAgentPolicy
 from .policies.provider_policy import ProviderPolicy
-from .policies.topic_policy import TopicPolicy
 from .policies.session_policy import SessionPolicy
+from .policies.topic_policy import TopicPolicy
 
 
 class AuthorizationService:
@@ -68,3 +70,8 @@ class AuthorizationService:
 
     async def authorize_topic_delete(self, topic_id: UUID, user_id: str) -> Topic:
         return await self.topic_policy.authorize_delete(topic_id, user_id)
+
+
+def get_auth_service(db: AsyncSession = Depends(get_session)) -> AuthorizationService:
+    """FastAPI dependency for authorization service"""
+    return AuthorizationService(db)
