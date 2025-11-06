@@ -158,6 +158,100 @@ async def get_graph_agents(
     return [GraphAgentRead(**agent.model_dump()) for agent in agents]
 
 
+@router.get("/published", response_model=list[GraphAgentRead])
+async def get_all_published_graph_agents(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> List[GraphAgentRead]:
+    """
+    Get all published graph agents from all users for Explorer discovery.
+
+    Returns all graph agents where is_published=True, regardless of ownership.
+    This allows users to discover and view published graphs from other users
+    in the Explorer interface. Results are ordered by creation time (newest first).
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[GraphAgentRead]: List of all published graph agents from all users
+    """
+    repo = GraphRepository(db)
+    agents = await repo.get_all_published_graph_agents()
+    return [GraphAgentRead(**agent.model_dump()) for agent in agents]
+
+
+@router.get("/published/my", response_model=list[GraphAgentRead])
+async def get_my_published_graph_agents(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> List[GraphAgentRead]:
+    """
+    Get all published graph agents owned by the current authenticated user.
+
+    Returns only the published graph agents that belong to the authenticated user,
+    ordered by creation time. Useful for users to manage their own published graphs.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[GraphAgentRead]: List of published graph agents owned by the user
+    """
+    repo = GraphRepository(db)
+    agents = await repo.get_published_graph_agents_by_user(user)
+    return [GraphAgentRead(**agent.model_dump()) for agent in agents]
+
+
+@router.get("/official", response_model=list[GraphAgentRead])
+async def get_official_graph_agents(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> List[GraphAgentRead]:
+    """
+    Get all official graph agents (is_official=True).
+
+    Returns all graph agents marked as official, regardless of published status.
+    Official agents are accessible to all users and typically represent
+    built-in or verified agents from the platform.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[GraphAgentRead]: List of all official graph agents
+    """
+    repo = GraphRepository(db)
+    agents = await repo.get_official_graph_agents()
+    return [GraphAgentRead(**agent.model_dump()) for agent in agents]
+
+
+@router.get("/official/published", response_model=list[GraphAgentRead])
+async def get_official_published_graph_agents(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> List[GraphAgentRead]:
+    """
+    Get all official graph agents that are also published.
+
+    Returns official graph agents where both is_official=True and is_published=True.
+    This is useful for showing curated official agents in public-facing interfaces.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        List[GraphAgentRead]: List of official and published graph agents
+    """
+    repo = GraphRepository(db)
+    agents = await repo.get_published_official_agents()
+    return [GraphAgentRead(**agent.model_dump()) for agent in agents]
+
+
 @router.get("/{agent_id}", response_model=GraphAgentWithGraph)
 async def get_graph_agent(
     agent: GraphAgent = Depends(get_authorized_graph_agent),
@@ -216,6 +310,39 @@ async def update_graph_agent(
     updated_agent = await repo.update_graph_agent(agent.id, agent_data)
     if not updated_agent:
         raise HTTPException(status_code=500, detail="Failed to update graph agent")
+
+    await db.commit()
+    return GraphAgentRead(**updated_agent.model_dump())
+
+
+@router.patch("/{agent_id}/toggle-publish", response_model=GraphAgentRead)
+async def toggle_graph_agent_publish(
+    agent: GraphAgent = Depends(get_authorized_graph_agent),
+    db: AsyncSession = Depends(get_session),
+) -> GraphAgentRead:
+    """
+    Toggle the publish status of a graph agent.
+
+    Convenience endpoint to toggle is_published between True and False.
+    Only the owner of the graph agent can toggle its publish status.
+
+    Args:
+        agent: Authorized graph agent instance (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        GraphAgentRead: The updated graph agent with toggled publish status
+
+    Raises:
+        HTTPException: 404 if agent not found, 403 if access denied,
+                      500 if update operation fails unexpectedly
+    """
+    repo = GraphRepository(db)
+    # Toggle the current publish status
+    update_data = GraphAgentUpdate(is_published=not agent.is_published)
+    updated_agent = await repo.update_graph_agent(agent.id, update_data)
+    if not updated_agent:
+        raise HTTPException(status_code=500, detail="Failed to toggle publish status")
 
     await db.commit()
     return GraphAgentRead(**updated_agent.model_dump())

@@ -16,6 +16,8 @@ class GraphAgentBase(SQLModel):
     is_active: bool = Field(default=True)
     parent_agent_id: UUID | None = Field(default=None, index=True)
     user_id: str = Field(index=True)
+    is_published: bool = Field(default=False, index=True)
+    is_official: bool = Field(default=False, index=True)
 
 
 class GraphAgent(GraphAgentBase, table=True):
@@ -35,6 +37,8 @@ class GraphAgentCreate(SQLModel):
     description: str | None = None
     state_schema: dict[str, Any]
     parent_agent_id: UUID | None = None
+    is_published: bool = False
+    is_official: bool = False
 
 
 class GraphAgentRead(GraphAgentBase):
@@ -48,6 +52,8 @@ class GraphAgentUpdate(SQLModel):
     description: str | None = None
     state_schema: dict[str, Any] | None = None
     is_active: bool | None = None
+    is_published: bool | None = None
+    is_official: bool | None = None
 
 
 class GraphNodeBase(SQLModel):

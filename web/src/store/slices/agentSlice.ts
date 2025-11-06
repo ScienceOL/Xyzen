@@ -6,10 +6,16 @@ import type { XyzenState } from "../types";
 export interface AgentSlice {
   agents: Agent[];
   agentsLoading: boolean;
+  publishedAgents: Agent[];
+  publishedAgentsLoading: boolean;
+  officialAgents: Agent[];
+  officialAgentsLoading: boolean;
   hiddenGraphAgentIds: string[];
   systemAgents: Agent[];
   systemAgentsLoading: boolean;
   fetchAgents: () => Promise<void>;
+  fetchPublishedGraphAgents: () => Promise<void>;
+  fetchOfficialGraphAgents: () => Promise<void>;
   fetchSystemAgents: () => Promise<void>;
   getSystemChatAgent: () => Promise<Agent>;
   getSystemWorkshopAgent: () => Promise<Agent>;
@@ -19,6 +25,11 @@ export interface AgentSlice {
   updateAgentProvider: (
     agentId: string,
     providerId: string | null,
+  ) => Promise<void>;
+  toggleGraphAgentPublish: (agentId: string) => Promise<void>;
+  setGraphAgentPublish: (
+    agentId: string,
+    isPublished: boolean,
   ) => Promise<void>;
   deleteAgent: (id: string) => Promise<void>;
   removeGraphAgentFromSidebar: (id: string) => void;
@@ -34,6 +45,7 @@ export interface GraphAgentCreate {
   name: string;
   description: string;
   state_schema?: Record<string, unknown>;
+  is_published?: boolean;
 }
 
 // 创建带认证头的请求选项
@@ -78,6 +90,10 @@ export const createAgentSlice: StateCreator<
 > = (set, get) => ({
   agents: [],
   agentsLoading: false,
+  publishedAgents: [],
+  publishedAgentsLoading: false,
+  officialAgents: [],
+  officialAgentsLoading: false,
   hiddenGraphAgentIds: loadHiddenGraphAgentIds(),
   systemAgents: [],
   systemAgentsLoading: false,
@@ -109,6 +125,46 @@ export const createAgentSlice: StateCreator<
     } catch (error) {
       console.error("Failed to fetch agents:", error);
       set({ agentsLoading: false });
+      throw error;
+    }
+  },
+  fetchPublishedGraphAgents: async () => {
+    set({ publishedAgentsLoading: true });
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/graph-agents/published`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch published graph agents");
+      }
+      const publishedAgents: Agent[] = await response.json();
+      set({ publishedAgents, publishedAgentsLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch published graph agents:", error);
+      set({ publishedAgentsLoading: false });
+      throw error;
+    }
+  },
+  fetchOfficialGraphAgents: async () => {
+    set({ officialAgentsLoading: true });
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/graph-agents/official`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch official graph agents");
+      }
+      const officialAgents: Agent[] = await response.json();
+      set({ officialAgents, officialAgentsLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch official graph agents:", error);
+      set({ officialAgentsLoading: false });
       throw error;
     }
   },
@@ -170,6 +226,107 @@ export const createAgentSlice: StateCreator<
           agent.provider_id = providerId;
         }
       });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  },
+  toggleGraphAgentPublish: async (agentId: string) => {
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/graph-agents/${agentId}/toggle-publish`,
+        {
+          method: "PATCH",
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to toggle publish status: ${errorText}`);
+      }
+      const updatedAgent: Agent = await response.json();
+
+      // Update local state optimistically
+      set((state) => {
+        // Update in agents list
+        const agentIndex = state.agents.findIndex((a) => a.id === agentId);
+        if (agentIndex !== -1) {
+          state.agents[agentIndex].is_published = updatedAgent.is_published;
+        }
+
+        // Update in publishedAgents list
+        const publishedIndex = state.publishedAgents.findIndex(
+          (a) => a.id === agentId,
+        );
+        if (updatedAgent.is_published) {
+          // Add to published list if not there
+          if (publishedIndex === -1) {
+            state.publishedAgents.push(updatedAgent);
+          } else {
+            state.publishedAgents[publishedIndex] = updatedAgent;
+          }
+        } else {
+          // Remove from published list if unpublished
+          if (publishedIndex !== -1) {
+            state.publishedAgents.splice(publishedIndex, 1);
+          }
+        }
+      });
+
+      // Refresh to ensure consistency
+      await get().fetchAgents();
+      await get().fetchPublishedGraphAgents();
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  },
+  setGraphAgentPublish: async (agentId: string, isPublished: boolean) => {
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/graph-agents/${agentId}`,
+        {
+          method: "PATCH",
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ is_published: isPublished }),
+        },
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to set publish status: ${errorText}`);
+      }
+      const updatedAgent: Agent = await response.json();
+
+      // Update local state optimistically
+      set((state) => {
+        // Update in agents list
+        const agentIndex = state.agents.findIndex((a) => a.id === agentId);
+        if (agentIndex !== -1) {
+          state.agents[agentIndex].is_published = isPublished;
+        }
+
+        // Update in publishedAgents list
+        const publishedIndex = state.publishedAgents.findIndex(
+          (a) => a.id === agentId,
+        );
+        if (isPublished) {
+          // Add to published list if not there
+          if (publishedIndex === -1) {
+            state.publishedAgents.push(updatedAgent);
+          } else {
+            state.publishedAgents[publishedIndex] = updatedAgent;
+          }
+        } else {
+          // Remove from published list if unpublished
+          if (publishedIndex !== -1) {
+            state.publishedAgents.splice(publishedIndex, 1);
+          }
+        }
+      });
+
+      // Refresh to ensure consistency
+      await get().fetchAgents();
+      await get().fetchPublishedGraphAgents();
     } catch (error) {
       console.error(error);
       throw error;

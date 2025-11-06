@@ -33,6 +33,8 @@ export type Agent = {
   state_schema?: Record<string, unknown>;
   node_count?: number;
   edge_count?: number;
+  is_published?: boolean;
+  is_official?: boolean;
 };
 
 interface AgentCardProps {

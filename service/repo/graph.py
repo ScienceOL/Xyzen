@@ -58,6 +58,79 @@ class GraphRepository:
         result = await self.db.exec(statement)
         return list(result.all())
 
+    async def get_all_published_graph_agents(self) -> list[GraphAgent]:
+        """
+        Fetches all published graph agents from all users.
+
+        This is used for the Explorer view where users can discover
+        published graphs from other users.
+
+        Returns:
+            List of published GraphAgent instances, ordered by creation time (newest first).
+        """
+        logger.debug("Fetching all published graph agents")
+        statement = (
+            select(GraphAgent)
+            .where(GraphAgent.is_published == True)  # noqa: E712
+            .order_by(GraphAgent.created_at.desc())  # type: ignore
+        )
+        result = await self.db.exec(statement)
+        return list(result.all())
+
+    async def get_published_graph_agents_by_user(self, user_id: str) -> list[GraphAgent]:
+        """
+        Fetches all published graph agents for a given user.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            List of GraphAgent instances.
+        """
+        logger.debug(f"Fetching published graph agents for user_id: {user_id}")
+        statement = select(GraphAgent).where(GraphAgent.user_id == user_id).where(GraphAgent.is_published == True)  # noqa: E712
+        result = await self.db.exec(statement)
+        return list(result.all())
+
+    async def get_official_graph_agents(self) -> list[GraphAgent]:
+        """
+        Fetches all official graph agents (is_official=True).
+
+        Official agents are accessible to all users and typically represent
+        built-in or verified agents from the platform.
+
+        Returns:
+            List of official GraphAgent instances, ordered by creation time (newest first).
+        """
+        logger.debug("Fetching all official graph agents")
+        statement = (
+            select(GraphAgent)
+            .where(GraphAgent.is_official == True)  # noqa: E712
+            .order_by(GraphAgent.created_at.desc())  # type: ignore
+        )
+        result = await self.db.exec(statement)
+        return list(result.all())
+
+    async def get_published_official_agents(self) -> list[GraphAgent]:
+        """
+        Fetches all official graph agents that are also published.
+
+        Returns official agents where both is_official=True and is_published=True.
+        Useful for showing curated official agents in public-facing interfaces.
+
+        Returns:
+            List of official and published GraphAgent instances, ordered by creation time (newest first).
+        """
+        logger.debug("Fetching published official graph agents")
+        statement = (
+            select(GraphAgent)
+            .where(GraphAgent.is_official == True)  # noqa: E712
+            .where(GraphAgent.is_published == True)  # noqa: E712
+            .order_by(GraphAgent.created_at.desc())  # type: ignore
+        )
+        result = await self.db.exec(statement)
+        return list(result.all())
+
     async def get_graph_agent_with_graph(self, agent_id: UUID) -> GraphAgentWithGraph | None:
         """
         Fetches a graph agent by its ID with all nodes and edges loaded.

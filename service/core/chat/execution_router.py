@@ -76,9 +76,9 @@ class ChatExecutionRouter:
             if agent_type == "graph":
                 logger.info(f"Routing to graph agent execution for agent {agent_id}")
                 return await self._execute_graph_agent(message_text, topic, user_id, agent)  # type: ignore
-            elif agent_type == "builtin":
-                logger.info(f"Routing to builtin agent execution for agent {agent_id}")
-                return await self._execute_builtin_agent(message_text, topic, user_id, agent)  # type: ignore
+            elif agent_type == "official":
+                logger.info(f"Routing to official agent execution for agent {agent_id}")
+                return await self._execute_official_agent(message_text, topic, user_id, agent)  # type: ignore
             else:
                 logger.info(f"Routing to regular agent execution for agent {agent_id}")
                 return await self._execute_regular_agent(message_text, topic, user_id, agent)  # type: ignore
@@ -127,7 +127,7 @@ class ChatExecutionRouter:
             logger.error(f"Failed to execute graph agent {agent.id}: {e}")
             return f"I'm sorry, but I encountered an error while executing the graph agent: {e}"
 
-    async def _execute_builtin_agent(
+    async def _execute_official_agent(
         self,
         message_text: str,
         topic: TopicModel,
@@ -135,20 +135,20 @@ class ChatExecutionRouter:
         agent: Any,  # BaseBuiltinGraphAgent instance
     ) -> str:
         """
-        Execute a builtin graph agent with the provided message.
+        Execute an official graph agent with the provided message.
 
         Args:
             message_text: The user's message
             topic: The conversation topic
             user_id: The user ID
-            agent: The builtin graph agent instance
+            agent: The official graph agent instance
 
         Returns:
             AI response string
         """
         try:
-            from handler.builtin_agents.base_graph_agent import BaseBuiltinGraphAgent
             from core.chat.langgraph import GraphState
+            from handler.builtin_agents.base_graph_agent import BaseBuiltinGraphAgent
 
             if not isinstance(agent, BaseBuiltinGraphAgent):
                 raise ValueError(f"Expected BaseBuiltinGraphAgent, got {type(agent)}")
@@ -156,7 +156,7 @@ class ChatExecutionRouter:
             # Build the graph for execution
             graph = agent.build_graph()
 
-            # Create initial state for the builtin agent
+            # Create initial state for the official agent
             initial_state = GraphState(
                 messages=[],
                 current_step="start",
@@ -427,8 +427,9 @@ class ChatExecutionRouter:
         try:
             import asyncio
             from datetime import datetime, timezone
-            from handler.builtin_agents.base_graph_agent import BaseBuiltinGraphAgent
+
             from core.chat.langgraph import GraphState
+            from handler.builtin_agents.base_graph_agent import BaseBuiltinGraphAgent
 
             if not isinstance(agent, BaseBuiltinGraphAgent):
                 raise ValueError(f"Expected BaseBuiltinGraphAgent, got {type(agent)}")
