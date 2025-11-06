@@ -13,7 +13,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled = false,
   placeholder = "输入消息...",
-  height = 80, // Default height if not provided
+  height = 100, // Default height if not provided
   initialValue = "",
 }) => {
   const [inputMessage, setInputMessage] = useState(initialValue);
@@ -55,7 +55,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className="w-full bg-neutral-50/30 dark:bg-neutral-900/20">
       {/* 输入框容器 */}
-      <div className="relative flex items-end gap-3 border-t border-neutral-200/40 px-4 py-3 transition-all duration-200 dark:border-neutral-800/40">
+      <div className="relative flex border-t border-neutral-200/40 px-4 py-3 transition-all duration-200 dark:border-neutral-800/40">
         <textarea
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
@@ -63,16 +63,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
           placeholder={placeholder}
-          className="flex-1 resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none dark:text-white dark:placeholder-neutral-500"
+          wrap="soft"
+          className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none dark:text-white dark:placeholder-neutral-500 overflow-y-auto overflow-x-hidden"
           style={{
             height: `${height - 24}px`,
             minHeight: "24px",
+            boxSizing: "border-box",
           }}
           disabled={disabled}
         />
 
-        {/* 右侧区域：发送按钮和提示在同一行 */}
-        <div className="flex-shrink-0 flex items-center gap-3">
+        {/* 右侧区域:发送按钮和提示在同一行 - 绝对定位 */}
+        <div className="absolute right-4 bottom-3 flex items-center gap-3 whitespace-nowrap">
           {/* 快捷键提示 - 淡色 */}
           <div className="flex items-center gap-2 text-[11px] text-neutral-400/60 dark:text-neutral-500/60">
             <span className="flex items-center gap-1">
