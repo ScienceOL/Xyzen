@@ -1,6 +1,6 @@
 import { mcpService } from "@/service/mcpService";
 import type {
-  BuiltinMcpServer,
+  ExplorableMcpServer,
   McpServer,
   McpServerCreate,
   McpServerUpdate,
@@ -11,7 +11,7 @@ import { LoadingKeys } from "./loadingSlice";
 
 export interface McpSlice {
   mcpServers: McpServer[];
-  builtinMcpServers: BuiltinMcpServer[];
+  builtinMcpServers: ExplorableMcpServer[];
   lastFetchTime: number; // 添加最后一次获取时间
   isEditMcpServerModalOpen: boolean;
   editingMcpServer: McpServer | null;
@@ -19,7 +19,7 @@ export interface McpSlice {
   fetchBuiltinMcpServers: () => Promise<void>;
   refreshMcpServers: () => Promise<void>;
   addMcpServer: (server: McpServerCreate) => Promise<void>;
-  quickAddBuiltinServer: (server: BuiltinMcpServer) => Promise<void>;
+  quickAddBuiltinServer: (server: ExplorableMcpServer) => Promise<void>;
   editMcpServer: (id: string, server: McpServerUpdate) => Promise<void>;
   removeMcpServer: (id: string) => Promise<void>;
   updateMcpServerInList: (server: McpServer) => void;

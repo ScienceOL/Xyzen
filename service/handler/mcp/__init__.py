@@ -42,8 +42,11 @@ class MCPServerRegistry:
             mcp_server, auth_handler = self._extract_mcp_components(module, module_name)
 
             if mcp_server:
+                # 提取自定义元数据
+                metadata = getattr(module, "__mcp_metadata__", {})
+
                 # 生成默认配置
-                server_config = self._generate_server_config(module_name, mcp_server, auth_handler)
+                server_config = self._generate_server_config(module_name, mcp_server, auth_handler, metadata)
                 self.servers[module_name] = server_config
 
                 logger.info(f"Successfully registered MCP server: {module_name}")
@@ -78,9 +81,16 @@ class MCPServerRegistry:
         return mcp_server, auth_handler
 
     def _generate_server_config(
-        self, module_name: str, server: FastMCP, auth: Optional[TokenVerifier] = None
+        self,
+        module_name: str,
+        server: FastMCP,
+        auth: Optional[TokenVerifier] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """为服务器生成配置"""
+        if metadata is None:
+            metadata = {}
+
         return {
             "server": server,
             "auth": auth,
@@ -88,6 +98,9 @@ class MCPServerRegistry:
             "name": (server.name if hasattr(server, "name") and server.name else f"{module_name.title()} MCP Server"),
             "module_name": module_name,
             "is_default": module_name == "dynamic_mcp_server",
+            "source": metadata.get("source", "official"),
+            "banner": metadata.get("banner"),
+            "description": metadata.get("description"),
         }
 
     def get_server(self, name: str) -> Optional[Dict[str, Any]]:

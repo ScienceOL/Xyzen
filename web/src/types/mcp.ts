@@ -9,7 +9,7 @@ export interface McpServer {
   user_id: string;
 }
 
-export interface BuiltinMcpServer {
+export interface ExplorableMcpServer {
   name: string;
   module_name: string;
   mount_path: string;
@@ -17,7 +17,13 @@ export interface BuiltinMcpServer {
   is_builtin: boolean;
   requires_auth: boolean;
   is_default?: boolean;
+  banner?: string;
+  source?: "official" | "bohrium" | string;
 }
+
+// 为了向后兼容，保留旧名称作为类型别名
+/** @deprecated Use ExplorableMcpServer instead */
+export type BuiltinMcpServer = ExplorableMcpServer;
 
 export type McpServerCreate = Omit<
   McpServer,

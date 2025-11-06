@@ -1,7 +1,7 @@
 import { authService } from "@/service/authService";
 import { useXyzen } from "@/store";
 import type {
-  BuiltinMcpServer,
+  ExplorableMcpServer,
   McpServer,
   McpServerCreate,
   McpServerUpdate,
@@ -104,7 +104,7 @@ export const mcpService = {
     }
   },
 
-  async getBuiltinMcpServers(): Promise<BuiltinMcpServer[]> {
+  async getBuiltinMcpServers(): Promise<ExplorableMcpServer[]> {
     try {
       const response = await fetch(
         `${getBackendUrl()}/xyzen/api/v1/mcps/discover`,

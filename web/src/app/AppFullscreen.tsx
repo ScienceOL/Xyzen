@@ -1,11 +1,11 @@
+import { McpListModal } from "@/components/layouts/McpListModal";
 import { useXyzen } from "@/store";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { DndContext } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-
-import { McpListModal } from "@/components/layouts/McpListModal";
 
 import Explorer from "@/app/explore/page";
 import McpIcon from "@/assets/McpIcon";
@@ -18,6 +18,8 @@ import XyzenChat from "@/components/layouts/XyzenChat";
 
 import { SettingsModal } from "@/components/modals/SettingsModal";
 
+import { LayoutTextFlip } from "@/components/ui/layout-text-flip";
+import { Spotlight } from "@/components/ui/spotlight-new";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 
 export interface AppFullscreenProps {
@@ -126,13 +128,25 @@ export function AppFullscreen({
             {/* Explorer takes full width in fullscreen */}
             {activePanel === "explorer" && (
               <section className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
-                <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
-                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                    Explorer
-                  </h2>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    Discover agents and MCP servers
-                  </p>
+                <div className="h-[10rem] w-full rounded-md flex md:items-center md:justify-center bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+                  <Spotlight />
+                  <div className=" p-4 max-w-7xl  mx-auto relative z-10  w-full pt-20 md:pt-0">
+                    <motion.div className="relative mx-4 my-4 flex flex-col items-center justify-center gap-4 text-center sm:mx-0 sm:mb-0 sm:flex-row">
+                      <LayoutTextFlip
+                        text="Welcome to "
+                        words={[
+                          "Xyzen Explore",
+                          "Agents Hub",
+                          "Mcp Market",
+                          "AI Inspiration",
+                        ]}
+                      />
+                    </motion.div>
+                    <p className="mt-4 text-center text-base text-neutral-600 dark:text-neutral-400">
+                      Discover intelligent agents, explore MCP integrations, and
+                      unlock the full potential of AI collaboration.
+                    </p>
+                  </div>
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <Explorer />
