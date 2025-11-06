@@ -384,7 +384,7 @@ export default function XyzenAgent({
 
   return (
     <motion.div
-      className="space-y-2 px-4"
+      className="space-y-2 px-4 custom-scrollbar overflow-y-auto h-full"
       variants={containerVariants}
       initial="hidden"
       animate="visible"

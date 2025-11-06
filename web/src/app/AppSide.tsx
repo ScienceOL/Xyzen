@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import Explorer from "@/app/explore/page";
 import McpIcon from "@/assets/McpIcon";
 import {
   AuthStatus,
@@ -21,7 +22,6 @@ import {
   SettingsButton,
 } from "@/components/features";
 import ActivityBar from "@/components/layouts/ActivityBar";
-import Explorer from "@/components/layouts/Explorer";
 import Workshop from "@/components/layouts/Workshop";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
@@ -29,6 +29,7 @@ import { AddLlmProviderModal } from "@/components/modals/AddLlmProviderModal";
 import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { useXyzen } from "@/store";
+import { PanelRightCloseIcon } from "lucide-react";
 
 export interface AppSideProps {
   backendUrl?: string;
@@ -344,7 +345,7 @@ export function AppSide({
                       className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
                       title="关闭"
                     >
-                      <XMarkIcon className="h-5 w-5" />
+                      <PanelRightCloseIcon className="h-5 w-5" />
                     </button>
                   </div>
                 </div>

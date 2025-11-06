@@ -1,10 +1,9 @@
 import {
   ChatBubbleLeftRightIcon,
-  MagnifyingGlassIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-
+import { BlocksIcon } from "lucide-react";
 export type ActivityPanel = "chat" | "explorer" | "workshop";
 
 interface ActivityBarProps {
@@ -78,7 +77,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
     },
     {
       panel: "explorer" as ActivityPanel,
-      icon: MagnifyingGlassIcon,
+      icon: BlocksIcon,
       label: "Explorer",
       disabled: false,
     },
