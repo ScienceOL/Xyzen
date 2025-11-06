@@ -118,9 +118,9 @@ class BaseLLMProvider(ABC):
         api_key: SecretStr,
         api_endpoint: str | None = None,
         model: str | None = None,
-        max_tokens: int | None = None,  # Now optional, no default
-        temperature: float | None = None,  # Now optional, no default
-        timeout: int = 60,
+        max_tokens: int | None = None,  # Now optional
+        temperature: float | None = None,  # Now optional
+        timeout: int = 120,
         **kwargs: Any,
     ) -> None:
         """

@@ -141,7 +141,7 @@ class LLMProviderFactory:
         model: str | None = None,
         max_tokens: int | None = None,  # Now optional
         temperature: float | None = None,  # Now optional
-        timeout: int = 60,
+        timeout: int = 120,
         **kwargs: Any,
     ) -> BaseLLMProvider:
         """
@@ -227,7 +227,7 @@ class LLMProviderManager:
         model: str | None = None,
         max_tokens: int | None = None,  # Now optional
         temperature: float | None = None,  # Now optional
-        timeout: int = 60,
+        timeout: int = 120,
         **kwargs: Any,
     ) -> None:
         """

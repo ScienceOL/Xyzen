@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 ResponseT = TypeVar("ResponseT")
 
+# Configuration for batch logging to reduce performance impact
+STREAMING_LOG_BATCH_SIZE = 50  # Log every N tokens instead of every token
+
 
 def _create_langchain_model(user_provider_manager: Any, provider_name: str | None = None) -> Any:
     """Create a LangChain model from the provider manager."""
@@ -267,6 +270,7 @@ async def get_ai_response_stream_langchain_legacy(
         # current_step = None
         assistant_buffer: List[str] = []  # collect tokens/final text for persistence
         # got_stream_tokens = False  # whether we received token-by-token chunks
+        token_count = 0  # Track tokens for batch logging
 
         # Use astream with multiple stream modes: "updates" for step progress, "messages" for token streaming
         logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
@@ -284,7 +288,9 @@ async def get_ai_response_stream_langchain_legacy(
                 logger.debug("Received malformed chunk from astream: %r", chunk)
                 continue
 
-            logger.debug("Received stream chunk - mode: %s", mode)
+            # Reduced logging: only log mode changes, not every chunk
+            if mode == "updates":
+                logger.debug("Received stream chunk - mode: %s", mode)
 
             if mode == "updates":
                 # Step updates - emitted after each node execution
@@ -370,7 +376,16 @@ async def get_ai_response_stream_langchain_legacy(
                     logger.debug("Malformed messages data: %r", data)
                     continue
 
-                logger.debug("Received message chunk metadata=%r", metadata)
+                # Batch logging: only log metadata occasionally to reduce overhead
+                token_count += 1
+                if token_count == 1 or token_count % STREAMING_LOG_BATCH_SIZE == 0:
+                    logger.debug(
+                        "Received message chunks (token count: %d) | node=%s | provider=%s | model=%s",
+                        token_count,
+                        metadata.get("langgraph_node") if isinstance(metadata, dict) else None,
+                        metadata.get("ls_provider") if isinstance(metadata, dict) else None,
+                        metadata.get("ls_model_name") if isinstance(metadata, dict) else None,
+                    )
 
                 # Only stream user-visible tokens for LLM ('model') node
                 node = None
@@ -401,7 +416,8 @@ async def get_ai_response_stream_langchain_legacy(
                         yield {"type": ChatEventType.STREAMING_START, "data": {"id": stream_id}}
                         is_streaming = True
 
-                    logger.debug("Emitting streaming_chunk token len=%d", len(token_text))
+                    # Batch logging: only log occasionally instead of every token
+                    # This significantly improves performance during streaming
                     yield {
                         "type": ChatEventType.STREAMING_CHUNK,
                         "data": {"id": stream_id, "content": token_text},
@@ -411,7 +427,12 @@ async def get_ai_response_stream_langchain_legacy(
 
         # Finalize streaming after processing all chunks
         if is_streaming:
-            logger.debug("Emitting streaming_end for stream_id=%s", stream_id)
+            logger.debug(
+                "Emitting streaming_end for stream_id=%s (total tokens: %d, total chars: %d)",
+                stream_id,
+                token_count,
+                sum(len(t) for t in assistant_buffer),
+            )
             yield {
                 "type": ChatEventType.STREAMING_END,
                 "data": {"id": stream_id, "created_at": asyncio.get_event_loop().time()},
