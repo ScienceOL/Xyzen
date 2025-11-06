@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, JSON
+from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
 # Provider-specific configuration classes
@@ -28,7 +28,7 @@ class ProviderBase(SQLModel):
         description="API key or authentication token for the provider",
     )
     timeout: int = Field(
-        default=60,
+        default=120,
         ge=1,
         le=300,
         description="Request timeout in seconds (1-300)",
