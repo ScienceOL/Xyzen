@@ -128,8 +128,12 @@ export function AppFullscreen({
             {/* Explorer takes full width in fullscreen */}
             {activePanel === "explorer" && (
               <section className="flex flex-1 flex-col overflow-y-auto bg-white dark:bg-black">
-                <div className="h-[10rem] w-full rounded-md flex md:items-center md:justify-center bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
-                  <Spotlight />
+                <div className="h-[10rem] w-full rounded-md flex md:items-center md:justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-black dark:via-black dark:to-black antialiased bg-grid-neutral-200/[0.05] dark:bg-grid-white/[0.02] relative overflow-hidden border-b border-neutral-100 dark:border-neutral-800">
+                  <Spotlight
+                    gradientFirst="radial-gradient(68.54% 68.72% at 55.02% 31.46%, hsla(220, 100%, 50%, .12) 0, hsla(220, 100%, 45%, .04) 50%, hsla(220, 100%, 40%, 0) 80%)"
+                    gradientSecond="radial-gradient(50% 50% at 50% 50%, hsla(220, 100%, 55%, .08) 0, hsla(220, 100%, 50%, .03) 80%, transparent 100%)"
+                    gradientThird="radial-gradient(50% 50% at 50% 50%, hsla(220, 100%, 60%, .06) 0, hsla(220, 100%, 50%, .02) 80%, transparent 100%)"
+                  />
                   <div className=" p-4 max-w-7xl  mx-auto relative z-10  w-full pt-20 md:pt-0">
                     <motion.div className="relative mx-4 my-4 flex flex-col items-center justify-center gap-4 text-center sm:mx-0 sm:mb-0 sm:flex-row">
                       <LayoutTextFlip
@@ -142,7 +146,7 @@ export function AppFullscreen({
                         ]}
                       />
                     </motion.div>
-                    <p className="mt-4 text-center text-base text-neutral-600 dark:text-neutral-400">
+                    <p className="mt-4 text-center text-base text-neutral-700 dark:text-neutral-400">
                       Discover intelligent agents, explore MCP integrations, and
                       unlock the full potential of AI collaboration.
                     </p>
