@@ -866,16 +866,45 @@ export const createChatSlice: StateCreator<
       }
 
       // No existing session found, create a new session
+      // Get agent data to include MCP servers
+      const state = get();
+      const agent = [...state.agents, ...state.systemAgents].find(
+        (a) => a.id === agentId,
+      );
+
+      console.log(
+        `🚀 Creating new session for agent: ${agent?.name || agentId}`,
+      );
+      console.log(`  - Agent MCP servers: ${agent?.mcp_servers?.length || 0}`);
+      if (agent?.mcp_servers?.length) {
+        console.log(
+          `  - MCP server IDs:`,
+          agent.mcp_servers.map((s) => s.id),
+        );
+      }
+
+      const sessionPayload: Record<string, unknown> = {
+        name: "New Session",
+        agent_id: agentId,
+      };
+
+      // Include MCP server IDs if agent has them
+      if (agent?.mcp_servers?.length) {
+        sessionPayload.mcp_server_ids = agent.mcp_servers.map((s) => s.id);
+        console.log(
+          `  - ✅ Including ${agent.mcp_servers.length} MCP servers in session creation`,
+        );
+      } else {
+        console.log(`  - ⚠️ No MCP servers to include for this agent`);
+      }
+
       // The backend will automatically extract user_id from the token
       const response = await fetch(
         `${get().backendUrl}/xyzen/api/v1/sessions/`,
         {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            name: "New Session",
-            agent_id: agentId,
-          }),
+          body: JSON.stringify(sessionPayload),
         },
       );
 
@@ -1178,6 +1207,53 @@ export const createChatSlice: StateCreator<
 
       // Reuse the regular sendMessage logic
       get().sendMessage(message);
+
+      // 🔧 FIX: Sync messages from chat channel to workshop channel
+      // This ensures workshop channel gets the same messages as the underlying chat channel
+      const syncMessages = () => {
+        const currentState = get();
+        const chatChannel =
+          currentState.channels[
+            currentState.activeChatChannel || activeWorkshopChannel
+          ];
+        const workshopChannel =
+          currentState.workshopChannels[activeWorkshopChannel];
+
+        if (chatChannel && workshopChannel) {
+          set((state: ChatSlice) => {
+            // Sync all messages from chat channel to workshop channel
+            state.workshopChannels[activeWorkshopChannel].messages = [
+              ...chatChannel.messages,
+            ];
+            // Sync responding state
+            state.workshopChannels[activeWorkshopChannel].responding =
+              chatChannel.responding;
+            // Sync connection state
+            state.workshopChannels[activeWorkshopChannel].connected =
+              chatChannel.connected;
+            // Sync error state
+            state.workshopChannels[activeWorkshopChannel].error =
+              chatChannel.error;
+          });
+        }
+      };
+
+      // Sync immediately and set up periodic syncing during message processing
+      syncMessages();
+
+      // Set up periodic syncing to catch real-time message updates
+      const syncInterval = setInterval(() => {
+        const state = get();
+        if (!state.workshopChannels[activeWorkshopChannel]?.responding) {
+          // Stop syncing when no longer responding
+          clearInterval(syncInterval);
+          return;
+        }
+        syncMessages();
+      }, 100); // Sync every 100ms while responding
+
+      // Cleanup after 30 seconds as failsafe
+      setTimeout(() => clearInterval(syncInterval), 30000);
     }
   },
 
