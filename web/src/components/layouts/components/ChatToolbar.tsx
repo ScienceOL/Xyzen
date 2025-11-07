@@ -168,7 +168,7 @@ export default function ChatToolbar({
   );
 
   const handleNewChat = () => {
-    createDefaultChannel();
+    createDefaultChannel(currentAgent?.id);
   };
 
   const handleToggleToolCallConfirmation = async () => {

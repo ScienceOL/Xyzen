@@ -38,17 +38,17 @@ export interface WorkShopChatConfig {
 
 export function useWorkShopChat(config: WorkShopChatConfig) {
   const {
-    activeChatChannel,
-    channels,
+    activeWorkshopChannel,
+    workshopChannels,
     agents,
     systemAgents,
-    sendMessage,
-    connectToChannel,
-    updateTopicName,
+    sendWorkshopMessage,
+    connectToWorkshopChannel,
+    updateWorkshopTopicName,
     fetchMyProviders,
     fetchSystemAgents,
-    createDefaultChannel,
-    activateChannel,
+    createDefaultWorkshopChannel,
+    activateWorkshopChannel,
     llmProviders,
     notification,
     closeNotification,
@@ -79,7 +79,9 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
   const [sendBlocked, setSendBlocked] = useState(false);
 
   // Computed values
-  const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
+  const currentChannel = activeWorkshopChannel
+    ? workshopChannels[activeWorkshopChannel]
+    : null;
   const currentAgent = currentChannel?.agentId
     ? agents.find((a) => a.id === currentChannel.agentId) ||
       systemAgents.find((a) => a.id === currentChannel.agentId)
@@ -115,14 +117,14 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
   // Event handlers
   const handleSendMessage = useCallback(
     (inputMessage: string) => {
-      if (!inputMessage.trim() || !activeChatChannel) return;
+      if (!inputMessage.trim() || !activeWorkshopChannel) return;
       if (responding) {
         setSendBlocked(true);
         // Auto-hide the hint after 2 seconds
         window.setTimeout(() => setSendBlocked(false), 2000);
         return;
       }
-      sendMessage(inputMessage);
+      sendWorkshopMessage(inputMessage);
       // Clear pending input after sending
       if (pendingInput) {
         setPendingInput("");
@@ -131,9 +133,9 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
       setTimeout(() => scrollToBottom(true), 100);
     },
     [
-      activeChatChannel,
+      activeWorkshopChannel,
       responding,
-      sendMessage,
+      sendWorkshopMessage,
       pendingInput,
       setPendingInput,
       scrollToBottom,
@@ -173,11 +175,11 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
   const handleRetryConnection = useCallback(() => {
     if (!currentChannel) return;
     setIsRetrying(true);
-    connectToChannel(currentChannel.sessionId, currentChannel.id);
+    connectToWorkshopChannel(currentChannel.sessionId, currentChannel.id);
     setTimeout(() => {
       setIsRetrying(false);
     }, 2000);
-  }, [currentChannel, connectToChannel]);
+  }, [currentChannel, connectToWorkshopChannel]);
 
   const handleScrollToBottom = useCallback(() => {
     setAutoScroll(true);
@@ -218,7 +220,7 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
       if (targetSystemAgent) {
         // Check if we need to create/switch to the correct channel for this panel
         const needsCorrectChannel =
-          !activeChatChannel ||
+          !activeWorkshopChannel ||
           (currentChannel &&
             currentChannel.agentId !== config.systemAgentId &&
             // Only switch if current agent is a system agent (not user's regular/graph agent)
@@ -230,7 +232,7 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
 
         if (needsCorrectChannel) {
           // Look for existing channel with this system agent first
-          const existingChannel = Object.values(channels).find(
+          const existingChannel = Object.values(workshopChannels).find(
             (channel) => channel.agentId === config.systemAgentId,
           );
 
@@ -239,20 +241,24 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
             console.log(
               `Switching to existing channel for system agent: ${config.systemAgentId}`,
             );
-            activateChannel(existingChannel.id).catch((error) => {
-              console.error("Failed to activate existing channel:", error);
-            });
+            activateWorkshopChannel(existingChannel.id).catch(
+              (error: Error) => {
+                console.error("Failed to activate existing channel:", error);
+              },
+            );
           } else {
             // Create new channel for this system agent
             console.log(
-              `Creating new channel for system agent: ${config.systemAgentId}`,
+              `Creating new workshop channel for system agent: ${config.systemAgentId}`,
             );
-            createDefaultChannel(config.systemAgentId).catch((error) => {
-              console.error(
-                "Failed to create default channel with system agent:",
-                error,
-              );
-            });
+            createDefaultWorkshopChannel(config.systemAgentId).catch(
+              (error: Error) => {
+                console.error(
+                  "Failed to create default workshop channel with system agent:",
+                  error,
+                );
+              },
+            );
           }
         }
       }
@@ -260,11 +266,11 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
   }, [
     systemAgents,
     config.systemAgentId,
-    createDefaultChannel,
-    activeChatChannel,
+    createDefaultWorkshopChannel,
+    activeWorkshopChannel,
     currentChannel,
-    channels,
-    activateChannel,
+    workshopChannels,
+    activateWorkshopChannel,
   ]);
 
   useEffect(() => {
@@ -282,7 +288,7 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
       container.addEventListener("scroll", handleScroll, { passive: true });
       return () => container.removeEventListener("scroll", handleScroll);
     }
-  }, [activeChatChannel, handleScroll]);
+  }, [activeWorkshopChannel, handleScroll]);
 
   return {
     // State
@@ -315,10 +321,10 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
     handleScroll,
 
     // Store values
-    activeChatChannel,
+    activeChatChannel: activeWorkshopChannel,
     notification,
     closeNotification,
     pendingInput,
-    updateTopicName,
+    updateTopicName: updateWorkshopTopicName,
   };
 }

@@ -134,10 +134,17 @@ function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
 }
 
 export interface ChatSlice {
+  // Chat panel state
   activeChatChannel: string | null;
   chatHistory: ChatHistoryItem[];
   chatHistoryLoading: boolean;
   channels: Record<string, ChatChannel>;
+
+  // Workshop panel state
+  activeWorkshopChannel: string | null;
+  workshopHistory: ChatHistoryItem[];
+  workshopHistoryLoading: boolean;
+  workshopChannels: Record<string, ChatChannel>;
 
   // Notification state
   notification: {
@@ -149,6 +156,7 @@ export interface ChatSlice {
     onAction?: () => void;
   } | null;
 
+  // Chat panel methods
   setActiveChatChannel: (channelUUID: string | null) => void;
   fetchChatHistory: () => Promise<void>;
   togglePinChat: (chatId: string) => void;
@@ -160,6 +168,19 @@ export interface ChatSlice {
   updateTopicName: (topicId: string, newName: string) => Promise<void>;
   deleteTopic: (topicId: string) => Promise<void>;
   clearSessionTopics: (sessionId: string) => Promise<void>;
+
+  // Workshop panel methods
+  setActiveWorkshopChannel: (channelUUID: string | null) => void;
+  fetchWorkshopHistory: () => Promise<void>;
+  togglePinWorkshopChat: (chatId: string) => void;
+  activateWorkshopChannel: (topicId: string) => Promise<void>;
+  connectToWorkshopChannel: (sessionId: string, topicId: string) => void;
+  disconnectFromWorkshopChannel: () => void;
+  sendWorkshopMessage: (message: string) => void;
+  createDefaultWorkshopChannel: (agentId?: string) => Promise<void>;
+  updateWorkshopTopicName: (topicId: string, newName: string) => Promise<void>;
+  deleteWorkshopTopic: (topicId: string) => Promise<void>;
+  clearWorkshopSessionTopics: (sessionId: string) => Promise<void>;
 
   // Tool call confirmation methods
   confirmToolCall: (channelId: string, toolCallId: string) => void;
@@ -182,10 +203,18 @@ export const createChatSlice: StateCreator<
   [],
   ChatSlice
 > = (set, get) => ({
+  // Chat panel state
   activeChatChannel: null,
   chatHistory: [],
   chatHistoryLoading: true,
   channels: {},
+
+  // Workshop panel state
+  activeWorkshopChannel: null,
+  workshopHistory: [],
+  workshopHistoryLoading: true,
+  workshopChannels: {},
+
   notification: null,
 
   setActiveChatChannel: (channelId) => set({ activeChatChannel: channelId }),
@@ -1060,6 +1089,572 @@ export const createChatSlice: StateCreator<
       console.log(`Session ${sessionId} topics cleared`);
     } catch (error) {
       console.error("Failed to clear session topics:", error);
+      throw error;
+    }
+  },
+
+  // Workshop panel methods
+  setActiveWorkshopChannel: (channelId) =>
+    set({ activeWorkshopChannel: channelId }),
+
+  fetchWorkshopHistory: async () => {
+    const { setLoading } = get();
+    setLoading("workshopHistory", true);
+
+    try {
+      console.log("ChatSlice: Starting to fetch workshop history...");
+
+      const token = authService.getToken();
+      if (!token) {
+        console.error("ChatSlice: No authentication token available");
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      console.log("ChatSlice: Making request to sessions API for workshop...");
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/sessions/`,
+        {
+          headers,
+        },
+      );
+
+      console.log(
+        `ChatSlice: Workshop sessions API response status: ${response.status}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sessions: ${response.statusText}`);
+      }
+
+      const sessions = await response.json();
+      console.log(
+        `ChatSlice: Received ${sessions.length} sessions for workshop`,
+      );
+
+      // Filter sessions for workshop agents only
+      const workshopSessions = sessions.filter(
+        (session: { agent_id: string; id: string }) =>
+          session.agent_id === "00000000-0000-0000-0000-000000000002", // Workshop agent ID
+      );
+
+      const workshopHistory: ChatHistoryItem[] = [];
+      const newWorkshopChannels: Record<string, ChatChannel> = {};
+
+      for (const session of workshopSessions) {
+        console.log(`ChatSlice: Processing workshop session ${session.id}`);
+
+        try {
+          const topicsResponse = await fetch(
+            `${get().backendUrl}/xyzen/api/v1/sessions/${session.id}/topics`,
+            { headers },
+          );
+
+          if (!topicsResponse.ok) {
+            console.warn(
+              `Failed to fetch topics for workshop session ${session.id}`,
+            );
+            continue;
+          }
+
+          const topics = await topicsResponse.json();
+          console.log(
+            `ChatSlice: Session ${session.id} has ${topics.length} workshop topics`,
+          );
+
+          for (const topic of topics) {
+            const historyItem: ChatHistoryItem = {
+              id: topic.id,
+              title: topic.name || "未命名工作坊",
+              updatedAt: topic.updated_at || new Date().toISOString(),
+              assistantTitle: "工作坊助手",
+              lastMessage: "",
+              isPinned: false,
+            };
+
+            const channel: ChatChannel = {
+              id: topic.id,
+              sessionId: session.id,
+              title: topic.name || "未命名工作坊",
+              messages: [],
+              agentId: session.agent_id,
+              connected: false,
+              error: null,
+            };
+
+            workshopHistory.push(historyItem);
+            newWorkshopChannels[topic.id] = channel;
+          }
+        } catch (error) {
+          console.error(
+            `Error processing workshop session ${session.id}:`,
+            error,
+          );
+        }
+      }
+
+      // Sort workshop history by updated time (newest first)
+      workshopHistory.sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+
+      console.log(
+        `ChatSlice: Final workshop history count: ${workshopHistory.length}`,
+      );
+
+      set({
+        workshopHistory,
+        workshopChannels: newWorkshopChannels,
+        workshopHistoryLoading: false,
+      });
+    } catch (error) {
+      console.error("ChatSlice: Error fetching workshop history:", error);
+      set({ workshopHistoryLoading: false });
+    } finally {
+      setLoading("workshopHistory", false);
+    }
+  },
+
+  togglePinWorkshopChat: (chatId: string) => {
+    set((state: ChatSlice) => {
+      const historyItem = state.workshopHistory.find(
+        (item) => item.id === chatId,
+      );
+      if (historyItem) {
+        historyItem.isPinned = !historyItem.isPinned;
+      }
+    });
+  },
+
+  activateWorkshopChannel: async (topicId: string) => {
+    const {
+      workshopChannels,
+      activeWorkshopChannel,
+      connectToWorkshopChannel,
+      backendUrl,
+    } = get();
+
+    if (
+      topicId === activeWorkshopChannel &&
+      workshopChannels[topicId]?.connected
+    ) {
+      return;
+    }
+
+    set({ activeWorkshopChannel: topicId });
+    let channel = workshopChannels[topicId];
+
+    if (!channel) {
+      console.log(
+        `Workshop channel ${topicId} not found, fetching from API...`,
+      );
+
+      try {
+        const token = authService.getToken();
+        if (!token) {
+          console.error("No authentication token available");
+          return;
+        }
+
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        const response = await fetch(
+          `${backendUrl}/xyzen/api/v1/topics/${topicId}`,
+          { headers },
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch workshop topic");
+        }
+
+        const topic = await response.json();
+
+        const sessionResponse = await fetch(
+          `${backendUrl}/xyzen/api/v1/sessions/${topic.session_id}`,
+          { headers },
+        );
+
+        if (!sessionResponse.ok) {
+          throw new Error("Failed to fetch workshop session");
+        }
+
+        const session = await sessionResponse.json();
+
+        channel = {
+          id: topic.id,
+          sessionId: topic.session_id,
+          title: topic.name,
+          messages: [],
+          agentId: session.agent_id,
+          connected: false,
+          error: null,
+        };
+
+        set((state: ChatSlice) => {
+          state.workshopChannels[topicId] = channel;
+        });
+      } catch (error) {
+        console.error("Failed to fetch workshop channel:", error);
+        return;
+      }
+    }
+
+    connectToWorkshopChannel(channel.sessionId, topicId);
+  },
+
+  connectToWorkshopChannel: (sessionId: string, topicId: string) => {
+    console.log(`Connecting to workshop channel: ${topicId}`);
+
+    set((state: ChatSlice) => {
+      if (state.workshopChannels[topicId]) {
+        state.workshopChannels[topicId].connected = true;
+        state.workshopChannels[topicId].error = null;
+      }
+    });
+
+    xyzenService.connect(
+      sessionId,
+      topicId,
+      (message: Message) => {
+        set((state: ChatSlice) => {
+          const channel = state.workshopChannels[topicId];
+          if (channel) {
+            if (message.id) {
+              const existingIndex = channel.messages.findIndex(
+                (m) => m.id === message.id,
+              );
+              if (existingIndex >= 0) {
+                channel.messages[existingIndex] = message;
+              } else {
+                channel.messages.push(message);
+              }
+            } else {
+              channel.messages.push(message);
+            }
+
+            channel.responding =
+              message.role === "assistant" && !message.content.trim();
+          }
+        });
+      },
+      (status) => {
+        set((state: ChatSlice) => {
+          const channel = state.workshopChannels[topicId];
+          if (channel) {
+            channel.connected = status.connected;
+            channel.error = status.error;
+          }
+        });
+      },
+    );
+  },
+
+  disconnectFromWorkshopChannel: () => {
+    const { activeWorkshopChannel } = get();
+    if (activeWorkshopChannel) {
+      console.log(
+        `Disconnecting from workshop channel: ${activeWorkshopChannel}`,
+      );
+      xyzenService.disconnect();
+
+      set((state: ChatSlice) => {
+        if (state.workshopChannels[activeWorkshopChannel]) {
+          state.workshopChannels[activeWorkshopChannel].connected = false;
+        }
+      });
+    }
+  },
+
+  sendWorkshopMessage: (message: string) => {
+    const { activeWorkshopChannel } = get();
+    if (activeWorkshopChannel) {
+      set((state: ChatSlice) => {
+        const channel = state.workshopChannels[activeWorkshopChannel];
+        if (channel) channel.responding = true;
+      });
+
+      xyzenService.sendMessage(message);
+    }
+  },
+
+  createDefaultWorkshopChannel: async (agentId) => {
+    try {
+      const agentIdParam = agentId || "00000000-0000-0000-0000-000000000002"; // Default workshop agent
+      const token = authService.getToken();
+
+      if (!token) {
+        console.error("No authentication token available");
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      // First, try to find an existing workshop session for this user-agent combination
+      try {
+        const existingSessionResponse = await fetch(
+          `${get().backendUrl}/xyzen/api/v1/sessions/by-agent/${agentIdParam}`,
+          { headers },
+        );
+
+        if (existingSessionResponse.ok) {
+          // Found existing session, create a new topic for it
+          const existingSession = await existingSessionResponse.json();
+
+          const newTopicResponse = await fetch(
+            `${get().backendUrl}/xyzen/api/v1/topics/`,
+            {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                name: "新的工作坊会话",
+                session_id: existingSession.id,
+              }),
+            },
+          );
+
+          if (!newTopicResponse.ok) {
+            throw new Error(
+              "Failed to create new workshop topic in existing session",
+            );
+          }
+
+          const newTopic = await newTopicResponse.json();
+
+          const newChannel: ChatChannel = {
+            id: newTopic.id,
+            sessionId: existingSession.id,
+            title: newTopic.name,
+            messages: [],
+            agentId: existingSession.agent_id,
+            connected: false,
+            error: null,
+          };
+
+          const newHistoryItem: ChatHistoryItem = {
+            id: newTopic.id,
+            title: newTopic.name,
+            updatedAt: newTopic.updated_at,
+            assistantTitle: "工作坊助手",
+            lastMessage: "",
+            isPinned: false,
+          };
+
+          set((state: XyzenState) => {
+            state.workshopChannels[newTopic.id] = newChannel;
+            state.workshopHistory.unshift(newHistoryItem);
+            state.activeWorkshopChannel = newTopic.id;
+            state.activeTabIndex = 2; // Workshop tab index
+          });
+
+          get().connectToWorkshopChannel(existingSession.id, newTopic.id);
+          return;
+        }
+      } catch {
+        console.log("No existing workshop session found, creating new session");
+      }
+
+      // No existing session found, create a new session
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/sessions/`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            agent_id: agentIdParam,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create workshop session");
+      }
+
+      const newSession = await response.json();
+      console.log("Created new workshop session:", newSession.id);
+
+      const newChannel: ChatChannel = {
+        id: newSession.default_topic_id,
+        sessionId: newSession.id,
+        title: "新的工作坊会话",
+        messages: [],
+        agentId: newSession.agent_id,
+        connected: false,
+        error: null,
+      };
+
+      const newHistoryItem: ChatHistoryItem = {
+        id: newSession.default_topic_id,
+        title: "新的工作坊会话",
+        updatedAt: newSession.created_at,
+        assistantTitle: "工作坊助手",
+        lastMessage: "",
+        isPinned: false,
+      };
+
+      set((state: XyzenState) => {
+        state.workshopChannels[newSession.default_topic_id] = newChannel;
+        state.workshopHistory.unshift(newHistoryItem);
+        state.activeWorkshopChannel = newSession.default_topic_id;
+        state.activeTabIndex = 2; // Workshop tab index
+      });
+
+      get().connectToWorkshopChannel(
+        newSession.id,
+        newSession.default_topic_id,
+      );
+    } catch (error) {
+      console.error("Failed to create default workshop channel:", error);
+      get().showNotification(
+        "创建失败",
+        "无法创建新的工作坊会话，请稍后重试",
+        "error",
+      );
+    }
+  },
+
+  updateWorkshopTopicName: async (topicId: string, newName: string) => {
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/topics/${topicId}`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ name: newName }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update workshop topic name");
+      }
+
+      set((state: ChatSlice) => {
+        // Update channel title
+        if (state.workshopChannels[topicId]) {
+          state.workshopChannels[topicId].title = newName;
+        }
+
+        // Update history item title
+        const historyItem = state.workshopHistory.find(
+          (item) => item.id === topicId,
+        );
+        if (historyItem) {
+          historyItem.title = newName;
+        }
+      });
+
+      console.log(`Workshop topic ${topicId} name updated to: ${newName}`);
+    } catch (error) {
+      console.error("Failed to update workshop topic name:", error);
+      throw error;
+    }
+  },
+
+  deleteWorkshopTopic: async (topicId: string) => {
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/topics/${topicId}`,
+        {
+          method: "DELETE",
+          headers,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete workshop topic");
+      }
+
+      set((state: XyzenState) => {
+        // Remove from channels
+        delete state.workshopChannels[topicId];
+
+        // Remove from history
+        state.workshopHistory = state.workshopHistory.filter(
+          (item) => item.id !== topicId,
+        );
+
+        // If the deleted topic was active, activate another one
+        if (state.activeWorkshopChannel === topicId) {
+          const nextTopic = state.workshopHistory[0];
+          if (nextTopic) {
+            state.activeWorkshopChannel = nextTopic.id;
+            get().activateWorkshopChannel(nextTopic.id);
+          } else {
+            state.activeWorkshopChannel = null;
+          }
+        }
+      });
+
+      console.log(`Workshop topic ${topicId} deleted`);
+    } catch (error) {
+      console.error("Failed to delete workshop topic:", error);
+      throw error;
+    }
+  },
+
+  clearWorkshopSessionTopics: async (sessionId: string) => {
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/sessions/${sessionId}/topics`,
+        {
+          method: "DELETE",
+          headers,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to clear workshop session topics");
+      }
+
+      // Refresh workshop history to get the new default topic
+      await get().fetchWorkshopHistory();
+
+      console.log(`Workshop session ${sessionId} topics cleared`);
+    } catch (error) {
+      console.error("Failed to clear workshop session topics:", error);
       throw error;
     }
   },
