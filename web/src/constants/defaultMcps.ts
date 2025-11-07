@@ -29,11 +29,11 @@ export const MCP_SERVER_PATTERNS = {
  * Get default MCP server names for a system agent
  */
 export function getDefaultMcpsForSystemAgent(agentId: string): string[] {
-  return (
+  const defaultMcps =
     SYSTEM_AGENT_DEFAULT_MCPS[
       agentId as keyof typeof SYSTEM_AGENT_DEFAULT_MCPS
-    ] || []
-  );
+    ];
+  return defaultMcps ? [...defaultMcps] : [];
 }
 
 /**
