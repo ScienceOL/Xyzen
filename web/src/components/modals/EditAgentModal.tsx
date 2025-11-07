@@ -4,7 +4,7 @@ import { useXyzen } from "@/store";
 import { Button, Field, Label } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import type { Agent } from "../layouts/XyzenAgent";
+import type { Agent } from "@/types/agents";
 import { McpServerItem } from "./McpServerItem";
 
 interface EditAgentModalProps {

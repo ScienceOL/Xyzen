@@ -5,7 +5,7 @@ import { useXyzen } from "@/store";
 import { PlayIcon, PlusIcon, StopIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import React, { useEffect, useMemo } from "react";
-import type { Agent } from "../../components/layouts/XyzenAgent";
+import type { Agent } from "@/types/agents";
 
 const ExplorerAgentCard: React.FC<{
   agent: Agent;
@@ -80,7 +80,6 @@ const ExplorerAgentCard: React.FC<{
 
 const AgentExploreContent: React.FC = () => {
   const {
-    agents,
     publishedAgents,
     officialAgents,
     fetchAgents,
@@ -93,16 +92,35 @@ const AgentExploreContent: React.FC = () => {
     backendUrl,
   } = useXyzen();
 
-  // Combine published and official agents (official agents are published by default)
-  const graphAgents = useMemo(() => {
+  // Separate official and community published agents
+  const { officialGraphAgents, communityGraphAgents } = useMemo(() => {
     const agentMap = new Map<string, Agent>();
-    [...agents, ...publishedAgents, ...officialAgents].forEach((agent) => {
+
+    // Add published agents (community)
+    publishedAgents.forEach((agent) => {
       if (agent.agent_type === "graph") {
         agentMap.set(agent.id, agent);
       }
     });
-    return Array.from(agentMap.values());
-  }, [agents, publishedAgents, officialAgents]);
+
+    // Add official agents
+    officialAgents.forEach((agent) => {
+      if (agent.agent_type === "graph") {
+        agentMap.set(agent.id, agent);
+      }
+    });
+
+    const allAgents = Array.from(agentMap.values());
+    const official = allAgents.filter((agent) => agent.is_official);
+    const community = allAgents.filter(
+      (agent) => agent.is_published && !agent.is_official,
+    );
+
+    return {
+      officialGraphAgents: official,
+      communityGraphAgents: community,
+    };
+  }, [publishedAgents, officialAgents]);
 
   useEffect(() => {
     if (user && backendUrl) {
@@ -124,21 +142,84 @@ const AgentExploreContent: React.FC = () => {
     await createDefaultChannel(agent.id);
   };
 
+  const totalAgents = officialGraphAgents.length + communityGraphAgents.length;
+
   return (
     <motion.div
-      className="space-y-3 p-4"
+      className="p-4"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      {graphAgents.length > 0 ? (
-        graphAgents.map((agent) => (
-          <ExplorerAgentCard
-            key={agent.id}
-            agent={agent}
-            onAddToSidebar={handleAddToChat}
-          />
-        ))
+      {totalAgents > 0 ? (
+        <>
+          {/* Official Agents Section */}
+          {officialGraphAgents.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-500">⭐</span>
+                  <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                    Official Agents
+                  </h3>
+                  <div className="bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {officialGraphAgents.length}
+                  </div>
+                </div>
+                <div className="flex-1 ml-4 h-px bg-gradient-to-r from-blue-300 to-transparent dark:from-blue-700"></div>
+              </div>
+              <div className="space-y-3">
+                {officialGraphAgents.map((agent) => (
+                  <ExplorerAgentCard
+                    key={agent.id}
+                    agent={agent}
+                    onAddToSidebar={handleAddToChat}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Divider between sections */}
+          {officialGraphAgents.length > 0 &&
+            communityGraphAgents.length > 0 && (
+              <div className="relative mb-6">
+                <hr className="border-neutral-200 dark:border-neutral-700" />
+                <div className="absolute inset-0 flex justify-center">
+                  <div className="bg-white dark:bg-black px-3 text-xs text-neutral-500 dark:text-neutral-400">
+                    • • •
+                  </div>
+                </div>
+              </div>
+            )}
+
+          {/* Community Published Agents Section */}
+          {communityGraphAgents.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500">🌐</span>
+                  <h3 className="text-sm font-semibold text-green-700 dark:text-green-300">
+                    Community Agents
+                  </h3>
+                  <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {communityGraphAgents.length}
+                  </div>
+                </div>
+                <div className="flex-1 ml-4 h-px bg-gradient-to-r from-green-300 to-transparent dark:from-green-700"></div>
+              </div>
+              <div className="space-y-3">
+                {communityGraphAgents.map((agent) => (
+                  <ExplorerAgentCard
+                    key={agent.id}
+                    agent={agent}
+                    onAddToSidebar={handleAddToChat}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-8">
           <div className="text-4xl mb-4">🔍</div>

@@ -224,8 +224,6 @@ export const createChatSlice: StateCreator<
     setLoading("chatHistory", true);
 
     try {
-      console.log("ChatSlice: Starting to fetch chat history...");
-
       const token = authService.getToken();
       if (!token) {
         console.error("ChatSlice: No authentication token available");
@@ -237,16 +235,11 @@ export const createChatSlice: StateCreator<
         Authorization: `Bearer ${token}`,
       };
 
-      console.log("ChatSlice: Making request to sessions API...");
       const response = await fetch(
         `${get().backendUrl}/xyzen/api/v1/sessions/`,
         {
           headers,
         },
-      );
-
-      console.log(
-        `ChatSlice: Sessions API response status: ${response.status}`,
       );
 
       if (!response.ok) {
@@ -260,7 +253,6 @@ export const createChatSlice: StateCreator<
       }
 
       const history: SessionResponse[] = await response.json();
-      console.log("ChatSlice: Received sessions data:", history);
 
       // 获取当前的 channels 状态，避免覆盖现有的连接和消息
       const currentChannels = get().channels;
@@ -268,9 +260,6 @@ export const createChatSlice: StateCreator<
 
       const chatHistory: ChatHistoryItem[] = history.flatMap(
         (session: SessionResponse) => {
-          console.log(
-            `ChatSlice: Processing session ${session.id} with ${session.topics?.length || 0} topics`,
-          );
           return (
             session.topics?.map((topic: TopicResponse) => {
               // 只有当频道不存在时才创建新的频道，否则保留现有状态
@@ -307,20 +296,12 @@ export const createChatSlice: StateCreator<
         },
       );
 
-      console.log(
-        `ChatSlice: Processed ${chatHistory.length} chat history items`,
-      );
-
       set({
         chatHistory,
         channels: newChannels,
         chatHistoryLoading: false,
         // 不要自动设置 activeChatChannel，保持当前选中的
       });
-
-      console.log(
-        `ChatSlice: Loaded ${chatHistory.length} chat history items, keeping current active channel`,
-      );
     } catch (error) {
       console.error("ChatSlice: Failed to fetch chat history:", error);
       set({ chatHistoryLoading: false });
@@ -433,9 +414,6 @@ export const createChatSlice: StateCreator<
           );
           if (response.ok) {
             const messages = await response.json();
-            console.log(
-              `ChatSlice: Loaded ${messages.length} messages for topic ${topicId}`,
-            );
 
             // Process messages to group tool events with assistant messages
             const processedMessages = groupToolMessagesWithAssistant(messages);
@@ -651,10 +629,6 @@ export const createChatSlice: StateCreator<
             }
 
             case "tool_call_request": {
-              console.log(
-                "ChatSlice: Received tool_call_request event:",
-                event.data,
-              );
               channel.responding = true;
               const toolCallData = event.data as {
                 id: string;
@@ -706,12 +680,6 @@ export const createChatSlice: StateCreator<
             }
 
             case "tool_call_response": {
-              // Handle tool call response
-              console.log(
-                "ChatSlice: Received tool_call_response event:",
-                event.data,
-              );
-              // Still responding until final streaming_end
               const responseData = event.data as {
                 toolCallId: string;
                 status: string;
@@ -735,9 +703,6 @@ export const createChatSlice: StateCreator<
                       if (responseData.error) {
                         toolCall.error = responseData.error;
                       }
-                      console.log(
-                        `ChatSlice: Updated tool call ${toolCall.name} status to ${responseData.status}`,
-                      );
                     }
                   });
                 }

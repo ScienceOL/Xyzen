@@ -4,7 +4,7 @@ import { useXyzen } from "@/store";
 import { Button, Field, Label } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import type { Agent } from "../layouts/XyzenAgent";
+import type { Agent } from "@/types/agents";
 import { McpServerItem } from "./McpServerItem";
 
 interface AddAgentModalProps {
@@ -16,6 +16,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const {
     createAgent,
     fetchAgents,
+    agents,
     addGraphAgentToSidebar,
     hiddenGraphAgentIds,
     mcpServers,
@@ -51,21 +52,42 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isAutoAddingDefaultMcp, setIsAutoAddingDefaultMcp] = useState(false);
 
-  // Combine published and official agents (official agents are published by default)
+  // Combine user's own + published + official agents (similar to main AgentExplorer)
   const availableGraphAgents = React.useMemo(() => {
-    // Merge published and official agents, removing duplicates
     const agentMap = new Map<string, Agent>();
 
-    [...publishedAgents, ...officialAgents].forEach((agent) => {
+    // Add user's own graph agents
+    agents.forEach((agent) => {
       if (agent.agent_type === "graph" && agent.id !== "default-chat") {
         agentMap.set(agent.id, agent);
       }
     });
 
-    return Array.from(agentMap.values());
-  }, [publishedAgents, officialAgents]);
+    // Add published graph agents
+    publishedAgents.forEach((agent) => {
+      if (agent.agent_type === "graph" && agent.id !== "default-chat") {
+        agentMap.set(agent.id, agent);
+      }
+    });
 
-  // Fetch published and official agents when modal opens
+    // Add official graph agents
+    officialAgents.forEach((agent) => {
+      if (agent.agent_type === "graph" && agent.id !== "default-chat") {
+        agentMap.set(agent.id, agent);
+      }
+    });
+
+    return Array.from(agentMap.values()).sort((a, b) => {
+      // Sort by: official first, then published, then user's own
+      if (a.is_official && !b.is_official) return -1;
+      if (!a.is_official && b.is_official) return 1;
+      if (a.is_published && !b.is_published) return -1;
+      if (!a.is_published && b.is_published) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [agents, publishedAgents, officialAgents]);
+
+  // Fetch all agent data when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchAgents();
@@ -386,11 +408,13 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                               >
                                 {agent.is_active ? "Ready" : "Building"}
                               </span>
-                              {!hiddenGraphAgentIds.includes(agent.id) && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
-                                  已添加
-                                </span>
-                              )}
+                              {/* Show "已添加" only if agent is actually in the sidebar (in main agents list) */}
+                              {agents.some((a) => a.id === agent.id) &&
+                                !hiddenGraphAgentIds.includes(agent.id) && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
+                                    已添加
+                                  </span>
+                                )}
                             </div>
                           </div>
                         </div>
@@ -416,11 +440,13 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
             disabled={Boolean(
               mode === "add" &&
                 selectedExistingAgent &&
+                agents.some((a) => a.id === selectedExistingAgent.id) &&
                 !hiddenGraphAgentIds.includes(selectedExistingAgent.id),
             )}
             className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
               mode === "add" &&
               selectedExistingAgent &&
+              agents.some((a) => a.id === selectedExistingAgent.id) &&
               !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
                 ? "bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
                 : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
@@ -428,9 +454,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           >
             {mode === "add"
               ? selectedExistingAgent
-                ? hiddenGraphAgentIds.includes(selectedExistingAgent.id)
-                  ? `Add ${selectedExistingAgent.name}`
-                  : `${selectedExistingAgent.name} - Already Added`
+                ? agents.some((a) => a.id === selectedExistingAgent.id) &&
+                  !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
+                  ? `${selectedExistingAgent.name} - Already Added`
+                  : `Add ${selectedExistingAgent.name}`
                 : "Select Agent"
               : "创建普通助手"}
           </Button>

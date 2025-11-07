@@ -10,38 +10,15 @@ import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EditAgentModal from "@/components/modals/EditAgentModal";
 import { useXyzen } from "@/store";
 
-export type Agent = {
-  id: string;
-  name: string;
-  description: string;
-  prompt?: string;
-  mcp_servers?: { id: string }[];
-  mcp_server_ids?: string[];
-  user_id: string;
-  require_tool_confirmation?: boolean;
-  provider_id?: string | null;
-  // New fields for unified agent support
-  agent_type: "regular" | "graph" | "builtin" | "system";
-  avatar?: string | null;
-  tags?: string[] | null;
-  model?: string | null;
-  temperature?: number | null;
-  is_active?: boolean;
-  created_at: string;
-  updated_at: string;
-  // Graph-specific fields
-  state_schema?: Record<string, unknown>;
-  node_count?: number;
-  edge_count?: number;
-  is_published?: boolean;
-  is_official?: boolean;
-};
+// Import types from separate file
+import type { Agent } from "@/types/agents";
 
 interface AgentCardProps {
   agent: Agent;
   onClick?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
+  hiddenGraphAgentIds?: string[];
 }
 
 // 定义动画变体
@@ -152,6 +129,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
   onClick,
   onEdit,
   onDelete,
+  hiddenGraphAgentIds = [],
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -216,6 +194,17 @@ const AgentCard: React.FC<AgentCardProps> = ({
                 📊 {agent.node_count || 0} nodes
               </Badge>
             )}
+
+            {/* Graph agent sidebar status badge */}
+            {agent.agent_type === "graph" &&
+              !hiddenGraphAgentIds.includes(agent.id) && (
+                <Badge
+                  variant="green"
+                  className="flex items-center gap-1 flex-shrink-0"
+                >
+                  ✓ Added
+                </Badge>
+              )}
 
             {/* MCP servers badge */}
             {agent.mcp_servers && agent.mcp_servers.length > 0 && (
@@ -382,6 +371,21 @@ export default function XyzenAgent({
     ...visibleGraphAgents,
   ];
 
+  // Debug logging for sidebar
+  console.log(`XyzenAgent sidebar debug:`);
+  console.log(`  Total agents in store: ${agents.length}`);
+  console.log(
+    `  Graph agents: ${agents.filter((a) => a.agent_type === "graph").length}`,
+  );
+  console.log(
+    `  Hidden graph agent IDs: ${hiddenGraphAgentIds.length} [${hiddenGraphAgentIds.join(", ")}]`,
+  );
+  console.log(`  Visible graph agents: ${visibleGraphAgents.length}`);
+  console.log(
+    `  All visible graph agents:`,
+    visibleGraphAgents.map((a) => `${a.name}(${a.id})`),
+  );
+
   return (
     <motion.div
       className="space-y-2 px-4 custom-scrollbar overflow-y-auto h-full"
@@ -396,6 +400,7 @@ export default function XyzenAgent({
           onClick={handleAgentClick}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
+          hiddenGraphAgentIds={hiddenGraphAgentIds}
         />
       ))}
       <button

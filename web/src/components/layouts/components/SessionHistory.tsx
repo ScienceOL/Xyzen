@@ -86,7 +86,6 @@ export default function SessionHistory({
   // 当组件打开时获取历史记录
   useEffect(() => {
     if (isOpen) {
-      console.log("SessionHistory: Component opened, fetching history...");
       fetchHistoryFn();
     }
   }, [isOpen, fetchHistoryFn]);
@@ -95,37 +94,23 @@ export default function SessionHistory({
   const isUserLoggedIn = useMemo(() => {
     // 使用真实的认证检查而不是mock用户
     const hasUser = user && (user.id || user.username);
-    console.log("SessionHistory: User login check:", { user, hasUser });
     return hasUser;
   }, [user]);
 
   // 获取当前session的topics
   const currentSessionTopics = useMemo(() => {
-    console.log("SessionHistory: Processing topics", {
-      activeChannel,
-      channelsData: Object.keys(channelsData).length,
-      historyLength: history.length,
-    });
-
     if (!activeChannel || !channelsData[activeChannel]) {
-      console.log("SessionHistory: No active channel or channel not found");
       return [];
     }
 
     const currentSessionId = channelsData[activeChannel].sessionId;
-    console.log("SessionHistory: Current session ID:", currentSessionId);
 
     const topics = history.filter((chat) => {
       const channel = channelsData[chat.id];
       const belongs = channel && channel.sessionId === currentSessionId;
-      console.log(
-        `SessionHistory: Topic ${chat.id} belongs to current session:`,
-        belongs,
-      );
       return belongs;
     });
 
-    console.log("SessionHistory: Current session topics:", topics.length);
     return topics;
   }, [activeChannel, channelsData, history]);
 
@@ -151,8 +136,6 @@ export default function SessionHistory({
     const dateB = new Date(b.updatedAt);
     return dateB.getTime() - dateA.getTime();
   });
-
-  console.log("SessionHistory: Final sorted history:", sortedHistory.length);
 
   // 清空所有对话
   const handleClearAllTopics = () => {
@@ -407,18 +390,14 @@ export default function SessionHistory({
           });
 
           if (!isUserLoggedIn) {
-            console.log("SessionHistory: Rendering login prompt");
             return renderLoginPrompt();
           }
           if (historyLoading) {
-            console.log("SessionHistory: Rendering loading state");
             return renderLoading();
           }
           if (sortedHistory.length === 0) {
-            console.log("SessionHistory: Rendering empty state");
             return renderEmpty();
           }
-          console.log("SessionHistory: Rendering history list");
           return renderHistoryList();
         })()}
       </div>

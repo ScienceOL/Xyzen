@@ -1,4 +1,4 @@
-import type { Agent } from "@/components/layouts/XyzenAgent";
+import type { Agent } from "@/types/agents";
 import { authService } from "@/service/authService";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
@@ -38,6 +38,15 @@ export interface AgentSlice {
   getRegularAgents: () => Agent[];
   getGraphAgents: () => Agent[];
   getSystemAgents: () => Agent[];
+  // Debug helper
+  getAgentStats: () => {
+    total: number;
+    regular: number;
+    graph: number;
+    system: number;
+    regularAgents: { id: string; name: string }[];
+    graphAgents: { id: string; name: string; is_published?: boolean }[];
+  };
 }
 
 // Graph agent creation interface
@@ -100,28 +109,43 @@ export const createAgentSlice: StateCreator<
   fetchAgents: async () => {
     set({ agentsLoading: true });
     try {
-      // Use unified endpoint that returns both regular and graph agents
-      const response = await fetch(
-        `${get().backendUrl}/xyzen/api/v1/agents/all/unified`,
-        {
+      // Fetch regular agents and graph agents separately
+      const [regularResponse, graphResponse] = await Promise.all([
+        fetch(`${get().backendUrl}/xyzen/api/v1/agents/`, {
           headers: createAuthHeaders(),
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch agents");
+        }),
+        fetch(`${get().backendUrl}/xyzen/api/v1/graph-agents/`, {
+          headers: createAuthHeaders(),
+        }),
+      ]);
+
+      if (!regularResponse.ok) {
+        throw new Error("Failed to fetch regular agents");
       }
-      const allAgents: Agent[] = await response.json();
+      if (!graphResponse.ok) {
+        throw new Error("Failed to fetch graph agents");
+      }
 
-      // Filter out hidden graph agents
-      const { hiddenGraphAgentIds } = get();
-      const visibleAgents = allAgents.filter((agent) => {
-        // Keep all regular and graph agents
-        if (agent.agent_type === "regular") return true;
-        // Keep graph agents that are not hidden
-        return !hiddenGraphAgentIds.includes(agent.id);
-      });
+      const regularAgents: Agent[] = await regularResponse.json();
+      const graphAgents: Agent[] = await graphResponse.json();
 
-      set({ agents: visibleAgents, agentsLoading: false });
+      // Add agent_type markers to ensure proper typing
+      const typedRegularAgents = regularAgents.map((agent) => ({
+        ...agent,
+        agent_type: "regular" as const,
+      }));
+
+      const typedGraphAgents = graphAgents.map((agent) => ({
+        ...agent,
+        agent_type: "graph" as const,
+      }));
+
+      // Combine all agents (don't filter here, let components filter as needed)
+      const allAgents = [...typedRegularAgents, ...typedGraphAgents];
+
+      // Debug: Combined agents total: ${allAgents.length} (${typedRegularAgents.length} regular + ${typedGraphAgents.length} graph)
+
+      set({ agents: allAgents, agentsLoading: false });
     } catch (error) {
       console.error("Failed to fetch agents:", error);
       set({ agentsLoading: false });
@@ -141,7 +165,19 @@ export const createAgentSlice: StateCreator<
         throw new Error("Failed to fetch published graph agents");
       }
       const publishedAgents: Agent[] = await response.json();
-      set({ publishedAgents, publishedAgentsLoading: false });
+
+      // Add agent_type marker to ensure proper typing
+      const typedPublishedAgents = publishedAgents.map((agent) => ({
+        ...agent,
+        agent_type: "graph" as const,
+        is_published: true, // Ensure published flag is set
+      }));
+
+      // Published graph agents fetched: ${typedPublishedAgents.length}
+      set({
+        publishedAgents: typedPublishedAgents,
+        publishedAgentsLoading: false,
+      });
     } catch (error) {
       console.error("Failed to fetch published graph agents:", error);
       set({ publishedAgentsLoading: false });
@@ -161,7 +197,19 @@ export const createAgentSlice: StateCreator<
         throw new Error("Failed to fetch official graph agents");
       }
       const officialAgents: Agent[] = await response.json();
-      set({ officialAgents, officialAgentsLoading: false });
+
+      // Add agent_type marker to ensure proper typing
+      const typedOfficialAgents = officialAgents.map((agent) => ({
+        ...agent,
+        agent_type: "graph" as const,
+        is_official: true, // Ensure official flag is set
+      }));
+
+      // Official graph agents fetched: ${typedOfficialAgents.length}
+      set({
+        officialAgents: typedOfficialAgents,
+        officialAgentsLoading: false,
+      });
     } catch (error) {
       console.error("Failed to fetch official graph agents:", error);
       set({ officialAgentsLoading: false });
@@ -395,16 +443,58 @@ export const createAgentSlice: StateCreator<
     saveHiddenGraphAgentIds(get().hiddenGraphAgentIds);
   },
   addGraphAgentToSidebar: (id: string) => {
-    // Remove from hidden list and refresh agents
+    // Remove from hidden list and add agent to main array
     set((state) => {
       state.hiddenGraphAgentIds = state.hiddenGraphAgentIds.filter(
         (hiddenId) => hiddenId !== id,
       );
+
+      // Check if this is an official or published agent that needs to be added to the main agents array
+      const officialAgent = state.officialAgents.find((a) => a.id === id);
+      const publishedAgent = state.publishedAgents.find((a) => a.id === id);
+
+      if (officialAgent && !state.agents.some((a) => a.id === id)) {
+        // Ensure official agent has proper type markers for sidebar display
+        const agentToAdd = {
+          ...officialAgent,
+          agent_type: "graph" as const,
+          is_official: true,
+        };
+        console.log(`Adding official agent to sidebar:`, agentToAdd);
+        console.log(
+          `Agent properties: id=${agentToAdd.id}, name=${agentToAdd.name}, agent_type=${agentToAdd.agent_type}`,
+        );
+        state.agents.push(agentToAdd);
+      } else if (publishedAgent && !state.agents.some((a) => a.id === id)) {
+        // Ensure published agent has proper type markers for sidebar display
+        const agentToAdd = {
+          ...publishedAgent,
+          agent_type: "graph" as const,
+          is_published: true,
+        };
+        console.log(`Adding published agent to sidebar:`, agentToAdd);
+        console.log(
+          `Agent properties: id=${agentToAdd.id}, name=${agentToAdd.name}, agent_type=${agentToAdd.agent_type}`,
+        );
+        state.agents.push(agentToAdd);
+      } else {
+        console.log(
+          `Agent not added - officialAgent: ${!!officialAgent}, publishedAgent: ${!!publishedAgent}, already exists: ${state.agents.some((a) => a.id === id)}`,
+        );
+      }
+
+      console.log(
+        `After addGraphAgentToSidebar - agents count: ${state.agents.length}, hiddenIds: ${state.hiddenGraphAgentIds.length}`,
+      );
+      console.log(
+        `All agent IDs in agents array:`,
+        state.agents.map((a) => `${a.id}(${a.agent_type})`),
+      );
+      console.log(`Hidden graph agent IDs:`, state.hiddenGraphAgentIds);
     });
     // Persist to localStorage
     saveHiddenGraphAgentIds(get().hiddenGraphAgentIds);
-    // Refresh agents to show the newly unhidden agent
-    get().fetchAgents();
+    // Note: Don't call fetchAgents() here as it might override our changes
   },
   fetchSystemAgents: async () => {
     set({ systemAgentsLoading: true });
@@ -469,5 +559,28 @@ export const createAgentSlice: StateCreator<
   },
   getSystemAgents: () => {
     return get().systemAgents;
+  },
+  // Debug helper to verify agent types and counts
+  getAgentStats: () => {
+    const { agents } = get();
+    const regular = agents.filter((agent) => agent.agent_type === "regular");
+    const graph = agents.filter((agent) => agent.agent_type === "graph");
+    const system = agents.filter(
+      (agent) =>
+        agent.agent_type === "builtin" || agent.agent_type === "system",
+    );
+
+    return {
+      total: agents.length,
+      regular: regular.length,
+      graph: graph.length,
+      system: system.length,
+      regularAgents: regular.map((a) => ({ id: a.id, name: a.name })),
+      graphAgents: graph.map((a) => ({
+        id: a.id,
+        name: a.name,
+        is_published: a.agent_type === "graph" ? a.is_published : undefined,
+      })),
+    };
   },
 });
