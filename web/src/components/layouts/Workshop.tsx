@@ -28,6 +28,7 @@ export default function Workshop() {
     toggleGraphAgentPublish,
     user,
     backendUrl,
+    fetchWorkshopHistory,
   } = useXyzen();
 
   // Filter to show only user's graph agents (both published and unpublished)
@@ -40,6 +41,13 @@ export default function Workshop() {
       fetchAgents();
     }
   }, [fetchAgents, user, backendUrl]);
+
+  // Fetch workshop history when component mounts
+  useEffect(() => {
+    if (user && backendUrl) {
+      fetchWorkshopHistory();
+    }
+  }, [fetchWorkshopHistory, user, backendUrl]);
 
   const handleTogglePublish = async (agentId: string) => {
     try {

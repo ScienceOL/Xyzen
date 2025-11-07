@@ -20,12 +20,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 interface SessionHistoryProps {
+  context?: "chat" | "workshop";
   isOpen: boolean;
   onClose: () => void;
   onSelectTopic?: (topicId: string) => void;
 }
 
 export default function SessionHistory({
+  context = "chat",
   isOpen,
   onClose,
   onSelectTopic,
@@ -38,26 +40,56 @@ export default function SessionHistory({
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   const {
+    // Chat state
     chatHistory,
     chatHistoryLoading,
     activeChatChannel,
     channels,
     activateChannel,
     togglePinChat,
-    user,
     fetchChatHistory,
     updateTopicName,
     deleteTopic,
     clearSessionTopics,
+    // Workshop state
+    workshopHistory,
+    workshopHistoryLoading,
+    activeWorkshopChannel,
+    workshopChannels,
+    activateWorkshopChannel,
+    togglePinWorkshopChat,
+    updateWorkshopTopicName,
+    deleteWorkshopTopic,
+    clearWorkshopSessionTopics,
+    // Common
+    user,
   } = useXyzen();
 
+  // Use appropriate state based on context
+  const isWorkshop = context === "workshop";
+  const history = isWorkshop ? workshopHistory : chatHistory;
+  const historyLoading = isWorkshop
+    ? workshopHistoryLoading
+    : chatHistoryLoading;
+  const activeChannel = isWorkshop ? activeWorkshopChannel : activeChatChannel;
+  const channelsData = isWorkshop ? workshopChannels : channels;
+  const activateChannelFn = isWorkshop
+    ? activateWorkshopChannel
+    : activateChannel;
+  const togglePinFn = isWorkshop ? togglePinWorkshopChat : togglePinChat;
+  const fetchHistoryFn = fetchChatHistory; // Always use fetchChatHistory - workshop syncs from it
+  const updateTopicFn = isWorkshop ? updateWorkshopTopicName : updateTopicName;
+  const deleteTopicFn = isWorkshop ? deleteWorkshopTopic : deleteTopic;
+  const clearSessionFn = isWorkshop
+    ? clearWorkshopSessionTopics
+    : clearSessionTopics;
   // 当组件打开时获取历史记录
   useEffect(() => {
     if (isOpen) {
       console.log("SessionHistory: Component opened, fetching history...");
-      fetchChatHistory();
+      fetchHistoryFn();
     }
-  }, [isOpen, fetchChatHistory]);
+  }, [isOpen, fetchHistoryFn]);
 
   // 检查用户是否已登录
   const isUserLoggedIn = useMemo(() => {
@@ -70,21 +102,21 @@ export default function SessionHistory({
   // 获取当前session的topics
   const currentSessionTopics = useMemo(() => {
     console.log("SessionHistory: Processing topics", {
-      activeChatChannel,
-      channels,
-      chatHistory: chatHistory.length,
+      activeChannel,
+      channelsData: Object.keys(channelsData).length,
+      historyLength: history.length,
     });
 
-    if (!activeChatChannel || !channels[activeChatChannel]) {
+    if (!activeChannel || !channelsData[activeChannel]) {
       console.log("SessionHistory: No active channel or channel not found");
       return [];
     }
 
-    const currentSessionId = channels[activeChatChannel].sessionId;
+    const currentSessionId = channelsData[activeChannel].sessionId;
     console.log("SessionHistory: Current session ID:", currentSessionId);
 
-    const topics = chatHistory.filter((chat) => {
-      const channel = channels[chat.id];
+    const topics = history.filter((chat) => {
+      const channel = channelsData[chat.id];
       const belongs = channel && channel.sessionId === currentSessionId;
       console.log(
         `SessionHistory: Topic ${chat.id} belongs to current session:`,
@@ -95,7 +127,7 @@ export default function SessionHistory({
 
     console.log("SessionHistory: Current session topics:", topics.length);
     return topics;
-  }, [activeChatChannel, channels, chatHistory]);
+  }, [activeChannel, channelsData, history]);
 
   // 过滤搜索结果
   const filteredTopics = useMemo(() => {
@@ -128,9 +160,9 @@ export default function SessionHistory({
   };
 
   const confirmClearAll = async () => {
-    if (activeChatChannel && channels[activeChatChannel]) {
-      const sessionId = channels[activeChatChannel].sessionId;
-      await clearSessionTopics(sessionId);
+    if (activeChannel && channelsData[activeChannel]) {
+      const sessionId = channelsData[activeChannel].sessionId;
+      await clearSessionFn(sessionId);
       setIsClearConfirmOpen(false);
     }
   };
@@ -138,7 +170,7 @@ export default function SessionHistory({
   // 选择并激活聊天频道
   const handleViewChat = async (chatId: string) => {
     // 激活选中的频道，建立WebSocket连接
-    await activateChannel(chatId);
+    await activateChannelFn(chatId);
     onSelectTopic?.(chatId);
     // Keep history panel open for better UX - removed onClose()
   };
@@ -146,7 +178,7 @@ export default function SessionHistory({
   // 切换置顶状态
   const handleTogglePin = (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
-    togglePinChat(chatId);
+    togglePinFn(chatId);
   };
 
   const handleDeleteTopic = (e: React.MouseEvent, topic: ChatHistoryItem) => {
@@ -282,7 +314,7 @@ export default function SessionHistory({
               <div
                 key={chat.id}
                 className={`group relative flex cursor-pointer items-center justify-between rounded-sm border p-3 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 ${
-                  chat.id === activeChatChannel
+                  chat.id === activeChannel
                     ? "border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950"
                     : "border-neutral-200 dark:border-neutral-800"
                 }`}
@@ -298,12 +330,10 @@ export default function SessionHistory({
                     <div className="flex-1">
                       <EditableTitle
                         title={chat.title}
-                        onSave={(newTitle) =>
-                          updateTopicName(chat.id, newTitle)
-                        }
+                        onSave={(newTitle) => updateTopicFn(chat.id, newTitle)}
                         className="w-full"
                         textClassName={`truncate text-sm font-medium ${
-                          chat.id === activeChatChannel
+                          chat.id === activeChannel
                             ? "text-indigo-700 dark:text-indigo-300"
                             : chat.isPinned
                               ? "text-indigo-700 dark:text-indigo-400"
@@ -371,6 +401,8 @@ export default function SessionHistory({
           console.log("SessionHistory: Render decision", {
             isUserLoggedIn,
             chatHistoryLoading,
+            activeChatChannel,
+            channels,
             sortedHistoryLength: sortedHistory.length,
           });
 
@@ -378,7 +410,7 @@ export default function SessionHistory({
             console.log("SessionHistory: Rendering login prompt");
             return renderLoginPrompt();
           }
-          if (chatHistoryLoading) {
+          if (historyLoading) {
             console.log("SessionHistory: Rendering loading state");
             return renderLoading();
           }
@@ -400,12 +432,12 @@ export default function SessionHistory({
             setTopicToDelete(null);
           }}
           onConfirm={() => {
-            deleteTopic(topicToDelete.id);
+            if (topicToDelete) deleteTopicFn(topicToDelete.id);
             setConfirmModalOpen(false);
             setTopicToDelete(null);
           }}
           title="Delete Topic"
-          message={`Are you sure you want to delete the topic "${topicToDelete.title}"?`}
+          message={`Are you sure you want to delete the topic "${topicToDelete?.title}"?`}
         />
       )}
 

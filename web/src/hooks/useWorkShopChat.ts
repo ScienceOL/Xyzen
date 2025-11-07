@@ -47,6 +47,7 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
     updateWorkshopTopicName,
     fetchMyProviders,
     fetchSystemAgents,
+    fetchWorkshopHistory,
     createDefaultWorkshopChannel,
     activateWorkshopChannel,
     llmProviders,
@@ -211,6 +212,13 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
     }
   }, [systemAgents.length, fetchSystemAgents]);
 
+  // Fetch workshop history on mount (non-blocking)
+  useEffect(() => {
+    // Don't block workshop initialization if history fetching fails
+    fetchWorkshopHistory().catch((error) => {
+      console.error("Failed to fetch workshop history:", error);
+    });
+  }, [fetchWorkshopHistory]);
   // Auto-switch to correct system agent channel for this panel
   useEffect(() => {
     if (systemAgents.length > 0) {

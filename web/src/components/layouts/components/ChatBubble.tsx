@@ -176,7 +176,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
     } else {
       return <Markdown content={content} />;
     }
-  }, [isLoading, isUserMessage, chartDetection, content, role]);
+  }, [isLoading, isUserMessage, chartDetection, content]);
 
   // Different styles for user vs AI messages
   const messageStyles = isUserMessage

@@ -419,6 +419,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
       {showHistory && historyEnabled && (
         <div className="w-80 flex-shrink-0 border-l border-neutral-200 dark:border-neutral-800">
           <SessionHistory
+            context="workshop"
             isOpen={true}
             onClose={handleCloseHistory}
             onSelectTopic={handleSelectTopic}
