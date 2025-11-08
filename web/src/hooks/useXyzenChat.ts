@@ -74,7 +74,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
   });
   const [inputHeight, setInputHeight] = useState(() => {
     const savedHeight = localStorage.getItem(config.storageKeys.inputHeight);
-    return savedHeight ? parseInt(savedHeight, 10) : 80;
+    return savedHeight ? parseInt(savedHeight, 10) : 170;
   });
   const [sendBlocked, setSendBlocked] = useState(false);
 

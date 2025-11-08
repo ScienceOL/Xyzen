@@ -1,6 +1,6 @@
 services:
   service:
-    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
+    image: xyzen-service:latest
     env_file:
       - .env.dev
     build:
@@ -16,7 +16,7 @@ services:
     command: sh -c "uv sync && uv run python -m app.main"
 
   web:
-    image: registry.sciol.ac.cn/sciol/xyzen-web:latest
+    image: xyzen-web:latest
     env_file:
       - .env.dev
     build:
