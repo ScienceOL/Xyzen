@@ -1,14 +1,14 @@
 name: sciol-infra
 services:
   network-service:
-    image: registry.sciol.ac.cn/library/alpine:3.22
+    image: alpine:3.22
     ports:
       # - '${POSTGRES_PORT:-5432}:5432'
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
       # - '${REDIS_PORT:-6379}:6379'
       # - '${ELASTICSEARCH_PORT:-9200}:9200'
-      - "${CASDOOR_PORT:-8000}:8000"
+      - '${CASDOOR_PORT:-8000}:8000'
       # - '${NACOS_PORT:-8848}:8848'
       # - '${NACOS_GRPC_PORT:-9848}:9848'
       # - '${NACOS_WEB_PORT:-7848}:8080'
@@ -62,15 +62,15 @@ services:
   #   attach: false
 
   postgresql:
-    image: registry.sciol.ac.cn/library/postgres:16.8-alpine
+    image: postgres:16.8-alpine
     pull_policy: if_not_present
-    network_mode: "service:network-service"
+    network_mode: 'service:network-service'
     restart: always
     environment:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -88,13 +88,13 @@ services:
       - db-data:/var/lib/postgresql/data
 
   minio:
-    image: registry.sciol.ac.cn/library/minio
+    image: minio/minio:latest
     container_name: sciol-minio
-    network_mode: "service:network-service"
+    network_mode: 'service:network-service'
     volumes:
-      - "s3_data:/etc/minio/data"
+      - 's3_data:/etc/minio/data'
     environment:
-      - "MINIO_API_CORS_ALLOW_ORIGIN=*"
+      - 'MINIO_API_CORS_ALLOW_ORIGIN=*'
     restart: always
     deploy:
       replicas: ${MINIO_REPLICAS:-1}
@@ -153,14 +153,14 @@ services:
     attach: false
 
   redis:
-    image: registry.sciol.ac.cn/library/redis:7.4.2-alpine
-    network_mode: "service:network-service"
+    image: redis:7.4.2-alpine
+    network_mode: 'service:network-service'
     restart: always
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -168,22 +168,22 @@ services:
       replicas: ${REDIS_REPLICAS:-1}
 
   casdoor:
-    image: registry.sciol.ac.cn/library/casdoor:v2.43.0
+    image: casbin/casdoor:v2.43.0
     container_name: sciol-casdoor
-    network_mode: "service:network-service"
+    network_mode: 'service:network-service'
     depends_on:
       postgresql:
         condition: service_healthy
       minio:
         condition: service_started
     environment:
-      RUNNING_IN_DOCKER: "true"
-      driverName: "postgres"
-      dataSourceName: "user=${DATABASE_USER:-postgres} password=${DATABASE_PASSWORD:-postgres} host=127.0.0.1 port=5432 sslmode=disable dbname=casdoor"
-      runmode: "dev"
-      dbName: "casdoor"
-      initDataNewOnly: "true"
-      initDataFile: "/init_data.json"
+      RUNNING_IN_DOCKER: 'true'
+      driverName: 'postgres'
+      dataSourceName: 'user=${DATABASE_USER:-postgres} password=${DATABASE_PASSWORD:-postgres} host=127.0.0.1 port=5432 sslmode=disable dbname=casdoor'
+      runmode: 'dev'
+      dbName: 'casdoor'
+      initDataNewOnly: 'true'
+      initDataFile: '/init_data.json'
     volumes:
       - ../infra/casdoor/init_data.json:/init_data.json
     attach: false
