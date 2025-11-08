@@ -25,6 +25,7 @@ export interface AgentSlice {
   getSystemChatAgent: () => Promise<Agent>;
   getSystemWorkshopAgent: () => Promise<Agent>;
   syncSystemAgentMcps: () => Promise<void>;
+  isCreatingAgent: boolean;
   createAgent: (agent: Omit<Agent, "id">) => Promise<void>;
   createGraphAgent: (graphAgent: GraphAgentCreate) => Promise<void>;
   updateAgent: (agent: Agent) => Promise<void>;
@@ -178,6 +179,7 @@ export const createAgentSlice: StateCreator<
   hiddenGraphAgentIds: loadHiddenGraphAgentIds(),
   systemAgents: [],
   systemAgentsLoading: false,
+  isCreatingAgent: false,
   fetchAgents: async () => {
     set({ agentsLoading: true });
     try {
@@ -289,6 +291,13 @@ export const createAgentSlice: StateCreator<
     }
   },
   createAgent: async (agent) => {
+    const { isCreatingAgent } = get();
+    if (isCreatingAgent) {
+      console.log("Agent creation already in progress");
+      return;
+    }
+
+    set({ isCreatingAgent: true });
     try {
       const response = await fetch(`${get().backendUrl}/xyzen/api/v1/agents/`, {
         method: "POST",
@@ -303,6 +312,8 @@ export const createAgentSlice: StateCreator<
     } catch (error) {
       console.error(error);
       throw error;
+    } finally {
+      set({ isCreatingAgent: false });
     }
   },
   updateAgent: async (agent) => {

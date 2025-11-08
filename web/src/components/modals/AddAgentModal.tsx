@@ -16,6 +16,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const {
     createAgent,
     fetchAgents,
+    isCreatingAgent,
     agents,
     addGraphAgentToSidebar,
     hiddenGraphAgentIds,
@@ -51,6 +52,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   });
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isAutoAddingDefaultMcp, setIsAutoAddingDefaultMcp] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Combine user's own + published + official agents (similar to main AgentExplorer)
   const availableGraphAgents = React.useMemo(() => {
@@ -181,37 +183,43 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (mode === "add") {
-      // Add existing agent mode
-      if (!selectedExistingAgent) {
-        alert("请选择要添加的助手");
-        return;
-      }
-      // Add the graph agent back to sidebar
-      addGraphAgentToSidebar(selectedExistingAgent.id);
-      handleClose();
-      return;
-    }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    // Create new regular agent mode
-    if (!agent.name) {
-      alert("助手名称不能为空");
-      return;
-    }
     try {
-      // Create regular agent only
-      await createAgent({
-        ...agent,
-        mcp_server_ids: mcpServerIds,
-        user_id: "temp", // TODO: 应该由后端从认证token中获取
-        mcp_servers: [], // 后端会自动处理关联
-        created_at: new Date().toISOString(), // Will be overridden by backend
-        updated_at: new Date().toISOString(), // Will be overridden by backend
-      });
-      handleClose();
+      if (mode === "add") {
+        if (!selectedExistingAgent) {
+          alert("请选择要添加的助手");
+          return;
+        }
+        addGraphAgentToSidebar(selectedExistingAgent.id);
+        handleClose();
+        return;
+      } else {
+        if (!agent.name) {
+          alert("助手名称不能为空");
+          return;
+        }
+        await createAgent({
+          ...agent,
+          mcp_server_ids: mcpServerIds,
+          user_id: "temp", // TODO: 应该由后端从认证token中获取
+          mcp_servers: [], // 后端会自动处理关联
+          created_at: new Date().toISOString(), // Will be overridden by backend
+          updated_at: new Date().toISOString(), // Will be overridden by backend
+        });
+        handleClose();
+      }
     } catch (error) {
-      console.error("Failed to create agent:", error);
+      console.error(
+        mode === "add"
+          ? "Failed to add graph agent to sidebar:"
+          : "Failed to create agent:",
+        error,
+      );
       alert("创建助手失败，请查看控制台获取更多信息。");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -438,10 +446,12 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           <Button
             type="submit"
             disabled={Boolean(
-              mode === "add" &&
-                selectedExistingAgent &&
-                agents.some((a) => a.id === selectedExistingAgent.id) &&
-                !hiddenGraphAgentIds.includes(selectedExistingAgent.id),
+              isSubmitting ||
+                isCreatingAgent ||
+                (mode === "add" &&
+                  selectedExistingAgent &&
+                  agents.some((a) => a.id === selectedExistingAgent.id) &&
+                  !hiddenGraphAgentIds.includes(selectedExistingAgent.id)),
             )}
             className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
               mode === "add" &&
@@ -459,7 +469,9 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                   ? `${selectedExistingAgent.name} - Already Added`
                   : `Add ${selectedExistingAgent.name}`
                 : "Select Agent"
-              : "创建普通助手"}
+              : isSubmitting || isCreatingAgent
+                ? "创建中..."
+                : "创建普通助手"}
           </Button>
         </div>
       </form>
