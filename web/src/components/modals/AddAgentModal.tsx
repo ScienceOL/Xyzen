@@ -210,7 +210,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       }
       handleClose();
     } catch (error) {
-      console.error(error);
+      console.error("Failed to create agent:", error);
       alert("创建助手失败，请查看控制台获取更多信息。");
     } finally {
       setIsSubmitting(false);
