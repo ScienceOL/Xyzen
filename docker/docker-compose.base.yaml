@@ -1,7 +1,7 @@
 name: sciol-xyzen
 services:
   network-service:
-    image: registry.sciol.ac.cn/library/alpine:3.22
+    image: alpine:3.22
     ports:
       - '${WEB_PORT:-32233}:32233'
       - '${SERVICE_PORT:-48196}:48196'
@@ -12,7 +12,7 @@ services:
       - xyzen-network
 
   postgresql:
-    image: registry.sciol.ac.cn/library/postgres:16.8-alpine
+    image: postgres:16.8-alpine
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped
@@ -29,32 +29,9 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
 
-  # minio:
-  #   image: registry.sciol.ac.cn/library/minio
-  #   network_mode: 'service:network-service'
-  #   attach: false
-  #   volumes:
-  #     - 's3_data:/etc/minio/data'
-  #   environment:
-  #     - 'MINIO_API_CORS_ALLOW_ORIGIN=*'
-  #   restart: unless-stopped
-  #   entrypoint: >
-  #     /bin/sh -c "
-  #       minio server /etc/minio/data --address ':9000' --console-address ':9001' &
-  #       pid=$$!
-  #       while ! curl -s http://localhost:9000/minio/health/live; do
-  #         echo 'Waiting for MinIO to start...'
-  #         sleep 1
-  #       done
-  #       sleep 5
-  #       mc alias set myminio http://localhost:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}
-  #       echo 'Creating bucket ${AWS_STORAGE_BUCKET_NAME:-xyzen}...'
-  #       mc mb myminio/${AWS_STORAGE_BUCKET_NAME:-xyzen}
-  #       wait $$pid
-  #     "
 
   redis:
-    image: registry.sciol.ac.cn/library/redis:7.4.2-alpine
+    image: redis:7.4.2-alpine
     network_mode: 'service:network-service'
     restart: unless-stopped
     attach: false
@@ -67,31 +44,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # casdoor:
-  #   image: registry.sciol.ac.cn/library/casdoor:v2.43.0
-  #   entrypoint: /bin/sh -c './server --createDatabase=true'
-  #   network_mode: 'service:network-service'
-  #   depends_on:
-  #     postgresql:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test:
-  #       [
-  #         'CMD-SHELL',
-  #         'wget -q --spider --proxy=off http://localhost:8000/api/health || exit 1',
-  #       ]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 10s
-  #   environment:
-  #     RUNNING_IN_DOCKER: 'true'
-  #     driverName: 'postgres'
-  #     dataSourceName: 'user=${DATABASE_USER:-postgres} password=${DATABASE_PASSWORD:-postgres} host=127.0.0.1 port=5432 sslmode=disable dbname=casdoor'
-  #     runmode: 'dev'
-  #   attach: false
-  #   volumes:
-  #     - ../infra/casdoor/init_data.json:/init_data.json
 
   service:
     image: registry.sciol.ac.cn/sciol/xyzen-service:latest
