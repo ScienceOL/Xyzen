@@ -1,7 +1,7 @@
 name: sciol-xyzen
 services:
   network-service:
-    image: alpine:3.22
+    image: registry.sciol.ac.cn/library/alpine:3.22
     ports:
       - '${WEB_PORT:-32233}:32233'
       - '${SERVICE_PORT:-48196}:48196'
@@ -12,7 +12,7 @@ services:
       - xyzen-network
 
   postgresql:
-    image: postgres:16.8-alpine
+    image: registry.sciol.ac.cn/library/postgres:16.8-alpine
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped
@@ -54,7 +54,7 @@ services:
   #     "
 
   redis:
-    image: redis:7.4.2-alpine
+    image: registry.sciol.ac.cn/library/redis:7.4.2-alpine
     network_mode: 'service:network-service'
     restart: unless-stopped
     attach: false
@@ -94,7 +94,7 @@ services:
   #     - ../infra/casdoor/init_data.json:/init_data.json
 
   service:
-    image: xyzen-service:latest
+    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped
@@ -117,7 +117,7 @@ services:
       start_period: 10s
 
   web:
-    image: xyzen-web:latest
+    image: registry.sciol.ac.cn/sciol/xyzen-web:latest
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped

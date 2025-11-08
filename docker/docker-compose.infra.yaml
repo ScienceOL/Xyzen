@@ -1,7 +1,7 @@
 name: sciol-infra
 services:
   network-service:
-    image: alpine:3.22
+    image: registry.sciol.ac.cn/library/alpine:3.22
     ports:
       # - '${POSTGRES_PORT:-5432}:5432'
       - "${MINIO_PORT:-9000}:9000"
@@ -62,7 +62,7 @@ services:
   #   attach: false
 
   postgresql:
-    image: postgres:16.8-alpine
+    image: registry.sciol.ac.cn/library/postgres:16.8-alpine
     pull_policy: if_not_present
     network_mode: "service:network-service"
     restart: always
@@ -88,7 +88,7 @@ services:
       - db-data:/var/lib/postgresql/data
 
   minio:
-    image: minio/minio:latest
+    image: registry.sciol.ac.cn/library/minio
     container_name: sciol-minio
     network_mode: "service:network-service"
     volumes:
@@ -153,7 +153,7 @@ services:
     attach: false
 
   redis:
-    image: redis:7.4.2-alpine
+    image: registry.sciol.ac.cn/library/redis:7.4.2-alpine
     network_mode: "service:network-service"
     restart: always
     volumes:
@@ -168,7 +168,7 @@ services:
       replicas: ${REDIS_REPLICAS:-1}
 
   casdoor:
-    image: casbin/casdoor:v2.43.0
+    image: registry.sciol.ac.cn/library/casdoor:v2.43.0
     container_name: sciol-casdoor
     network_mode: "service:network-service"
     depends_on:
