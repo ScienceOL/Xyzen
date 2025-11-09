@@ -1,3 +1,4 @@
+import { autoLogin } from "@/core/auth";
 import { useXyzen } from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -45,6 +46,11 @@ export function Xyzen({
     const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Initialize auth once at app root to avoid duplicate triggers from hooks
+  useEffect(() => {
+    autoLogin();
   }, []);
 
   if (!mounted) return null;

@@ -48,11 +48,28 @@ export interface BohriumMcpData {
 /**
  * 可探索的 MCP Server（统一类型）
  */
-export interface ExplorableMcpServer<T = BuiltinMcpData | BohriumMcpData> {
+/**
+ * Smithery MCP Server 数据（精简展示字段）
+ */
+export interface SmitheryMcpData {
+  qualifiedName: string;
+  displayName: string | null;
+  description: string | null;
+  iconUrl: string | null;
+  verified: boolean;
+  useCount: number;
+  remote: boolean;
+  createdAt: string;
+  homepage: string;
+}
+
+export interface ExplorableMcpServer<
+  T = BuiltinMcpData | BohriumMcpData | SmitheryMcpData,
+> {
   id: string; // 唯一标识符
   name: string; // 显示名称
   description: string; // 描述
-  source: "official" | "bohrium" | string; // 来源
+  source: "official" | "bohrium" | "smithery" | string; // 来源
   cover?: string; // 封面图片
   data: T; // 原始数据
 }
@@ -68,6 +85,12 @@ export function isBohriumMcp(
   server: ExplorableMcpServer,
 ): server is ExplorableMcpServer<BohriumMcpData> {
   return server.source === "bohrium";
+}
+
+export function isSmitheryMcp(
+  server: ExplorableMcpServer,
+): server is ExplorableMcpServer<SmitheryMcpData> {
+  return server.source === "smithery";
 }
 
 // 为了向后兼容，保留旧名称作为类型别名

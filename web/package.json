@@ -51,6 +51,7 @@
     "image:bohr": "docker buildx build . --build-arg VITE_XYZEN_BACKEND_URL=https://uni-xyzen.test.bohrium.com --platform linux/amd64 -t registry.dp.tech/public/xyzen-web:latest --push",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "test": "vitest",
     "preview": "vite preview",
     "publish": "yarn npm publish",
     "prettier": "prettier --write .",
@@ -115,6 +116,7 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.1.7",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.0.8"
   }
 }

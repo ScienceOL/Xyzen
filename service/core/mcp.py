@@ -32,7 +32,7 @@ async def async_check_mcp_server_status(server_id: UUID | None) -> None:
             auth = BearerAuth(server.token) if server.token else None
 
             # Initialize the client with the server URL, auth helper, and a 10-second timeout
-            client = Client(server.url, auth=auth, timeout=10.0)
+            client = Client(server.url, auth=auth, timeout=30.0)
 
             async with client:
                 # list_tools() will implicitly check the connection and list tools

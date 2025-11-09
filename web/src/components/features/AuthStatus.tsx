@@ -1,7 +1,6 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { AuthState } from "@/service/authService";
 import {
   ExclamationTriangleIcon,
   UserIcon,
@@ -143,72 +142,52 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
     );
   }
 
-  // 根据不同状态渲染不同UI
-  switch (auth.authState) {
-    case AuthState.NOT_CONFIGURED:
-    case AuthState.NOT_AUTHENTICATED:
-    case AuthState.ERROR: {
-      // 统一显示感叹号图标，点击显示弹窗
-      const tooltipMessage =
-        auth.authState === AuthState.NOT_CONFIGURED
-          ? "认证服务未配置"
-          : auth.authState === AuthState.ERROR
-            ? "认证错误"
-            : "未授权的用户";
-
-      return (
-        <>
-          <div className={`flex items-center space-x-2 ${className}`}>
-            <button
-              onClick={() => setShowTokenModal(true)}
-              className="flex items-center justify-center h-6 w-6 rounded-full text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors"
-              title={tooltipMessage}
-            >
-              <ExclamationTriangleIcon className="h-4 w-4" />
-            </button>
-          </div>
-
-          <TokenInputModal
-            isOpen={showTokenModal}
-            onClose={() => setShowTokenModal(false)}
-            onSubmit={handleTokenSubmit}
-          />
-        </>
-      );
-    }
-
-    case AuthState.AUTHENTICATED:
-      return (
-        <div className={`flex items-center space-x-2 ${className}`}>
-          <div className="flex items-center space-x-2">
-            {auth.user?.avatar_url ? (
-              <img
-                src={auth.user.avatar_url}
-                alt={auth.user.display_name || auth.user.username}
-                className="h-6 w-6 rounded-full"
-              />
-            ) : (
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900">
-                <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              </div>
-            )}
-            <div className="flex flex-col">
-              <span className="text-sm font-medium max-w-32 truncate text-neutral-900 dark:text-neutral-100">
-                {auth.user?.display_name || auth.user?.username}
-              </span>
+  // 已登录：展示用户信息
+  if (auth.isAuthenticated) {
+    return (
+      <div className={`flex items-center space-x-2 ${className}`}>
+        <div className="flex items-center space-x-2">
+          {auth.user?.avatar ? (
+            <img
+              src={auth.user.avatar}
+              alt={auth.user.username}
+              className="h-6 w-6 rounded-full"
+            />
+          ) : (
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900">
+              <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             </div>
+          )}
+          <div className="flex flex-col">
+            <span className="text-sm font-medium max-w-32 truncate text-neutral-900 dark:text-neutral-100">
+              {auth.user?.username}
+            </span>
           </div>
         </div>
-      );
-
-    default:
-      return (
-        <div className={`flex items-center space-x-2 ${className}`}>
-          <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
-          <span className="text-sm text-red-600" title={auth.message}>
-            未知状态
-          </span>
-        </div>
-      );
+      </div>
+    );
   }
+
+  // 未登录或失败：显示感叹号，点击可输入 Token
+  const tooltipMessage =
+    auth.status === "failed" ? "认证错误或未配置" : "未授权的用户";
+  return (
+    <>
+      <div className={`flex items-center space-x-2 ${className}`}>
+        <button
+          onClick={() => setShowTokenModal(true)}
+          className="flex items-center justify-center h-6 w-6 rounded-full text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors"
+          title={tooltipMessage}
+        >
+          <ExclamationTriangleIcon className="h-4 w-4" />
+        </button>
+      </div>
+
+      <TokenInputModal
+        isOpen={showTokenModal}
+        onClose={() => setShowTokenModal(false)}
+        onSubmit={handleTokenSubmit}
+      />
+    </>
+  );
 }

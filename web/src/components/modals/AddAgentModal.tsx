@@ -179,7 +179,14 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
         : [...prevIds, serverId],
     );
   };
-
+  const buildAgentPayload = () => ({
+    ...agent,
+    mcp_server_ids: mcpServerIds,
+    user_id: "temp", // TODO: 应该由后端从认证token中获取
+    mcp_servers: [], // 后端会自动处理关联
+    created_at: new Date().toISOString(), // Will be overridden by backend
+    updated_at: new Date().toISOString(), // Will be overridden by backend
+  });
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -193,35 +200,44 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           return;
         }
         addGraphAgentToSidebar(selectedExistingAgent.id);
-        handleClose();
         return;
       } else {
         if (!agent.name) {
           alert("助手名称不能为空");
           return;
         }
-        await createAgent({
-          ...agent,
-          mcp_server_ids: mcpServerIds,
-          user_id: "temp", // TODO: 应该由后端从认证token中获取
-          mcp_servers: [], // 后端会自动处理关联
-          created_at: new Date().toISOString(), // Will be overridden by backend
-          updated_at: new Date().toISOString(), // Will be overridden by backend
-        });
-        handleClose();
+        await createAgent(buildAgentPayload());
       }
+      handleClose();
     } catch (error) {
-      console.error(
-        mode === "add"
-          ? "Failed to add graph agent to sidebar:"
-          : "Failed to create agent:",
-        error,
-      );
+      console.error("Failed to create agent:", error);
       alert("创建助手失败，请查看控制台获取更多信息。");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isAddDisabled =
+    !selectedExistingAgent ||
+    (agents.some((a) => a.id === selectedExistingAgent.id) &&
+      !hiddenGraphAgentIds.includes(selectedExistingAgent.id));
+
+  const isCreateDisabled = !agent.name;
+
+  const submitDisabled =
+    isSubmitting ||
+    isCreatingAgent ||
+    (mode === "add" ? isAddDisabled : isCreateDisabled);
+  const submitLabel =
+    mode === "add"
+      ? selectedExistingAgent
+        ? isAddDisabled
+          ? `${selectedExistingAgent.name} - Already Added`
+          : `Add ${selectedExistingAgent.name}`
+        : "Select Agent"
+      : isSubmitting || isCreatingAgent
+        ? "创建中..."
+        : "创建普通助手";
 
   const handleClose = () => {
     setMode("create");
@@ -445,33 +461,14 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           </Button>
           <Button
             type="submit"
-            disabled={Boolean(
-              isSubmitting ||
-                isCreatingAgent ||
-                (mode === "add" &&
-                  selectedExistingAgent &&
-                  agents.some((a) => a.id === selectedExistingAgent.id) &&
-                  !hiddenGraphAgentIds.includes(selectedExistingAgent.id)),
-            )}
+            disabled={submitDisabled}
             className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
-              mode === "add" &&
-              selectedExistingAgent &&
-              agents.some((a) => a.id === selectedExistingAgent.id) &&
-              !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
+              submitDisabled
                 ? "bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
                 : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
             }`}
           >
-            {mode === "add"
-              ? selectedExistingAgent
-                ? agents.some((a) => a.id === selectedExistingAgent.id) &&
-                  !hiddenGraphAgentIds.includes(selectedExistingAgent.id)
-                  ? `${selectedExistingAgent.name} - Already Added`
-                  : `Add ${selectedExistingAgent.name}`
-                : "Select Agent"
-              : isSubmitting || isCreatingAgent
-                ? "创建中..."
-                : "创建普通助手"}
+            {submitLabel}
           </Button>
         </div>
       </form>

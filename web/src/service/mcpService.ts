@@ -99,6 +99,27 @@ export const mcpService = {
     }
   },
 
+  async activateSmitheryServer(
+    qualifiedName: string,
+    profile?: string,
+  ): Promise<McpServer> {
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/mcps/smithery/activate`,
+      {
+        method: "POST",
+        headers: createAuthHeaders(),
+        body: JSON.stringify({ qualifiedName, profile }),
+      },
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to activate Smithery server: ${response.status} ${errorText}`,
+      );
+    }
+    return response.json();
+  },
+
   // 返回原始数据，可能是旧格式或新格式
   async getBuiltinMcpServers(): Promise<unknown[]> {
     try {

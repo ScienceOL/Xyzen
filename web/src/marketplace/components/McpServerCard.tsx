@@ -35,6 +35,10 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
         return "https://storage.sciol.ac.cn/library/origin.png";
       case "bohrium":
         return "https://storage.sciol.ac.cn/library/browser-fav.png";
+      case "smithery":
+        return (
+          server.cover || "https://storage.sciol.ac.cn/library/smithery.png"
+        );
       default:
         return undefined;
     }
@@ -49,6 +53,14 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
           <img
             src="https://storage.sciol.ac.cn/library/browser-fav.png"
             alt="Bohrium"
+            className="h-5 w-5 rounded-sm"
+          />
+        );
+      case "smithery":
+        return (
+          <img
+            src="https://storage.sciol.ac.cn/library/smithery.png"
+            alt="Smithery"
             className="h-5 w-5 rounded-sm"
           />
         );
