@@ -77,10 +77,10 @@ function GraphAgentCard({
       </p>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+        {/*<div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
           <span>📊 {agent.node_count || 0} nodes</span>
           <span>🔗 {agent.edge_count || 0} edges</span>
-        </div>
+        </div>*/}
 
         <button
           onClick={() => onTogglePublish(agent.id)}

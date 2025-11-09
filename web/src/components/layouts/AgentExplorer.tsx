@@ -194,14 +194,14 @@ const GraphAgentCard: React.FC<GraphAgentCardProps> = ({
               {agent.description}
             </p>
 
-            <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+            {/*<div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
               <span className="flex items-center gap-1">
                 📊 {agent.node_count || 0} nodes
               </span>
               <span className="flex items-center gap-1">
                 🔗 {agent.edge_count || 0} edges
               </span>
-            </div>
+            </div>*/}
 
             {isInSidebar && (
               <div className="mt-2">

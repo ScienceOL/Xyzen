@@ -186,14 +186,14 @@ const AgentCard: React.FC<AgentCardProps> = ({
             </h3>
 
             {/* Agent type badge */}
-            {agent.agent_type === "graph" && (
+            {/*{agent.agent_type === "graph" && (
               <Badge
                 variant="blue"
                 className="flex items-center gap-1 flex-shrink-0"
               >
                 📊 {agent.node_count || 0} nodes
               </Badge>
-            )}
+            )}*/}
 
             {/* Graph agent sidebar status badge */}
             {agent.agent_type === "graph" &&

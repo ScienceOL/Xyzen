@@ -417,12 +417,12 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                               {agent.description}
                             </p>
                             <div className="flex items-center gap-2 mt-2 flex-wrap">
-                              <span className="text-xs text-indigo-600 dark:text-indigo-400">
+                              {/*<span className="text-xs text-indigo-600 dark:text-indigo-400">
                                 {agent.node_count || 0} 节点
                               </span>
                               <span className="text-xs text-indigo-600 dark:text-indigo-400">
                                 {agent.edge_count || 0} 边
-                              </span>
+                              </span>*/}
                               <span
                                 className={`text-xs px-1.5 py-0.5 rounded ${
                                   agent.is_active

@@ -55,12 +55,12 @@ const ExplorerAgentCard: React.FC<{
             {agent.description}
           </p>
 
-          {agent.agent_type === "graph" && (
+          {/*{agent.agent_type === "graph" && (
             <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
               <span>📊 {agent.node_count || 0} nodes</span>
               <span>🔗 {agent.edge_count || 0} edges</span>
             </div>
-          )}
+          )}*/}
         </div>
 
         {/* Add to sidebar button for graph agents */}
