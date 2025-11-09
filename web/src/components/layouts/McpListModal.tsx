@@ -305,7 +305,7 @@ export function McpListModal() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-8 flex items-center justify-between"
+          className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
           <div className="flex items-center space-x-3">
             <div className="rounded-sm bg-gradient-to-r from-indigo-500 to-purple-500 p-2.5 shadow-lg">
@@ -332,13 +332,25 @@ export function McpListModal() {
               />
               <span className="whitespace-nowrap">Refresh</span>
             </LiquidButton>
-            <Button
+
+            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+              {/* Add Server 按钮文本被截断 */}
+              <Button
+                onClick={openAddMcpServerModal}
+                className="w-full sm:w-auto bg-primary text-primary-foreground text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 h-10 flex items-center rounded-sm"
+              >
+                <PlusIcon className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="whitespace-nowrap">Add Server</span>
+              </Button>
+            </div>
+
+            {/* <Button
               onClick={openAddMcpServerModal}
               className="bg-primary text-primary-foreground text-sm font-medium px-4 py-2 h-10 flex items-center rounded-sm"
             >
               <PlusIcon className="h-4 w-4 mr-2" />
               <span className="whitespace-nowrap">Add Server</span>
-            </Button>
+            </Button> */}
           </div>
         </motion.div>
 

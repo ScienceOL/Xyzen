@@ -69,7 +69,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
     >
       <div
         onClick={onClick}
-        className="relative w-[320px] cursor-pointer group"
+        className="relative w-full sm:w-[320px] cursor-pointer group px-2 sm:px-0"
       >
         {/* Cover Image - 4:1 长宽比 */}
         <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-lg mb-3">
@@ -86,17 +86,17 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
         </div>
 
         {/* Content - 压缩间距 */}
-        <div className="space-y-2">
+        <div className="space-y-2 px-2 sm:px-0 pb-2">
           {/* Title & Badge */}
           <div className="flex items-start justify-between gap-2">
-            <h3 className="flex-1 text-base font-bold text-white line-clamp-1">
+            <h3 className="flex-1 text-sm sm:text-base font-bold text-white line-clamp-2 sm:line-clamp-1 break-words">
               {server.name}
             </h3>
-            {getSourceBadge()}
+            <div className="flex-shrink-0">{getSourceBadge()}</div>
           </div>
 
           {/* Description - 限制为2行 */}
-          <p className="text-xs text-neutral-300 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-neutral-300 line-clamp-2 leading-relaxed break-words">
             {server.description}
           </p>
 
@@ -108,7 +108,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
                 {server.data.tags.slice(0, 2).map((tag) => (
                   <span
                     key={tag.id}
-                    className="rounded px-1.5 py-0.5 text-[10px]"
+                    className="rounded px-1.5 py-0.5 text-[10px] truncate"
                     style={{
                       backgroundColor:
                         tag.theme === "blue"
@@ -156,7 +156,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
 
           {/* Stats - 简化显示 */}
           {isBohriumMcp(server) && (
-            <div className="flex items-center gap-3 pt-2 border-t border-white/10 text-[11px] text-neutral-400">
+            <div className="flex items-center gap-2 sm:gap-3 pt-2 border-t border-white/10 text-[11px] text-neutral-400">
               <span className="flex items-center gap-1">
                 <RocketLaunchIcon className="h-3.5 w-3.5" />
                 {server.data.accessNum}
