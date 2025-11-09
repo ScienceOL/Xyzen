@@ -18,6 +18,38 @@ Key directories to be aware of:
 - `service/repo`: The repository layer that abstracts database interactions.
 - `web/src/main.tsx`: The main entry point for the React frontend.
 
+## 前端技术架构与分层设计
+
+## 📋 各层职责一览表
+
+| 层级          | 位置             | 职责      | 可以做                                                      | 不能做                                                 |
+| ------------- | ---------------- | --------- | ----------------------------------------------------------- | ------------------------------------------------------ |
+| **Component** | `components/`    | UI 渲染   | • 渲染 JSX • 绑定事件 • 调用 Hook                           | • 直接访问 Store • 包含业务逻辑 • HTTP 请求            |
+| **Hook**      | `hooks/`         | 能力封装  | • 封装 Core 方法 • 订阅 Store • 生命周期处理 • 计算派生状态 | • 包含核心业务逻辑 • 直接调用 Service • 复杂的流程编排 |
+| **Core** ⭐   | `core/`          | 业务逻辑  | • 所有业务逻辑 • 流程编排 • 调用 Store/Query • 处理副作用   | • 渲染 UI • 操作 DOM • 直接访问组件状态                |
+| **Store**     | `store/`         | 状态管理  | • 定义状态 • 更新状态 • 持久化                              | • 业务逻辑 • HTTP 请求 • 复杂计算                      |
+| **Query**     | `hooks/queries/` | 数据缓存  | • 封装请求 • 缓存策略 • 调用 Service                        | • 业务流程编排 • 状态管理                              |
+| **Service**   | `service/`       | HTTP 请求 | • 纯 HTTP 请求 • 数据序列化                                 | • 业务逻辑 • 状态管理 • UI 交互                        |
+| **Utils**     | `utils/`         | 工具函数  | • 格式化 • 验证 • 底层操作                                  | • 业务流程 • 状态管理                                  |
+| **lib/**      | `lib/`           | 第三方库  | • 外部依赖                                                  | • 修改第三方代码                                       |
+
+## 数据流转路径
+
+1. Component → Query Hook → Service → apiClient/Utils
+   不经过 Store。对于简单逻辑 Query = Core + Store + Service，所以也不需要经过 Core 了，Query 的缓存就是该服务器数据的权威来源。【服务端状态】
+2. Component → useAuth Hook → Core → Service → apiClient/Utils
+   Core 负责写 Store（isAuthenticated、isLoading、必要的用户概要），useAuth 读 Store。【复杂流程编排】
+
+<Note> 依赖方向：Component → Store（读），Core → Store（写），Query Hook ⇏ Store（默认不写），Service ⇏ Store（禁止） </Note>
+<Note> Core 直接调用 Service 层，不调用 Query 层 </Note>
+<Note> Hook 可以直接调用 Query 层，Query 层的作用是数据获取/缓存，和 Core 层各有侧重点，复杂流程编排时再调用 Core 层</Note>
+<Note> Store 不在“数据请求链路”中。它是客户端状态源（UI/会话），独立于 Query/Service。服务器状态（列表/详情/userinfo 等）用 TanStack Query 管理，不复制到 Store，避免“双写”和陈旧数据。</Note>
+
+- Compoent 组件主要使用 shadcn，使用 yarn shadcn add \*\*\* 来添加新组件。
+- types 分三种，一种是后端同步过来的类型定义，放在 `service/<module_name>/types.ts 下`，还有一种是仅在 slice 中业务逻辑用到的 types，放在 `web/src/store/slices/<module_name>/types.ts` 下，
+  另一种是大多数前端用到的类型，全局共享类型定义，放在 `web/src/types/<module_name>` 下，
+  最后是仅组件内使用的局部类型定义，放在组件文件顶部。
+
 ## Development Workflow
 
 The recommended development setup is using the containerized environment, which can be managed through shell scripts or a Makefile.

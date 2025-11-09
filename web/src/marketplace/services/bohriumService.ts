@@ -3,6 +3,7 @@
  * 封装 Bohrium 平台 API 调用
  */
 
+import { useXyzen } from "@/store";
 import type {
   BohriumApiResponse,
   BohriumAppDetail,
@@ -11,22 +12,20 @@ import type {
   BohriumMcpConfig,
 } from "../types/bohrium";
 
-// 从环境变量获取后端 URL，如果没有配置则回退到原来的逻辑
-const BACKEND_URL = import.meta.env.VITE_XYZEN_BACKEND_URL;
+const getBohriumBseUrl = () => {
+  const backendUrl = useXyzen.getState().backendUrl;
+  if (!backendUrl) {
+    throw new Error(
+      "backendUrl is not set. Configure it via UI settings before using Bohrium.",
+    );
+  }
+  return `${backendUrl}`;
+};
 
-// 如果配置了后端 URL，则所有 API 请求都通过后端代理
-// 否则在开发环境使用本地代理，生产环境直接访问（会有 CORS 问题）
-const BOHRIUM_BASE_URL = BACKEND_URL
-  ? `${BACKEND_URL}/xyzen/api/bohrium/v1`
-  : import.meta.env.DEV
-    ? "/api/bohrium/v1"
-    : "https://www.bohrium.com/bohrapi/v1";
+const BACKEND_URL = getBohriumBseUrl();
 
-const BOHRIUM_OPENAPI_URL = BACKEND_URL
-  ? `${BACKEND_URL}/xyzen/api/openapi/v1`
-  : import.meta.env.DEV
-    ? "/api/openapi/v1"
-    : "https://openapi.dp.tech/openapi/v1";
+const BOHRIUM_BASE_URL = `${BACKEND_URL}/xyzen/api/bohrium/v1`;
+const BOHRIUM_OPENAPI_URL = `${BACKEND_URL}/xyzen/api/openapi/v1`;
 
 /**
  * 从 localStorage 获取 Bohrium 认证信息

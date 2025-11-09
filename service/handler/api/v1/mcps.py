@@ -1,12 +1,16 @@
+import os
 from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.mcp import async_check_mcp_server_status
+from internal.configs import configs
 from middleware.auth import get_current_user
 from middleware.database.connection import get_session
 from models.mcp import McpServer, McpServerCreate, McpServerUpdate
@@ -23,6 +27,105 @@ class ToolTestResponse(BaseModel):
     result: Optional[Any] = None
     error: Optional[str] = None
     execution_time_ms: Optional[int] = None
+
+
+class SmitheryActivateRequest(BaseModel):
+    qualifiedName: str
+    profile: Optional[str] = None
+
+
+def _get_smithery_api_key() -> Optional[str]:
+    # Prefer backend config; fallback to env var
+    token = None
+    try:
+        token = configs.MCP.Smithery.Key
+    except Exception:
+        token = None
+
+    if not token:
+        token = os.getenv("XYZEN_MCP_SMITHERY_KEY") or os.getenv("SMITHERY_API_KEY")
+    return token
+
+
+@router.post("/smithery/activate", response_model=McpServer)
+async def activate_smithery_server(
+    *,
+    session: AsyncSession = Depends(get_session),
+    user: str = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
+    body: SmitheryActivateRequest,
+) -> McpServer:
+    """
+    Activate a Smithery MCP server for the current user by fetching its connection URL
+    and appending the api_key (server-side) and optional profile as query parameters.
+    """
+    api_key = _get_smithery_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Smithery API key not configured on server")
+
+    # Fetch server detail from Smithery Registry
+    url = f"https://registry.smithery.ai/servers/{body.qualifiedName}"
+    headers = {"Authorization": f"Bearer {api_key}"}
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+        r = await client.get(url, headers=headers)
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Failed to fetch Smithery server detail: {r.status_code}")
+        detail = r.json()
+
+    # Determine primary connection URL
+    connections = detail.get("connections") or []
+    primary = None
+    if isinstance(connections, list) and connections:
+        c0 = connections[0]
+        primary = c0.get("deploymentUrl") or c0.get("url")
+    if not primary:
+        primary = detail.get("deploymentUrl")
+    if not primary:
+        raise HTTPException(status_code=400, detail="No connection URL available for this Smithery server")
+
+    # Append api_key and optional profile to query string
+    if not isinstance(primary, str):
+        raise HTTPException(status_code=400, detail="Invalid connection URL for this Smithery server")
+
+    parsed = urlparse(primary)
+    q_items = parse_qsl(parsed.query or "", keep_blank_values=True)
+    q: dict[str, str] = dict(q_items)
+    q["api_key"] = api_key
+    if body.profile:
+        q["profile"] = body.profile
+    new_query = urlencode(q)
+    final_url = urlunparse(
+        (
+            parsed.scheme or "https",
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment,
+        )
+    )
+
+    name = detail.get("displayName") or body.qualifiedName
+    description = detail.get("description") or "Smithery MCP Server"
+
+    db_mcp_server = McpServer(
+        name=name,
+        description=description,
+        url=final_url,
+        token="",  # api_key is embedded in URL; do not store separately
+        user_id=user,
+        status="offline",
+        tools=[],
+    )
+
+    session.add(db_mcp_server)
+    await session.commit()
+    await session.refresh(db_mcp_server)
+
+    if db_mcp_server.id:
+        background_tasks.add_task(async_check_mcp_server_status, db_mcp_server.id)
+
+    return db_mcp_server
 
 
 @router.post("", response_model=McpServer)

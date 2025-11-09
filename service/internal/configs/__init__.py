@@ -1,6 +1,8 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from internal.configs.mcps import McpProviderConfig
+
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dify import DifyConfig
@@ -54,6 +56,11 @@ class AppConfig(BaseSettings):
     LLM: LLMConfig = Field(
         default_factory=lambda: LLMConfig(),
         description="LLM configuration",
+    )
+
+    MCP: McpProviderConfig = Field(
+        default_factory=lambda: McpProviderConfig(),
+        description="MCP provider configuration",
     )
 
     Lab: LabConfig = Field(

@@ -79,7 +79,6 @@ export function AppSide({
     user,
     fetchAgents,
     fetchMcpServers,
-    fetchUserByToken,
     openMcpListModal,
     openSettingsModal,
   } = useXyzen();
@@ -89,12 +88,11 @@ export function AppSide({
   const [isDragging, setIsDragging] = useState(false);
   const lastWidthRef = useRef(panelWidth || DEFAULT_WIDTH);
 
-  // Init backend & user session
+  // Init backend; auth is initialized at App root
   useEffect(() => {
     setMounted(true);
     setBackendUrl(backendUrl);
-    fetchUserByToken();
-  }, [backendUrl, setBackendUrl, fetchUserByToken]);
+  }, [backendUrl, setBackendUrl]);
 
   // Load initial data
   const loadInitialData = useCallback(async () => {

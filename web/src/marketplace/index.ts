@@ -5,9 +5,11 @@
 
 // Types
 export * from "./types/bohrium";
+export * from "./types/smithery";
 
 // Services
 export { bohriumService } from "./services/bohriumService";
+export { smitheryService } from "./services/smitheryService";
 
 // Hooks
 export {
@@ -16,6 +18,10 @@ export {
   useBohriumAuth,
   useMcpActivation,
 } from "./hooks/useBohriumMcp";
+export {
+  useSmitheryInfiniteServers,
+  useSmitheryServers,
+} from "./hooks/useSmitheryMcp";
 
 // Components
 export { default as McpActivationProgress } from "./components/McpActivationProgress";

@@ -19,12 +19,17 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import type { BohriumMcpData, ExplorableMcpServer } from "@/types/mcp";
+import type {
+  BohriumMcpData,
+  ExplorableMcpServer,
+  SmitheryMcpData,
+} from "@/types/mcp";
 import { isBohriumMcp } from "@/types/mcp";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useBohriumInfiniteAppList } from "../hooks/useBohriumMcp";
+import { useSmitheryInfiniteServers } from "../hooks/useSmitheryMcp";
 import { getStarredAppIds } from "../utils/starredApps";
 import McpServerCard from "./McpServerCard";
 
@@ -41,22 +46,21 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<
-    "all" | "official" | "bohrium"
+    "all" | "official" | "bohrium" | "smithery"
   >("all");
   const [starredApps, setStarredApps] = useState<Set<string>>(new Set());
   const [showStarredOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"none" | "stars" | "usage" | "alpha">(
     "none",
   );
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 50;
 
-  // Bohrium 应用后台无限抓取，UI 始终分页展示（每页 20 条）
+  // Bohrium 应用后台无限抓取，UI 始终分页展示（每页 50 条）
   const infinite = useBohriumInfiniteAppList(36, debouncedSearch);
-  const {
-    hasNextPage,
-    fetchNextPage,
-    // error exposed via infinite.error below when needed
-  } = infinite;
+  const smithery = useSmitheryInfiniteServers(50, debouncedSearch);
+  const { hasNextPage, fetchNextPage } = infinite;
+  const smitheryHasNext = smithery.hasNextPage;
+  const smitheryFetchNext = smithery.fetchNextPage;
 
   // 防抖搜索
   useEffect(() => {
@@ -76,6 +80,10 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
 
   // 转换 Bohrium 应用为统一格式
   const rawBohriumApps = useMemo(() => infinite.apps, [infinite.apps]);
+  const rawSmitheryServers = useMemo(
+    () => smithery.servers,
+    [smithery.servers],
+  );
 
   const bohriumServers: ExplorableMcpServer<BohriumMcpData>[] = useMemo(() => {
     return rawBohriumApps.map((app) => ({
@@ -87,6 +95,29 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
       data: app,
     }));
   }, [rawBohriumApps]);
+
+  const smitheryServers: ExplorableMcpServer<SmitheryMcpData>[] = useMemo(
+    () =>
+      rawSmitheryServers.map((s) => ({
+        id: `smithery-${s.qualifiedName}`,
+        name: s.displayName ?? s.qualifiedName,
+        description: s.description ?? "",
+        source: "smithery" as const,
+        cover: s.iconUrl ?? undefined,
+        data: {
+          qualifiedName: s.qualifiedName,
+          displayName: s.displayName,
+          description: s.description,
+          iconUrl: s.iconUrl,
+          verified: s.verified,
+          useCount: s.useCount,
+          remote: s.remote,
+          createdAt: s.createdAt,
+          homepage: s.homepage,
+        },
+      })),
+    [rawSmitheryServers],
+  );
 
   // 加载收藏状态（仅在组件挂载时加载一次）
   useEffect(() => {
@@ -107,11 +138,21 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
     if (sourceFilter === "all" || sourceFilter === "bohrium") {
       servers.push(...bohriumServers);
     }
+    // 添加 Smithery servers
+    if (sourceFilter === "all" || sourceFilter === "smithery") {
+      // When searchQuery is set and sourceFilter == smithery we rely on server-side search.
+      // If showing all, keep smithery results as-is.
+      servers.push(...smitheryServers);
+    }
 
     let result = servers;
 
     // 客户端搜索（仅当不是 Bohrium 专属过滤时）
-    if (searchQuery && sourceFilter !== "bohrium") {
+    if (
+      searchQuery &&
+      sourceFilter !== "bohrium" &&
+      sourceFilter !== "smithery"
+    ) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         (server) =>
@@ -163,6 +204,7 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
   }, [
     builtinServers,
     bohriumServers,
+    smitheryServers,
     sourceFilter,
     searchQuery,
     showStarredOnly,
@@ -211,6 +253,34 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
 
   const loading = infinite.loading;
 
+  // 后台自动拉取 Smithery，直到全部抓取完成
+  const smitheryDrainingRef = useRef(false);
+  useEffect(() => {
+    if (sourceFilter === "official") return;
+    if (smitheryDrainingRef.current) return;
+    if (!smitheryHasNext) {
+      if (rawSmitheryServers.length > 0) {
+        console.log(
+          `[Smithery] 所有数据已加载完成: ${rawSmitheryServers.length} 个服务`,
+        );
+      }
+      return;
+    }
+
+    console.log(
+      `[Smithery] 继续拉取下一页，当前已有 ${rawSmitheryServers.length} 个服务，hasNextPage=${smitheryHasNext}`,
+    );
+    smitheryDrainingRef.current = true;
+    smitheryFetchNext()
+      .catch((err: unknown) => {
+        console.error(`[Smithery] 拉取失败:`, err);
+      })
+      .finally(() => {
+        smitheryDrainingRef.current = false;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [smitheryHasNext, sourceFilter, rawSmitheryServers.length]);
+
   return (
     <div className="space-y-6">
       {/* Search & Filter Bar */}
@@ -238,6 +308,13 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
                   className="w-5 h-5"
                 />
               )}
+              {sourceFilter === "smithery" && (
+                <img
+                  src="https://storage.sciol.ac.cn/library/smithery.png"
+                  alt="Smithery"
+                  className="w-5 h-5"
+                />
+              )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent sideOffset={8} className="min-w-[120px]">
@@ -256,6 +333,16 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
                   className="w-4 h-4"
                 />
                 Bohrium
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setSourceFilter("smithery")}>
+              <span className="flex items-center gap-2">
+                <img
+                  src="https://storage.sciol.ac.cn/library/smithery.png"
+                  alt="Smithery"
+                  className="w-4 h-4"
+                />
+                Smithery
               </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -302,7 +389,9 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
             {" "}
             (Bohrium: 已加载 {rawBohriumApps.length} 个
             {infinite.totalCount > 0 && `, 总计 ${infinite.totalCount} 个`}
-            {hasNextPage && ", 加载中..."})
+            {hasNextPage && ", 加载中..."}
+            {"; "}Smithery: 已加载 {rawSmitheryServers.length} 个
+            {smithery.totalCount > 0 && `, 总计 ${smithery.totalCount} 个`})
           </span>
         )}
       </div>
@@ -320,10 +409,10 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
       )}
 
       {/* Error State */}
-      {infinite.error && sourceFilter !== "official" && (
+      {(infinite.error || smithery.error) && sourceFilter !== "official" && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-sm text-red-600 dark:text-red-400">
-            {infinite.error}
+            {infinite.error || smithery.error}
           </p>
         </div>
       )}
@@ -350,7 +439,7 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
               ))}
           </div>
 
-          {/* Pagination for all sources (20 per page) */}
+          {/* Pagination for all sources (50 per page) */}
           {Math.ceil(allServers.length / PAGE_SIZE) > 1 && (
             <div className="flex items-center justify-center pt-8">
               <Pagination>
@@ -365,33 +454,69 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
                       }}
                     />
                   </PaginationItem>
-                  {Array.from({
-                    length: Math.ceil(allServers.length / PAGE_SIZE),
-                  })
-                    .slice(0, 7)
-                    .map((_, i) => {
-                      const pageNum = i + 1;
-                      return (
-                        <PaginationItem key={pageNum}>
+                  {(() => {
+                    const totalPages = Math.ceil(allServers.length / PAGE_SIZE);
+                    const items: React.ReactNode[] = [];
+
+                    const pushPage = (pNum: number) => {
+                      items.push(
+                        <PaginationItem key={pNum}>
                           <PaginationLink
                             href="#"
-                            isActive={pageNum === page}
+                            isActive={pNum === page}
                             onClick={(e) => {
                               e.preventDefault();
-                              setPage(pageNum);
+                              setPage(pNum);
                               window.scrollTo({ top: 0, behavior: "smooth" });
                             }}
                           >
-                            {pageNum}
+                            {pNum}
                           </PaginationLink>
-                        </PaginationItem>
+                        </PaginationItem>,
                       );
-                    })}
-                  {Math.ceil(allServers.length / PAGE_SIZE) > 7 && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
+                    };
+
+                    const windowSize = 2; // show current±2
+                    const first = 1;
+                    const last = totalPages;
+                    const start = Math.max(first + 1, page - windowSize);
+                    const end = Math.min(last - 1, page + windowSize);
+
+                    // Always show first
+                    pushPage(first);
+
+                    // Left ellipsis
+                    if (start > first + 1) {
+                      items.push(
+                        <PaginationItem key="left-ellipsis">
+                          <PaginationEllipsis />
+                        </PaginationItem>,
+                      );
+                    }
+
+                    // Middle window
+                    for (let pNum = start; pNum <= end; pNum++) {
+                      if (pNum >= first + 1 && pNum <= last - 1) {
+                        pushPage(pNum);
+                      }
+                    }
+
+                    // Right ellipsis
+                    if (end < last - 1) {
+                      items.push(
+                        <PaginationItem key="right-ellipsis">
+                          <PaginationEllipsis />
+                        </PaginationItem>,
+                      );
+                    }
+
+                    // Always show last (if more than one page)
+                    if (last > first) {
+                      pushPage(last);
+                    }
+
+                    return items;
+                  })()}
                   <PaginationItem>
                     <PaginationNext
                       href="#"

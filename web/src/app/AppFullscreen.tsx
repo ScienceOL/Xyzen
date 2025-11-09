@@ -34,7 +34,6 @@ export function AppFullscreen({
     user,
     fetchAgents,
     fetchMcpServers,
-    fetchUserByToken,
     setBackendUrl,
     activePanel,
     setActivePanel,
@@ -44,12 +43,11 @@ export function AppFullscreen({
 
   const [mounted, setMounted] = useState(false);
 
-  // Initialize: set backend URL and fetch user
+  // Initialize: set backend URL; auth is initialized at App root
   useEffect(() => {
     setMounted(true);
     setBackendUrl(backendUrl);
-    fetchUserByToken();
-  }, [backendUrl, setBackendUrl, fetchUserByToken]);
+  }, [backendUrl, setBackendUrl]);
 
   // Load initial data when user is available
   const loadInitialData = useCallback(async () => {

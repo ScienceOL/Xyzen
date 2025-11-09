@@ -24,6 +24,10 @@ export interface McpSlice {
   quickAddBuiltinServer: (
     server: ExplorableMcpServer<BuiltinMcpData>,
   ) => Promise<void>;
+  activateSmitheryServer: (
+    qualifiedName: string,
+    profile?: string,
+  ) => Promise<void>;
   editMcpServer: (id: string, server: McpServerUpdate) => Promise<void>;
   removeMcpServer: (id: string) => Promise<void>;
   updateMcpServerInList: (server: McpServer) => void;
@@ -159,6 +163,26 @@ export const createMcpSlice: StateCreator<
       get().closeAddMcpServerModal();
     } catch (error) {
       console.error("Failed to add builtin MCP server:", error);
+      throw error;
+    } finally {
+      setLoading(LoadingKeys.MCP_SERVER_CREATE, false);
+    }
+  },
+  activateSmitheryServer: async (qualifiedName, profile) => {
+    const { setLoading } = get();
+    setLoading(LoadingKeys.MCP_SERVER_CREATE, true);
+
+    try {
+      const newServer = await mcpService.activateSmitheryServer(
+        qualifiedName,
+        profile,
+      );
+      set((state: McpSlice) => {
+        state.mcpServers.push(newServer);
+      });
+      get().closeAddMcpServerModal();
+    } catch (error) {
+      console.error("Failed to activate Smithery MCP server:", error);
       throw error;
     } finally {
       setLoading(LoadingKeys.MCP_SERVER_CREATE, false);
