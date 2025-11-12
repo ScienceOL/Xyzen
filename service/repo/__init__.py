@@ -3,6 +3,7 @@ from .consume import ConsumeRepository
 from .message import MessageRepository
 from .provider import ProviderRepository
 from .session import SessionRepository
+from .smithery_cache import SmitheryCacheRepository
 from .tool import ToolRepository
 from .topic import TopicRepository
 
@@ -14,4 +15,5 @@ __all__ = [
     "ProviderRepository",
     "ConsumeRepository",
     "ToolRepository",
+    "SmitheryCacheRepository",
 ]

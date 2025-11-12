@@ -6,6 +6,7 @@ from .mcp import McpServer
 from .message import Message, MessageRead
 from .provider import Provider
 from .sessions import Session, SessionReadWithTopics
+from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
 from .topic import Topic, TopicRead, TopicReadWithMessages
 
@@ -28,6 +29,7 @@ __all__ = [
     "GraphEdge",
     "TopicRead",
     "TopicReadWithMessages",
+    "SmitheryServersCache",
 ]
 
 # Rebuild models with forward references after all models are imported

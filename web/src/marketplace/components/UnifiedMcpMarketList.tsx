@@ -10,6 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
+import { Badge } from "@/components/base/Badge";
 import {
   Pagination,
   PaginationContent,
@@ -323,27 +324,55 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
               All
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setSourceFilter("official")}>
-              Official
+              <div className="flex justify-between items-center w-full">
+                <span className="flex items-center gap-2">
+                  <img
+                    src="https://storage.sciol.ac.cn/library/BLogo-normal.svg"
+                    alt="Official"
+                    className="w-4 h-4"
+                  />
+                  ScienceOL
+                </span>
+                {builtinServers.length > 0 && (
+                  <Badge variant="gray" size="sm" className="ml-2">
+                    {builtinServers.length}
+                  </Badge>
+                )}
+              </div>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setSourceFilter("bohrium")}>
-              <span className="flex items-center gap-2">
-                <img
-                  src="https://storage.sciol.ac.cn/library/browser-fav.png"
-                  alt="Bohrium"
-                  className="w-4 h-4"
-                />
-                Bohrium
-              </span>
+              <div className="flex items-center justify-between w-full">
+                <span className="flex items-center gap-2">
+                  <img
+                    src="https://storage.sciol.ac.cn/library/browser-fav.png"
+                    alt="Bohrium"
+                    className="w-4 h-4"
+                  />
+                  Bohrium
+                </span>
+                {rawBohriumApps.length > 0 && (
+                  <Badge variant="gray" size="sm" className="ml-2">
+                    {rawBohriumApps.length}
+                  </Badge>
+                )}
+              </div>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setSourceFilter("smithery")}>
-              <span className="flex items-center gap-2">
-                <img
-                  src="https://storage.sciol.ac.cn/library/smithery.png"
-                  alt="Smithery"
-                  className="w-4 h-4"
-                />
-                Smithery
-              </span>
+              <div className="flex justify-between items-center w-full">
+                <span className="flex items-center gap-2">
+                  <img
+                    src="https://storage.sciol.ac.cn/library/smithery.png"
+                    alt="Smithery"
+                    className="w-4 h-4"
+                  />
+                  Smithery
+                </span>
+                {rawSmitheryServers.length > 0 && (
+                  <Badge variant="gray" size="sm" className="ml-2">
+                    {rawSmitheryServers.length}
+                  </Badge>
+                )}
+              </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -382,18 +411,14 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
       </div>
 
       {/* Stats */}
-      <div className="text-sm text-neutral-500 dark:text-neutral-400">
-        共找到 {allServers.length} 个服务
-        {sourceFilter !== "official" && (
-          <span>
-            {" "}
-            (Bohrium: 已加载 {rawBohriumApps.length} 个
-            {infinite.totalCount > 0 && `, 总计 ${infinite.totalCount} 个`}
-            {hasNextPage && ", 加载中..."}
-            {"; "}Smithery: 已加载 {rawSmitheryServers.length} 个
-            {smithery.totalCount > 0 && `, 总计 ${smithery.totalCount} 个`})
-          </span>
-        )}
+      <div className="flex justify-end">
+        <div className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
+          <span>共找到</span>
+          <Badge variant="gray" size="sm">
+            {allServers.length}
+          </Badge>
+          <span>个服务</span>
+        </div>
       </div>
 
       {/* Loading State */}
