@@ -53,29 +53,29 @@ export function SettingsModal() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="w-full max-w-7xl"
+              className="w-full max-w-7xl h-[85vh]"
             >
-              <DialogPanel className="flex h-[85vh] overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-neutral-950">
+              <DialogPanel className="flex flex-col md:flex-row h-full overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-neutral-950">
                 {/* Column 1: Category Sidebar */}
-                <div className="w-48 border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
+                <div className=" w-full md:w-48 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
                   <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
-                    <DialogTitle className="text-lg font-semibold text-neutral-900 dark:text-white">
+                    <DialogTitle className="text-lg font-semibold text-neutral-900 dark:text-white whitespace-nowrap">
                       设置
                     </DialogTitle>
                     <button
                       onClick={closeSettingsModal}
-                      className="rounded-sm p-1 text-neutral-500 hover:bg-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                      className="rounded-sm p-1 text-neutral-500 hover:bg-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-800 flex-shrink-0"
                     >
                       <XMarkIcon className="h-5 w-5" />
                     </button>
                   </div>
 
-                  <nav className="p-2">
+                  <nav className="p-2 flex md:flex-col gap-2">
                     {categories.map((category) => (
                       <button
                         key={category.id}
                         onClick={() => setActiveSettingsCategory(category.id)}
-                        className={`w-full rounded-sm px-3 py-2 text-left text-sm font-medium transition-colors ${
+                        className={`flex-1 md:flex-none rounded-sm px-3 py-2 text-left text-sm font-medium transition-colors whitespace-nowrap ${
                           activeSettingsCategory === category.id
                             ? "bg-white text-indigo-600 shadow-sm dark:bg-neutral-800 dark:text-indigo-400"
                             : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
@@ -88,13 +88,15 @@ export function SettingsModal() {
                 </div>
 
                 {/* Column 2: Content Based on Category */}
-                <div className="w-80 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-                  {activeSettingsCategory === "provider" && <ProviderList />}
-                  {activeSettingsCategory === "ui" && <UiSettings />}
+                <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                  <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-y-auto">
+                    {activeSettingsCategory === "provider" && <ProviderList />}
+                    {activeSettingsCategory === "ui" && <UiSettings />}
+                  </div>
                 </div>
 
                 {/* Column 3: Detail View */}
-                <div className="flex-1 bg-white dark:bg-neutral-950">
+                <div className="flex-1 bg-white dark:bg-neutral-950 overflow-y-auto">
                   {activeSettingsCategory === "provider" && (
                     <ProviderConfigForm />
                   )}
