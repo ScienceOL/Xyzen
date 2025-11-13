@@ -65,7 +65,7 @@ export default function Explorer() {
         </div>
 
         {/* Content */}
-        <TabsContents mode="auto-height">
+        <TabsContents mode="auto-height" className="custom-scrollbar">
           {tabStructure.map((tab) => (
             <TabsContent key={tab.value} value={tab.value}>
               <tab.content />

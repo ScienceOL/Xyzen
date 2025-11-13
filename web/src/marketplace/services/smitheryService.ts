@@ -9,7 +9,6 @@ import type {
   SmitheryServersQuery,
 } from "../types/smithery";
 
-// 始终走后端代理，不再直连 Smithery；后端负责注入/管理密钥
 const getSmitheryBaseUrl = () => {
   const backendUrl = useXyzen.getState().backendUrl;
   if (!backendUrl) {
@@ -34,8 +33,6 @@ export class SmitheryService {
       url.searchParams.set("pageSize", String(params.pageSize));
 
     const headers: HeadersInit = { "Content-Type": "application/json" };
-
-    // 不再在前端附加 Authorization；后端代理负责认证
 
     const resp = await fetch(url.toString(), { headers, method: "GET" });
     if (!resp.ok) {

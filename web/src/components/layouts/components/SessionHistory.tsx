@@ -220,7 +220,7 @@ export default function SessionHistory({
 
   // 历史记录列表UI
   const renderHistoryList = () => (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col custom-scrollbar overflow-x-hidden">
       {/* Header with title and close button */}
       <div className="border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
         <div className="flex items-center justify-between">

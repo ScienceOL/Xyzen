@@ -154,7 +154,6 @@ export const CardItem = ({
   );
 };
 
-// eslint-disable-next-line
 export const useMouseEnter = () => {
   const context = useContext(MouseEnterContext);
   if (context === undefined) {

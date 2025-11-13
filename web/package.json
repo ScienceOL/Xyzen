@@ -2,7 +2,7 @@
   "name": "@sciol/xyzen",
   "type": "module",
   "packageManager": "yarn@4.9.2",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "description": "A modern, lightweight, and extensible chat component for React.",
   "author": "Haohui <harveyque@outlook.com>",
   "license": "GPL-3.0-only",

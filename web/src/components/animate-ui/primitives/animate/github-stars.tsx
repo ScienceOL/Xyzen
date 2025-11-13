@@ -221,7 +221,7 @@ export {
   GithubStarsIcon,
   GithubStarsParticles,
   GithubStarsLogo,
-  useGithubStars, //eslint-disable-line
+  useGithubStars,
   type GithubStarsProps,
   type GithubStarsNumberProps,
   type GithubStarsIconProps,

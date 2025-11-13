@@ -48,7 +48,7 @@ function ProgressIndicator({
 export {
   Progress,
   ProgressIndicator,
-  useProgress, // eslint-disable-line
+  useProgress,
   type ProgressContextType,
   type ProgressIndicatorProps,
   type ProgressProps,

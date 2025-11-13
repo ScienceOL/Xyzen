@@ -3,14 +3,17 @@ API Proxy Router
 处理第三方 API 的代理请求，解决 CORS 问题
 """
 
+import datetime as dt
+import json
 import logging
 import os
 
 import httpx
 from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, Response
-
 from internal.configs import configs
+from middleware.database.connection import AsyncSessionLocal
+from repo import SmitheryCacheRepository
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +113,13 @@ async def proxy_smithery(
     """
     target_url = f"https://registry.smithery.ai/{path}"
 
-    # 获取查询参数
+    # 获取查询参数（保持原样），并构建一个规范化的键
     query_params = dict(request.query_params)
+
+    def _normalized_key(p: str, params: dict[str, str]) -> str:
+        # Include all params sorted to avoid cache fragmentation
+        items = sorted((k, v) for k, v in params.items())
+        return f"{p}?" + "&".join([f"{k}={v}" for k, v in items])
 
     # 构建请求头
     headers = {
@@ -149,6 +157,75 @@ async def proxy_smithery(
         logger.info(f"Proxying request to {target_url} with method {request.method}")
         logger.info(f"Headers: {headers}")
         logger.info(f"Query Params: {query_params}")
+
+        # 针对 GET /servers 采用数据库缓存
+        is_servers_list = request.method == "GET" and (path.strip("/") == "servers")
+        if is_servers_list and body in (None, b""):
+            cache_key = _normalized_key("servers", query_params)
+            # 7 天 TTL
+            ttl_seconds = 60 * 60 * 24 * 7
+
+            async with AsyncSessionLocal() as db:
+                repo = SmitheryCacheRepository(db)
+                try:
+                    record = await repo.get_by_key(cache_key)
+                    # Use aware now then strip tzinfo to keep naive UTC for comparison
+                    now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+                    if record and record.expires_at > now:
+                        await repo.increment_hits(record)
+                        await db.commit()
+                        # Serve cached payload
+                        return Response(
+                            content=json.dumps(record.data),
+                            status_code=200,
+                            headers={
+                                "Content-Type": "application/json",
+                                "Access-Control-Allow-Origin": "*",
+                                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+                                "Access-Control-Allow-Headers": "*",
+                                "X-Cache": "HIT",
+                            },
+                        )
+                except Exception as e:
+                    logger.warning(f"Smithery cache read failed (falling back to live): {e}")
+
+            # Cache miss or expired: fetch live, then upsert cache
+            async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+                response = await client.request(
+                    method=request.method,
+                    url=target_url,
+                    params=query_params,
+                    headers=headers,
+                    content=body,
+                )
+
+                # If success, persist into cache asynchronously
+                if response.status_code == 200:
+                    try:
+                        payload = response.json()
+                        async with AsyncSessionLocal() as db:
+                            repo = SmitheryCacheRepository(db)
+                            await repo.upsert(
+                                key=cache_key,
+                                params=query_params,
+                                data=payload,
+                                ttl_seconds=ttl_seconds,
+                            )
+                            await db.commit()
+                    except Exception as e:
+                        logger.warning(f"Smithery cache write failed (continuing): {e}")
+
+                return Response(
+                    content=response.content,
+                    status_code=response.status_code,
+                    headers={
+                        "Content-Type": response.headers.get("Content-Type", "application/json"),
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+                        "Access-Control-Allow-Headers": "*",
+                        "X-Cache": "MISS",
+                    },
+                )
 
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             response = await client.request(

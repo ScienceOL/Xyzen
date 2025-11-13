@@ -246,7 +246,7 @@ export const ProviderConfigForm = () => {
       <div className="flex h-full items-center justify-center p-8">
         <div className="text-center text-neutral-400">
           <p className="text-lg">选择一个provider模板或已有的provider</p>
-          <p className="mt-2 text-sm">在左侧列表中点击开始配置</p>
+          <p className="mt-2 text-sm">在列表中点击开始配置</p>
         </div>
       </div>
     );

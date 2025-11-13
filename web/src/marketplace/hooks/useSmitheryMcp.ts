@@ -42,7 +42,8 @@ export const useSmitheryServers = (
   const data = query.data as SmitheryServersListResponse | undefined;
 
   return {
-    servers: data?.servers || [],
+    // Only show remote servers
+    servers: (data?.servers || []).filter((s) => s.remote === true),
     pagination: data?.pagination,
     loading: query.isLoading,
     error: query.error?.message || null,
@@ -77,7 +78,10 @@ export const useSmitheryInfiniteServers = (
   });
 
   const pages = query.data?.pages || [];
-  const servers = pages.flatMap((p) => p.servers);
+  // Flatten and filter to only include remote servers
+  const servers = pages
+    .flatMap((p) => p.servers)
+    .filter((s) => s.remote === true);
   const meta = pages[0]?.pagination;
 
   return {

@@ -51,5 +51,4 @@ function useDataState<T extends HTMLElement = HTMLElement>(
   return [value, localRef];
 }
 
-// eslint-disable-next-line
 export { useDataState, type DataStateValue };

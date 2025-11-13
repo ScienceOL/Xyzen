@@ -49,7 +49,7 @@ const McpExploreContent: React.FC = () => {
         maxWidth="max-w-6xl"
         maxHeight="max-h-[90vh]"
       >
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
           {selected ? (
             isBohriumMcp(selected) ? (
               <McpServerDetail

@@ -174,7 +174,7 @@ export {
   FlipButton,
   FlipButtonBack,
   FlipButtonFront,
-  useFlipButton, // eslint-disable-line
+  useFlipButton,
   type FlipButtonFaceProps as FlipButtonBackProps,
   type FlipButtonContextType,
   type FlipButtonFaceProps as FlipButtonFrontProps,

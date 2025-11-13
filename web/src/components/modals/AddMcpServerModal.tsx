@@ -241,7 +241,7 @@ export function AddMcpServerModal() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="flex flex-col h-full"
+              className="flex flex-col h-full custom-scrollbar overflow-x-hidden"
             >
               <div className="mb-4 flex items-center space-x-2 border-b border-neutral-200 pb-3 dark:border-neutral-700">
                 <div className="rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600 p-2">
@@ -323,7 +323,7 @@ export function AddMcpServerModal() {
                   transition={{ delay: 0.4 }}
                 >
                   <Field>
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-3 overflow-hidden">
                       <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                         Authentication
                       </Label>
@@ -583,7 +583,7 @@ export function AddMcpServerModal() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="mt-4 flex justify-end gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-700"
+                className="mt-4 flex justify-end gap-3 border-t border-neutral-200 py-4 dark:border-neutral-700"
               >
                 <Button
                   onClick={handleClose}

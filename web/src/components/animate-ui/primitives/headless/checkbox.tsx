@@ -117,7 +117,7 @@ function CheckboxIndicator(props: CheckboxIndicatorProps) {
 export {
   Checkbox,
   CheckboxIndicator,
-  useCheckbox, //eslint-disable-line
+  useCheckbox,
   type CheckboxContextType,
   type CheckboxIndicatorProps,
   type CheckboxProps,

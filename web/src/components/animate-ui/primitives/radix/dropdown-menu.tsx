@@ -538,8 +538,8 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  useDropdownMenu, //eslint-disable-line
-  useDropdownMenuSub, //eslint-disable-line
+  useDropdownMenu,
+  useDropdownMenuSub,
   type DropdownMenuCheckboxItemProps,
   type DropdownMenuContentProps,
   type DropdownMenuContextType,

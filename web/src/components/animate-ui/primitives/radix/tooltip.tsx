@@ -137,7 +137,6 @@ export {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-  // eslint-disable-next-line
   useTooltip,
   type TooltipArrowProps,
   type TooltipContentProps,

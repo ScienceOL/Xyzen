@@ -91,9 +91,9 @@ export function AppFullscreen({
       >
         <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-black">
           {/* Header Bar */}
-          <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 dark:border-neutral-800 dark:bg-black">
-            <div className="flex items-center gap-4">
-              <h1 className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+          <header className="flex h-14 flex-shrink-0 items-center justify-between px-4 bg-white/80 dark:bg-black/60 backdrop-blur-md supports-[backdrop-filter]:backdrop-blur-md shadow-sm ring-1 ring-neutral-200/60 dark:ring-neutral-800/60">
+            <div className="flex items-center gap-3">
+              <h1 className="text-base sm:text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
                 Xyzen
               </h1>
               {/* Breadcrumbs or current context could go here */}
@@ -150,7 +150,7 @@ export function AppFullscreen({
                     </p>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
                   <Explorer />
                 </div>
               </section>
