@@ -1,12 +1,9 @@
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import TIMESTAMP
 from sqlmodel import JSON, Column, Field, SQLModel
-
-if TYPE_CHECKING:
-    pass
 
 
 class GraphAgentBase(SQLModel):
@@ -160,17 +157,3 @@ class GraphExecutionResult(SQLModel):
     success: bool
     error_message: str | None = None
     execution_time_ms: int
-
-
-# Rebuild models after all definitions to resolve forward references
-def _rebuild_models():
-    """Rebuild Pydantic models to resolve forward references."""
-    try:
-        GraphAgentWithGraph.model_rebuild()
-    except Exception:
-        # If rebuild fails, it might be due to import order - that's okay
-        pass
-
-
-# Call rebuild function
-_rebuild_models()

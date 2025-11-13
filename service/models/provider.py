@@ -3,8 +3,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
-# Provider-specific configuration classes
-
 
 class ProviderBase(SQLModel):
     user_id: str = Field(

@@ -7,9 +7,6 @@ from sqlmodel import JSON, Column, Field, SQLModel
 
 if TYPE_CHECKING:
     from .mcp import McpServer
-else:
-    # Import at runtime for model_rebuild to work
-    McpServer = "McpServer"
 
 
 class AgentBase(SQLModel):
