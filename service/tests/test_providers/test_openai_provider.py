@@ -1,12 +1,13 @@
 """Tests for OpenAIProvider."""
 
-import pytest
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from pydantic import SecretStr
 
-from core.providers.openai import OpenAIProvider, OpenAIConfig
 from core.providers.base import ChatCompletionRequest, ChatMessage
+from core.providers.openai import OpenAIConfig, OpenAIProvider
 
 
 class TestOpenAIConfig:
