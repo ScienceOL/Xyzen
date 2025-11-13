@@ -1,3 +1,5 @@
+import logging
+
 from .agent import Agent, AgentReadWithDetails
 from .consume import ConsumeRecord
 from .graph import GraphAgent, GraphEdge, GraphNode
@@ -9,6 +11,8 @@ from .sessions import Session, SessionReadWithTopics
 from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
 from .topic import Topic, TopicRead, TopicReadWithMessages
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "Agent",
@@ -42,7 +46,9 @@ try:
     SessionReadWithTopics.model_rebuild()
     # AgentReadWithDetails depends on McpServer
     AgentReadWithDetails.model_rebuild()
-except Exception as e:
-    import logging
-
-    logging.getLogger(__name__).warning(f"Failed to rebuild models with forward references: {e}")
+except (NameError, TypeError, Exception) as e:
+    logger.warning(
+        f"Could not rebuild Pydantic models with forward references. "
+        f"This might cause validation errors at runtime. Error: {e}",
+        exc_info=True,
+    )
