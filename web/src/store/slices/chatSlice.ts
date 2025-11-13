@@ -872,17 +872,6 @@ export const createChatSlice: StateCreator<
         (a) => a.id === agentId,
       );
 
-      console.log(
-        `🚀 Creating new session for agent: ${agent?.name || agentId}`,
-      );
-      console.log(`  - Agent MCP servers: ${agent?.mcp_servers?.length || 0}`);
-      if (agent?.mcp_servers?.length) {
-        console.log(
-          `  - MCP server IDs:`,
-          agent.mcp_servers.map((s) => s.id),
-        );
-      }
-
       const sessionPayload: Record<string, unknown> = {
         name: "New Session",
         agent_id: agentId,
@@ -913,12 +902,6 @@ export const createChatSlice: StateCreator<
       }
 
       const newSession: SessionResponse = await response.json();
-      console.log(`newSession information: ${JSON.stringify(newSession)}`);
-      console.log(
-        "🔍 Session POST response status:",
-        response.status,
-        response.statusText,
-      );
 
       if (!response.ok) {
         const errorText = await response.text();
