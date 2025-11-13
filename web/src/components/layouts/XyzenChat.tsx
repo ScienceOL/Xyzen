@@ -215,7 +215,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
       >
         {/* Agent Header */}
         {currentAgent ? (
-          <div className="relative flex-shrink-0 border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50 px-4 py-3 dark:border-neutral-800 dark:from-black dark:to-neutral-950">
+          <div className="relative flex-shrink-0 border-y border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
             <div className="flex items-start gap-3">
               <img
                 src={

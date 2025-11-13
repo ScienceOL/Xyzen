@@ -162,7 +162,7 @@ export function AppFullscreen({
                 {/* Middle Column: Content Panel */}
                 <aside className="w-80 flex-shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
                   <div className="flex h-full flex-col">
-                    <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
+                    <div className=" px-4 py-3 dark:border-neutral-800">
                       <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
                         {activePanel === "chat" ? "Assistants" : "Workshop"}
                       </h2>

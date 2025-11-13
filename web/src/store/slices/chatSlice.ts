@@ -872,17 +872,6 @@ export const createChatSlice: StateCreator<
         (a) => a.id === agentId,
       );
 
-      console.log(
-        `🚀 Creating new session for agent: ${agent?.name || agentId}`,
-      );
-      console.log(`  - Agent MCP servers: ${agent?.mcp_servers?.length || 0}`);
-      if (agent?.mcp_servers?.length) {
-        console.log(
-          `  - MCP server IDs:`,
-          agent.mcp_servers.map((s) => s.id),
-        );
-      }
-
       const sessionPayload: Record<string, unknown> = {
         name: "New Session",
         agent_id: agentId,
@@ -914,6 +903,23 @@ export const createChatSlice: StateCreator<
 
       const newSession: SessionResponse = await response.json();
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          "❌ Session creation failed:",
+          response.status,
+          errorText,
+        );
+        throw new Error(`Failed to create new session:
+        ${response.status} ${errorText}`);
+      }
+
+      console.log("✅ Session creation successful, parsing  response...");
+      console.log(
+        "🔍 Session response data:",
+        JSON.stringify(newSession, null, 2),
+      );
+
       if (newSession.topics && newSession.topics.length > 0) {
         const newTopic = newSession.topics[0];
 
@@ -943,6 +949,68 @@ export const createChatSlice: StateCreator<
           state.activeTabIndex = 1;
         });
 
+        get().connectToChannel(newSession.id, newTopic.id);
+      } else {
+        // Session created but no default topic - create one manually
+        console.log(
+          "⚠️ Session created without topics, creating default topic...",
+        );
+
+        const topicResponse = await fetch(
+          `${get().backendUrl}/xyzen/api/v1/topics/`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              name: "新的聊天",
+              session_id: newSession.id,
+            }),
+          },
+        );
+
+        if (!topicResponse.ok) {
+          const errorText = await topicResponse.text();
+          console.error(
+            "❌ Failed to create default topic:",
+            topicResponse.status,
+            errorText,
+          );
+          throw new Error(
+            `Failed to create default topic for new session: ${topicResponse.status} ${errorText}`,
+          );
+        }
+
+        const newTopic = await topicResponse.json();
+        console.log("✅ Default topic created:", newTopic.id);
+
+        // Same navigation logic as above
+        const newChannel: ChatChannel = {
+          id: newTopic.id,
+          sessionId: newSession.id,
+          title: newTopic.name,
+          messages: [],
+          agentId: newSession.agent_id,
+          connected: false,
+          error: null,
+        };
+
+        const newHistoryItem: ChatHistoryItem = {
+          id: newTopic.id,
+          title: newTopic.name,
+          updatedAt: newTopic.updated_at,
+          assistantTitle: "通用助理",
+          lastMessage: "",
+          isPinned: false,
+        };
+
+        set((state: XyzenState) => {
+          state.channels[newTopic.id] = newChannel;
+          state.chatHistory.unshift(newHistoryItem);
+          state.activeChatChannel = newTopic.id;
+          state.activeTabIndex = 1;
+        });
+
+        console.log("🚀 Navigating to new topic:", newTopic.id);
         get().connectToChannel(newSession.id, newTopic.id);
       }
     } catch (error) {

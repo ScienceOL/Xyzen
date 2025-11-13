@@ -328,8 +328,6 @@ export default function XyzenAgent({
       return channel.agentId === agentId;
     });
 
-    console.log(`找到 ${agentTopics.length} 个属于 agent ${agentId} 的对话`);
-
     // 2. 找到最近的空 topic（消息数 <= 1，只有系统消息或完全为空）
     const emptyTopic = agentTopics
       .sort(

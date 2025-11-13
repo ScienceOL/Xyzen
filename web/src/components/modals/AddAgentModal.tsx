@@ -1,10 +1,10 @@
 import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
+import type { Agent } from "@/types/agents";
 import { Button, Field, Label } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import type { Agent } from "@/types/agents";
 import { McpServerItem } from "./McpServerItem";
 
 interface AddAgentModalProps {
@@ -333,7 +333,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
               <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 连接的 MCP 服务器
               </Label>
-              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-sm border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
+              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto custom-scrollbar rounded-sm border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
                 {mcpServers.length > 0 ? (
                   mcpServers.map((server) => (
                     <McpServerItem
