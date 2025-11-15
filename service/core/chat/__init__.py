@@ -1,3 +1,3 @@
-from .langchain import get_ai_response_stream_langchain as get_ai_response_stream
+from .execution_router import get_ai_response_stream
 
 __all__ = ["get_ai_response_stream"]

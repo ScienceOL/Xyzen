@@ -124,9 +124,9 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
         messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
 
         history: List[Any] = []
-        for m in messages:
-            role = (m.role or "").lower()
-            content = m.content or ""
+        for message in messages:
+            role = (message.role or "").lower()
+            content = message.content or ""
             if not content:
                 continue
             if role == "user":
@@ -142,52 +142,6 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
     except Exception as e:
         logger.warning(f"Failed to load DB chat history for topic {getattr(topic, 'id', None)}: {e}")
         return []
-
-
-async def get_ai_response_stream_langchain(
-    db: AsyncSession,
-    message_text: str,
-    topic: TopicModel,
-    user_id: str,
-    connection_manager: "ConnectionManager | None" = None,
-    connection_id: str | None = None,
-) -> AsyncGenerator[dict[str, Any], None]:
-    """
-    Gets a streaming response using the execution router.
-    Routes to appropriate agent handler based on agent type.
-    """
-    try:
-        # Import here to avoid circular imports
-        from core.chat.execution_router import ChatExecutionRouter
-        from repo.session import SessionRepository
-
-        # Get agent_id from session
-        session_repo = SessionRepository(db)
-        session = await session_repo.get_session_by_id(topic.session_id)
-        agent_id = session.agent_id if session else None
-
-        # Convert UUID back to builtin agent string ID if applicable
-        builtin_agent_id = None
-        if agent_id is not None:
-            from models.sessions import uuid_to_builtin_agent_id
-
-            builtin_agent_id = uuid_to_builtin_agent_id(agent_id)
-
-        # Route execution based on agent type
-        router = ChatExecutionRouter(db)
-        # For builtin agents, pass the UUID but tell the router about the builtin ID
-        final_agent_id = agent_id if builtin_agent_id is None else agent_id
-        async for event in router.route_execution_stream(
-            message_text, topic, user_id, final_agent_id, connection_manager, connection_id
-        ):
-            yield event
-
-    except Exception as e:
-        logger.error(f"Failed to get AI response stream: {e}")
-        yield {
-            "type": ChatEventType.ERROR,
-            "data": {"error": f"I'm sorry, but I encountered an error while processing your request: {e}"},
-        }
 
 
 async def get_ai_response_stream_langchain_legacy(
@@ -276,6 +230,7 @@ async def get_ai_response_stream_langchain_legacy(
         logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
         # Load long-term memory (DB-backed) and include it in input
         history_messages = await _load_db_history(db, topic)
+        logger.debug(f"Loaded history messages: {history_messages}")
 
         async for chunk in langchain_agent.astream(
             {"messages": [*history_messages, HumanMessage(content=message_text)]},
@@ -290,7 +245,7 @@ async def get_ai_response_stream_langchain_legacy(
 
             # Reduced logging: only log mode changes, not every chunk
             if mode == "updates":
-                logger.debug("Received stream chunk - mode: %s", mode)
+                logger.debug(f"Received stream chunk - mode: {mode}")
 
             if mode == "updates":
                 # Step updates - emitted after each node execution

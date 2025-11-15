@@ -5,7 +5,7 @@ Tool-related logic for chat service: preparation, execution, formatting.
 import asyncio
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -16,8 +16,8 @@ from repo.mcp import McpRepository
 logger = logging.getLogger(__name__)
 
 
-async def prepare_mcp_tools(db: AsyncSession, agent: Any) -> List[Dict[str, Any]]:
-    tools: List[Dict[str, Any]] = []
+async def prepare_mcp_tools(db: AsyncSession, agent: Any) -> list[dict[str, Any]]:
+    tools: list[dict[str, Any]] = []
     if agent:
         # Load MCP servers for the agent using AgentRepository
         from repo.agent import AgentRepository
@@ -93,7 +93,7 @@ async def execute_tool_call(db: AsyncSession, tool_name: str, tool_args: str, ag
         return f"Error: {e}"
 
 
-async def call_mcp_tool(server: McpServer, tool_name: str, args_dict: Dict[str, Any]) -> Any:
+async def call_mcp_tool(server: McpServer, tool_name: str, args_dict: dict[str, Any]) -> Any:
     try:
         from fastmcp import Client
         from fastmcp.client.auth import BearerAuth
@@ -162,7 +162,7 @@ def format_tool_result(tool_result: Any, tool_name: str) -> str:
         return f"Tool '{tool_name}' executed but result formatting failed: {e}"
 
 
-async def execute_tool_calls(db: AsyncSession, tool_calls: List[Dict[str, Any]], agent: Any) -> Dict[str, Any]:
+async def execute_tool_calls(db: AsyncSession, tool_calls: list[dict[str, Any]], agent: Any) -> dict[str, Any]:
     results = {}
     for tool_call in tool_calls:
         tool_call_id = tool_call.get("id", f"tool_{int(asyncio.get_event_loop().time() * 1000)}")
