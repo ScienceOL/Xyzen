@@ -59,6 +59,9 @@ class ProcessingStatus(StrEnum):
     """Status values used with the PROCESSING event."""
 
     PREPARING_REQUEST = "preparing_request"
+    PREPARING_GRAPH_EXECUTION = "preparing_graph_execution"
+    EXECUTING_GRAPH = "executing_graph"
+    PROCESSING_GRAPH_RESULT = "processing_graph_result"
 
 
 # Helpful groupings for conditional logic

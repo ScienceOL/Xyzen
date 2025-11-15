@@ -24,7 +24,7 @@ SERVER_PORT = dynamic_mcp_config.port
 
 
 def register_built_in_tools(mcp: FastMCP) -> None:
-    @mcp.tool
+    @mcp.tool(enabled=False)
     def search_github(query: str, max_results: int = 10, sort_by: str = "stars") -> list[dict[str, Any]]:
         """
         Search GitHub Python language repositories and sort by specified criteria
@@ -81,7 +81,7 @@ def register_built_in_tools(mcp: FastMCP) -> None:
 
     _ = search_github
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def llm_web_search(query: str) -> str:
         """
         Use AI-enhanced web search functionality to provide smarter search results with citations.
@@ -211,7 +211,7 @@ def register_built_in_tools(mcp: FastMCP) -> None:
 
     _ = llm_web_search
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def refresh_tools() -> dict[str, Any]:
         """
         Manually refresh tools from the database for the current user, handling additions, deletions, and updates
@@ -248,7 +248,7 @@ def register_built_in_tools(mcp: FastMCP) -> None:
 
     _ = refresh_tools
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     def get_server_status() -> dict[str, Any]:
         """
         Get server status information
@@ -269,7 +269,7 @@ def register_built_in_tools(mcp: FastMCP) -> None:
 
     _ = get_server_status
 
-    @mcp.resource("config://server")
+    @mcp.resource("config://server", enabled=False)
     def get_server_config() -> dict[str, Any]:
         """Get server configuration information"""
         config: dict[str, Any] = {

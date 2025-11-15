@@ -141,10 +141,10 @@ def register_manage_tools(mcp: FastMCP) -> None:
         requirements: str = "",
     ) -> dict[str, Any]:
         """
-        Create a new tool (script/module) with all its functions.
+        Create a dynamic tool containing multiple functions. After creating, the tool will be ready to use. The code_content should be a Python script that imports necessary modules and defines functions. The defined functions then can be used as MCP tools with such format {tool_name}.{function_name}. If you need to use not Python builtin modules, you must specify them in the requirements and they can be installed automatically. You should always directly run this tool for one time and never use parallel execution.
 
         Args:
-            name: Tool name (script/module name)
+            name: Tool name
             description: Tool description
             code_content: Python code containing multiple functions
             requirements: Requirements.txt content (default: "")
@@ -236,7 +236,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
     _ = create_tool
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def create_function(tool_name: str, code_content: str) -> dict[str, Any]:
         """
         Add new function(s) to an existing tool by providing code content.
@@ -349,17 +349,17 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
     @mcp.tool
     async def update_tool(
-        tool_name: str,
+        tool_id: uuid.UUID,
         name: str | None = None,
         description: str | None = None,
         code_content: str | None = None,
         requirements: str | None = None,
     ) -> dict[str, Any]:
         """
-        Update an existing tool.
+        Update an existing dynamic tool. You can update the name, description, code content, and requirements. If there is already a tool with the same name for the user, it will raise an error.
 
         Args:
-            tool_name: Name of the tool to update
+            tool_id: ID of the tool to update
             name: New tool name (optional)
             description: New description (optional)
             code_content: New Python code (optional)
@@ -375,9 +375,13 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 repo = ToolRepository(session)
 
                 # Get the tool by name and user_id
-                tool = await repo.get_tool_by_user_and_name(user_info.id, tool_name)
+                tool = await repo.get_tool_by_id(tool_id)
                 if not tool:
-                    return error_response(f"Tool '{tool_name}' not found")
+                    return error_response(f"Tool with ID '{tool_id}' not found")
+
+                # Check if user has permission
+                if tool.user_id != user_info.id:
+                    return error_response("Permission denied: You don't have permission to view this tool")
 
                 # Update tool fields if provided
                 update_data = ToolUpdate()
@@ -395,12 +399,12 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 if update_data.model_fields_set:
                     tool = await repo.update_tool(tool.id, update_data)
                     if not tool:
-                        return error_response(f"Failed to update tool '{tool_name}'")
+                        return error_response(f"Failed to update tool '{tool_id}'")
 
                 # Get the latest version
                 latest_version = await repo.get_latest_tool_version(tool.id)
                 if not latest_version:
-                    return error_response(f"No versions found for tool '{tool_name}'")
+                    return error_response(f"No versions found for tool '{tool_id}'")
 
                 # Create new version if code or requirements are updated
                 new_version = latest_version
@@ -454,18 +458,18 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
                 return {
                     "status": "success",
-                    "message": f"Tool '{tool.name}' updated successfully",
+                    "message": f"Tool '{tool_id}' updated successfully",
                     "tool_name": tool.name,
                     "version": new_version.version,
                 }
 
         except Exception as e:
-            logger.error(f"Error updating tool '{tool_name}': {e}")
+            logger.error(f"Error updating tool '{tool_id}': {e}")
             return error_response(f"Error updating tool: {str(e)}")
 
     _ = update_tool
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def update_function(tool_id: uuid.UUID, function_name: str, code_content: str) -> dict[str, Any]:
         """
         Update a function in an existing tool by providing new code content.
@@ -597,7 +601,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def delete_tool(tool_id: uuid.UUID) -> dict[str, Any]:
         """
-        Delete an entire tool and all its functions.
+        Delete a dynamic tool and all its functions. When you think the code is messed up, you can delete the tool.
 
         Args:
             tool_id: ID of the tool to delete
@@ -649,7 +653,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
     _ = delete_tool
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def delete_function(tool_id: uuid.UUID, function_name: str) -> dict[str, Any]:
         """
         Delete a specific function from a tool.
@@ -715,9 +719,36 @@ def register_manage_tools(mcp: FastMCP) -> None:
     _ = delete_function
 
     @mcp.tool
-    async def list_tool_functions(tool_id: uuid.UUID) -> dict[str, Any]:
+    async def list_tools() -> dict[str, Any]:
         """
-        List all functions in a specific tool.
+        List all dynamic tools.
+
+        Returns:
+            list of tools
+        """
+        user_info = get_current_user()
+
+        try:
+            async with AsyncSessionLocal() as session:
+                repo = ToolRepository(session)
+                tools = await repo.list_tools_by_user(user_info.id)
+
+                return {
+                    "status": "success",
+                    "message": "Tools listed successfully",
+                    "tools": [tool.model_dump() for tool in tools],
+                }
+
+        except Exception as e:
+            logger.error(f"Error listing tools: {e}")
+            return error_response(f"Error listing tools: {str(e)}")
+
+    _ = list_tools
+
+    @mcp.tool()
+    async def view_tool(tool_id: uuid.UUID) -> dict[str, Any]:
+        """
+        View the details of a specific dynamic tool.
 
         Args:
             tool_id: ID of the tool
@@ -769,12 +800,12 @@ def register_manage_tools(mcp: FastMCP) -> None:
                 }
 
         except Exception as e:
-            logger.error(f"Error listing functions for tool {tool_id}: {e}")
-            return error_response(f"Error listing functions: {str(e)}")
+            logger.error(f"Error viewing tool {tool_id}: {e}")
+            return error_response(f"Error viewing tool: {str(e)}")
 
-    _ = list_tool_functions
+    _ = view_tool
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def get_tool_info(tool_id: uuid.UUID) -> dict[str, Any]:
         """
         Get complete information about a tool and its functions.
@@ -841,7 +872,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
     _ = get_tool_info
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def get_tool_changes(hours: int = 24) -> dict[str, Any]:
         """
         Get recent tool changes from the database.
@@ -926,7 +957,7 @@ def register_manage_tools(mcp: FastMCP) -> None:
 
     _ = get_tool_changes
 
-    @mcp.tool
+    @mcp.tool(enabled=False)
     async def get_tool_statistics() -> dict[str, Any]:
         """
         Get comprehensive tool statistics from the database.

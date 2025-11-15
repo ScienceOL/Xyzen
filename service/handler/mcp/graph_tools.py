@@ -88,9 +88,8 @@ from fastmcp.server.auth import JWTVerifier, TokenVerifier
 from fastmcp.server.dependencies import AccessToken, get_access_token
 
 from core.chat.langgraph import execute_graph_agent_sync
-from middleware.auth import AuthProvider
+from middleware.auth import AuthProvider, UserInfo
 from middleware.auth import AuthProvider as InternalAuthProvider
-from middleware.auth import UserInfo
 from middleware.auth.token_verifier.bohr_app_token_verifier import BohrAppTokenVerifier
 from middleware.database.connection import AsyncSessionLocal
 from models.graph import (

@@ -15,6 +15,7 @@ from middleware.database.connection import AsyncSessionLocal
 from models.message import Message as MessageModel
 from models.message import MessageCreate
 from repo import MessageRepository, SessionRepository, TopicRepository
+from schemas.chat_events import ChatClientEventType, ChatEventType, ToolCallStatus
 
 # --- Logger Setup ---
 logger = logging.getLogger(__name__)
@@ -108,8 +109,8 @@ async def handle_tool_call_confirmation(
         if not confirmed:
             # User cancelled the tool call
             response = {
-                "type": "tool_call_response",
-                "data": {"toolCallId": tool_call_id, "status": "failed", "error": "用户取消执行"},
+                "type": ChatEventType.TOOL_CALL_RESPONSE,
+                "data": {"toolCallId": tool_call_id, "status": ToolCallStatus.FAILED, "error": "用户取消执行"},
             }
             await manager.send_personal_message(json.dumps(response), connection_id)
             # Persist a tool message for cancellation (failed)
@@ -118,9 +119,9 @@ async def handle_tool_call_confirmation(
                     role="tool",
                     content=json.dumps(
                         {
-                            "event": "tool_call_response",
+                            "event": ChatEventType.TOOL_CALL_RESPONSE,
                             "toolCallId": tool_call_id,
-                            "status": "failed",
+                            "status": ToolCallStatus.FAILED,
                             "error": "用户取消执行",
                         }
                     ),
@@ -135,8 +136,8 @@ async def handle_tool_call_confirmation(
 
         # User confirmed the tool call - continue with execution using stored context
         response = {
-            "type": "tool_call_response",
-            "data": {"toolCallId": tool_call_id, "status": "executing"},
+            "type": ChatEventType.TOOL_CALL_RESPONSE,
+            "data": {"toolCallId": tool_call_id, "status": ToolCallStatus.EXECUTING},
         }
         await manager.send_personal_message(json.dumps(response), connection_id)
 
@@ -149,8 +150,8 @@ async def handle_tool_call_confirmation(
         model = pending_info["model"]
 
         # Import necessary functions
-        from core.chat.sync import ChatCompletionRequest, ChatMessage
         from core.chat.tools import execute_tool_calls
+        from core.providers import ChatCompletionRequest, ChatMessage
 
         try:
             # Execute the tools using the same logic as immediate execution
@@ -166,10 +167,10 @@ async def handle_tool_call_confirmation(
 
                     formatted_result = format_tool_result_for_display(result)
                     completion_event = {
-                        "type": "tool_call_response",
+                        "type": ChatEventType.TOOL_CALL_RESPONSE,
                         "data": {
                             "toolCallId": tc_id,
-                            "status": "completed",
+                            "status": ToolCallStatus.COMPLETED,
                             "result": formatted_result,
                         },
                     }
@@ -181,9 +182,9 @@ async def handle_tool_call_confirmation(
                             role="tool",
                             content=json.dumps(
                                 {
-                                    "event": "tool_call_response",
+                                    "event": ChatEventType.TOOL_CALL_RESPONSE,
                                     "toolCallId": tc_id,
-                                    "status": "completed",
+                                    "status": ToolCallStatus.COMPLETED,
                                     "result": result,
                                 }
                             ),
@@ -229,7 +230,7 @@ async def handle_tool_call_confirmation(
                 final_message_id = f"confirmed_stream_{int(asyncio.get_event_loop().time() * 1000)}"
 
                 # Send streaming start event
-                stream_start = {"type": "streaming_start", "data": {"id": final_message_id}}
+                stream_start = {"type": ChatEventType.STREAMING_START, "data": {"id": final_message_id}}
                 await manager.send_personal_message(json.dumps(stream_start), connection_id)
 
                 # Stream the response
@@ -240,7 +241,7 @@ async def handle_tool_call_confirmation(
                     if chunk.content:
                         final_content_chunks.append(chunk.content)
                         stream_chunk = {
-                            "type": "streaming_chunk",
+                            "type": ChatEventType.STREAMING_CHUNK,
                             "data": {"id": final_message_id, "content": chunk.content},
                         }
                         await manager.send_personal_message(json.dumps(stream_chunk), connection_id)
@@ -249,7 +250,7 @@ async def handle_tool_call_confirmation(
                 final_full_content = "".join(final_content_chunks)
                 if final_full_content.strip():
                     stream_end = {
-                        "type": "streaming_end",
+                        "type": ChatEventType.STREAMING_END,
                         "data": {
                             "id": final_message_id,
                             "content": final_full_content,
@@ -272,7 +273,7 @@ async def handle_tool_call_confirmation(
                 final_response = await provider.chat_completion(final_request)
                 if final_response.content:
                     final_message = {
-                        "type": "message",
+                        "type": ChatEventType.MESSAGE,
                         "data": {
                             "id": f"confirmed_msg_{int(asyncio.get_event_loop().time() * 1000)}",
                             "role": "assistant",
@@ -287,8 +288,8 @@ async def handle_tool_call_confirmation(
         except Exception as e:
             logger.error(f"Error executing confirmed tools: {e}")
             error_response = {
-                "type": "tool_call_response",
-                "data": {"toolCallId": tool_call_id, "status": "failed", "error": str(e)},
+                "type": ChatEventType.TOOL_CALL_RESPONSE,
+                "data": {"toolCallId": tool_call_id, "status": ToolCallStatus.FAILED, "error": str(e)},
             }
             await manager.send_personal_message(json.dumps(error_response), connection_id)
 
@@ -298,9 +299,9 @@ async def handle_tool_call_confirmation(
                     role="tool",
                     content=json.dumps(
                         {
-                            "event": "tool_call_response",
+                            "event": ChatEventType.TOOL_CALL_RESPONSE,
                             "toolCallId": tool_call_id,
-                            "status": "failed",
+                            "status": ToolCallStatus.FAILED,
                             "error": str(e),
                         }
                     ),
@@ -354,16 +355,16 @@ async def chat_websocket(
                 message_repo = MessageRepository(db)
                 session_repo = SessionRepository(db)
                 topic_repo = TopicRepository(db)
-                message_type = data.get("type", "message")
+                message_type = data.get("type", ChatClientEventType.MESSAGE)
 
                 # Handle tool call confirmation/cancellation
-                if message_type == "tool_call_confirm":
+                if message_type == ChatClientEventType.TOOL_CALL_CONFIRM:
                     tool_call_id = data.get("data", {}).get("toolCallId")
                     if tool_call_id:
                         await handle_tool_call_confirmation(message_repo, connection_id, tool_call_id, True)
                     continue
 
-                elif message_type == "tool_call_cancel":
+                elif message_type == ChatClientEventType.TOOL_CALL_CANCEL:
                     tool_call_id = data.get("data", {}).get("toolCallId")
                     if tool_call_id:
                         await handle_tool_call_confirmation(message_repo, connection_id, tool_call_id, False)
@@ -379,18 +380,14 @@ async def chat_websocket(
                 user_message_create = MessageCreate(role="user", content=message_text, topic_id=topic_id)
                 user_message = await message_repo.create_message(user_message_create)
 
-                # Update topic's updated_at timestamp
-                # topic.updated_at = datetime.now(timezone.utc)
-                # await topic_repo.update_topic_timestamp(topic)
-
-                # Send user message to client first
+                # 2. Send user message back to client first
                 await manager.send_personal_message(
                     user_message.model_dump_json(),
                     connection_id,
                 )
 
-                # Send loading status
-                loading_event = {"type": "loading", "data": {"message": "AI is thinking..."}}
+                # 3. Send loading status
+                loading_event = {"type": ChatEventType.LOADING, "data": {"message": "AI is thinking..."}}
                 await manager.send_personal_message(
                     json.dumps(loading_event),
                     connection_id,
@@ -411,20 +408,20 @@ async def chat_websocket(
                     logger.debug(f"Received stream event: {stream_event['type']}")
 
                     # Track message ID and content for database saving
-                    if stream_event["type"] == "streaming_start":
+                    if stream_event["type"] == ChatEventType.STREAMING_START:
                         ai_message_id = stream_event["data"]["id"]
                         # Forward streaming_start to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
-                    elif stream_event["type"] == "streaming_chunk" and ai_message_id:
+                    elif stream_event["type"] == ChatEventType.STREAMING_CHUNK and ai_message_id:
                         chunk_content = stream_event["data"]["content"]
                         full_content += chunk_content
                         # Forward streaming_chunk to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
-                    elif stream_event["type"] == "streaming_end":
+                    elif stream_event["type"] == ChatEventType.STREAMING_END:
                         full_content = stream_event["data"].get("content", full_content)
                         # Forward streaming_end to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
-                    elif stream_event["type"] == "tool_call_request":
+                    elif stream_event["type"] == ChatEventType.TOOL_CALL_REQUEST:
                         # Forward tool call request to frontend
                         try:
                             req = stream_event["data"]
@@ -432,7 +429,7 @@ async def chat_websocket(
                                 role="tool",
                                 content=json.dumps(
                                     {
-                                        "event": "tool_call_request",
+                                        "event": ChatEventType.TOOL_CALL_REQUEST,
                                         "id": req.get("id"),
                                         "name": req.get("name"),
                                         "description": req.get("description"),
@@ -449,7 +446,7 @@ async def chat_websocket(
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
 
                         continue
-                    elif stream_event["type"] == "tool_call_response":
+                    elif stream_event["type"] == ChatEventType.TOOL_CALL_RESPONSE:
                         # Handle tool call response
                         try:
                             resp = stream_event["data"]
@@ -457,7 +454,7 @@ async def chat_websocket(
                                 role="tool",
                                 content=json.dumps(
                                     {
-                                        "event": "tool_call_response",
+                                        "event": ChatEventType.TOOL_CALL_RESPONSE,
                                         "toolCallId": resp.get("toolCallId"),
                                         "status": resp.get("status"),
                                         "result": resp.get("result"),
@@ -471,13 +468,13 @@ async def chat_websocket(
                             logger.warning(f"Failed to persist tool call response message: {e}")
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
                         continue
-                    elif stream_event["type"] == "message":
+                    elif stream_event["type"] == ChatEventType.MESSAGE:
                         # Handle non-streaming response
                         ai_message_id = stream_event["data"]["id"]
                         full_content = stream_event["data"]["content"]
                         # Forward message to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
-                    elif stream_event["type"] == "error":
+                    elif stream_event["type"] == ChatEventType.ERROR:
                         full_content = stream_event["data"]["error"]
                         # Forward error to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
@@ -545,7 +542,7 @@ async def chat_websocket(
 
                     # Send final message confirmation with real database ID
                     final_message_event = {
-                        "type": "message_saved",
+                        "type": ChatEventType.MESSAGE_SAVED,
                         "data": {
                             "stream_id": ai_message_id,
                             "db_id": str(ai_message.id),
