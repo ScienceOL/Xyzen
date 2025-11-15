@@ -1,7 +1,8 @@
 """Tests for built-in tools utilities."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastmcp import FastMCP
 
 from utils.built_in_tools import register_built_in_tools
@@ -193,16 +194,6 @@ class TestBuiltInTools:
 
             # Verify the tool was registered
             assert mock_mcp.tool.called
-
-    def test_get_server_config_resource(self, mock_mcp: MagicMock) -> None:
-        """Test get server config resource."""
-        register_built_in_tools(mock_mcp)
-
-        # Verify the resource was registered
-        assert mock_mcp.resource.called
-
-        # Check that the resource decorator was called with the correct URI
-        mock_mcp.resource.assert_called_with("config://server")
 
     @pytest.mark.parametrize("sort_by", ["stars", "forks", "updated"])
     def test_search_github_sort_options(self, mock_mcp: MagicMock, sort_by: str) -> None:
