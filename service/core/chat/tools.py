@@ -104,7 +104,7 @@ async def call_mcp_tool(server: McpServer, tool_name: str, args_dict: dict[str, 
         async with client:
             result = await client.call_tool(tool_name, args_dict)
             logger.info(f"MCP tool '{tool_name}' returned: {result}")
-            return result.content if hasattr(result, "content") else str(result)
+            return result.structured_content
     except ImportError:
         logger.warning(f"MCP integration not available, mocking tool '{tool_name}' result")
         return f"Mock result for tool '{tool_name}' with args {args_dict}"

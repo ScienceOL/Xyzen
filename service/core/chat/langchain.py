@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, Typ
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages.tool import ToolMessage
 from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import Field, create_model
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -87,9 +88,10 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Any) -> List[BaseToo
                     args_json = json.dumps(kwargs)
                     result = await execute_tool_call(t_db, t_name, args_json, t_agent)
                     # Format result for AI consumption using the utility function
-                    from core.chat.content_utils import format_tool_result_for_ai
+                    # from core.chat.content_utils import format_tool_result_for_ai
 
-                    return format_tool_result_for_ai(result)
+                    # return format_tool_result_for_ai(result)
+                    return result
                 except Exception as e:
                     logger.error(f"Tool {t_name} execution failed: {e}")
                     return f"Error: {e}"
@@ -123,6 +125,7 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
         message_repo = MessageRepository(db)
         messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
 
+        num_tool_calls = 0
         history: List[Any] = []
         for message in messages:
             role = (message.role or "").lower()
@@ -135,6 +138,42 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
                 history.append(AIMessage(content=content))
             elif role == "system":
                 history.append(SystemMessage(content=content))
+            elif role == "tool":
+                formatted_content = json.loads(content)
+                if formatted_content.get("event") == ChatEventType.TOOL_CALL_REQUEST:
+                    logger.debug(f"Formatted content: {formatted_content['id']}")
+                    if num_tool_calls == 0:
+                        history.append(
+                            AIMessage(
+                                content=[],
+                                tool_calls=[
+                                    {
+                                        "name": formatted_content["name"],
+                                        "args": formatted_content["arguments"],
+                                        "id": formatted_content["id"],
+                                    }
+                                ],
+                            )
+                        )
+                        num_tool_calls += 1
+                    else:
+                        history[-1].tool_calls.append(
+                            {
+                                "name": formatted_content["name"],
+                                "args": formatted_content["arguments"],
+                                "id": formatted_content["id"],
+                            }
+                        )
+                        num_tool_calls += 1
+                elif formatted_content.get("event") == ChatEventType.TOOL_CALL_RESPONSE:
+                    logger.debug(f"Formatted content: {formatted_content['toolCallId']}")
+                    history.append(
+                        ToolMessage(
+                            content=formatted_content["result"],
+                            tool_call_id=formatted_content["toolCallId"],
+                        )
+                    )
+                    num_tool_calls -= 1
             else:
                 # Skip unknown/tool roles for now
                 continue
@@ -298,15 +337,12 @@ async def get_ai_response_stream_langchain_legacy(
                             last_message.content,
                         )
                         # Format result for frontend display using the utility function
-                        from core.chat.content_utils import format_tool_result_for_display
-
-                        formatted_result = format_tool_result_for_display(last_message.content)
                         yield {
                             "type": ChatEventType.TOOL_CALL_RESPONSE,
                             "data": {
                                 "toolCallId": tool_call_id,
                                 "status": ToolCallStatus.COMPLETED,
-                                "result": formatted_result,
+                                "result": last_message.content,
                             },
                         }
 
