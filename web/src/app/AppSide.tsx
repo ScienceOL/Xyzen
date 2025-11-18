@@ -74,7 +74,6 @@ export function AppSide({
     panelWidth,
     setPanelWidth,
     activePanel,
-    setActivePanel,
     setBackendUrl,
     user,
     fetchAgents,

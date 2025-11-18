@@ -15,7 +15,6 @@ interface ChatBubbleProps {
 }
 
 function ChatBubble({ message }: ChatBubbleProps) {
-  console.log(message);
   const { confirmToolCall, cancelToolCall, activeChatChannel } = useXyzen();
 
   const { role, content, created_at, isLoading, isStreaming, toolCalls } =
