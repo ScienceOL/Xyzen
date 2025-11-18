@@ -23,6 +23,10 @@
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
 }
 
+@utility text-2xs {
+  font-size: 0.7rem /* 0.75rem = 12px */;
+  line-height: var(--tw-leading, 1.428 /* calc(1 / 0.75) ≈ 1.333333 */);
+}
 /* safelist 一些不会在源码里出现的类 */
 @source inline('to-neutral-100');
 @source inline('to-indigo-700');

@@ -2,8 +2,10 @@ import { CheckIcon, ClipboardIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ChartDisplay } from "../charts/ChartDisplay";
+import useTheme from "@/hooks/useTheme";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface JsonDisplayProps {
   data: unknown;
@@ -23,33 +25,13 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
   enableCharts = false,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [isDark, setIsDark] = React.useState(false);
-
-  // Detect theme for line number colors
-  React.useEffect(() => {
-    const checkTheme = () => {
-      if (typeof document !== "undefined") {
-        const htmlEl = document.documentElement;
-        const hasDarkClass = htmlEl.classList.contains("dark");
-        const prefersDark =
-          window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
-        setIsDark(hasDarkClass || prefersDark);
-      }
-    };
-
-    checkTheme();
-
-    // Watch for theme changes
-    const observer = new MutationObserver(checkTheme);
-    if (typeof document !== "undefined") {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["class"],
-      });
-    }
-
-    return () => observer.disconnect();
-  }, []);
+  const { theme } = useTheme();
+  const isDark = React.useMemo(() => {
+    const prefersDark =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+    return theme === "dark" || (theme === "system" && prefersDark);
+  }, [theme]);
 
   // Format data to JSON string
   const jsonString = React.useMemo(() => {
@@ -75,38 +57,38 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
       case "success":
         return {
           container: compact
-            ? "rounded-sm bg-green-50/50 dark:bg-green-900/10 border border-green-200/60 dark:border-green-700/60"
-            : "w-full min-w-0 overflow-hidden rounded-xl border border-green-200/60 dark:border-green-700/60 bg-green-50/50 dark:bg-green-900/10 shadow flex flex-col not-prose",
+            ? "rounded-sm bg-white dark:bg-green-900/10 border border-green-300 dark:border-green-700/60"
+            : "w-full min-w-0 overflow-hidden rounded-xl border border-green-300 dark:border-green-700/60 bg-white dark:bg-green-900/10 shadow flex flex-col not-prose",
           header: compact
-            ? "flex items-center justify-between px-2 py-1 bg-green-100/60 dark:bg-green-800/30 border-b border-green-200/60 dark:border-green-600/60 rounded-t-md"
-            : "flex h-10 items-center justify-between px-4 border-b border-green-200/60 dark:border-green-600/60 bg-green-100/60 dark:bg-green-800/30",
+            ? "flex items-center justify-between px-2 py-1 bg-green-50 dark:bg-green-800/30 border-b border-green-300 dark:border-green-600/60 rounded-t-md"
+            : "flex h-10 items-center justify-between px-4 border-b border-green-300 dark:border-green-600/60 bg-green-50 dark:bg-green-800/30",
           text: compact
-            ? "text-xs font-mono text-green-700 dark:text-green-300"
-            : "text-xs font-mono text-green-700 dark:text-green-300",
+            ? "text-xs font-mono text-green-800 dark:text-green-300"
+            : "text-xs font-mono text-green-800 dark:text-green-300",
         };
       case "error":
         return {
           container: compact
-            ? "rounded-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700"
-            : "w-full min-w-0 overflow-hidden rounded-xl border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 shadow flex flex-col not-prose",
+            ? "rounded-sm bg-white dark:bg-red-900/20 border border-red-300 dark:border-red-700"
+            : "w-full min-w-0 overflow-hidden rounded-xl border border-red-300 dark:border-red-700 bg-white dark:bg-red-900/20 shadow flex flex-col not-prose",
           header: compact
-            ? "flex items-center justify-between px-2 py-1 bg-red-100 dark:bg-red-800/50 border-b border-red-200 dark:border-red-600 rounded-t-md"
-            : "flex h-10 items-center justify-between px-4 border-b border-red-200 dark:border-red-600 bg-red-100 dark:bg-red-800/50",
+            ? "flex items-center justify-between px-2 py-1 bg-red-50 dark:bg-red-800/50 border-b border-red-300 dark:border-red-600 rounded-t-md"
+            : "flex h-10 items-center justify-between px-4 border-b border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-800/50",
           text: compact
-            ? "text-xs font-mono text-red-700 dark:text-red-300"
-            : "text-xs font-mono text-red-700 dark:text-red-300",
+            ? "text-xs font-mono text-red-800 dark:text-red-300"
+            : "text-xs font-mono text-red-800 dark:text-red-300",
         };
       default:
         return {
           container: compact
             ? "rounded-sm bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700"
-            : "w-full min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1b] shadow flex flex-col not-prose",
+            : "w-full min-w-0 overflow-hidden rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#1a1a1b] shadow flex flex-col not-prose",
           header: compact
             ? "flex items-center justify-between px-2 py-1 bg-neutral-50 dark:bg-neutral-700/50 border-b border-neutral-200 dark:border-neutral-600 rounded-t-md"
-            : "flex h-10 items-center justify-between px-4 border-b border-white/10 bg-white/5",
+            : "flex h-10 items-center justify-between px-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5",
           text: compact
             ? "text-xs font-mono text-neutral-600 dark:text-neutral-400"
-            : "text-xs font-mono text-zinc-400",
+            : "text-xs font-mono text-neutral-600 dark:text-zinc-400",
         };
     }
   };
@@ -149,10 +131,10 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
           className={clsx(
             compact
               ? "absolute right-1 top-1 h-6 w-6"
-              : "absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md border text-zinc-300 transition opacity-0 border-white/10 bg-white/5 backdrop-blur-sm group-hover:opacity-100 focus-visible:opacity-100 hover:bg-white/15 hover:border-white/20 active:scale-95",
+              : "absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md border transition opacity-0 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 active:scale-95 dark:text-zinc-300 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/15 backdrop-blur-sm group-hover:opacity-100 focus-visible:opacity-100",
             copied &&
               !compact &&
-              "text-emerald-500 bg-emerald-500/10 border-emerald-500/30",
+              "text-white bg-emerald-600 border-emerald-600",
           )}
           aria-label={copied ? "Copied" : "Copy JSON"}
           title={copied ? "Copied" : "Copy JSON"}
@@ -171,7 +153,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
           )}
         >
           <SyntaxHighlighter
-            style={vscDarkPlus}
+            style={isDark ? oneDark : oneLight}
             language="json"
             PreTag="div"
             customStyle={{
@@ -203,8 +185,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
                     paddingRight: "1em",
                     textAlign: "right",
                     display: "inline-block",
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                    fontFamily: "sans-serif",
                     fontSize: "0.75rem",
                     fontVariantNumeric: "tabular-nums",
                     color: isDark ? "#a1a1aa" : "#52525b", // zinc-400 for dark, zinc-600 for light

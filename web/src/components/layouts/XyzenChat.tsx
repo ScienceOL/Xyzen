@@ -354,7 +354,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
               {messages.length === 0 ? (
                 <ThemedWelcomeMessage config={config} />
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-0.5">
                   <AnimatePresence>
                     {messages.map((msg) => (
                       <ChatBubble key={msg.id} message={msg} />
@@ -419,18 +419,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         </div>
       </div>
       {/* End of Main Chat Content Wrapper */}
-
-      {/* History Sidebar - Same Layer */}
-      {/*{showHistory && historyEnabled && (
-        <div className="w-80 flex-shrink-0 border-l border-neutral-200 dark:border-neutral-800">
-          <SessionHistory
-            context="chat"
-            isOpen={true}
-            onClose={handleCloseHistory}
-            onSelectTopic={handleSelectTopic}
-          />
-        </div>
-      )}*/}
 
       {/* Notification Modal */}
       {notification && (

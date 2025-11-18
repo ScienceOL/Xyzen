@@ -73,7 +73,7 @@ function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
       const toolMessage: Message = {
         id: msg.id || `tool-call-${toolCallId}`,
         role: "assistant",
-        content: "我需要使用工具来帮助回答您的问题。",
+        content: "",
         created_at: msg.created_at,
         toolCalls: [toolCall],
       };
@@ -653,7 +653,7 @@ export const createChatSlice: StateCreator<
               const newMessage = {
                 id: toolCallMessageId,
                 role: "assistant" as const,
-                content: "我需要使用工具来帮助回答您的问题。",
+                content: "",
                 created_at: new Date().toISOString(),
                 isLoading: false,
                 isStreaming: false,

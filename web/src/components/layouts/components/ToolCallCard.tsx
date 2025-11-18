@@ -2,14 +2,13 @@ import JsonDisplay from "@/components/shared/JsonDisplay";
 import type { ToolCall } from "@/store/types";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
-  CheckCircleIcon,
-  ClockIcon,
   ExclamationTriangleIcon,
-  PlayIcon,
   XMarkIcon,
+  CheckIcon,
 } from "@heroicons/react/24/solid";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import LoadingMessage from "./LoadingMessage";
 
 interface ToolCallCardProps {
   toolCall: ToolCall;
@@ -18,62 +17,40 @@ interface ToolCallCardProps {
   onCancel?: (toolCallId: string) => void;
 }
 
-const getStatusIcon = (status: ToolCall["status"]) => {
-  switch (status) {
-    case "pending":
-      return <PlayIcon className="h-4 w-4 text-blue-500" />;
-    case "waiting_confirmation":
-      return <ClockIcon className="h-4 w-4 text-orange-500" />;
-    case "executing":
-      return (
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="h-4 w-4"
-        >
-          <PlayIcon className="h-4 w-4 text-blue-500" />
-        </motion.div>
-      );
-    case "completed":
-      return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
-    case "failed":
-      return <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />;
-    default:
-      return <PlayIcon className="h-4 w-4 text-gray-500" />;
-  }
-};
-
 const getStatusText = (status: ToolCall["status"]) => {
   switch (status) {
     case "pending":
-      return "等待执行";
     case "waiting_confirmation":
-      return "等待确认";
     case "executing":
-      return "执行中...";
+      return <LoadingMessage size="small" />;
     case "completed":
-      return "执行完成";
+      return (
+        <motion.div
+          key="completed"
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.6, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          className="flex items-center"
+        >
+          <CheckIcon className="size-3 text-green-800/80" />
+        </motion.div>
+      );
     case "failed":
-      return "执行失败";
+      return (
+        <motion.div
+          key="failed"
+          initial={{ x: -8, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 8, opacity: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="flex items-center"
+        >
+          <ExclamationTriangleIcon className="size-3 text-red-500/80" />
+        </motion.div>
+      );
     default:
-      return "未知状态";
-  }
-};
-
-const getStatusColor = (status: ToolCall["status"]) => {
-  switch (status) {
-    case "pending":
-      return "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-900/10";
-    case "waiting_confirmation":
-      return "border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-900/10";
-    case "executing":
-      return "border-blue-300 bg-blue-100/50 dark:border-blue-700 dark:bg-blue-900/20";
-    case "completed":
-      return "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/10";
-    case "failed":
-      return "border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-900/10";
-    default:
-      return "border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900/10";
+      return null;
   }
 };
 
@@ -103,7 +80,7 @@ export default function ToolCallCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`rounded-sm border min-w-0 overflow-hidden ${getStatusColor(toolCall.status)} ${className}`}
+      className={`rounded-sm min-w-0 overflow-hidden border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900/10 ${className}`}
     >
       {/* Header - Always visible */}
       <div
@@ -117,27 +94,19 @@ export default function ToolCallCard({
         }
       >
         <div className="flex items-center space-x-3">
-          {getStatusIcon(toolCall.status)}
+          {/*{getStatusIcon(toolCall.status)}*/}
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-medium text-sm text-neutral-800 dark:text-neutral-200">
+              {getStatusText(toolCall.status)}
+              <span className="font-medium text-2xs text-neutral-600/80 dark:text-neutral-400/80 ">
                 {toolCall.name}
               </span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  isWaitingConfirmation
-                    ? "bg-orange-200/60 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
-                    : "bg-neutral-200/60 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
-                }`}
-              >
-                {getStatusText(toolCall.status)}
-              </span>
+              {/*{toolCall.description && (
+                <span className="font-medium text-xs text-neutral-600 dark:text-neutral-400">
+                  {toolCall.description}
+                </span>
+              )}*/}
             </div>
-            {toolCall.description && (
-              <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-                {toolCall.description}
-              </p>
-            )}
           </div>
         </div>
 
