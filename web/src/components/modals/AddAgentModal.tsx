@@ -21,10 +21,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     addGraphAgentToSidebar,
     hiddenGraphAgentIds,
     mcpServers,
-    builtinMcpServers,
     fetchMcpServers,
-    fetchBuiltinMcpServers,
-    quickAddBuiltinServer,
     openAddMcpServerModal,
     publishedAgents,
     officialAgents,
@@ -51,7 +48,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     agent_type: "regular" as const,
   });
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
-  const [isAutoAddingDefaultMcp, setIsAutoAddingDefaultMcp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Combine user's own + published + official agents (similar to main AgentExplorer)
@@ -96,7 +92,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       fetchPublishedGraphAgents();
       fetchOfficialGraphAgents();
       fetchMcpServers();
-      fetchBuiltinMcpServers();
     }
   }, [
     isOpen,
@@ -104,65 +99,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     fetchPublishedGraphAgents,
     fetchOfficialGraphAgents,
     fetchMcpServers,
-    fetchBuiltinMcpServers,
-  ]);
-
-  // Auto-add and select default MCP server (DynamicMCPServer)
-  useEffect(() => {
-    if (!isOpen || isAutoAddingDefaultMcp) return;
-
-    const autoAddDefaultMcp = async () => {
-      // Check if dynamic MCP server already exists in user's servers
-      const existingDynamicMcp = mcpServers.find(
-        (s) =>
-          s.name === "DynamicMCPServer" ||
-          s.url.includes("/mcp/dynamic_mcp_server"),
-      );
-
-      if (existingDynamicMcp) {
-        // Already exists, just select it if not already selected
-        if (mcpServerIds.length === 0) {
-          setMcpServerIds([existingDynamicMcp.id]);
-        }
-        return;
-      }
-
-      // Check if it's in builtin servers and marked as default
-      const defaultBuiltinMcp = builtinMcpServers.find(
-        (bs) =>
-          bs.data.is_default && bs.data.module_name === "dynamic_mcp_server",
-      );
-
-      if (defaultBuiltinMcp && !isAutoAddingDefaultMcp) {
-        // Auto-add the default MCP server
-        setIsAutoAddingDefaultMcp(true);
-        try {
-          console.log("Auto-adding default Dynamic MCP Server...");
-          await quickAddBuiltinServer(defaultBuiltinMcp);
-
-          // After adding, find it in the updated list and select it
-          const addedServer = mcpServers.find((s) =>
-            s.url.includes("/mcp/dynamic_mcp_server"),
-          );
-          if (addedServer && mcpServerIds.length === 0) {
-            setMcpServerIds([addedServer.id]);
-          }
-        } catch (error) {
-          console.error("Failed to auto-add default MCP server:", error);
-        } finally {
-          setIsAutoAddingDefaultMcp(false);
-        }
-      }
-    };
-
-    autoAddDefaultMcp();
-  }, [
-    isOpen,
-    mcpServers,
-    builtinMcpServers,
-    mcpServerIds.length,
-    quickAddBuiltinServer,
-    isAutoAddingDefaultMcp,
   ]);
 
   const handleChange = (
@@ -249,7 +185,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     });
     setSelectedExistingAgent(null);
     setMcpServerIds([]);
-    setIsAutoAddingDefaultMcp(false);
     onClose();
   };
 

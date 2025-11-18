@@ -1,10 +1,10 @@
 import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
+import type { Agent } from "@/types/agents";
 import { Button, Field, Label } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import type { Agent } from "@/types/agents";
 import { McpServerItem } from "./McpServerItem";
 
 interface EditAgentModalProps {
@@ -22,6 +22,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     useXyzen();
   const [agent, setAgent] = useState<Agent | null>(agentToEdit);
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setAgent(agentToEdit);
@@ -52,8 +53,17 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agent) return;
-    await updateAgent({ ...agent, mcp_server_ids: mcpServerIds });
-    onClose();
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      await updateAgent({ ...agent, mcp_server_ids: mcpServerIds });
+      onClose();
+    } catch (error) {
+      console.error("Failed to update agent:", error);
+      alert("保存失败，请稍后重试。");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!agent) return null;
@@ -145,9 +155,14 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
           </Button>
           <Button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-sm bg-indigo-600 py-1.5 px-3 text-sm/6 font-semibold text-white shadow-inner shadow-white/10 focus:outline-none data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
+            disabled={isSaving}
+            className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
+              isSaving
+                ? "bg-indigo-400 text-white cursor-not-allowed dark:bg-indigo-700"
+                : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
+            }`}
           >
-            Save Changes
+            {isSaving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </form>

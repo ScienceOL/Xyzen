@@ -1,6 +1,13 @@
 "use client";
 
 import McpIcon from "@/assets/McpIcon";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/animate-ui/components/radix/sheet";
 import { useXyzen } from "@/store";
 import { getProviderColor } from "@/utils/providerColors";
 import { getProviderSourceDescription } from "@/utils/providerPreferences";
@@ -18,17 +25,9 @@ import {
   ClockIcon,
   CpuChipIcon,
   PlusIcon,
-  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/animate-ui/components/radix/sheet";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
 
 interface ChatToolbarProps {
@@ -68,6 +67,7 @@ export default function ChatToolbar({
     activeChatChannel,
     channels,
     agents,
+    systemAgents,
     mcpServers,
     updateAgent,
     updateAgentProvider,
@@ -76,6 +76,15 @@ export default function ChatToolbar({
     userDefaultProviderId,
     setUserDefaultProvider,
   } = useXyzen();
+
+  // Merge system and user agents for lookup (system + regular/graph)
+  const allAgents = useMemo(() => {
+    // Prefer unique by id; user agents shouldn't duplicate system ids, but guard anyway
+    const map = new Map<string, (typeof agents)[number]>();
+    systemAgents.forEach((a) => map.set(a.id, a));
+    agents.forEach((a) => map.set(a.id, a));
+    return Array.from(map.values());
+  }, [agents, systemAgents]);
 
   // State for managing input height
   const [inputHeight, setInputHeight] = useState(() => {
@@ -90,7 +99,7 @@ export default function ChatToolbar({
     const channel = channels[activeChatChannel];
     if (!channel?.agentId) return null;
 
-    const agent = agents.find((a) => a.id === channel.agentId);
+    const agent = allAgents.find((a) => a.id === channel.agentId);
     if (!agent?.mcp_servers?.length) return null;
 
     const connectedServers = mcpServers.filter((server) =>
@@ -101,7 +110,7 @@ export default function ChatToolbar({
       agent,
       servers: connectedServers,
     };
-  }, [activeChatChannel, channels, agents, mcpServers]);
+  }, [activeChatChannel, channels, allAgents, mcpServers]);
 
   // Get current agent's tool call confirmation setting
   const requireToolCallConfirmation = useMemo(() => {
@@ -117,8 +126,8 @@ export default function ChatToolbar({
     if (!activeChatChannel) return null;
     const channel = channels[activeChatChannel];
     if (!channel?.agentId) return null;
-    return agents.find((a) => a.id === channel.agentId) || null;
-  }, [activeChatChannel, channels, agents]);
+    return allAgents.find((a) => a.id === channel.agentId) || null;
+  }, [activeChatChannel, channels, allAgents]);
 
   // Get current agent's provider using centralized resolution logic
   const currentProvider = useMemo(() => {
@@ -263,7 +272,7 @@ export default function ChatToolbar({
             </button>
 
             {/* Tool Call Confirmation Toggle */}
-            {activeChatChannel && (
+            {/* {activeChatChannel && (
               <button
                 onClick={handleToggleToolCallConfirmation}
                 className={`flex items-center justify-center rounded-sm p-1.5 transition-colors ${
@@ -279,7 +288,7 @@ export default function ChatToolbar({
               >
                 <ShieldCheckIcon className="h-4 w-4" />
               </button>
-            )}
+            )} */}
 
             {/* Provider Selector */}
             {activeChatChannel && currentAgent && (

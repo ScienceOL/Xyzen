@@ -136,6 +136,13 @@ const AgentCard: React.FC<AgentCardProps> = ({
     y: number;
   } | null>(null);
 
+  // Treat the two built-in system agents as non-editable defaults
+  const isDefaultSystemAgent =
+    agent.id === "00000000-0000-0000-0000-000000000001" ||
+    agent.id === "00000000-0000-0000-0000-000000000002" ||
+    agent.agent_type === "builtin" ||
+    agent.agent_type === "system";
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -232,7 +239,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
           onEdit={() => onEdit?.(agent)}
           onDelete={() => onDelete?.(agent)}
           onClose={() => setContextMenu(null)}
-          isDefaultAgent={agent.agent_type === "builtin"}
+          isDefaultAgent={isDefaultSystemAgent}
           agent={agent}
         />
       )}
@@ -276,30 +283,27 @@ export default function XyzenAgent({
     activateChannel,
     hiddenGraphAgentIds,
     fetchMcpServers,
-    syncSystemAgentMcps,
   } = useXyzen();
 
   useEffect(() => {
     fetchAgents();
   }, [fetchAgents]);
 
-  // Ensure MCP servers are loaded first, then fetch system agents and sync their MCPs
+  // Ensure MCP servers are loaded first, then fetch system agents
   useEffect(() => {
     const loadAgentsWithMcps = async () => {
       try {
         // First, load MCP servers
         await fetchMcpServers();
-        // Then load system agents (which will now have their default MCPs attached)
+        // Then load system agents
         await fetchSystemAgents();
-        // Finally, sync system agents with backend to ensure MCPs are stored
-        await syncSystemAgentMcps();
       } catch (error) {
         console.error("Failed to load agents with MCPs:", error);
       }
     };
 
     loadAgentsWithMcps();
-  }, [fetchMcpServers, fetchSystemAgents, syncSystemAgentMcps]);
+  }, [fetchMcpServers, fetchSystemAgents]);
 
   const handleAgentClick = async (agent: Agent) => {
     // 使用实际的 agent ID（系统助手和普通助手都有真实的 ID）
@@ -356,19 +360,11 @@ export default function XyzenAgent({
   };
 
   const handleEditClick = (agent: Agent) => {
-    // 系统助手不可编辑
-    if (agent.agent_type === "builtin") {
-      return;
-    }
     setEditingAgent(agent);
     setEditModalOpen(true);
   };
 
   const handleDeleteClick = (agent: Agent) => {
-    // 系统助手不可删除
-    if (agent.agent_type === "builtin") {
-      return;
-    }
     setAgentToDelete(agent);
     setConfirmModalOpen(true);
   };
