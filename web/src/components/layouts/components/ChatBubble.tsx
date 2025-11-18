@@ -13,20 +13,20 @@ import LoadingMessage from "./LoadingMessage";
 import ToolCallCard from "./ToolCallCard";
 
 import { motion } from "framer-motion";
-import React from "react";
+import { useCallback, useMemo } from "react";
 
 interface ChatBubbleProps {
   message: Message;
 }
 
-const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
+function ChatBubble({ message }: ChatBubbleProps) {
   const { confirmToolCall, cancelToolCall, activeChatChannel } = useXyzen();
 
   const { role, content, created_at, isLoading, isStreaming, toolCalls } =
     message;
 
   // Parse tool messages from history
-  const parsedToolCall = React.useMemo<ToolCall | null>(() => {
+  const parsedToolCall = useMemo<ToolCall | null>(() => {
     if (role === "tool") {
       const parsed = parseToolMessage(content);
       if (parsed) {
@@ -37,7 +37,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   }, [role, content]);
 
   // Detect if assistant message contains chart data
-  const chartDetection = React.useMemo(() => {
+  const chartDetection = useMemo(() => {
     if (role === "assistant" && content && !isLoading && !isStreaming) {
       try {
         // Try to parse the entire content as JSON first
@@ -132,7 +132,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   });
 
   // Render message content based on type and chart detection
-  const renderMessageContent = React.useCallback(() => {
+  const renderMessageContent = useCallback(() => {
     if (isLoading) {
       return <LoadingMessage />;
     } else if (isUserMessage) {
@@ -356,6 +356,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
       </div>
     </motion.div>
   );
-};
+}
 
 export default ChatBubble;

@@ -11,7 +11,6 @@ import ChatBubble from "./components/ChatBubble";
 import ChatInput from "./components/ChatInput";
 import ChatToolbar from "./components/ChatToolbar";
 import EmptyChat from "./components/EmptyChat";
-import SessionHistory from "./components/SessionHistory";
 import WelcomeMessage from "./components/WelcomeMessage";
 
 interface BaseChatProps {
@@ -199,6 +198,9 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
           <ChatToolbar
             onShowHistory={handleToggleHistory}
             onHeightChange={handleInputHeightChange}
+            showHistory={showHistory}
+            handleCloseHistory={handleCloseHistory}
+            handleSelectTopic={handleSelectTopic}
           />
         </div>
       </div>
@@ -394,6 +396,9 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
           <ChatToolbar
             onShowHistory={handleToggleHistory}
             onHeightChange={handleInputHeightChange}
+            showHistory={showHistory}
+            handleCloseHistory={handleCloseHistory}
+            handleSelectTopic={handleSelectTopic}
           />
           {sendBlocked && (
             <div className="mx-4 mb-1 rounded-sm bg-amber-50 px-3 py-1.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/40">
@@ -416,7 +421,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
       {/* End of Main Chat Content Wrapper */}
 
       {/* History Sidebar - Same Layer */}
-      {showHistory && historyEnabled && (
+      {/*{showHistory && historyEnabled && (
         <div className="w-80 flex-shrink-0 border-l border-neutral-200 dark:border-neutral-800">
           <SessionHistory
             context="workshop"
@@ -425,7 +430,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             onSelectTopic={handleSelectTopic}
           />
         </div>
-      )}
+      )}*/}
 
       {/* Notification Modal */}
       {notification && (

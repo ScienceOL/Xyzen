@@ -89,7 +89,7 @@ export function AppFullscreen({
         onDragEnd={handleFloaterDragEnd}
         modifiers={[restrictToVerticalAxis]}
       >
-        <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-black">
+        <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-black">
           {/* Header Bar */}
           <header className="flex h-14 flex-shrink-0 items-center justify-between px-4 bg-white/80 dark:bg-black/60 backdrop-blur-md supports-[backdrop-filter]:backdrop-blur-md shadow-sm ring-1 ring-neutral-200/60 dark:ring-neutral-800/60">
             <div className="flex items-center gap-3">

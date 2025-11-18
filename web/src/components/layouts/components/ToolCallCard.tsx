@@ -84,9 +84,7 @@ export default function ToolCallCard({
   onCancel,
 }: ToolCallCardProps) {
   // For completed/failed status (history), default to expanded to show both arguments and results
-  const isHistoryMode =
-    toolCall.status === "completed" || toolCall.status === "failed";
-  const [isExpanded, setIsExpanded] = useState(isHistoryMode);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const isWaitingConfirmation = toolCall.status === "waiting_confirmation";
 

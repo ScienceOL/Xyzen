@@ -21,10 +21,22 @@ import {
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/animate-ui/components/radix/sheet";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import SessionHistory from "./SessionHistory";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
   onHeightChange?: (height: number) => void;
+  showHistory: boolean;
+  handleCloseHistory: () => void;
+  handleSelectTopic: (topic: string) => void;
 }
 
 // Draggable resize handle component
@@ -47,6 +59,9 @@ const ResizeHandle = () => {
 export default function ChatToolbar({
   onShowHistory,
   onHeightChange,
+  showHistory,
+  handleCloseHistory,
+  handleSelectTopic,
 }: ChatToolbarProps) {
   const {
     createDefaultChannel,
@@ -509,13 +524,41 @@ export default function ChatToolbar({
               </div>
             )}
           </div>
-          <button
-            onClick={onShowHistory}
-            className="flex items-center justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-            title="历史记录"
+          <Sheet
+            open={showHistory}
+            onOpenChange={(open) => {
+              if (open) {
+                onShowHistory();
+              } else {
+                handleCloseHistory();
+              }
+            }}
           >
-            <ClockIcon className="h-4 w-4" />
-          </button>
+            <SheetTrigger asChild>
+              <button
+                className="flex items-center justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
+                title="历史记录"
+              >
+                <ClockIcon className="h-4 w-4" />
+              </button>
+            </SheetTrigger>
+            <SheetContent
+              showCloseButton={false}
+              side="right"
+              className="w-[450px] p-0 h-full"
+            >
+              <VisuallyHidden>
+                <SheetTitle>会话历史</SheetTitle>
+                <SheetDescription>当前会话的对话主题</SheetDescription>
+              </VisuallyHidden>
+              <SessionHistory
+                context="chat"
+                isOpen={showHistory}
+                onClose={handleCloseHistory}
+                onSelectTopic={handleSelectTopic}
+              />
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </DndContext>
