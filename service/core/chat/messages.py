@@ -58,6 +58,7 @@ async def build_system_prompt(db: AsyncSession, agent: Optional[Agent]) -> str:
 Please format your output using Markdown.
 When writing code, use triple backticks with the language identifier (e.g. ```python).
 If you generate HTML that should be previewed, use ```html.
+If you generate ECharts JSON options, use ```echart.
 """
 
     return f"{base_prompt}\n{formatting_instructions}"

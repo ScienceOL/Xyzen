@@ -1,6 +1,7 @@
 import { CheckIcon, ClipboardIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import React, { useState } from "react";
+import ReactECharts from "echarts-for-react";
 import ReactMarkdown from "react-markdown";
 import { createHighlighter, type Highlighter } from "shiki";
 import rehypeKatex from "rehype-katex";
@@ -63,8 +64,13 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
         const highlighter = await currentPromise;
         if (!mounted) return;
 
+        const lang =
+          language === "echart" || language === "echarts"
+            ? "json"
+            : language || "text";
+
         const html = highlighter.codeToHtml(code, {
-          lang: language || "text",
+          lang,
           theme: isDark ? "one-dark-pro" : "github-light",
         });
 
@@ -125,6 +131,8 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
   };
 
   const isHtml = language === "html" || language === "xml";
+  const isEChart = language === "echart" || language === "echarts";
+  const canPreview = isHtml || isEChart;
 
   return (
     <div
@@ -147,7 +155,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
             </span>
           )}
 
-          {isHtml && (
+          {canPreview && (
             <div className="ml-2 flex items-center rounded-lg bg-black/5 p-0.5 dark:bg-white/10">
               <button
                 onClick={() => setMode("code")}
@@ -198,17 +206,33 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
         </button>
       </div>
       <div className="relative flex-1 min-h-0">
-        {mode === "preview" && isHtml ? (
-          <div className="w-full bg-white">
-            <iframe
-              srcDoc={previewCode}
-              className="w-full border-0 bg-white"
-              style={{ height: "400px" }}
-              sandbox="allow-scripts allow-forms allow-modals"
-              allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
-              title="HTML Preview"
-            />
-          </div>
+        {mode === "preview" && canPreview ? (
+          isEChart ? (
+            <div className="w-full bg-white p-4" style={{ height: "400px" }}>
+              <ReactECharts
+                option={(() => {
+                  try {
+                    return new Function("return " + code)();
+                  } catch (e) {
+                    return {};
+                  }
+                })()}
+                theme={isDark ? "dark" : undefined}
+                style={{ height: "100%", width: "100%" }}
+              />
+            </div>
+          ) : (
+            <div className="w-full bg-white">
+              <iframe
+                srcDoc={previewCode}
+                className="w-full border-0 bg-white"
+                style={{ height: "400px" }}
+                sandbox="allow-scripts allow-forms allow-modals"
+                allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
+                title="HTML Preview"
+              />
+            </div>
+          )
         ) : (
           <div className="p-5">
             <div
