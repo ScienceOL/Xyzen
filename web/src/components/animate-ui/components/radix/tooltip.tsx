@@ -23,12 +23,21 @@ function TooltipProvider({
 
 type TooltipProps = TooltipPrimitiveProps & {
   delayDuration?: TooltipPrimitiveProps["delayDuration"];
+  title?: React.ReactNode;
 };
 
-function Tooltip({ delayDuration = 0, ...props }: TooltipProps) {
+function Tooltip({
+  delayDuration = 0,
+  title,
+  children,
+  ...props
+}: TooltipProps) {
   return (
     <TooltipProvider delayDuration={delayDuration}>
-      <TooltipPrimitive {...props} />
+      <TooltipPrimitive {...props}>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent>{title}</TooltipContent>
+      </TooltipPrimitive>
     </TooltipProvider>
   );
 }

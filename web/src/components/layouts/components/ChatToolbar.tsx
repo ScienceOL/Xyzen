@@ -8,6 +8,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/animate-ui/components/radix/sheet";
+import { ShareButton } from "@/components/modals/ShareModal";
 import { useXyzen } from "@/store";
 import { getProviderColor } from "@/utils/providerColors";
 import { getProviderSourceDescription } from "@/utils/providerPreferences";
@@ -36,6 +37,7 @@ interface ChatToolbarProps {
   showHistory: boolean;
   handleCloseHistory: () => void;
   handleSelectTopic: (topic: string) => void;
+  onShowShareModal?: () => void;
 }
 
 // Draggable resize handle component
@@ -61,6 +63,7 @@ export default function ChatToolbar({
   showHistory,
   handleCloseHistory,
   handleSelectTopic,
+  onShowShareModal,
 }: ChatToolbarProps) {
   const {
     createDefaultChannel,
@@ -69,7 +72,6 @@ export default function ChatToolbar({
     agents,
     systemAgents,
     mcpServers,
-    // updateAgent,
     updateAgentProvider,
     llmProviders,
     resolveProviderForAgent,
@@ -111,15 +113,6 @@ export default function ChatToolbar({
       servers: connectedServers,
     };
   }, [activeChatChannel, channels, allAgents, mcpServers]);
-
-  // // Get current agent's tool call confirmation setting
-  // const requireToolCallConfirmation = useMemo(() => {
-  //   if (!activeChatChannel) return false;
-  //   const channel = channels[activeChatChannel];
-  //   if (!channel?.agentId) return false;
-  //   const agent = agents.find((a) => a.id === channel.agentId);
-  //   return agent?.require_tool_confirmation || false;
-  // }, [activeChatChannel, channels, agents]);
 
   // Get current agent
   const currentAgent = useMemo(() => {
@@ -533,41 +526,44 @@ export default function ChatToolbar({
               </div>
             )}
           </div>
-          <Sheet
-            open={showHistory}
-            onOpenChange={(open) => {
-              if (open) {
-                onShowHistory();
-              } else {
-                handleCloseHistory();
-              }
-            }}
-          >
-            <SheetTrigger asChild>
-              <button
-                className="flex items-center justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-                title="历史记录"
-              >
-                <ClockIcon className="h-4 w-4" />
-              </button>
-            </SheetTrigger>
-            <SheetContent
-              showCloseButton={false}
-              side="right"
-              className="w-11/12 max-w-md p-0 h-full"
+          <div className="flex items-center space-x-1">
+            {onShowShareModal && <ShareButton onClick={onShowShareModal} />}
+            <Sheet
+              open={showHistory}
+              onOpenChange={(open) => {
+                if (open) {
+                  onShowHistory();
+                } else {
+                  handleCloseHistory();
+                }
+              }}
             >
-              <VisuallyHidden>
-                <SheetTitle>会话历史</SheetTitle>
-                <SheetDescription>当前会话的对话主题</SheetDescription>
-              </VisuallyHidden>
-              <SessionHistory
-                context="chat"
-                isOpen={showHistory}
-                onClose={handleCloseHistory}
-                onSelectTopic={handleSelectTopic}
-              />
-            </SheetContent>
-          </Sheet>
+              <SheetTrigger asChild>
+                <button
+                  className="flex items-center justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
+                  title="历史记录"
+                >
+                  <ClockIcon className="h-4 w-4" />
+                </button>
+              </SheetTrigger>
+              <SheetContent
+                showCloseButton={false}
+                side="right"
+                className="w-11/12 max-w-md p-0 h-full"
+              >
+                <VisuallyHidden>
+                  <SheetTitle>会话历史</SheetTitle>
+                  <SheetDescription>当前会话的对话主题</SheetDescription>
+                </VisuallyHidden>
+                <SessionHistory
+                  context="chat"
+                  isOpen={showHistory}
+                  onClose={handleCloseHistory}
+                  onSelectTopic={handleSelectTopic}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </DndContext>

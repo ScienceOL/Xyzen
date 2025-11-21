@@ -2,10 +2,13 @@ import { CHAT_THEMES } from "@/configs/chatThemes";
 
 import EditableTitle from "@/components/base/EditableTitle";
 import NotificationModal from "@/components/modals/NotificationModal";
+import { ShareModal } from "@/components/modals/ShareModal";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+
 import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 
 import ChatBubble from "./components/ChatBubble";
 import ChatInput from "./components/ChatInput";
@@ -185,6 +188,14 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     updateTopicName,
   } = useXyzenChat(config);
 
+  // State for share modal
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Handler for showing share modal
+  const handleShowShareModal = () => {
+    setShowShareModal(true);
+  };
+
   const themeStyles = getThemeStyles(config.theme);
 
   if (!activeChatChannel) {
@@ -201,6 +212,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             showHistory={showHistory}
             handleCloseHistory={handleCloseHistory}
             handleSelectTopic={handleSelectTopic}
+            onShowShareModal={handleShowShareModal}
           />
         </div>
       </div>
@@ -399,6 +411,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             showHistory={showHistory}
             handleCloseHistory={handleCloseHistory}
             handleSelectTopic={handleSelectTopic}
+            onShowShareModal={handleShowShareModal}
           />
           {sendBlocked && (
             <div className="mx-4 mb-1 rounded-sm bg-amber-50 px-3 py-1.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/40">
@@ -432,6 +445,26 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
           onAction={notification.onAction}
         />
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        messages={messages
+          .filter((msg) => msg.role !== "tool")
+          .map((msg) => {
+            const { role, ...rest } = msg;
+            return {
+              ...rest,
+              role: role === "tool" ? "assistant" : role,
+            } as never;
+          })}
+        currentAgent={
+          currentAgent
+            ? { ...currentAgent, avatar: currentAgent.avatar ?? undefined }
+            : undefined
+        }
+      />
     </div>
   );
 }
