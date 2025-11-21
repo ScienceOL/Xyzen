@@ -1,11 +1,11 @@
 import { CheckIcon, ClipboardIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import React, { useState } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { ChartDisplay } from "../charts/ChartDisplay";
+import { createHighlighter, type Highlighter } from "shiki";
 import useTheme from "@/hooks/useTheme";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+
+// Singleton to avoid re-initializing shiki multiple times
+let highlighterPromise: Promise<Highlighter> | null = null;
 
 interface JsonDisplayProps {
   data: unknown;
@@ -22,9 +22,9 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
   compact = false,
   variant = "default",
   hideHeader = false,
-  enableCharts = false,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [highlightedHtml, setHighlightedHtml] = useState<string>("");
   const { theme } = useTheme();
   const isDark = React.useMemo(() => {
     const prefersDark =
@@ -41,6 +41,51 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
       return String(data);
     }
   }, [data]);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const initHighlighter = async () => {
+      if (!highlighterPromise) {
+        highlighterPromise = createHighlighter({
+          themes: ["one-dark-pro", "github-light"],
+          langs: ["json"],
+        });
+      }
+
+      const currentPromise = highlighterPromise;
+      if (!currentPromise) return;
+
+      try {
+        const highlighter = await currentPromise;
+        if (!mounted) return;
+
+        const html = highlighter.codeToHtml(jsonString, {
+          lang: "json",
+          theme: isDark ? "one-dark-pro" : "github-light",
+        });
+
+        if (mounted) setHighlightedHtml(html);
+      } catch (e) {
+        console.error("Shiki highlight error:", e);
+        // Fallback to text if language fails
+        if (mounted && currentPromise) {
+          const highlighter = await currentPromise;
+          const html = highlighter.codeToHtml(jsonString, {
+            lang: "text",
+            theme: isDark ? "one-dark-pro" : "github-light",
+          });
+          if (mounted) setHighlightedHtml(html);
+        }
+      }
+    };
+
+    initHighlighter();
+
+    return () => {
+      mounted = false;
+    };
+  }, [jsonString, isDark]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(jsonString).then(() => {
@@ -93,20 +138,6 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
     }
   };
 
-  // If charts are enabled, use ChartDisplay which handles both charts and JSON fallback
-  if (enableCharts) {
-    return (
-      <div className={className}>
-        <ChartDisplay
-          data={data}
-          compact={compact}
-          variant={variant}
-          fallbackToJson={true}
-        />
-      </div>
-    );
-  }
-
   // Standard JSON display
   const variantColors = getVariantColors();
   const containerClasses = clsx("group relative my-5", variantColors.container);
@@ -152,55 +183,19 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
             isDark && "dark",
           )}
         >
-          <SyntaxHighlighter
-            style={isDark ? oneDark : oneLight}
-            language="json"
-            PreTag="div"
-            customStyle={{
-              background: "transparent",
-              margin: 0,
-              padding: 0,
-              fontSize: compact ? "0.75rem" : "0.875rem",
-              overflowX: "auto",
-              width: "100%",
-              maxWidth: "100%",
-            }}
-            showLineNumbers={!compact}
-            wrapLines={true}
-            lineNumberContainerStyle={
-              compact
-                ? {}
-                : {
-                    float: "left",
-                    paddingRight: "1em",
-                    textAlign: "right",
-                    userSelect: "none",
-                  }
-            }
-            lineNumberStyle={
-              compact
-                ? {}
-                : {
-                    minWidth: "2.5em",
-                    paddingRight: "1em",
-                    textAlign: "right",
-                    display: "inline-block",
-                    fontFamily: "sans-serif",
-                    fontSize: "0.75rem",
-                    fontVariantNumeric: "tabular-nums",
-                    color: isDark ? "#a1a1aa" : "#52525b", // zinc-400 for dark, zinc-600 for light
-                  }
-            }
-            lineProps={
-              compact
-                ? undefined
-                : (lineNumber) => ({
-                    className: lineNumber === 1 ? "pl-1" : "",
-                  })
-            }
-          >
-            {jsonString}
-          </SyntaxHighlighter>
+          {!highlightedHtml ? (
+            <pre className="font-mono text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap break-all p-2">
+              {jsonString}
+            </pre>
+          ) : (
+            <div
+              className={clsx(
+                "shiki-container [&>pre]:!bg-transparent [&>pre]:!p-0 [&>pre]:!m-0 [&_code]:!font-mono",
+                compact ? "[&_code]:!text-xs" : "[&_code]:!text-sm",
+              )}
+              dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+            />
+          )}
         </div>
       </div>
     </div>

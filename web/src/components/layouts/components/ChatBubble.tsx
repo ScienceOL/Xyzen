@@ -22,8 +22,8 @@ function ChatBubble({ message }: ChatBubbleProps) {
   // Use deferred value and memoization to optimize rendering performance
   const deferredContent = useDeferredValue(content);
   const markdownContent = useMemo(
-    () => <Markdown content={deferredContent} isStreaming={isStreaming} />,
-    [deferredContent, isStreaming],
+    () => <Markdown content={deferredContent} />,
+    [deferredContent],
   );
 
   const isUserMessage = role === "user";
