@@ -1,109 +1,30 @@
 import ProfileIcon from "@/assets/ProfileIcon";
-import { ChartRenderer } from "@/components/charts/ChartRenderer";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
-import { detectChart } from "@/utils/chartDetection";
+import { motion } from "framer-motion";
+import { useDeferredValue, useMemo } from "react";
 import LoadingMessage from "./LoadingMessage";
 import ToolCallCard from "./ToolCallCard";
-
-import { motion } from "framer-motion";
-import { useCallback, useMemo } from "react";
 
 interface ChatBubbleProps {
   message: Message;
 }
 
 function ChatBubble({ message }: ChatBubbleProps) {
-  const { confirmToolCall, cancelToolCall, activeChatChannel } = useXyzen();
+  const confirmToolCall = useXyzen((state) => state.confirmToolCall);
+  const cancelToolCall = useXyzen((state) => state.cancelToolCall);
+  const activeChatChannel = useXyzen((state) => state.activeChatChannel);
 
   const { role, content, created_at, isLoading, isStreaming, toolCalls } =
     message;
 
-  // Detect if assistant message contains chart data
-  const chartDetection = useMemo(() => {
-    if (role === "assistant" && content && !isLoading && !isStreaming) {
-      try {
-        // Try to parse the entire content as JSON first
-        const parsed = JSON.parse(content);
-        return detectChart(parsed);
-      } catch {
-        // Check for JSON code blocks in markdown
-        const jsonBlockRegex = /```json\s*\n([\s\S]*?)\n```/g;
-        let matches = Array.from(content.matchAll(jsonBlockRegex));
-
-        for (const match of matches) {
-          try {
-            const parsed = JSON.parse(match[1]);
-            const detection = detectChart(parsed);
-            if (detection.isChartable) {
-              return detection;
-            }
-          } catch {
-            continue;
-          }
-        }
-
-        // Check for JSON objects embedded in text - more robust regex for nested objects
-        const jsonObjectRegex =
-          /(\{"chart":\s*\{[^}]*(?:\{[^}]*\}[^}]*)*\}[^}]*\})/g;
-        matches = Array.from(content.matchAll(jsonObjectRegex));
-
-        for (const match of matches) {
-          try {
-            const parsed = JSON.parse(match[1]);
-            const detection = detectChart(parsed);
-            if (detection.isChartable) {
-              return detection;
-            }
-          } catch {
-            continue;
-          }
-        }
-
-        // More aggressive JSON detection - look for lines that might contain complete JSON
-        const lines = content.split("\n");
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          // Try to find lines that start with {"chart": and might be complete JSON
-          if (line.startsWith('{"chart":') || line.startsWith('{ "chart":')) {
-            try {
-              const parsed = JSON.parse(line);
-              const detection = detectChart(parsed);
-              if (detection.isChartable) {
-                return detection;
-              }
-            } catch {
-              continue;
-            }
-          }
-        }
-
-        // Last resort: try to extract any JSON-like structure
-        const jsonLikeRegex = /\{[\s\S]*?"chart"[\s\S]*?\}/g;
-        matches = Array.from(content.matchAll(jsonLikeRegex));
-
-        for (const match of matches) {
-          try {
-            const parsed = JSON.parse(match[0]);
-            const detection = detectChart(parsed);
-            if (detection.isChartable) {
-              return detection;
-            }
-          } catch {
-            continue;
-          }
-        }
-      }
-    }
-    return {
-      isChartable: false,
-      chartType: null,
-      confidence: 0,
-      data: null,
-      reason: "No chart detected",
-    };
-  }, [role, content, isLoading, isStreaming]);
+  // Use deferred value and memoization to optimize rendering performance
+  const deferredContent = useDeferredValue(content);
+  const markdownContent = useMemo(
+    () => <Markdown content={deferredContent} />,
+    [deferredContent],
+  );
 
   const isUserMessage = role === "user";
   const isToolMessage = toolCalls && toolCalls.length > 0;
@@ -114,53 +35,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
     minute: "2-digit",
     second: "2-digit",
   });
-
-  // Render message content based on type and chart detection
-  const renderMessageContent = useCallback(() => {
-    if (isLoading) {
-      return <LoadingMessage size="medium" className="text-sm" />;
-    } else if (isUserMessage) {
-      return <p>{content}</p>;
-    } else if (chartDetection.isChartable && chartDetection.data) {
-      // Validate chart data before rendering
-      if (!chartDetection.data || typeof chartDetection.data !== "object") {
-        return (
-          <div className="space-y-3">
-            <div className="text-red-600 p-3 bg-red-50 dark:bg-red-900/20 rounded">
-              Chart Error: Invalid data format
-            </div>
-          </div>
-        );
-      }
-
-      // Extract text content before the JSON
-      const jsonMatch = content.match(/\{"chart":/);
-      const textBeforeJson = jsonMatch
-        ? content.substring(0, jsonMatch.index).trim()
-        : "";
-
-      return (
-        <div className="space-y-3">
-          {textBeforeJson && (
-            <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              <Markdown content={textBeforeJson} />
-            </div>
-          )}
-
-          {/* Clean Chart Container */}
-          <div className="w-full bg-white dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <ChartRenderer
-              data={chartDetection.data}
-              height={450}
-              className="w-full"
-            />
-          </div>
-        </div>
-      );
-    } else {
-      return <Markdown content={content} />;
-    }
-  }, [isLoading, isUserMessage, chartDetection, content]);
 
   // Different styles for user vs AI messages
   const messageStyles = isUserMessage
@@ -267,7 +141,13 @@ function ChatBubble({ message }: ChatBubbleProps) {
                   : "text-sm text-neutral-700 dark:text-neutral-300"
               }`}
             >
-              {renderMessageContent()}
+              {isLoading ? (
+                <LoadingMessage size="medium" className="text-sm" />
+              ) : isUserMessage ? (
+                <p>{content}</p>
+              ) : (
+                markdownContent
+              )}
               {isStreaming && !isLoading && (
                 <motion.span
                   animate={{ opacity: [0.3, 1, 0.3] }}
@@ -276,26 +156,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 />
               )}
             </div>
-
-            {/* Tool Calls */}
-            {toolCalls && toolCalls.length > 0 && (
-              <div className="mt-4 space-y-3">
-                {toolCalls.map((toolCall) => (
-                  <ToolCallCard
-                    key={toolCall.id}
-                    toolCall={toolCall}
-                    onConfirm={(toolCallId) =>
-                      activeChatChannel &&
-                      confirmToolCall(activeChatChannel, toolCallId)
-                    }
-                    onCancel={(toolCallId) =>
-                      activeChatChannel &&
-                      cancelToolCall(activeChatChannel, toolCallId)
-                    }
-                  />
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </motion.div>

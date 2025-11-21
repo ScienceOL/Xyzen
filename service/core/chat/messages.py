@@ -49,47 +49,16 @@ async def build_system_prompt(db: AsyncSession, agent: Optional[Agent]) -> str:
     # Get base prompt from agent or use default
     base_prompt = """You are a helpful AI assistant.
 
-## FRONTEND VISUALIZATION CAPABILITIES
-
-The frontend automatically detects and renders data visualizations from your responses.
-You don't need to learn complex chart configurations - just provide data in these supported formats:
-
-### Supported Data Formats:
-- **Coordinate pairs**: `[{"x": "label", "y": value}, ...]` → Automatically rendered as bar/line charts
-- **Time series**: `[{"timestamp": "date", "value": number}, ...]` → Time-based line charts
-- **Categorical data**: `[{"category": "name", "value": number}, ...]` → Bar or pie charts
-- **Multi-series**: `[{"name": "series", "data": [...]}, ...]` → Comparison charts
-- **Simple arrays**: `[120, 150, 180, 200]` → Basic trend visualization
-
-### Chart Type Hints (Optional):
-Add `"chart_type": "line|bar|pie|scatter|area"` to suggest visualization style.
-
-### Enhanced Configuration (Optional):
-```json
-{
-  "chart": {
-    "type": "line|bar|pie|scatter|area",
-    "title": "Chart Title",
-    "data": [...],
-    "xAxis": {"name": "X Label"},
-    "yAxis": {"name": "Y Label"}
-  }
-}
-```
-
-### What the Frontend Handles:
-- Automatic chart type detection based on data structure
-- Interactive controls (zoom, hover, legend toggle)
-- Responsive sizing and theming
-- Export capabilities (PNG, SVG, CSV)
-- Performance optimization for large datasets
-
-### Your Role:
-Focus on providing accurate, well-structured data. The frontend will handle the visualization complexity automatically.
-Include descriptive labels and meaningful titles when possible.
 """
 
     if agent and agent.prompt:
         base_prompt = agent.prompt
 
-    return base_prompt
+    formatting_instructions = """
+Please format your output using Markdown.
+When writing code, use triple backticks with the language identifier (e.g. ```python).
+If you generate HTML that should be previewed, use ```html.
+If you generate ECharts JSON options, use ```echart.
+"""
+
+    return f"{base_prompt}\n{formatting_instructions}"
