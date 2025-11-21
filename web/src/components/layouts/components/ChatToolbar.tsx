@@ -69,7 +69,7 @@ export default function ChatToolbar({
     agents,
     systemAgents,
     mcpServers,
-    updateAgent,
+    // updateAgent,
     updateAgentProvider,
     llmProviders,
     resolveProviderForAgent,
@@ -112,14 +112,14 @@ export default function ChatToolbar({
     };
   }, [activeChatChannel, channels, allAgents, mcpServers]);
 
-  // Get current agent's tool call confirmation setting
-  const requireToolCallConfirmation = useMemo(() => {
-    if (!activeChatChannel) return false;
-    const channel = channels[activeChatChannel];
-    if (!channel?.agentId) return false;
-    const agent = agents.find((a) => a.id === channel.agentId);
-    return agent?.require_tool_confirmation || false;
-  }, [activeChatChannel, channels, agents]);
+  // // Get current agent's tool call confirmation setting
+  // const requireToolCallConfirmation = useMemo(() => {
+  //   if (!activeChatChannel) return false;
+  //   const channel = channels[activeChatChannel];
+  //   if (!channel?.agentId) return false;
+  //   const agent = agents.find((a) => a.id === channel.agentId);
+  //   return agent?.require_tool_confirmation || false;
+  // }, [activeChatChannel, channels, agents]);
 
   // Get current agent
   const currentAgent = useMemo(() => {
@@ -195,30 +195,30 @@ export default function ChatToolbar({
     createDefaultChannel(currentAgent?.id);
   };
 
-  const handleToggleToolCallConfirmation = async () => {
-    if (!activeChatChannel) return;
+  // const handleToggleToolCallConfirmation = async () => {
+  //   if (!activeChatChannel) return;
 
-    const channel = channels[activeChatChannel];
-    if (!channel?.agentId) return;
+  //   const channel = channels[activeChatChannel];
+  //   if (!channel?.agentId) return;
 
-    const agent = agents.find((a) => a.id === channel.agentId);
-    if (!agent) return;
+  //   const agent = agents.find((a) => a.id === channel.agentId);
+  //   if (!agent) return;
 
-    try {
-      // Update agent with new confirmation setting
-      const updatedAgent = {
-        ...agent,
-        require_tool_confirmation: !agent.require_tool_confirmation,
-      };
+  //   try {
+  //     // Update agent with new confirmation setting
+  //     const updatedAgent = {
+  //       ...agent,
+  //       require_tool_confirmation: !agent.require_tool_confirmation,
+  //     };
 
-      await updateAgent(updatedAgent);
-      console.log(
-        `Tool call confirmation ${updatedAgent.require_tool_confirmation ? "enabled" : "disabled"} for agent ${agent.name}`,
-      );
-    } catch (error) {
-      console.error("Failed to update tool call confirmation setting:", error);
-    }
-  };
+  //     await updateAgent(updatedAgent);
+  //     console.log(
+  //       `Tool call confirmation ${updatedAgent.require_tool_confirmation ? "enabled" : "disabled"} for agent ${agent.name}`,
+  //     );
+  //   } catch (error) {
+  //     console.error("Failed to update tool call confirmation setting:", error);
+  //   }
+  // };
 
   // Handle drag start
   const handleDragStart = () => {
@@ -554,7 +554,7 @@ export default function ChatToolbar({
             <SheetContent
               showCloseButton={false}
               side="right"
-              className="w-[450px] p-0 h-full"
+              className="w-11/12 max-w-md p-0 h-full"
             >
               <VisuallyHidden>
                 <SheetTitle>会话历史</SheetTitle>

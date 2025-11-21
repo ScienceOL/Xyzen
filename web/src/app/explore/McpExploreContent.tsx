@@ -64,7 +64,7 @@ const McpExploreContent: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 {/* Cover / Banner */}
-                <div className="overflow-hidden rounded-xl">
+                <div className="overflow-hidden rounded-sm">
                   <img
                     src={
                       selected.cover ||

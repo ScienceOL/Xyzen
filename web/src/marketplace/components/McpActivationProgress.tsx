@@ -78,7 +78,7 @@ const McpActivationProgressComponent: React.FC<McpActivationProgressProps> = ({
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          className={`rounded-xl border border-neutral-200 bg-white p-6 shadow-lg dark:border-neutral-800 dark:bg-neutral-900 ${className}`}
+          className={`rounded-sm border border-neutral-200 bg-white p-6 shadow-lg dark:border-neutral-800 dark:bg-neutral-900 ${className}`}
         >
           {/* Icon */}
           <div className="mb-4 flex justify-center">{getStatusIcon()}</div>

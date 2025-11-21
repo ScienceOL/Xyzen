@@ -137,7 +137,7 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="overflow-hidden rounded-xl"
+            className="overflow-hidden rounded-sm"
           >
             <img
               src={detail.cover}

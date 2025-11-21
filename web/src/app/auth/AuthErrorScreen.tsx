@@ -108,7 +108,7 @@ function AuthErrorScreen({
       : "p-3";
   const cardCls =
     variant === "fullscreen"
-      ? "w-full max-w-xl rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-lg shadow-black/5 dark:shadow-black/30 p-8 flex flex-col gap-6"
+      ? "w-full max-w-xl rounded-sm border border-border/60 bg-card/80 backdrop-blur-sm shadow-lg shadow-black/5 dark:shadow-black/30 p-8 flex flex-col gap-6"
       : "rounded-lg border border-border/60 bg-card/70 backdrop-blur-sm shadow-sm p-5 flex flex-col gap-5";
 
   return (

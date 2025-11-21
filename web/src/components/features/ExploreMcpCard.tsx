@@ -33,7 +33,7 @@ const ExplorerMcpCard: React.FC<{
 
   return (
     <CardContainer className="py-4" containerClassName="p-0">
-      <CardBody className="group/card relative h-auto w-full rounded-xl border border-neutral-200 bg-white p-6 dark:border-white/[0.2] dark:bg-black dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1]">
+      <CardBody className="group/card relative h-auto w-full rounded-sm border border-neutral-200 bg-white p-6 dark:border-white/[0.2] dark:bg-black dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1]">
         <div className="flex items-start justify-between mb-2">
           <CardItem
             translateZ="50"
@@ -55,7 +55,7 @@ const ExplorerMcpCard: React.FC<{
         <CardItem translateZ="100" className="mt-4 w-full">
           <img
             src={bannerUrl}
-            className="h-48 w-full rounded-xl object-cover group-hover/card:shadow-xl"
+            className="h-48 w-full rounded-sm object-cover group-hover/card:shadow-xl"
             alt={mcp.name}
           />
         </CardItem>
