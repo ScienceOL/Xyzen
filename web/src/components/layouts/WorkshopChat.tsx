@@ -357,7 +357,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                 <div className="space-y-6">
                   <AnimatePresence>
                     {messages.map((msg) => (
-                      <ChatBubble key={msg.id} message={msg} />
+                      <ChatBubble key={msg.clientId || msg.id} message={msg} />
                     ))}
                   </AnimatePresence>
                   <div ref={messagesEndRef} className="h-4" />

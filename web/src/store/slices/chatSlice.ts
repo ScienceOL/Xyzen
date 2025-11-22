@@ -17,6 +17,9 @@ import type {
  * This makes history look identical to live chat experience
  * Tool messages that can't be grouped are kept as standalone
  */
+const generateClientId = () =>
+  `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
 function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
   const result: Message[] = [];
 
@@ -72,6 +75,7 @@ function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
 
       const toolMessage: Message = {
         id: msg.id || `tool-call-${toolCallId}`,
+        clientId: msg.clientId,
         role: "assistant",
         content: "",
         created_at: msg.created_at,
@@ -100,6 +104,7 @@ function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
 
       const toolMessage: Message = {
         id: msg.id || `tool-response-${toolCallId}`,
+        clientId: msg.clientId,
         role: "assistant",
         content: "工具调用更新",
         created_at: msg.created_at,
@@ -488,6 +493,7 @@ export const createChatSlice: StateCreator<
               if (existingLoadingIndex === -1) {
                 channel.messages.push({
                   id: loadingMessageId,
+                  clientId: generateClientId(),
                   role: "assistant" as const,
                   content: "",
                   created_at: new Date().toISOString(),
@@ -509,6 +515,7 @@ export const createChatSlice: StateCreator<
                 // Add new loading message
                 channel.messages.push({
                   id: loadingMessageId,
+                  clientId: generateClientId(),
                   role: "assistant" as const,
                   content: "",
                   created_at: new Date().toISOString(),
@@ -540,6 +547,7 @@ export const createChatSlice: StateCreator<
                 // No loading present (backend may skip sending "loading"). Create a streaming message now.
                 channel.messages.push({
                   id: eventData.id,
+                  clientId: generateClientId(),
                   role: "assistant" as const,
                   content: "",
                   created_at: new Date().toISOString(),
@@ -559,6 +567,7 @@ export const createChatSlice: StateCreator<
                 // If we somehow missed streaming_start, create the message on first chunk
                 channel.messages.push({
                   id: eventData.id,
+                  clientId: generateClientId(),
                   role: "assistant" as const,
                   content: eventData.content,
                   created_at: new Date().toISOString(),
@@ -652,6 +661,7 @@ export const createChatSlice: StateCreator<
               const toolCallMessageId = `tool-call-${toolCallData.id}`;
               const newMessage = {
                 id: toolCallMessageId,
+                clientId: generateClientId(),
                 role: "assistant" as const,
                 content: "",
                 created_at: new Date().toISOString(),

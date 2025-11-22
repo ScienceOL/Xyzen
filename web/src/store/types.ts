@@ -28,6 +28,7 @@ export interface ToolCall {
 
 export interface Message {
   id: string;
+  clientId?: string;
   content: string;
   role: "user" | "assistant" | "system" | "tool";
   created_at: string;
