@@ -46,7 +46,7 @@ class MessageRepository:
         statement = select(MessageModel).where(MessageModel.topic_id == topic_id)
         if order_by_created:
             statement = statement.order_by(MessageModel.created_at)  # type: ignore
-        if limit:
+        if limit is not None:
             statement = statement.limit(limit)
         result = await self.db.exec(statement)
         return list(result.all())
