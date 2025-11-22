@@ -431,7 +431,7 @@ class LangGraphExecutor:
             logger.debug(f"Executing LLM node: {node.name}")
 
             try:
-                # Ge model configuration from node config
+                # Get model configuration from node config
                 model_name = node.config.get("model")  # For logging/debugging purposes
                 provider_name = node.config.get("provider_name")  # Optional provider specification
                 system_prompt = node.config.get("system_prompt", "")
