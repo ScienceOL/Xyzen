@@ -163,6 +163,7 @@ class LangGraphExecutor:
             logger.error(error_msg, exc_info=True)
             yield {"type": ChatEventType.ERROR, "data": {"error": error_msg}}
 
+    # TODO: DELETE
     async def execute_graph_agent_sync(
         self, agent_id: UUID, input_state: dict[str, Any], user_id: str
     ) -> GraphExecutionResult:
@@ -229,52 +230,157 @@ class LangGraphExecutor:
             )
 
     async def _execute_graph_streaming(
-        self, compiled_graph: CompiledStateGraph, input_state: dict[str, Any], agent_id: UUID, start_time: float
+        self,
+        compiled_graph: CompiledStateGraph,
+        input_state: dict[str, Any],
+        agent_id: UUID,
+        start_time: float,
     ) -> AsyncGenerator[dict[str, Any], None]:
-        """Execute graph with streaming updates"""
+        """
+        Execute graph with proper token-level streaming following langchain_legacy pattern.
+
+        Uses astream with stream_mode=["updates", "messages"] to get:
+        1. Step-by-step agent progress (execution tracking)
+        2. Token-by-token LLM streaming
+        """
+
+        # Batch logging constant (import from langchain.py pattern)
+        STREAMING_LOG_BATCH_SIZE = 50  # Log every N tokens instead of every token
 
         yield {"type": ChatEventType.PROCESSING, "data": {"status": ProcessingStatus.PREPARING_REQUEST}}
 
-        execution_steps = []
+        # Follow langchain_legacy pattern exactly
+        stream_id = f"graph_{agent_id}_{int(start_time * 1000)}"
+        is_streaming = False
+        assistant_buffer: list[str] = []
+        token_count = 0
+        execution_steps: list[dict[str, Any]] = []
 
         try:
-            # Stream graph execution
-            async for chunk in compiled_graph.astream(input_state):
-                step_data = {"step": chunk, "timestamp": time.time()}
-                execution_steps.append(step_data)
+            # Use same stream modes as langchain_legacy
+            async for mode, data in compiled_graph.astream(
+                input_state,
+                stream_mode=["updates", "messages"],
+            ):
+                if mode == "updates":
+                    logger.debug("Received stream chunk - mode: %s", mode)
 
-                # Emit step update
+                # Handle each mode separately like langchain_legacy
+                if mode == "updates":
+                    # Track execution steps (for LangGraph result storage)
+                    if not isinstance(data, dict):
+                        logger.debug("Updates data is not a dict: %r", data)
+                        continue
+
+                    execution_steps.append({"timestamp": time.time(), "update": data})
+
+                    # TODO: Add tool call handling like langchain_legacy if needed in future
+                    # For now, LangGraph doesn't emit tool calls the same way as LangChain
+
+                elif mode == "messages":
+                    # Token streaming logic - EXACTLY like langchain_legacy
+                    # data is a tuple: (message_chunk, metadata)
+                    assert isinstance(data, tuple), f"Messages data is not a tuple: {data}"
+
+                    try:
+                        message_chunk, metadata = data
+                    except Exception:
+                        logger.debug(f"Malformed messages data: {data}")
+                        continue
+
+                    # Batch logging like langchain_legacy
+                    token_count += 1
+                    if token_count == 1 or token_count % STREAMING_LOG_BATCH_SIZE == 0:
+                        logger.debug(
+                            "Received message chunks (token count: %d) | node=%s",
+                            token_count,
+                            metadata.get("langgraph_node") if isinstance(metadata, dict) else None,
+                        )
+
+                    node = None
+                    if isinstance(metadata, dict):
+                        node = metadata.get("langgraph_node") or metadata.get("node")
+                    if node and node != "assistant":  # LangGraph uses "assistant" instead of "model"
+                        continue
+
+                    # Extract token text like langchain_legacy
+                    token_text = None
+                    if isinstance(message_chunk, str):
+                        token_text = message_chunk
+                    elif hasattr(message_chunk, "content"):
+                        token_text = getattr(message_chunk, "content") or None
+                    elif hasattr(message_chunk, "text"):
+                        token_text = getattr(message_chunk, "text") or None
+                    else:
+                        # Fallback best-effort
+                        try:
+                            token_text = str(message_chunk)
+                        except Exception:
+                            token_text = None
+
+                    if token_text:
+                        # Start streaming like langchain_legacy
+                        if not is_streaming:
+                            logger.debug("Emitting streaming_start for stream_id=%s (from messages)", stream_id)
+                            yield {"type": ChatEventType.STREAMING_START, "data": {"id": stream_id}}
+                            is_streaming = True
+
+                        # Stream token like langchain_legacy
+                        yield {
+                            "type": ChatEventType.STREAMING_CHUNK,
+                            "data": {"id": stream_id, "content": token_text},
+                        }
+                        assistant_buffer.append(token_text)
+
+            # End streaming like langchain_legacy
+            if is_streaming:
+                final_content = "".join(assistant_buffer)
+
+                logger.debug(
+                    "Emitting streaming_end for stream_id=%s (total tokens: %d, total chars: %d)",
+                    stream_id,
+                    token_count,
+                    sum(len(t) for t in assistant_buffer),
+                )
+
+                # Create execution result (LangGraph specific)
+                execution_time_ms = int((time.time() - start_time) * 1000)
+                result = GraphExecutionResult(
+                    agent_id=agent_id,
+                    final_state={
+                        "final_output": final_content,
+                        "messages": input_state.get("messages", []),
+                        "current_step": "completed",
+                    },
+                    execution_steps=execution_steps,
+                    success=True,
+                    execution_time_ms=execution_time_ms,
+                )
+                await self.graph_repo.save_execution_result(result)
+
+                # Import here to avoid potential circular imports
+                from datetime import datetime, timezone
+
                 yield {
-                    "type": ChatEventType.PROCESSING,
-                    "data": {"status": ProcessingStatus.PREPARING_REQUEST, "step": chunk},
+                    "type": ChatEventType.STREAMING_END,
+                    "data": {
+                        "id": stream_id,
+                        "content": final_content,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "execution_time_ms": execution_time_ms,
+                    },
+                }
+            else:
+                # Handle case where no streaming occurred (no assistant tokens)
+                logger.warning("No streaming tokens received from LangGraph execution")
+                yield {
+                    "type": ChatEventType.ERROR,
+                    "data": {"error": "No response generated from graph execution"},
                 }
 
-            # Final result
-            final_state = await compiled_graph.ainvoke(input_state)
-            execution_time_ms = int((time.time() - start_time) * 1000)
-
-            result = GraphExecutionResult(
-                agent_id=agent_id,
-                final_state=final_state,
-                execution_steps=execution_steps,
-                success=True,
-                execution_time_ms=execution_time_ms,
-            )
-
-            # Save execution result
-            await self.graph_repo.save_execution_result(result)
-
-            # Emit completion
-            yield {
-                "type": ChatEventType.STREAMING_END,
-                "data": {"result": final_state, "execution_time_ms": execution_time_ms},
-            }
-
         except Exception as e:
-            error_msg = f"Streaming execution failed: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-
-            yield {"type": ChatEventType.ERROR, "data": {"error": error_msg}}
+            logger.error(f"Graph execution failed: {e}", exc_info=True)
+            yield {"type": ChatEventType.ERROR, "data": {"error": f"Graph execution failed: {e}"}}
 
     def _build_state_schema(self, schema_dict: dict[str, Any] | None) -> type:
         """
@@ -325,7 +431,7 @@ class LangGraphExecutor:
             logger.debug(f"Executing LLM node: {node.name}")
 
             try:
-                # Get model configuration from node config
+                # Ge model configuration from node config
                 model_name = node.config.get("model")  # For logging/debugging purposes
                 provider_name = node.config.get("provider_name")  # Optional provider specification
                 system_prompt = node.config.get("system_prompt", "")
@@ -556,6 +662,7 @@ async def execute_graph_agent_stream(
         yield chunk
 
 
+# TODO: DELETE
 async def execute_graph_agent_sync(
     db: AsyncSession, agent_id: UUID, input_state: dict[str, Any], user_id: str
 ) -> GraphExecutionResult:

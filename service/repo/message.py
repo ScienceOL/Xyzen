@@ -28,13 +28,16 @@ class MessageRepository:
         logger.debug(f"Fetching message with id: {message_id}")
         return await self.db.get(MessageModel, message_id)
 
-    async def get_messages_by_topic(self, topic_id: UUID, order_by_created: bool = True) -> list[MessageModel]:
+    async def get_messages_by_topic(
+        self, topic_id: UUID, order_by_created: bool = True, limit: int | None = None
+    ) -> list[MessageModel]:
         """
         Fetches all messages for a given topic.
 
         Args:
             topic_id: The UUID of the topic.
             order_by_created: If True, orders by created_at ascending.
+            limit: Optional limit on the number of messages returned.
 
         Returns:
             List of MessageModel instances.
@@ -43,6 +46,8 @@ class MessageRepository:
         statement = select(MessageModel).where(MessageModel.topic_id == topic_id)
         if order_by_created:
             statement = statement.order_by(MessageModel.created_at)  # type: ignore
+        if limit:
+            statement = statement.limit(limit)
         result = await self.db.exec(statement)
         return list(result.all())
 

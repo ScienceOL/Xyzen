@@ -1,6 +1,7 @@
 "use client";
 
 import { PencilIcon } from "@heroicons/react/20/solid";
+import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 interface EditableTitleProps {
@@ -124,12 +125,16 @@ export default function EditableTitle({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <span
+      <motion.span
+        key={title}
+        initial={{ opacity: 0, filter: "blur(8px)" }}
+        animate={{ opacity: 1, filter: "blur(0px)" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
         className={textClassName}
         onClick={(e) => e.stopPropagation()} // 阻止点击标题文本时触发父元素的点击事件
       >
         {title}
-      </span>
+      </motion.span>
       <button
         onClick={handleEditClick}
         className={`

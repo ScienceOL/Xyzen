@@ -18,7 +18,8 @@ interface MessageEvent {
     | "tool_call_request"
     | "tool_call_response"
     | "insufficient_balance"
-    | "error";
+    | "error"
+    | "topic_updated";
   data:
     | Message
     | {

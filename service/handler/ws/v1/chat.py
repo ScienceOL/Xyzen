@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from common.exceptions import InsufficientBalanceError
 from core.chat import get_ai_response_stream
+from core.chat.topic_generator import generate_and_update_topic_title
 from core.consume import create_consume_for_chat
 from middleware.auth import AuthContext, get_auth_context_websocket
 from middleware.database.connection import AsyncSessionLocal
@@ -397,6 +398,29 @@ async def chat_websocket(
                 if not topic_refreshed:
                     logger.error(f"Topic {topic_id} not found after user message creation")
                     continue
+
+                # === Automatic Topic Renaming ===
+                # Trigger background title generation if this is a new conversation.
+                # We do this BEFORE the AI response loop to minimize latency.
+                # The generator will use the user's message (just saved) to create the title.
+                if topic_refreshed.name in ["新的聊天", "New Chat", "New Topic"]:
+                    # Check message count to ensure it's the start of conversation.
+                    # Since we just saved the user message, if it's the first exchange,
+                    # the count might be very low (e.g. 1 if no system msg, or 2 if system msg exists).
+                    logger.debug(f"Checking message count for topic {topic_id}")
+                    msgs = await message_repo.get_messages_by_topic(topic_id, limit=5)
+                    # Relaxed condition: usually <= 3 messages (System + User) for a fresh start
+                    if len(msgs) <= 3:
+                        asyncio.create_task(
+                            generate_and_update_topic_title(
+                                message_text,
+                                topic_id,
+                                session_id,
+                                auth_ctx.user_id,
+                                manager,
+                                connection_id,
+                            )
+                        )
 
                 # Stream AI response
                 ai_message_id = None

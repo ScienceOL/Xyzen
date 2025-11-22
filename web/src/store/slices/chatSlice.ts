@@ -766,6 +766,23 @@ export const createChatSlice: StateCreator<
               }
               break;
             }
+
+            case "topic_updated": {
+              const eventData = event.data as {
+                id: string;
+                name: string;
+                updated_at: string;
+              };
+              channel.title = eventData.name;
+              const historyItem = state.chatHistory.find(
+                (h) => h.id === eventData.id,
+              );
+              if (historyItem) {
+                historyItem.title = eventData.name;
+                historyItem.updatedAt = eventData.updated_at;
+              }
+              break;
+            }
           }
         });
       },
