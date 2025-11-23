@@ -12,6 +12,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup build variables
+        id: build_setup
+        run: |
+          echo "build_start=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "commit_author=$(git log -1 --pretty=format:'%an')" >> $GITHUB_OUTPUT
+          echo "commit_email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
+          echo "commit_message=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
+          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "commit_sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "commit_date=$(git log -1 --pretty=format:'%cd' --date=format:'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -59,62 +70,63 @@ jobs:
             --certificate-authority=ca.crt \
             rollout restart deployment xyzen-web -n sciol
 
-      # - name: Calculate build duration
-      #   if: always()
-      #   id: build_duration
-      #   shell: bash
-      #   run: |
-      #     # 确保 build_start 有值
-      #     BUILD_START="${{ steps.build_setup.outputs.build_start }}"
-      #     if [ -z "$BUILD_START" ]; then
-      #       echo "Warning: build_start is empty, using current time as fallback"
-      #       BUILD_START=$(date '+%Y-%m-%d %H:%M:%S')
-      #     fi
+      - name: Calculate build duration
+        if: always()
+        id: build_duration
+        shell: bash
+        run: |
+          # 确保 build_start 有值
+          BUILD_START="${{ steps.build_setup.outputs.build_start }}"
+          if [ -z "$BUILD_START" ]; then
+            echo "Warning: build_start is empty, using current time as fallback"
+            BUILD_START=$(date '+%Y-%m-%d %H:%M:%S')
+          fi
 
-      #     if [[ $(uname) == 'Darwin' ]]; then
-      #       BUILD_START_SEC=$(date -j -f "%Y-%m-%d %H:%M:%S" "$BUILD_START" +%s)
-      #     else
-      #       BUILD_START_SEC=$(date -d "$BUILD_START" +%s)
-      #     fi
-      #     BUILD_END=$(date '+%Y-%m-%d %H:%M:%S')
-      #     BUILD_END_SEC=$(date +%s)
-      #     DURATION_SEC=$((BUILD_END_SEC - BUILD_START_SEC))
+          if [[ $(uname) == 'Darwin' ]]; then
+            BUILD_START_SEC=$(date -j -f "%Y-%m-%d %H:%M:%S" "$BUILD_START" +%s)
+          else
+            BUILD_START_SEC=$(date -d "$BUILD_START" +%s)
+          fi
+          BUILD_END=$(date '+%Y-%m-%d %H:%M:%S')
+          BUILD_END_SEC=$(date +%s)
+          DURATION_SEC=$((BUILD_END_SEC - BUILD_START_SEC))
 
-      #     # Format as hours:minutes:seconds
-      #     HOURS=$((DURATION_SEC / 3600))
-      #     MINUTES=$(((DURATION_SEC % 3600) / 60))
-      #     SECONDS=$((DURATION_SEC % 60))
+          # Format as hours:minutes:seconds
+          HOURS=$((DURATION_SEC / 3600))
+          MINUTES=$(((DURATION_SEC % 3600) / 60))
+          SECONDS=$((DURATION_SEC % 60))
 
-      #     DURATION="${HOURS}h ${MINUTES}m ${SECONDS}s"
+          DURATION="${HOURS}h ${MINUTES}m ${SECONDS}s"
 
-      #     echo "build_end=$BUILD_END" >> $GITHUB_ENV
-      #     echo "build_duration=$DURATION" >> $GITHUB_ENV
+          echo "build_end=$BUILD_END" >> $GITHUB_ENV
+          echo "build_duration=$DURATION" >> $GITHUB_ENV
 
-      # - name: Send build notification
-      #   if: always()
-      #   uses: ./.github/actions/email-notification
-      #   with:
-      #     status: ${{ job.status }}
-      #     smtp_server: smtp.feishu.cn
-      #     smtp_port: 465
-      #     smtp_user: ${{ secrets.SMTP_USER }}
-      #     smtp_pass: ${{ secrets.SMTP_PASS }}
-      #     recipient: ${{ env.RECEIVER }}
-      #     pr_number: ${{ github.event.pull_request.number }}
-      #     pr_title: ${{ github.event.pull_request.title }}
-      #     pr_url: ${{ github.event.pull_request.html_url }}
-      #     head_ref: ${{ github.head_ref }}
-      #     base_ref: ${{ github.base_ref }}
-      #     repo: ${{ github.repository }}
-      #     run_id: ${{ github.run_id }}
-      #     build_start: ${{ steps.build_setup.outputs.build_start }}
-      #     build_end: ${{ env.build_end }}
-      #     build_duration: ${{ env.build_duration }}
-      #     commit_author: ${{ steps.build_setup.outputs.commit_author }}
-      #     commit_email: ${{ steps.build_setup.outputs.commit_email }}
-      #     commit_message: ${{ steps.build_setup.outputs.commit_message }}
-      #     commit_sha: ${{ steps.build_setup.outputs.commit_sha }}
-      #     commit_sha_short: ${{ steps.build_setup.outputs.commit_sha_short }}
-      #     commit_date: ${{ steps.build_setup.outputs.commit_date }}
-      #     service_image: ${{ env.SERVICE_IMAGE }}
-      #     protium_image: ${{ env.PROTIUM_IMAGE }}
+      - name: Send build notification
+        if: always()
+        uses: ./.github/actions/email-notification
+        with:
+          status: ${{ job.status }}
+          smtp_server: smtp.feishu.cn
+          smtp_port: 465
+          smtp_user: ${{ secrets.SMTP_USER }}
+          smtp_pass: ${{ secrets.SMTP_PASS }}
+          recipient: ${{ secrets.RECEIVER }}
+          architecture: "amd64"
+          pr_number: "N/A"
+          pr_title: "Push to main"
+          pr_url: "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          head_ref: ${{ github.ref_name }}
+          base_ref: "main"
+          repo: ${{ github.repository }}
+          run_id: ${{ github.run_id }}
+          build_start: ${{ steps.build_setup.outputs.build_start }}
+          build_end: ${{ env.build_end }}
+          build_duration: ${{ env.build_duration }}
+          commit_author: ${{ steps.build_setup.outputs.commit_author }}
+          commit_email: ${{ steps.build_setup.outputs.commit_email }}
+          commit_message: ${{ steps.build_setup.outputs.commit_message }}
+          commit_sha: ${{ steps.build_setup.outputs.commit_sha }}
+          commit_sha_short: ${{ steps.build_setup.outputs.commit_sha_short }}
+          commit_date: ${{ steps.build_setup.outputs.commit_date }}
+          service_image: "registry.sciol.ac.cn/sciol/xyzen-service:latest"
+          web_image: "registry.sciol.ac.cn/sciol/xyzen-web:latest"

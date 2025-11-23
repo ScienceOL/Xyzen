@@ -73,8 +73,8 @@ inputs:
   service_image:
     description: "Service image name with tag"
     required: true
-  protium_image:
-    description: "Protium image name with tag"
+  web_image:
+    description: "Web image name with tag"
     required: true
 
 runs:
@@ -87,7 +87,7 @@ runs:
         server_port: ${{ inputs.smtp_port }}
         username: ${{ inputs.smtp_user }}
         password: ${{ inputs.smtp_pass }}
-        subject: "🚀 PROTIUM: ${{ inputs.architecture }} Build Success | PR #${{ inputs.pr_number }}"
+        subject: "🚀 Xyzen: ${{ inputs.architecture }} Build Success | PR #${{ inputs.pr_number }}"
         html_body: |
           <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; border: 1px solid #ddd; border-radius: 10px;">
             <h1 style="color: #2da44e; border-bottom: 2px solid #2da44e; padding-bottom: 10px;">✅ Build Successful for ${{ inputs.architecture }}</h1>
@@ -151,8 +151,8 @@ runs:
             <div style="background-color: #f6f8fa; padding: 15px; border-radius: 6px; margin-top: 20px;">
               <h2 style="color: #0969da; margin-top: 0;">🖼️ Docker Images</h2>
               <ul style="list-style-type: none; padding-left: 5px;">
-                <li style="padding: 5px 0;"><strong>Service:</strong> <code>${{ inputs.service_image }}-${{ inputs.architecture }}</code></li>
-                <li style="padding: 5px 0;"><strong>Protium:</strong> <code>${{ inputs.protium_image }}-${{ inputs.architecture }}</code></li>
+                <li style="padding: 5px 0;"><strong>Service:</strong> <code>${{ inputs.service_image }}</code></li>
+                <li style="padding: 5px 0;"><strong>Web:</strong> <code>${{ inputs.web_image }}</code></li>
               </ul>
             </div>
 
@@ -162,9 +162,9 @@ runs:
             </div>
 
             <div style="margin-top: 30px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #ddd; padding-top: 10px;">
-              This is an automated message from PROTIUM CI/CD system.
+              This is an automated message from Xyzen CI/CD system.
             </div>
           </div>
-        from: PROTIUM CI <${{ inputs.smtp_user }}>
+        from: Xyzen CI <${{ inputs.smtp_user }}>
         to: ${{ inputs.recipient }}
         convert_markdown: false

@@ -76,8 +76,8 @@ inputs:
   service_image:
     description: "Service image name with tag"
     required: true
-  protium_image:
-    description: "Protium image name with tag"
+  web_image:
+    description: "Web image name with tag"
     required: true
 
 runs:
@@ -110,7 +110,7 @@ runs:
         commit_sha_short: ${{ inputs.commit_sha_short }}
         commit_date: ${{ inputs.commit_date }}
         service_image: ${{ inputs.service_image }}
-        protium_image: ${{ inputs.protium_image }}
+        web_image: ${{ inputs.web_image }}
 
     - name: Send Failure Email
       if: inputs.status == 'failure'
