@@ -3,10 +3,8 @@ import logging
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from langchain.agents import create_agent
-from langchain_core.messages import AIMessage
-
 from core.providers import get_user_provider_manager
+from langchain_core.messages import HumanMessage
 from middleware.database.connection import AsyncSessionLocal
 from models.topic import TopicUpdate
 from repo.agent import AgentRepository
@@ -90,22 +88,16 @@ async def generate_and_update_topic_title(
 
             # Use the active model
             llm = user_provider_manager.create_langchain_model(provider_name)
-            langchain_agent = create_agent(model=llm)
-            response = await langchain_agent.ainvoke({"messages": [{"role": "system", "content": prompt}]})
+            response = await llm.ainvoke([HumanMessage(content=prompt)])
             logger.debug(f"LLM response: {response}")
 
             updated_topic = None
             new_title = None
-            message = response["messages"]
-            if message:
-                last_message = message[-1]
-                if isinstance(last_message, AIMessage):
-                    new_title = last_message.content
-                    if isinstance(new_title, str):
-                        updated_topic = await topic_repo.update_topic(topic_id, TopicUpdate(name=new_title))
-                        await db.commit()
-            else:
-                logger.error("LLM returned no message")
+
+            new_title = response.content
+            if isinstance(new_title, str):
+                updated_topic = await topic_repo.update_topic(topic_id, TopicUpdate(name=new_title))
+                await db.commit()
 
             if updated_topic:
                 logger.info(f"Updated topic {topic_id} title to: {new_title}")

@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
+import { useImgToClipboard } from "@/hooks/useImgToClipboard";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
@@ -197,6 +197,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     link.click();
     document.body.removeChild(link);
   };
+
+  // 直接在AlertDialog的onOpenChange中处理关闭逻辑
 
   return (
     <>

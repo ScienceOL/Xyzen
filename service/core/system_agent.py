@@ -6,16 +6,15 @@ Creates and maintains the Chat Agent and Workshop Agent with distinct personalit
 """
 
 import logging
+from typing import TypedDict
 from uuid import UUID
-
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import SYSTEM_USER_ID
 from models.agent import Agent, AgentCreate
+from models.provider import Provider
 from repo.agent import AgentRepository
 from repo.provider import ProviderRepository
-from models.provider import Provider
-from typing import TypedDict
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +177,9 @@ class SystemAgentManager:
         )
 
         # Create agent with fixed UUID
-        created_agent = await self.agent_repo.create_agent_with_fixed_id(agent_config["id"], agent_data, SYSTEM_USER_ID)
+        created_agent = await self.agent_repo.create_agent_with_fixed_id(
+            agent_config["id"], agent_data, SYSTEM_USER_ID
+        )  # ignore: E501
 
         logger.info(f"Created system agent: {created_agent.name} (ID: {created_agent.id})")
         return created_agent
