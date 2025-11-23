@@ -110,7 +110,7 @@ jobs:
           smtp_port: 465
           smtp_user: ${{ secrets.SMTP_USER }}
           smtp_pass: ${{ secrets.SMTP_PASS }}
-          recipient: ${{ secrets.RECEIVER }}
+          recipient: ${{ secrets.SMTP_RECEIVER }}
           architecture: "amd64"
           pr_number: "N/A"
           pr_title: "Push to main"
