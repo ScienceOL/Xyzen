@@ -48,6 +48,12 @@ export default defineConfig(() => {
         "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
+    optimizeDeps: {
+      include: ["shiki", "upng-js"],
+    },
+    ssr: {
+      noExternal: ["shiki"],
+    },
     server: {
       host: true, // 监听所有地址
       port: 32234,

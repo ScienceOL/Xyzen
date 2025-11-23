@@ -5,17 +5,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useImgToClipboard } from "@/hooks/useImgToClipboard";
+
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
-import {
-  CheckIcon,
-  CopyIcon,
-  DownloadIcon,
-  Share2Icon,
-  XIcon,
-} from "lucide-react";
+import { DownloadIcon, Share2Icon, XIcon } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ChatPreview from "./ChatPreview";
 // 临时类型定义，后续根据实际项目结构调整
@@ -82,9 +76,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]); // 移除 resetScreenshot 依赖，避免不必要的重置
-
-  // 使用剪贴板钩子
-  const { isCopying, copyImageToClipboard } = useImgToClipboard();
 
   // 当截图URL更新时，更新本地状态
   useEffect(() => {
@@ -207,14 +198,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     document.body.removeChild(link);
   };
 
-  // 复制到剪贴板
-  const handleCopyToClipboard = async () => {
-    if (!imageUrl) return;
-    await copyImageToClipboard(imageUrl);
-  };
-
-  // 直接在AlertDialog的onOpenChange中处理关闭逻辑
-
   return (
     <>
       <div
@@ -246,14 +229,47 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           .screenshot-container pre,
           .screenshot-container code,
           .screenshot-container .shiki,
-          .screenshot-container .shiki-container pre {
+          .screenshot-container .shiki-container,
+          .screenshot-container .shiki-container pre,
+          .screenshot-container .code-block,
+          .screenshot-container span {
             white-space: pre-wrap !important;
             word-break: break-all !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
             overflow: visible !important;
+            overflow-x: visible !important;
             max-width: 100% !important;
+            min-width: 0 !important;
+            width: 100% !important;
             background-color: transparent !important;
             height: auto !important;
+            display: block !important; /* 强制块级显示，确保占满父容器并换行 */
           }
+
+          /* 针对 span 特殊处理，保持 inline 但允许换行 */
+          .screenshot-container span {
+            display: inline !important;
+            width: auto !important;
+          }
+
+          /* 专门针对 shiki 的行样式 */
+          .screenshot-container .shiki .line {
+            white-space: pre-wrap !important;
+            display: block !important;
+            width: 100% !important;
+          }
+
+          /* 强制表格布局的代码块（如果有）也换行 */
+          .screenshot-container table,
+          .screenshot-container tr,
+          .screenshot-container td {
+            display: block !important;
+            width: 100% !important;
+            white-space: pre-wrap !important;
+          }
+
+          /* 强制移除滚动条容器的滚动属性 */
 
           /* 强制移除滚动条容器的滚动属性 */
           .screenshot-container .overflow-x-auto,
