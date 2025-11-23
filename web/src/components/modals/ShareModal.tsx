@@ -5,7 +5,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useImgToClipboard } from "@/hooks/useImgToClipboard";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
