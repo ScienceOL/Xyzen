@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -11,6 +11,7 @@ class ProviderType(Enum):
     AZURE_OPENAI = "azure_openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
+    GOOGLE_VERTEX = "google_vertex"
 
 
 class ProviderTemplate(BaseModel):
@@ -19,9 +20,9 @@ class ProviderTemplate(BaseModel):
     type: str
     display_name: str
     description: str
-    required_fields: List[str]
-    optional_fields: List[str]
-    default_config: Dict[str, Any]
+    required_fields: list[str]
+    optional_fields: list[str]
+    default_config: dict[str, Any]
 
 
 # Provider templates for the UI
