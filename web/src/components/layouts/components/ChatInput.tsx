@@ -1,5 +1,5 @@
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -75,8 +75,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         {/* 右侧区域:发送按钮和提示在同一行 - 绝对定位 */}
         <div className="absolute right-4 bottom-3 flex items-center gap-3 whitespace-nowrap">
-          {/* 快捷键提示 - 淡色 */}
-          <div className="flex items-center gap-2 text-[11px] text-neutral-400/60 dark:text-neutral-500/60">
+          {/* 快捷键提示 - 淡色，移动端隐藏 */}
+          <div className="hidden sm:flex items-center gap-2 text-[11px] text-neutral-400/60 dark:text-neutral-500/60">
             <span className="flex items-center gap-1">
               <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
                 Enter
