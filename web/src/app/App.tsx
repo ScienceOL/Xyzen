@@ -9,7 +9,7 @@ import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
 import useTheme from "@/hooks/useTheme";
-import { LAYOUT_STYLE } from "@/store/slices/uiSlice/types";
+import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
@@ -27,11 +27,13 @@ const queryClient = new QueryClient({
 export interface XyzenProps {
   backendUrl?: string;
   showLlmProvider?: boolean;
+  centeredInputPosition?: InputPosition;
 }
 
 export function Xyzen({
   backendUrl = DEFAULT_BACKEND_URL,
   showLlmProvider = false,
+  centeredInputPosition = "bottom-right",
 }: XyzenProps) {
   const {
     isXyzenOpen,
@@ -207,7 +209,7 @@ export function Xyzen({
     layoutStyle === LAYOUT_STYLE.Sidebar && !isXyzenOpen && !isMobile;
 
   const mainLayout = shouldShowCompactInput ? (
-    <CenteredInput position="top-right" />
+    <CenteredInput position={centeredInputPosition} />
   ) : isMobile ? (
     // 小于阈值：强制 Sidebar，全宽且不可拖拽
     <AppSide
