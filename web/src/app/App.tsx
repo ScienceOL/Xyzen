@@ -33,7 +33,7 @@ export interface XyzenProps {
 export function Xyzen({
   backendUrl = DEFAULT_BACKEND_URL,
   showLlmProvider = false,
-  centeredInputPosition = "bottom-right",
+  centeredInputPosition,
 }: XyzenProps) {
   const {
     isXyzenOpen,
@@ -45,6 +45,7 @@ export function Xyzen({
     fetchMcpServers,
     fetchChatHistory,
     activateChannel,
+    setInputPosition,
   } = useXyzen();
   const { status } = useAuth();
 
@@ -100,6 +101,13 @@ export function Xyzen({
     setBackendUrl(backendUrl);
     void autoLogin();
   }, [backendUrl, setBackendUrl]);
+
+  // Sync prop to store if provided
+  useEffect(() => {
+    if (centeredInputPosition) {
+      setInputPosition(centeredInputPosition);
+    }
+  }, [centeredInputPosition, setInputPosition]);
 
   // Load initial data when auth succeeds
   useEffect(() => {
