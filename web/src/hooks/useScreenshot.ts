@@ -91,6 +91,7 @@ const convertSvgToPng = (
         try {
           // 如果 UPNG 失败，尝试直接导出 Canvas
           // 注意：这里可能还是会因为 Canvas 太大而失败
+          const canvas = document.createElement("canvas");
           canvas.toBlob((blob) => {
             if (blob) {
               resolve(URL.createObjectURL(blob));
