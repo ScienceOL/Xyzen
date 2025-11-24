@@ -98,7 +98,7 @@ from models.graph import (
     GraphEdgeCreate,
     GraphNodeCreate,
 )
-from repo.graph import GraphRepository
+from repos.graph import GraphRepository
 
 logger = logging.getLogger(__name__)
 

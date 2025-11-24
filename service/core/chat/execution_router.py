@@ -344,7 +344,7 @@ async def get_ai_response_stream(
     """
     try:
         # Import here to avoid circular imports
-        from repo.session import SessionRepository
+        from repos.session import SessionRepository
 
         # Get agent_id from session
         session_repo = SessionRepository(db)

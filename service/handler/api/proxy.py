@@ -11,9 +11,10 @@ import os
 import httpx
 from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, Response
+
 from internal.configs import configs
 from middleware.database.connection import AsyncSessionLocal
-from repo import SmitheryCacheRepository
+from repos import SmitheryCacheRepository
 
 logger = logging.getLogger(__name__)
 

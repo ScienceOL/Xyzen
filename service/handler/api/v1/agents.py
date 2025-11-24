@@ -6,8 +6,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code import ErrCodeError, handle_auth_error
 from core.agent_service import AgentService, UnifiedAgentRead
-from core.system_agent import SystemAgentManager
 from core.auth import AuthorizationService, get_auth_service
+from core.system_agent import SystemAgentManager
 from middleware.auth import get_current_user
 from middleware.database import get_session
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentUpdate
@@ -20,7 +20,7 @@ except Exception as e:
     import logging
 
     logging.getLogger(__name__).warning(f"Failed to rebuild AgentReadWithDetails: {e}")
-from repo import AgentRepository, ProviderRepository
+from repos import AgentRepository, ProviderRepository
 
 router = APIRouter(tags=["agents"])
 

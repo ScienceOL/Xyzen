@@ -15,7 +15,7 @@ from middleware.auth import AuthContext, get_auth_context_websocket
 from middleware.database.connection import AsyncSessionLocal
 from models.message import Message as MessageModel
 from models.message import MessageCreate
-from repo import MessageRepository, SessionRepository, TopicRepository
+from repos import MessageRepository, SessionRepository, TopicRepository
 from schemas.chat_events import ChatClientEventType, ChatEventType, ToolCallStatus
 
 # --- Logger Setup ---

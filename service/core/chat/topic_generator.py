@@ -3,13 +3,14 @@ import logging
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from core.providers import get_user_provider_manager
 from langchain_core.messages import HumanMessage
+
+from core.providers import get_user_provider_manager
 from middleware.database.connection import AsyncSessionLocal
 from models.topic import TopicUpdate
-from repo.agent import AgentRepository
-from repo.session import SessionRepository
-from repo.topic import TopicRepository
+from repos.agent import AgentRepository
+from repos.session import SessionRepository
+from repos.topic import TopicRepository
 
 if TYPE_CHECKING:
     from handler.ws.v1.chat import ConnectionManager

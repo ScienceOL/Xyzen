@@ -1,16 +1,17 @@
 """Tests for Providers API handlers."""
 
-import pytest
 from uuid import uuid4
+
+import pytest
 from httpx import AsyncClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.main import app
-from core.auth import AuthorizationService
 from common.code import ErrCode, ErrCodeError
+from core.auth import AuthorizationService
 from middleware.auth import get_current_user
 from models.provider import Provider, ProviderCreate
-from repo.provider import ProviderRepository
+from repos.provider import ProviderRepository
 
 
 class TestProviderAuthorization:

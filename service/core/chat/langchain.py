@@ -120,7 +120,7 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
     with raw tool execution transcripts.
     """
     try:
-        from repo.message import MessageRepository
+        from repos.message import MessageRepository
 
         message_repo = MessageRepository(db)
         messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
@@ -211,8 +211,8 @@ async def get_ai_response_stream_langchain_legacy(
     # Use the provided agent parameter (for legacy compatibility)
     # If no agent provided, try to load from session
     if agent is None:
-        from repo.agent import AgentRepository
-        from repo.session import SessionRepository
+        from repos.agent import AgentRepository
+        from repos.session import SessionRepository
 
         session_repo = SessionRepository(db)
         session = await session_repo.get_session_by_id(topic.session_id)

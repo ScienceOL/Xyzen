@@ -4,12 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from core.agent_type_detector import AgentTypeDetector
 from middleware.auth import get_current_user
 from middleware.database import get_session
 from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics
 from models.topic import TopicCreate, TopicRead
-from repo import MessageRepository, SessionRepository, TopicRepository
-from core.agent_type_detector import AgentTypeDetector
+from repos import MessageRepository, SessionRepository, TopicRepository
 
 # Ensure forward references are resolved after importing both models
 try:

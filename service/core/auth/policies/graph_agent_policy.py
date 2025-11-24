@@ -2,9 +2,9 @@ from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models.graph import GraphAgent
-from repo.graph import GraphRepository
 from common.code import ErrCode
+from models.graph import GraphAgent
+from repos.graph import GraphRepository
 
 from .resource_policy import ResourcePolicyBase
 

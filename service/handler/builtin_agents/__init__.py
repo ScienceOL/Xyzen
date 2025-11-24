@@ -251,7 +251,7 @@ class BuiltinGraphAgentRegistry:
                 - total: Total number of agents processed
         """
         from models.graph import GraphAgent, GraphAgentCreate
-        from repo.graph import GraphRepository
+        from repos.graph import GraphRepository
 
         repo = GraphRepository(db)
         stats = {"created": 0, "updated": 0, "failed": 0, "total": len(self.agents)}

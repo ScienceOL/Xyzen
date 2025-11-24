@@ -24,7 +24,7 @@ async def agent_has_dynamic_mcp(db: AsyncSession, agent: Optional[Agent]) -> boo
         return False
 
     # Load MCP servers for the agent using AgentRepository
-    from repo.agent import AgentRepository
+    from repos.agent import AgentRepository
 
     agent_repo = AgentRepository(db)
     mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)

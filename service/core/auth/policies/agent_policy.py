@@ -2,9 +2,9 @@ from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models.agent import Agent
-from repo.agent import AgentRepository
 from common.code import ErrCode
+from models.agent import Agent
+from repos.agent import AgentRepository
 
 from .resource_policy import ResourcePolicyBase
 

@@ -13,7 +13,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.exceptions import InsufficientBalanceError
 from models.consume import ConsumeRecord, ConsumeRecordCreate, ConsumeRecordUpdate, UserConsumeSummary
-from repo.consume import ConsumeRepository
+from repos.consume import ConsumeRepository
 
 logger = logging.getLogger(__name__)
 

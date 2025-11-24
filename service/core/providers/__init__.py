@@ -14,7 +14,7 @@ from internal import configs
 from internal.configs.llm import LLMConfig
 from middleware.database.connection import AsyncSessionLocal
 from models.provider import Provider, ProviderCreate, ProviderUpdate
-from repo.provider import ProviderRepository
+from repos.provider import ProviderRepository
 from schemas.providers import ProviderType
 
 from .anthropic import AnthropicProvider
@@ -390,7 +390,7 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> LLMProvid
     Raises:
         ValueError: If no providers available (neither user's nor system)
     """
-    from repo.provider import ProviderRepository
+    from repos.provider import ProviderRepository
 
     provider_repo = ProviderRepository(db)
 

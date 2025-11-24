@@ -1,11 +1,12 @@
 """Tests for ProviderRepository."""
 
-import pytest
 from uuid import uuid4
+
+import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.provider import Provider, ProviderCreate, ProviderUpdate
-from repo.provider import ProviderRepository
+from repos.provider import ProviderRepository
 
 
 class TestProviderRepository:

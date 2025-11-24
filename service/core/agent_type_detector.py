@@ -15,8 +15,8 @@ from handler.builtin_agents import registry as builtin_registry
 from handler.builtin_agents.base_graph_agent import BaseBuiltinGraphAgent
 from models.agent import Agent
 from models.graph import GraphAgent
-from repo import AgentRepository
-from repo.graph import GraphRepository
+from repos.agent import AgentRepository
+from repos.graph import GraphRepository
 
 logger = logging.getLogger(__name__)
 

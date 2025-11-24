@@ -12,8 +12,8 @@ from uuid import UUID
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from repo.agent import AgentRepository
-from repo.graph import GraphRepository
+from repos.agent import AgentRepository
+from repos.graph import GraphRepository
 
 
 class UnifiedAgentRead(BaseModel):

@@ -19,7 +19,7 @@ from models.tool import (
     ToolUpdate,
     ToolVersionCreate,
 )
-from repo.tool import ToolRepository
+from repos.tool import ToolRepository
 from utils.code_analyzer import discover_functions_from_code, generate_basic_schema
 from utils.tool_loader import tool_loader
 

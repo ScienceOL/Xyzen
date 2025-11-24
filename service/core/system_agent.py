@@ -9,12 +9,13 @@ import logging
 from typing import TypedDict
 from uuid import UUID
 
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from core.providers import SYSTEM_USER_ID
 from models.agent import Agent, AgentCreate
 from models.provider import Provider
-from repo.agent import AgentRepository
-from repo.provider import ProviderRepository
-from sqlmodel.ext.asyncio.session import AsyncSession
+from repos.agent import AgentRepository
+from repos.provider import ProviderRepository
 
 logger = logging.getLogger(__name__)
 

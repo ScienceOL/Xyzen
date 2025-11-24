@@ -12,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.graph import GraphExecutionResult
 from models.topic import Topic as TopicModel
-from repo.message import MessageRepository
+from repos.message import MessageRepository
 
 logger = logging.getLogger(__name__)
 

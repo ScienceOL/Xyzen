@@ -4,8 +4,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code import ErrCode
 from models.topic import Topic
-from repo.session import SessionRepository
-from repo.topic import TopicRepository
+from repos.session import SessionRepository
+from repos.topic import TopicRepository
 
 from .resource_policy import ResourcePolicyBase
 

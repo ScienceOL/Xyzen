@@ -11,7 +11,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.mcp import async_check_mcp_server_status
 from models.mcp import McpServer
-from repo.mcp import McpRepository
+from repos.mcp import McpRepository
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ async def prepare_mcp_tools(db: AsyncSession, agent: Any) -> list[dict[str, Any]
     tools: list[dict[str, Any]] = []
     if agent:
         # Load MCP servers for the agent using AgentRepository
-        from repo.agent import AgentRepository
+        from repos.agent import AgentRepository
 
         agent_repo = AgentRepository(db)
         mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
@@ -68,7 +68,7 @@ async def execute_tool_call(db: AsyncSession, tool_name: str, tool_args: str, ag
 
         if agent:
             # Load MCP servers for the agent using AgentRepository
-            from repo.agent import AgentRepository
+            from repos.agent import AgentRepository
 
             agent_repo = AgentRepository(db)
             mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)

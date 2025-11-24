@@ -4,7 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code import ErrCode
 from models.sessions import Session
-from repo.session import SessionRepository
+from repos.session import SessionRepository
 
 from .resource_policy import ResourcePolicyBase
 

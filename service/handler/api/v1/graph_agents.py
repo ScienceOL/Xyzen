@@ -23,7 +23,7 @@ from models.graph import (
     GraphAgentWithGraph,
     GraphExecutionResult,
 )
-from repo.graph import GraphRepository
+from repos.graph import GraphRepository
 
 router = APIRouter(tags=["graph-agents"])
 

@@ -25,7 +25,7 @@ from models.graph import (
     GraphNode,
     GraphNodeRead,
 )
-from repo.graph import GraphRepository
+from repos.graph import GraphRepository
 from schemas.chat_events import ChatEventType, ProcessingStatus
 
 logger = logging.getLogger(__name__)

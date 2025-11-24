@@ -9,7 +9,7 @@ from middleware.database import get_session
 from models.message import MessageRead
 from models.topic import Topic as TopicModel
 from models.topic import TopicCreate, TopicRead, TopicUpdate
-from repo import MessageRepository, SessionRepository, TopicRepository
+from repos import MessageRepository, SessionRepository, TopicRepository
 
 router = APIRouter(tags=["topics"])
 
