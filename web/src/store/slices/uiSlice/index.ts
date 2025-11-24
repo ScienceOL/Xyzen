@@ -3,7 +3,7 @@ import { DEFAULT_WIDTH } from "@/configs/common";
 import xyzenService from "@/service/xyzenService";
 import type { StateCreator } from "zustand";
 import type { Theme, UiSettingType, XyzenState } from "../../types";
-import { type LayoutStyle } from "./types";
+import { type InputPosition, type LayoutStyle } from "./types";
 
 // Ensure xyzen service is aware of the default backend on startup
 xyzenService.setBackendUrl(DEFAULT_BACKEND_URL);
@@ -18,6 +18,7 @@ export interface UiSlice {
   activePanel: ActivityPanel;
   theme: Theme;
   layoutStyle: LayoutStyle;
+  inputPosition: InputPosition;
   // Global modals
   isMcpListModalOpen: boolean;
   isLlmProvidersModalOpen: boolean;
@@ -37,6 +38,7 @@ export interface UiSlice {
   setActivePanel: (panel: ActivityPanel) => void;
   setTheme: (theme: Theme) => void;
   setLayoutStyle: (style: LayoutStyle) => void;
+  setInputPosition: (position: InputPosition) => void;
   setBackendUrl: (url: string) => void;
   // MCP list modal
   openMcpListModal: () => void;
@@ -70,6 +72,8 @@ export const createUiSlice: StateCreator<
   activePanel: "chat",
   theme: (localStorage.getItem("theme") as Theme) || "system",
   layoutStyle: DEFAULT_LAYOUT_STYLE,
+  inputPosition:
+    (localStorage.getItem("inputPosition") as InputPosition) || "bottom",
   isMcpListModalOpen: false,
   isLlmProvidersModalOpen: false,
   isAddMcpServerModalOpen: false,
@@ -100,6 +104,12 @@ export const createUiSlice: StateCreator<
       localStorage.setItem("layoutStyle", style);
     }
     set({ layoutStyle: style });
+  },
+  setInputPosition: (position) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("inputPosition", position);
+    }
+    set({ inputPosition: position });
   },
   setBackendUrl: (url) => {
     set({ backendUrl: url });

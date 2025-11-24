@@ -207,7 +207,7 @@ export function Xyzen({
     layoutStyle === LAYOUT_STYLE.Sidebar && !isXyzenOpen && !isMobile;
 
   const mainLayout = shouldShowCompactInput ? (
-    <CenteredInput />
+    <CenteredInput position="top-right" />
   ) : isMobile ? (
     // 小于阈值：强制 Sidebar，全宽且不可拖拽
     <AppSide

@@ -9,3 +9,12 @@ export type LayoutStyle = (typeof LAYOUT_STYLE)[keyof typeof LAYOUT_STYLE];
 export const LAYOUT_STYLES = Object.values(
   LAYOUT_STYLE,
 ) as readonly LayoutStyle[];
+
+export type InputPosition =
+  | "top"
+  | "bottom"
+  | "center"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";

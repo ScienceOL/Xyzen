@@ -1,18 +1,5 @@
-import type {
-  DragEndEvent,
-  DragMoveEvent,
-  DragStartEvent,
-} from "@dnd-kit/core";
-import {
-  DndContext,
-  PointerSensor,
-  useDraggable,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { ChevronLeftIcon, CogIcon } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import McpIcon from "@/assets/McpIcon";
 import { AuthStatus, SettingsButton } from "@/components/features";
@@ -22,7 +9,7 @@ import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
-import { DEFAULT_WIDTH, MAX_WIDTH, MIN_WIDTH } from "@/configs/common";
+import { DEFAULT_WIDTH, MIN_WIDTH } from "@/configs/common";
 import { useXyzen } from "@/store";
 import { PanelRightCloseIcon } from "lucide-react";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
@@ -35,31 +22,9 @@ export interface AppSideProps {
   onRetryAuth?: () => void;
 }
 
-// Resizer handle only shown on non-mobile
-function DragHandle({
-  isActive,
-  onDoubleClick,
-}: {
-  isActive: boolean;
-  onDoubleClick: (e: React.MouseEvent) => void;
-}) {
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: "xyzen-resizer",
-  });
-  return (
-    <div
-      ref={setNodeRef}
-      className={`absolute left-0 top-0 z-50 h-full w-1 cursor-col-resize ${
-        isActive
-          ? "bg-indigo-500 shadow-md dark:bg-indigo-400"
-          : "bg-transparent hover:bg-indigo-400/60 hover:shadow-sm dark:hover:bg-indigo-500/60"
-      } transition-all duration-150 ease-in-out`}
-      {...listeners}
-      {...attributes}
-      onDoubleClick={onDoubleClick}
-    />
-  );
-}
+const MIN_HEIGHT = 400;
+
+type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 export function AppSide({
   backendUrl = DEFAULT_BACKEND_URL,
@@ -71,8 +36,6 @@ export function AppSide({
   const {
     isXyzenOpen,
     closeXyzen,
-    panelWidth,
-    setPanelWidth,
     activePanel,
     setBackendUrl,
     openMcpListModal,
@@ -81,52 +44,36 @@ export function AppSide({
   const { activeChatChannel, setActiveChatChannel } = useXyzen();
 
   const [mounted, setMounted] = useState(false);
+
+  // Floating window state
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [size, setSize] = useState({ width: DEFAULT_WIDTH, height: 600 });
   const [isDragging, setIsDragging] = useState(false);
-  const lastWidthRef = useRef<number>(panelWidth);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeDirRef = useRef<ResizeDirection | null>(null);
 
   // Init backend; auth is initialized at App root
   useEffect(() => {
     setMounted(true);
     setBackendUrl(backendUrl);
+
+    // Set initial position centered-right if not set
+    if (typeof window !== "undefined") {
+      const initialHeight = Math.min(window.innerHeight - 100, 700);
+      const initialWidth = DEFAULT_WIDTH;
+      const initialX = window.innerWidth - initialWidth - 50;
+      const initialY = (window.innerHeight - initialHeight) / 2;
+
+      setPosition({
+        x: Math.max(20, initialX),
+        y: Math.max(20, initialY),
+      });
+      setSize({
+        width: initialWidth,
+        height: initialHeight,
+      });
+    }
   }, [backendUrl, setBackendUrl]);
-
-  // Sensors only when resizable
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
-
-  const clamp = (n: number, min: number, max: number) =>
-    Math.max(min, Math.min(max, n));
-
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      if (event.active.id !== "xyzen-resizer") return;
-      setIsDragging(true);
-      lastWidthRef.current = panelWidth;
-    },
-    [panelWidth],
-  );
-
-  const handleDragMove = useCallback(
-    (event: DragMoveEvent) => {
-      if (event.active.id !== "xyzen-resizer") return;
-      // disable all animate css
-      const deltaX = event.delta.x; // positive: right, negative: left
-      const next = clamp(lastWidthRef.current - deltaX, MIN_WIDTH, MAX_WIDTH);
-      setPanelWidth(next);
-    },
-    [setPanelWidth],
-  );
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    if (event.active.id !== "xyzen-resizer") return;
-    setIsDragging(false);
-  }, []);
-
-  const handleResizeDoubleClick = useCallback(() => {
-    setPanelWidth(DEFAULT_WIDTH);
-    lastWidthRef.current = DEFAULT_WIDTH;
-  }, [setPanelWidth]);
 
   // Keyboard shortcut to close
   useEffect(() => {
@@ -140,159 +87,330 @@ export function AppSide({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isXyzenOpen, closeXyzen]);
 
-  // Effective width: mobile = 100vw, desktop = panelWidth
-  const containerStyle = useMemo(() => {
-    if (isMobile) {
-      return { width: "100vw", transition: "none" as const };
+  // --- Dragging Logic ---
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const windowStartPos = useRef({ x: 0, y: 0 });
+
+  const handleDragStart = (e: React.PointerEvent) => {
+    if (isMobile) return;
+    // Don't drag if clicking a button or interactive element
+    if ((e.target as HTMLElement).closest("button, [role='button']")) return;
+
+    setIsDragging(true);
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    windowStartPos.current = { ...position };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handleDragMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const dx = e.clientX - dragStartPos.current.x;
+    const dy = e.clientY - dragStartPos.current.y;
+
+    let newX = windowStartPos.current.x + dx;
+    let newY = windowStartPos.current.y + dy;
+
+    // Constraint: Prevent dragging completely outside the screen
+    // Allow sticking to edges but keep at least some part visible?
+    // User requested "now the chat can be dragged to outside the screen" is a bug.
+    // So we clamp it strictly within viewport for safety.
+    const maxX = window.innerWidth - size.width;
+    const maxY = window.innerHeight - size.height;
+
+    newX = Math.max(0, Math.min(newX, maxX));
+    newY = Math.max(0, Math.min(newY, maxY));
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleDragEnd = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
+  // --- Resizing Logic ---
+  const resizeStartPos = useRef({ x: 0, y: 0 });
+  const windowStartSize = useRef({ width: 0, height: 0 });
+  const windowStartPosForResize = useRef({ x: 0, y: 0 });
+
+  const handleResizeStart = (e: React.PointerEvent, dir: ResizeDirection) => {
+    if (isMobile) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    setIsResizing(true);
+    resizeDirRef.current = dir;
+    resizeStartPos.current = { x: e.clientX, y: e.clientY };
+    windowStartSize.current = { ...size };
+    windowStartPosForResize.current = { ...position };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handleResizeMove = (e: React.PointerEvent) => {
+    if (!isResizing || !resizeDirRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dx = e.clientX - resizeStartPos.current.x;
+    const dy = e.clientY - resizeStartPos.current.y;
+
+    const startW = windowStartSize.current.width;
+    const startH = windowStartSize.current.height;
+    const startX = windowStartPosForResize.current.x;
+    const startY = windowStartPosForResize.current.y;
+
+    let newW = startW;
+    let newH = startH;
+    let newX = startX;
+    let newY = startY;
+
+    const dir = resizeDirRef.current;
+
+    // Apply delta based on direction
+    if (dir.includes("e")) newW = startW + dx;
+    if (dir.includes("w")) {
+      newW = startW - dx;
+      newX = startX + dx;
     }
-    return {
-      width: `${panelWidth || DEFAULT_WIDTH}px`,
-      transition: isDragging ? "none" : "width 0.2s ease-in-out",
-    };
-  }, [isMobile, panelWidth, isDragging]);
+    if (dir.includes("s")) newH = startH + dy;
+    if (dir.includes("n")) {
+      newH = startH - dy;
+      newY = startY + dy;
+    }
+
+    // Min Dimensions
+    if (newW < MIN_WIDTH) {
+      newW = MIN_WIDTH;
+      if (dir.includes("w")) newX = startX + (startW - MIN_WIDTH);
+    }
+    if (newH < MIN_HEIGHT) {
+      newH = MIN_HEIGHT;
+      if (dir.includes("n")) newY = startY + (startH - MIN_HEIGHT);
+    }
+
+    // Boundary Checks (Constraint to screen)
+    if (newX < 0) {
+      const diff = 0 - newX;
+      newX = 0;
+      newW -= diff;
+    }
+    if (newY < 0) {
+      const diff = 0 - newY;
+      newY = 0;
+      newH -= diff;
+    }
+    if (newX + newW > window.innerWidth) {
+      newW = window.innerWidth - newX;
+    }
+    if (newY + newH > window.innerHeight) {
+      newH = window.innerHeight - newY;
+    }
+
+    setSize({ width: newW, height: newH });
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleResizeEnd = (e: React.PointerEvent) => {
+    setIsResizing(false);
+    resizeDirRef.current = null;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+  };
 
   if (!mounted) return null;
 
+  // Styles based on mode
+  const mobileStyle: React.CSSProperties = {
+    position: "fixed",
+    right: 0,
+    top: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 50,
+  };
+
+  const desktopStyle: React.CSSProperties = {
+    position: "fixed",
+    left: position.x,
+    top: position.y,
+    width: size.width,
+    height: size.height,
+    zIndex: 50,
+    boxShadow:
+      "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+  };
+
   return (
     <>
-      {/* Mobile & Desktop unified structure for easier overlay handling */}
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
-        modifiers={[restrictToHorizontalAxis]}
+      <div
+        className={`flex flex-col bg-white dark:bg-black dark:border dark:border-neutral-800 overflow-visible ${
+          !isMobile ? "rounded-xl border border-neutral-200" : ""
+        }`}
+        style={isMobile ? mobileStyle : desktopStyle}
       >
-        <div
-          className={
-            isMobile
-              ? "fixed right-0 top-0 z-50 h-full bg-white shadow-xl dark:border-l dark:border-neutral-800 dark:bg-black"
-              : "fixed right-0 top-0 z-50 h-full bg-white shadow-xl dark:border-l dark:border-neutral-800 dark:bg-black"
-          }
-          style={containerStyle}
-        >
-          <div className="flex h-full">
-            {/* Resizer handle (shows on desktop; present but width ignored on mobile) */}
-            {!isMobile && (
-              <DragHandle
-                isActive={isDragging}
-                onDoubleClick={handleResizeDoubleClick}
-              />
-            )}
-            {/* Activity Bar */}
-            {/* <div className="w-16 flex-shrink-0 border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
-              <ActivityBar
-                activePanel={activePanel}
-                onPanelChange={setActivePanel}
-              />
-            </div> */}
-            {/* Main Content */}
-            <div className="flex flex-1 flex-col relative">
-              {/* Header */}
-              <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
-                <div className="flex items-center gap-2">
-                  {activePanel === "chat" && activeChatChannel ? (
-                    <button
-                      className="rounded-sm flex items-center gap-2 p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                      title="返回 Assistants"
-                      onClick={() => setActiveChatChannel(null)}
-                    >
-                      <ChevronLeftIcon className="size-4" />
-                      <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                        {activePanel === "chat"
-                          ? activeChatChannel
-                            ? "Chat"
-                            : "Assistants"
-                          : activePanel === "explorer"
-                            ? "Explorer"
-                            : "Workshop"}
-                      </h3>
-                    </button>
-                  ) : (
-                    <h1 className="text-base sm:text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                      Xyzen
-                    </h1>
-                  )}
+        {/* Resize Handles (Desktop Only) - Invisible but interactive */}
+        {!isMobile && (
+          <>
+            {/* Edge Handles */}
+            <div
+              className="absolute top-0 left-0 w-full h-1.5 cursor-ns-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+              onPointerDown={(e) => handleResizeStart(e, "n")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-full h-1.5 cursor-ns-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+              onPointerDown={(e) => handleResizeStart(e, "s")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
+            <div
+              className="absolute top-0 left-0 w-1.5 h-full cursor-ew-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+              onPointerDown={(e) => handleResizeStart(e, "w")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
+            <div
+              className="absolute top-0 right-0 w-1.5 h-full cursor-ew-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+              onPointerDown={(e) => handleResizeStart(e, "e")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
 
-                  {/* Shortcut hint (only in sidebar mode) */}
-                  {!isMobile && <ToggleSidePanelShortcutHint />}
-                </div>
-                <div className="flex items-center space-x-1">
-                  <SettingsButton />
-                  <button
-                    className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                    title="MCP 管理"
-                    onClick={openMcpListModal}
-                  >
-                    <McpIcon className="h-5 w-5" />
-                  </button>
-                  {showLlmProvider && (
-                    <button
-                      className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                      title="LLM 提供商"
-                      onClick={() => openSettingsModal("provider")}
-                    >
-                      <CogIcon className="h-5 w-5" />
-                    </button>
-                  )}
-                  <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700" />
-                  <AuthStatus className="ml-2" />
-                  {!isMobile && (
-                    <button
-                      onClick={closeXyzen}
-                      className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                      title="关闭"
-                    >
-                      <PanelRightCloseIcon className="h-5 w-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              {/* Content area */}
-              <div className="flex-1 overflow-hidden">
-                {activePanel === "chat" &&
-                  (activeChatChannel ? (
-                    <div className="h-full">
-                      <div className="h-full bg-white dark:bg-black">
-                        <XyzenChat />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-full bg-white dark:bg-neutral-950 flex flex-col">
-                      <div className="border-b border-neutral-200 p-4 dark:border-neutral-800 flex-shrink-0">
-                        <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                          Assistants
-                        </h2>
-                        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                          Choose an agent to start
-                        </p>
-                      </div>
-                      <div className="flex-1 overflow-y-auto py-4">
-                        <XyzenAgent systemAgentType="chat" />
-                      </div>
-                    </div>
-                  ))}
-                {/* {activePanel === "explorer" && <Explorer />}
-                {activePanel === "workshop" && <Workshop />} */}
-              </div>
-              {showAuthError && (
-                <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-                  <div className="w-full max-w-md px-4">
-                    <AuthErrorScreen
-                      onRetry={onRetryAuth ?? (() => {})}
-                      variant="inline"
-                    />
-                    <div className="hidden mt-3 lg:flex items-center justify-center text-xs text-neutral-500 dark:text-neutral-400">
-                      <ToggleSidePanelShortcutHint />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Corner Handles - Higher z-index to capture events over edges */}
+            <div
+              className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-[51] bg-transparent"
+              onPointerDown={(e) => handleResizeStart(e, "nw")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
+            <div
+              className="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize z-[51] bg-transparent"
+              onPointerDown={(e) => handleResizeStart(e, "ne")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize z-[51] bg-transparent"
+              onPointerDown={(e) => handleResizeStart(e, "sw")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
+            <div
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-[51] bg-transparent"
+              onPointerDown={(e) => handleResizeStart(e, "se")}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+            />
+          </>
+        )}
+
+        {/* Header Area - Draggable */}
+        <div
+          className={`flex h-14 flex-shrink-0 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800 ${
+            !isMobile ? "cursor-move select-none active:cursor-grabbing" : ""
+          }`}
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+        >
+          <div className="flex items-center gap-2">
+            {activePanel === "chat" && activeChatChannel ? (
+              <button
+                className="rounded-sm flex items-center gap-2 p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                title="Back to Assistants"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveChatChannel(null);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <ChevronLeftIcon className="size-4" />
+                <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {activeChatChannel ? "Chat" : "Assistants"}
+                </h3>
+              </button>
+            ) : (
+              <h1 className="text-base sm:text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent pointer-events-none">
+                Xyzen
+              </h1>
+            )}
+
+            {!isMobile && <ToggleSidePanelShortcutHint />}
+          </div>
+
+          <div
+            className="flex items-center space-x-1"
+            onPointerDown={(e) => e.stopPropagation()} // Stop drag when interacting with controls
+          >
+            <SettingsButton />
+            <button
+              className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+              title="MCP Management"
+              onClick={openMcpListModal}
+            >
+              <McpIcon className="h-5 w-5" />
+            </button>
+            {showLlmProvider && (
+              <button
+                className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                title="LLM Providers"
+                onClick={() => openSettingsModal("provider")}
+              >
+                <CogIcon className="h-5 w-5" />
+              </button>
+            )}
+            <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700" />
+            <AuthStatus className="ml-2" />
+            {!isMobile && (
+              <button
+                onClick={closeXyzen}
+                className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-red-400"
+                title="Close"
+              >
+                <PanelRightCloseIcon className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </div>
-        {/* Keep quick actions and input overlays consistent with original sidebar */}
-      </DndContext>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-hidden relative">
+          {activePanel === "chat" &&
+            (activeChatChannel ? (
+              <div className="h-full">
+                <div className="h-full bg-white dark:bg-black">
+                  <XyzenChat />
+                </div>
+              </div>
+            ) : (
+              <div className="h-full bg-white dark:bg-neutral-950 flex flex-col">
+                <div className="border-b border-neutral-200 p-4 dark:border-neutral-800 flex-shrink-0">
+                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                    Assistants
+                  </h2>
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    Choose an agent to start
+                  </p>
+                </div>
+                <div className="flex-1 overflow-y-auto py-4">
+                  <XyzenAgent systemAgentType="chat" />
+                </div>
+              </div>
+            ))}
+
+          {showAuthError && (
+            <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+              <div className="w-full max-w-md px-4">
+                <AuthErrorScreen
+                  onRetry={onRetryAuth ?? (() => {})}
+                  variant="inline"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <McpListModal />
       <SettingsModal />
