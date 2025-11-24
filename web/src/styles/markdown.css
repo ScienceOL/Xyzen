@@ -2,7 +2,7 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: visible;
   font-feature-settings:
     "lnum" 1,
     "tnum" 1;
@@ -198,30 +198,93 @@
     color: #fff;
   }
 
-  table {
-    display: block;
+  /* 表格外层滚动容器 */
+  .markdown-table-wrapper {
     width: 100%;
-    width: max-content;
     max-width: 100%;
-    overflow: auto;
-    margin-bottom: 16px;
+    overflow-x: auto;
+    overflow-y: visible;
+    margin: 1rem 0;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+
+    /* 滚动条样式 */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+
+    &::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: rgba(156, 163, 175, 0.5);
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(156, 163, 175, 0.8);
+    }
+  }
+
+  /* 表格容器，处理移动端滚动 */
+  table {
+    display: table;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-collapse: collapse;
+    table-layout: auto;
 
     tr {
       border-top: 1px solid #d8dee4;
-
-      /* &:nth-child(2n) {
-        background-color: #f6f8fa;
-      } */
     }
 
     th {
       font-weight: 600;
+      background-color: rgba(0, 0, 0, 0.02);
     }
 
     th,
     td {
-      padding: 6px 13px;
+      padding: 8px 16px;
       border: 1px solid #d0d7de;
+      white-space: normal;
+      word-break: break-word;
+
+      /* 移动端更紧凑的内边距 */
+      @media (max-width: 640px) {
+        padding: 6px 10px;
+        font-size: 0.875rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      display: block;
+      width: max-content;
+      min-width: 100%;
+    }
+  }
+
+  /* 深色模式表格样式 */
+  :global(.dark) & {
+    table {
+      th {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+
+      th,
+      td {
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      tr {
+        border-top-color: rgba(255, 255, 255, 0.1);
+      }
     }
   }
 }

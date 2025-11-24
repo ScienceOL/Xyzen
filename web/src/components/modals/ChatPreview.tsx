@@ -16,8 +16,21 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
   currentAgent,
   currentUser,
 }) => {
-  // 二维码 URL
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("https://www.bohrium.com/apps/xyzen/job?type=app")}`;
+  // 二维码 URL（API 动态生成）
+  const apiQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("https://www.bohrium.com/apps/xyzen/job?type=app")}`;
+
+  // 备用二维码 URL（预先生成好的静态图片）
+  const fallbackQrCodeUrl =
+    "https://storage.sciol.ac.cn/library/docs/bohr_app_qrcode.png";
+
+  // 当前使用的二维码 URL（优先使用 API，失败时回退到备用）
+  const [qrCodeUrl, setQrCodeUrl] = React.useState(apiQrCodeUrl);
+
+  // 处理二维码加载失败
+  const handleQrCodeError = () => {
+    console.warn("API 二维码加载失败，切换到备用二维码");
+    setQrCodeUrl(fallbackQrCodeUrl);
+  };
 
   // 消息气泡组件，简化版用于预览 - 扁平化风格
   const MessageBubble = ({ message }: { message: Message }) => {
@@ -160,6 +173,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
                   alt="扫码体验"
                   className="w-14 h-14"
                   crossOrigin="anonymous"
+                  onError={handleQrCodeError}
                 />
               </div>
               <span className="text-[10px] font-medium text-neutral-600 dark:text-neutral-300 opacity-80 whitespace-nowrap">

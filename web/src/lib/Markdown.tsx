@@ -292,6 +292,13 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
       pre({ children }: React.ComponentPropsWithoutRef<"pre">) {
         return <>{children}</>;
       },
+      table({ children, ...props }: React.ComponentPropsWithoutRef<"table">) {
+        return (
+          <div className="markdown-table-wrapper">
+            <table {...props}>{children}</table>
+          </div>
+        );
+      },
       code({
         inline,
         className,

@@ -39,8 +39,9 @@ const convertSvgToPng = (
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
+      // 在 try 块外部定义 canvas，以便在 catch 块中使用
+      const canvas = document.createElement("canvas");
       try {
-        const canvas = document.createElement("canvas");
         // 使用 scale 提高 Canvas 分辨率，确保清晰度
         // 如果 scale 小于 2，至少使用 2 以保证基本清晰度
         const outputScale = Math.max(scale, 2);
@@ -87,11 +88,9 @@ const convertSvgToPng = (
         resolve(pngUrl);
       } catch (e) {
         console.error("UPNG 压缩失败，回退到普通 PNG", e);
-        // 失败回退
+        // 失败回退：使用标准的 Canvas toBlob
         try {
-          // 如果 UPNG 失败，尝试直接导出 Canvas
-          // 注意：这里可能还是会因为 Canvas 太大而失败
-          canvas.toBlob((blob) => {
+          canvas.toBlob((blob: Blob | null) => {
             if (blob) {
               resolve(URL.createObjectURL(blob));
             } else {

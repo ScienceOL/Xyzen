@@ -1,9 +1,14 @@
 import { useXyzen } from "@/store";
+import type { InputPosition } from "@/store/slices/uiSlice/types";
 import { ChevronUpIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import React, { useEffect, useRef } from "react";
 
-export function CenteredInput() {
+export interface CenteredInputProps {
+  position?: InputPosition;
+}
+
+export function CenteredInput({ position }: CenteredInputProps) {
   const {
     isXyzenOpen,
     pendingInput,
@@ -14,7 +19,12 @@ export function CenteredInput() {
     createDefaultChannel,
     openXyzen,
     setTabIndex,
+    inputPosition: storeInputPosition,
   } = useXyzen();
+
+  // Use prop if provided, otherwise fallback to store setting
+  const effectivePosition = position ?? storeInputPosition ?? "bottom";
+
   const inputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = React.useState(false);
   const showInput = !isXyzenOpen; // Show input when sidebar is closed
@@ -81,12 +91,69 @@ export function CenteredInput() {
     return null;
   }
 
+  // Determine classes based on position
+  const getPositionClasses = () => {
+    switch (effectivePosition) {
+      case "top":
+        return {
+          layout: "top-6 left-1/2 -translate-x-1/2",
+          animation: isMounted
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-10 opacity-0",
+        };
+      case "top-left":
+        return {
+          layout: "top-6 left-6",
+          animation: isMounted
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-10 opacity-0",
+        };
+      case "top-right":
+        return {
+          layout: "top-6 right-6",
+          animation: isMounted
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-10 opacity-0",
+        };
+      case "center":
+        return {
+          layout: "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+          animation: isMounted ? "scale-100 opacity-100" : "scale-95 opacity-0",
+        };
+      case "bottom-left":
+        return {
+          layout: "bottom-6 left-6",
+          animation: isMounted
+            ? "translate-y-0 opacity-100"
+            : "translate-y-20 opacity-0",
+        };
+      case "bottom-right":
+        return {
+          layout: "bottom-6 right-6",
+          animation: isMounted
+            ? "translate-y-0 opacity-100"
+            : "translate-y-20 opacity-0",
+        };
+      case "bottom":
+      default:
+        return {
+          layout: "bottom-6 left-1/2 -translate-x-1/2",
+          animation: isMounted
+            ? "translate-y-0 opacity-100"
+            : "translate-y-20 opacity-0",
+        };
+    }
+  };
+
+  const { layout, animation } = getPositionClasses();
+
   return (
     <div
       className={clsx(
-        "fixed bottom-6 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 px-4",
+        "fixed z-50 w-full max-w-sm px-4",
         "transition-all duration-700 ease-out",
-        isMounted ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0",
+        layout,
+        animation,
       )}
     >
       <div className="flex items-center gap-2">
