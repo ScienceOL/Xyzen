@@ -148,11 +148,13 @@ async def handle_tool_call_confirmation(
         messages = pending_info["messages"]
         provider = pending_info["provider"]
         # message_id = pending_info["message_id"]
-        model = pending_info["model"]
+        # model = pending_info["model"]
 
         # Import necessary functions
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
         from core.chat.tools import execute_tool_calls
-        from core.providers import ChatCompletionRequest, ChatMessage
+        from core.providers import ChatMessage
 
         try:
             # Execute the tools using the same logic as immediate execution
@@ -213,78 +215,74 @@ async def handle_tool_call_confirmation(
 
             # Get final response from AI with tool results using streaming
             final_messages = messages + [assistant_tool_message] + tool_result_messages
-            final_request = ChatCompletionRequest(
-                messages=final_messages,
-                model=model,
-                temperature=provider.temperature,
-                max_tokens=provider.max_tokens,
-            )
 
             # Log the complete message history being sent to AI
             logger.info(f"Sending {len(final_messages)} messages to AI for final response:")
             for i, msg in enumerate(final_messages):
                 logger.info(f"Message {i + 1}: role={msg.role}, content={msg.content[:200]}...")
 
-            # Use streaming for the final AI response if supported
-            if provider.supports_streaming():
-                logger.info("Using streaming for final AI response after confirmed tool execution")
-                final_message_id = f"confirmed_stream_{int(asyncio.get_event_loop().time() * 1000)}"
+            # Convert to LangChain messages
+            langchain_messages = []
+            for msg in final_messages:
+                if msg.role == "system":
+                    langchain_messages.append(SystemMessage(content=msg.content))
+                elif msg.role == "user":
+                    langchain_messages.append(HumanMessage(content=msg.content))
+                elif msg.role == "assistant":
+                    langchain_messages.append(AIMessage(content=msg.content))
+                else:
+                    langchain_messages.append(HumanMessage(content=f"{msg.role}: {msg.content}"))
 
-                # Send streaming start event
-                stream_start = {"type": ChatEventType.STREAMING_START, "data": {"id": final_message_id}}
-                await manager.send_personal_message(json.dumps(stream_start), connection_id)
+            # Use streaming for the final AI response
+            logger.info("Using streaming for final AI response after confirmed tool execution")
 
-                # Stream the response
-                final_content_chunks = []
-                chunk_count = 0
-                async for chunk in provider.chat_completion_stream(final_request):
-                    chunk_count += 1
-                    if chunk.content:
-                        final_content_chunks.append(chunk.content)
+            # Create LangChain model from provider
+            llm = provider.to_langchain_model()
+
+            final_message_id = f"confirmed_stream_{int(asyncio.get_event_loop().time() * 1000)}"
+
+            # Send streaming start event
+            stream_start = {"type": ChatEventType.STREAMING_START, "data": {"id": final_message_id}}
+            await manager.send_personal_message(json.dumps(stream_start), connection_id)
+
+            # Stream the response
+            final_content_chunks = []
+
+            try:
+                async for chunk in llm.astream(langchain_messages):
+                    content = chunk.content
+                    if content and isinstance(content, str):
+                        final_content_chunks.append(content)
                         stream_chunk = {
                             "type": ChatEventType.STREAMING_CHUNK,
-                            "data": {"id": final_message_id, "content": chunk.content},
+                            "data": {"id": final_message_id, "content": content},
                         }
                         await manager.send_personal_message(json.dumps(stream_chunk), connection_id)
+            except Exception as e:
+                logger.error(f"Error streaming from LangChain model: {e}")
 
-                # End streaming
-                final_full_content = "".join(final_content_chunks)
-                if final_full_content.strip():
-                    stream_end = {
-                        "type": ChatEventType.STREAMING_END,
-                        "data": {
-                            "id": final_message_id,
-                            "content": final_full_content,
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                        },
-                    }
-                    await manager.send_personal_message(json.dumps(stream_end), connection_id)
+            # End streaming
+            final_full_content = "".join(final_content_chunks)
+            if final_full_content.strip():
+                stream_end = {
+                    "type": ChatEventType.STREAMING_END,
+                    "data": {
+                        "id": final_message_id,
+                        "content": final_full_content,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                }
+                await manager.send_personal_message(json.dumps(stream_end), connection_id)
 
-                    # Save the final AI message to the database
-                    final_ai_message = MessageCreate(
-                        role="assistant",
-                        content=final_full_content,
-                        topic_id=conn_info.topic_id,
-                    )
-                    await message_repo.create_message(final_ai_message)
-                else:
-                    logger.warning("Final AI streaming response after tool execution was empty")
+                # Save the final AI message to the database
+                final_ai_message = MessageCreate(
+                    role="assistant",
+                    content=final_full_content,
+                    topic_id=conn_info.topic_id,
+                )
+                await message_repo.create_message(final_ai_message)
             else:
-                # Fall back to non-streaming
-                final_response = await provider.chat_completion(final_request)
-                if final_response.content:
-                    final_message = {
-                        "type": ChatEventType.MESSAGE,
-                        "data": {
-                            "id": f"confirmed_msg_{int(asyncio.get_event_loop().time() * 1000)}",
-                            "role": "assistant",
-                            "content": final_response.content,
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                        },
-                    }
-                    await manager.send_personal_message(json.dumps(final_message), connection_id)
-                else:
-                    logger.warning("Final AI response after tool execution was empty")
+                logger.warning("Final AI streaming response after tool execution was empty")
 
         except Exception as e:
             logger.error(f"Error executing confirmed tools: {e}")

@@ -1,22 +1,16 @@
 """
 OpenAI LLM Provider implementation.
-Standard OpenAI API support (use AzureOpenAIProvider for Azure).
+Uses LangChain's ChatOpenAI to interact with OpenAI models.
 """
 
 import logging
-from typing import Any
+from typing import Any, Dict, Optional
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
-from openai import AsyncOpenAI
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 
-from .base import (
-    BaseLLMProvider,
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-    ChatMessage,
-)
+from .base import BaseLLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -24,211 +18,81 @@ logger = logging.getLogger(__name__)
 class OpenAIConfig(BaseModel):
     """Configuration for OpenAI provider."""
 
-    organization: str | None = None
-    base_url: str | None = None
+    organization: Optional[str] = None
+    base_url: Optional[str] = None
 
 
 class OpenAIProvider(BaseLLMProvider):
     """
-    Standard OpenAI provider implementation.
-    For Azure OpenAI, use AzureOpenAIProvider instead.
+    Standard OpenAI provider implementation using LangChain.
     """
-
-    def __init__(
-        self,
-        api_key: SecretStr,
-        api_endpoint: str | None = None,
-        model: str | None = None,
-        max_tokens: int | None = None,  # Now optional
-        temperature: float | None = None,  # Now optional
-        timeout: int = 60,
-        **kwargs: Any,
-    ) -> None:
-        """
-        Initialize the OpenAI provider with capability-aware parameters.
-
-        Args:
-            api_key: The API key for authentication
-            api_endpoint: API endpoint URL (defaults to OpenAI's official endpoint)
-            model: The default model name
-            max_tokens: Maximum tokens for responses (optional)
-            temperature: Sampling temperature (optional)
-            timeout: Request timeout in seconds
-            **kwargs: Additional configuration
-        """
-        super().__init__(
-            api_key=api_key,
-            api_endpoint=api_endpoint,
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            timeout=timeout,
-            **kwargs,
-        )
-
-        # Initialize OpenAI client
-        logger.info(f"Initializing OpenAI client with endpoint: {api_endpoint or 'default'}")
-        self.client = AsyncOpenAI(
-            api_key=str(self.api_key),
-            base_url=self.api_endpoint,
-            timeout=self.timeout,
-        )
-
-        # Mark as supporting streaming
-        self._streaming_supported = True
-
-    def _convert_messages(self, messages: list[ChatMessage]) -> list[dict[str, Any]]:
-        """
-        Convert standard messages to OpenAI format.
-
-        Args:
-            messages: List of standard chat messages
-
-        Returns:
-            List of OpenAI-formatted messages
-        """
-        return [{"role": msg.role, "content": msg.content} for msg in messages]
-
-    async def chat_completion(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-        """
-        Generate a chat completion using OpenAI API with capability-aware parameters.
-
-        Args:
-            request: The chat completion request
-
-        Returns:
-            The chat completion response
-        """
-        try:
-            # Build parameters using capability filtering
-            api_params = self.build_api_params(request)
-
-            # Make API call
-            response = await self.client.chat.completions.create(**api_params)
-
-            # Convert response
-            choice = response.choices[0] if response.choices else None
-            if not choice:
-                raise ValueError("No choices returned from OpenAI API")
-
-            # Extract tool calls if present
-            tool_calls = None
-            if hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
-                tool_calls = [
-                    {
-                        "id": tc.id,
-                        "type": tc.type,
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments,
-                        },
-                    }
-                    for tc in choice.message.tool_calls
-                ]
-
-            # Extract usage information
-            usage = None
-            if response.usage:
-                usage = {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens,
-                }
-
-            return ChatCompletionResponse(
-                content=choice.message.content,
-                tool_calls=tool_calls,
-                finish_reason=choice.finish_reason,
-                usage=usage,
-            )
-
-        except Exception as e:
-            logger.error(f"OpenAI API error: {e}")
-            raise
-
-    def is_available(self) -> bool:
-        """
-        Check if the provider is properly configured and available.
-
-        Returns:
-            True if the provider is available, False otherwise
-        """
-        try:
-            return bool(self.api_key)
-        except Exception:
-            return False
 
     @property
     def provider_name(self) -> str:
-        """
-        Get the name of the provider.
-
-        Returns:
-            The provider name
-        """
+        """Get the provider name."""
         return "openai"
-
-    @property
-    def supported_models(self) -> list[str]:
-        """
-        Get the list of supported models for this provider.
-
-        Returns:
-            List of supported model names
-        """
-        return [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "gpt-4-turbo",
-            "gpt-4",
-            "gpt-3.5-turbo",
-            "gpt-3.5-turbo-16k",
-            "o1-preview",
-            "o1-mini",
-            # Note: GPT-5 is available through Azure OpenAI, not standard OpenAI
-        ]
 
     def to_langchain_model(self) -> BaseChatModel:
         """
-        Convert this provider to a LangChain ChatOpenAI model instance with capability-aware parameters.
+        Convert this provider to a LangChain ChatOpenAI model instance.
 
         Returns:
             ChatOpenAI instance ready for use with LangChain
         """
         # Parse provider-specific config
-        config = OpenAIConfig(**self.config) if self.config else OpenAIConfig()
+        config_data = self.config or {}
+        openai_config = OpenAIConfig(**config_data)
 
-        # Get model capabilities
-        capabilities = self.get_model_capabilities(self.model)
+        # Get model capability config
+        # model_config = self._get_config()
+        is_o1_model = self.model.startswith("o1-")
 
-        # Base parameters
-        langchain_params: dict[str, Any] = {
+        # Base parameters for ChatOpenAI
+        langchain_params: Dict[str, Any] = {
             "api_key": self.api_key,
-            "base_url": config.base_url or self.api_endpoint,
             "model": self.model,
             "timeout": self.timeout,
+            # OpenAI supports streaming by default for most chat models
+            # We enable it here, but individual invokes can override if needed
             "streaming": True,
         }
 
-        # Add organization if specified
-        if config.organization:
-            langchain_params["organization"] = config.organization
+        # Handle Endpoint Configuration
+        if openai_config.base_url or self.api_endpoint:
+            langchain_params["base_url"] = openai_config.base_url or self.api_endpoint
 
-        # Add optional parameters based on capabilities
-        if capabilities.supports_temperature and self.temperature is not None:
+        if openai_config.organization:
+            langchain_params["organization"] = openai_config.organization
+
+        # Handle Temperature
+        # O1 models (reasoning models) currently do not support temperature
+        # or require it to be fixed (often 1.0), so we filter it out for them
+        # unless explicitly handled by the underlying lib updates.
+        supports_temperature = not is_o1_model
+
+        if supports_temperature and self.temperature is not None:
             langchain_params["temperature"] = self.temperature
 
-        if capabilities.supports_max_tokens and self.max_tokens is not None:
-            langchain_params["max_completion_tokens"] = self.max_tokens
+        # Handle Max Tokens
+        # We prioritize user-provided max_tokens (self.max_tokens).
+        # If not provided, we rely on LangChain/API defaults.
+        # Note: O1 models use 'max_completion_tokens' instead of 'max_tokens'
+        # but modern langchain-openai handles mapping if 'max_tokens' is passed,
+        # or we can be explicit if needed.
+        if self.max_tokens is not None:
+            if is_o1_model:
+                langchain_params["max_completion_tokens"] = self.max_tokens
+            else:
+                langchain_params["max_tokens"] = self.max_tokens
 
-        # Log filtered parameters for debugging
-        filtered_out = []
-        if not capabilities.supports_temperature and self.temperature is not None:
-            filtered_out.append("temperature")
-        if not capabilities.supports_max_tokens and self.max_tokens is not None:
-            filtered_out.append("max_completion_tokens")
+        # If model config defines a hard output limit and user didn't specify one,
+        # we might optionally set it, but usually it's better to leave it open
+        # unless we want to enforce cost controls.
+        # Here we only set it if the user asked for it.
 
-        if filtered_out:
-            logger.info(f"Filtered out unsupported LangChain parameters for {self.model}: {filtered_out}")
+        logger.debug(
+            f"Initializing ChatOpenAI for {self.model} "
+            f"(base_url={langchain_params.get('base_url')}, is_o1={is_o1_model})"
+        )
 
         return ChatOpenAI(**langchain_params)

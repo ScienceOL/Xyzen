@@ -15,7 +15,7 @@ from internal.configs.llm import LLMConfig
 from middleware.database.connection import AsyncSessionLocal
 from models.provider import Provider, ProviderCreate, ProviderUpdate
 from repos.provider import ProviderRepository
-from schemas.providers import ProviderType
+from schemas.provider import ProviderType
 
 from .anthropic import AnthropicProvider
 from .azure_openai import AzureOpenAIProvider
@@ -24,8 +24,8 @@ from .base import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatMessage,
-    ModelCapabilities,
-    ModelRegistry,
+    # ModelCapabilities,
+    # ModelRegistry,
 )
 from .google import GoogleProvider
 from .openai import OpenAIProvider
@@ -450,8 +450,6 @@ __all__ = [
     "ChatMessage",
     "ChatCompletionRequest",
     "ChatCompletionResponse",
-    "ModelCapabilities",
-    "ModelRegistry",
     "OpenAIProvider",
     "AzureOpenAIProvider",
     "AnthropicProvider",

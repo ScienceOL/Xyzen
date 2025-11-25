@@ -1,22 +1,16 @@
 """
 Azure OpenAI LLM Provider implementation.
-Dedicated provider for Azure OpenAI (separate from standard OpenAI).
+Dedicated provider for Azure OpenAI using LangChain.
 """
 
 import logging
-from typing import Any
+from typing import Any, Dict, Optional
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI
-from openai import AsyncAzureOpenAI
 from pydantic import BaseModel, SecretStr
 
-from .base import (
-    BaseLLMProvider,
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-    ChatMessage,
-)
+from .base import BaseLLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -24,29 +18,29 @@ logger = logging.getLogger(__name__)
 class AzureOpenAIConfig(BaseModel):
     """Configuration for Azure OpenAI provider."""
 
-    api_version: str = "2024-02-01"
-    azure_deployment: str | None = None
-    azure_endpoint: str | None = None
+    api_version: str = "2024-10-21"
+    azure_deployment: Optional[str] = None
+    azure_endpoint: Optional[str] = None
 
 
 class AzureOpenAIProvider(BaseLLMProvider):
     """
-    Azure OpenAI provider implementation using AzureOpenAI SDK client.
+    Azure OpenAI provider implementation using LangChain.
     """
 
     def __init__(
         self,
         api_key: SecretStr,
-        api_endpoint: str | None = None,
-        model: str | None = None,
-        max_tokens: int | None = None,  # Now optional
-        temperature: float | None = None,  # Now optional
+        api_endpoint: Optional[str] = None,
+        model: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
         timeout: int = 60,
         api_version: str = "2024-10-21",
         **kwargs: Any,
     ) -> None:
         """
-        Initialize the Azure OpenAI provider with capability-aware parameters.
+        Initialize the Azure OpenAI provider.
 
         Args:
             api_key: The API key for authentication
@@ -67,172 +61,69 @@ class AzureOpenAIProvider(BaseLLMProvider):
             timeout=timeout,
             **kwargs,
         )
-        self.api_version = api_version
-
-        if not self.api_endpoint:
-            raise ValueError("Azure OpenAI requires api_endpoint to be provided")
-
-        # Initialize Azure OpenAI client
-        self.client: AsyncAzureOpenAI = AsyncAzureOpenAI(
-            api_key=str(self.api_key),
-            api_version=self.api_version,
-            azure_endpoint=self.api_endpoint,
-            timeout=self.timeout,
-        )
-
-        # Mark as supporting streaming
-        self._streaming_supported = True
-
-    def _convert_messages(self, messages: list[ChatMessage]) -> list[dict[str, Any]]:
-        """
-        Convert standard messages to Azure OpenAI format.
-        Azure OpenAI uses the same message format as standard OpenAI.
-
-        Args:
-            messages: List of standard chat messages
-
-        Returns:
-            List of Azure OpenAI-formatted messages
-        """
-        return [{"role": msg.role, "content": msg.content} for msg in messages]
-
-    async def chat_completion(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-        """
-        Generate a chat completion using Azure OpenAI API with capability-aware parameters.
-
-        Args:
-            request: The chat completion request
-
-        Returns:
-            The chat completion response
-        """
-        try:
-            # Build parameters using capability filtering
-            api_params = self.build_api_params(request)
-
-            # Make API call
-            response = await self.client.chat.completions.create(**api_params)
-
-            # Convert response
-            choice = response.choices[0] if response.choices else None
-            if not choice:
-                raise ValueError("No choices returned from Azure OpenAI API")
-
-            # Extract tool calls if present
-            tool_calls = None
-            if hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
-                tool_calls = [
-                    {
-                        "id": tc.id,
-                        "type": tc.type,
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments,
-                        },
-                    }
-                    for tc in choice.message.tool_calls
-                ]
-
-            # Extract usage information
-            usage = None
-            if response.usage:
-                usage = {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens,
-                }
-
-            return ChatCompletionResponse(
-                content=choice.message.content,
-                tool_calls=tool_calls,
-                finish_reason=choice.finish_reason,
-                usage=usage,
-            )
-
-        except Exception as e:
-            logger.error(f"Azure OpenAI API error: {e}")
-            raise
-
-    def is_available(self) -> bool:
-        """
-        Check if the provider is properly configured and available.
-
-        Returns:
-            True if the provider is available, False otherwise
-        """
-        try:
-            return bool(self.api_key and self.api_endpoint)
-        except Exception:
-            return False
+        # Store api_version if passed directly in init, though it might also come from config
+        self._api_version_arg = api_version
 
     @property
     def provider_name(self) -> str:
-        """
-        Get the name of the provider.
-
-        Returns:
-            The provider name
-        """
+        """Get the provider name."""
         return "azure_openai"
-
-    @property
-    def supported_models(self) -> list[str]:
-        """
-        Get the list of supported models (deployments) for this provider.
-
-        Returns:
-            List of supported model names
-        """
-        # Note: On Azure, these are deployment names configured in your resource
-        return [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "gpt-4",
-            "gpt-4-turbo",
-            "gpt-3.5-turbo",
-            "o1-preview",
-            "o1-mini",
-            "gpt-5",  # GPT-5 available on Azure
-        ]
 
     def to_langchain_model(self) -> BaseChatModel:
         """
-        Convert this provider to a LangChain AzureChatOpenAI model instance with capability-aware parameters.
+        Convert this provider to a LangChain AzureChatOpenAI model instance.
 
         Returns:
             AzureChatOpenAI instance ready for use with LangChain
         """
         # Parse provider-specific config
-        config = AzureOpenAIConfig(**self.config) if self.config else AzureOpenAIConfig()
+        config_data = self.config or {}
+        azure_config = AzureOpenAIConfig(**config_data)
 
-        # Get model capabilities
-        capabilities = self.get_model_capabilities(self.model)
+        # Determine effective values
+        # API Version: argument > config > default
+        api_version = self._api_version_arg or azure_config.api_version
 
-        # Base parameters
-        langchain_params: dict[str, Any] = {
+        # Endpoint: argument > config > error
+        azure_endpoint = self.api_endpoint or azure_config.azure_endpoint
+        if not azure_endpoint:
+            raise ValueError("Azure OpenAI requires azure_endpoint (api_endpoint) to be provided")
+
+        # Deployment: model argument > config > error
+        # In Azure, the 'model' parameter often refers to the deployment name
+        deployment_name = self.model or azure_config.azure_deployment
+        if not deployment_name:
+            raise ValueError("Azure OpenAI requires a deployment name (model)")
+
+        # Get model capability config (for temperature/tokens checks)
+        model_config = self._get_config()
+        # Heuristic: O1 models in Azure might need special handling similar to OpenAI
+        is_o1_model = deployment_name.startswith("o1") or (model_config and "o1" in model_config.model_name)
+
+        # Base parameters for AzureChatOpenAI
+        langchain_params: Dict[str, Any] = {
             "api_key": self.api_key,
-            "azure_endpoint": config.azure_endpoint or self.api_endpoint,
-            "azure_deployment": config.azure_deployment or self.model,
-            "api_version": config.api_version,
+            "azure_endpoint": azure_endpoint,
+            "azure_deployment": deployment_name,
+            "api_version": api_version,
             "timeout": self.timeout,
             "streaming": True,
         }
 
-        # Add optional parameters based on capabilities
-        if capabilities.supports_temperature and self.temperature is not None:
+        # Handle Temperature
+        supports_temperature = not is_o1_model
+        if supports_temperature and self.temperature is not None:
             langchain_params["temperature"] = self.temperature
 
-        if capabilities.supports_max_tokens and self.max_tokens is not None:
-            langchain_params["max_completion_tokens"] = self.max_tokens
+        # Handle Max Tokens
+        if self.max_tokens is not None:
+            if is_o1_model:
+                langchain_params["max_completion_tokens"] = self.max_tokens
+            else:
+                langchain_params["max_tokens"] = self.max_tokens
 
-        # Log filtered parameters for debugging
-        filtered_out = []
-        if not capabilities.supports_temperature and self.temperature is not None:
-            filtered_out.append("temperature")
-        if not capabilities.supports_max_tokens and self.max_tokens is not None:
-            filtered_out.append("max_completion_tokens")
-
-        if filtered_out:
-            logger.info(f"Filtered out unsupported LangChain parameters for {self.model}: {filtered_out}")
+        logger.debug(
+            f"Initializing AzureChatOpenAI for {deployment_name} (endpoint={azure_endpoint}, version={api_version})"
+        )
 
         return AzureChatOpenAI(**langchain_params)

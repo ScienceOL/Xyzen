@@ -9,7 +9,6 @@ import pytest
 from core.providers.base import (
     ChatCompletionRequest,
     ChatMessage,
-    ModelCapabilities,
 )
 from models.provider import Provider, ProviderCreate
 

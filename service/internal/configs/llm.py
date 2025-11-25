@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, computed_field
 
-from schemas.providers import ProviderType
+from schemas.provider import ProviderType
 
 
 class LLMConfig(BaseModel):
@@ -35,6 +35,7 @@ class LLMConfig(BaseModel):
             return ProviderType.ANTHROPIC
         elif "generativelanguage.googleapis.com" in api_lower:
             return ProviderType.GOOGLE
+
         else:
             return ProviderType.AZURE_OPENAI
 

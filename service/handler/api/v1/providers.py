@@ -10,7 +10,7 @@ from middleware.auth import get_current_user
 from middleware.database.connection import get_session
 from models.provider import ProviderCreate, ProviderRead, ProviderUpdate
 from repos.provider import ProviderRepository
-from schemas.providers import PROVIDER_TEMPLATES, ProviderTemplate, ProviderType
+from schemas.provider import PROVIDER_TEMPLATES, ProviderTemplate, ProviderType
 
 router = APIRouter(tags=["providers"])
 
