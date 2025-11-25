@@ -118,12 +118,12 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
   // Event handlers
   const handleSendMessage = useCallback(
     (inputMessage: string) => {
-      if (!inputMessage.trim() || !activeWorkshopChannel) return;
+      if (!inputMessage.trim() || !activeWorkshopChannel) return false;
       if (responding) {
         setSendBlocked(true);
         // Auto-hide the hint after 2 seconds
         window.setTimeout(() => setSendBlocked(false), 2000);
-        return;
+        return false;
       }
       sendWorkshopMessage(inputMessage);
       // Clear pending input after sending
@@ -132,6 +132,7 @@ export function useWorkShopChat(config: WorkShopChatConfig) {
       }
       setAutoScroll(true);
       setTimeout(() => scrollToBottom(true), 100);
+      return true;
     },
     [
       activeWorkshopChannel,

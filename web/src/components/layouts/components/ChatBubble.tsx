@@ -143,8 +143,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
             >
               {isLoading ? (
                 <LoadingMessage size="medium" className="text-sm" />
-              ) : isUserMessage ? (
-                <p>{content}</p>
               ) : (
                 markdownContent
               )}

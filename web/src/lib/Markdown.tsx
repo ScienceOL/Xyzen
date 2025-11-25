@@ -289,8 +289,26 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
 
   const MarkdownComponents = React.useMemo(
     () => ({
-      pre({ children }: React.ComponentPropsWithoutRef<"pre">) {
-        return <>{children}</>;
+      pre({ children, ...props }: React.ComponentPropsWithoutRef<"pre">) {
+        const childArray = React.Children.toArray(children);
+        const firstChild = childArray[0] as React.ReactElement;
+
+        if (childArray.length === 1 && React.isValidElement(firstChild)) {
+          const childProps =
+            firstChild.props as React.ComponentPropsWithoutRef<"code">;
+          const className = childProps.className || "";
+          const match = /language-(\w+)/.exec(className);
+          const lang = match?.[1] || "text";
+          const code = String(childProps.children).replace(/\n$/, "");
+
+          return <CodeBlock language={lang} code={code} isDark={isDark} />;
+        }
+
+        return (
+          <pre {...props} className={clsx("overflow-x-auto", props.className)}>
+            {children}
+          </pre>
+        );
       },
       table({ children, ...props }: React.ComponentPropsWithoutRef<"table">) {
         return (
@@ -299,34 +317,49 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
           </div>
         );
       },
+      td({ children, ...props }: React.ComponentPropsWithoutRef<"td">) {
+        return (
+          <td {...props}>
+            {React.Children.map(children, (child) => {
+              if (typeof child === "string") {
+                return child.split(/<br\s*\/?>/gi).map((text, i, arr) => (
+                  <React.Fragment key={i}>
+                    {text}
+                    {i < arr.length - 1 && <br />}
+                  </React.Fragment>
+                ));
+              }
+              return child;
+            })}
+          </td>
+        );
+      },
+      th({ children, ...props }: React.ComponentPropsWithoutRef<"th">) {
+        return (
+          <th {...props}>
+            {React.Children.map(children, (child) => {
+              if (typeof child === "string") {
+                return child.split(/<br\s*\/?>/gi).map((text, i, arr) => (
+                  <React.Fragment key={i}>
+                    {text}
+                    {i < arr.length - 1 && <br />}
+                  </React.Fragment>
+                ));
+              }
+              return child;
+            })}
+          </th>
+        );
+      },
       code({
-        inline,
         className,
         children,
         ...props
-      }: React.ComponentPropsWithoutRef<"code"> & { inline?: boolean }) {
-        const match = /language-(\w+)/.exec(className || "");
-        const code = String(children).replace(/\n$/, "");
-        const lang = match?.[1] ?? "";
-
-        if (!inline && match) {
-          return <CodeBlock language={lang} code={code} isDark={isDark} />;
-        }
-
-        if (inline) {
-          return (
-            <code className={className} {...props}>
-              {children}
-            </code>
-          );
-        }
-
+      }: React.ComponentPropsWithoutRef<"code">) {
         return (
-          <pre className="overflow-x-auto">
-            <code className={className} {...props}>
-              {children}
-            </code>
-          </pre>
+          <code className={className} {...props}>
+            {children}
+          </code>
         );
       },
     }),

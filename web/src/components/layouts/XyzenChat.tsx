@@ -14,6 +14,7 @@ import ChatBubble from "./components/ChatBubble";
 import ChatInput from "./components/ChatInput";
 import ChatToolbar from "./components/ChatToolbar";
 import EmptyChat from "./components/EmptyChat";
+import ResponseSpinner from "./components/ResponseSpinner";
 import WelcomeMessage from "./components/WelcomeMessage";
 
 interface BaseChatProps {
@@ -263,27 +264,11 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                     textClassName="text-sm text-neutral-600 dark:text-neutral-400"
                   />
                   {responding && (
-                    <span
-                      className={`absolute right-0 ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${themeStyles.responseSpinner}`}
-                    >
-                      <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                        />
-                      </svg>
-                      {config.responseMessages.generating}
-                    </span>
+                    <ResponseSpinner
+                      text={config.responseMessages.generating}
+                      className="absolute bottom-0 right-0 mb-1 ml-2"
+                      themeStyles={themeStyles.responseSpinner}
+                    />
                   )}
                 </div>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
@@ -318,27 +303,11 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                 config.emptyState.description}
             </p>
             {responding && (
-              <div
-                className={`absolute right-0 mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${themeStyles.responseSpinner}`}
-              >
-                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  />
-                </svg>
-                {config.responseMessages.creating}
-              </div>
+              <ResponseSpinner
+                text={config.responseMessages.creating}
+                className="absolute right-0 bottom-0 mb-1"
+                themeStyles={themeStyles.responseSpinner}
+              />
             )}
           </div>
         )}

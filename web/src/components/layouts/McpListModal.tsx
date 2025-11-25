@@ -289,180 +289,182 @@ export function McpListModal() {
   };
 
   return (
-    <Modal
-      isOpen={isMcpListModalOpen}
-      onClose={closeMcpListModal}
-      maxWidth="max-w-6xl"
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mx-auto max-w-6xl"
+    <>
+      <Modal
+        isOpen={isMcpListModalOpen}
+        onClose={closeMcpListModal}
+        maxWidth="max-w-6xl"
       >
-        {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          transition={{ duration: 0.5 }}
+          className="mx-auto max-w-6xl"
         >
-          <div className="flex items-center space-x-3">
-            <div className="rounded-sm bg-gradient-to-r from-indigo-500 to-purple-500 p-2.5 shadow-lg">
-              <ServerStackIcon className="h-6 w-6 text-white" />
+          {/* Header Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="rounded-sm bg-gradient-to-r from-indigo-500 to-purple-500 p-2.5 shadow-lg">
+                <ServerStackIcon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+                  MCP Servers
+                </h1>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  Manage your Model-Context-Protocol servers.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-                MCP Servers
-              </h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Manage your Model-Context-Protocol servers.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center space-x-2">
-            <LiquidButton
-              onClick={handleRefresh}
-              disabled={mcpServersLoading}
-              className="text-sm flex items-center cursor-pointer rounded-sm font-medium px-4 py-2 h-10 overflow-hidden [--liquid-button-color:var(--primary)] [--liquid-button-background-color:var(--accent)] text-primary hover:text-primary-foreground"
-            >
-              <ArrowPathIcon
-                className={`h-4 w-4 mr-2 ${mcpServersLoading ? "animate-spin" : ""}`}
-              />
-              <span className="whitespace-nowrap">Refresh</span>
-            </LiquidButton>
-
-            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
-              {/* Add Server 按钮文本被截断 */}
-              <Button
-                onClick={openAddMcpServerModal}
-                className="w-full sm:w-auto bg-primary text-primary-foreground text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 h-10 flex items-center rounded-sm"
+            <div className="flex items-center space-x-2">
+              <LiquidButton
+                onClick={handleRefresh}
+                disabled={mcpServersLoading}
+                className="text-sm flex items-center cursor-pointer rounded-sm font-medium px-4 py-2 h-10 overflow-hidden [--liquid-button-color:var(--primary)] [--liquid-button-background-color:var(--accent)] text-primary hover:text-primary-foreground"
               >
-                <PlusIcon className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
-                <span className="whitespace-nowrap">Add Server</span>
-              </Button>
-            </div>
+                <ArrowPathIcon
+                  className={`h-4 w-4 mr-2 ${mcpServersLoading ? "animate-spin" : ""}`}
+                />
+                <span className="whitespace-nowrap">Refresh</span>
+              </LiquidButton>
 
-            {/* <Button
+              <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                {/* Add Server 按钮文本被截断 */}
+                <Button
+                  onClick={openAddMcpServerModal}
+                  className="w-full sm:w-auto bg-primary text-primary-foreground text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 h-10 flex items-center rounded-sm"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span className="whitespace-nowrap">Add Server</span>
+                </Button>
+              </div>
+
+              {/* <Button
               onClick={openAddMcpServerModal}
               className="bg-primary text-primary-foreground text-sm font-medium px-4 py-2 h-10 flex items-center rounded-sm"
             >
               <PlusIcon className="h-4 w-4 mr-2" />
               <span className="whitespace-nowrap">Add Server</span>
             </Button> */}
-          </div>
-        </motion.div>
-
-        {/* Content Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="relative"
-        >
-          <div className="relative min-h-[66vh] max-h-[66vh] overflow-y-auto rounded-sm border border-neutral-200 bg-white custom-scrollbar dark:border-neutral-800 dark:bg-neutral-950">
-            <div className="relative h-full overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent dark:scrollbar-thumb-neutral-600">
-              <AnimatePresence mode="wait">
-                {mcpServersLoading ? (
-                  <motion.div
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center justify-center h-full min-h-[400px]"
-                  >
-                    <div className="text-center">
-                      <LoadingSpinner size="md" centered />
-                      <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
-                        Loading MCP servers...
-                      </p>
-                    </div>
-                  </motion.div>
-                ) : mcpServers.length > 0 ? (
-                  <motion.div
-                    key="servers"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="space-y-4"
-                  >
-                    <AnimatePresence>
-                      {mcpServers.map((server, index) => (
-                        <motion.div
-                          key={server.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: index * 0.1 }}
-                        >
-                          <McpServerCard
-                            server={server}
-                            onRemove={removeMcpServer}
-                            onEdit={handleEditServer}
-                            onTestTool={handleTestTool}
-                          />
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex flex-col items-center justify-center h-full min-h-[400px] text-center"
-                  >
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{
-                        duration: 0.5,
-                        delay: 0.2,
-                        type: "spring",
-                      }}
-                      className="mb-6 rounded-full bg-indigo-100 p-6 dark:bg-indigo-900/40"
-                    >
-                      <ExclamationTriangleIcon className="h-12 w-12 text-indigo-500" />
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.4 }}
-                    >
-                      <h3 className="text-xl font-semibold text-neutral-900 dark:text-white">
-                        No MCP Servers Found
-                      </h3>
-                      <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-400">
-                        Get started by adding your first MCP server to connect
-                        tools and enhance your AI capabilities.
-                      </p>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.6 }}
-                    >
-                      <Button
-                        onClick={openAddMcpServerModal}
-                        className="mt-8 inline-flex items-center gap-2 rounded-sm bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:from-indigo-500 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                      >
-                        <PlusIcon className="h-5 w-5" />
-                        <span className="whitespace-nowrap">
-                          Add Your First Server
-                        </span>
-                      </Button>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
+
+          {/* Content Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="relative"
+          >
+            <div className="relative min-h-[66vh] max-h-[66vh] overflow-y-auto rounded-sm border border-neutral-200 bg-white custom-scrollbar dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="relative h-full overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent dark:scrollbar-thumb-neutral-600">
+                <AnimatePresence mode="wait">
+                  {mcpServersLoading ? (
+                    <motion.div
+                      key="loading"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center justify-center h-full min-h-[400px]"
+                    >
+                      <div className="text-center">
+                        <LoadingSpinner size="md" centered />
+                        <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+                          Loading MCP servers...
+                        </p>
+                      </div>
+                    </motion.div>
+                  ) : mcpServers.length > 0 ? (
+                    <motion.div
+                      key="servers"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-4"
+                    >
+                      <AnimatePresence>
+                        {mcpServers.map((server, index) => (
+                          <motion.div
+                            key={server.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                          >
+                            <McpServerCard
+                              server={server}
+                              onRemove={removeMcpServer}
+                              onEdit={handleEditServer}
+                              onTestTool={handleTestTool}
+                            />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex flex-col items-center justify-center h-full min-h-[400px] text-center"
+                    >
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                          duration: 0.5,
+                          delay: 0.2,
+                          type: "spring",
+                        }}
+                        className="mb-6 rounded-full bg-indigo-100 p-6 dark:bg-indigo-900/40"
+                      >
+                        <ExclamationTriangleIcon className="h-12 w-12 text-indigo-500" />
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.4 }}
+                      >
+                        <h3 className="text-xl font-semibold text-neutral-900 dark:text-white">
+                          No MCP Servers Found
+                        </h3>
+                        <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+                          Get started by adding your first MCP server to connect
+                          tools and enhance your AI capabilities.
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.6 }}
+                      >
+                        <Button
+                          onClick={openAddMcpServerModal}
+                          className="mt-8 inline-flex items-center gap-2 rounded-sm bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:from-indigo-500 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                          <PlusIcon className="h-5 w-5" />
+                          <span className="whitespace-nowrap">
+                            Add Your First Server
+                          </span>
+                        </Button>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </Modal>
 
       {/* Tool Test Modal */}
       {toolTestModal.isOpen &&
@@ -480,6 +482,6 @@ export function McpListModal() {
       {/* Edit MCP Server Modal */}
       <EditMcpServerModal />
       <AddMcpServerModal />
-    </Modal>
+    </>
   );
 }

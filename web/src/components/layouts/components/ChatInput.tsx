@@ -2,7 +2,7 @@ import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string) => boolean | void;
   disabled?: boolean;
   placeholder?: string;
   height?: number; // Accept height from parent instead of managing internally
@@ -29,8 +29,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
-    onSendMessage(inputMessage);
-    setInputMessage("");
+    const result = onSendMessage(inputMessage);
+    if (result !== false) {
+      setInputMessage("");
+    }
   };
 
   // 处理输入法组合开始事件

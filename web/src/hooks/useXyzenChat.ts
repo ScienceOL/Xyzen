@@ -117,12 +117,12 @@ export function useXyzenChat(config: XyzenChatConfig) {
   // Event handlers
   const handleSendMessage = useCallback(
     (inputMessage: string) => {
-      if (!inputMessage.trim() || !activeChatChannel) return;
+      if (!inputMessage.trim() || !activeChatChannel) return false;
       if (responding) {
         setSendBlocked(true);
         // Auto-hide the hint after 2 seconds
         window.setTimeout(() => setSendBlocked(false), 2000);
-        return;
+        return false;
       }
       sendMessage(inputMessage);
       // Clear pending input after sending
@@ -131,6 +131,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
       }
       setAutoScroll(true);
       setTimeout(() => scrollToBottom(true), 100);
+      return true;
     },
     [
       activeChatChannel,

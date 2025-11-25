@@ -22,7 +22,7 @@ export const XYZEN_CHAT_CONFIG: XyzenChatConfig = {
     retrying: "重试连接",
   },
   responseMessages: {
-    generating: "",
+    generating: "AI 正在生成回复…",
     creating: "",
   },
   emptyState: {
