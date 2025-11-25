@@ -83,6 +83,7 @@ export function AppFullscreen({
 
             <div className="flex items-center space-x-1">
               <SettingsButton />
+              {/*TODO: Tag 1*/}
               <button
                 className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
                 title="MCP Management"

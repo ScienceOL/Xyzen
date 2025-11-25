@@ -12,7 +12,7 @@ interface AddAgentModalProps {
   onClose: () => void;
 }
 
-const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
+function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
   const {
     createAgent,
     fetchAgents,
@@ -283,6 +283,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">
                       No MCP servers available.
                     </p>
+                    {/*TODO: Tag 2*/}
                     <Button
                       type="button"
                       onClick={() => {
@@ -409,6 +410,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       </form>
     </Modal>
   );
-};
+}
 
 export default AddAgentModal;

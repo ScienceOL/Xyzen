@@ -309,20 +309,6 @@ export default function XyzenAgent({
     // 使用实际的 agent ID（系统助手和普通助手都有真实的 ID）
     const agentId = agent.id;
 
-    // Debug: Log agent MCP server info
-    if (agent.agent_type === "builtin" || agent.agent_type === "system") {
-      console.log(`System agent clicked: ${agent.name} (${agentId})`);
-      console.log(
-        `  - MCP servers attached: ${agent.mcp_servers?.length || 0}`,
-      );
-      if (agent.mcp_servers?.length) {
-        console.log(
-          `  - MCP server IDs:`,
-          agent.mcp_servers.map((s) => s.id),
-        );
-      }
-    }
-
     // 1. 从 chatHistory 中找到该 agent 的所有 topics
     const agentTopics = chatHistory.filter((topic) => {
       const channel = channels[topic.id];
@@ -332,30 +318,16 @@ export default function XyzenAgent({
       return channel.agentId === agentId;
     });
 
-    // 2. 找到最近的空 topic（消息数 <= 1，只有系统消息或完全为空）
-    const emptyTopic = agentTopics
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      )
-      .find((topic) => {
-        const channel = channels[topic.id];
-        if (!channel) return false;
-
-        // 检查消息数量：0条消息或只有1条系统消息算作"空对话"
-        const userMessages = channel.messages.filter(
-          (msg) => msg.role === "user" || msg.role === "assistant",
-        );
-        return userMessages.length === 0;
-      });
-
-    // 3. 如果有空 topic 就复用，否则创建新的
-    if (emptyTopic) {
-      console.log(`复用现有空对话: ${emptyTopic.id} for agent: ${agentId}`);
-      await activateChannel(emptyTopic.id);
-    } else {
+    if (agentTopics.length === 0) {
       console.log(`创建新对话 for agent: ${agentId}`);
       await createDefaultChannel(agentId);
+    } else {
+      const latestTopic = agentTopics.sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      )[0];
+      console.log(`复用最新对话: ${latestTopic.id} for agent: ${agentId}`);
+      await activateChannel(latestTopic.id);
     }
   };
 
