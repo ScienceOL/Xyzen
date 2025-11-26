@@ -2,7 +2,7 @@ name: Send Feishu Notification
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, closed]
 
 jobs:
   notify:
@@ -12,22 +12,36 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
       
       - name: Send to Feishu
+        if: github.event.action == 'opened' || github.event.pull_request.merged == true
         env:
-          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          FEISHU_WEBHOOK_URL: ${{ secrets.SCIENCEOL_CICD_LARK_WEBHOOK_URL }}
         run: |
           if [ -z "$FEISHU_WEBHOOK_URL" ]; then
             echo "FEISHU_WEBHOOK_URL is not set. Exiting."
             exit 1
           fi  
+          
+          # 判断 PR 是否被 merged
+          PR_MERGED="${{ github.event.pull_request.merged }}"
+          if [ "$PR_MERGED" = "true" ]; then
+            STATUS="MERGED"
+            ACTION_TEXT="当前动作：MERGED，请点击下方按钮查看详细信息。"
+          else
+            STATUS="OPENED"
+            ACTION_TEXT="当前动作：OPENED，请点击下方按钮查看详细信息。"
+          fi
+          
+          # 使用 jq 构造 JSON 负载，安全地处理特殊字符
           PAYLOAD=$(jq -n \
             --arg msg_type "interactive" \
-            --arg title "PR 通知" \
+            --arg repo_name "${{ github.event.repository.name }}" \
             --arg pr_title "${{ github.event.pull_request.title }}" \
             --arg pr_number "${{ github.event.number }}" \
             --arg pr_author "${{ github.event.pull_request.user.login }}" \
             --arg base_ref "${{ github.event.pull_request.base.ref }}" \
             --arg head_ref "${{ github.event.pull_request.head.ref }}" \
-            --arg pr_state "${{ github.event.action }}" \
+            --arg status "$STATUS" \
+            --arg action_text "$ACTION_TEXT" \
             --arg pr_url "${{ github.event.pull_request.html_url }}" \
             --arg repo_url "${{ github.event.repository.html_url }}" \
             '{
@@ -39,7 +53,7 @@ jobs:
                 "header": {
                   "title": {
                     "tag": "plain_text",
-                    "content": $title
+                    "content": ("PR 通知 - " + $repo_name)
                   },
                   "template": "purple"
                 },
@@ -77,7 +91,7 @@ jobs:
                         "is_short": true,
                         "text": {
                           "tag": "plain_text",
-                          "content": ("状态：🔔 " + $pr_state)
+                          "content": ("状态：🔔 " + $status)
                         }
                       },
                       {
@@ -93,7 +107,7 @@ jobs:
                     "tag": "div",
                     "text": {
                       "tag": "lark_md",
-                      "content": ("当前动作：" + $pr_state + "，请点击下方按钮查看详细信息。")
+                      "content": $action_text
                     }
                   },
                   {
@@ -126,4 +140,4 @@ jobs:
           curl -X POST \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
-            "$FEISHU_WEBHOOK_URL"
+            "$SCIENCEOL_CICD_LARK_WEBHOOK_URL"
