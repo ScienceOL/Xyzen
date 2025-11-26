@@ -8,10 +8,17 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      
       - name: Send to Feishu
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
         run: |
+          if [ -z "$FEISHU_WEBHOOK_URL" ]; then
+            echo "FEISHU_WEBHOOK_URL is not set. Exiting."
+            exit 1
+          fi  
           PAYLOAD=$(jq -n \
             --arg msg_type "interactive" \
             --arg title "PR 通知" \
