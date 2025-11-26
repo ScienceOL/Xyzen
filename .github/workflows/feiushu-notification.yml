@@ -14,10 +14,12 @@ jobs:
       - name: Send to Feishu
         if: github.event.action == 'opened' || github.event.pull_request.merged == true
         env:
-          FEISHU_WEBHOOK_URL: ${{ secrets.SCIENCEOL_CICD_LARK_WEBHOOK_URL }}
+          SCIENCEOL_CICD_LARK_WEBHOOK_URL: ${{ secrets.SCIENCEOL_CICD_LARK_WEBHOOK_URL }}
         run: |
-          if [ -z "$FEISHU_WEBHOOK_URL" ]; then
-            echo "FEISHU_WEBHOOK_URL is not set. Exiting."
+          set -e
+          
+          if [ -z "$SCIENCEOL_CICD_LARK_WEBHOOK_URL" ]; then
+            echo "SCIENCEOL_CICD_LARK_WEBHOOK_URL is not set. Exiting."
             exit 1
           fi  
           
@@ -138,6 +140,7 @@ jobs:
             }')
           
           curl -X POST \
+            -f \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
             "$SCIENCEOL_CICD_LARK_WEBHOOK_URL"
