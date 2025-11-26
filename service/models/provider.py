@@ -1,5 +1,6 @@
 from uuid import UUID, uuid4
 
+import sqlalchemy as sa
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel, UniqueConstraint
 
@@ -7,7 +8,13 @@ from schemas.provider import ProviderScope, ProviderType
 
 
 class ProviderBase(SQLModel):
-    scope: ProviderScope = Field(index=True)
+    scope: ProviderScope = Field(
+        sa_column=sa.Column(
+            sa.Enum(*(v.value for v in ProviderScope), name="providerscope", native_enum=True),
+            nullable=False,
+            index=True,
+        )
+    )
     user_id: str | None = Field(
         index=True,
         default=None,
@@ -18,7 +25,11 @@ class ProviderBase(SQLModel):
         index=True, min_length=1, max_length=100, description="Display name for this provider configuration"
     )
     provider_type: ProviderType = Field(
-        index=True, description="Type of LLM provider: 'openai', 'azure_openai', 'google'"
+        sa_column=sa.Column(
+            sa.Enum(*(v.value for v in ProviderType), name="providertype", native_enum=True),
+            nullable=False,
+            index=True,
+        )
     )
     key: str = Field(description="API key or authentication token for the provider")
     api: str = Field(description="API endpoint URL for the provider (e.g., https://api.openai.com/v1)")

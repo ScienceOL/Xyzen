@@ -35,7 +35,6 @@ def upgrade() -> None:
     op.alter_column("provider", "scope", nullable=False)
 
     op.alter_column("provider", "user_id", existing_type=sa.VARCHAR(), nullable=True)
-    op.execute("UPDATE provider SET provider_type = UPPER(provider_type)")
     op.alter_column(
         "provider",
         "provider_type",
@@ -64,7 +63,7 @@ def downgrade() -> None:
     op.alter_column(
         "provider",
         "provider_type",
-        existing_type=sa.Enum("OPENAI", "AZURE_OPENAI", "GOOGLE", "GOOGLE_VERTEX", name="providertype"),
+        existing_type=sa.Enum("openai", "azure_openai", "google", "google_vertex", name="providertype"),
         type_=sa.VARCHAR(),
         existing_nullable=False,
     )
