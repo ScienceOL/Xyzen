@@ -1,9 +1,4 @@
-import {
-  AnthropicIcon,
-  AzureIcon,
-  GoogleIcon,
-  OpenAIIcon,
-} from "@/assets/icons";
+import { AzureIcon, GoogleIcon, OpenAIIcon } from "@/assets/icons";
 import {
   Tabs,
   TabsHighlight,
@@ -41,8 +36,8 @@ export const ProviderList = () => {
         return <GoogleIcon className={iconClass} />;
       case "openai":
         return <OpenAIIcon className={iconClass} />;
-      case "anthropic":
-        return <AnthropicIcon className={iconClass} />;
+      case "google_vertex":
+        return <GoogleIcon className={iconClass} />;
       case "azure_openai":
         return <AzureIcon className={iconClass} />;
       default:
@@ -93,7 +88,8 @@ export const ProviderList = () => {
                       {template.display_name}
                     </div>
                     <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                      {template.description}
+                      {template.models.length} model
+                      {template.models.length !== 1 ? "s" : ""} available
                     </div>
                   </div>
                   <PlusCircleIcon className="h-5 w-5 flex-shrink-0 text-neutral-400" />

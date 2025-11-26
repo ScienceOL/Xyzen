@@ -132,6 +132,7 @@ async def create_provider(
     # Convert to ProviderRead by constructing the dict manually
     # BEFORE committing, to avoid detached SQLAlchemy instance issues
     provider_dict: dict[str, Any] = {
+        "scope": created_provider.scope,
         "id": created_provider.id,
         "user_id": created_provider.user_id,
         "name": created_provider.name,
@@ -232,6 +233,7 @@ async def update_provider(
         # Convert to ProviderRead by constructing the dict manually
         # BEFORE committing, to avoid detached SQLAlchemy instance issues
         provider_dict: dict[str, Any] = {
+            "scope": updated_provider.scope,
             "id": updated_provider.id,
             "user_id": updated_provider.user_id,
             "name": updated_provider.name,

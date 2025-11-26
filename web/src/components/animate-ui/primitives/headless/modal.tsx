@@ -6,6 +6,7 @@ import {
   DialogPanel,
   DialogTitle,
 } from "@/components/animate-ui/primitives/headless/dialog";
+import { zIndexClasses } from "@/constants/zIndex";
 import type { ReactNode } from "react";
 
 interface ModalProps {
@@ -30,7 +31,11 @@ export function Modal({
   minHeight = "",
 }: ModalProps) {
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-[10000]">
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      className={`relative ${zIndexClasses.modal}`}
+    >
       <DialogBackdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
 
       <div className="fixed inset-0 flex w-screen items-center justify-center p-4">

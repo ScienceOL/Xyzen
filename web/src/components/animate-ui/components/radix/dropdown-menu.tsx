@@ -32,6 +32,7 @@ import {
   type DropdownMenuTriggerProps as DropdownMenuTriggerPrimitiveProps,
 } from "@/components/animate-ui/primitives/radix/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { zIndexClasses } from "@/constants/zIndex";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 
 type DropdownMenuProps = DropdownMenuPrimitiveProps;
@@ -58,7 +59,8 @@ function DropdownMenuContent({
     <DropdownMenuContentPrimitive
       sideOffset={sideOffset}
       className={cn(
-        "bg-popover text-popover-foreground z-[10001] max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md outline-none",
+        "bg-popover text-popover-foreground max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md outline-none",
+        zIndexClasses.popover,
         className,
       )}
       {...props}
@@ -277,7 +279,8 @@ function DropdownMenuSubContent({
   return (
     <DropdownMenuSubContentPrimitive
       className={cn(
-        "bg-popover text-popover-foreground z-[10001] min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border p-1 shadow-lg outline-none",
+        "bg-popover text-popover-foreground min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border p-1 shadow-lg outline-none",
+        zIndexClasses.popover,
         className,
       )}
       {...props}

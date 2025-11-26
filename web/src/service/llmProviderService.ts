@@ -4,6 +4,7 @@ import type {
   LlmProviderCreate,
   LlmProviderResponse,
   LlmProviderUpdate,
+  ModelRegistry,
   ProviderTemplate,
 } from "@/types/llmProvider";
 
@@ -31,6 +32,16 @@ class LlmProviderService {
     return headers;
   }
 
+  private getProviderDisplayName(type: string): string {
+    const displayNames: Record<string, string> = {
+      openai: "OpenAI",
+      azure_openai: "Azure OpenAI",
+      google: "Google",
+      google_vertex: "Google Vertex AI",
+    };
+    return displayNames[type] || type;
+  }
+
   /**
    * Get provider templates for UI
    */
@@ -41,7 +52,15 @@ class LlmProviderService {
     if (!response.ok) {
       throw new Error("Failed to fetch provider templates");
     }
-    return response.json();
+
+    const modelRegistry: ModelRegistry = await response.json();
+
+    // Transform dict to array of templates
+    return Object.entries(modelRegistry).map(([providerType, models]) => ({
+      type: providerType,
+      display_name: this.getProviderDisplayName(providerType),
+      models: models,
+    }));
   }
 
   /**

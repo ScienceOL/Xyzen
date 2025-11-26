@@ -2,6 +2,7 @@ import { useXyzen } from "@/store";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
+import { zIndexClasses } from "@/constants/zIndex";
 
 import {
   ProviderConfigForm,
@@ -34,7 +35,7 @@ export function SettingsModal() {
           static
           open={isSettingsModalOpen}
           onClose={closeSettingsModal}
-          className="relative z-[10000]"
+          className={`relative ${zIndexClasses.modal}`}
         >
           {/* Backdrop */}
           <motion.div

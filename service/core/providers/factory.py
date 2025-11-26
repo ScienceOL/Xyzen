@@ -61,7 +61,11 @@ class ChatModelFactory:
         self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]
     ) -> BaseChatModel:
         if "azure_endpoint" not in credentials:
-            raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Azure endpoint is not provided")
+            if "api_endpoint" not in credentials:
+                raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Azure endpoint is not provided")
+            azure_endpoint = credentials["api_endpoint"]
+        else:
+            azure_endpoint = credentials["azure_endpoint"]
         if "azure_deployment" not in credentials:
             azure_deployment = model
         else:
@@ -70,7 +74,7 @@ class ChatModelFactory:
         return AzureChatOpenAI(
             azure_deployment=azure_deployment,
             api_key=credentials["api_key"],
-            azure_endpoint=credentials["azure_endpoint"],
+            azure_endpoint=azure_endpoint,
             **runtime_kwargs,
         )
 
