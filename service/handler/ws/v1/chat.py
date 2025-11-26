@@ -154,7 +154,7 @@ async def handle_tool_call_confirmation(
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
         from core.chat.tools import execute_tool_calls
-        from core.providers import ChatMessage
+        from schemas.message import ChatMessage
 
         try:
             # Execute the tools using the same logic as immediate execution

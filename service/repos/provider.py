@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models.provider import Provider, ProviderCreate, ProviderUpdate
+from models.provider import Provider, ProviderCreate, ProviderScope, ProviderUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +43,11 @@ class ProviderRepository:
         if include_system:
             # Include both user's providers and system providers
             statement = select(Provider).where(
-                (Provider.user_id == user_id) | (Provider.is_system == True)  # noqa: E712
+                (Provider.user_id == user_id) | (Provider.scope == ProviderScope.SYSTEM)  # noqa: E712
             )
         else:
             # Only user's own providers
-            statement = select(Provider).where(Provider.user_id == user_id, Provider.is_system == False)  # noqa: E712
+            statement = select(Provider).where(Provider.user_id == user_id, Provider.scope == ProviderScope.USER)  # noqa: E712
         result = await self.db.exec(statement)
         providers = list(result.all())
         logger.debug(f"Found {len(providers)} providers for user {user_id}")
@@ -61,14 +61,14 @@ class ProviderRepository:
             The system Provider instance if it exists, None otherwise.
         """
         logger.debug("Fetching system provider")
-        statement = select(Provider).where(Provider.is_system == True)  # noqa: E712
+        statement = select(Provider).where(Provider.scope == ProviderScope.SYSTEM)  # noqa: E712
         result = await self.db.exec(statement)
         provider = result.first()
         if provider:
             logger.debug(f"Found system provider: {provider.name}")
         return provider
 
-    async def create_provider(self, provider_data: ProviderCreate, user_id: str) -> Provider:
+    async def create_provider(self, provider_data: ProviderCreate, user_id: str | None) -> Provider:
         """
         Creates a new provider.
         This function does NOT commit the transaction, but it does flush the session
@@ -82,19 +82,9 @@ class ProviderRepository:
             The newly created Provider instance.
         """
         logger.debug(f"Creating new provider for user_id: {user_id}")
-        provider = Provider(
-            user_id=user_id,
-            name=provider_data.name,
-            provider_type=provider_data.provider_type,
-            api=provider_data.api,
-            key=provider_data.key,
-            timeout=provider_data.timeout,
-            model=provider_data.model,
-            max_tokens=provider_data.max_tokens,
-            temperature=provider_data.temperature,
-            is_system=provider_data.is_system,
-            provider_config=provider_data.provider_config,
-        )
+        data = provider_data.model_dump(exclude_unset=True)
+        data["user_id"] = user_id
+        provider = Provider(**data)
         self.db.add(provider)
         await self.db.flush()
         await self.db.refresh(provider)
@@ -118,10 +108,12 @@ class ProviderRepository:
             return None
 
         # Only update fields that are not None to avoid null constraint violations
+        # update_data = provider_data.model_dump(exclude_unset=True, exclude_none=True)
+        # for field, value in update_data.items():
+        #     if hasattr(provider, field):
+        #         setattr(provider, field, value)
         update_data = provider_data.model_dump(exclude_unset=True, exclude_none=True)
-        for field, value in update_data.items():
-            if hasattr(provider, field):
-                setattr(provider, field, value)
+        provider.sqlmodel_update(update_data)
 
         self.db.add(provider)
         await self.db.flush()

@@ -1,10 +1,8 @@
 import json
 import logging
-import traceback
 from typing import Any
 from urllib import parse, request
 
-import openai
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_access_token
 
@@ -97,117 +95,88 @@ def register_built_in_tools(mcp: FastMCP) -> None:
             llm_web_search("Python async programming best practices")
             llm_web_search("What is the latest news about AI development?")
         """
-        try:
-            from core.providers import get_user_provider_manager
-            from middleware.database.connection import AsyncSessionLocal
+        return ""
+        # try:
+        #     from core.providers import get_user_provider_manager
+        #     from middleware.database.connection import AsyncSessionLocal
 
-            # Get user info for provider access
-            access_token = get_access_token()
-            if not access_token:
-                return "❌ Authentication required for web search"
+        #     # Get user info for provider access
+        #     access_token = get_access_token()
+        #     if not access_token:
+        #         return "❌ Authentication required for web search"
 
-            user_info = AuthProvider.parse_user_info(access_token.claims)
-            user_id = user_info.id
+        #     user_info = AuthProvider.parse_user_info(access_token.claims)
+        #     user_id = user_info.id
 
-            # Get user's provider manager
-            async with AsyncSessionLocal() as db:
-                try:
-                    user_provider_manager = await get_user_provider_manager(user_id, db)
-                except ValueError:
-                    # Fall back to system provider if user has no providers
-                    try:
-                        user_provider_manager = await get_user_provider_manager("system", db)
-                    except ValueError:
-                        return "❌ No AI providers configured for web search"
+        #     # Get user's provider manager
+        #     async with AsyncSessionLocal() as db:
+        #         try:
+        #             user_provider_manager = await get_user_provider_manager(user_id, db)
+        #         except ValueError:
+        #             # Fall back to system provider if user has no providers
+        #             try:
+        #                 user_provider_manager = await get_user_provider_manager("system", db)
+        #             except ValueError:
+        #                 return "❌ No AI providers configured for web search"
 
-                # Prefer Azure OpenAI providers for web search
-                preferred_provider = None
-                providers = user_provider_manager.list_providers()
+        #         preferred_provider = await user_provider_manager.get_provider_config()
+        #         if not preferred_provider:
+        #             return "❌ No preferred provider configured for web search"
 
-                # Look for Azure OpenAI first
-                for provider_info in providers:
-                    if provider_info["type"] == "azure_openai" and provider_info["available"]:
-                        preferred_provider = user_provider_manager.get_provider(provider_info["name"])
-                        logger.info(f"Using Azure OpenAI provider: {provider_info['name']}")
-                        break
+        #         if preferred_provider.type != ProviderType.WEB_SEARCH:
+        #             return f"❌ Web search not supported for provider type: {preferred_provider.provider_name}"
 
-                # Fall back to any available provider
-                if not preferred_provider:
-                    preferred_provider = user_provider_manager.get_active_provider()
-                    if not preferred_provider:
-                        return "❌ No available AI providers for web search"
-                    logger.info(f"Using fallback provider: {preferred_provider.provider_name}")
+        #         if not model:
+        #             return "❌ No model configured for the selected provider"
 
-                # Create appropriate client based on provider type
-                if preferred_provider.provider_name == "azure_openai" and preferred_provider.api_endpoint:
-                    client = openai.AzureOpenAI(
-                        api_key=str(preferred_provider.api_key),
-                        azure_endpoint=preferred_provider.api_endpoint,
-                        api_version=getattr(preferred_provider, "api_version", "2024-02-01"),
-                        timeout=preferred_provider.timeout,
-                    )
-                    model = preferred_provider.model
-                elif preferred_provider.provider_name == "openai":
-                    client = openai.OpenAI(
-                        api_key=str(preferred_provider.api_key),
-                        base_url=preferred_provider.api_endpoint,
-                        timeout=preferred_provider.timeout,
-                    )
-                    model = preferred_provider.model
-                else:
-                    return f"❌ Web search not supported for provider type: {preferred_provider.provider_name}"
+        #         logger.info(f"Executing web search for query: '{query}' using model: {model}")
 
-                if not model:
-                    return "❌ No model configured for the selected provider"
+        #         # Use regular chat completion with a web search prompt
+        #         # Note: The original code used a non-existent responses.create method
+        #         response = client.chat.completions.create(
+        #             model=model,
+        #             messages=[
+        #                 {
+        #                     "role": "system",
+        #                     "content": (
+        #                         "You are a web search assistant. For the given query, "
+        #                         "provide a comprehensive response based on current web information. Include:\n"
+        #                         "1. Direct answer to the query\n"
+        #                         "2. Key facts and details\n"
+        #                         "3. Multiple perspectives if applicable\n"
+        #                         "4. Recent developments or updates\n\n"
+        #                         "Format your response clearly with sections and bullet points where appropriate.\n"
+        #                         "**Do not add, infer, or guess any facts—use only factual information.**\n"
+        #                         "**Avoid any info sources from huggingface and other AI-related datasets.**"
+        #                     ),
+        #                 },
+        #                 {"role": "user", "content": f"Search query: {query}"},
+        #             ],
+        #             temperature=0.3,
+        #             max_tokens=preferred_provider.max_tokens,
+        #         )
 
-                logger.info(f"Executing web search for query: '{query}' using model: {model}")
+        #         search_result = response.choices[0].message.content
 
-                # Use regular chat completion with a web search prompt
-                # Note: The original code used a non-existent responses.create method
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a web search assistant. For the given query, "
-                                "provide a comprehensive response based on current web information. Include:\n"
-                                "1. Direct answer to the query\n"
-                                "2. Key facts and details\n"
-                                "3. Multiple perspectives if applicable\n"
-                                "4. Recent developments or updates\n\n"
-                                "Format your response clearly with sections and bullet points where appropriate.\n"
-                                "**Do not add, infer, or guess any facts—use only factual information.**\n"
-                                "**Avoid any info sources from huggingface and other AI-related datasets.**"
-                            ),
-                        },
-                        {"role": "user", "content": f"Search query: {query}"},
-                    ],
-                    temperature=0.3,
-                    max_tokens=preferred_provider.max_tokens,
-                )
+        #         if not search_result:
+        #             return "❌ Empty response from AI provider"
 
-                search_result = response.choices[0].message.content
+        #         # Add disclaimer about web search limitations
+        #         final_result = (
+        #             search_result
+        #             + "\n\n*Note: This response is generated based on the AI model's training data. "
+        #             + "For the most current information, please verify with recent sources.*"
+        #         )
 
-                if not search_result:
-                    return "❌ Empty response from AI provider"
+        #         logger.info(f"🎉 Web search completed successfully for query: '{query}'")
+        #         logger.info(f"📊 Result: {len(search_result)} characters")
 
-                # Add disclaimer about web search limitations
-                final_result = (
-                    search_result
-                    + "\n\n*Note: This response is generated based on the AI model's training data. "
-                    + "For the most current information, please verify with recent sources.*"
-                )
+        #         return final_result
 
-                logger.info(f"🎉 Web search completed successfully for query: '{query}'")
-                logger.info(f"📊 Result: {len(search_result)} characters")
-
-                return final_result
-
-        except Exception as e:
-            logger.error(f"❌ Web search failed: {str(e)}")
-            logger.error(f"🔍 Error details: {traceback.format_exc()}")
-            return f"❌ Search error: {str(e)}"
+        # except Exception as e:
+        #     logger.error(f"❌ Web search failed: {str(e)}")
+        #     logger.error(f"🔍 Error details: {traceback.format_exc()}")
+        #     return f"❌ Search error: {str(e)}"
 
     _ = llm_web_search
 

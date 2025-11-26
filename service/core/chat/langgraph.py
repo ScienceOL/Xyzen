@@ -15,7 +15,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from core.providers import LLMProviderManager, get_user_provider_manager
+from core.providers import ProviderManager, get_user_provider_manager
 from models.graph import (
     GraphAgent,
     GraphAgentWithGraph,
@@ -406,7 +406,7 @@ class LangGraphExecutor:
         return GraphState
 
     async def _create_node_function(
-        self, node: GraphNode | GraphNodeRead, user_provider_manager: LLMProviderManager
+        self, node: GraphNode | GraphNodeRead, user_provider_manager: ProviderManager
     ) -> Callable[[GraphState], Awaitable[dict[str, Any]]]:
         """Create executable function for a graph node"""
 
@@ -423,7 +423,7 @@ class LangGraphExecutor:
             return self._create_passthrough_node(node)
 
     async def _create_llm_node(
-        self, node: GraphNode | GraphNodeRead, user_provider_manager: LLMProviderManager
+        self, node: GraphNode | GraphNodeRead, user_provider_manager: ProviderManager
     ) -> Callable[[GraphState], Awaitable[dict[str, Any]]]:
         """Create LLM node function"""
 
@@ -438,7 +438,7 @@ class LangGraphExecutor:
 
                 # Validate provider if specified
                 if provider_name:
-                    provider = user_provider_manager.get_provider(provider_name)
+                    provider = user_provider_manager.get_provider_config(provider_name)
                     if not provider:
                         logger.warning(
                             f"Provider '{provider_name}' not found for node '{node.name}', using active provider"
@@ -452,9 +452,8 @@ class LangGraphExecutor:
                     )
 
                 # Create LangChain model
-                from core.chat.langchain import _create_langchain_model
 
-                llm = _create_langchain_model(user_provider_manager, provider_name)
+                llm = user_provider_manager.create_langchain_model(provider_name)
 
                 # Prepare messages
                 messages = []

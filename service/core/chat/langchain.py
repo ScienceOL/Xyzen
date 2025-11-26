@@ -33,11 +33,6 @@ ResponseT = TypeVar("ResponseT")
 STREAMING_LOG_BATCH_SIZE = 50  # Log every N tokens instead of every token
 
 
-def _create_langchain_model(user_provider_manager: Any, provider_name: str | None = None) -> Any:
-    """Create a LangChain model from the provider manager."""
-    return user_provider_manager.create_langchain_model(provider_name)
-
-
 async def _prepare_langchain_tools(db: AsyncSession, agent: Any) -> List[BaseTool]:
     """Prepare LangChain tools from MCP servers."""
     from core.chat.tools import execute_tool_call, prepare_mcp_tools
@@ -226,25 +221,6 @@ async def get_ai_response_stream_langchain_legacy(
     if agent and agent.provider_id:
         provider_name = str(agent.provider_id)
 
-    # Verify provider is available
-    provider = user_provider_manager.get_provider(provider_name)
-    if not provider:
-        logger.warning(
-            f"Requested provider {provider_name} not found for user {user_id}, falling back to active provider"
-        )
-        provider = user_provider_manager.get_active_provider()
-        if provider:
-            # Update provider_name to match the fallback provider
-            for p_info in user_provider_manager.list_providers():
-                if p_info["active"]:
-                    provider_name = p_info["name"]
-                    break
-
-    if not provider:
-        logger.error(f"No provider available for user {user_id}")
-        yield {"type": ChatEventType.ERROR, "data": {"error": "No AI provider available."}}
-        return
-
     # Get system prompt with MCP awareness
     system_prompt = await build_system_prompt(db, agent)
 
@@ -252,7 +228,7 @@ async def get_ai_response_stream_langchain_legacy(
 
     try:
         # Create langchain agent
-        llm = _create_langchain_model(user_provider_manager, provider_name)
+        llm = user_provider_manager.create_langchain_model(provider_name)
         tools = await _prepare_langchain_tools(db, agent)
         langchain_agent: Any = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
 

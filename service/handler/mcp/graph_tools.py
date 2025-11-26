@@ -352,7 +352,7 @@ async def add_node(
             async with AsyncSessionLocal() as temp_session:
                 try:
                     user_provider_manager = await get_user_provider_manager(user_info.id, temp_session)
-                    provider = user_provider_manager.get_provider(config["provider_name"])
+                    provider = user_provider_manager.get_provider_config(config["provider_name"])
                     if not provider:
                         return error_response(
                             f"Provider '{config['provider_name']}' not found or not available to user"

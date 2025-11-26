@@ -5,29 +5,26 @@ Pytest configuration and shared fixtures for Xyzen service tests.
 import asyncio
 import os
 from collections.abc import AsyncGenerator, Generator
-from typing import Any, Callable
+from typing import Callable
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
-from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import SQLModel, create_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.pool import StaticPool
 
 from app.main import app
-from core.providers.base import (
-    BaseLLMProvider,
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-    ChatMessage,
-)
 from middleware.database.connection import get_session
 from models.provider import Provider, ProviderCreate
-
+from schemas.message import (
+    ChatCompletionRequest,
+    ChatMessage,
+)
+from schemas.provider import ProviderScope, ProviderType
 
 # Test database configuration
 TEST_DATABASE_URL = "sqlite+aiosqlite:///test_database.db"
@@ -122,69 +119,20 @@ async def async_client(
     app.dependency_overrides.clear()
 
 
-# Mock Provider for testing
-class MockLLMProvider(BaseLLMProvider):
-    """Mock LLM provider for testing."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
-            api_key=SecretStr("test-key"),
-            api_endpoint="https://mock-api.test/v1",
-            model="mock-model",
-            **kwargs,
-        )
-
-    def _convert_messages(self, messages: list[ChatMessage]) -> list[dict[str, Any]]:
-        """Convert messages to mock format."""
-        return [{"role": msg.role, "content": msg.content} for msg in messages]
-
-    async def chat_completion(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-        """Mock chat completion."""
-        return ChatCompletionResponse(
-            content="Mock response for testing",
-            finish_reason="stop",
-            usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
-        )
-
-    def is_available(self) -> bool:
-        """Mock availability check."""
-        return True
-
-    @property
-    def provider_name(self) -> str:
-        """Mock provider name."""
-        return "mock"
-
-    @property
-    def supported_models(self) -> list[str]:
-        """Mock supported models."""
-        return ["mock-model", "mock-model-2"]
-
-    def to_langchain_model(self) -> Any:
-        """Mock LangChain conversion."""
-        raise NotImplementedError("Mock provider doesn't support LangChain")
-
-
-@pytest.fixture
-def mock_provider() -> MockLLMProvider:
-    """Create a mock LLM provider for testing."""
-    return MockLLMProvider()
-
-
 @pytest.fixture
 def sample_provider_data() -> ProviderCreate:
     """Create sample provider data for testing."""
     return ProviderCreate(
+        scope=ProviderScope.SYSTEM,
         user_id="test-user-123",
         name="Test OpenAI Provider",
-        provider_type="openai",
+        provider_type=ProviderType.OPENAI,
         api="https://api.openai.com/v1",
         key="sk-test-key-123",
         timeout=60,
         model="gpt-4o",
         max_tokens=4096,
         temperature=0.7,
-        is_system=False,
         provider_config={"organization": "test-org"},
     )
 

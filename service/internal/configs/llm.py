@@ -1,61 +1,50 @@
-from typing import Any, Dict, Optional
+import base64
+import json
+from typing import Any
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, SecretStr, computed_field
 
 from schemas.provider import ProviderType
 
 
 class LLMConfig(BaseModel):
-    """
-    LLM configuration that maps cleanly to Provider model.
-    Supports old-style environment variables with smart inference.
-    """
-
-    key: str = Field(default="", description="LLM API Key")
-    api: str = Field(default="", description="LLM API Endpoint", alias="endpoint")
-    model: str = Field(default="gpt-4o", description="Default LLM Model", alias="deployment")
-    version: str = Field(default="2024-10-21", description="API Version (Azure specific)")
-    timeout: int = Field(default=60, description="Request timeout in seconds")
-    max_tokens: int = Field(default=4096, description="Maximum tokens")
-    temperature: float = Field(default=0.7, description="Sampling temperature")
-
-    @computed_field
-    @property
-    def provider_type(self) -> ProviderType:
-        """Auto-detect provider type from endpoint URL."""
-        if not self.api:
-            return ProviderType.AZURE_OPENAI
-
-        api_lower = self.api.lower()
-        if "openai.azure.com" in api_lower:
-            return ProviderType.AZURE_OPENAI
-        elif "api.openai.com" in api_lower:
-            return ProviderType.OPENAI
-        elif "api.anthropic.com" in api_lower:
-            return ProviderType.ANTHROPIC
-        elif "generativelanguage.googleapis.com" in api_lower:
-            return ProviderType.GOOGLE
-
-        else:
-            return ProviderType.AZURE_OPENAI
+    provider: ProviderType = Field(default=ProviderType.AZURE_OPENAI, description="Provider type")
+    key: SecretStr = Field(default=SecretStr(""), description="API Key")
+    api: str = Field(default="", validation_alias="endpoint", description="API Endpoint (Base URL)")
+    model: str = Field(
+        default="gpt-4o", validation_alias="deployment", description="Model name or Azure Deployment name"
+    )
+    api_version: str | None = Field(
+        default=None, validation_alias="version", description="API Version (Azure specific)"
+    )
+    timeout: int = Field(default=60, description="Request timeout")
+    max_tokens: int = Field(default=4096, description="Max tokens")
+    temperature: float = Field(default=0.7, description="Temperature")
 
     @computed_field
     @property
     def is_enabled(self) -> bool:
-        """Check if configuration is valid."""
-        return bool(self.key and self.api and self.model)
+        if not self.key.get_secret_value():
+            return False
 
-    def to_provider_data(self, user_id: Optional[str] = None, name: str = "System Default") -> Dict[str, Any]:
-        """Convert to Provider model data."""
-        return {
-            "user_id": user_id,
-            "name": name,
-            "provider_type": self.provider_type.value,
-            "api": self.api,
-            "key": self.key,
-            "model": self.model,
-            "timeout": self.timeout,
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature,
-            "is_system": True,
-        }
+        if self.provider == ProviderType.AZURE_OPENAI and not self.api:
+            return False
+
+        return True
+
+    def to_extra_data(self) -> dict[str, Any]:
+        config_json = {}
+
+        if self.provider == ProviderType.AZURE_OPENAI:
+            if self.api_version:
+                config_json["azure_version"] = self.api_version
+            config_json["azure_deployment"] = self.model
+            config_json["azure_endpoint"] = self.api
+
+        elif self.provider == ProviderType.GOOGLE_VERTEX:
+            raw_key = self.key.get_secret_value()
+            if raw_key:
+                vertex_sa = json.loads(base64.b64decode(raw_key).decode("utf-8"))
+                config_json["vertex_sa"] = vertex_sa
+
+        return config_json

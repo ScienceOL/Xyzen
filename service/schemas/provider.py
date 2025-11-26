@@ -1,82 +1,68 @@
-from enum import Enum
-from typing import Any
+from enum import StrEnum
+from typing import Any, NotRequired, TypedDict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, SecretStr
 
 
-class ProviderType(Enum):
-    """Enumeration of available LLM provider types."""
+class ProviderScope(StrEnum):
+    SYSTEM = "system"
+    USER = "user"
+    ORGANIZATION = "org"
+
+
+class ProviderType(StrEnum):
+    """Enumeration of available provider types."""
 
     OPENAI = "openai"
     AZURE_OPENAI = "azure_openai"
-    ANTHROPIC = "anthropic"
     GOOGLE = "google"
     GOOGLE_VERTEX = "google_vertex"
 
 
-class ProviderTemplate(BaseModel):
-    """Template for creating a provider with metadata for UI."""
+class LLMCredentials(TypedDict):
+    api_key: SecretStr
+    api_endpoint: NotRequired[str]
 
-    type: str
-    display_name: str
-    description: str
-    required_fields: list[str]
-    optional_fields: list[str]
-    default_config: dict[str, Any]
+    # Azure
+    azure_endpoint: NotRequired[str]
+    azure_version: NotRequired[str]
+    azure_deployment: NotRequired[str]
+
+    # Vertex
+    vertex_sa: NotRequired[dict]
 
 
-# Provider templates for the UI
-PROVIDER_TEMPLATES = [
-    ProviderTemplate(
-        type="google",
-        display_name="Google Gemini",
-        description="Google's Gemini AI models with advanced reasoning capabilities",
-        required_fields=["api_key", "model"],
-        optional_fields=["base_url", "project", "location", "max_tokens", "temperature", "timeout"],
-        default_config={
-            "model": "gemini-2.0-flash-exp",
-            "max_tokens": 8192,
-            "temperature": 0.7,
-            "timeout": 60,
-        },
-    ),
-    ProviderTemplate(
-        type="openai",
-        display_name="OpenAI",
-        description="OpenAI's GPT models including GPT-4 and GPT-3.5",
-        required_fields=["api_key", "model"],
-        optional_fields=["base_url", "max_tokens", "temperature", "timeout"],
-        default_config={
-            "model": "gpt-4o",
-            "max_tokens": 4096,
-            "temperature": 0.7,
-            "timeout": 60,
-        },
-    ),
-    ProviderTemplate(
-        type="anthropic",
-        display_name="Anthropic Claude",
-        description="Anthropic's Claude models with extended context windows",
-        required_fields=["api_key", "model"],
-        optional_fields=["base_url", "max_tokens", "temperature", "timeout"],
-        default_config={
-            "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 4096,
-            "temperature": 0.7,
-            "timeout": 60,
-        },
-    ),
-    ProviderTemplate(
-        type="azure_openai",
-        display_name="Azure OpenAI",
-        description="Microsoft Azure's OpenAI Service with enterprise features",
-        required_fields=["api_key", "api_endpoint", "deployment", "api_version"],
-        optional_fields=["max_tokens", "temperature", "timeout"],
-        default_config={
-            "api_version": "2024-10-21",
-            "max_tokens": 4096,
-            "temperature": 0.7,
-            "timeout": 60,
-        },
-    ),
-]
+class RuntimeProviderConfig(BaseModel):
+    name: str
+    provider_scope: ProviderScope
+    provider_type: ProviderType
+
+    api_key: SecretStr
+    api_endpoint: str | None = None
+
+    model: str
+    max_tokens: int | None = None
+    temperature: float | None = None
+    timeout: int | None = None
+
+    extra_config: dict[str, Any] = Field(default_factory=dict)
+
+    def to_credentials(self) -> LLMCredentials:
+        creds: LLMCredentials = {"api_key": self.api_key}
+
+        if self.api_endpoint:
+            creds["api_endpoint"] = self.api_endpoint
+
+        # Azure
+        if "azure_endpoint" in self.extra_config:
+            creds["azure_endpoint"] = self.extra_config["azure_endpoint"]
+        if "azure_deployment" in self.extra_config:
+            creds["azure_deployment"] = self.extra_config["azure_deployment"]
+        if "azure_version" in self.extra_config:
+            creds["azure_version"] = self.extra_config["azure_version"]
+
+        # Vertex
+        if "vertex_sa" in self.extra_config:
+            creds["vertex_sa"] = self.extra_config["vertex_sa"]
+
+        return creds
