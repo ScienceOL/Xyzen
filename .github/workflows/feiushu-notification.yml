@@ -1,0 +1,115 @@
+name: Send Feishu Notification
+
+on:
+  pull_request:
+    types: [opened, closed, reopened]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send to Feishu
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          PR_NUMBER="${{ github.event.number }}"
+          PR_STATE="${{ github.event.action }}"
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          HEAD_REF="${{ github.event.pull_request.head.ref }}"
+          REPO_URL="${{ github.event.repository.html_url }}"
+          cat <<EOF >/tmp/feishu-card.json
+            {
+              "msg_type": "interactive",
+              "card": {
+                "config": {
+                  "wide_screen_mode": true
+                },
+                "header": {
+                  "title": {
+                    "tag": "plain_text",
+                    "content": "PR 通知"
+                  },
+                  "template": "purple"
+                },
+                "elements": [
+                  {
+                    "tag": "div",
+                    "fields": [
+                      {
+                        "is_short": false,
+                        "text": {
+                          "tag": "lark_md",
+                          "content": "✨ **${PR_TITLE}**"
+                        }
+                      },
+                      {
+                        "is_short": true,
+                        "text": {
+                          "tag": "plain_text",
+                          "content": "PR #${PR_NUMBER}"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "div",
+                    "text": {
+                      "tag": "plain_text",
+                      "content": "由 **${PR_AUTHOR}** 发起 · 分支：**${BASE_REF} -> ${HEAD_REF}**"
+                    }
+                  },
+                  {
+                    "tag": "div",
+                    "fields": [
+                      {
+                        "is_short": true,
+                        "text": {
+                          "tag": "plain_text",
+                          "content": "状态：🔔 **${PR_STATE}**"
+                        }
+                      },
+                      {
+                        "is_short": true,
+                        "text": {
+                          "tag": "plain_text",
+                          "content": "作者：**${PR_AUTHOR}**"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "div",
+                    "text": {
+                      "tag": "lark_md",
+                      "content": "当前动作：**${PR_STATE}**，请点击下方按钮查看详细信息。"
+                    }
+                  },
+                  {
+                    "tag": "action",
+                    "actions": [
+                      {
+                        "tag": "button",
+                        "text": {
+                          "tag": "plain_text",
+                          "content": "查看 PR"
+                        },
+                        "type": "primary",
+                        "url": "${PR_URL}"
+                      },
+                      {
+                        "tag": "button",
+                        "text": {
+                          "tag": "plain_text",
+                          "content": "仓库主页"
+                        },
+                        "type": "default",
+                        "url": "${REPO_URL}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          EOF
+          curl -X POST -H "Content-Type: application/json" -d @/tmp/feishu-card.json https://open.feishu.cn/open-apis/bot/v2/hook/d87503b9-801a-47a1-bc6d-0a6bc897a601
