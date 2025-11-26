@@ -55,7 +55,7 @@ jobs:
                   {
                     "tag": "div",
                     "text": {
-                      "tag": "plain_text",
+                      "tag": "lark_md",
                       "content": "由 **${PR_AUTHOR}** 发起 · 分支：**${BASE_REF} -> ${HEAD_REF}**"
                     }
                   },
@@ -65,14 +65,14 @@ jobs:
                       {
                         "is_short": true,
                         "text": {
-                          "tag": "plain_text",
+                          "tag": "lark_md",
                           "content": "状态：🔔 **${PR_STATE}**"
                         }
                       },
                       {
                         "is_short": true,
                         "text": {
-                          "tag": "plain_text",
+                          "tag": "lark_md",
                           "content": "作者：**${PR_AUTHOR}**"
                         }
                       }
@@ -112,4 +112,4 @@ jobs:
               }
             }
           EOF
-          curl -X POST -H "Content-Type: application/json" -d @/tmp/feishu-card.json https://open.feishu.cn/open-apis/bot/v2/hook/d87503b9-801a-47a1-bc6d-0a6bc897a601
+          curl -X POST -H "Content-Type: application/json" -d @/tmp/feishu-card.json https://open.feishu.cn/open-apis/bot/v2/hook/8f2abf06-2296-44fd-a000-c66ff4d464fe
