@@ -95,6 +95,7 @@ def register_built_in_tools(mcp: FastMCP) -> None:
             llm_web_search("Python async programming best practices")
             llm_web_search("What is the latest news about AI development?")
         """
+        # TODO: Implement AI-enhanced web search functionality
         return ""
         # try:
         #     from core.providers import get_user_provider_manager
