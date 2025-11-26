@@ -2,25 +2,29 @@ name: Send Feishu Notification
 
 on:
   pull_request:
-    types: [opened, closed, reopened]
+    types: [opened]
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
       - name: Send to Feishu
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          PR_URL="${{ github.event.pull_request.html_url }}"
-          PR_NUMBER="${{ github.event.number }}"
-          PR_STATE="${{ github.event.action }}"
-          BASE_REF="${{ github.event.pull_request.base.ref }}"
-          HEAD_REF="${{ github.event.pull_request.head.ref }}"
-          REPO_URL="${{ github.event.repository.html_url }}"
-          cat <<EOF >/tmp/feishu-card.json
-            {
-              "msg_type": "interactive",
+          PAYLOAD=$(jq -n \
+            --arg msg_type "interactive" \
+            --arg title "PR 通知" \
+            --arg pr_title "${{ github.event.pull_request.title }}" \
+            --arg pr_number "${{ github.event.number }}" \
+            --arg pr_author "${{ github.event.pull_request.user.login }}" \
+            --arg base_ref "${{ github.event.pull_request.base.ref }}" \
+            --arg head_ref "${{ github.event.pull_request.head.ref }}" \
+            --arg pr_state "${{ github.event.action }}" \
+            --arg pr_url "${{ github.event.pull_request.html_url }}" \
+            --arg repo_url "${{ github.event.repository.html_url }}" \
+            '{
+              "msg_type": $msg_type,
               "card": {
                 "config": {
                   "wide_screen_mode": true
@@ -28,7 +32,7 @@ jobs:
                 "header": {
                   "title": {
                     "tag": "plain_text",
-                    "content": "PR 通知"
+                    "content": $title
                   },
                   "template": "purple"
                 },
@@ -40,14 +44,14 @@ jobs:
                         "is_short": false,
                         "text": {
                           "tag": "lark_md",
-                          "content": "✨ **${PR_TITLE}**"
+                          "content": ("✨ " + $pr_title)
                         }
                       },
                       {
                         "is_short": true,
                         "text": {
                           "tag": "plain_text",
-                          "content": "PR #${PR_NUMBER}"
+                          "content": ("PR #" + $pr_number)
                         }
                       }
                     ]
@@ -55,8 +59,8 @@ jobs:
                   {
                     "tag": "div",
                     "text": {
-                      "tag": "lark_md",
-                      "content": "由 **${PR_AUTHOR}** 发起 · 分支：**${BASE_REF} -> ${HEAD_REF}**"
+                      "tag": "plain_text",
+                      "content": ("由 " + $pr_author + " 发起 · 分支：" + $base_ref + " -> " + $head_ref)
                     }
                   },
                   {
@@ -65,15 +69,15 @@ jobs:
                       {
                         "is_short": true,
                         "text": {
-                          "tag": "lark_md",
-                          "content": "状态：🔔 **${PR_STATE}**"
+                          "tag": "plain_text",
+                          "content": ("状态：🔔 " + $pr_state)
                         }
                       },
                       {
                         "is_short": true,
                         "text": {
-                          "tag": "lark_md",
-                          "content": "作者：**${PR_AUTHOR}**"
+                          "tag": "plain_text",
+                          "content": ("作者：" + $pr_author)
                         }
                       }
                     ]
@@ -82,7 +86,7 @@ jobs:
                     "tag": "div",
                     "text": {
                       "tag": "lark_md",
-                      "content": "当前动作：**${PR_STATE}**，请点击下方按钮查看详细信息。"
+                      "content": ("当前动作：" + $pr_state + "，请点击下方按钮查看详细信息。")
                     }
                   },
                   {
@@ -95,7 +99,7 @@ jobs:
                           "content": "查看 PR"
                         },
                         "type": "primary",
-                        "url": "${PR_URL}"
+                        "url": $pr_url
                       },
                       {
                         "tag": "button",
@@ -104,12 +108,15 @@ jobs:
                           "content": "仓库主页"
                         },
                         "type": "default",
-                        "url": "${REPO_URL}"
+                        "url": $repo_url
                       }
                     ]
                   }
                 ]
               }
-            }
-          EOF
-          curl -X POST -H "Content-Type: application/json" -d @/tmp/feishu-card.json https://open.feishu.cn/open-apis/bot/v2/hook/8f2abf06-2296-44fd-a000-c66ff4d464fe
+            }')
+          
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$FEISHU_WEBHOOK_URL"
