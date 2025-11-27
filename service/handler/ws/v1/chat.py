@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
-from common.exceptions import InsufficientBalanceError
+from common.code.error_code import ErrCode, ErrCodeError
 from core.chat import get_ai_response_stream
 from core.chat.topic_generator import generate_and_update_topic_title
 from core.consume import create_consume_for_chat
@@ -392,6 +392,51 @@ async def chat_websocket(
                     connection_id,
                 )
 
+                # === Pre-deduction / Balance Check ===
+                # Deduct base cost upfront to check balance. This blocks users with insufficient balance.
+                base_cost = 3
+                pre_deducted_amount = 0
+
+                try:
+                    access_key = None
+                    if auth_ctx.auth_provider.lower() == "bohr_app":
+                        access_key = auth_ctx.access_token
+
+                    await create_consume_for_chat(
+                        db=db,
+                        user_id=auth_ctx.user_id,
+                        auth_provider=auth_ctx.auth_provider,
+                        amount=base_cost,
+                        access_key=access_key,
+                        session_id=session_id,
+                        topic_id=topic_id,
+                        message_id=user_message.id,
+                        description="Chat base cost (pre-deduction)",
+                    )
+                    pre_deducted_amount = base_cost
+
+                except ErrCodeError as e:
+                    if e.code == ErrCode.INSUFFICIENT_BALANCE:
+                        logger.warning(f"Insufficient balance for user {auth_ctx.user_id}: {e}")
+                        insufficient_balance_event = {
+                            "type": "insufficient_balance",
+                            "data": {
+                                "error_code": "INSUFFICIENT_BALANCE",
+                                "message": "Insufficient photon balance",
+                                "message_cn": "光子余额不足，请充值后继续使用",
+                                "details": e.as_dict(),
+                                "action_required": "recharge",
+                            },
+                        }
+                        await manager.send_personal_message(
+                            json.dumps(insufficient_balance_event, ensure_ascii=False),
+                            connection_id,
+                        )
+                        continue
+                except Exception as e:
+                    logger.error(f"Pre-deduction failed: {e}")
+                    # Fail open for other errors to avoid blocking chat on system glitches
+
                 topic_refreshed = await topic_repo.get_topic_with_details(topic_id)
                 if not topic_refreshed:
                     logger.error(f"Topic {topic_id} not found after user message creation")
@@ -514,11 +559,15 @@ async def chat_websocket(
                     # Update topic's updated_at timestamp again after AI response
                     await topic_repo.update_topic_timestamp(topic_refreshed.id)
 
-                    # === 创建消费记录 ===
+                    # === 创建消费记录 (Final Settlement) ===
                     try:
-                        # 计算消费金额（这里使用简单的字符数计算，可根据实际需求调整）
-                        consume_amount = 3 + len(full_content) // 100  # 每10个字符消费1积分
-                        if consume_amount > 0:
+                        # 计算总消费金额
+                        total_cost = 3 + len(full_content) // 100
+
+                        # 计算剩余需要扣除的金额
+                        remaining_amount = total_cost - pre_deducted_amount
+
+                        if remaining_amount > 0:
                             # 仅在 bohr_app 时传递 access_token
                             access_key = None
                             if auth_ctx.auth_provider.lower() == "bohr_app":
@@ -528,39 +577,40 @@ async def chat_websocket(
                                 db=db,
                                 user_id=auth_ctx.user_id,
                                 auth_provider=auth_ctx.auth_provider,
-                                amount=consume_amount,
+                                amount=remaining_amount,
                                 access_key=access_key,
                                 session_id=session_id,
                                 topic_id=topic_id,
                                 message_id=ai_message.id,
-                                description=f"Chat message consume: {consume_amount} points",
+                                description=f"Chat message consume (settlement): {remaining_amount} points",
                             )
                             logger.info(
-                                f"Consume record created: {consume_record.id}, "
-                                f"user: {auth_ctx.user_id}, amount: {consume_amount}, "
+                                f"Settlement consume record created: {consume_record.id}, "
+                                f"user: {auth_ctx.user_id}, amount: {remaining_amount}, "
                                 f"state: {consume_record.consume_state}"
                             )
-                    except InsufficientBalanceError as e:
-                        logger.warning(f"Insufficient balance for user {auth_ctx.user_id}: {e.message}")
-                        # 发送余额不足通知给用户
-                        insufficient_balance_event = {
-                            "type": "insufficient_balance",
-                            "data": {
-                                "error_code": e.error_code,
-                                "message": "Insufficient photon balance",
-                                "message_cn": "光子余额不足，请充值后继续使用",
-                                "details": e.details,
-                                "action_required": "recharge",
-                            },
-                        }
-                        await manager.send_personal_message(
-                            json.dumps(insufficient_balance_event, ensure_ascii=False),
-                            connection_id,
-                        )
-                        # 余额不足时不影响消息的显示，但需要通知用户
+                    except ErrCodeError as e:
+                        # 结算阶段的余额不足，记录日志并通知用户，但不影响已生成的消息
+                        if e.code == ErrCode.INSUFFICIENT_BALANCE:
+                            logger.warning(f"Insufficient balance for settlement (user {auth_ctx.user_id}): {e}")
+                            insufficient_balance_event = {
+                                "type": "insufficient_balance",
+                                "data": {
+                                    "error_code": "INSUFFICIENT_BALANCE",
+                                    "message": "Insufficient photon balance for settlement",
+                                    "message_cn": "光子余额不足，部分费用扣除失败",
+                                    "details": e.as_dict(),
+                                    "action_required": "recharge",
+                                },
+                            }
+                            await manager.send_personal_message(
+                                json.dumps(insufficient_balance_event, ensure_ascii=False),
+                                connection_id,
+                            )
+                        else:
+                            logger.error(f"Consume record error: {e}")
                     except Exception as e:
-                        logger.error(f"Failed to create consume record: {e}", exc_info=True)
-                        # 其他消费记录创建失败不影响主流程
+                        logger.error(f"Failed to create settlement consume record: {e}", exc_info=True)
 
                     # Send final message confirmation with real database ID
                     final_message_event = {

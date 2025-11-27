@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException
 from enum import IntEnum
 from typing import Tuple
+
+from fastapi import HTTPException
 
 
 class ErrCode(IntEnum):
@@ -141,6 +142,10 @@ class ErrCode(IntEnum):
     STORAGE_QUOTA_EXCEEDED = 12006  # User storage limit reached
     STORAGE_UNAVAILABLE = 12007  # Storage system unavailable
 
+    # ========== BILLING / CONSUMPTION (13xxx) ==========
+    # Use when: Billing or credit consumption fails
+    INSUFFICIENT_BALANCE = 13000  # User has insufficient credits/balance
+
     def with_messages(self, *messages: str) -> "ErrCodeError":
         """Return an ErrCodeError containing extra human messages."""
 
@@ -201,6 +206,8 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.SESSION_ACCESS_DENIED: 403,
         ErrCode.GRAPH_AGENT_ACCESS_DENIED: 403,
         ErrCode.GRAPH_AGENT_NOT_OWNED: 403,
+        # 402 errors
+        ErrCode.INSUFFICIENT_BALANCE: 402,
     }
 
     status_code = status_map.get(error.code, 500)

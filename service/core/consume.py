@@ -11,7 +11,7 @@ from uuid import UUID
 import requests
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from common.exceptions import InsufficientBalanceError
+from common.code.error_code import ErrCode, ErrCodeError
 from models.consume import ConsumeRecord, ConsumeRecordCreate, ConsumeRecordUpdate, UserConsumeSummary
 from repos.consume import ConsumeRepository
 
@@ -191,15 +191,7 @@ class ConsumeService:
 
                     # Check if it's an insufficient balance error
                     if "余额不足" in error_message or "光子余额不足" in error_message:
-                        raise InsufficientBalanceError(
-                            message=error_message,
-                            error_code=str(response_data.get("code", "INSUFFICIENT_BALANCE")),
-                            details={
-                                "error_data": error_data,
-                                "response": response_data,
-                                "record_id": str(record.id),
-                            },
-                        )
+                        raise ErrCode.INSUFFICIENT_BALANCE.with_messages(error_message)
             else:
                 update_data = ConsumeRecordUpdate(
                     consume_state="failed",
@@ -212,8 +204,8 @@ class ConsumeService:
                 record.remote_error = f"HTTP {response.status_code}: {response_text}"
                 record.remote_response = response_text
                 logger.error(f"Remote consume HTTP error: {record.remote_error}")
-        except InsufficientBalanceError:
-            # Insufficient balance error has been handled and record updated above, re-raise directly
+        except ErrCodeError:
+            # ErrCodeError (like INSUFFICIENT_BALANCE) has been handled and record updated above, re-raise directly
             raise
         except requests.RequestException as e:
             logger.error(f"Remote consume network error for record {record.id}: {e}")
