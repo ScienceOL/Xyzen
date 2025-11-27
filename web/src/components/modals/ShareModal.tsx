@@ -370,7 +370,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       <div
         ref={screenshotRef}
         aria-hidden="true"
-        className="bg-white dark:bg-neutral-800 pointer-events-none screenshot-container"
+        className="bg-white dark:bg-neutral-800 pointer-events-none screenshot-container custom-scrollbar"
         style={{
           maxWidth: "600px",
           width: "600px",

@@ -2,7 +2,7 @@ name: Send Lark Notification
 
 on:
   pull_request:
-    types: [opened, closed]
+    types: [opened, closed, reopened]
 
 jobs:
   notify:
