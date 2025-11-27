@@ -19,6 +19,7 @@ import {
   ServerStackIcon,
   TrashIcon,
   WrenchScrewdriverIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -150,7 +151,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => onEdit(server)}
-            className="rounded-sm p-2 text-neutral-400 opacity-0 transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 group-hover:opacity-100 disabled:opacity-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+            className="rounded-sm p-2 text-neutral-400 transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
             title="Edit Server"
           >
             <PencilIcon className="h-4 w-4" />
@@ -159,7 +160,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
             whileTap={{ scale: 0.95 }}
             onClick={handleRemove}
             disabled={isRemoving}
-            className="rounded-sm p-2 text-neutral-400 opacity-0 transition-all duration-200 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+            className="rounded-sm p-2 text-neutral-400 transition-all duration-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
             title="Remove Server"
           >
             {isRemoving ? (
@@ -299,8 +300,16 @@ export function McpListModal() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mx-auto max-w-6xl"
+          className="mx-auto max-w-6xl relative"
         >
+          <button
+            onClick={closeMcpListModal}
+            className="absolute -top-6 -right-2 p-1 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 z-10"
+            aria-label="Close"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+
           {/* Header Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
