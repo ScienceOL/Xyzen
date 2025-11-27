@@ -58,17 +58,6 @@ async def generate_and_update_topic_title(
                 provider_name = str(agent.provider_id)
 
             user_provider_manager = await get_user_provider_manager(user_id, db)
-            # Prefer system provider or active provider
-            provider = user_provider_manager.get_provider_config(provider_name)
-
-            if not provider:
-                logger.error(f"No provider available for user {user_id}")
-                return
-
-            if not provider:
-                logger.warning(f"No active LLM provider found for user {user_id}")
-                return
-
             prompt = (
                 "Please generate a short, concise title (3-5 words) based on the following user query. "
                 "Do not use quotes. "
