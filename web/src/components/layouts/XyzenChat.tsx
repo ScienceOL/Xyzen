@@ -246,7 +246,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
               <div className="flex-1 min-w-0">
                 <div className="mb-1 flex items-center gap-2">
                   <span
-                    className={`text-sm font-semibold ${themeStyles.agentName}`}
+                    className={`text-sm font-semibold whitespace-nowrap ${themeStyles.agentName}`}
                   >
                     {currentAgent.name}
                   </span>
@@ -261,7 +261,8 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                       }
                       return Promise.resolve();
                     }}
-                    textClassName="text-sm text-neutral-600 dark:text-neutral-400"
+                    className="min-w-0"
+                    textClassName="text-sm text-neutral-600 dark:text-neutral-400 truncate block"
                   />
                   {responding && (
                     <ResponseSpinner

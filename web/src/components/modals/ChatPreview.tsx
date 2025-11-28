@@ -19,17 +19,23 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
   // 二维码 URL（API 动态生成）
   const apiQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("https://www.bohrium.com/apps/xyzen/job?type=app")}`;
 
-  // 备用二维码 URL（预先生成好的静态图片）
-  const fallbackQrCodeUrl =
-    "https://storage.sciol.ac.cn/library/docs/bohr_app_qrcode.png";
+  // 备用二维码 URL（预先生成好的静态图片，放在代码仓库里）
+  const fallbackQrCodeUrl = "web/public/defaults/agents/bohr_app_qrcode.png";
 
-  // 当前使用的二维码 URL（优先使用 API，失败时回退到备用）
+  // 当前使用的二维码 URL
   const [qrCodeUrl, setQrCodeUrl] = React.useState(apiQrCodeUrl);
+
+  // 监听 apiQrCodeUrl 的变化，如果变化了就更新 qrCodeUrl
+  React.useEffect(() => {
+    setQrCodeUrl(apiQrCodeUrl);
+  }, [apiQrCodeUrl]);
 
   // 处理二维码加载失败
   const handleQrCodeError = () => {
-    console.warn("API 二维码加载失败，切换到备用二维码");
-    setQrCodeUrl(fallbackQrCodeUrl);
+    console.warn("API 二维码加载失败，尝试切换到备用二维码");
+    if (qrCodeUrl !== fallbackQrCodeUrl) {
+      setQrCodeUrl(fallbackQrCodeUrl);
+    }
   };
 
   // 消息气泡组件，简化版用于预览 - 扁平化风格

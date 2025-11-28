@@ -101,10 +101,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     backgroundColor: "#ffffff",
   });
 
-  // 初始化：打开时不全选
+  // 初始化：打开时默认全选
   useEffect(() => {
     if (isOpen) {
-      setSelectedIds(new Set()); // 默认不选中
+      setSelectedIds(new Set(messages.map((m) => m.id)));
       setStep("selection");
       setImageUrl(null);
       setError(null);
@@ -164,7 +164,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
     setStep("preview");
     setError(null);
-    setImageUrl(null);
+    setImageUrl(null); // 清空图片，确保进入 Loading 状态
+    resetScreenshot(); // 重置截图状态，防止旧的 screenshotUrl 导致 imageUrl 被恢复
 
     // 延迟一下确保渲染更新，然后生成
     setTimeout(() => {
@@ -196,7 +197,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const renderSelectionStep = () => (
     <div className="flex flex-col h-full max-h-[60vh]">
       {/* 消息列表区域 - 可滚动 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 border-b border-neutral-100 dark:border-neutral-800 custom-scrollbar">
+      <div className="flex-1 custom-scrollbar overflow-y-auto p-4 space-y-4 min-h-0 border-b border-neutral-100 dark:border-neutral-800">
         {messages.map((msg) => {
           const isUser = msg.role === "user";
           const isSelected = selectedIds.has(msg.id);
@@ -297,39 +298,52 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   );
 
   const renderPreviewStep = () => (
-    <div className="p-6 space-y-4">
-      {isGenerating && !imageUrl ? (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-neutral-200 dark:border-neutral-700"></div>
-            <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* 状态检查：只要没有图片且没有错误，或者正在生成中，就显示 Loading */}
+      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        {isGenerating || (!imageUrl && !error) ? (
+          <div className="flex flex-col items-center justify-center h-full space-y-4">
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full border-4 border-neutral-200 dark:border-neutral-700"></div>
+              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
+              正在生成分享图片...
+            </p>
           </div>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
-            正在生成分享图片...
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 overflow-hidden">
-            <div className="hide-scrollbar relative max-h-[500px] overflow-auto flex justify-center bg-neutral-100 dark:bg-neutral-900 p-4">
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 overflow-hidden">
               {imageUrl ? (
                 <img
                   src={imageUrl}
                   alt="对话长图预览"
-                  className="max-w-full h-auto object-contain shadow-lg"
+                  className="w-full h-auto block"
                 />
               ) : (
                 <div className="p-4 text-center text-neutral-500">
-                  图片生成失败
+                  {error ? "生成失败" : ""}
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="flex gap-3">
+            {error && (
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-start gap-2">
+                <XIcon className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 底部按钮固定 */}
+      {!isGenerating && (imageUrl || error) && (
+        <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shrink-0 z-10">
+          <div className="flex gap-3 flex-wrap">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 min-w-[120px]"
               onClick={() => setStep("selection")}
             >
               <ArrowLeftIcon className="h-4 w-4 mr-2" />
@@ -337,7 +351,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             </Button>
             <Button
               variant="default"
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
+              className="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700"
               onClick={downloadImage}
               disabled={!imageUrl}
             >
@@ -345,13 +359,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               下载图片
             </Button>
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-start gap-2">
-          <XIcon className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>{error}</span>
         </div>
       )}
     </div>
@@ -411,7 +418,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           }
         }}
       >
-        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden max-h-[85vh] flex flex-col">
+        <DialogContent className="sm:max-w-[700px] w-[95vw] sm:w-full gap-0 p-0 overflow-hidden max-h-[80dvh] sm:max-h-[85vh] flex flex-col">
           <DialogHeader className="p-6 pb-0 shrink-0">
             <DialogTitle className="text-xl font-semibold flex items-center gap-2">
               <Share2Icon className="h-5 w-5" />
