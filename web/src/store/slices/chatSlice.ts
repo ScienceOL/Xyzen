@@ -756,9 +756,13 @@ export const createChatSlice: StateCreator<
                 (m) => m.isLoading,
               );
               if (errorLoadingIndex !== -1) {
-                channel.messages.splice(errorLoadingIndex, 1);
+                channel.messages[errorLoadingIndex] = {
+                  ...channel.messages[errorLoadingIndex],
+                  content: `Error: ${errorData.error}`,
+                  isLoading: false,
+                  isStreaming: false,
+                };
               }
-              // You might want to show an error message here
               console.error("Chat error:", errorData.error);
               break;
             }
@@ -775,29 +779,37 @@ export const createChatSlice: StateCreator<
 
               console.warn("Insufficient balance:", balanceData);
 
-              // Show notification to user
-              get().showNotification(
-                "Insufficient Balance",
-                balanceData.message_cn ||
-                  balanceData.message ||
-                  "Your photon balance is insufficient. Please recharge to continue.",
-                "warning",
-                "Recharge",
-                () => {
-                  // TODO: Navigate to recharge page or open recharge modal
-                  console.log("User clicked recharge button");
-                  // You can add recharge URL or action here
-                  // For example: window.open('/recharge', '_blank');
-                },
-              );
+              // Reset responding state to unblock input
+              channel.responding = false;
 
-              // Remove any loading messages
+              // Update loading message to show error
               const balanceLoadingIndex = channel.messages.findIndex(
                 (m) => m.isLoading,
               );
               if (balanceLoadingIndex !== -1) {
-                channel.messages.splice(balanceLoadingIndex, 1);
+                channel.messages[balanceLoadingIndex] = {
+                  ...channel.messages[balanceLoadingIndex],
+                  content: `⚠️ ${balanceData.message_cn || "光子余额不足，请充值后继续使用"}`,
+                  isLoading: false,
+                  isStreaming: false,
+                };
               }
+
+              // Show notification to user
+              get().showNotification(
+                "余额不足",
+                balanceData.message_cn ||
+                  balanceData.message ||
+                  "Your photon balance is insufficient. Please recharge to continue.",
+                "warning",
+                "去充值",
+                () => {
+                  window.open(
+                    "https://bohrium.dp.tech/personal/center/recharge",
+                    "_blank",
+                  );
+                },
+              );
               break;
             }
 
@@ -1528,15 +1540,15 @@ export const createChatSlice: StateCreator<
   },
 
   showNotification: (title, message, type = "info", actionLabel, onAction) => {
-    set({
-      notification: {
+    set((state) => {
+      state.notification = {
         isOpen: true,
         title,
         message,
         type,
         actionLabel,
         onAction,
-      },
+      };
     });
   },
 

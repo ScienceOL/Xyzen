@@ -136,7 +136,6 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
             elif role == "tool":
                 formatted_content = json.loads(content)
                 if formatted_content.get("event") == ChatEventType.TOOL_CALL_REQUEST:
-                    logger.debug(f"Formatted content: {formatted_content['id']}")
                     if num_tool_calls == 0:
                         history.append(
                             AIMessage(
@@ -161,7 +160,6 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
                         )
                         num_tool_calls += 1
                 elif formatted_content.get("event") == ChatEventType.TOOL_CALL_RESPONSE:
-                    logger.debug(f"Formatted content: {formatted_content['toolCallId']}")
                     history.append(
                         ToolMessage(
                             content=formatted_content["result"],
@@ -245,7 +243,6 @@ async def get_ai_response_stream_langchain_legacy(
         logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
         # Load long-term memory (DB-backed) and include it in input
         history_messages = await _load_db_history(db, topic)
-        logger.debug(f"Loaded history messages: {history_messages}")
 
         async for chunk in langchain_agent.astream(
             {"messages": [*history_messages, HumanMessage(content=message_text)]},
@@ -271,7 +268,6 @@ async def get_ai_response_stream_langchain_legacy(
                 for step_name, step_data in data.items():
                     # current_step = step_name
                     logger.debug("Update step: %s", step_name)
-                    logger.debug("Step data: %s", step_data)
 
                     # Extract messages from step data
                     messages = step_data.get("messages", [])
