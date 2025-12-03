@@ -77,7 +77,7 @@ jobs:
                     "tag": "div",
                     "text": {
                       "tag": "plain_text",
-                      "content": ("由 " + $pr_author + " 发起 · 分支：" + $base_ref + " -> " + $head_ref)
+                      "content": ("由 " + $pr_author + " 发起 · 分支：" + $head_ref + " -> " + $base_ref )
                     }
                   },
                   {
