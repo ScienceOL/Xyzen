@@ -13,6 +13,7 @@ import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
+import { SecretCodePage } from "@/components/admin/SecretCodePage";
 
 // 创建 React Query client
 const queryClient = new QueryClient({
@@ -57,12 +58,23 @@ export function Xyzen({
   );
   const [progress, setProgress] = useState(0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [currentPath, setCurrentPath] = useState(
+    typeof window !== "undefined" ? window.location.pathname : "/",
+  );
 
   useEffect(() => {
     setMounted(true);
     const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+
+    // Update current path on navigation
+    const updatePath = () => setCurrentPath(window.location.pathname);
+    window.addEventListener("popstate", updatePath);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("popstate", updatePath);
+    };
   }, []);
 
   // Global keyboard shortcut: Cmd/Ctrl + Shift + X toggles sidebar open/close
@@ -251,6 +263,15 @@ export function Xyzen({
   ) : (
     <>{mainLayout}</>
   );
+
+  // Check if we're on the secret code page
+  if (currentPath === "/secretcode") {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SecretCodePage />
+      </QueryClientProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

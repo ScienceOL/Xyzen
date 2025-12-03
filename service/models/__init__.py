@@ -7,6 +7,7 @@ from .links import AgentMcpServerLink
 from .mcp import McpServer
 from .message import Message, MessageRead
 from .provider import Provider
+from .redemption import RedemptionCode, RedemptionHistory, UserWallet
 from .sessions import Session, SessionReadWithTopics
 from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
@@ -34,6 +35,9 @@ __all__ = [
     "TopicRead",
     "TopicReadWithMessages",
     "SmitheryServersCache",
+    "RedemptionCode",
+    "RedemptionHistory",
+    "UserWallet",
 ]
 
 # Rebuild models with forward references after all models are imported

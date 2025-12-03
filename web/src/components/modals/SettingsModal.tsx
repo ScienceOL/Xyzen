@@ -7,6 +7,7 @@ import { zIndexClasses } from "@/constants/zIndex";
 import {
   ProviderConfigForm,
   ProviderList,
+  RedemptionSettings,
   StyleSettings,
   ThemeSettings,
   UiSettings,
@@ -24,6 +25,7 @@ export function SettingsModal() {
   const categories = [
     { id: "provider", label: "Provider" },
     { id: "ui", label: "UI" },
+    { id: "redemption", label: "Redemption" },
     // Future categories can be added here
     // { id: "account", label: "Account" },
   ];
@@ -93,6 +95,7 @@ export function SettingsModal() {
                   <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-y-auto">
                     {activeSettingsCategory === "provider" && <ProviderList />}
                     {activeSettingsCategory === "ui" && <UiSettings />}
+                    {activeSettingsCategory === "redemption" && null}
                   </div>
                 </div>
 
@@ -106,6 +109,9 @@ export function SettingsModal() {
                       {activeUiSetting === "theme" && <ThemeSettings />}
                       {activeUiSetting === "style" && <StyleSettings />}
                     </>
+                  )}
+                  {activeSettingsCategory === "redemption" && (
+                    <RedemptionSettings />
                   )}
                 </div>
               </DialogPanel>

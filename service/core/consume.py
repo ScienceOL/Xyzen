@@ -14,6 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from common.code.error_code import ErrCode, ErrCodeError
 from models.consume import ConsumeRecord, ConsumeRecordCreate, ConsumeRecordUpdate, UserConsumeSummary
 from repos.consume import ConsumeRepository
+from repos.redemption import RedemptionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ class ConsumeService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.repo = ConsumeRepository(db)
+        self.consume_repo = ConsumeRepository(db)
+        self.redemption_repo = RedemptionRepository(db)
 
     async def create_consume_record(
         self,
@@ -65,7 +67,29 @@ class ConsumeService:
         """
         logger.info(f"Creating consume record for user {user_id}, amount: {amount}, provider: {auth_provider}")
 
-        # Create consumption record (initial state is pending)
+        # Check virtual balance first
+        wallet = await self.redemption_repo.get_user_wallet(user_id)
+        virtual_balance = wallet.virtual_balance if wallet else 0
+
+        logger.info(f"User {user_id} virtual balance: {virtual_balance}, required: {amount}")
+
+        amount_from_virtual = 0
+        amount_from_remote = amount
+
+        # Use virtual balance first if available
+        if virtual_balance > 0:
+            amount_from_virtual = min(virtual_balance, amount)
+            amount_from_remote = amount - amount_from_virtual
+
+            logger.info(f"Using virtual balance: {amount_from_virtual}, remote billing needed: {amount_from_remote}")
+
+            # Deduct from virtual balance
+            await self.redemption_repo.deduct_wallet(user_id, amount_from_virtual)
+            logger.info(f"Deducted {amount_from_virtual} from user {user_id} virtual balance")
+
+        # Create consumption record (initial state is pending if remote billing needed, success if only virtual)
+        initial_state = "pending" if amount_from_remote > 0 else "success"
+
         record_data = ConsumeRecordCreate(
             user_id=user_id,
             amount=amount,
@@ -76,25 +100,43 @@ class ConsumeService:
             topic_id=topic_id,
             message_id=message_id,
             description=description,
-            consume_state="pending",
+            consume_state=initial_state,
         )
 
         # Save to database
-        record = await self.repo.create_consume_record(record_data, user_id)
+        record = await self.consume_repo.create_consume_record(record_data, user_id)
 
-        # Execute remote billing only for bohr_app authentication
-        if auth_provider.lower() == "bohr_app":
-            if not access_key:
-                logger.warning(f"Missing access_key for bohr_app consume, record {record.id} stays pending")
-                return record
+        # If we still need remote billing
+        if amount_from_remote > 0:
+            logger.info(f"Need remote billing for remaining amount: {amount_from_remote}")
 
-            # Execute remote billing
-            await self._execute_remote_consume(record, access_key)
+            # Execute remote billing only for bohr_app authentication
+            if auth_provider.lower() == "bohr_app":
+                if not access_key:
+                    logger.warning(f"Missing access_key for bohr_app consume, record {record.id} stays pending")
+                    # Note: Virtual balance already deducted, need to handle this edge case
+                    return record
+
+                # Temporarily update record amount for remote billing
+                original_amount = record.amount
+                record.amount = amount_from_remote
+
+                # Execute remote billing for the remaining amount
+                await self._execute_remote_consume(record, access_key)
+
+                # Restore original amount
+                record.amount = original_amount
+
+                # Update record in database with final state
+                update_data = ConsumeRecordUpdate(consume_state=record.consume_state)
+                await self.consume_repo.update_consume_record(record.id, update_data)
+            else:
+                logger.info(f"Non-bohr_app provider ({auth_provider}), skipping remote consume")
         else:
-            logger.info(f"Non-bohr_app provider ({auth_provider}), skipping remote consume")
+            logger.info("Consumption fully covered by virtual balance, no remote billing needed")
 
         # Update user consumption summary
-        await self.repo.increment_user_consume(
+        await self.consume_repo.increment_user_consume(
             user_id=user_id,
             auth_provider=auth_provider,
             amount=amount,
@@ -145,7 +187,7 @@ class ConsumeService:
                         remote_response=response_text,
                     )
                     logger.error(f"Remote consume JSON error: {e}")
-                    await self.repo.update_consume_record(record.id, update_data)
+                    await self.consume_repo.update_consume_record(record.id, update_data)
                     # Update local record object for consistency
                     record.consume_state = "failed"
                     record.remote_error = f"Invalid JSON response: {e}"
@@ -157,7 +199,7 @@ class ConsumeService:
                         consume_state="success",
                         remote_response=response_text,
                     )
-                    await self.repo.update_consume_record(record.id, update_data)
+                    await self.consume_repo.update_consume_record(record.id, update_data)
                     # Update local record object for consistency
                     record.consume_state = "success"
                     record.remote_response = response_text
@@ -182,7 +224,7 @@ class ConsumeService:
                         remote_error=error_details_json,
                         remote_response=response_text,
                     )
-                    await self.repo.update_consume_record(record.id, update_data)
+                    await self.consume_repo.update_consume_record(record.id, update_data)
                     # Update local record object for consistency
                     record.consume_state = "failed"
                     record.remote_error = error_details_json  # Store complete error details (JSON string)
@@ -198,7 +240,7 @@ class ConsumeService:
                     remote_error=f"HTTP {response.status_code}: {response_text}",
                     remote_response=response_text,
                 )
-                await self.repo.update_consume_record(record.id, update_data)
+                await self.consume_repo.update_consume_record(record.id, update_data)
                 # Update local record object for consistency
                 record.consume_state = "failed"
                 record.remote_error = f"HTTP {response.status_code}: {response_text}"
@@ -213,7 +255,7 @@ class ConsumeService:
                 consume_state="failed",
                 remote_error=f"Network error: {str(e)}",
             )
-            await self.repo.update_consume_record(record.id, update_data)
+            await self.consume_repo.update_consume_record(record.id, update_data)
             # Update local record object for consistency
             record.consume_state = "failed"
             record.remote_error = f"Network error: {str(e)}"
@@ -223,26 +265,26 @@ class ConsumeService:
                 consume_state="failed",
                 remote_error=f"Unexpected error: {str(e)}",
             )
-            await self.repo.update_consume_record(record.id, update_data)
+            await self.consume_repo.update_consume_record(record.id, update_data)
             # Update local record object for consistency
             record.consume_state = "failed"
             record.remote_error = f"Unexpected error: {str(e)}"
 
     async def get_consume_record_by_id(self, record_id: UUID) -> ConsumeRecord | None:
         """Get consumption record"""
-        return await self.repo.get_consume_record_by_id(record_id)
+        return await self.consume_repo.get_consume_record_by_id(record_id)
 
     async def get_consume_record_by_biz_no(self, biz_no: int) -> ConsumeRecord | None:
         """Get consumption record by business ID (idempotency check)"""
-        return await self.repo.get_consume_record_by_biz_no(biz_no)
+        return await self.consume_repo.get_consume_record_by_biz_no(biz_no)
 
     async def get_user_consume_summary(self, user_id: str) -> UserConsumeSummary | None:
         """Get user consumption summary"""
-        return await self.repo.get_user_consume_summary(user_id)
+        return await self.consume_repo.get_user_consume_summary(user_id)
 
     async def list_user_consume_records(self, user_id: str, limit: int = 100, offset: int = 0) -> list[ConsumeRecord]:
         """Get user consumption record list"""
-        return await self.repo.list_consume_records_by_user(user_id, limit, offset)
+        return await self.consume_repo.list_consume_records_by_user(user_id, limit, offset)
 
 
 async def create_consume_for_chat(

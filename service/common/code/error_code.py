@@ -146,6 +146,16 @@ class ErrCode(IntEnum):
     # Use when: Billing or credit consumption fails
     INSUFFICIENT_BALANCE = 13000  # User has insufficient credits/balance
 
+    # ========== REDEMPTION CODE (14xxx) ==========
+    # Use when: Redemption code operations fail
+    REDEMPTION_CODE_NOT_FOUND = 14000  # Redemption code doesn't exist
+    REDEMPTION_CODE_INACTIVE = 14001  # Redemption code is not active
+    REDEMPTION_CODE_EXPIRED = 14002  # Redemption code has expired
+    REDEMPTION_CODE_MAX_USAGE = 14003  # Redemption code reached max usage
+    REDEMPTION_CODE_ALREADY_USED = 14004  # User already redeemed this code
+    REDEMPTION_CODE_ALREADY_EXISTS = 14005  # Code already exists (duplicate)
+    INVALID_PARAMETER = 14006  # Invalid parameter provided
+
     def with_messages(self, *messages: str) -> "ErrCodeError":
         """Return an ErrCodeError containing extra human messages."""
 
@@ -208,6 +218,15 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.GRAPH_AGENT_NOT_OWNED: 403,
         # 402 errors
         ErrCode.INSUFFICIENT_BALANCE: 402,
+        # 404 errors (redemption)
+        ErrCode.REDEMPTION_CODE_NOT_FOUND: 404,
+        # 400 errors (redemption)
+        ErrCode.REDEMPTION_CODE_INACTIVE: 400,
+        ErrCode.REDEMPTION_CODE_EXPIRED: 400,
+        ErrCode.REDEMPTION_CODE_MAX_USAGE: 400,
+        ErrCode.REDEMPTION_CODE_ALREADY_USED: 400,
+        ErrCode.REDEMPTION_CODE_ALREADY_EXISTS: 409,
+        ErrCode.INVALID_PARAMETER: 400,
     }
 
     status_code = status_map.get(error.code, 500)

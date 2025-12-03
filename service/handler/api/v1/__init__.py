@@ -6,6 +6,7 @@ from .auth import router as auth_router
 from .graph_agents import router as graph_agents_router
 from .mcps import router as mcps_router
 from .providers import router as providers_router
+from .redemption import router as redemption_router
 from .sessions import router as sessions_router
 from .topics import router as topics_router
 
@@ -78,3 +79,4 @@ v1_router.include_router(topics_router, prefix="/topics")
 v1_router.include_router(agents_router, prefix="/agents")
 v1_router.include_router(graph_agents_router, prefix="/graph-agents")
 v1_router.include_router(mcps_router, prefix="/mcps")
+v1_router.include_router(redemption_router, prefix="/redemption")
