@@ -10,7 +10,7 @@ from .dynamic_mcp_server import DynamicMCPConfig
 from .lab import LabConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
-from .redemption import RedemptionConfig
+from .redemption import AdminConfig
 
 
 class AppConfig(BaseSettings):
@@ -79,8 +79,8 @@ class AppConfig(BaseSettings):
         description="Dynamic MCP configuration",
     )
 
-    Redemption: RedemptionConfig = Field(
-        default_factory=lambda: RedemptionConfig(),
+    Admin: AdminConfig = Field(
+        default_factory=lambda: AdminConfig(),
         description="Redemption code configuration",
     )
 

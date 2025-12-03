@@ -2,7 +2,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
-class RedemptionConfig(BaseSettings):
+class AdminConfig(BaseSettings):
     """Redemption code configuration"""
 
     secret: str = Field(

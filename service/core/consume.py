@@ -113,9 +113,27 @@ class ConsumeService:
             # Execute remote billing only for bohr_app authentication
             if auth_provider.lower() == "bohr_app":
                 if not access_key:
-                    logger.warning(f"Missing access_key for bohr_app consume, record {record.id} stays pending")
-                    # Note: Virtual balance already deducted, need to handle this edge case
-                    return record
+                    logger.error(f"Missing access_key for bohr_app consume, record {record.id}")
+
+                    # Refund the virtual balance that was already deducted
+                    if amount_from_virtual > 0:
+                        await self.redemption_repo.credit_wallet(user_id, amount_from_virtual)
+                        logger.info(
+                            f"Refunded {amount_from_virtual} to user {user_id} virtual balance due to missing access_key"
+                        )
+
+                    # Update record state to failed
+                    update_data = ConsumeRecordUpdate(
+                        consume_state="failed", remote_error="Missing access_key for bohr_app authentication"
+                    )
+                    await self.consume_repo.update_consume_record(record.id, update_data)
+                    record.consume_state = "failed"
+                    record.remote_error = "Missing access_key for bohr_app authentication"
+
+                    # Raise error to notify caller
+                    raise ErrCode.MISSING_REQUIRED_FIELD.with_messages(
+                        "access_key is required for bohr_app authentication"
+                    )
 
                 # Temporarily update record amount for remote billing
                 original_amount = record.amount

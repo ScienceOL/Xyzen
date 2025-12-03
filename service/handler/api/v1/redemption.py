@@ -113,7 +113,7 @@ async def generate_redemption_code(
     logger.info("Admin attempting to generate redemption code")
 
     # Verify admin secret
-    if admin_secret != configs.Redemption.secret:
+    if admin_secret != configs.Admin.secret:
         logger.warning("Invalid admin secret key provided")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -187,8 +187,7 @@ async def list_redemption_codes(
     logger.info("Admin listing redemption codes")
 
     # Verify admin secret
-    if admin_secret != configs.Redemption.secret:
-        logger.debug(admin_secret, "Expected", configs.Redemption.secret)
+    if admin_secret != configs.Admin.secret:
         logger.warning("Invalid admin secret key provided")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -247,7 +246,7 @@ async def get_redemption_code(
     logger.info(f"Admin fetching redemption code: {code_id}")
 
     # Verify admin secret
-    if admin_secret != configs.Redemption.secret:
+    if admin_secret != configs.Admin.secret:
         logger.warning("Invalid admin secret key provided")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -309,7 +308,7 @@ async def deactivate_redemption_code(
     logger.info(f"Admin deactivating redemption code: {code_id}")
 
     # Verify admin secret
-    if admin_secret != configs.Redemption.secret:
+    if admin_secret != configs.Admin.secret:
         logger.warning("Invalid admin secret key provided")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
