@@ -58,8 +58,8 @@ export function Xyzen({
   );
   const [progress, setProgress] = useState(0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [currentPath, setCurrentPath] = useState(
-    typeof window !== "undefined" ? window.location.pathname : "/",
+  const [currentHash, setCurrentHash] = useState(
+    typeof window !== "undefined" ? window.location.hash : "",
   );
 
   useEffect(() => {
@@ -67,13 +67,15 @@ export function Xyzen({
     const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", onResize);
 
-    // Update current path on navigation
-    const updatePath = () => setCurrentPath(window.location.pathname);
-    window.addEventListener("popstate", updatePath);
+    // Update current hash on navigation
+    const updateHash = () => setCurrentHash(window.location.hash);
+    window.addEventListener("popstate", updateHash);
+    window.addEventListener("hashchange", updateHash);
 
     return () => {
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("popstate", updatePath);
+      window.removeEventListener("popstate", updateHash);
+      window.removeEventListener("hashchange", updateHash);
     };
   }, []);
 
@@ -265,7 +267,7 @@ export function Xyzen({
   );
 
   // Check if we're on the secret code page
-  if (currentPath === "/secretcode") {
+  if (currentHash === "#secretcode") {
     return (
       <QueryClientProvider client={queryClient}>
         <SecretCodePage />

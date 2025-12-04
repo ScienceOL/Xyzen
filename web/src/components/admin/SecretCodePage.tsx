@@ -110,7 +110,7 @@ export function SecretCodePage() {
               </p>
             </div>
             <button
-              onClick={() => (window.location.href = "/")}
+              onClick={() => (window.location.hash = "")}
               className="rounded-sm p-2 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
               title="Close"
             >
