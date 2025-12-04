@@ -6,12 +6,13 @@ Uses LangChain's create_agent for automatic tool execution and conversation mana
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, TypeVar
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.messages.tool import ToolMessage
 from langchain_core.tools import BaseTool, StructuredTool
+from langgraph.graph.state import CompiledStateGraph
 from pydantic import Field, create_model
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -33,12 +34,12 @@ ResponseT = TypeVar("ResponseT")
 STREAMING_LOG_BATCH_SIZE = 50  # Log every N tokens instead of every token
 
 
-async def _prepare_langchain_tools(db: AsyncSession, agent: Any) -> List[BaseTool]:
+async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None) -> list[BaseTool]:
     """Prepare LangChain tools from MCP servers."""
     from core.chat.tools import execute_tool_call, prepare_mcp_tools
 
     mcp_tools = await prepare_mcp_tools(db, agent)
-    langchain_tools: List[BaseTool] = []
+    langchain_tools: list[BaseTool] = []
 
     for tool in mcp_tools:
         tool_name = tool.get("name", "")
@@ -49,7 +50,7 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Any) -> List[BaseToo
         required = tool_parameters.get("required", [])
 
         # Build Pydantic field definitions for create_model
-        field_definitions: Dict[str, Any] = {}
+        field_definitions: dict[str, Any] = {}
         for prop_name, prop_info in properties.items():
             prop_type = prop_info.get("type", "string")
             prop_desc = prop_info.get("description", "")
@@ -108,7 +109,7 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Any) -> List[BaseToo
     return langchain_tools
 
 
-async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
+async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
     """Load historical messages for the topic and map to LangChain message types.
 
     Only user/assistant/system messages are included to avoid confusing the agent
@@ -121,7 +122,7 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> List[Any]:
         messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
 
         num_tool_calls = 0
-        history: List[Any] = []
+        history: list[Any] = []
         for message in messages:
             role = (message.role or "").lower()
             content = message.content or ""
@@ -228,14 +229,14 @@ async def get_ai_response_stream_langchain_legacy(
         # Create langchain agent
         llm = user_provider_manager.create_langchain_model(provider_name)
         tools = await _prepare_langchain_tools(db, agent)
-        langchain_agent: Any = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
+        langchain_agent: CompiledStateGraph = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
 
         logger.info(f"Agent created with {len(tools)} tools")
 
         stream_id = f"stream_{int(asyncio.get_event_loop().time() * 1000)}"
         is_streaming = False
         # current_step = None
-        assistant_buffer: List[str] = []  # collect tokens/final text for persistence
+        assistant_buffer: list[str] = []  # collect tokens/final text for persistence
         # got_stream_tokens = False  # whether we received token-by-token chunks
         token_count = 0  # Track tokens for batch logging
 
