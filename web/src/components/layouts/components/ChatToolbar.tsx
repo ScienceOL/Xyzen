@@ -9,8 +9,6 @@ import {
   SheetTrigger,
 } from "@/components/animate-ui/components/radix/sheet";
 import { useXyzen } from "@/store";
-import { getProviderColor } from "@/utils/providerColors";
-import { getProviderSourceDescription } from "@/utils/providerPreferences";
 import {
   type DragEndEvent,
   type DragMoveEvent,
@@ -20,15 +18,11 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  CheckIcon,
-  ClockIcon,
-  CpuChipIcon,
-  PlusIcon,
-} from "@heroicons/react/24/outline";
+import { ClockIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
+import { ProviderSelector } from "./ProviderSelector";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -73,7 +67,6 @@ export default function ChatToolbar({
     llmProviders,
     resolveProviderForAgent,
     userDefaultProviderId,
-    setUserDefaultProvider,
   } = useXyzen();
 
   // Merge system and user agents for lookup (system + regular/graph)
@@ -282,152 +275,12 @@ export default function ChatToolbar({
 
             {/* Provider Selector */}
             {activeChatChannel && currentAgent && (
-              <div className="relative group/provider">
-                {llmProviders.length > 0 ? (
-                  <>
-                    <button
-                      className={`flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-xs font-medium transition-colors ${
-                        currentProvider
-                          ? `${getProviderColor(true).bg} ${getProviderColor(true).text}`
-                          : `${getProviderColor(false).bg} ${getProviderColor(false).text}`
-                      } hover:opacity-80`}
-                      title={
-                        currentProvider
-                          ? `${currentProvider.name} (${currentProvider.model})`
-                          : "选择提供商"
-                      }
-                    >
-                      <CpuChipIcon
-                        className={`h-4 w-4 ${currentProvider ? getProviderColor(true).icon : getProviderColor(false).icon}`}
-                      />
-                      <span>{currentProvider?.name || "选择提供商"}</span>
-                      <span className="text-[10px] opacity-70">
-                        (
-                        {getProviderSourceDescription(
-                          currentAgent,
-                          currentProvider,
-                          llmProviders,
-                        )}
-                        )
-                      </span>
-                    </button>
-
-                    {/* Provider Dropdown */}
-                    <div className="hidden group-hover/provider:block absolute bottom-full left-0 mb-2 w-64 rounded-sm border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-800 z-50">
-                      <div className="mb-2 px-2 py-1 border-b border-neutral-200 dark:border-neutral-700 pb-2">
-                        <div className="text-xs font-medium text-neutral-900 dark:text-neutral-100">
-                          选择LLM提供商
-                        </div>
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                          当前助手: {currentAgent.name}
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 max-h-80 overflow-y-auto">
-                        {/* Show all providers (system + user-added) */}
-                        {llmProviders.map((provider) => {
-                          const isSelected =
-                            currentAgent.provider_id === provider.id;
-
-                          return (
-                            <button
-                              key={provider.id}
-                              onClick={() => handleProviderChange(provider.id)}
-                              className={`w-full rounded-sm px-2 py-2 text-left text-sm transition-colors relative ${
-                                isSelected
-                                  ? `${getProviderColor(true).bg} ${getProviderColor(true).text}`
-                                  : `${getProviderColor(false).text} hover:bg-neutral-100 dark:hover:bg-neutral-700/50`
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="font-medium flex items-center gap-2">
-                                    {provider.name}
-                                    {provider.is_system && (
-                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
-                                        系统
-                                      </span>
-                                    )}
-                                    {userDefaultProviderId === provider.id &&
-                                      !provider.is_system && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                                          全局默认
-                                        </span>
-                                      )}
-                                  </div>
-                                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                                    {provider.provider_type} • {provider.model}
-                                  </div>
-                                </div>
-                                {isSelected && (
-                                  <CheckIcon
-                                    className={`h-4 w-4 ${getProviderColor(true).icon}`}
-                                  />
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Global Default Management */}
-                      <div className="border-t border-neutral-200 dark:border-neutral-700 pt-2 mt-2">
-                        <div className="text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-2 px-2">
-                          全局默认提供商
-                        </div>
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 px-2">
-                          未指定提供商的助手将使用此设置
-                        </div>
-                        <div className="space-y-1">
-                          <button
-                            onClick={() => setUserDefaultProvider(null)}
-                            className={`w-full rounded-sm px-2 py-1.5 text-left text-xs transition-colors ${
-                              !userDefaultProviderId
-                                ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
-                                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50"
-                            }`}
-                          >
-                            自动选择 (系统提供商优先)
-                          </button>
-                          {llmProviders
-                            .filter((p) => !p.is_system)
-                            .map((provider) => (
-                              <button
-                                key={`default-${provider.id}`}
-                                onClick={() =>
-                                  setUserDefaultProvider(provider.id)
-                                }
-                                className={`w-full rounded-sm px-2 py-1.5 text-left text-xs transition-colors ${
-                                  userDefaultProviderId === provider.id
-                                    ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
-                                    : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span>{provider.name}</span>
-                                  {userDefaultProviderId === provider.id && (
-                                    <CheckIcon className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
-                                  )}
-                                </div>
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-
-                      {/* Arrow */}
-                      <div className="absolute top-full left-4 border-4 border-transparent border-t-white dark:border-t-neutral-800"></div>
-                    </div>
-                  </>
-                ) : (
-                  <button
-                    className="flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-                    title="请先添加LLM提供商"
-                  >
-                    <CpuChipIcon className="h-4 w-4" />
-                    <span>未设置提供商</span>
-                  </button>
-                )}
-              </div>
+              <ProviderSelector
+                currentAgent={currentAgent}
+                currentProvider={currentProvider}
+                llmProviders={llmProviders}
+                onProviderChange={handleProviderChange}
+              />
             )}
 
             {/* MCP Tool Button */}
