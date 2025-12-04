@@ -6,6 +6,35 @@ import { ProviderScope } from "@/types/llmProvider";
 import { Button, Field, Label, Switch } from "@headlessui/react";
 import { useEffect, useState, type ChangeEvent } from "react";
 
+// Azure OpenAI configuration type
+interface AzureConfig {
+  azure_version?: string;
+}
+
+// Type guard for Azure provider config
+interface AzureProviderConfig {
+  azure_version?: string;
+}
+
+function isAzureProviderConfig(config: unknown): config is AzureProviderConfig {
+  if (typeof config !== "object" || config === null) {
+    return false;
+  }
+
+  if (!("azure_version" in config)) {
+    return true;
+  }
+
+  const azureVersion = (config as Record<string, unknown>).azure_version;
+  return azureVersion === undefined || typeof azureVersion === "string";
+}
+
+function getAzureVersion(config: AzureProviderConfig): string {
+  return typeof config.azure_version === "string"
+    ? config.azure_version
+    : "2024-02-15-preview";
+}
+
 // Helper function to get default API endpoint for provider type
 const getDefaultApiEndpoint = (providerType: string): string => {
   const defaultEndpoints: Record<string, string> = {
@@ -38,6 +67,12 @@ export const ProviderConfigForm = () => {
     model: "",
     is_default: false,
     user_id: "", // This will be set by backend from auth token
+    provider_config: {},
+  });
+
+  // Azure-specific config state
+  const [azureConfig, setAzureConfig] = useState<AzureConfig>({
+    azure_version: "2024-02-15-preview",
   });
 
   const [loading, setLoading] = useState(false);
@@ -60,6 +95,10 @@ export const ProviderConfigForm = () => {
         model: "",
         is_default: false,
         user_id: "",
+        provider_config: {},
+      });
+      setAzureConfig({
+        azure_version: "2024-02-15-preview",
       });
       setIsEditing(false);
       return;
@@ -80,7 +119,20 @@ export const ProviderConfigForm = () => {
           model: firstModel?.model_name || "",
           is_default: false,
           user_id: "",
+          provider_config: {},
         });
+
+        // Initialize Azure config if Azure OpenAI
+        if (template.type === "azure_openai") {
+          setAzureConfig({
+            azure_version: "2024-02-15-preview",
+          });
+        } else {
+          setAzureConfig({
+            azure_version: "2024-02-15-preview",
+          });
+        }
+
         setIsEditing(false);
       }
     } else {
@@ -98,7 +150,20 @@ export const ProviderConfigForm = () => {
             model: provider.model,
             is_default: provider.is_default,
             user_id: provider.user_id,
+            provider_config: provider.provider_config || {},
           });
+
+          // Load Azure config if exists
+          if (
+            provider.provider_type === "azure_openai" &&
+            provider.provider_config &&
+            isAzureProviderConfig(provider.provider_config)
+          ) {
+            setAzureConfig({
+              azure_version: getAzureVersion(provider.provider_config),
+            });
+          }
+
           setIsEditing(false); // Prevent editing
           return;
         }
@@ -111,7 +176,24 @@ export const ProviderConfigForm = () => {
           model: provider.model,
           is_default: provider.is_default,
           user_id: provider.user_id,
+          provider_config: provider.provider_config || {},
         });
+
+        // Load Azure config if exists
+        if (
+          provider.provider_type === "azure_openai" &&
+          provider.provider_config &&
+          isAzureProviderConfig(provider.provider_config)
+        ) {
+          setAzureConfig({
+            azure_version: getAzureVersion(provider.provider_config),
+          });
+        } else {
+          setAzureConfig({
+            azure_version: "2024-02-15-preview",
+          });
+        }
+
         setIsEditing(true);
       }
     }
@@ -120,6 +202,14 @@ export const ProviderConfigForm = () => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleAzureConfigChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setAzureConfig((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -150,6 +240,14 @@ export const ProviderConfigForm = () => {
           key: formData.key,
           model: formData.model,
         };
+
+        // Add Azure config if Azure OpenAI
+        if (formData.provider_type === "azure_openai") {
+          updateData.provider_config = {
+            azure_version: azureConfig.azure_version,
+          };
+        }
+
         await updateProvider(selectedProviderId, updateData);
         setSuccess("Provider updated successfully!");
       } else {
@@ -163,6 +261,14 @@ export const ProviderConfigForm = () => {
           model: formData.model!,
           user_id: "", // Backend will set this
         };
+
+        // Add Azure config if Azure OpenAI
+        if (formData.provider_type === "azure_openai") {
+          createData.provider_config = {
+            azure_version: azureConfig.azure_version,
+          };
+        }
+
         await addProvider(createData);
         setSuccess("Provider created successfully!");
       }
@@ -384,6 +490,27 @@ export const ProviderConfigForm = () => {
               Select from available models or enter a custom model name
             </p>
           </Field>
+
+          {/* Azure OpenAI Specific Fields */}
+          {formData.provider_type === "azure_openai" && (
+            <Field>
+              <Label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                API Version *
+              </Label>
+              <Input
+                type="text"
+                name="azure_version"
+                value={azureConfig.azure_version || ""}
+                onChange={handleAzureConfigChange}
+                placeholder="e.g., 2024-02-15-preview"
+                className="mt-1"
+                disabled={isSystemProvider}
+              />
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                Azure OpenAI API version (e.g., 2024-02-15-preview, 2023-05-15)
+              </p>
+            </Field>
+          )}
 
           {/* Set as Default (for existing providers) */}
           {isEditing && !isSystemProvider && (

@@ -71,10 +71,14 @@ class ChatModelFactory:
         else:
             azure_deployment = credentials["azure_deployment"]
 
+        # Get api_version from credentials, default to a recent stable version if not provided
+        api_version = credentials.get("azure_version", "2024-02-15-preview")
+
         return AzureChatOpenAI(
             azure_deployment=azure_deployment,
             api_key=credentials["api_key"],
             azure_endpoint=azure_endpoint,
+            api_version=api_version,
             **runtime_kwargs,
         )
 

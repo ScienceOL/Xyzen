@@ -113,6 +113,7 @@ export interface LlmProvider {
   is_default: boolean;
   is_system: boolean;
   user_id: string;
+  provider_config?: Record<string, unknown>;
 }
 
 export interface LlmProviderCreate {
@@ -127,6 +128,7 @@ export interface LlmProviderCreate {
   timeout?: number;
   user_id: string;
   is_default?: boolean;
+  provider_config?: Record<string, unknown>;
 }
 
 export interface LlmProviderUpdate {
@@ -139,6 +141,7 @@ export interface LlmProviderUpdate {
   temperature?: number;
   timeout?: number;
   is_default?: boolean;
+  provider_config?: Record<string, unknown>;
 }
 
 export type LlmProviderResponse = LlmProvider;

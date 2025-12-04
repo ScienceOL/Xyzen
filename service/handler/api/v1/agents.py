@@ -1,4 +1,3 @@
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,13 +12,12 @@ from middleware.database import get_session
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentUpdate
 
 # Ensure forward references are resolved after importing both models
-try:
-    AgentReadWithDetails.model_rebuild()
-except Exception as e:
-    # If rebuild fails, log the error for debugging
-    import logging
-
-    logging.getLogger(__name__).warning(f"Failed to rebuild AgentReadWithDetails: {e}")
+# try:
+#     AgentReadWithDetails.model_rebuild()
+# except Exception as e:
+#     # If rebuild fails, log the error for debugging
+#     import logging
+#     logging.getLogger(__name__).warning(f"Failed to rebuild AgentReadWithDetails: {e}")
 from repos import AgentRepository, ProviderRepository
 
 router = APIRouter(tags=["agents"])
@@ -63,11 +61,11 @@ async def create_agent(
     return AgentRead(**created_agent.model_dump())
 
 
-@router.get("/", response_model=List[AgentReadWithDetails])
+@router.get("/", response_model=list[AgentReadWithDetails])
 async def get_agents(
     user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> List[AgentReadWithDetails]:
+) -> list[AgentReadWithDetails]:
     """
     Get all agents for the current authenticated user.
 
@@ -79,7 +77,7 @@ async def get_agents(
         db: Database session (injected by dependency)
 
     Returns:
-        List[AgentReadWithDetails]: List of agents owned by the user with MCP server details
+        list[AgentReadWithDetails]: list of agents owned by the user with MCP server details
 
     Raises:
         HTTPException: None - this endpoint always succeeds, returning empty list if no agents
@@ -101,11 +99,11 @@ async def get_agents(
     return agents_with_details
 
 
-@router.get("/all/unified", response_model=List[UnifiedAgentRead])
+@router.get("/all/unified", response_model=list[UnifiedAgentRead])
 async def get_all_agents_unified(
     user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> List[UnifiedAgentRead]:
+) -> list[UnifiedAgentRead]:
     """
     Get all agents (both regular and graph) for the current authenticated user.
 
@@ -118,7 +116,7 @@ async def get_all_agents_unified(
         db: Database session (injected by dependency)
 
     Returns:
-        List[UnifiedAgentRead]: Unified list of all agents owned by the user
+        list[UnifiedAgentRead]: Unified list of all agents owned by the user
 
     Raises:
         HTTPException: None - this endpoint always succeeds, returning empty list if no agents
@@ -350,11 +348,11 @@ async def get_system_workshop_agent(
     return AgentReadWithDetails(**agent_dict)
 
 
-@router.get("/system/all", response_model=List[AgentReadWithDetails])
+@router.get("/system/all", response_model=list[AgentReadWithDetails])
 async def get_all_system_agents(
     user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> List[AgentReadWithDetails]:
+) -> list[AgentReadWithDetails]:
     """
     Get all system agents available to all users.
 
@@ -366,7 +364,7 @@ async def get_all_system_agents(
         db: Database session (injected by dependency)
 
     Returns:
-        List[AgentReadWithDetails]: List of all system agents with MCP server details
+        list[AgentReadWithDetails]: list of all system agents with MCP server details
     """
     system_manager = SystemAgentManager(db)
     system_agents = await system_manager.get_all_system_agents()
