@@ -3,6 +3,8 @@ LangGraph-based streaming chat implementation with multi-turn conversation suppo
 Uses LangChain's create_agent for automatic tool execution and conversation management.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging

@@ -18,7 +18,6 @@ from models.message import MessageCreate
 from repos import MessageRepository, SessionRepository, TopicRepository
 from schemas.chat_events import ChatClientEventType, ChatEventType, ToolCallStatus
 
-# --- Logger Setup ---
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Chat"])
