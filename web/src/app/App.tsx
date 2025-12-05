@@ -68,15 +68,41 @@ export function Xyzen({
     window.addEventListener("resize", onResize);
 
     // Update current hash on navigation
-    const updateHash = () => setCurrentHash(window.location.hash);
+    const updateHash = () => {
+      const newHash = window.location.hash;
+      setCurrentHash((prev) => {
+        if (prev !== newHash) {
+          console.log("[App] Hash changed detected:", newHash);
+          return newHash;
+        }
+        return prev;
+      });
+    };
+
     window.addEventListener("popstate", updateHash);
     window.addEventListener("hashchange", updateHash);
+
+    // Polling fallback for environments where events might be suppressed
+    const intervalId = setInterval(updateHash, 500);
 
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("popstate", updateHash);
       window.removeEventListener("hashchange", updateHash);
+      clearInterval(intervalId);
     };
+  }, []);
+
+  // Expose a global function to manually trigger the admin page for debugging
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // @ts-expect-error: debug
+      window.xyzenAdmin = () => {
+        console.log("Manually triggering admin page via window.xyzenAdmin()");
+        window.location.hash = "#secretcode";
+        setCurrentHash("#secretcode");
+      };
+    }
   }, []);
 
   // Global keyboard shortcut: Cmd/Ctrl + Shift + X toggles sidebar open/close
