@@ -172,7 +172,7 @@ export function AddLlmProviderModal() {
           </Label>
           <Input
             name="model"
-            value={newProvider.model}
+            value={newProvider.model || ""}
             onChange={handleInputChange}
             placeholder="gpt-4o, claude-3-haiku-20240307"
             className="mt-1"

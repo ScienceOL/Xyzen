@@ -111,6 +111,7 @@ export interface LlmProvider {
   api: string;
   key: string;
   provider_type: string;
+  model?: string | null;
   max_tokens: number;
   temperature: number;
   timeout: number;
@@ -126,6 +127,7 @@ export interface LlmProviderCreate {
   api: string;
   key: string;
   provider_type: string;
+  model?: string | null;
   max_tokens?: number;
   temperature?: number;
   timeout?: number;
@@ -139,6 +141,7 @@ export interface LlmProviderUpdate {
   api?: string;
   key?: string;
   provider_type?: string;
+  model?: string | null;
   max_tokens?: number;
   temperature?: number;
   timeout?: number;
