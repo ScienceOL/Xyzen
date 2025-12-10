@@ -20,9 +20,9 @@ import {
 } from "@dnd-kit/core";
 import { ClockIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
-import { ProviderSelector } from "./ProviderSelector";
+import { ModelSelector } from "./ModelSelector";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -63,10 +63,9 @@ export default function ChatToolbar({
     agents,
     systemAgents,
     mcpServers,
-    updateAgentProvider,
     llmProviders,
-    resolveProviderForAgent,
-    userDefaultProviderId,
+    availableModels,
+    updateSessionProviderAndModel,
   } = useXyzen();
 
   // Merge system and user agents for lookup (system + regular/graph)
@@ -112,58 +111,46 @@ export default function ChatToolbar({
     return allAgents.find((a) => a.id === channel.agentId) || null;
   }, [activeChatChannel, channels, allAgents]);
 
-  // Get current agent's provider using centralized resolution logic
-  const currentProvider = useMemo(() => {
-    return resolveProviderForAgent(currentAgent);
-  }, [currentAgent, resolveProviderForAgent]);
+  // Get current session's provider and model
+  const currentSessionProvider = useMemo(() => {
+    if (!activeChatChannel) return null;
+    const channel = channels[activeChatChannel];
+    return channel?.provider_id || null;
+  }, [activeChatChannel, channels]);
+
+  const currentSessionModel = useMemo(() => {
+    if (!activeChatChannel) return null;
+    const channel = channels[activeChatChannel];
+    return channel?.model || null;
+  }, [activeChatChannel, channels]);
 
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
 
-  // Provider change handler
-  const handleProviderChange = useCallback(
-    async (providerId: string | null) => {
-      if (!currentAgent) return;
+  // Model change handler - updates session's provider and model
+  const handleModelChange = useCallback(
+    async (providerId: string, model: string) => {
+      if (!activeChatChannel) return;
+
+      const channel = channels[activeChatChannel];
+      if (!channel?.sessionId) return;
 
       try {
-        await updateAgentProvider(currentAgent.id, providerId);
+        await updateSessionProviderAndModel(
+          channel.sessionId,
+          providerId,
+          model,
+        );
         console.log(
-          `Updated agent ${currentAgent.name} provider to ${providerId || "default"}`,
+          `Updated session ${channel.sessionId} to provider ${providerId} and model ${model}`,
         );
       } catch (error) {
-        console.error("Failed to update agent provider:", error);
+        console.error("Failed to update session provider/model:", error);
       }
     },
-    [currentAgent, updateAgentProvider],
+    [activeChatChannel, channels, updateSessionProviderAndModel],
   );
-
-  // Auto-assign provider to agent if needed
-  useEffect(() => {
-    if (!currentAgent || currentAgent.provider_id) return;
-
-    // Only auto-assign if agent has no provider and we have a clear resolution
-    const resolvedProvider = resolveProviderForAgent(currentAgent);
-    if (resolvedProvider) {
-      // Only auto-assign system provider if no user providers exist
-      if (resolvedProvider.is_system) {
-        const userProviders = llmProviders.filter((p) => !p.is_system);
-        if (userProviders.length === 0) {
-          handleProviderChange(resolvedProvider.id);
-        }
-      }
-      // Auto-assign user's local default if available
-      else if (resolvedProvider.id === userDefaultProviderId) {
-        handleProviderChange(resolvedProvider.id);
-      }
-    }
-  }, [
-    currentAgent,
-    llmProviders,
-    userDefaultProviderId,
-    resolveProviderForAgent,
-    handleProviderChange,
-  ]);
 
   // Setup dnd sensors
   const sensors = useSensors(
@@ -273,13 +260,15 @@ export default function ChatToolbar({
               </button>
             )} */}
 
-            {/* Provider Selector */}
+            {/* Model Selector */}
             {activeChatChannel && currentAgent && (
-              <ProviderSelector
+              <ModelSelector
                 currentAgent={currentAgent}
-                currentProvider={currentProvider}
+                currentSessionProvider={currentSessionProvider}
+                currentSessionModel={currentSessionModel}
                 llmProviders={llmProviders}
-                onProviderChange={handleProviderChange}
+                availableModels={availableModels}
+                onModelChange={handleModelChange}
               />
             )}
 

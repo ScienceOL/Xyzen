@@ -20,11 +20,12 @@ class ProviderManager:
     """
     Manager class for handling multiple LLM provider configurations
     and delegating creation to ChatModelFactory.
+    Now works directly with provider_id and model from session/agent,
+    no longer maintains active provider state.
     """
 
     def __init__(self) -> None:
         self._provider_configs: dict[str, RuntimeProviderConfig] = {}
-        self._active_provider: str | None = None
         self._factory = ChatModelFactory()
 
     def add_provider(
@@ -55,22 +56,9 @@ class ProviderManager:
 
         self._provider_configs[name] = RuntimeProviderConfig.model_validate(config_data)
 
-        if self._active_provider is None:
-            self._active_provider = name
-
-    def set_active_provider(self, name: str) -> None:
-        """Set the active provider by name."""
-        if name not in self._provider_configs:
-            raise ErrCode.PROVIDER_NOT_FOUND.with_messages(f"Provider '{name}' not found")
-
-        self._active_provider = name
-        logger.info(f"Switched active provider to '{name}'")
-
-    def get_provider_config(self, name: str | None = None) -> RuntimeProviderConfig | None:
-        provider_name = name or self._active_provider
-        if provider_name is None:
-            return None
-        return self._provider_configs.get(provider_name)
+    def get_provider_config(self, provider_id: str) -> RuntimeProviderConfig | None:
+        """Get provider config by provider ID."""
+        return self._provider_configs.get(provider_id)
 
     def list_providers(self) -> list[RuntimeProviderConfig]:
         return list(self._provider_configs.values())
@@ -80,45 +68,50 @@ class ProviderManager:
             raise ErrCode.PROVIDER_NOT_FOUND.with_messages(f"Provider '{name}' not found")
 
         del self._provider_configs[name]
-
-        if self._active_provider == name:
-            if self._provider_configs:
-                self._active_provider = next(iter(self._provider_configs))
-            else:
-                self._active_provider = None
-
         logger.info(f"Removed provider '{name}'")
 
-    def create_langchain_model(self, name: str | None = None, **override_kwargs: Any) -> BaseChatModel:
+    def create_langchain_model(
+        self, provider_id: str | None = None, model: str | None = None, **override_kwargs: Any
+    ) -> BaseChatModel:
         """
         Create a LangChain model using the stored config and the ChatModelFactory.
 
         Args:
-            name: The provider name (optional, defaults to active)
-            override_kwargs: Runtime overrides (e.g. temporary temperature change)
+            provider_id: The provider ID (UUID string). If None, uses system provider as fallback.
+            model: The model name to use. Required.
+            override_kwargs: Runtime overrides (e.g. temperature, max_tokens)
+
+        Returns:
+            BaseChatModel: Configured LangChain model instance
+
+        Raises:
+            ErrCode.PROVIDER_NOT_AVAILABLE: If no provider found and system fallback fails
+            ErrCode.MODEL_NOT_SPECIFIED: If model is not provided
         """
-        provider_name = name or self._active_provider
-        if not provider_name:
-            raise ErrCode.PROVIDER_NOT_AVAILABLE.with_messages("No active provider selected and no name provided")
+        if not model:
+            raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Model must be specified")
 
-        config = self._provider_configs.get(provider_name)
+        # If no provider specified, try system provider as fallback
+        if not provider_id:
+            provider_id = SYSTEM_PROVIDER_NAME
+            logger.info("No provider specified, using system provider as fallback")
+
+        config = self._provider_configs.get(provider_id)
+
+        # If provider not found, try system provider as fallback
         if not config:
-            logger.warning(f"Provider '{provider_name}' not found, using system provider")
-            self.set_active_provider(SYSTEM_PROVIDER_NAME)
+            logger.warning(f"Provider '{provider_id}' not found, falling back to system provider")
             config = self._provider_configs.get(SYSTEM_PROVIDER_NAME)
-        logger.info(self._provider_configs)
 
         if not config:
-            raise ErrCode.PROVIDER_NOT_AVAILABLE.with_messages("System provider not found")
+            raise ErrCode.PROVIDER_NOT_AVAILABLE.with_messages("No provider available (including system fallback)")
 
-        model_name = config.model
         credentials: LLMCredentials = config.to_credentials()
-        # Directly use the extra_config attribute
-        # which can be improved in the future
-        runtime_kwargs = config.extra_config
+        runtime_kwargs = (config.extra_config or {}).copy()
+        runtime_kwargs.update(override_kwargs)
 
         model_instance = self._factory.create(
-            model=model_name,
+            model=model,
             provider=config.provider_type,
             credentials=credentials,
             **runtime_kwargs,
@@ -165,14 +158,6 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
         except Exception as e:
             logger.error(f"Failed to load provider {db_provider.name} for user {user_id}: {e}")
             continue
-
-    available_names = [p.name for p in user_provider_manager.list_providers()]
-    if SYSTEM_PROVIDER_NAME in available_names:
-        user_provider_manager.set_active_provider(SYSTEM_PROVIDER_NAME)
-        logger.debug(f"Using system provider as fallback for user {user_id}")
-    elif available_names:
-        user_provider_manager.set_active_provider(available_names[0])
-        logger.debug(f"Using first available provider ({available_names[0]}) for user {user_id}")
 
     user_provider_managers[user_id] = user_provider_manager
 

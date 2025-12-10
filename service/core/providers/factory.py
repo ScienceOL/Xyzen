@@ -7,17 +7,15 @@ from langchain_google_vertexai import ChatVertexAI
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from common.code import ErrCode
+from core.llm.service import LiteLLMService
 from schemas.provider import LLMCredentials
 
-from .config import ModelInstance, ProviderType, config_manager
+from .config import ModelInstance, ProviderType
 
 logger = logging.getLogger(__name__)
 
 
 class ChatModelFactory:
-    def __init__(self) -> None:
-        self.config_manager = config_manager
-
     def create(
         self, model: str, provider: ProviderType | None, credentials: LLMCredentials, **runtime_kwargs: dict[str, Any]
     ) -> ModelInstance:
@@ -27,12 +25,11 @@ class ChatModelFactory:
         :param api_key: 用户的 API Key
         :param runtime_kwargs: 运行时参数 (如 temperature, streaming, callbacks)
         """
-        config = self.config_manager.get_model_config(model)
-        if not config:
-            raise ErrCode.MODEL_NOT_SUPPORTED.with_messages("Model not supported")
+        # Use LiteLLM to get model info
+        config = LiteLLMService.get_model_info(model)
 
         if not provider:
-            provider = config["provider_type"]
+            raise ErrCode.MODEL_NOT_SUPPORTED.with_messages("Provider must be specified")
 
         match provider:
             case ProviderType.OPENAI:

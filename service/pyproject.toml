@@ -20,6 +20,7 @@ dependencies = [
     "langchain-openai>=1.0.1",
     "langgraph>=1.0.1",
     "langgraph-checkpoint-postgres>=3.0.0",
+    "litellm[base]>=1.80.9",
     "llm-sandbox[docker,k8s]>=0.3.20",
     "mcp>=1.11.0",
     "openai>=1.98.0",
@@ -76,7 +77,7 @@ known-first-party = [
 
 [tool.pyright]
 include = ["."]
-ignore = ["**/migrations"]
+ignore = ["**/migrations", "**/.venv/**"]
 pythonVersion = "3.13"
 pythonPlatform = "All"
 typeCheckingMode = "standard"

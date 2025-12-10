@@ -116,7 +116,7 @@ export const ProviderList = () => {
                     value={provider.id}
                     className="relative z-10 flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400"
                   >
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 dark:text-white">
                       {getProviderIcon(provider.provider_type)}
                     </div>
                     <div className="flex-1 overflow-hidden">
@@ -129,7 +129,7 @@ export const ProviderList = () => {
                         )}
                       </div>
                       <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                        {provider.model}
+                        {provider.provider_type}
                       </div>
                     </div>
                   </TabsTrigger>

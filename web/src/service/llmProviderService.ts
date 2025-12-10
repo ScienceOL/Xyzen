@@ -6,6 +6,8 @@ import type {
   LlmProviderUpdate,
   ModelRegistry,
   ProviderTemplate,
+  ModelInfo,
+  DefaultModelConfig,
 } from "@/types/llmProvider";
 
 class LlmProviderService {
@@ -61,6 +63,49 @@ class LlmProviderService {
       display_name: this.getProviderDisplayName(providerType),
       models: models,
     }));
+  }
+
+  /**
+   * Get supported models list
+   */
+  async getSupportedModels(): Promise<string[]> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/providers/models`,
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch supported models");
+    }
+    return response.json();
+  }
+
+  /**
+   * Get available models for user's providers
+   * Returns a map of provider ID to list of models
+   */
+  async getAvailableModels(): Promise<Record<string, ModelInfo[]>> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/providers/available-models`,
+      {
+        headers: this.createAuthHeaders(),
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch available models");
+    }
+    return response.json();
+  }
+
+  /**
+   * Get default model configuration from system LLM config
+   */
+  async getDefaultModelConfig(): Promise<DefaultModelConfig> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/providers/default-model`,
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch default model config");
+    }
+    return response.json();
   }
 
   /**

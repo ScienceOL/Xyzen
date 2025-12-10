@@ -3,6 +3,7 @@ from enum import StrEnum
 from typing import NotRequired, TypedDict, cast
 
 from langchain.chat_models import BaseChatModel
+from litellm.types.utils import ModelInfo
 
 from schemas.provider import ProviderType
 
@@ -109,7 +110,7 @@ class ModelConfig(RawModelConfig):
 @dataclass
 class ModelInstance:
     llm: BaseChatModel
-    config: ModelConfig
+    config: ModelInfo
 
 
 ModelRegistry = dict[ProviderType, list[RawModelConfig]]

@@ -1,6 +1,8 @@
 import { authService } from "@/service/authService";
 import xyzenService from "@/service/xyzenService";
+import { sessionService } from "@/service/sessionService";
 import { parseToolMessage } from "@/utils/toolMessageParser";
+import { providerCore } from "@/core/provider";
 import type { StateCreator } from "zustand";
 import type {
   ChatChannel,
@@ -173,6 +175,15 @@ export interface ChatSlice {
   updateTopicName: (topicId: string, newName: string) => Promise<void>;
   deleteTopic: (topicId: string) => Promise<void>;
   clearSessionTopics: (sessionId: string) => Promise<void>;
+  updateSessionConfig: (
+    sessionId: string,
+    config: { override_provider_id?: string; override_model?: string },
+  ) => Promise<void>;
+  updateSessionProviderAndModel: (
+    sessionId: string,
+    providerId: string,
+    model: string,
+  ) => Promise<void>;
 
   // Workshop panel methods
   setActiveWorkshopChannel: (channelUUID: string | null) => void;
@@ -275,6 +286,8 @@ export const createChatSlice: StateCreator<
                   title: topic.name,
                   messages: [],
                   agentId: session.agent_id,
+                  provider_id: session.provider_id,
+                  model: session.model,
                   connected: false,
                   error: null,
                 };
@@ -877,6 +890,53 @@ export const createChatSlice: StateCreator<
           // Found existing session, create a new topic for it
           const existingSession = await existingSessionResponse.json();
 
+          // If existing session doesn't have provider/model, update it with defaults
+          if (!existingSession.provider_id || !existingSession.model) {
+            console.log(
+              "  - 🔄 Existing session missing provider/model, updating with defaults...",
+            );
+            try {
+              const state = get();
+              const agent = [...state.agents, ...state.systemAgents].find(
+                (a) => a.id === existingSession.agent_id,
+              );
+
+              let providerId = existingSession.provider_id;
+              let model = existingSession.model;
+
+              // Use agent's provider/model if available
+              if (agent?.provider_id && agent?.model) {
+                providerId = agent.provider_id;
+                model = agent.model;
+              } else {
+                // Otherwise use system defaults
+                const defaults = await providerCore.getDefaultProviderAndModel(
+                  state.llmProviders,
+                );
+                providerId = providerId || defaults.providerId;
+                model = model || defaults.model;
+              }
+
+              if (providerId && model) {
+                // Update the session with provider/model
+                await sessionService.updateSession(existingSession.id, {
+                  provider_id: providerId,
+                  model: model,
+                });
+                existingSession.provider_id = providerId;
+                existingSession.model = model;
+                console.log(
+                  `  - ✅ Updated session with provider (${providerId}) and model (${model})`,
+                );
+              }
+            } catch (error) {
+              console.warn(
+                "  - ⚠️ Failed to update session with defaults:",
+                error,
+              );
+            }
+          }
+
           const newTopicResponse = await fetch(
             `${get().backendUrl}/xyzen/api/v1/topics/`,
             {
@@ -901,6 +961,8 @@ export const createChatSlice: StateCreator<
             title: newTopic.name,
             messages: [],
             agentId: existingSession.agent_id,
+            provider_id: existingSession.provider_id,
+            model: existingSession.model,
             connected: false,
             error: null,
           };
@@ -945,11 +1007,33 @@ export const createChatSlice: StateCreator<
       // Include MCP server IDs if agent has them
       if (agent?.mcp_servers?.length) {
         sessionPayload.mcp_server_ids = agent.mcp_servers.map((s) => s.id);
-        console.log(
-          `  - ✅ Including ${agent.mcp_servers.length} MCP servers in session creation`,
-        );
-      } else {
-        console.log(`  - ⚠️ No MCP servers to include for this agent`);
+      }
+
+      // Ensure providers are loaded before proceeding
+      let currentProviders = state.llmProviders;
+      if (currentProviders.length === 0) {
+        try {
+          await get().fetchMyProviders();
+          currentProviders = get().llmProviders;
+        } catch (error) {
+          console.error("Failed to fetch providers:", error);
+        }
+      }
+
+      try {
+        if (agent?.provider_id && agent?.model) {
+          sessionPayload.provider_id = agent.provider_id;
+          sessionPayload.model = agent.model;
+        } else {
+          const { providerId, model } =
+            await providerCore.getDefaultProviderAndModel(currentProviders);
+          if (providerId && model) {
+            sessionPayload.provider_id = providerId;
+            sessionPayload.model = model;
+          }
+        }
+      } catch (error) {
+        console.error("Error getting provider/model:", error);
       }
 
       // The backend will automatically extract user_id from the token
@@ -963,27 +1047,14 @@ export const createChatSlice: StateCreator<
       );
 
       if (!response.ok) {
-        throw new Error("Failed to create new session with default topic");
+        const errorText = await response.text();
+        console.error("Session creation failed:", response.status, errorText);
+        throw new Error(
+          `Failed to create new session: ${response.status} ${errorText}`,
+        );
       }
 
       const newSession: SessionResponse = await response.json();
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          "❌ Session creation failed:",
-          response.status,
-          errorText,
-        );
-        throw new Error(`Failed to create new session:
-        ${response.status} ${errorText}`);
-      }
-
-      console.log("✅ Session creation successful, parsing  response...");
-      console.log(
-        "🔍 Session response data:",
-        JSON.stringify(newSession, null, 2),
-      );
 
       if (newSession.topics && newSession.topics.length > 0) {
         const newTopic = newSession.topics[0];
@@ -994,6 +1065,8 @@ export const createChatSlice: StateCreator<
           title: newTopic.name,
           messages: [],
           agentId: newSession.agent_id,
+          provider_id: newSession.provider_id,
+          model: newSession.model,
           connected: false,
           error: null,
         };
@@ -1018,10 +1091,6 @@ export const createChatSlice: StateCreator<
         get().connectToChannel(newSession.id, newTopic.id);
       } else {
         // Session created but no default topic - create one manually
-        console.log(
-          "⚠️ Session created without topics, creating default topic...",
-        );
-
         const topicResponse = await fetch(
           `${get().backendUrl}/xyzen/api/v1/topics/`,
           {
@@ -1037,7 +1106,7 @@ export const createChatSlice: StateCreator<
         if (!topicResponse.ok) {
           const errorText = await topicResponse.text();
           console.error(
-            "❌ Failed to create default topic:",
+            "Failed to create default topic:",
             topicResponse.status,
             errorText,
           );
@@ -1047,7 +1116,6 @@ export const createChatSlice: StateCreator<
         }
 
         const newTopic = await topicResponse.json();
-        console.log("✅ Default topic created:", newTopic.id);
 
         // Same navigation logic as above
         const newChannel: ChatChannel = {
@@ -1056,6 +1124,8 @@ export const createChatSlice: StateCreator<
           title: newTopic.name,
           messages: [],
           agentId: newSession.agent_id,
+          provider_id: newSession.provider_id,
+          model: newSession.model,
           connected: false,
           error: null,
         };
@@ -1077,7 +1147,6 @@ export const createChatSlice: StateCreator<
           state.activeTabIndex = 1;
         });
 
-        console.log("🚀 Navigating to new topic:", newTopic.id);
         get().connectToChannel(newSession.id, newTopic.id);
       }
     } catch (error) {
@@ -1218,7 +1287,115 @@ export const createChatSlice: StateCreator<
       console.log(`Session ${sessionId} topics cleared`);
     } catch (error) {
       console.error("Failed to clear session topics:", error);
-      throw error;
+    }
+  },
+
+  updateSessionConfig: async (sessionId, config) => {
+    const { token, backendUrl } = get();
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${backendUrl}/xyzen/api/v1/sessions/${sessionId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(config),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update session config");
+      }
+
+      const updatedSession = await response.json();
+
+      set((state) => {
+        // Update active channel if it matches this session
+        const activeChannelId = state.activeChatChannel;
+        if (
+          activeChannelId &&
+          state.channels[activeChannelId]?.sessionId === sessionId
+        ) {
+          state.channels[activeChannelId].provider_id =
+            updatedSession.provider_id;
+          state.channels[activeChannelId].model = updatedSession.model;
+        }
+
+        // Also update workshop channel if applicable
+        const activeWorkshopId = state.activeWorkshopChannel;
+        if (
+          activeWorkshopId &&
+          state.workshopChannels[activeWorkshopId]?.sessionId === sessionId
+        ) {
+          state.workshopChannels[activeWorkshopId].provider_id =
+            updatedSession.provider_id;
+          state.workshopChannels[activeWorkshopId].model = updatedSession.model;
+        }
+      });
+    } catch (error) {
+      console.error("Failed to update session config:", error);
+      get().showNotification(
+        "Error",
+        "Failed to update session configuration",
+        "error",
+      );
+    }
+  },
+
+  updateSessionProviderAndModel: async (sessionId, providerId, model) => {
+    try {
+      await sessionService.updateSession(sessionId, {
+        provider_id: providerId,
+        model: model,
+      });
+
+      set((state) => {
+        // Update active channel if it matches this session
+        const activeChannelId = state.activeChatChannel;
+        if (
+          activeChannelId &&
+          state.channels[activeChannelId]?.sessionId === sessionId
+        ) {
+          state.channels[activeChannelId].provider_id = providerId;
+          state.channels[activeChannelId].model = model;
+        }
+
+        // Also update workshop channel if applicable
+        const activeWorkshopId = state.activeWorkshopChannel;
+        if (
+          activeWorkshopId &&
+          state.workshopChannels[activeWorkshopId]?.sessionId === sessionId
+        ) {
+          state.workshopChannels[activeWorkshopId].provider_id = providerId;
+          state.workshopChannels[activeWorkshopId].model = model;
+        }
+
+        // Update all channels that belong to this session
+        Object.keys(state.channels).forEach((channelId) => {
+          if (state.channels[channelId].sessionId === sessionId) {
+            state.channels[channelId].provider_id = providerId;
+            state.channels[channelId].model = model;
+          }
+        });
+
+        Object.keys(state.workshopChannels).forEach((channelId) => {
+          if (state.workshopChannels[channelId].sessionId === sessionId) {
+            state.workshopChannels[channelId].provider_id = providerId;
+            state.workshopChannels[channelId].model = model;
+          }
+        });
+      });
+    } catch (error) {
+      console.error("Failed to update session provider and model:", error);
+      get().showNotification(
+        "Error",
+        "Failed to update model selection",
+        "error",
+      );
     }
   },
 

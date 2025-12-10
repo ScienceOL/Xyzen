@@ -64,8 +64,6 @@ export const ProviderConfigForm = () => {
     provider_type: "",
     api: "",
     key: "",
-    model: "",
-    is_default: false,
     user_id: "", // This will be set by backend from auth token
     provider_config: {},
   });
@@ -92,8 +90,6 @@ export const ProviderConfigForm = () => {
         provider_type: "",
         api: "",
         key: "",
-        model: "",
-        is_default: false,
         user_id: "",
         provider_config: {},
       });
@@ -109,15 +105,11 @@ export const ProviderConfigForm = () => {
       const templateType = selectedProviderId.replace("new:", "");
       const template = providerTemplates.find((t) => t.type === templateType);
       if (template) {
-        // Use first model from models array as default
-        const firstModel = template.models[0];
         setFormData({
           name: `My ${template.display_name}`,
           provider_type: template.type,
           api: getDefaultApiEndpoint(template.type),
           key: "",
-          model: firstModel?.model_name || "",
-          is_default: false,
           user_id: "",
           provider_config: {},
         });
@@ -147,8 +139,6 @@ export const ProviderConfigForm = () => {
             provider_type: provider.provider_type,
             api: provider.api,
             key: "••••••••", // Mask the key
-            model: provider.model,
-            is_default: provider.is_default,
             user_id: provider.user_id,
             provider_config: provider.provider_config || {},
           });
@@ -173,8 +163,6 @@ export const ProviderConfigForm = () => {
           provider_type: provider.provider_type,
           api: provider.api,
           key: provider.key,
-          model: provider.model,
-          is_default: provider.is_default,
           user_id: provider.user_id,
           provider_config: provider.provider_config || {},
         });
@@ -222,8 +210,8 @@ export const ProviderConfigForm = () => {
 
     try {
       // Validation
-      if (!formData.name || !formData.api || !formData.key || !formData.model) {
-        setError("Name, API, Key, and Model are required");
+      if (!formData.name || !formData.api || !formData.key) {
+        setError("Name, API, and Key are required");
         setLoading(false);
         return;
       }
@@ -238,7 +226,6 @@ export const ProviderConfigForm = () => {
           name: formData.name,
           api: formData.api,
           key: formData.key,
-          model: formData.model,
         };
 
         // Add Azure config if Azure OpenAI
@@ -258,7 +245,6 @@ export const ProviderConfigForm = () => {
           provider_type: formData.provider_type!,
           api: formData.api!,
           key: formData.key!,
-          model: formData.model!,
           user_id: "", // Backend will set this
         };
 
@@ -449,46 +435,6 @@ export const ProviderConfigForm = () => {
               className="mt-1"
               disabled={isSystemProvider}
             />
-          </Field>
-
-          {/* Model */}
-          <Field>
-            <Label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Model *
-            </Label>
-            {template && template.models.length > 0 ? (
-              <select
-                name="model"
-                value={formData.model || ""}
-                onChange={(e) => {
-                  handleInputChange({
-                    target: { name: e.target.name, value: e.target.value },
-                  } as ChangeEvent<HTMLInputElement>);
-                }}
-                className="mt-1 w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:disabled:bg-neutral-900"
-                disabled={isSystemProvider}
-              >
-                <option value="">Select a model</option>
-                {template.models.map((model) => (
-                  <option key={model.model_name} value={model.model_name}>
-                    {model.model_name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <Input
-                type="text"
-                name="model"
-                value={formData.model || ""}
-                onChange={handleInputChange}
-                placeholder="e.g., gpt-4o or gemini-2.0-flash-exp"
-                className="mt-1"
-                disabled={isSystemProvider}
-              />
-            )}
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Select from available models or enter a custom model name
-            </p>
           </Field>
 
           {/* Azure OpenAI Specific Fields */}

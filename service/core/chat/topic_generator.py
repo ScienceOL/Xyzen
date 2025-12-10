@@ -8,7 +8,6 @@ from langchain_core.messages import HumanMessage
 from core.providers import get_user_provider_manager
 from middleware.database.connection import AsyncSessionLocal
 from models.topic import TopicUpdate
-from repos.agent import AgentRepository
 from repos.session import SessionRepository
 from repos.topic import TopicRepository
 
@@ -42,20 +41,18 @@ async def generate_and_update_topic_title(
         try:
             topic_repo = TopicRepository(db)
             session_repo = SessionRepository(db)
-            agent_repo = AgentRepository(db)
 
             topic = await topic_repo.get_topic_by_id(topic_id)
             if not topic:
                 logger.warning(f"Topic {topic_id} not found for title generation")
                 return
             session = await session_repo.get_session_by_id(session_id)
-            agent = None
-            if session and session.agent_id:
-                agent = await agent_repo.get_agent_by_id(session.agent_id)
 
             provider_name = None
-            if agent and agent.provider_id:
-                provider_name = str(agent.provider_id)
+            model_name = None
+            if session and session.provider_id:
+                provider_name = str(session.provider_id)
+                model_name = session.model
 
             user_provider_manager = await get_user_provider_manager(user_id, db)
             prompt = (
@@ -66,7 +63,7 @@ async def generate_and_update_topic_title(
             )
 
             # Use the active model
-            llm = user_provider_manager.create_langchain_model(provider_name)
+            llm = user_provider_manager.create_langchain_model(provider_name, model_name)
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             logger.debug(f"LLM response: {response}")
 

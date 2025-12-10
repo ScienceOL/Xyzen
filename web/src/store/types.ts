@@ -49,6 +49,8 @@ export interface ChatChannel {
   title: string;
   messages: Message[];
   agentId?: string;
+  provider_id?: string;
+  model?: string;
   connected: boolean;
   error: string | null;
   // Whether assistant is currently producing a reply (planning, tool calls, or generating tokens)
@@ -88,6 +90,8 @@ export interface SessionResponse {
   name: string;
   user_id: string;
   agent_id?: string;
+  provider_id?: string;
+  model?: string;
   topics: TopicResponse[];
 }
 

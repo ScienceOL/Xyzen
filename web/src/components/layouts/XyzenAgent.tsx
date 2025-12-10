@@ -283,19 +283,29 @@ export default function XyzenAgent({
     activateChannel,
     hiddenGraphAgentIds,
     fetchMcpServers,
+    fetchMyProviders,
+    llmProviders,
+    llmProvidersLoading,
   } = useXyzen();
 
   useEffect(() => {
     fetchAgents();
   }, [fetchAgents]);
 
+  // Ensure providers are loaded on mount
+  useEffect(() => {
+    if (llmProviders.length === 0 && !llmProvidersLoading) {
+      fetchMyProviders().catch((error) => {
+        console.error("Failed to fetch providers:", error);
+      });
+    }
+  }, [llmProviders.length, llmProvidersLoading, fetchMyProviders]);
+
   // Ensure MCP servers are loaded first, then fetch system agents
   useEffect(() => {
     const loadAgentsWithMcps = async () => {
       try {
-        // First, load MCP servers
         await fetchMcpServers();
-        // Then load system agents
         await fetchSystemAgents();
       } catch (error) {
         console.error("Failed to load agents with MCPs:", error);
@@ -309,6 +319,15 @@ export default function XyzenAgent({
     // 使用实际的 agent ID（系统助手和普通助手都有真实的 ID）
     const agentId = agent.id;
 
+    // Ensure providers are loaded before creating a channel
+    if (llmProviders.length === 0) {
+      try {
+        await fetchMyProviders();
+      } catch (error) {
+        console.error("Failed to fetch providers:", error);
+      }
+    }
+
     // 1. 从 chatHistory 中找到该 agent 的所有 topics
     const agentTopics = chatHistory.filter((topic) => {
       const channel = channels[topic.id];
@@ -319,14 +338,12 @@ export default function XyzenAgent({
     });
 
     if (agentTopics.length === 0) {
-      console.log(`创建新对话 for agent: ${agentId}`);
       await createDefaultChannel(agentId);
     } else {
       const latestTopic = agentTopics.sort(
         (a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       )[0];
-      console.log(`复用最新对话: ${latestTopic.id} for agent: ${agentId}`);
       await activateChannel(latestTopic.id);
     }
   };

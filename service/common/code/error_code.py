@@ -71,10 +71,11 @@ class ErrCode(IntEnum):
     # Use when: AI model operations fail
     MODEL_NOT_AVAILABLE = 6000  # Requested model doesn't exist
     MODEL_NOT_SUPPORTED = 6001  # Model not supported by provider
-    MODEL_OVERLOADED = 6002  # Model temporarily unavailable
-    MODEL_CONFIGURATION_ERROR = 6003  # Invalid model parameters
-    MODEL_CONTEXT_TOO_LONG = 6004  # Input exceeds model context limit
-    MODEL_OUTPUT_TRUNCATED = 6005  # Response was truncated
+    MODEL_NOT_SPECIFIED = 6002  # Model parameter not provided
+    MODEL_OVERLOADED = 6003  # Model temporarily unavailable
+    MODEL_CONFIGURATION_ERROR = 6004  # Invalid model parameters
+    MODEL_CONTEXT_TOO_LONG = 6005  # Input exceeds model context limit
+    MODEL_OUTPUT_TRUNCATED = 6006  # Response was truncated
 
     # ========== AGENT MANAGEMENT (7xxx) ==========
     # Use when: Agent operations fail

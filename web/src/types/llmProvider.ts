@@ -26,9 +26,10 @@ export enum LiteLLMProvider {
 
 export interface RawModelConfig {
   // Core required fields
-  model_name: string;
-  litellm_provider: LiteLLMProvider;
-  mode: ModelMode;
+  key: string; // The key in litellm.model_cost (model identifier) - always provided by backend
+  model_name?: string; // Optional model name
+  litellm_provider: string;
+  mode: string;
 
   // Optional token limits
   max_tokens?: number;
@@ -100,12 +101,15 @@ export interface ModelConfig extends RawModelConfig {
 
 export type ModelRegistry = Record<string, RawModelConfig[]>;
 
+// ModelInfo matches the backend litellm.types.utils.ModelInfo structure
+// This is the same as RawModelConfig but used for API responses
+export type ModelInfo = RawModelConfig;
+
 export interface LlmProvider {
   id: string;
   name: string;
   api: string;
   key: string;
-  model: string;
   provider_type: string;
   max_tokens: number;
   temperature: number;
@@ -121,7 +125,6 @@ export interface LlmProviderCreate {
   name: string;
   api: string;
   key: string;
-  model: string;
   provider_type: string;
   max_tokens?: number;
   temperature?: number;
@@ -135,7 +138,6 @@ export interface LlmProviderUpdate {
   name?: string;
   api?: string;
   key?: string;
-  model?: string;
   provider_type?: string;
   max_tokens?: number;
   temperature?: number;
@@ -154,4 +156,8 @@ export interface ProviderTemplate {
   type: string;
   display_name: string;
   models: RawModelConfig[];
+}
+
+export interface DefaultModelConfig extends ModelInfo {
+  provider_type: string; // System provider type (e.g., 'azure_openai', 'openai', 'google')
 }

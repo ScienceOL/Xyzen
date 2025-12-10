@@ -4,6 +4,7 @@ import type {
   LlmProviderResponse,
   LlmProviderUpdate,
   ProviderTemplate,
+  ModelInfo,
 } from "@/types/llmProvider";
 import {
   ProviderPreferencesManager,
@@ -17,10 +18,13 @@ export interface ProviderSlice {
   llmProvidersLoading: boolean;
   providerTemplates: ProviderTemplate[];
   templatesLoading: boolean;
+  availableModels: Record<string, ModelInfo[]>;
+  availableModelsLoading: boolean;
   userDefaultProviderId: string | null;
 
   fetchProviderTemplates: () => Promise<void>;
   fetchMyProviders: () => Promise<void>;
+  fetchAvailableModels: () => Promise<void>;
   addProvider: (provider: LlmProviderCreate) => Promise<void>;
   updateProvider: (id: string, provider: LlmProviderUpdate) => Promise<void>;
   removeProvider: (id: string) => Promise<void>;
@@ -44,6 +48,8 @@ export const createProviderSlice: StateCreator<
   llmProvidersLoading: false,
   providerTemplates: [],
   templatesLoading: false,
+  availableModels: {},
+  availableModelsLoading: false,
   userDefaultProviderId: null,
 
   fetchProviderTemplates: async () => {
@@ -66,9 +72,23 @@ export const createProviderSlice: StateCreator<
       // Initialize preferences on first load and handle migration
       get().initializeProviderPreferences();
       ProviderPreferencesManager.migrateFromDatabaseDefault(providers);
+
+      // Also fetch available models for these providers
+      get().fetchAvailableModels();
     } catch (error) {
       console.error("Failed to fetch your providers:", error);
       set({ llmProvidersLoading: false });
+    }
+  },
+
+  fetchAvailableModels: async () => {
+    set({ availableModelsLoading: true });
+    try {
+      const models = await llmProviderService.getAvailableModels();
+      set({ availableModels: models, availableModelsLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch available models:", error);
+      set({ availableModelsLoading: false });
     }
   },
 
@@ -109,6 +129,9 @@ export const createProviderSlice: StateCreator<
 
       get().closeAddLlmProviderModal();
       get().closeSettingsModal();
+
+      // Refresh available models
+      get().fetchAvailableModels();
     } catch (error) {
       console.error("Failed to add provider:", error);
       throw error;
@@ -145,6 +168,9 @@ export const createProviderSlice: StateCreator<
       if (userDefaultProviderId === id) {
         get().setUserDefaultProvider(null);
       }
+
+      // Refresh available models
+      get().fetchAvailableModels();
     } catch (error) {
       console.error("Failed to remove provider:", error);
       throw error;

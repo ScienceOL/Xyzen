@@ -206,21 +206,33 @@ async def get_ai_response_stream_langchain_legacy(
 
     # Use the provided agent parameter (for legacy compatibility)
     # If no agent provided, try to load from session
+    from repos.agent import AgentRepository
+    from repos.session import SessionRepository
+
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(topic.session_id)
+
     if agent is None:
-        from repos.agent import AgentRepository
-        from repos.session import SessionRepository
-
-        session_repo = SessionRepository(db)
-        session = await session_repo.get_session_by_id(topic.session_id)
-
         if session and session.agent_id:
             agent_repo = AgentRepository(db)
             agent = await agent_repo.get_agent_by_id(session.agent_id)
 
-    # Select provider using loaded agent or use active provider
-    provider_name = None
-    if agent and agent.provider_id:
-        provider_name = str(agent.provider_id)
+    # Determine provider and model to use
+    # Priority: Session Override > Agent Default > System Default (handled by provider manager if None)
+    provider_id = None
+    model_name = None
+
+    if session:
+        if session.provider_id:
+            provider_id = str(session.provider_id)
+        if session.model:
+            model_name = session.model
+
+    if not provider_id and agent and agent.provider_id:
+        provider_id = str(agent.provider_id)
+
+    if not model_name and agent and agent.model:
+        model_name = agent.model
 
     # Get system prompt with MCP awareness
     system_prompt = await build_system_prompt(db, agent)
@@ -229,7 +241,7 @@ async def get_ai_response_stream_langchain_legacy(
 
     try:
         # Create langchain agent
-        llm = user_provider_manager.create_langchain_model(provider_name)
+        llm = user_provider_manager.create_langchain_model(provider_id, model=model_name)
         tools = await _prepare_langchain_tools(db, agent)
         langchain_agent: CompiledStateGraph = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
 

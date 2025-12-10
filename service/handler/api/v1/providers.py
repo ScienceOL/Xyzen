@@ -1,12 +1,14 @@
-from typing import Any
+from typing import Any, NotRequired, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from litellm.types.utils import ModelInfo
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code.error_code import ErrCodeError, handle_auth_error
 from core.auth import AuthorizationService, get_auth_service
-from core.providers import ModelRegistry, config
+from core.llm.service import LiteLLMService
+from internal import configs
 from middleware.auth import get_current_user
 from middleware.database.connection import get_session
 from models.provider import ProviderCreate, ProviderRead, ProviderUpdate
@@ -16,13 +18,119 @@ from schemas.provider import ProviderType
 router = APIRouter(tags=["providers"])
 
 
-@router.get("/templates", response_model=ModelRegistry)
-async def get_provider_templates() -> ModelRegistry:
+class DefaultModelInfo(ModelInfo, total=False):
+    provider_type: NotRequired[str]
+
+
+@router.get("/default-model", response_model=DefaultModelInfo)
+async def get_default_model_config() -> DefaultModelInfo:
+    """
+    Get the default model configuration from system LLM config.
+
+    This endpoint returns the default model settings configured in the system,
+    which can be used as the initial selection in the frontend.
+
+    Returns:
+        ModelInfo with additional provider_type field for system provider type
+    """
+    llm_config = configs.LLM
+    model = llm_config.model
+    provider_type = llm_config.provider.value
+
+    model_info = LiteLLMService.get_model_info(model)
+
+    if not model_info:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get model info for default model: {model}",
+        )
+
+    # Add key and provider_type to ModelInfo
+    result: dict[str, Any] = dict(model_info)
+    result["key"] = model
+    result["provider_type"] = provider_type
+    # Add supported_openai_params if missing (required by ModelInfo)
+    if "supported_openai_params" not in result:
+        result["supported_openai_params"] = None
+    return cast(DefaultModelInfo, result)
+
+
+@router.get("/templates", response_model=dict[str, list[ModelInfo]])
+async def get_provider_templates() -> dict[str, list[ModelInfo]]:
     """
     Get available provider templates with metadata for the UI.
     Returns configuration templates for all supported LLM providers.
+    Dynamically fetches models from LiteLLM instead of using hardcoded config.
     """
-    return config
+    return LiteLLMService.get_all_providers_with_models()
+
+
+@router.get("/models", response_model=list[str])
+async def get_supported_models() -> list[str]:
+    """
+    Get a list of all models supported by the system (via LiteLLM).
+    """
+    return LiteLLMService.list_supported_models()
+
+
+@router.get("/available-models", response_model=dict[str, list[ModelInfo]])
+async def get_available_models_for_user(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, list[ModelInfo]]:
+    """
+    Get all available models for the current user's providers.
+
+    Returns a dictionary mapping provider ID to list of available models for that provider.
+    Only includes models for providers the user has access to (their own + system).
+
+    Args:
+        user_id: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        Dict[str, List[ModelInfo]]: Dictionary mapping provider ID (as string) to list of ModelInfo
+    """
+    provider_repo = ProviderRepository(db)
+    providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
+
+    result: dict[str, list[ModelInfo]] = {}
+
+    for provider in providers:
+        models = LiteLLMService.get_models_by_provider(provider.provider_type)
+        if models:
+            result[str(provider.id)] = models
+
+    return result
+
+
+@router.get("/{provider_id}/models", response_model=list[ModelInfo])
+async def get_provider_available_models(
+    provider_id: UUID,
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
+) -> list[ModelInfo]:
+    """
+    Get available models for a specific provider.
+
+    Args:
+        provider_id: UUID of the provider
+        user_id: Authenticated user ID (injected by dependency)
+        auth_service: Authorization service (injected by dependency)
+
+    Returns:
+        List[ModelInfo]: List of available models with metadata
+
+    Raises:
+        HTTPException: 404 if provider not found, 403 if access denied
+    """
+    try:
+        provider = await auth_service.authorize_provider_read(provider_id, user_id)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
+
+    models = LiteLLMService.get_models_by_provider(provider.provider_type.value)
+    return models
 
 
 @router.get("/system", response_model=list[ProviderRead])

@@ -7,7 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from core.agent_type_detector import AgentTypeDetector
 from middleware.auth import get_current_user
 from middleware.database import get_session
-from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics
+from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics, SessionUpdate
 from models.topic import TopicCreate, TopicRead
 from repos import MessageRepository, SessionRepository, TopicRepository
 
@@ -75,6 +75,8 @@ async def create_session_with_default_topic(
                     description=session_data.description,
                     is_active=session_data.is_active,
                     agent_id=builtin_uuid,
+                    provider_id=session_data.provider_id,
+                    model=session_data.model,
                 )
             else:
                 # Regular/graph agents use UUID as-is
@@ -243,3 +245,37 @@ async def clear_session_topics(
 
     await db.commit()
     return
+
+
+@router.patch("/{session_id}", response_model=SessionRead)
+async def update_session(
+    session_id: UUID,
+    session_data: SessionUpdate,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> SessionRead:
+    """
+    Update a session's configuration (including provider/model overrides).
+
+    Args:
+        session_id: UUID of the session to update
+        session_data: Data to update
+        user: Authenticated user ID
+        db: Database session
+
+    Returns:
+        SessionRead: The updated session
+    """
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    updated_session = await session_repo.update_session(session_id, session_data)
+    if not updated_session:
+        raise HTTPException(status_code=500, detail="Failed to update session")
+
+    await db.commit()
+    return SessionRead(**updated_session.model_dump())
