@@ -71,6 +71,8 @@ class SessionBase(SQLModel):
     is_active: bool = True
     agent_id: UUID | None = Field(default=None, index=True)
     user_id: str = Field(index=True)
+    provider_id: UUID | None = Field(default=None, description="If set, overrides the agent's provider")
+    model: str | None = Field(default=None, description="If set, overrides the agent's model")
 
 
 class Session(SessionBase, table=True):
@@ -90,6 +92,8 @@ class SessionCreate(SQLModel):
     description: str | None = Field(default=None, max_length=500)
     is_active: bool = True
     agent_id: str | UUID | None = Field(default=None)
+    provider_id: UUID | None = None
+    model: str | None = None
 
 
 class SessionRead(SessionBase):
@@ -105,3 +109,5 @@ class SessionUpdate(SQLModel):
     name: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    provider_id: UUID | None = None
+    model: str | None = None

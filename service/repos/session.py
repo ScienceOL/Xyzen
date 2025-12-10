@@ -91,6 +91,8 @@ class SessionRepository:
             is_active=session_data.is_active,
             user_id=user_id,
             agent_id=agent_id,
+            provider_id=session_data.provider_id,
+            model=session_data.model,
         )
         self.db.add(session)
         await self.db.flush()

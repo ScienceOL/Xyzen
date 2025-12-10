@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
+
 import sqlalchemy as sa
 from sqlalchemy import TIMESTAMP
 from sqlmodel import JSON, Column, Field, SQLModel
