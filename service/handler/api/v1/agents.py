@@ -9,7 +9,7 @@ from core.auth import AuthorizationService, get_auth_service
 from core.system_agent import SystemAgentManager
 from middleware.auth import get_current_user
 from middleware.database import get_session
-from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentUpdate
+from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
 
 # Ensure forward references are resolved after importing both models
 # try:
@@ -53,6 +53,9 @@ async def create_agent(
             await auth_service.authorize_provider_read(agent_data.provider_id, user_id)
         except ErrCodeError as e:
             raise handle_auth_error(e)
+
+    # Force scope to USER for user-created agents
+    agent_data.scope = AgentScope.USER
 
     agent_repo = AgentRepository(db)
     created_agent = await agent_repo.create_agent(agent_data, user_id)
@@ -212,6 +215,9 @@ async def update_agent(
     try:
         agent = await auth_service.authorize_agent_write(agent_id, user_id)
 
+        if agent.scope == AgentScope.SYSTEM:
+            raise HTTPException(status_code=403, detail="Cannot modify system agents")
+
         if agent_data.provider_id is not None:
             provider_repo = ProviderRepository(db)
             provider = await provider_repo.get_provider_by_id(agent_data.provider_id)
@@ -267,6 +273,10 @@ async def delete_agent(
     """
     try:
         agent = await auth_service.authorize_agent_delete(agent_id, user_id)
+
+        if agent.scope == AgentScope.SYSTEM:
+            raise HTTPException(status_code=403, detail="Cannot delete system agents")
+
         agent_repo = AgentRepository(db)
         await agent_repo.delete_agent(agent.id)
         await db.commit()

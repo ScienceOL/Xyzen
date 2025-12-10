@@ -12,7 +12,7 @@ from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import SYSTEM_USER_ID
-from models.agent import Agent, AgentCreate
+from models.agent import Agent, AgentCreate, AgentScope
 from models.provider import Provider
 from repos.agent import AgentRepository
 from repos.provider import ProviderRepository
@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class AgentConfig(TypedDict):
-    id: UUID
     name: str
     description: str
     prompt: str
@@ -31,14 +30,9 @@ class AgentConfig(TypedDict):
     tags: list[str]
 
 
-# Fixed UUIDs for system agents
-SYSTEM_CHAT_AGENT_ID = UUID("00000000-0000-0000-0000-000000000001")
-SYSTEM_WORKSHOP_AGENT_ID = UUID("00000000-0000-0000-0000-000000000002")
-
 # System agent configurations
 SYSTEM_AGENTS: dict[str, AgentConfig] = {
     "chat": {
-        "id": SYSTEM_CHAT_AGENT_ID,
         "name": "随便聊聊",
         "description": "与AI助手自由对话，获得各种帮助和支持",
         "prompt": """你是一个友好、有用的AI助手。你可以回答问题、提供建议、协助完成各种任务。
@@ -56,7 +50,6 @@ SYSTEM_AGENTS: dict[str, AgentConfig] = {
         "tags": ["助手", "对话", "工具", "帮助"],
     },
     "workshop": {
-        "id": SYSTEM_WORKSHOP_AGENT_ID,
         "name": "创作工坊",
         "description": "专注于AI助手的设计、创建和优化的专业助手",
         "prompt": """你是一个专业的AI助手设计师和创作顾问。你专门帮助用户设计、创建和优化AI助手。
@@ -134,10 +127,8 @@ class SystemAgentManager:
         Returns:
             Agent instance
         """
-        agent_id = agent_config["id"]
-
-        # Check if agent already exists
-        existing = await self.agent_repo.get_agent_by_id(agent_id)
+        # Check if agent already exists by name and scope
+        existing = await self.agent_repo.get_agent_by_name_and_scope(agent_config["name"], AgentScope.SYSTEM)
 
         if existing:
             # Update existing agent if needed
@@ -165,6 +156,7 @@ class SystemAgentManager:
         mcp_server_ids = await self._get_default_mcp_servers(agent_config["personality"])
 
         agent_data = AgentCreate(
+            scope=AgentScope.SYSTEM,
             name=agent_config["name"],
             description=agent_config["description"],
             prompt=agent_config["prompt"],
@@ -177,10 +169,8 @@ class SystemAgentManager:
             temperature=0.7,  # Balanced creativity
         )
 
-        # Create agent with fixed UUID
-        created_agent = await self.agent_repo.create_agent_with_fixed_id(
-            agent_config["id"], agent_data, SYSTEM_USER_ID
-        )  # ignore: E501
+        # Create agent
+        created_agent = await self.agent_repo.create_agent(agent_data, SYSTEM_USER_ID)
 
         logger.info(f"Created system agent: {created_agent.name} (ID: {created_agent.id})")
         return created_agent
@@ -288,8 +278,8 @@ class SystemAgentManager:
         if agent_type not in SYSTEM_AGENTS:
             return None
 
-        agent_id = SYSTEM_AGENTS[agent_type]["id"]
-        return await self.agent_repo.get_agent_by_id(agent_id)
+        agent_name = SYSTEM_AGENTS[agent_type]["name"]
+        return await self.agent_repo.get_agent_by_name_and_scope(agent_name, AgentScope.SYSTEM)
 
     async def get_all_system_agents(self) -> list[Agent]:
         """
@@ -298,12 +288,7 @@ class SystemAgentManager:
         Returns:
             List of all system Agent instances
         """
-        agents = []
-        for agent_config in SYSTEM_AGENTS.values():
-            agent = await self.agent_repo.get_agent_by_id(agent_config["id"])
-            if agent:
-                agents.append(agent)
-        return agents
+        return list(await self.agent_repo.get_system_agents())
 
     async def is_system_agent(self, agent_id: UUID) -> bool:
         """
@@ -315,22 +300,22 @@ class SystemAgentManager:
         Returns:
             True if it's a system agent, False otherwise
         """
-        return agent_id in [config["id"] for config in SYSTEM_AGENTS.values()]
+        agent = await self.agent_repo.get_agent_by_id(agent_id)
+        return agent is not None and agent.scope == AgentScope.SYSTEM
 
-    def get_system_agent_ids(self) -> list[UUID]:
+    async def get_system_agent_ids(self) -> list[UUID]:
         """
         Get all system agent IDs.
 
         Returns:
             List of system agent UUIDs
         """
-        return [config["id"] for config in SYSTEM_AGENTS.values()]
+        agents = await self.agent_repo.get_system_agents()
+        return [agent.id for agent in agents]
 
 
 # Export constants for use in other modules
 __all__ = [
     "SystemAgentManager",
-    "SYSTEM_CHAT_AGENT_ID",
-    "SYSTEM_WORKSHOP_AGENT_ID",
     "SYSTEM_AGENTS",
 ]

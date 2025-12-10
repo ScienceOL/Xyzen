@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
+from enum import StrEnum
 from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
-
+import sqlalchemy as sa
 from sqlalchemy import TIMESTAMP
 from sqlmodel import JSON, Column, Field, SQLModel
 
@@ -9,7 +10,19 @@ if TYPE_CHECKING:
     from .mcp import McpServer
 
 
+class AgentScope(StrEnum):
+    SYSTEM = "system"
+    USER = "user"
+
+
 class AgentBase(SQLModel):
+    scope: AgentScope = Field(
+        sa_column=sa.Column(
+            sa.Enum(*(v.value for v in AgentScope), name="agentscope", native_enum=True),
+            nullable=False,
+            index=True,
+        )
+    )
     name: str
     description: str | None = None
     avatar: str | None = None
@@ -17,7 +30,7 @@ class AgentBase(SQLModel):
     model: str | None = None
     temperature: float | None = None
     prompt: str | None = None
-    user_id: str = Field(index=True)
+    user_id: str | None = Field(index=True, default=None, nullable=True)
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
 
@@ -35,6 +48,7 @@ class Agent(AgentBase, table=True):
 
 
 class AgentCreate(SQLModel):
+    scope: AgentScope = AgentScope.USER
     name: str
     description: str | None = None
     avatar: str | None = None

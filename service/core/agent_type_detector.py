@@ -100,9 +100,9 @@ class AgentTypeDetector:
             regular_agent = await self.agent_repo.get_agent_by_id(agent_uuid)
             if regular_agent:
                 # System agents are accessible to all users
-                from core.system_agent import SYSTEM_CHAT_AGENT_ID, SYSTEM_WORKSHOP_AGENT_ID
+                from models.agent import AgentScope
 
-                if agent_uuid in [SYSTEM_CHAT_AGENT_ID, SYSTEM_WORKSHOP_AGENT_ID]:
+                if regular_agent.scope == AgentScope.SYSTEM:
                     return regular_agent, "regular"
                 # Regular agents require user ownership
                 elif regular_agent.user_id == user_id:

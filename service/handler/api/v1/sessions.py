@@ -125,12 +125,13 @@ async def get_session_by_agent(
 
     if agent_id == "default":
         # Legacy default agent case - use system chat agent
-        from core.system_agent import SYSTEM_CHAT_AGENT_ID
+        from core.system_agent import SystemAgentManager
 
-        agent_uuid = SYSTEM_CHAT_AGENT_ID
-    elif agent_id in ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]:
-        # System agent UUIDs (chat or workshop)
-        agent_uuid = UUID(agent_id)
+        system_manager = SystemAgentManager(db)
+        chat_agent = await system_manager.get_system_agent("chat")
+        if not chat_agent:
+            raise HTTPException(status_code=500, detail="System chat agent not found")
+        agent_uuid = chat_agent.id
     elif agent_id.startswith("builtin_"):
         # Builtin agent case - verify it exists using the builtin registry
         from handler.builtin_agents import registry as builtin_registry

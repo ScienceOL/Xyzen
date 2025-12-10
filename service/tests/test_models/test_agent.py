@@ -1,11 +1,12 @@
 """Tests for Agent model."""
 
-from typing import Any
-import pytest
 from datetime import datetime, timezone
-from uuid import uuid4, UUID
+from typing import Any
+from uuid import UUID, uuid4
 
-from models.agent import Agent, AgentCreate, AgentUpdate, AgentRead
+import pytest
+
+from models.agent import Agent, AgentCreate, AgentRead, AgentScope, AgentUpdate
 
 
 class TestAgentModel:
@@ -63,6 +64,7 @@ class TestAgentModel:
     def test_agent_table_model(self):
         """Test Agent table model with automatic fields."""
         agent = Agent(
+            scope=AgentScope.USER,
             name="Table Agent",
             user_id="test-user-123",
         )
@@ -162,6 +164,7 @@ class TestAgentModel:
         updated_at = datetime.now(timezone.utc)
 
         agent = AgentRead(
+            scope=AgentScope.USER,
             id=agent_id,
             name="Read Agent",
             description="Agent for reading tests",
