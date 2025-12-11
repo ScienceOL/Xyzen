@@ -89,7 +89,7 @@ class ProviderManager:
             ErrCode.MODEL_NOT_SPECIFIED: If model is not provided
         """
         if not model:
-            raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Model must be specified")
+            raise ErrCode.MODEL_NOT_SPECIFIED.with_messages("Model must be specified")
 
         # If no provider specified, try system provider as fallback
         if not provider_id:
