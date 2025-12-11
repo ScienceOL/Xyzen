@@ -1,7 +1,7 @@
 [project]
 name = "service"
 version = "0.1.0"
-description = "Add your description here"
+description = "The backend service of Xyzen"
 readme = "README.md"
 requires-python = ">=3.13, <3.14"
 dependencies = [
