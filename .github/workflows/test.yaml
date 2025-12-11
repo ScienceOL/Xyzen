@@ -54,6 +54,13 @@ jobs:
           uv run pytest --cov=src --cov=examples --cov-report=html --cov-report=xml --cov-report=term-missing --tb=short -v --cov-fail-under=0
           echo "Tests and coverage completed successfully"
 
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./service/coverage.xml
+          verbose: true
+
       - name: Upload coverage reports as artifact
         if: always()
         uses: actions/upload-artifact@v4
