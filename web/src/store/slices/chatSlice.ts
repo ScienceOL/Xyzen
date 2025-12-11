@@ -177,15 +177,7 @@ export interface ChatSlice {
   clearSessionTopics: (sessionId: string) => Promise<void>;
   updateSessionConfig: (
     sessionId: string,
-<<<<<<< HEAD
-<<<<<<< HEAD
     config: { provider_id?: string; model?: string },
-=======
-    config: { override_provider_id?: string; override_model?: string },
->>>>>>> 3d4004b (feat: implement better provider)
-=======
-    config: { provider_id?: string; model?: string },
->>>>>>> 8b68d30 (fix: sourcery suggestions)
   ) => Promise<void>;
   updateSessionProviderAndModel: (
     sessionId: string,
