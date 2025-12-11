@@ -10,6 +10,7 @@ from .dynamic_mcp_server import DynamicMCPConfig
 from .lab import LabConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
+from .oss import OSSConfig
 from .redemption import AdminConfig
 
 
@@ -82,6 +83,11 @@ class AppConfig(BaseSettings):
     Admin: AdminConfig = Field(
         default_factory=lambda: AdminConfig(),
         description="Redemption code configuration",
+    )
+
+    OSS: OSSConfig = Field(
+        default_factory=lambda: OSSConfig(),
+        description="OSS configuration",
     )
 
 
