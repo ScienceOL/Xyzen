@@ -1,10 +1,8 @@
 """Tests for new auth config endpoint."""
 
-import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_get_auth_config(async_client: AsyncClient):
     """Verify /auth/config returns provider metadata."""
     response = await async_client.get("/xyzen/api/v1/auth/config")
@@ -17,7 +15,6 @@ async def test_get_auth_config(async_client: AsyncClient):
     assert "algorithm" in data
 
 
-@pytest.mark.asyncio
 async def test_get_auth_status(async_client: AsyncClient):
     """Sanity check existing status endpoint still works."""
     response = await async_client.get("/xyzen/api/v1/auth/status")
