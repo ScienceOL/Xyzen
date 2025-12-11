@@ -260,7 +260,7 @@ async def get_ai_response_stream_langchain_legacy(
         history_messages = await _load_db_history(db, topic)
 
         async for chunk in langchain_agent.astream(
-            {"messages": [*history_messages, HumanMessage(content=message_text)]},
+            {"messages": history_messages},
             stream_mode=["updates", "messages"],
         ):
             # chunk is a tuple: (stream_mode, data)

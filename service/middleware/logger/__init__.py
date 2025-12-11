@@ -61,5 +61,10 @@ LOGGING_CONFIG: dict[str, Any] = {
             "handlers": ["access"],
             "propagate": False,
         },
+        "urllib3": {
+            "level": "WARNING",
+            "handlers": ["default"],
+            "propagate": False,
+        },
     },
 }
