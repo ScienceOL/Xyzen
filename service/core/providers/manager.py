@@ -7,9 +7,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code import ErrCode
 from models.provider import ProviderScope
-from schemas.provider import LLMCredentials, RuntimeProviderConfig
+from schemas.provider import LLMCredentials, ProviderType, RuntimeProviderConfig
 
-from .config import ProviderType
 from .factory import ChatModelFactory
 from .startup import SYSTEM_PROVIDER_NAME
 

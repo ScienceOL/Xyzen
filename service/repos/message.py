@@ -208,3 +208,55 @@ class MessageRepository:
             messages_with_files.append(message_with_files)
 
         return messages_with_files
+
+    async def get_message_with_files(self, message_id: UUID) -> MessageReadWithFiles | None:
+        """
+        Fetches a single message with its file attachments.
+
+        Args:
+            message_id: The UUID of the message.
+
+        Returns:
+            MessageReadWithFiles instance with attachments populated, or None if not found.
+        """
+        from repos.file import FileRepository
+
+        logger.debug(f"Fetching message with files for message_id: {message_id}")
+
+        # Get the message
+        message = await self.get_message_by_id(message_id)
+        if not message:
+            return None
+
+        # Get files for the message
+        file_repo = FileRepository(self.db)
+        files = await file_repo.get_files_by_message(message.id)
+
+        # Add download URLs to file records using backend API endpoint
+        file_reads_with_urls = []
+        for file in files:
+            try:
+                # Use backend download endpoint instead of presigned URL
+                # This works from browser (presigned URLs with host.docker.internal don't)
+                download_url = f"/xyzen/api/v1/files/{file.id}/download"
+
+                file_with_url = FileReadWithUrl(
+                    **file.model_dump(),
+                    download_url=download_url,
+                )
+                file_reads_with_urls.append(file_with_url)
+            except Exception as e:
+                logger.warning(f"Failed to generate download URL for file {file.id}: {e}")
+                # Fall back to FileRead without URL
+                file_reads_with_urls.append(FileRead.model_validate(file))
+
+        message_with_files = MessageReadWithFiles(
+            id=message.id,
+            role=message.role,
+            content=message.content,
+            topic_id=message.topic_id,
+            created_at=message.created_at,
+            attachments=file_reads_with_urls,
+        )
+
+        return message_with_files

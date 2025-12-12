@@ -382,29 +382,25 @@ async def chat_websocket(
                 # 2. Link files to the message if file_ids provided
                 if file_ids:
                     file_repo = FileRepository(db)
-                    updated_count = await file_repo.update_files_message_id(
+                    await file_repo.update_files_message_id(
                         file_ids=file_ids,
                         message_id=user_message.id,
                         user_id=user,
                     )
-                    if updated_count > 0:
-                        logger.info(f"Linked {updated_count} files to message {user_message.id}")
-                    elif len(file_ids) > 0:
-                        logger.warning(f"Failed to link {len(file_ids)} files to message {user_message.id}")
+                    # Flush to ensure file links are visible to subsequent queries
+                    await db.flush()
 
                 # 3. Send user message back to client with attachments
-                # Fetch the message with files to include attachments in the response
-                messages_with_files = await message_repo.get_messages_with_files(
-                    topic_id=topic_id, order_by_created=False, limit=1
-                )
-                if messages_with_files and messages_with_files[0].id == user_message.id:
-                    # Send the message with attachments
+                user_message_with_files = await message_repo.get_message_with_files(user_message.id)
+
+                if user_message_with_files:
                     await manager.send_personal_message(
-                        messages_with_files[0].model_dump_json(),
+                        user_message_with_files.model_dump_json(),
                         connection_id,
                     )
                 else:
-                    # Fallback to message without attachments
+                    # Fallback if message fetch fails
+                    logger.warning(f"Could not fetch message {user_message.id}, falling back to base message")
                     await manager.send_personal_message(
                         user_message.model_dump_json(),
                         connection_id,

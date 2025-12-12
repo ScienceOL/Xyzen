@@ -125,6 +125,20 @@ class ModelFilter:
         return filter_fn
 
     @staticmethod
+    def no_image_filter() -> Callable[[str], bool]:
+        """
+        Create a filter that excludes model names containing "image".
+
+        Returns:
+            Filter function that returns True if model name doesn't contain "image"
+        """
+
+        def filter_fn(model_name: str) -> bool:
+            return "image" not in model_name.lower()
+
+        return filter_fn
+
+    @staticmethod
     def combined_filter(*filters: Callable[[str], bool]) -> Callable[[str], bool]:
         """
         Combine multiple filter functions with AND logic.
@@ -216,21 +230,25 @@ class LiteLLMService:
                 ModelFilter.substring_filter("gpt"),
                 ModelFilter.version_filter(min_version=5),
                 ModelFilter.no_slash_filter(),
+                ModelFilter.no_image_filter(),
             ),
             "azure_openai": ModelFilter.combined_filter(
                 ModelFilter.substring_filter("gpt"),
                 ModelFilter.version_filter(min_version=5, max_version=6),
                 ModelFilter.azure_path_filter(),
+                ModelFilter.no_image_filter(),
             ),
             "google": ModelFilter.combined_filter(
                 ModelFilter.substring_filter("gemini"),
                 ModelFilter.version_filter(min_version=2.5),
                 ModelFilter.no_slash_filter(),
+                ModelFilter.no_image_filter(),
             ),
             "google_vertex": ModelFilter.combined_filter(
                 ModelFilter.substring_filter("gemini"),
                 ModelFilter.version_filter(min_version=2.5),
                 ModelFilter.no_slash_filter(),
+                ModelFilter.no_image_filter(),
             ),
         }
 

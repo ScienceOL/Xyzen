@@ -8,9 +8,9 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from common.code import ErrCode
 from core.llm.service import LiteLLMService
-from schemas.provider import LLMCredentials
+from schemas.provider import LLMCredentials, ProviderType
 
-from .config import ModelInstance, ProviderType
+from .config import ModelInstance
 
 logger = logging.getLogger(__name__)
 
