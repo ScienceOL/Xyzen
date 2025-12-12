@@ -52,14 +52,14 @@ def generate_storage_key(
         category = detect_file_category(filename)
 
     # Generate unique ID
-    unique_id = uuid.uuid4().hex[:12]
+    unique_id = uuid.uuid4().hex
 
     # Get current date for organizing
     date_path = datetime.utcnow().strftime("%Y/%m/%d")
 
     # Clean filename
-    clean_name = Path(filename).stem[:50]  # Limit filename length
-    safe_filename = f"{unique_id}_{clean_name}{ext}"
+    # clean_name = Path(filename).stem[:50]  # Limit filename length
+    safe_filename = f"{unique_id}{ext}"
 
     # Construct storage key
     return f"{scope}/{category}/{user_id}/{date_path}/{safe_filename}"
