@@ -94,7 +94,7 @@ async def upload_file(
             file_data=file_stream,
             storage_key=storage_key,
             content_type=file.content_type,
-            metadata={"user_id": user_id, "original_filename": file.filename},
+            metadata={"user_id": user_id},
         )
 
         # Create database record
