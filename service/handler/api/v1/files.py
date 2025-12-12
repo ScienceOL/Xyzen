@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from io import BytesIO
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
@@ -271,11 +272,16 @@ async def download_file(
         await storage.download_file(file_record.storage_key, file_stream)
         file_stream.seek(0)
 
+        # Encode filename for Content-Disposition header (RFC 5987)
+        # Support both ASCII and UTF-8 filenames for better browser compatibility
+        ascii_filename = file_record.original_filename.encode("ascii", "ignore").decode("ascii")
+        utf8_filename = quote(file_record.original_filename.encode("utf-8"))
+
         return StreamingResponse(
             file_stream,
             media_type=file_record.content_type,
             headers={
-                "Content-Disposition": f'attachment; filename="{file_record.original_filename}"',
+                "Content-Disposition": f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{utf8_filename}",
                 "Content-Length": str(file_record.file_size),
             },
         )
