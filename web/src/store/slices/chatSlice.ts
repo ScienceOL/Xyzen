@@ -170,7 +170,7 @@ export interface ChatSlice {
   activateChannel: (topicId: string) => Promise<void>;
   connectToChannel: (sessionId: string, topicId: string) => void;
   disconnectFromChannel: () => void;
-  sendMessage: (message: string) => void;
+  sendMessage: (message: string) => Promise<void>;
   createDefaultChannel: (agentId?: string) => Promise<void>;
   updateTopicName: (topicId: string, newName: string) => Promise<void>;
   deleteTopic: (topicId: string) => Promise<void>;
@@ -852,16 +852,42 @@ export const createChatSlice: StateCreator<
     xyzenService.disconnect();
   },
 
-  sendMessage: (message: string) => {
-    const { activeChatChannel } = get();
-    if (activeChatChannel) {
-      // Mark the channel as responding immediately for snappier UX
-      set((state: ChatSlice) => {
-        const channel = state.channels[activeChatChannel];
-        if (channel) channel.responding = true;
+  sendMessage: async (message: string) => {
+    const { activeChatChannel, uploadedFiles, clearFiles, isUploading } = get();
+
+    if (!activeChatChannel) return;
+
+    // Don't allow sending while files are uploading
+    if (isUploading) {
+      console.warn("Cannot send message while files are uploading");
+      return;
+    }
+
+    // Mark the channel as responding immediately for snappier UX
+    set((state: ChatSlice) => {
+      const channel = state.channels[activeChatChannel];
+      if (channel) channel.responding = true;
+    });
+
+    // Collect completed file IDs
+    const completedFiles = uploadedFiles.filter(
+      (f) => f.status === "completed" && f.uploadedId,
+    );
+
+    // Send message with file IDs if files exist
+    if (completedFiles.length > 0) {
+      const fileIds = completedFiles.map((f) => f.uploadedId!);
+      xyzenService.sendStructuredMessage({
+        message,
+        file_ids: fileIds,
       });
+    } else {
+      // No files, send message normally
       xyzenService.sendMessage(message);
     }
+
+    // Clear files after sending (don't delete from server - they're now linked to the message)
+    clearFiles(false);
   },
 
   createDefaultChannel: async (agentId) => {

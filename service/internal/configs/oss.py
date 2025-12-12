@@ -12,15 +12,15 @@ class OSSConfig(BaseModel):
     )
 
     Endpoint: str = Field(
-        default="http://localhost:9000",
+        default="http://host.docker.internal:9000",
         description="MinIO endpoint",
     )
     AccessKey: str = Field(
-        default="pleasechangetoyourkey",
+        default="minioadmin",
         description="MinIO access key",
     )
     SecretKey: str = Field(
-        default="pleasechangetoyourkey",
+        default="minioadmin",
         description="MinIO secret key",
     )
     BucketName: str = Field(

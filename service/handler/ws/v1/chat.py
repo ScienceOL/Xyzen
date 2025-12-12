@@ -15,7 +15,7 @@ from middleware.auth import AuthContext, get_auth_context_websocket
 from middleware.database.connection import AsyncSessionLocal
 from models.message import Message as MessageModel
 from models.message import MessageCreate
-from repos import MessageRepository, SessionRepository, TopicRepository
+from repos import FileRepository, MessageRepository, SessionRepository, TopicRepository
 from schemas.chat_events import ChatClientEventType, ChatEventType, ToolCallStatus
 
 logger = logging.getLogger(__name__)
@@ -370,6 +370,7 @@ async def chat_websocket(
 
                 # Handle regular chat messages
                 message_text = data.get("message")
+                file_ids = data.get("file_ids", [])
 
                 if not message_text:
                     continue
@@ -378,13 +379,38 @@ async def chat_websocket(
                 user_message_create = MessageCreate(role="user", content=message_text, topic_id=topic_id)
                 user_message = await message_repo.create_message(user_message_create)
 
-                # 2. Send user message back to client first
-                await manager.send_personal_message(
-                    user_message.model_dump_json(),
-                    connection_id,
-                )
+                # 2. Link files to the message if file_ids provided
+                if file_ids:
+                    file_repo = FileRepository(db)
+                    updated_count = await file_repo.update_files_message_id(
+                        file_ids=file_ids,
+                        message_id=user_message.id,
+                        user_id=user,
+                    )
+                    if updated_count > 0:
+                        logger.info(f"Linked {updated_count} files to message {user_message.id}")
+                    elif len(file_ids) > 0:
+                        logger.warning(f"Failed to link {len(file_ids)} files to message {user_message.id}")
 
-                # 3. Send loading status
+                # 3. Send user message back to client with attachments
+                # Fetch the message with files to include attachments in the response
+                messages_with_files = await message_repo.get_messages_with_files(
+                    topic_id=topic_id, order_by_created=False, limit=1
+                )
+                if messages_with_files and messages_with_files[0].id == user_message.id:
+                    # Send the message with attachments
+                    await manager.send_personal_message(
+                        messages_with_files[0].model_dump_json(),
+                        connection_id,
+                    )
+                else:
+                    # Fallback to message without attachments
+                    await manager.send_personal_message(
+                        user_message.model_dump_json(),
+                        connection_id,
+                    )
+
+                # 4. Send loading status
                 loading_event = {"type": ChatEventType.LOADING, "data": {"message": "AI is thinking..."}}
                 await manager.send_personal_message(
                     json.dumps(loading_event),

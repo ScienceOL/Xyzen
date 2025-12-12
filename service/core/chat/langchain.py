@@ -116,8 +116,12 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
 
     Only user/assistant/system messages are included to avoid confusing the agent
     with raw tool execution transcripts.
+
+    Supports multimodal messages: fetches file attachments and converts them to
+    base64-encoded content for vision/audio models.
     """
     try:
+        from core.chat.multimodal import process_message_files
         from repos.message import MessageRepository
 
         message_repo = MessageRepository(db)
@@ -131,7 +135,41 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
             if not content:
                 continue
             if role == "user":
-                history.append(HumanMessage(content=content))
+                # Check if message has file attachments
+                try:
+                    logger.debug(f"Checking files for message {message.id}")
+                    file_contents = await process_message_files(db, message.id)
+                    logger.debug(f"Message {message.id} has {len(file_contents) if file_contents else 0} file contents")
+
+                    if file_contents:
+                        # Multimodal message: combine text and file content
+                        multimodal_content: list[dict[str, Any]] = [{"type": "text", "text": content}]
+                        multimodal_content.extend(file_contents)
+                        # Debug: Log the exact content being sent
+                        logger.debug(
+                            f"Multimodal content types for message {message.id}: {[item.get('type') for item in multimodal_content]}"
+                        )
+                        for idx, item in enumerate(file_contents):
+                            item_type = item.get("type")
+                            if item_type == "image_url":
+                                logger.debug(
+                                    f"File content {idx}: type={item_type}, has image_url={bool(item.get('image_url'))}"
+                                )
+                            elif item_type == "text":
+                                text_preview = item.get("text", "")[:100]
+                                logger.debug(f"File content {idx}: type={item_type}, text_preview='{text_preview}'")
+                            else:
+                                logger.debug(f"File content {idx}: type={item_type}")
+                        history.append(HumanMessage(content=multimodal_content))  # type: ignore
+                        logger.info(f"Loaded multimodal message {message.id} with {len(file_contents)} attachments")
+                    else:
+                        # Text-only message
+                        logger.debug(f"Message {message.id} has no file attachments, loading as text-only")
+                        history.append(HumanMessage(content=content))
+                except Exception as e:
+                    # If file processing fails, fall back to text-only
+                    logger.error(f"Failed to process files for message {message.id}: {e}", exc_info=True)
+                    history.append(HumanMessage(content=content))
             elif role == "assistant":
                 history.append(AIMessage(content=content))
             elif role == "system":
@@ -191,10 +229,24 @@ async def get_ai_response_stream_langchain_legacy(
     """
     Gets a streaming response using LangChain Agent.
     Supports multi-turn conversation with automatic tool execution.
+    Supports multimodal input (images, PDFs, audio).
 
     Uses astream with stream_mode="updates" and "messages" to get:
     1. Step-by-step agent progress (LLM calls, tool executions)
     2. Token-by-token LLM streaming
+
+    Args:
+        db: Database session
+        message_text: Text content of the user's message (current message is already saved in DB with files linked)
+        topic: Topic/conversation context
+        user_id: User ID for provider management
+        agent: Optional agent configuration
+        connection_manager: WebSocket connection manager
+        connection_id: WebSocket connection ID
+
+    Note:
+        The current user message should already be saved to the database with files linked
+        before calling this function. History loading will automatically include it.
     """
     # Get provider manager
     try:
@@ -256,7 +308,8 @@ async def get_ai_response_stream_langchain_legacy(
 
         # Use astream with multiple stream modes: "updates" for step progress, "messages" for token streaming
         logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
-        # Load long-term memory (DB-backed) and include it in input
+        # Load long-term memory (DB-backed) which includes the current message with attachments
+        # The current user message should already be saved in DB before calling this function
         history_messages = await _load_db_history(db, topic)
 
         async for chunk in langchain_agent.astream(

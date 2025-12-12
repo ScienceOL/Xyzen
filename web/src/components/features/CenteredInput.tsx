@@ -20,6 +20,7 @@ export function CenteredInput({ position }: CenteredInputProps) {
     openXyzen,
     setTabIndex,
     inputPosition: storeInputPosition,
+    isUploading,
   } = useXyzen();
 
   // Use prop if provided, otherwise fallback to store setting
@@ -50,6 +51,13 @@ export function CenteredInput({ position }: CenteredInputProps) {
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && pendingInput.trim()) {
       e.preventDefault();
+
+      // Don't send while files are uploading
+      if (isUploading) {
+        console.warn("Cannot send message while files are uploading");
+        return;
+      }
+
       const messageToSend = pendingInput.trim();
 
       // First expand to sidebar
@@ -165,7 +173,10 @@ export function CenteredInput({ position }: CenteredInputProps) {
             onChange={(e) => setPendingInput(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={handleFocus}
-            placeholder="Type your message..."
+            placeholder={
+              isUploading ? "Uploading files..." : "Type your message..."
+            }
+            disabled={isUploading}
             className={clsx(
               "w-full appearance-none focus:outline-none rounded-full border border-neutral-200/50 bg-white/60 backdrop-blur-md py-2.5 px-5 pr-10 text-sm text-neutral-950 placeholder:text-neutral-500",
               "shadow-lg transition-all duration-300 ease-out origin-right",

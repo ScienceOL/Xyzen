@@ -6,6 +6,7 @@ from sqlalchemy import TIMESTAMP
 from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
+    from .file import FileRead, FileReadWithUrl
     from .topic import TopicRead
 
 
@@ -37,6 +38,12 @@ class MessageReadWithTopic(MessageBase):
     id: UUID
     created_at: datetime
     topic: "TopicRead | None" = None
+
+
+class MessageReadWithFiles(MessageBase):
+    id: UUID
+    created_at: datetime
+    attachments: list["FileRead | FileReadWithUrl"] = []
 
 
 class MessageUpdate(SQLModel):

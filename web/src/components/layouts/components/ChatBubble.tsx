@@ -5,6 +5,7 @@ import type { Message } from "@/store/types";
 import { motion } from "framer-motion";
 import { useDeferredValue, useMemo } from "react";
 import LoadingMessage from "./LoadingMessage";
+import MessageAttachments from "./MessageAttachments";
 import ToolCallCard from "./ToolCallCard";
 
 interface ChatBubbleProps {
@@ -16,8 +17,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const cancelToolCall = useXyzen((state) => state.cancelToolCall);
   const activeChatChannel = useXyzen((state) => state.activeChatChannel);
 
-  const { role, content, created_at, isLoading, isStreaming, toolCalls } =
-    message;
+  const {
+    role,
+    content,
+    created_at,
+    isLoading,
+    isStreaming,
+    toolCalls,
+    attachments,
+  } = message;
 
   // Use deferred value and memoization to optimize rendering performance
   const deferredContent = useDeferredValue(content);
@@ -134,6 +142,13 @@ function ChatBubble({ message }: ChatBubbleProps) {
           className={`w-full min-w-0 rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
         >
           <div className="px-4 py-3 min-w-0">
+            {/* File Attachments - shown before text for user messages */}
+            {isUserMessage && attachments && attachments.length > 0 && (
+              <div className="mb-3">
+                <MessageAttachments attachments={attachments} />
+              </div>
+            )}
+
             <div
               className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto ${
                 isUserMessage
@@ -154,6 +169,13 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 />
               )}
             </div>
+
+            {/* File Attachments - shown after text for assistant messages */}
+            {!isUserMessage && attachments && attachments.length > 0 && (
+              <div className="mt-3">
+                <MessageAttachments attachments={attachments} />
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

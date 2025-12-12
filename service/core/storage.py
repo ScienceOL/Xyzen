@@ -1,11 +1,17 @@
 import logging
+import mimetypes
+import os
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
+from typing import Any, BinaryIO, TypedDict
 
 import aioboto3
+from botocore.exceptions import ClientError
 
-from internal.configs import OSSConfig
+from common.code import ErrCode
+from internal import configs
 
 logger = logging.getLogger(__name__)
 
@@ -23,113 +29,524 @@ class FileCategory(StrEnum):
     OTHER = "others"
 
 
-def generate_storage_key(user_id: str, filename: str, scope: FileScope = FileScope.PRIVATE) -> str:
+def generate_storage_key(
+    user_id: str, filename: str, scope: FileScope = FileScope.PRIVATE, category: FileCategory | None = None
+) -> str:
     """
-    生成标准化的存储路径 (Key)。
-    格式: {scope}/{user_id}/{year}/{month}/{uuid}.{ext}
-    例如: private/user_123/2025/12/550e8400-e29b-41d4-a716-446655440000.png
+    Generate a unique storage key for files.
+
+    Args:
+        user_id: User ID for organizing files
+        filename: Original filename
+        scope: File scope (public/private/generated)
+        category: File category for organization
+
+    Returns:
+        Storage key in format: {scope}/{category}/{user_id}/{date}/{uuid}_{filename}
     """
-    # 1. 提取或清理扩展名
-    ext = filename.split(".")[-1].lower() if "." in filename else "bin"
+    # Get file extension
+    ext = Path(filename).suffix.lower()
 
-    # 2. 生成唯一文件名，防止覆盖和中文乱码
-    unique_name = f"{uuid.uuid4()}.{ext}"
+    # Auto-detect category if not provided
+    if category is None:
+        category = detect_file_category(filename)
 
-    # 3. 时间维度分片，避免单目录下文件过多
-    now = datetime.utcnow()
-    year = now.strftime("%Y")
-    month = now.strftime("%m")
+    # Generate unique ID
+    unique_id = uuid.uuid4().hex[:12]
 
-    return f"{scope.value}/{user_id}/{year}/{month}/{unique_name}"
+    # Get current date for organizing
+    date_path = datetime.utcnow().strftime("%Y/%m/%d")
+
+    # Clean filename
+    clean_name = Path(filename).stem[:50]  # Limit filename length
+    safe_filename = f"{unique_id}_{clean_name}{ext}"
+
+    # Construct storage key
+    return f"{scope}/{category}/{user_id}/{date_path}/{safe_filename}"
 
 
-# Outputs:
-#  [{'col1': 'some_data', 'pk': 'test1'}]
+def detect_file_category(filename: str) -> FileCategory:
+    """
+    Detect file category based on file extension.
+
+    Args:
+        filename: The filename to analyze
+
+    Returns:
+        Detected FileCategory
+    """
+    ext = Path(filename).suffix.lower()
+
+    # Image extensions
+    image_exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico"}
+    if ext in image_exts:
+        return FileCategory.IMAGE
+
+    # Document extensions
+    doc_exts = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".md"}
+    if ext in doc_exts:
+        return FileCategory.DOCUMENT
+
+    # Audio extensions
+    audio_exts = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"}
+    if ext in audio_exts:
+        return FileCategory.AUDIO
+
+    return FileCategory.OTHER
+
+
+class S3Config(TypedDict):
+    service_name: str
+    endpoint_url: str
+    aws_access_key_id: str
+    aws_secret_access_key: str
+    use_ssl: bool
+    region_name: str
+
+
 class BlobStorageService:
+    """
+    Blob storage service for managing files in object storage (S3-compatible).
+
+    Supports MinIO, AWS S3, Aliyun OSS, and other S3-compatible services.
+    """
+
     def __init__(self):
         self.session = aioboto3.Session()
 
-        self.s3_config = {
+        self.s3_config: S3Config = {
             "service_name": "s3",
-            "endpoint_url": OSSConfig.Endpoint,
-            "aws_access_key_id": OSSConfig.AccessKey,
-            "aws_secret_access_key": OSSConfig.SecretKey,
-            "use_ssl": OSSConfig.Secure,
-            "region_name": OSSConfig.Region,
+            "endpoint_url": configs.OSS.Endpoint,
+            "aws_access_key_id": configs.OSS.AccessKey,
+            "aws_secret_access_key": configs.OSS.SecretKey,
+            "use_ssl": configs.OSS.Secure,
+            "region_name": configs.OSS.Region,
         }
-        self.bucket = OSSConfig.BucketName
+        self.bucket = configs.OSS.BucketName
 
-    # async def upload_file(
-    #     self, file_obj: BinaryIO, object_key: str, content_type: str = "application/octet-stream"
-    # ) -> str:
-    #     """
-    #     流式上传文件到 MinIO
-    #     :param file_obj: 文件对象 (BytesIO 或 UploadFile.file)
-    #     :param object_key: 完整的存储路径 (由 utils.generate_storage_key 生成)
-    #     :param content_type: MIME 类型
-    #     :return: object_key
-    #     """
-    #     try:
-    #         async with self.session.client(**self.s3_config) as client:
-    #             # 检查桶是否存在，不存在则创建 (可选，建议在部署脚本中完成桶创建)
-    #             # await self._ensure_bucket_exists(client)
+    async def initialize(self) -> None:
+        """
+        Initialize the storage service and ensure bucket exists.
 
-    #             await client.upload_fileobj(file_obj, self.bucket, object_key, ExtraArgs={"ContentType": content_type})
-    #             logger.info(f"File uploaded successfully: {object_key}")
-    #             return object_key
+        Raises:
+            ErrCodeError: If bucket creation or configuration fails
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                try:
+                    await s3.head_bucket(Bucket=self.bucket)
+                    logger.info(f"Bucket '{self.bucket}' already exists")
+                except ClientError as e:
+                    error_code = e.response.get("Error", {}).get("Code")
+                    if error_code == "404":
+                        logger.info(f"Creating bucket '{self.bucket}'")
+                        await s3.create_bucket(Bucket=self.bucket)
+                        logger.info(f"Bucket '{self.bucket}' created successfully")
+                    else:
+                        raise ErrCode.OSS_BUCKET_ACCESS_DENIED.with_errors(e)
+        except ClientError as e:
+            logger.error(f"Failed to initialize storage: {e}")
+            raise ErrCode.OSS_CONFIGURATION_ERROR.with_errors(e)
 
-    #     except (ClientError, EndpointConnectionError) as e:
-    #         logger.error(f"S3 Upload Failed: {str(e)}")
-    #         raise ServiceException(f"Failed to upload file to storage: {str(e)}")
+    async def upload_file(
+        self,
+        file_data: BinaryIO,
+        storage_key: str,
+        content_type: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """
+        Upload a file to object storage.
 
-    # async def get_presigned_url(self, object_key: str, expiration: int = settings.PRESIGNED_URL_EXPIRE_SECONDS) -> str:
-    #     """
-    #     生成临时访问链接 (Presigned URL)
-    #     """
-    #     try:
-    #         async with self.session.client(**self.s3_config) as client:
-    #             url = await client.generate_presigned_url(
-    #                 ClientMethod="get_object", Params={"Bucket": self.bucket, "Key": object_key}, ExpiresIn=expiration
-    #             )
-    #             return url
-    #     except ClientError as e:
-    #         logger.error(f"Failed to generate presigned URL for {object_key}: {str(e)}")
-    #         raise ServiceException("Could not generate access URL")
+        Args:
+            file_data: File binary data
+            storage_key: Storage key/path for the file
+            content_type: MIME type of the file (auto-detected if not provided)
+            metadata: Additional metadata for the file
 
-    # async def delete_file(self, object_key: str) -> bool:
-    #     """
-    #     删除文件
-    #     """
-    #     try:
-    #         async with self.session.client(**self.s3_config) as client:
-    #             await client.delete_object(Bucket=self.bucket, Key=object_key)
-    #             logger.info(f"File deleted: {object_key}")
-    #             return True
-    #     except ClientError as e:
-    #         logger.error(f"Failed to delete file {object_key}: {str(e)}")
-    #         return False
+        Returns:
+            The storage key of the uploaded file
 
-    # async def check_file_exists(self, object_key: str) -> bool:
-    #     """
-    #     检查文件是否存在 (Head Object)
-    #     """
-    #     try:
-    #         async with self.session.client(**self.s3_config) as client:
-    #             await client.head_object(Bucket=self.bucket, Key=object_key)
-    #             return True
-    #     except ClientError:
-    #         return False
+        Raises:
+            ErrCodeError: If upload fails
+        """
+        try:
+            # Auto-detect content type if not provided
+            if content_type is None:
+                content_type, _ = mimetypes.guess_type(storage_key)
+                if content_type is None:
+                    content_type = "application/octet-stream"
 
-    # async def download_file_to_memory(self, object_key: str) -> bytes:
-    #     """
-    #     (高级功能) 将文件下载到内存中 (主要用于 Agent 需要处理图片内容的场景)
-    #     注意：仅适用于小文件！
-    #     """
-    #     try:
-    #         async with self.session.client(**self.s3_config) as client:
-    #             response = await client.get_object(Bucket=self.bucket, Key=object_key)
-    #             async with response["Body"] as stream:
-    #                 return await stream.read()
-    #     except ClientError as e:
-    #         logger.error(f"Download failed: {str(e)}")
-    #         raise ServiceException("Failed to download file content")
+            # Prepare extra args
+            extra_args: dict[str, Any] = {"ContentType": content_type}
+            if metadata:
+                extra_args["Metadata"] = metadata
+
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                await s3.upload_fileobj(
+                    file_data,
+                    self.bucket,
+                    storage_key,
+                    ExtraArgs=extra_args,
+                )
+
+            logger.info(f"File uploaded successfully: {storage_key}")
+            return storage_key
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            logger.error(f"Failed to upload file {storage_key}: {e}")
+
+            if error_code == "NoSuchBucket":
+                raise ErrCode.OSS_BUCKET_NOT_FOUND.with_errors(e)
+            elif error_code == "AccessDenied":
+                raise ErrCode.OSS_BUCKET_ACCESS_DENIED.with_errors(e)
+            else:
+                raise ErrCode.OSS_UPLOAD_FAILED.with_errors(e)
+
+    async def upload_file_from_path(
+        self,
+        file_path: str,
+        storage_key: str,
+        content_type: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """
+        Upload a file from local path to object storage.
+
+        Args:
+            file_path: Local file path
+            storage_key: Storage key/path for the file
+            content_type: MIME type of the file (auto-detected if not provided)
+            metadata: Additional metadata for the file
+
+        Returns:
+            The storage key of the uploaded file
+
+        Raises:
+            ErrCodeError: If upload fails
+        """
+        try:
+            with open(file_path, "rb") as f:
+                return await self.upload_file(f, storage_key, content_type, metadata)
+        except FileNotFoundError as e:
+            logger.error(f"File not found: {file_path}")
+            raise ErrCode.FILE_NOT_FOUND.with_errors(e)
+        except Exception as e:
+            logger.error(f"Failed to upload file from path {file_path}: {e}")
+            raise ErrCode.OSS_UPLOAD_FAILED.with_errors(e)
+
+    async def download_file(self, storage_key: str, destination: BinaryIO) -> None:
+        """
+        Download a file from object storage.
+
+        Args:
+            storage_key: Storage key of the file
+            destination: File-like object to write to
+
+        Raises:
+            ErrCodeError: If download fails
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                await s3.download_fileobj(self.bucket, storage_key, destination)
+
+            logger.info(f"File downloaded successfully: {storage_key}")
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            logger.error(f"Failed to download file {storage_key}: {e}")
+
+            if error_code == "NoSuchKey":
+                raise ErrCode.OSS_OBJECT_NOT_FOUND.with_errors(e)
+            elif error_code == "NoSuchBucket":
+                raise ErrCode.OSS_BUCKET_NOT_FOUND.with_errors(e)
+            elif error_code == "AccessDenied":
+                raise ErrCode.OSS_OBJECT_ACCESS_DENIED.with_errors(e)
+            else:
+                raise ErrCode.OSS_DOWNLOAD_FAILED.with_errors(e)
+
+    async def download_file_to_path(self, storage_key: str, file_path: str) -> None:
+        """
+        Download a file from object storage to local path.
+
+        Args:
+            storage_key: Storage key of the file
+            file_path: Local file path to save to
+
+        Raises:
+            ErrCodeError: If download fails
+        """
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            with open(file_path, "wb") as f:
+                await self.download_file(storage_key, f)
+
+        except Exception as e:
+            logger.error(f"Failed to download file to path {file_path}: {e}")
+            raise ErrCode.OSS_DOWNLOAD_FAILED.with_errors(e)
+
+    async def delete_file(self, storage_key: str) -> None:
+        """
+        Delete a file from object storage.
+
+        Args:
+            storage_key: Storage key of the file to delete
+
+        Raises:
+            ErrCodeError: If deletion fails
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                await s3.delete_object(Bucket=self.bucket, Key=storage_key)
+
+            logger.info(f"File deleted successfully: {storage_key}")
+
+        except ClientError as e:
+            logger.error(f"Failed to delete file {storage_key}: {e}")
+            raise ErrCode.OSS_DELETE_FAILED.with_errors(e)
+
+    async def delete_files(self, storage_keys: list[str]) -> None:
+        """
+        Delete multiple files from object storage.
+
+        Args:
+            storage_keys: List of storage keys to delete
+
+        Raises:
+            ErrCodeError: If deletion fails
+        """
+        if not storage_keys:
+            return
+
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                objects = [{"Key": key} for key in storage_keys]
+                await s3.delete_objects(
+                    Bucket=self.bucket,
+                    Delete={"Objects": objects},
+                )
+
+            logger.info(f"Deleted {len(storage_keys)} files successfully")
+
+        except ClientError as e:
+            logger.error(f"Failed to delete multiple files: {e}")
+            raise ErrCode.OSS_DELETE_FAILED.with_errors(e)
+
+    async def file_exists(self, storage_key: str) -> bool:
+        """
+        Check if a file exists in object storage.
+
+        Args:
+            storage_key: Storage key to check
+
+        Returns:
+            True if file exists, False otherwise
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                await s3.head_object(Bucket=self.bucket, Key=storage_key)
+            return True
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code == "404":
+                return False
+            logger.error(f"Error checking file existence {storage_key}: {e}")
+            return False
+
+    async def get_file_metadata(self, storage_key: str) -> dict[str, Any]:
+        """
+        Get metadata for a file in object storage.
+
+        Args:
+            storage_key: Storage key of the file
+
+        Returns:
+            Dictionary containing file metadata
+
+        Raises:
+            ErrCodeError: If operation fails
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                response = await s3.head_object(Bucket=self.bucket, Key=storage_key)
+
+            return {
+                "content_type": response.get("ContentType"),
+                "content_length": response.get("ContentLength"),
+                "last_modified": response.get("LastModified"),
+                "etag": response.get("ETag"),
+                "metadata": response.get("Metadata", {}),
+            }
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            logger.error(f"Failed to get metadata for {storage_key}: {e}")
+
+            if error_code == "NoSuchKey":
+                raise ErrCode.OSS_OBJECT_NOT_FOUND.with_errors(e)
+            elif error_code == "AccessDenied":
+                raise ErrCode.OSS_OBJECT_ACCESS_DENIED.with_errors(e)
+            else:
+                raise ErrCode.OSS_METADATA_ERROR.with_errors(e)
+
+    async def generate_presigned_url(
+        self,
+        storage_key: str,
+        expires_in: int = 3600,
+        method: str = "get_object",
+    ) -> str:
+        """
+        Generate a pre-signed URL for temporary access to a file.
+
+        Args:
+            storage_key: Storage key of the file
+            expires_in: URL expiration time in seconds (default: 1 hour)
+            method: S3 method ('get_object' for download, 'put_object' for upload)
+
+        Returns:
+            Pre-signed URL string
+
+        Raises:
+            ErrCodeError: If URL generation fails
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                url = await s3.generate_presigned_url(
+                    method,
+                    Params={"Bucket": self.bucket, "Key": storage_key},
+                    ExpiresIn=expires_in,
+                )
+
+            logger.info(f"Generated presigned URL for {storage_key}, expires in {expires_in}s")
+            return url
+
+        except ClientError as e:
+            logger.error(f"Failed to generate presigned URL for {storage_key}: {e}")
+            raise ErrCode.OSS_PRESIGNED_URL_INVALID.with_errors(e)
+
+    async def generate_upload_url(self, storage_key: str, expires_in: int = 3600) -> str:
+        """
+        Generate a pre-signed URL for uploading a file.
+
+        Args:
+            storage_key: Storage key for the file to be uploaded
+            expires_in: URL expiration time in seconds (default: 1 hour)
+
+        Returns:
+            Pre-signed upload URL
+        """
+        return await self.generate_presigned_url(storage_key, expires_in, "put_object")
+
+    async def generate_download_url(self, storage_key: str, expires_in: int = 3600) -> str:
+        """
+        Generate a pre-signed URL for downloading a file.
+
+        Args:
+            storage_key: Storage key of the file
+            expires_in: URL expiration time in seconds (default: 1 hour)
+
+        Returns:
+            Pre-signed download URL
+        """
+        return await self.generate_presigned_url(storage_key, expires_in, "get_object")
+
+    async def list_files(
+        self,
+        prefix: str = "",
+        max_keys: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """
+        List files in object storage with optional prefix filter.
+
+        Args:
+            prefix: Prefix to filter files (e.g., 'private/images/')
+            max_keys: Maximum number of keys to return
+
+        Returns:
+            List of file information dictionaries
+
+        Raises:
+            ErrCodeError: If listing fails
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                response = await s3.list_objects_v2(
+                    Bucket=self.bucket,
+                    Prefix=prefix,
+                    MaxKeys=max_keys,
+                )
+
+            files: list[dict[str, Any]] = []
+            for obj in response.get("Contents", []):
+                files.append(
+                    {
+                        "key": obj["Key"],
+                        "size": obj["Size"],
+                        "last_modified": obj["LastModified"],
+                        "etag": obj["ETag"],
+                    }
+                )
+
+            logger.info(f"Listed {len(files)} files with prefix '{prefix}'")
+            return files
+
+        except ClientError as e:
+            logger.error(f"Failed to list files with prefix {prefix}: {e}")
+            raise ErrCode.OSS_BUCKET_ACCESS_DENIED.with_errors(e)
+
+    async def copy_file(self, source_key: str, destination_key: str) -> str:
+        """
+        Copy a file within object storage.
+
+        Args:
+            source_key: Source storage key
+            destination_key: Destination storage key
+
+        Returns:
+            The destination storage key
+
+        Raises:
+            ErrCodeError: If copy fails
+        """
+        try:
+            async with self.session.client(**self.s3_config) as s3:  # type: ignore
+                copy_source = {"Bucket": self.bucket, "Key": source_key}
+                await s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=self.bucket,
+                    Key=destination_key,
+                )
+
+            logger.info(f"File copied from {source_key} to {destination_key}")
+            return destination_key
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            logger.error(f"Failed to copy file from {source_key} to {destination_key}: {e}")
+
+            if error_code == "NoSuchKey":
+                raise ErrCode.OSS_OBJECT_NOT_FOUND.with_errors(e)
+            elif error_code == "AccessDenied":
+                raise ErrCode.OSS_OBJECT_ACCESS_DENIED.with_errors(e)
+            else:
+                raise ErrCode.OSS_UPLOAD_FAILED.with_errors(e)
+
+
+# Global instance
+_storage_service: BlobStorageService | None = None
+
+
+def get_storage_service() -> BlobStorageService:
+    """
+    Get or create the global storage service instance.
+
+    Returns:
+        BlobStorageService instance
+    """
+    global _storage_service
+    if _storage_service is None:
+        _storage_service = BlobStorageService()
+    return _storage_service

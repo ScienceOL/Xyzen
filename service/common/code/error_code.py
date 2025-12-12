@@ -157,6 +157,27 @@ class ErrCode(IntEnum):
     REDEMPTION_CODE_ALREADY_EXISTS = 14005  # Code already exists (duplicate)
     INVALID_PARAMETER = 14006  # Invalid parameter provided
 
+    # ========== OSS (OBJECT STORAGE SERVICE) (15xxx) ==========
+    # Use when: OSS operations fail
+    OSS_UPLOAD_FAILED = 15000  # Failed to upload file to OSS
+    OSS_DOWNLOAD_FAILED = 15001  # Failed to download file from OSS
+    OSS_DELETE_FAILED = 15002  # Failed to delete file from OSS
+    OSS_BUCKET_NOT_FOUND = 15003  # OSS bucket doesn't exist
+    OSS_BUCKET_ACCESS_DENIED = 15004  # No permission to access bucket
+    OSS_OBJECT_NOT_FOUND = 15005  # Object doesn't exist in OSS
+    OSS_OBJECT_ACCESS_DENIED = 15006  # No permission to access object
+    OSS_AUTHENTICATION_FAILED = 15007  # OSS credentials invalid
+    OSS_CONFIGURATION_ERROR = 15008  # OSS configuration is invalid
+    OSS_CONNECTION_FAILED = 15009  # Can't connect to OSS service
+    OSS_SERVICE_UNAVAILABLE = 15010  # OSS service is temporarily unavailable
+    OSS_QUOTA_EXCEEDED = 15011  # OSS storage quota exceeded
+    OSS_INVALID_OBJECT_KEY = 15012  # Object key format is invalid
+    OSS_PRESIGNED_URL_EXPIRED = 15013  # Pre-signed URL has expired
+    OSS_PRESIGNED_URL_INVALID = 15014  # Pre-signed URL is invalid
+    OSS_MULTIPART_UPLOAD_FAILED = 15015  # Multipart upload operation failed
+    OSS_OBJECT_TOO_LARGE = 15016  # Object exceeds size limit
+    OSS_METADATA_ERROR = 15017  # Object metadata operation failed
+
     def with_messages(self, *messages: str) -> "ErrCodeError":
         """Return an ErrCodeError containing extra human messages."""
 
@@ -228,6 +249,32 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.REDEMPTION_CODE_ALREADY_USED: 400,
         ErrCode.REDEMPTION_CODE_ALREADY_EXISTS: 409,
         ErrCode.INVALID_PARAMETER: 400,
+        # 404 errors (OSS)
+        ErrCode.OSS_BUCKET_NOT_FOUND: 404,
+        ErrCode.OSS_OBJECT_NOT_FOUND: 404,
+        # 403 errors (OSS)
+        ErrCode.OSS_BUCKET_ACCESS_DENIED: 403,
+        ErrCode.OSS_OBJECT_ACCESS_DENIED: 403,
+        # 401 errors (OSS)
+        ErrCode.OSS_AUTHENTICATION_FAILED: 401,
+        # 400 errors (OSS)
+        ErrCode.OSS_INVALID_OBJECT_KEY: 400,
+        ErrCode.OSS_PRESIGNED_URL_EXPIRED: 400,
+        ErrCode.OSS_PRESIGNED_URL_INVALID: 400,
+        ErrCode.OSS_METADATA_ERROR: 400,
+        # 413 errors (OSS)
+        ErrCode.OSS_OBJECT_TOO_LARGE: 413,
+        # 507 errors (OSS)
+        ErrCode.OSS_QUOTA_EXCEEDED: 507,
+        # 503 errors (OSS)
+        ErrCode.OSS_SERVICE_UNAVAILABLE: 503,
+        # 500 errors (OSS)
+        ErrCode.OSS_UPLOAD_FAILED: 500,
+        ErrCode.OSS_DOWNLOAD_FAILED: 500,
+        ErrCode.OSS_DELETE_FAILED: 500,
+        ErrCode.OSS_CONFIGURATION_ERROR: 500,
+        ErrCode.OSS_CONNECTION_FAILED: 500,
+        ErrCode.OSS_MULTIPART_UPLOAD_FAILED: 500,
     }
 
     status_code = status_map.get(error.code, 500)

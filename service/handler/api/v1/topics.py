@@ -6,7 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from handler.api.v1.sessions import get_current_user
 from middleware.database import get_session
-from models.message import MessageRead
+from models.message import MessageReadWithFiles
 from models.topic import Topic as TopicModel
 from models.topic import TopicCreate, TopicRead, TopicUpdate
 from repos import MessageRepository, SessionRepository, TopicRepository
@@ -179,15 +179,16 @@ async def update_topic(
     return TopicRead(**updated_topic.model_dump())
 
 
-@router.get("/{topic_id}/messages", response_model=List[MessageRead])
+@router.get("/{topic_id}/messages", response_model=List[MessageReadWithFiles])
 async def get_topic_messages(
     topic: TopicModel = Depends(get_authorized_topic),
     db: AsyncSession = Depends(get_session),
-) -> List[MessageRead]:
+) -> List[MessageReadWithFiles]:
     """
-    Retrieve all messages within a topic, chronologically ordered.
+    Retrieve all messages within a topic with their file attachments, chronologically ordered.
 
     Returns messages in order of creation time (oldest first) for the specified topic.
+    Each message includes its associated file attachments for multimodal support.
     Authorization is handled by the dependency which ensures the user owns the
     session containing this topic.
 
@@ -196,14 +197,14 @@ async def get_topic_messages(
         db: Database session (injected by dependency)
 
     Returns:
-        List[MessageRead]: Chronologically ordered list of messages in the topic
+        List[MessageReadWithFiles]: Chronologically ordered list of messages with attachments
 
     Raises:
         HTTPException: 404 if topic/session not found, 403 if access denied
     """
     message_repo = MessageRepository(db)
-    messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
-    return [MessageRead(**m.model_dump()) for m in messages]
+    messages_with_files = await message_repo.get_messages_with_files(topic.id, order_by_created=True)
+    return messages_with_files
 
 
 @router.delete("/{topic_id}", status_code=204)

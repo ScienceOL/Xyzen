@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .agents import router as agents_router
 from .auth import router as auth_router
+from .files import router as files_router
 from .graph_agents import router as graph_agents_router
 from .mcps import router as mcps_router
 from .providers import router as providers_router
@@ -80,3 +81,4 @@ v1_router.include_router(agents_router, prefix="/agents")
 v1_router.include_router(graph_agents_router, prefix="/graph-agents")
 v1_router.include_router(mcps_router, prefix="/mcps")
 v1_router.include_router(redemption_router, prefix="/redemption")
+v1_router.include_router(files_router, prefix="/files")

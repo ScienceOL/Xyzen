@@ -8,6 +8,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/animate-ui/components/radix/sheet";
+import { FileUploadButton, FileUploadPreview } from "@/components/features";
 import { useXyzen } from "@/store";
 import {
   type DragEndEvent,
@@ -66,6 +67,8 @@ export default function ChatToolbar({
     llmProviders,
     availableModels,
     updateSessionProviderAndModel,
+    uploadedFiles,
+    isUploading,
   } = useXyzen();
 
   // Merge system and user agents for lookup (system + regular/graph)
@@ -231,6 +234,11 @@ export default function ChatToolbar({
         {/* Drag handle positioned above the toolbar */}
         <ResizeHandle />
 
+        {/* File Upload Preview - Show above toolbar when files are present */}
+        {uploadedFiles.length > 0 && (
+          <FileUploadPreview className="border-b border-neutral-200 dark:border-neutral-800" />
+        )}
+
         <div className="flex items-center justify-between bg-white px-2 py-1.5 dark:bg-black dark:border-t dark:border-neutral-800">
           <div className="flex items-center space-x-1">
             <button
@@ -240,6 +248,9 @@ export default function ChatToolbar({
             >
               <PlusIcon className="h-4 w-4" />
             </button>
+
+            {/* File Upload Button */}
+            <FileUploadButton disabled={isUploading} className="rounded-sm" />
 
             {/* Tool Call Confirmation Toggle */}
             {/* {activeChatChannel && (

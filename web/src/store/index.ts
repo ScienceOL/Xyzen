@@ -5,6 +5,7 @@ import {
   createAgentSlice,
   createAuthSlice,
   createChatSlice,
+  createFileUploadSlice,
   createLoadingSlice,
   createMcpSlice,
   createMcpToolSlice,
@@ -24,6 +25,7 @@ export const useXyzen = create<XyzenState>()(
       ...createProviderSlice(...a),
       ...createAuthSlice(...a),
       ...createLoadingSlice(...a),
+      ...createFileUploadSlice(...a),
     })),
     {
       name: "xyzen-storage",

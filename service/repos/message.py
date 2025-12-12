@@ -5,8 +5,9 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from middleware.database.connection import AsyncSessionLocal
+from models.file import FileRead, FileReadWithUrl
 from models.message import Message as MessageModel
-from models.message import MessageCreate
+from models.message import MessageCreate, MessageReadWithFiles
 
 logger = logging.getLogger(__name__)
 
@@ -149,3 +150,61 @@ class MessageRepository:
             isolated_repo = MessageRepository(db)
             await isolated_repo.create_message(message_data=message_data)
             await db.commit()
+
+    async def get_messages_with_files(
+        self, topic_id: UUID, order_by_created: bool = True, limit: int | None = None
+    ) -> list[MessageReadWithFiles]:
+        """
+        Fetches messages for a topic with their file attachments.
+
+        Args:
+            topic_id: The UUID of the topic.
+            order_by_created: If True, orders by created_at ascending.
+            limit: Optional limit on the number of messages returned.
+
+        Returns:
+            List of MessageReadWithFiles instances with attachments populated.
+        """
+        from repos.file import FileRepository
+
+        logger.debug(f"Fetching messages with files for topic_id: {topic_id}")
+
+        # Get messages
+        messages = await self.get_messages_by_topic(topic_id, order_by_created, limit)
+
+        # Get files for each message
+        file_repo = FileRepository(self.db)
+        messages_with_files = []
+
+        for message in messages:
+            files = await file_repo.get_files_by_message(message.id)
+
+            # Add download URLs to file records using backend API endpoint
+            file_reads_with_urls = []
+            for file in files:
+                try:
+                    # Use backend download endpoint instead of presigned URL
+                    # This works from browser (presigned URLs with host.docker.internal don't)
+                    download_url = f"/xyzen/api/v1/files/{file.id}/download"
+
+                    file_with_url = FileReadWithUrl(
+                        **file.model_dump(),
+                        download_url=download_url,
+                    )
+                    file_reads_with_urls.append(file_with_url)
+                except Exception as e:
+                    logger.warning(f"Failed to generate download URL for file {file.id}: {e}")
+                    # Fall back to FileRead without URL
+                    file_reads_with_urls.append(FileRead.model_validate(file))
+
+            message_with_files = MessageReadWithFiles(
+                id=message.id,
+                role=message.role,
+                content=message.content,
+                topic_id=message.topic_id,
+                created_at=message.created_at,
+                attachments=file_reads_with_urls,
+            )
+            messages_with_files.append(message_with_files)
+
+        return messages_with_files

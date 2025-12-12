@@ -2,10 +2,11 @@ import logging
 
 from .agent import Agent, AgentReadWithDetails
 from .consume import ConsumeRecord
+from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
 from .graph import GraphAgent, GraphEdge, GraphNode
 from .links import AgentMcpServerLink
 from .mcp import McpServer
-from .message import Message, MessageRead
+from .message import Message, MessageRead, MessageReadWithFiles
 from .provider import Provider
 from .redemption import RedemptionCode, RedemptionHistory, UserWallet
 from .sessions import Session, SessionReadWithTopics
@@ -18,10 +19,16 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "Agent",
     "ConsumeRecord",
+    "File",
+    "FileCreate",
+    "FileRead",
+    "FileReadWithUrl",
+    "FileUpdate",
     "AgentMcpServerLink",
     "McpServer",
     "Message",
     "MessageRead",
+    "MessageReadWithFiles",
     "Provider",
     "Session",
     "SessionReadWithTopics",
@@ -44,6 +51,8 @@ __all__ = [
 # This ensures that Pydantic can properly resolve forward references
 try:
     # Rebuild in dependency order: leaf dependencies first
+    # MessageReadWithFiles depends on FileRead
+    MessageReadWithFiles.model_rebuild()
     # TopicReadWithMessages depends on MessageRead
     TopicReadWithMessages.model_rebuild()
     # SessionReadWithTopics depends on TopicRead

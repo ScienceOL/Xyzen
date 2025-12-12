@@ -29,6 +29,7 @@ dependencies = [
     "pydantic-graph>=0.4.10",
     "pydantic-settings>=2.10.1",
     "pyjwt[crypto]>=2.10.0",
+    "pymupdf>=1.26.7",
     "python-multipart>=0.0.20",
     "requests>=2.32.4",
     "sqlmodel>=0.0.24",

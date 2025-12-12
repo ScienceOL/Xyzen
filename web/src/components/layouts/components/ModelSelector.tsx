@@ -303,7 +303,7 @@ export function ModelSelector({
           transition={{ duration: 0.15 }}
         >
           <SelectTrigger
-            className={`h-7 gap-1 rounded-md border-none px-2 text-xs font-medium shadow-none transition-colors hover:opacity-80 ${
+            className={`h-5 gap-1 rounded-md border-none px-2 text-xs font-medium shadow-none transition-colors hover:opacity-80 ${
               currentProvider
                 ? `${getProviderBgColor(currentProvider.provider_type)} ${getProviderTextColor(currentProvider.provider_type)}`
                 : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
@@ -376,7 +376,7 @@ export function ModelSelector({
           transition={{ duration: 0.15 }}
         >
           <SelectTrigger
-            className={`h-7 gap-1 rounded-md border-none px-2 text-xs font-medium shadow-none transition-colors ${
+            className={`h-5 gap-1 rounded-md border-none px-2 text-xs font-medium shadow-none transition-colors ${
               selectedProviderId
                 ? "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 : "cursor-not-allowed bg-neutral-50 text-neutral-400 dark:bg-neutral-900 dark:text-neutral-600"

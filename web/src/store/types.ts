@@ -2,6 +2,7 @@ import type {
   AgentSlice,
   AuthSlice,
   ChatSlice,
+  FileUploadSlice,
   LoadingSlice,
   McpSlice,
   McpToolSlice,
@@ -26,6 +27,16 @@ export interface ToolCall {
   timestamp: string;
 }
 
+export interface MessageAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  category: "images" | "documents" | "audio" | "others";
+  download_url?: string;
+  thumbnail_url?: string;
+}
+
 export interface Message {
   id: string;
   clientId?: string;
@@ -41,6 +52,8 @@ export interface Message {
   // Tool call related fields
   toolCalls?: ToolCall[];
   isToolCalling?: boolean;
+  // Multimodal support
+  attachments?: MessageAttachment[];
 }
 
 export interface ChatChannel {
@@ -102,4 +115,5 @@ export type XyzenState = UiSlice &
   McpToolSlice &
   ProviderSlice &
   AuthSlice &
-  LoadingSlice;
+  LoadingSlice &
+  FileUploadSlice;
