@@ -11,19 +11,27 @@ class OSSConfig(BaseModel):
         extra="ignore",
     )
 
-    MinIOEndpoint: str = Field(
+    Endpoint: str = Field(
         default="http://localhost:9000",
         description="MinIO endpoint",
     )
-    MinIOAccessKey: str = Field(
-        default="minioadmin",
+    AccessKey: str = Field(
+        default="pleasechangetoyourkey",
         description="MinIO access key",
     )
-    MinIOSecretKey: str = Field(
-        default="minioadmin",
+    SecretKey: str = Field(
+        default="pleasechangetoyourkey",
         description="MinIO secret key",
     )
-    MinIOBucketName: str = Field(
+    BucketName: str = Field(
         default="xyzen",
         description="MinIO bucket name",
+    )
+    Secure: bool = Field(
+        default=False,
+        description="MinIO secure",
+    )
+    Region: str = Field(
+        default="us-east-1",
+        description="MinIO region",
     )

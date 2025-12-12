@@ -1,4 +1,9 @@
-import { CheckIcon, ClipboardIcon } from "@heroicons/react/24/outline";
+import {
+  CheckIcon,
+  ClipboardIcon,
+  ArrowsPointingOutIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import ReactECharts from "echarts-for-react";
 import React, { useEffect, useState } from "react";
@@ -7,6 +12,9 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
+import { Dialog, DialogPanel } from "@headlessui/react";
+import { AnimatePresence, motion } from "framer-motion";
+import { zIndexClasses } from "@/constants/zIndex";
 
 import "katex/dist/katex.css";
 
@@ -23,6 +31,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
   const [mode, setMode] = useState<"code" | "preview">("code");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [highlightedHtml, setHighlightedHtml] = useState<string>("");
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -132,124 +141,209 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
   const isEChart = language === "echart" || language === "echarts";
   const canPreview = isHtml || isEChart;
 
-  return (
-    <div
-      className={clsx(
-        "group relative my-5 w-full min-w-0 overflow-hidden rounded-xl border shadow",
-        "border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#1a1a1b]",
-        "flex flex-col",
-        "not-prose",
+  const PreviewContent = ({ fullscreen = false }: { fullscreen?: boolean }) => (
+    <>
+      {isEChart ? (
+        <div
+          className="w-full bg-white p-4"
+          style={{ height: fullscreen ? "calc(100vh - 120px)" : "400px" }}
+        >
+          <ReactECharts
+            option={(() => {
+              try {
+                return new Function("return " + code)();
+              } catch (e) {
+                console.warn("ECharts option parse error:", e);
+                return {};
+              }
+            })()}
+            theme={isDark ? "dark" : undefined}
+            style={{ height: "100%", width: "100%" }}
+          />
+        </div>
+      ) : (
+        <div className="w-full bg-white">
+          <iframe
+            srcDoc={previewCode}
+            className="w-full border-0 bg-white"
+            style={{ height: fullscreen ? "calc(100vh - 120px)" : "400px" }}
+            sandbox="allow-scripts allow-forms allow-modals"
+            allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
+            title="HTML Preview"
+          />
+        </div>
       )}
-    >
-      <div className="flex h-10 items-center justify-between border-b px-4 border-neutral-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
-        <div className="flex items-center gap-2">
-          {language ? (
-            <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-              {language}
-            </span>
-          ) : (
-            <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-              code
-            </span>
-          )}
+    </>
+  );
 
-          {canPreview && (
-            <div className="ml-2 flex items-center rounded-lg bg-black/5 p-0.5 dark:bg-white/10">
+  return (
+    <>
+      <div
+        className={clsx(
+          "group relative my-5 w-full min-w-0 overflow-hidden rounded-xl border shadow",
+          "border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#1a1a1b]",
+          "flex flex-col",
+          "not-prose",
+        )}
+      >
+        <div className="flex h-10 items-center justify-between border-b px-4 border-neutral-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
+          <div className="flex items-center gap-2">
+            {language ? (
+              <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                {language}
+              </span>
+            ) : (
+              <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                code
+              </span>
+            )}
+
+            {canPreview && (
+              <div className="ml-2 flex items-center rounded-lg bg-black/5 p-0.5 dark:bg-white/10">
+                <button
+                  onClick={() => setMode("code")}
+                  className={clsx(
+                    "flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-all",
+                    mode === "code"
+                      ? "bg-white text-black shadow-sm dark:bg-white/20 dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200",
+                  )}
+                >
+                  Code
+                </button>
+                <button
+                  onClick={() => setMode("preview")}
+                  className={clsx(
+                    "flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-all",
+                    mode === "preview"
+                      ? "bg-white text-black shadow-sm dark:bg-white/20 dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200",
+                  )}
+                >
+                  Preview
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {canPreview && mode === "preview" && (
               <button
-                onClick={() => setMode("code")}
+                onClick={() => setIsFullscreenOpen(true)}
                 className={clsx(
-                  "flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-all",
-                  mode === "code"
-                    ? "bg-white text-black shadow-sm dark:bg-white/20 dark:text-white"
-                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200",
+                  "inline-flex h-8 w-8 items-center justify-center rounded-md border transition",
+                  "text-zinc-500 dark:text-zinc-300",
+                  "opacity-0 backdrop-blur-sm",
+                  "border-black/5 bg-black/5 dark:border-white/10 dark:bg-white/5",
+                  "group-hover:opacity-100 focus-visible:opacity-100",
+                  "hover:bg-black/10 hover:border-black/10 dark:hover:bg-white/15 dark:hover:border-white/20 active:scale-95",
                 )}
+                aria-label="Fullscreen"
+                title="Fullscreen"
               >
-                Code
+                <ArrowsPointingOutIcon className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => setMode("preview")}
-                className={clsx(
-                  "flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-all",
-                  mode === "preview"
-                    ? "bg-white text-black shadow-sm dark:bg-white/20 dark:text-white"
-                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200",
+            )}
+            <button
+              onClick={copyToClipboard}
+              className={clsx(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border transition",
+                "text-zinc-500 dark:text-zinc-300",
+                "opacity-0 backdrop-blur-sm",
+                "border-black/5 bg-black/5 dark:border-white/10 dark:bg-white/5",
+                "group-hover:opacity-100 focus-visible:opacity-100",
+                "hover:bg-black/10 hover:border-black/10 dark:hover:bg-white/15 dark:hover:border-white/20 active:scale-95",
+                copiedCode === code &&
+                  "text-emerald-500 bg-emerald-500/10 border-emerald-500/30",
+              )}
+              aria-label={copiedCode === code ? "Copied" : "Copy"}
+              title={copiedCode === code ? "Copied" : "Copy"}
+            >
+              {copiedCode === code ? (
+                <CheckIcon className="h-4 w-4" />
+              ) : (
+                <ClipboardIcon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+        <div className="relative flex-1 min-h-0">
+          {mode === "preview" && canPreview ? (
+            <PreviewContent />
+          ) : (
+            <div className="p-5 w-full">
+              <div className={clsx(`h-full w-full min-w-0`, isDark && "dark")}>
+                {!highlightedHtml ? (
+                  <pre className="font-mono text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap break-all">
+                    {code}
+                  </pre>
+                ) : (
+                  <div
+                    className="shiki-container [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 [&_pre]:!overflow-visible [&_pre]:!whitespace-pre-wrap [&_pre]:!break-all [&_code]:!bg-transparent [&_code]:!font-mono [&_code]:!text-sm [&_code>span:first-child]:!pl-[2px]"
+                    dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+                  />
                 )}
-              >
-                Preview
-              </button>
+              </div>
             </div>
           )}
         </div>
+      </div>
 
-        <button
-          onClick={copyToClipboard}
-          className={clsx(
-            "inline-flex h-8 w-8 items-center justify-center rounded-md border transition",
-            "text-zinc-500 dark:text-zinc-300",
-            "opacity-0 backdrop-blur-sm",
-            "border-black/5 bg-black/5 dark:border-white/10 dark:bg-white/5",
-            "group-hover:opacity-100 focus-visible:opacity-100",
-            "hover:bg-black/10 hover:border-black/10 dark:hover:bg-white/15 dark:hover:border-white/20 active:scale-95",
-            copiedCode === code &&
-              "text-emerald-500 bg-emerald-500/10 border-emerald-500/30",
-          )}
-          aria-label={copiedCode === code ? "Copied" : "Copy"}
-          title={copiedCode === code ? "Copied" : "Copy"}
-        >
-          {copiedCode === code ? (
-            <CheckIcon className="h-4 w-4" />
-          ) : (
-            <ClipboardIcon className="h-4 w-4" />
-          )}
-        </button>
-      </div>
-      <div className="relative flex-1 min-h-0">
-        {mode === "preview" && canPreview ? (
-          isEChart ? (
-            <div className="w-full bg-white p-4" style={{ height: "400px" }}>
-              <ReactECharts
-                option={(() => {
-                  try {
-                    return new Function("return " + code)();
-                  } catch (e) {
-                    console.warn("ECharts option parse error:", e);
-                    return {};
-                  }
-                })()}
-                theme={isDark ? "dark" : undefined}
-                style={{ height: "100%", width: "100%" }}
-              />
+      {/* Fullscreen Modal */}
+      <AnimatePresence>
+        {isFullscreenOpen && (
+          <Dialog
+            static
+            open={isFullscreenOpen}
+            onClose={() => setIsFullscreenOpen(false)}
+            className={`relative ${zIndexClasses.modal}`}
+          >
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              aria-hidden="true"
+            />
+
+            {/* Full screen container */}
+            <div className="fixed inset-0 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-7xl h-[90vh]"
+              >
+                <DialogPanel className="flex flex-col h-full overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-neutral-950">
+                  {/* Header */}
+                  <div className="flex h-14 items-center justify-between border-b px-4 border-neutral-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm text-zinc-500 dark:text-zinc-400">
+                        {language} Preview
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsFullscreenOpen(false)}
+                      className="rounded-sm p-1 text-neutral-500 hover:bg-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Preview Content */}
+                  <div className="flex-1 overflow-hidden">
+                    <PreviewContent fullscreen />
+                  </div>
+                </DialogPanel>
+              </motion.div>
             </div>
-          ) : (
-            <div className="w-full bg-white">
-              <iframe
-                srcDoc={previewCode}
-                className="w-full border-0 bg-white"
-                style={{ height: "400px" }}
-                sandbox="allow-scripts allow-forms allow-modals"
-                allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
-                title="HTML Preview"
-              />
-            </div>
-          )
-        ) : (
-          <div className="p-5 w-full">
-            <div className={clsx(`h-full w-full min-w-0`, isDark && "dark")}>
-              {!highlightedHtml ? (
-                <pre className="font-mono text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap break-all">
-                  {code}
-                </pre>
-              ) : (
-                <div
-                  className="shiki-container [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 [&_pre]:!overflow-visible [&_pre]:!whitespace-pre-wrap [&_pre]:!break-all [&_code]:!bg-transparent [&_code]:!font-mono [&_code]:!text-sm [&_code>span:first-child]:!pl-[2px]"
-                  dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-                />
-              )}
-            </div>
-          </div>
+          </Dialog>
         )}
-      </div>
-    </div>
+      </AnimatePresence>
+    </>
   );
 });
 

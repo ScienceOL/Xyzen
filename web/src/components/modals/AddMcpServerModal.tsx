@@ -7,32 +7,27 @@ import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
 import type { McpServerCreate } from "@/types/mcp";
-import { Button, Field, Label, Radio, RadioGroup } from "@headlessui/react";
+import { Field, Label, RadioGroup, Radio } from "@headlessui/react";
 import {
   CheckCircleIcon,
-  CogIcon,
-  ExclamationCircleIcon,
-  KeyIcon,
   ServerStackIcon,
-  SparklesIcon,
+  KeyIcon,
   UserIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import { Fragment, useEffect, useState, type ChangeEvent } from "react";
-import NeedAuthBadge from "../features/NeedAuthBadge";
+import { useState, type ChangeEvent } from "react";
+import { Button } from "../animate-ui/primitives/buttons/button";
 
 export function AddMcpServerModal() {
   const {
     isAddMcpServerModalOpen,
     closeAddMcpServerModal,
     addMcpServer,
-    builtinMcpServers,
-    fetchBuiltinMcpServers,
-    quickAddBuiltinServer,
     getLoading,
     user,
     token,
   } = useXyzen();
+
   const [newServer, setNewServer] = useState<McpServerCreate>({
     name: "",
     description: "",
@@ -41,7 +36,6 @@ export function AddMcpServerModal() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-  // Auth controls
   const [authEnabled, setAuthEnabled] = useState(false);
   const [authMode, setAuthMode] = useState<"current" | "custom">(
     user && token ? "current" : "custom",
@@ -49,17 +43,9 @@ export function AddMcpServerModal() {
 
   const isCreating = getLoading("mcpServerCreate");
 
-  // Fetch builtin servers when modal opens
-  useEffect(() => {
-    if (isAddMcpServerModalOpen) {
-      fetchBuiltinMcpServers();
-    }
-  }, [isAddMcpServerModalOpen, fetchBuiltinMcpServers]);
-
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewServer((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (error) setError(null);
   };
 
@@ -87,24 +73,9 @@ export function AddMcpServerModal() {
         setIsSuccess(false);
         setAuthEnabled(false);
         setAuthMode(user && token ? "current" : "custom");
-        // The modal is closed from the store action on success
       }, 1500);
     } catch (err) {
       setError("Failed to add server. Please check the details and try again.");
-      console.error(err);
-    }
-  };
-
-  const handleQuickAdd = async (server: (typeof builtinMcpServers)[0]) => {
-    setError(null);
-    try {
-      await quickAddBuiltinServer(server);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-      }, 1500);
-    } catch (err) {
-      setError("Failed to add server. Please try again.");
       console.error(err);
     }
   };
@@ -124,9 +95,8 @@ export function AddMcpServerModal() {
     <Modal
       isOpen={isAddMcpServerModalOpen}
       onClose={handleClose}
-      title="Add MCP Server"
-      maxWidth="max-w-4xl"
-      minHeight="min-h-[700px]"
+      title="Add Custom MCP Server"
+      maxWidth="max-w-2xl"
     >
       <AnimatePresence mode="wait">
         {isSuccess ? (
@@ -136,7 +106,7 @@ export function AddMcpServerModal() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="flex flex-col items-center justify-center py-8"
+            className="flex flex-col items-center justify-center py-12"
           >
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
@@ -162,7 +132,7 @@ export function AddMcpServerModal() {
                 Server Added Successfully!
               </h3>
               <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                Your MCP server is now ready to use.
+                Your custom MCP server is now ready to use.
               </p>
             </motion.div>
           </motion.div>
@@ -172,457 +142,324 @@ export function AddMcpServerModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full"
+            className="space-y-6"
           >
-            {/* Left Side: MCP Market (Built-in Servers) */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col h-full"
-            >
-              <div className="mb-4 flex items-center space-x-2 border-b border-neutral-200 pb-3 dark:border-neutral-700">
-                <SparklesIcon className="h-5 w-5 text-indigo-500" />
-                <div>
-                  <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
-                    MCP Market
-                  </h3>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    One-click install built-in servers
-                  </p>
-                </div>
+            {/* Header */}
+            <div className="flex items-center space-x-3 border-b border-neutral-200 pb-4 dark:border-neutral-700">
+              <div className="rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600 p-2">
+                <ServerStackIcon className="h-6 w-6 text-white" />
               </div>
-
-              {builtinMcpServers.length > 0 ? (
-                <div className="flex-1 space-y-2 overflow-y-auto max-h-96">
-                  {builtinMcpServers.map((server, index) => (
-                    <motion.div
-                      key={server.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="group flex items-center justify-between rounded-sm border border-neutral-200 bg-neutral-50 p-2.5 transition-all hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-neutral-700 dark:bg-neutral-800/50 dark:hover:border-indigo-600 dark:hover:bg-indigo-900/20"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
-                            {server.name}
-                          </p>
-                          {server.data.requires_auth && <NeedAuthBadge />}
-                        </div>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
-                          {server.description}
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => handleQuickAdd(server)}
-                        disabled={isCreating}
-                        className="ml-2 flex-shrink-0 rounded-sm bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Add
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-1 items-center justify-center rounded-sm border-2 border-dashed border-neutral-200 bg-neutral-50 p-6 dark:border-neutral-700 dark:bg-neutral-800/30">
-                  <div className="text-center">
-                    <ServerStackIcon className="mx-auto h-8 w-8 text-neutral-400" />
-                    <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                      No servers available
-                    </p>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Right Side: Custom Server Form */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              className="flex flex-col h-full custom-scrollbar overflow-x-hidden"
-            >
-              <div className="mb-4 flex items-center space-x-2 border-b border-neutral-200 pb-3 dark:border-neutral-700">
-                <div className="rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600 p-2">
-                  <ServerStackIcon className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
-                    Custom Server
-                  </h3>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Connect to your own MCP server
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+                  Custom Server Configuration
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Connect to your own Model Context Protocol server
+                </p>
               </div>
+            </div>
 
-              <div className="flex-1 space-y-4 overflow-y-auto">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <Field>
-                    <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                      Server Name <span className="text-indigo-500">*</span>
-                    </Label>
-                    <Input
-                      name="name"
-                      value={newServer.name}
-                      onChange={handleInputChange}
-                      placeholder="My Local Server"
-                      required
-                      className="mt-1"
-                    />
-                  </Field>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <Field>
-                    <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                      Description
-                    </Label>
-                    <Input
-                      name="description"
-                      value={newServer.description}
-                      onChange={handleInputChange}
-                      placeholder="A brief description of the server"
-                      className="mt-1"
-                    />
-                  </Field>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <Field>
-                    <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                      Server URL <span className="text-indigo-500">*</span>
-                    </Label>
-                    <Input
-                      name="url"
-                      value={newServer.url}
-                      onChange={handleInputChange}
-                      placeholder="http://localhost:8000"
-                      required
-                      className="mt-1"
-                    />
-                  </Field>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <Field>
-                    <div className="flex items-center justify-between gap-3 overflow-hidden">
-                      <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                        Authentication
-                      </Label>
-
-                      {/* Enable authentication toggle using FlipButton */}
-                      <FlipButton
-                        from="top"
-                        onClick={() =>
-                          setAuthEnabled((v) => {
-                            const next = !v;
-                            if (!next) {
-                              setNewServer((prev) => ({ ...prev, token: "" }));
-                            } else {
-                              setAuthMode(user && token ? "current" : "custom");
-                            }
-                            return next;
-                          })
-                        }
-                      >
-                        <FlipButtonFront
-                          variant={authEnabled ? "secondary" : "outline"}
-                          size="sm"
-                          className={`w-56 ${
-                            authEnabled
-                              ? "bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/50"
-                              : ""
-                          }`}
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <span
-                              className={`${
-                                authEnabled
-                                  ? "bg-amber-500"
-                                  : "bg-neutral-400 dark:bg-neutral-500"
-                              } h-2 w-2 rounded-full`}
-                            />
-                            <span className="text-sm">
-                              {authEnabled
-                                ? "Authentication Enabled"
-                                : "Enable Authentication"}
-                            </span>
-                          </span>
-                        </FlipButtonFront>
-                        <FlipButtonBack
-                          variant={authEnabled ? "secondary" : "default"}
-                          size="sm"
-                          className={`w-56 ${
-                            authEnabled
-                              ? "bg-amber-200 text-amber-900 hover:bg-amber-300 dark:bg-amber-900/60 dark:text-amber-100 dark:hover:bg-amber-900/70"
-                              : ""
-                          }`}
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <span
-                              className={`${
-                                authEnabled ? "bg-amber-500" : "bg-emerald-500"
-                              } h-2 w-2 rounded-full`}
-                            />
-                            <span className="text-sm">
-                              {authEnabled ? "Disable Auth" : "Enable Now"}
-                            </span>
-                          </span>
-                        </FlipButtonBack>
-                      </FlipButton>
-                    </div>
-
-                    {/* Auth options when enabled */}
-                    <AnimatePresence initial={false}>
-                      {authEnabled && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0, y: -10 }}
-                          animate={{ opacity: 1, height: "auto", y: 0 }}
-                          exit={{ opacity: 0, height: 0, y: -10 }}
-                          transition={{ duration: 0.25 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-3 space-y-2">
-                            <RadioGroup value={authMode} onChange={setAuthMode}>
-                              <div className="space-y-2">
-                                {/* Use current user token */}
-                                {user && token && (
-                                  <Radio value="current" as={Fragment}>
-                                    {({ checked }: { checked: boolean }) => (
-                                      <button
-                                        type="button"
-                                        onClick={() => setAuthMode("current")}
-                                        className={`w-full flex items-center justify-between p-3 rounded-sm border-2 transition-all duration-200 ${
-                                          checked
-                                            ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20"
-                                            : "border-neutral-200 bg-neutral-50 hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800/50 dark:hover:border-neutral-600"
-                                        }`}
-                                      >
-                                        <div className="flex items-center space-x-3">
-                                          <div
-                                            className={`p-2 rounded-sm ${
-                                              checked
-                                                ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300"
-                                                : "bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
-                                            }`}
-                                          >
-                                            <UserIcon className="h-4 w-4" />
-                                          </div>
-                                          <div className="text-left">
-                                            <p className="text-sm font-medium text-neutral-900 dark:text-white">
-                                              Use current user token
-                                            </p>
-                                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-48">
-                                              Authenticated as {user.username}
-                                            </p>
-                                          </div>
-                                        </div>
-                                        <div
-                                          className={`h-4 w-4 rounded-full border-2 transition-colors ${
-                                            checked
-                                              ? "border-indigo-500 bg-indigo-500"
-                                              : "border-neutral-300 dark:border-neutral-600"
-                                          }`}
-                                        >
-                                          {checked && (
-                                            <motion.div
-                                              initial={{ scale: 0 }}
-                                              animate={{ scale: 1 }}
-                                              className="h-full w-full rounded-full bg-white scale-50"
-                                            />
-                                          )}
-                                        </div>
-                                      </button>
-                                    )}
-                                  </Radio>
-                                )}
-
-                                {/* Advanced: custom token */}
-                                <Radio value="custom" as={Fragment}>
-                                  {({ checked }: { checked: boolean }) => (
-                                    <div>
-                                      <button
-                                        type="button"
-                                        onClick={() => setAuthMode("custom")}
-                                        className={`w-full flex items-center justify-between p-3 rounded-sm border-2 transition-all duration-200 ${
-                                          checked
-                                            ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20"
-                                            : "border-neutral-200 bg-neutral-50 hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800/50 dark:hover:border-neutral-600"
-                                        }`}
-                                      >
-                                        <div className="flex items-center space-x-3">
-                                          <div
-                                            className={`p-2 rounded-sm ${
-                                              checked
-                                                ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300"
-                                                : "bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
-                                            }`}
-                                          >
-                                            <CogIcon className="h-4 w-4" />
-                                          </div>
-                                          <div className="text-left">
-                                            <p className="text-sm font-medium text-neutral-900 dark:text-white">
-                                              Advanced options
-                                            </p>
-                                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                              Provide a custom token
-                                            </p>
-                                          </div>
-                                        </div>
-                                        <div
-                                          className={`h-4 w-4 rounded-full border-2 transition-colors ${
-                                            checked
-                                              ? "border-indigo-500 bg-indigo-500"
-                                              : "border-neutral-300 dark:border-neutral-600"
-                                          }`}
-                                        >
-                                          {checked && (
-                                            <motion.div
-                                              initial={{ scale: 0 }}
-                                              animate={{ scale: 1 }}
-                                              className="h-full w-full rounded-full bg-white scale-50"
-                                            />
-                                          )}
-                                        </div>
-                                      </button>
-
-                                      {/* Custom token input collapses under this card */}
-                                      <AnimatePresence initial={false}>
-                                        {checked && (
-                                          <motion.div
-                                            initial={{
-                                              opacity: 0,
-                                              height: 0,
-                                              y: -8,
-                                            }}
-                                            animate={{
-                                              opacity: 1,
-                                              height: "auto",
-                                              y: 0,
-                                            }}
-                                            exit={{
-                                              opacity: 0,
-                                              height: 0,
-                                              y: -8,
-                                            }}
-                                            transition={{ duration: 0.25 }}
-                                            className="overflow-hidden"
-                                          >
-                                            <div className="mt-2 p-4 rounded-sm bg-neutral-100/50 border border-neutral-200 dark:bg-neutral-800/30 dark:border-neutral-700">
-                                              <div className="flex items-center space-x-2 mb-3">
-                                                <KeyIcon className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-                                                <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                                  Custom Token
-                                                </Label>
-                                              </div>
-                                              <Input
-                                                name="token"
-                                                value={newServer.token}
-                                                onChange={handleInputChange}
-                                                placeholder="Enter custom authentication token"
-                                                type="password"
-                                                className="bg-white dark:bg-neutral-900"
-                                              />
-                                              <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                                                Leave empty if the server
-                                                doesn't require auth
-                                              </p>
-                                            </div>
-                                          </motion.div>
-                                        )}
-                                      </AnimatePresence>
-                                    </div>
-                                  )}
-                                </Radio>
-                              </div>
-                            </RadioGroup>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </Field>
-                </motion.div>
-              </div>
-
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-4 flex items-center space-x-2 rounded-sm bg-red-50 p-3 dark:bg-red-900/20"
-                  >
-                    <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
-                    <p className="text-sm text-red-600 dark:text-red-400">
-                      {error}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Custom Server Form Buttons */}
+            {/* Form Fields */}
+            <div className="space-y-5">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="mt-4 flex justify-end gap-3 border-t border-neutral-200 py-4 dark:border-neutral-700"
+                transition={{ delay: 0.1 }}
               >
-                <Button
-                  onClick={handleClose}
-                  disabled={isCreating}
-                  className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddServer}
-                  disabled={
-                    isCreating ||
-                    !newServer.name.trim() ||
-                    !newServer.url.trim()
-                  }
-                  className="inline-flex items-center gap-2 rounded-sm bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-indigo-500 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isCreating ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                        className="h-4 w-4 rounded-full border-2 border-white border-t-transparent"
-                      />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <SparklesIcon className="h-4 w-4" />
-                      Add Server
-                    </>
-                  )}
-                </Button>
+                <Field>
+                  <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    Server Name <span className="text-indigo-500">*</span>
+                  </Label>
+                  <Input
+                    name="name"
+                    value={newServer.name}
+                    onChange={handleInputChange}
+                    placeholder="My Custom Server"
+                    required
+                    className="mt-1"
+                  />
+                </Field>
               </motion.div>
-            </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Field>
+                  <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    Description
+                  </Label>
+                  <Input
+                    name="description"
+                    value={newServer.description}
+                    onChange={handleInputChange}
+                    placeholder="A brief description of the server"
+                    className="mt-1"
+                  />
+                </Field>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Field>
+                  <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    Server URL <span className="text-indigo-500">*</span>
+                  </Label>
+                  <Input
+                    name="url"
+                    value={newServer.url}
+                    onChange={handleInputChange}
+                    placeholder="http://localhost:8000 or https://api.example.com"
+                    required
+                    className="mt-1"
+                  />
+                </Field>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <Field>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                      Authentication
+                    </Label>
+
+                    <FlipButton
+                      from="top"
+                      onClick={() =>
+                        setAuthEnabled((v) => {
+                          const next = !v;
+                          if (!next) {
+                            setNewServer((prev) => ({ ...prev, token: "" }));
+                          } else {
+                            setAuthMode(user && token ? "current" : "custom");
+                          }
+                          return next;
+                        })
+                      }
+                    >
+                      <FlipButtonFront
+                        variant={authEnabled ? "secondary" : "outline"}
+                        size="sm"
+                        className={`w-56 ${
+                          authEnabled
+                            ? "bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/50"
+                            : ""
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className={`${
+                              authEnabled
+                                ? "bg-amber-500"
+                                : "bg-neutral-400 dark:bg-neutral-500"
+                            } h-2 w-2 rounded-full`}
+                          />
+                          <span className="text-sm">
+                            {authEnabled
+                              ? "Authentication Enabled"
+                              : "Enable Authentication"}
+                          </span>
+                        </span>
+                      </FlipButtonFront>
+                      <FlipButtonBack
+                        variant={authEnabled ? "secondary" : "default"}
+                        size="sm"
+                        className={`w-56 ${
+                          authEnabled
+                            ? "bg-amber-200 text-amber-900 hover:bg-amber-300 dark:bg-amber-900/60 dark:text-amber-100 dark:hover:bg-amber-900/70"
+                            : ""
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className={`${
+                              authEnabled ? "bg-amber-500" : "bg-emerald-500"
+                            } h-2 w-2 rounded-full`}
+                          />
+                          <span className="text-sm">
+                            {authEnabled ? "Disable Auth" : "Enable Now"}
+                          </span>
+                        </span>
+                      </FlipButtonBack>
+                    </FlipButton>
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {authEnabled && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0, y: -10 }}
+                        animate={{ opacity: 1, height: "auto", y: 0 }}
+                        exit={{ opacity: 0, height: 0, y: -10 }}
+                        transition={{ duration: 0.25 }}
+                        className="mt-4 space-y-4 overflow-hidden"
+                      >
+                        <RadioGroup
+                          value={authMode}
+                          onChange={setAuthMode}
+                          className="space-y-2"
+                        >
+                          {user && token && (
+                            <Radio value="current">
+                              {({ checked }) => (
+                                <div
+                                  className={`cursor-pointer rounded-sm border-2 p-3 transition-all ${
+                                    checked
+                                      ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20"
+                                      : "border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-neutral-600"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                      <div
+                                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                                          checked
+                                            ? "border-indigo-500 bg-indigo-500"
+                                            : "border-neutral-300 dark:border-neutral-600"
+                                        }`}
+                                      >
+                                        {checked && (
+                                          <div className="h-2 w-2 rounded-full bg-white" />
+                                        )}
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                        <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                                          Use Current Session Token
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <p className="ml-8 mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                                    Automatically use your logged-in credentials
+                                  </p>
+                                </div>
+                              )}
+                            </Radio>
+                          )}
+
+                          <Radio value="custom">
+                            {({ checked }) => (
+                              <div
+                                className={`cursor-pointer rounded-sm border-2 p-3 transition-all ${
+                                  checked
+                                    ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20"
+                                    : "border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-neutral-600"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <div
+                                      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                                        checked
+                                          ? "border-indigo-500 bg-indigo-500"
+                                          : "border-neutral-300 dark:border-neutral-600"
+                                      }`}
+                                    >
+                                      {checked && (
+                                        <div className="h-2 w-2 rounded-full bg-white" />
+                                      )}
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <KeyIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                      <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                                        Custom Token
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <p className="ml-8 mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                                  Provide a custom authentication token
+                                </p>
+                              </div>
+                            )}
+                          </Radio>
+                        </RadioGroup>
+
+                        {authMode === "custom" && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                              Authentication Token
+                            </Label>
+                            <Input
+                              name="token"
+                              type="password"
+                              value={newServer.token}
+                              onChange={handleInputChange}
+                              placeholder="Enter your authentication token"
+                              className="mt-1"
+                            />
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Field>
+              </motion.div>
+            </div>
+
+            {/* Error Message */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="rounded-sm border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20"
+                >
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {error}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end space-x-3 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+              <button
+                onClick={handleClose}
+                disabled={isCreating}
+                className="px-6 py-2 rounded-sm border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              >
+                Cancel
+              </button>
+              <Button
+                onClick={handleAddServer}
+                disabled={
+                  isCreating || !newServer.name.trim() || !newServer.url.trim()
+                }
+                className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-2 text-white hover:from-indigo-500 hover:to-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isCreating ? (
+                  <span className="inline-flex items-center gap-2">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                    >
+                      <ServerStackIcon className="h-4 w-4" />
+                    </motion.div>
+                    Adding...
+                  </span>
+                ) : (
+                  "Add Server"
+                )}
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

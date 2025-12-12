@@ -10,7 +10,8 @@ import {
   PlayIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as monaco from "monaco-editor";
 
 interface ToolTestModalProps {
   isOpen: boolean;
@@ -39,6 +40,8 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
   const [result, setResult] = useState<ToolTestResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [parametersError, setParametersError] = useState<string | null>(null);
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const monacoContainerRef = useRef<HTMLDivElement>(null);
 
   const validateParameters = (params: string): boolean => {
     try {
@@ -51,12 +54,62 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
     }
   };
 
-  const handleParametersChange = (value: string) => {
-    setParameters(value);
-    if (parametersError) {
-      validateParameters(value);
+  // Initialize Monaco Editor
+  useEffect(() => {
+    if (!monacoContainerRef.current || editorRef.current) {
+      return;
     }
-  };
+
+    // Create the editor
+    const editor = monaco.editor.create(monacoContainerRef.current, {
+      value: parameters,
+      language: "json",
+      theme: "vs-dark",
+      automaticLayout: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      lineNumbers: "on",
+      roundedSelection: false,
+      readOnly: false,
+      cursorStyle: "line",
+      fontSize: 13,
+      fontFamily:
+        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+      padding: { top: 12, bottom: 12 },
+      bracketPairColorization: {
+        enabled: true,
+      },
+      suggest: {
+        showKeywords: true,
+      },
+      quickSuggestions: {
+        other: true,
+        strings: true,
+      },
+    });
+
+    editorRef.current = editor;
+
+    // Listen to content changes
+    editor.onDidChangeModelContent(() => {
+      const value = editor.getValue();
+      setParameters(value);
+      validateParameters(value);
+    });
+
+    // Cleanup
+    return () => {
+      editor.dispose();
+      editorRef.current = null;
+    };
+  }, []);
+
+  // Update editor when isOpen changes
+  useEffect(() => {
+    if (isOpen && editorRef.current) {
+      editorRef.current.layout();
+    }
+  }, [isOpen]);
 
   const handleTestTool = async () => {
     if (!validateParameters(parameters)) {
@@ -213,11 +266,9 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
                 <DocumentTextIcon className="h-4 w-4" />
                 <span>Parameters (JSON)</span>
               </label>
-              <textarea
-                value={parameters}
-                onChange={(e) => handleParametersChange(e.target.value)}
-                placeholder='{"key": "value"}'
-                className="flex-1 w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm font-mono text-neutral-900 placeholder-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 resize-none min-h-[200px]"
+              <div
+                ref={monacoContainerRef}
+                className="flex-1 w-full rounded-sm border border-neutral-300 dark:border-neutral-600 overflow-hidden min-h-[200px]"
               />
               {parametersError && (
                 <div className="mt-2 flex items-center space-x-2 text-sm text-red-600 dark:text-red-400">
