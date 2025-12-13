@@ -4,17 +4,17 @@ import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { motion } from "motion/react";
 import { useState } from "react";
 
-interface GoogleSearchToggleProps {
+interface BuiltinSearchToggleProps {
   enabled: boolean;
   onToggle: (enabled: boolean) => void;
   supportsWebSearch: boolean;
 }
 
-export function GoogleSearchToggle({
+export function BuiltinSearchToggle({
   enabled,
   onToggle,
   supportsWebSearch,
-}: GoogleSearchToggleProps) {
+}: BuiltinSearchToggleProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   // Only show for models that support web search
@@ -37,10 +37,10 @@ export function GoogleSearchToggle({
         }`}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        title={enabled ? "Google Search: 已启用" : "Google Search: 已禁用"}
+        title={enabled ? "Built-in Search: 已启用" : "Built-in Search: 已禁用"}
       >
         <MagnifyingGlassIcon className="h-3.5 w-3.5 shrink-0" />
-        <span>Google</span>
+        <span>Search</span>
         <div
           className={`h-1.5 w-1.5 rounded-full ${enabled ? "bg-blue-500" : "bg-neutral-400"}`}
         />
@@ -59,12 +59,12 @@ export function GoogleSearchToggle({
             <MagnifyingGlassIcon className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
             <div>
               <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                Google 内置搜索
+                内置搜索
               </div>
               <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
                 {enabled
-                  ? "已启用：Gemini 可以实时搜索互联网获取最新信息"
-                  : "已禁用：点击启用 Google 实时搜索功能"}
+                  ? "已启用：模型可以实时搜索互联网获取最新信息"
+                  : "已禁用：点击启用模型内置实时搜索功能"}
               </div>
             </div>
           </div>

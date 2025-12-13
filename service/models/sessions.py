@@ -73,7 +73,9 @@ class SessionBase(SQLModel):
     user_id: str = Field(index=True)
     provider_id: UUID | None = Field(default=None, description="If set, overrides the agent's provider")
     model: str | None = Field(default=None, description="If set, overrides the agent's model")
-    google_search_enabled: bool = Field(default=False, description="Enable Google's built-in search for Gemini models")
+    google_search_enabled: bool = Field(
+        default=False, description="Enable built-in web search for supported models (e.g., Gemini)"
+    )
 
 
 class Session(SessionBase, table=True):

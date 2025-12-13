@@ -295,11 +295,11 @@ async def get_ai_response_stream_langchain_legacy(
     yield {"type": ChatEventType.PROCESSING, "data": {"status": ProcessingStatus.PREPARING_REQUEST}}
 
     try:
-        # Check if Google Search is enabled for this session
+        # Check if built-in search is enabled for this session
         google_search_enabled = session.google_search_enabled if session else False
 
         # Create langchain agent
-        # Pass google_search_enabled to enable Google's built-in search for Gemini models
+        # Pass google_search_enabled to enable built-in web search for supported models
         llm = user_provider_manager.create_langchain_model(
             provider_id, model=model_name, google_search_enabled=google_search_enabled
         )

@@ -25,7 +25,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
 import { ModelSelector } from "./ModelSelector";
-import { GoogleSearchToggle } from "./GoogleSearchToggle";
+import { BuiltinSearchToggle } from "./BuiltinSearchToggle";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -130,14 +130,14 @@ export default function ChatToolbar({
     return channel?.model || null;
   }, [activeChatChannel, channels]);
 
-  // State for Google Search toggle
-  const [googleSearchEnabled, setGoogleSearchEnabled] = useState(false);
+  // State for built-in search toggle
+  const [builtinSearchEnabled, setBuiltinSearchEnabled] = useState(false);
 
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
 
-  // Fetch current session's Google Search enabled status
+  // Fetch current session's built-in search enabled status
   useEffect(() => {
     if (!activeChatChannel) {
       return;
@@ -148,8 +148,8 @@ export default function ChatToolbar({
       return;
     }
 
-    // Fetch Google Search enabled status
-    setGoogleSearchEnabled(channel.google_search_enabled || false);
+    // Fetch built-in search enabled status
+    setBuiltinSearchEnabled(channel.google_search_enabled || false);
   }, [activeChatChannel, channels]);
 
   // Model change handler - updates session's provider and model
@@ -176,8 +176,8 @@ export default function ChatToolbar({
     [activeChatChannel, channels, updateSessionProviderAndModel],
   );
 
-  // Google Search toggle handler - updates session's google_search_enabled
-  const handleGoogleSearchToggle = useCallback(
+  // Built-in search toggle handler - updates session's google_search_enabled
+  const handleBuiltinSearchToggle = useCallback(
     async (enabled: boolean) => {
       if (!activeChatChannel) return;
 
@@ -188,12 +188,12 @@ export default function ChatToolbar({
         await updateSessionConfig(channel.sessionId, {
           google_search_enabled: enabled,
         });
-        setGoogleSearchEnabled(enabled);
+        setBuiltinSearchEnabled(enabled);
         console.log(
-          `Updated session ${channel.sessionId} Google Search to ${enabled}`,
+          `Updated session ${channel.sessionId} built-in search to ${enabled}`,
         );
       } catch (error) {
-        console.error("Failed to update Google Search setting:", error);
+        console.error("Failed to update built-in search setting:", error);
       }
     },
     [activeChatChannel, channels, updateSessionConfig],
@@ -340,11 +340,11 @@ export default function ChatToolbar({
               />
             )}
 
-            {/* Google Search Toggle - Only for models that support web search */}
+            {/* Built-in Search Toggle - Only for models that support web search */}
             {activeChatChannel && (
-              <GoogleSearchToggle
-                enabled={googleSearchEnabled}
-                onToggle={handleGoogleSearchToggle}
+              <BuiltinSearchToggle
+                enabled={builtinSearchEnabled}
+                onToggle={handleBuiltinSearchToggle}
                 supportsWebSearch={supportsWebSearch}
               />
             )}

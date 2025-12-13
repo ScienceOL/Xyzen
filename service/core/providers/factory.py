@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -84,17 +84,20 @@ class ChatModelFactory:
         # Extract google_search_enabled from runtime_kwargs
         google_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
 
-        # If Google Search is enabled, add it to the tools parameter
-        if google_search_enabled:
-            logger.info(f"Enabling Google Search for model {model}")
-            # Add google_search tool to runtime_kwargs
-            runtime_kwargs["tools"] = [{"google_search": {}}]
-
-        return ChatGoogleGenerativeAI(
+        # Create the base model
+        llm = ChatGoogleGenerativeAI(
             model=model,
             google_api_key=credentials["api_key"],
             **runtime_kwargs,
         )
+
+        # If built-in search is enabled, bind the google_search tool
+        # bind_tools() returns a Runnable, but it's still compatible with BaseChatModel interface
+        if google_search_enabled:
+            logger.info(f"Enabling built-in web search for model {model}")
+            llm = cast(BaseChatModel, llm.bind_tools([{"google_search": {}}]))
+
+        return llm
 
     def _create_google_vertex(
         self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]
