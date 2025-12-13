@@ -20,7 +20,11 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { ClockIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  ClockIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
@@ -133,6 +137,9 @@ export default function ChatToolbar({
   // State for built-in search toggle
   const [builtinSearchEnabled, setBuiltinSearchEnabled] = useState(false);
 
+  // State for new chat creation loading
+  const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
+
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
@@ -221,8 +228,17 @@ export default function ChatToolbar({
     }),
   );
 
-  const handleNewChat = () => {
-    createDefaultChannel(currentAgent?.id);
+  const handleNewChat = async () => {
+    if (isCreatingNewChat) return; // Prevent multiple clicks
+
+    try {
+      setIsCreatingNewChat(true);
+      await createDefaultChannel(currentAgent?.id);
+    } catch (error) {
+      console.error("Failed to create new chat:", error);
+    } finally {
+      setIsCreatingNewChat(false);
+    }
   };
 
   // const handleToggleToolCallConfirmation = async () => {
@@ -300,10 +316,19 @@ export default function ChatToolbar({
           <div className="flex items-center space-x-1">
             <button
               onClick={handleNewChat}
-              className="flex items-center justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-              title="新对话"
+              disabled={isCreatingNewChat}
+              className={`flex items-center justify-center rounded-sm p-1.5 transition-colors ${
+                isCreatingNewChat
+                  ? "text-neutral-400 cursor-not-allowed dark:text-neutral-600"
+                  : "text-neutral-500 hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
+              }`}
+              title={isCreatingNewChat ? "创建中..." : "新对话"}
             >
-              <PlusIcon className="h-4 w-4" />
+              {isCreatingNewChat ? (
+                <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              ) : (
+                <PlusIcon className="h-4 w-4" />
+              )}
             </button>
 
             {/* File Upload Button */}
