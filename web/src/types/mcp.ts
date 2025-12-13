@@ -7,6 +7,7 @@ export interface McpServer {
   status: "online" | "offline" | string;
   tools?: { name: string; description?: string }[];
   user_id: string;
+  category?: "search" | "capability" | "knowledge" | "integration" | "general";
 }
 
 /**
@@ -21,6 +22,7 @@ export interface BuiltinMcpData {
   requires_auth: boolean;
   is_default?: boolean;
   banner?: string;
+  category?: "search" | "capability" | "knowledge" | "integration" | "general";
 }
 
 /**

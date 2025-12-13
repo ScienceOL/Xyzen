@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -13,7 +14,9 @@ from core.mcp import async_check_mcp_server_status
 from internal.configs import configs
 from middleware.auth import get_current_user
 from middleware.database.connection import get_session
-from models.mcp import McpServer, McpServerCreate, McpServerUpdate
+from models.mcp import McpServer, McpServerCategory, McpServerCreate, McpServerUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["mcps"])
 
@@ -243,9 +246,20 @@ async def read_mcp_servers(
     user: str = Depends(get_current_user),
     offset: int = 0,
     limit: int = 100,
+    category: Optional[str] = None,
 ) -> list[McpServer]:
     # Filter MCP servers by current user
-    statement = select(McpServer).where(McpServer.user_id == user).offset(offset).limit(limit)
+    statement = select(McpServer).where(McpServer.user_id == user)
+
+    # Filter by category if provided
+    if category:
+        try:
+            category_enum = McpServerCategory(category)
+            statement = statement.where(McpServer.category == category_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
+
+    statement = statement.offset(offset).limit(limit)
     result = await session.exec(statement)
     mcp_servers = result.all()
     return list(mcp_servers)

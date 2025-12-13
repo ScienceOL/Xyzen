@@ -13,11 +13,14 @@ import { LoadingKeys } from "./loadingSlice";
 
 export interface McpSlice {
   mcpServers: McpServer[];
+  searchServers: McpServer[];
   builtinMcpServers: ExplorableMcpServer<BuiltinMcpData>[];
   lastFetchTime: number; // 添加最后一次获取时间
   isEditMcpServerModalOpen: boolean;
   editingMcpServer: McpServer | null;
+  lastSearchServerCreationAttempt: number; // 上次尝试创建搜索服务器的时间戳
   fetchMcpServers: () => Promise<void>;
+  fetchSearchServers: () => Promise<void>;
   fetchBuiltinMcpServers: () => Promise<void>;
   refreshMcpServers: () => Promise<void>;
   addMcpServer: (server: McpServerCreate) => Promise<void>;
@@ -33,6 +36,11 @@ export interface McpSlice {
   updateMcpServerInList: (server: McpServer) => void;
   openEditMcpServerModal: (server: McpServer) => void;
   closeEditMcpServerModal: () => void;
+  setSessionSearchEngine: (
+    sessionId: string,
+    serverId: string | null,
+  ) => Promise<void>;
+  getSessionSearchEngine: (sessionId: string) => Promise<McpServer | null>;
 }
 
 export const createMcpSlice: StateCreator<
@@ -42,10 +50,12 @@ export const createMcpSlice: StateCreator<
   McpSlice
 > = (set, get) => ({
   mcpServers: [],
+  searchServers: [],
   builtinMcpServers: [],
   lastFetchTime: 0,
   isEditMcpServerModalOpen: false,
   editingMcpServer: null,
+  lastSearchServerCreationAttempt: 0,
   openEditMcpServerModal: (server) => {
     set({ isEditMcpServerModalOpen: true, editingMcpServer: server });
   },
@@ -76,16 +86,139 @@ export const createMcpSlice: StateCreator<
       setLoading(LoadingKeys.MCP_SERVERS, false);
     }
   },
+  fetchSearchServers: async () => {
+    const state = get();
+    const { setLoading, backendUrl, token } = state;
+
+    setLoading(LoadingKeys.MCP_SERVERS, true);
+
+    try {
+      console.log("McpSlice: Fetching search MCP servers...");
+      // 1. Read: Get existing search servers
+      const servers = await mcpService.getSearchServers();
+      console.log(`McpSlice: Loaded ${servers.length} search MCP servers`);
+
+      // 2. Check: If user has no search servers, auto-create them
+      if (servers.length === 0) {
+        const now = Date.now();
+        const lastAttempt = get().lastSearchServerCreationAttempt;
+
+        // Debounce: only create if last attempt was more than 5 seconds ago
+        if (now - lastAttempt < 5000) {
+          console.log(
+            "McpSlice: Recently attempted to create search servers, skipping...",
+          );
+          return;
+        }
+
+        set({ lastSearchServerCreationAttempt: now });
+        console.log("McpSlice: No search servers found, auto-creating...");
+
+        // Fetch all MCP servers first to check for duplicates
+        await get().fetchMcpServers();
+
+        // Re-check search servers after fetching all MCPs
+        const recheckServers = await mcpService.getSearchServers();
+        if (recheckServers.length > 0) {
+          console.log(
+            "McpSlice: Search servers found after fetching all MCPs, skipping creation",
+          );
+          set({ searchServers: recheckServers });
+          return;
+        }
+
+        const builtinSearchServers = await mcpService.getBuiltinSearchServers();
+        console.log(
+          "McpSlice: Builtin search servers raw:",
+          builtinSearchServers,
+        );
+        const searchServersData = convertBuiltinServers(builtinSearchServers);
+        console.log(
+          "McpSlice: Converted search servers:",
+          searchServersData.length,
+          searchServersData,
+        );
+
+        // Get fresh MCP servers list for duplicate check
+        const allMcpServers = get().mcpServers;
+        const existingUrls = new Set(allMcpServers.map((s) => s.url));
+
+        // 3. Create: Create each builtin search server (skip if URL already exists)
+        for (const server of searchServersData) {
+          const mountPath = server.data.mount_path.endsWith("/")
+            ? server.data.mount_path
+            : `${server.data.mount_path}/`;
+
+          const serverUrl = `${backendUrl}${mountPath}`;
+
+          // Skip if this URL already exists
+          if (existingUrls.has(serverUrl)) {
+            console.log(
+              `McpSlice: Skipping '${server.name}' - URL already exists: ${serverUrl}`,
+            );
+            continue;
+          }
+
+          const serverToCreate: McpServerCreate = {
+            name: server.name,
+            description: server.description,
+            url: serverUrl,
+            token: token || "",
+            category: "search",
+          };
+
+          console.log(
+            `McpSlice: Creating search server '${server.name}' with URL: ${serverUrl}`,
+          );
+
+          try {
+            await mcpService.createMcpServer(serverToCreate);
+            console.log(
+              `McpSlice: Successfully created search server '${server.name}'`,
+            );
+          } catch (error) {
+            console.error(
+              `Failed to create search server '${server.name}':`,
+              error,
+            );
+          }
+        }
+
+        // Re-fetch to get the actual created servers from database
+        const finalServers = await mcpService.getSearchServers();
+        set({ searchServers: finalServers });
+        console.log(
+          `McpSlice: Auto-created and loaded ${finalServers.length} search servers`,
+        );
+      } else {
+        set({ searchServers: servers });
+      }
+    } catch (error) {
+      console.error("Failed to fetch search MCP servers:", error);
+    } finally {
+      setLoading(LoadingKeys.MCP_SERVERS, false);
+    }
+  },
   fetchBuiltinMcpServers: async () => {
     try {
-      const rawServers = await mcpService.getBuiltinMcpServers();
-      // 转换为新格式
+      // Fetch both regular and search builtin servers
+      const [rawServers, rawSearchServers] = await Promise.all([
+        mcpService.getBuiltinMcpServers(),
+        mcpService.getBuiltinSearchServers(),
+      ]);
+
+      // Convert to new format
       const builtinServers = convertBuiltinServers(rawServers);
+      const builtinSearchServers = convertBuiltinServers(rawSearchServers);
+
+      // Combine both lists
+      const allBuiltinServers = [...builtinServers, ...builtinSearchServers];
+
       const { mcpServers, backendUrl } = get();
 
       // Filter out servers that user has already added
       const existingUrls = mcpServers.map((s) => s.url);
-      const filtered = builtinServers.filter((bs) => {
+      const filtered = allBuiltinServers.filter((bs) => {
         // Ensure URL has trailing slash for comparison
         const mountPath = bs.data.mount_path.endsWith("/")
           ? bs.data.mount_path
@@ -150,11 +283,16 @@ export const createMcpSlice: StateCreator<
         description: server.description,
         url: `${backendUrl}${mountPath}`,
         token: token || "",
+        category: server.data.category || "capability",
       };
 
       const newServer = await mcpService.createMcpServer(serverToCreate);
       set((state: McpSlice) => {
         state.mcpServers.push(newServer);
+        // Also add to searchServers if it's a search category
+        if (newServer.category === "search") {
+          state.searchServers.push(newServer);
+        }
         // Remove from builtin list since it's now added
         state.builtinMcpServers = state.builtinMcpServers.filter(
           (bs) => bs.data.module_name !== server.data.module_name,
@@ -232,5 +370,25 @@ export const createMcpSlice: StateCreator<
         state.mcpServers.push(server);
       }
     });
+  },
+  setSessionSearchEngine: async (sessionId, serverId) => {
+    try {
+      if (serverId) {
+        await mcpService.setSessionSearchEngine(sessionId, serverId);
+      } else {
+        await mcpService.removeSessionSearchEngine(sessionId);
+      }
+    } catch (error) {
+      console.error("Failed to set session search engine:", error);
+      throw error;
+    }
+  },
+  getSessionSearchEngine: async (sessionId) => {
+    try {
+      return await mcpService.getSessionSearchEngine(sessionId);
+    } catch (error) {
+      console.error("Failed to get session search engine:", error);
+      return null;
+    }
   },
 });

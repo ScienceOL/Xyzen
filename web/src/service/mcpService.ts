@@ -120,7 +120,7 @@ export const mcpService = {
     return response.json();
   },
 
-  // 返回原始数据，可能是旧格式或新格式
+  // 返回原始数据,可能是旧格式或新格式
   async getBuiltinMcpServers(): Promise<unknown[]> {
     try {
       const response = await fetch(
@@ -137,6 +137,91 @@ export const mcpService = {
     } catch (error) {
       console.warn("Error discovering builtin MCP servers:", error);
       return []; // Fail gracefully
+    }
+  },
+
+  async getBuiltinSearchServers(): Promise<unknown[]> {
+    try {
+      const response = await fetch(
+        `${getBackendUrl()}/xyzen/api/v1/mcps/search-servers/discover`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        console.warn("Failed to discover builtin search servers");
+        return [];
+      }
+      return response.json();
+    } catch (error) {
+      console.warn("Error discovering builtin search servers:", error);
+      return [];
+    }
+  },
+
+  async getSearchServers(): Promise<McpServer[]> {
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/mcps?category=search`,
+      {
+        headers: createAuthHeaders(),
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch search MCP servers");
+    }
+    return response.json();
+  },
+
+  async getSessionSearchEngine(sessionId: string): Promise<McpServer | null> {
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/sessions/${sessionId}/search-engine`,
+      {
+        headers: createAuthHeaders(),
+      },
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error("Failed to fetch session search engine");
+    }
+    return response.json();
+  },
+
+  async setSessionSearchEngine(
+    sessionId: string,
+    mcpServerId: string,
+  ): Promise<McpServer> {
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/sessions/${sessionId}/search-engine`,
+      {
+        method: "PUT",
+        headers: createAuthHeaders(),
+        body: JSON.stringify({ mcp_server_id: mcpServerId }),
+      },
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to set session search engine: ${response.status} ${errorText}`,
+      );
+    }
+    return response.json();
+  },
+
+  async removeSessionSearchEngine(sessionId: string): Promise<void> {
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/sessions/${sessionId}/search-engine`,
+      {
+        method: "DELETE",
+        headers: createAuthHeaders(),
+      },
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to remove session search engine: ${response.status} ${errorText}`,
+      );
     }
   },
 };

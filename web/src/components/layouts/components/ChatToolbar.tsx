@@ -21,9 +21,10 @@ import {
 } from "@dnd-kit/core";
 import { ClockIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
 import { ModelSelector } from "./ModelSelector";
+import { SearchSelector } from "./SearchSelector";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -64,11 +65,15 @@ export default function ChatToolbar({
     agents,
     systemAgents,
     mcpServers,
+    searchServers,
     llmProviders,
     availableModels,
     updateSessionProviderAndModel,
     uploadedFiles,
     isUploading,
+    fetchSearchServers,
+    setSessionSearchEngine,
+    getSessionSearchEngine,
   } = useXyzen();
 
   // Merge system and user agents for lookup (system + regular/graph)
@@ -127,9 +132,38 @@ export default function ChatToolbar({
     return channel?.model || null;
   }, [activeChatChannel, channels]);
 
+  // State for search engine
+  const [currentSearchServerId, setCurrentSearchServerId] = useState<
+    string | null
+  >(null);
+
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
+
+  // Fetch search servers on mount
+  useEffect(() => {
+    fetchSearchServers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch current session's search engine
+  useEffect(() => {
+    if (!activeChatChannel) {
+      setCurrentSearchServerId(null);
+      return;
+    }
+
+    const channel = channels[activeChatChannel];
+    if (!channel?.sessionId) {
+      setCurrentSearchServerId(null);
+      return;
+    }
+
+    getSessionSearchEngine(channel.sessionId).then((searchEngine) => {
+      setCurrentSearchServerId(searchEngine?.id || null);
+    });
+  }, [activeChatChannel, channels, getSessionSearchEngine]);
 
   // Model change handler - updates session's provider and model
   const handleModelChange = useCallback(
@@ -153,6 +187,27 @@ export default function ChatToolbar({
       }
     },
     [activeChatChannel, channels, updateSessionProviderAndModel],
+  );
+
+  // Search engine change handler - updates session's search engine
+  const handleSearchEngineChange = useCallback(
+    async (serverId: string | null) => {
+      if (!activeChatChannel) return;
+
+      const channel = channels[activeChatChannel];
+      if (!channel?.sessionId) return;
+
+      try {
+        await setSessionSearchEngine(channel.sessionId, serverId);
+        setCurrentSearchServerId(serverId);
+        console.log(
+          `Updated session ${channel.sessionId} search engine to ${serverId || "none"}`,
+        );
+      } catch (error) {
+        console.error("Failed to update session search engine:", error);
+      }
+    },
+    [activeChatChannel, channels, setSessionSearchEngine],
   );
 
   // Setup dnd sensors
@@ -280,6 +335,15 @@ export default function ChatToolbar({
                 llmProviders={llmProviders}
                 availableModels={availableModels}
                 onModelChange={handleModelChange}
+              />
+            )}
+
+            {/* Search Selector */}
+            {activeChatChannel && (
+              <SearchSelector
+                searchServers={searchServers}
+                currentSearchServerId={currentSearchServerId}
+                onSearchServerChange={handleSearchEngineChange}
               />
             )}
 

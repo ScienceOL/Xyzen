@@ -18,7 +18,7 @@ __mcp_metadata__ = {
 duckduckgo_search = FastMCP("DuckDuckGo Search")
 
 
-@duckduckgo_search.tool()
+@duckduckgo_search.tool
 async def web_search(query: str, num_results: int = 10, safe_search: bool = True) -> dict:
     """
     Search the web using DuckDuckGo Search with privacy protection.
@@ -55,7 +55,7 @@ async def web_search(query: str, num_results: int = 10, safe_search: bool = True
     }
 
 
-@duckduckgo_search.tool()
+@duckduckgo_search.tool
 async def instant_answer(query: str) -> dict:
     """
     Get instant answers and quick facts using DuckDuckGo Instant Answer API.
@@ -86,7 +86,7 @@ async def instant_answer(query: str) -> dict:
     }
 
 
-@duckduckgo_search.tool()
+@duckduckgo_search.tool
 async def news_search(query: str, num_results: int = 10, time_range: str = "all") -> dict:
     """
     Search for news articles using DuckDuckGo News.
@@ -124,7 +124,7 @@ async def news_search(query: str, num_results: int = 10, time_range: str = "all"
     }
 
 
-@duckduckgo_search.tool()
+@duckduckgo_search.tool
 async def image_search(query: str, num_results: int = 10, safe_search: bool = True) -> dict:
     """
     Search for images using DuckDuckGo Image Search.

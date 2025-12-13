@@ -18,7 +18,7 @@ __mcp_metadata__ = {
 google_search = FastMCP("Google Search")
 
 
-@google_search.tool()
+@google_search.tool
 async def web_search(query: str, num_results: int = 10) -> dict:
     """
     Search the web using Google Search.
@@ -52,7 +52,7 @@ async def web_search(query: str, num_results: int = 10) -> dict:
     }
 
 
-@google_search.tool()
+@google_search.tool
 async def image_search(query: str, num_results: int = 10) -> dict:
     """
     Search for images using Google Image Search.
@@ -82,7 +82,7 @@ async def image_search(query: str, num_results: int = 10) -> dict:
     }
 
 
-@google_search.tool()
+@google_search.tool
 async def news_search(query: str, num_results: int = 10) -> dict:
     """
     Search for news articles using Google News Search.
