@@ -93,11 +93,11 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ assistant }) => {
         <h3 className="text-lg font-medium text-neutral-900/40 dark:text-white/40 flex items-center justify-center gap-2">
           {title}
           <img
-            src="https://storage.sciol.ac.cn/library/docs/1f44b.webp"
-            alt="wave"
-            className="inline-block h-6 w-6"
-            loading="lazy"
-          />
+          <span
+            role="img"
+            aria-label="wave"
+            className="inline-block align-middle text-2xl"
+          >👋</span>
         </h3>
         <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-600/30 dark:text-neutral-300/30">
           {description}
