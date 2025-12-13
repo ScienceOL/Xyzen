@@ -118,7 +118,18 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
               {server.name}
             </h3>
             <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 truncate">
-              {server.description || "No description"}
+              {(() => {
+                const description = server.description || "No description";
+                // Detect if text contains Chinese/Japanese/Korean characters
+                const hasCJK =
+                  /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(
+                    description,
+                  );
+                const maxLength = hasCJK ? 15 : 30; // Shorter limit for CJK characters
+                return description.length > maxLength
+                  ? description.substring(0, maxLength) + "..."
+                  : description;
+              })()}
             </p>
           </div>
         </div>
@@ -407,7 +418,7 @@ export function McpListModal() {
                 </h2>
               </div>
 
-              <div className="flex-1 min-h-[70vh] max-h-[70vh] overflow-y-auto rounded-sm border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 custom-scrollbar">
+              <div className="flex-1 min-h-[70vh] max-h-[70vh] overflow-y-auto overflow-x-hidden rounded-lg border border-neutral-200 bg-neutral-50/50 dark:border-neutral-700 dark:bg-neutral-900/50 custom-scrollbar">
                 <UnifiedMcpMarketList
                   builtinServers={builtinMcpServers}
                   onSelectServer={handleSelectMarketServer}
@@ -427,7 +438,7 @@ export function McpListModal() {
                 </span>
               </div>
 
-              <div className="flex-1 min-h-[70vh] max-h-[70vh] overflow-y-auto rounded-sm border border-neutral-200 bg-neutral-50/50 p-6 custom-scrollbar dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="flex-1 min-h-[70vh] max-h-[70vh] overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 custom-scrollbar dark:border-neutral-700 dark:bg-neutral-900/50">
                 <AnimatePresence mode="wait">
                   {mcpServersLoading ? (
                     <motion.div

@@ -81,7 +81,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
     >
       <div
         onClick={onClick}
-        className="relative w-full sm:w-[320px] cursor-pointer group px-2 sm:px-0"
+        className="relative w-full min-w-[280px] cursor-pointer group"
       >
         {/* Cover Image - 4:1 长宽比 */}
         <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-lg mb-3">
@@ -98,7 +98,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
         </div>
 
         {/* Content - 压缩间距 */}
-        <div className="space-y-2 px-2 sm:px-0 pb-2">
+        <div className="space-y-2 pb-2">
           {/* Title & Badge */}
           <div className="flex items-start justify-between gap-2">
             <h3 className="flex-1 text-sm sm:text-base font-bold text-white line-clamp-2 sm:line-clamp-1 break-words">

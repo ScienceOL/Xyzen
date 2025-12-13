@@ -283,120 +283,121 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
   }, [smitheryHasNext, sourceFilter, rawSmitheryServers.length]);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-4 p-4 overflow-x-hidden">
       {/* Search & Filter Bar */}
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <form onSubmit={handleSearch} className="relative flex-1">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
             placeholder="搜索 MCP 服务..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-10 pr-4 text-neutral-900 placeholder-neutral-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+            className="w-full rounded-lg border border-neutral-200 bg-white py-2.5 pl-9 pr-4 text-sm text-neutral-900 placeholder-neutral-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-white dark:placeholder-neutral-500"
           />
         </form>
-
-        {/* Source Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800">
-              <span>来源</span>
-              {sourceFilter === "bohrium" && (
-                <img
-                  src="https://storage.sciol.ac.cn/library/browser-fav.png"
-                  alt="Bohrium"
-                  className="w-5 h-5"
-                />
-              )}
-              {sourceFilter === "smithery" && (
-                <img
-                  src="https://storage.sciol.ac.cn/library/smithery.png"
-                  alt="Smithery"
-                  className="w-5 h-5"
-                />
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent sideOffset={8} className="min-w-[120px]">
-            <DropdownMenuLabel>来源</DropdownMenuLabel>
-            <DropdownMenuItem onSelect={() => setSourceFilter("all")}>
-              All
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSourceFilter("official")}>
-              <div className="flex justify-between items-center w-full">
-                <span className="flex items-center gap-2">
-                  <img
-                    src="https://storage.sciol.ac.cn/library/BLogo-normal.svg"
-                    alt="Official"
-                    className="w-4 h-4"
-                  />
-                  ScienceOL
-                </span>
-                {builtinServers.length > 0 && (
-                  <Badge variant="gray" size="sm" className="ml-2">
-                    {builtinServers.length}
-                  </Badge>
-                )}
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSourceFilter("bohrium")}>
-              <div className="flex items-center justify-between w-full">
-                <span className="flex items-center gap-2">
+        <div className="flex gap-2 flex-shrink-0">
+          {/* Source Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                <span>来源</span>
+                {sourceFilter === "bohrium" && (
                   <img
                     src="https://storage.sciol.ac.cn/library/browser-fav.png"
                     alt="Bohrium"
-                    className="w-4 h-4"
+                    className="w-5 h-5"
                   />
-                  Bohrium
-                </span>
-                {rawBohriumApps.length > 0 && (
-                  <Badge variant="gray" size="sm" className="ml-2">
-                    {rawBohriumApps.length}
-                  </Badge>
                 )}
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSourceFilter("smithery")}>
-              <div className="flex justify-between items-center w-full">
-                <span className="flex items-center gap-2">
+                {sourceFilter === "smithery" && (
                   <img
                     src="https://storage.sciol.ac.cn/library/smithery.png"
                     alt="Smithery"
-                    className="w-4 h-4"
+                    className="w-5 h-5"
                   />
-                  Smithery
-                </span>
-                {rawSmitheryServers.length > 0 && (
-                  <Badge variant="gray" size="sm" className="ml-2">
-                    {rawSmitheryServers.length}
-                  </Badge>
                 )}
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={8} className="min-w-[120px]">
+              <DropdownMenuLabel>来源</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setSourceFilter("all")}>
+                All
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSourceFilter("official")}>
+                <div className="flex justify-between items-center w-full">
+                  <span className="flex items-center gap-2">
+                    <img
+                      src="https://storage.sciol.ac.cn/library/BLogo-normal.svg"
+                      alt="Official"
+                      className="w-4 h-4"
+                    />
+                    ScienceOL
+                  </span>
+                  {builtinServers.length > 0 && (
+                    <Badge variant="gray" size="sm" className="ml-2">
+                      {builtinServers.length}
+                    </Badge>
+                  )}
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSourceFilter("bohrium")}>
+                <div className="flex items-center justify-between w-full">
+                  <span className="flex items-center gap-2">
+                    <img
+                      src="https://storage.sciol.ac.cn/library/browser-fav.png"
+                      alt="Bohrium"
+                      className="w-4 h-4"
+                    />
+                    Bohrium
+                  </span>
+                  {rawBohriumApps.length > 0 && (
+                    <Badge variant="gray" size="sm" className="ml-2">
+                      {rawBohriumApps.length}
+                    </Badge>
+                  )}
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSourceFilter("smithery")}>
+                <div className="flex justify-between items-center w-full">
+                  <span className="flex items-center gap-2">
+                    <img
+                      src="https://storage.sciol.ac.cn/library/smithery.png"
+                      alt="Smithery"
+                      className="w-4 h-4"
+                    />
+                    Smithery
+                  </span>
+                  {rawSmitheryServers.length > 0 && (
+                    <Badge variant="gray" size="sm" className="ml-2">
+                      {rawSmitheryServers.length}
+                    </Badge>
+                  )}
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* Sort Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800">
-              <span>排序</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent sideOffset={8} className="min-w-[160px]">
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            <DropdownMenuItem onSelect={() => setSortBy("stars")}>
-              收藏数（降序）
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSortBy("usage")}>
-              使用数（降序）
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSortBy("alpha")}>
-              首字母排序（A→Z）
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          {/* Sort Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                <span>排序</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={8} className="min-w-[160px]">
+              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setSortBy("stars")}>
+                收藏数（降序）
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSortBy("usage")}>
+                使用数（降序）
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSortBy("alpha")}>
+                首字母排序（A→Z）
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         {/* Starred Checkbox */}
         {/* <div className="flex items-center gap-x-3 select-none">
@@ -411,9 +412,13 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
       </div>
 
       {/* Stats */}
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <div className="text-xs text-neutral-400 dark:text-neutral-500">
+          {!loading &&
+            `显示 ${Math.min((page - 1) * PAGE_SIZE + 1, allServers.length)}-${Math.min(page * PAGE_SIZE, allServers.length)} 项`}
+        </div>
         <div className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
-          <span>共找到</span>
+          <span>共</span>
           <Badge variant="gray" size="sm">
             {allServers.length}
           </Badge>
@@ -445,7 +450,12 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
       {/* Server Grid */}
       {!loading && allServers.length > 0 && (
         <>
-          <div className="grid grid-cols-1 gap-16 md:grid-cols-2 lg:grid-cols-3">
+          <div
+            className="w-full grid gap-4 overflow-hidden"
+            style={{
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            }}
+          >
             {allServers
               .slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE)
               .map((server, index) => (
@@ -466,7 +476,7 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
 
           {/* Pagination for all sources (50 per page) */}
           {Math.ceil(allServers.length / PAGE_SIZE) > 1 && (
-            <div className="flex items-center justify-center pt-8">
+            <div className="flex items-center justify-center pt-4">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
