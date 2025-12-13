@@ -101,7 +101,6 @@ class MCPServerRegistry:
             "source": metadata.get("source", "official"),
             "banner": metadata.get("banner"),
             "description": metadata.get("description"),
-            "category": metadata.get("category", "capability"),  # Default to "capability" if not specified
             "metadata": metadata,  # Store full metadata for filtering
         }
 

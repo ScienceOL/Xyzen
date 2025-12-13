@@ -180,7 +180,6 @@ async def discover_mcp_servers(
                 "is_builtin": True,
                 "requires_auth": config.get("auth") is not None,
                 "is_default": config.get("is_default", False),
-                "category": config.get("category", "general"),
             }
         )
 
@@ -194,15 +193,9 @@ async def read_mcp_servers(
     user: str = Depends(get_current_user),
     offset: int = 0,
     limit: int = 100,
-    category: Optional[str] = None,
 ) -> list[McpServer]:
     # Filter MCP servers by current user
     statement = select(McpServer).where(McpServer.user_id == user)
-
-    # Filter by category if provided
-    if category:
-        # Category filtering removed - category field no longer exists
-        pass
 
     statement = statement.offset(offset).limit(limit)
     result = await session.exec(statement)
