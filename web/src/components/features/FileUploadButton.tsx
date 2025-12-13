@@ -52,16 +52,17 @@ export function FileUploadButton({
         onClick={handleClick}
         disabled={disabled || !canAddMoreFiles()}
         className={clsx(
-          "flex items-center justify-center rounded-lg p-2 transition-colors",
-          "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+          "flex items-center justify-center rounded-sm p-1.5 transition-colors",
+          "hover:bg-neutral-200/60 hover:text-neutral-700 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300",
           "disabled:opacity-50 disabled:cursor-not-allowed",
           "focus:outline-none",
+          "text-neutral-500 dark:text-neutral-400",
           className,
         )}
         title="Attach files"
         aria-label="Attach files"
       >
-        <PaperClipIcon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+        <PaperClipIcon className="h-4 w-4" />
       </button>
 
       <input
