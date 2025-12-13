@@ -160,14 +160,11 @@ export const mcpService = {
   },
 
   async getSearchServers(): Promise<McpServer[]> {
-    const response = await fetch(
-      `${getBackendUrl()}/xyzen/api/v1/mcps?category=search`,
-      {
-        headers: createAuthHeaders(),
-      },
-    );
+    const response = await fetch(`${getBackendUrl()}/xyzen/api/v1/mcps`, {
+      headers: createAuthHeaders(),
+    });
     if (!response.ok) {
-      throw new Error("Failed to fetch search MCP servers");
+      throw new Error("Failed to fetch MCP servers");
     }
     return response.json();
   },

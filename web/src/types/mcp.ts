@@ -7,7 +7,6 @@ export interface McpServer {
   status: "online" | "offline" | string;
   tools?: { name: string; description?: string }[];
   user_id: string;
-  category?: "search" | "capability" | "knowledge" | "integration" | "general";
 }
 
 /**
