@@ -109,13 +109,25 @@ class ChatModelFactory:
         import os
         import tempfile
 
+        # Extract google_search_enabled from runtime_kwargs
+        google_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as file:
             json.dump(credentials["vertex_sa"], file)
             tmp_path = file.name
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
 
-        return ChatVertexAI(
+        # Create the base model
+        llm = ChatVertexAI(
             model=model,
             location="global",
             **runtime_kwargs,
         )
+
+        # If built-in search is enabled, bind the google_search tool
+        # bind_tools() returns a Runnable, but it's still compatible with BaseChatModel interface
+        if google_search_enabled:
+            logger.info(f"Enabling built-in web search for Vertex AI model {model}")
+            llm = cast(BaseChatModel, llm.bind_tools([{"google_search": {}}]))
+
+        return llm

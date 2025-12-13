@@ -298,12 +298,12 @@ async def get_ai_response_stream_langchain_legacy(
         # Check if built-in search is enabled for this session
         google_search_enabled = session.google_search_enabled if session else False
 
-        # Create langchain agent
+        # Create langchain model
         # Pass google_search_enabled to enable built-in web search for supported models
         llm = user_provider_manager.create_langchain_model(
             provider_id, model=model_name, google_search_enabled=google_search_enabled
         )
-        # Pass session_id to load both agent-level and session-level MCP tools (e.g., search engines)
+        # Pass session_id to load both agent-level and session-level MCP tools
         session_id = topic.session_id if topic else None
         tools = await _prepare_langchain_tools(db, agent, session_id)
         langchain_agent: CompiledStateGraph = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
