@@ -7,7 +7,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from middleware.database.connection import AsyncSessionLocal
 from models.file import FileRead, FileReadWithUrl
 from models.message import Message as MessageModel
-from models.message import MessageCreate, MessageReadWithFiles
+from models.message import (
+    MessageCreate,
+    MessageReadWithCitations,
+    MessageReadWithFiles,
+    MessageReadWithFilesAndCitations,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +78,7 @@ class MessageRepository:
 
     async def delete_message(self, message_id: UUID, cascade_files: bool = True) -> bool:
         """
-        Deletes a message by its ID with optional cascade deletion of associated files.
+        Deletes a message by its ID with optional cascade deletion of associated files and citations.
         This function does NOT commit the transaction.
 
         Args:
@@ -87,6 +92,14 @@ class MessageRepository:
         message = await self.db.get(MessageModel, message_id)
         if not message:
             return False
+
+        # Delete associated citations (always cascade)
+        from repos.citation import CitationRepository
+
+        citation_repo = CitationRepository(self.db)
+        deleted_citations = await citation_repo.delete_citations_by_message(message_id)
+        if deleted_citations > 0:
+            logger.info(f"Deleted {deleted_citations} citations for message {message_id}")
 
         # Delete associated files if cascade is enabled
         if cascade_files:
@@ -287,3 +300,136 @@ class MessageRepository:
         )
 
         return message_with_files
+
+    async def get_messages_with_citations(
+        self, topic_id: UUID, order_by_created: bool = True, limit: int | None = None
+    ) -> list[MessageReadWithCitations]:
+        """
+        Fetches messages for a topic with their citations.
+
+        Args:
+            topic_id: The UUID of the topic.
+            order_by_created: If True, orders by created_at ascending.
+            limit: Optional limit on the number of messages returned.
+
+        Returns:
+            List of MessageReadWithCitations instances with citations populated.
+        """
+        from repos.citation import CitationRepository
+
+        logger.debug(f"Fetching messages with citations for topic_id: {topic_id}")
+
+        # Get messages
+        messages = await self.get_messages_by_topic(topic_id, order_by_created, limit)
+
+        # Get citations for each message
+        citation_repo = CitationRepository(self.db)
+        messages_with_citations = []
+
+        for message in messages:
+            citations = await citation_repo.get_citations_as_read(message.id)
+
+            message_with_citations = MessageReadWithCitations(
+                id=message.id,
+                role=message.role,
+                content=message.content,
+                topic_id=message.topic_id,
+                created_at=message.created_at,
+                citations=citations,
+            )
+            messages_with_citations.append(message_with_citations)
+
+        return messages_with_citations
+
+    async def get_messages_with_files_and_citations(
+        self, topic_id: UUID, order_by_created: bool = True, limit: int | None = None
+    ) -> list[MessageReadWithFilesAndCitations]:
+        """
+        Fetches messages for a topic with both file attachments and citations.
+
+        Args:
+            topic_id: The UUID of the topic.
+            order_by_created: If True, orders by created_at ascending.
+            limit: Optional limit on the number of messages returned.
+
+        Returns:
+            List of MessageReadWithFilesAndCitations instances with attachments and citations populated.
+        """
+        from repos.citation import CitationRepository
+        from repos.file import FileRepository
+
+        logger.debug(f"Fetching messages with files and citations for topic_id: {topic_id}")
+
+        # Get messages
+        messages = await self.get_messages_by_topic(topic_id, order_by_created, limit)
+
+        # Get files and citations for each message
+        file_repo = FileRepository(self.db)
+        citation_repo = CitationRepository(self.db)
+        messages_with_files_and_citations = []
+
+        for message in messages:
+            # Get files
+            files = await file_repo.get_files_by_message(message.id)
+            file_reads_with_urls: list[FileReadWithUrl | FileRead] = []
+            for file in files:
+                try:
+                    download_url = f"/xyzen/api/v1/files/{file.id}/download"
+                    file_with_url = FileReadWithUrl(
+                        **file.model_dump(),
+                        download_url=download_url,
+                    )
+                    file_reads_with_urls.append(file_with_url)
+                except Exception as e:
+                    logger.warning(f"Failed to generate download URL for file {file.id}: {e}")
+                    file_reads_with_urls.append(FileRead.model_validate(file))
+
+            # Get citations
+            citations = await citation_repo.get_citations_as_read(message.id)
+
+            message_with_files_and_citations = MessageReadWithFilesAndCitations(
+                id=message.id,
+                role=message.role,
+                content=message.content,
+                topic_id=message.topic_id,
+                created_at=message.created_at,
+                attachments=file_reads_with_urls,
+                citations=citations,
+            )
+            messages_with_files_and_citations.append(message_with_files_and_citations)
+
+        return messages_with_files_and_citations
+
+    async def get_message_with_citations(self, message_id: UUID) -> MessageReadWithCitations | None:
+        """
+        Fetches a single message with its citations.
+
+        Args:
+            message_id: The UUID of the message.
+
+        Returns:
+            MessageReadWithCitations instance with citations populated, or None if not found.
+        """
+        from repos.citation import CitationRepository
+
+        logger.debug(f"Fetching message with citations for message_id: {message_id}")
+
+        # Get the message
+        message = await self.get_message_by_id(message_id)
+        if not message:
+            return None
+
+        # Get citations for the message
+        citation_repo = CitationRepository(self.db)
+        citations = await citation_repo.get_citations_as_read(message.id)
+
+        message_with_citations = MessageReadWithCitations(
+            id=message.id,
+            role=message.role,
+            content=message.content,
+            topic_id=message.topic_id,
+            created_at=message.created_at,
+            citations=citations,
+        )
+
+        return message_with_citations

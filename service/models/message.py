@@ -6,6 +6,7 @@ from sqlalchemy import TIMESTAMP
 from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
+    from .citation import CitationRead
     from .file import FileRead, FileReadWithUrl
     from .topic import TopicRead
 
@@ -44,6 +45,19 @@ class MessageReadWithFiles(MessageBase):
     id: UUID
     created_at: datetime
     attachments: list["FileRead | FileReadWithUrl"] = []
+
+
+class MessageReadWithCitations(MessageBase):
+    id: UUID
+    created_at: datetime
+    citations: list["CitationRead"] = []
+
+
+class MessageReadWithFilesAndCitations(MessageBase):
+    id: UUID
+    created_at: datetime
+    attachments: list["FileRead | FileReadWithUrl"] = []
+    citations: list["CitationRead"] = []
 
 
 class MessageUpdate(SQLModel):

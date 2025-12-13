@@ -40,6 +40,8 @@ function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
     toolCalls: message.toolCalls
       ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
       : undefined,
+    attachments: message.attachments ? [...message.attachments] : undefined,
+    citations: message.citations ? [...message.citations] : undefined,
   });
 
   for (const msg of messages) {
@@ -664,6 +666,68 @@ export const createChatSlice: StateCreator<
               const regularMessage = event.data as import("../types").Message;
               if (!channel.messages.some((m) => m.id === regularMessage.id)) {
                 channel.messages.push(regularMessage);
+              }
+              break;
+            }
+
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore - search_citations is a valid event type from backend
+            case "search_citations": {
+              // Attach search citations to the most recent assistant message
+              const eventData = event.data as {
+                citations: Array<{
+                  url?: string;
+                  title?: string;
+                  cited_text?: string;
+                  start_index?: number;
+                  end_index?: number;
+                  search_queries?: string[];
+                }>;
+              };
+
+              // Find the most recent assistant message that's streaming or just finished
+              const lastAssistantIndex = channel.messages
+                .slice()
+                .reverse()
+                .findIndex(
+                  (m) =>
+                    m.role === "assistant" && (m.isStreaming || !m.citations),
+                );
+
+              if (lastAssistantIndex !== -1) {
+                const actualIndex =
+                  channel.messages.length - 1 - lastAssistantIndex;
+                const targetMessage = channel.messages[actualIndex];
+                console.log(
+                  `[Citation Debug] Attaching ${eventData.citations.length} citations to message ${targetMessage.id}`,
+                );
+                console.log(
+                  "[Citation Debug] Citations data:",
+                  eventData.citations,
+                );
+                console.log("[Citation Debug] Message before:", {
+                  id: targetMessage.id,
+                  role: targetMessage.role,
+                  hasCitations: !!targetMessage.citations,
+                  citationsLength: targetMessage.citations?.length || 0,
+                });
+
+                channel.messages[actualIndex].citations = eventData.citations;
+
+                console.log("[Citation Debug] Message after:", {
+                  id: channel.messages[actualIndex].id,
+                  role: channel.messages[actualIndex].role,
+                  hasCitations: !!channel.messages[actualIndex].citations,
+                  citationsLength:
+                    channel.messages[actualIndex].citations?.length || 0,
+                });
+                console.log(
+                  `Attached ${eventData.citations.length} citations to message ${targetMessage.id}`,
+                );
+              } else {
+                console.warn(
+                  "[Citation Debug] Could not find assistant message to attach citations",
+                );
               }
               break;
             }

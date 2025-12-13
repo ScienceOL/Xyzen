@@ -37,6 +37,15 @@ export interface MessageAttachment {
   thumbnail_url?: string;
 }
 
+export interface SearchCitation {
+  url?: string;
+  title?: string;
+  cited_text?: string;
+  start_index?: number;
+  end_index?: number;
+  search_queries?: string[];
+}
+
 export interface Message {
   id: string;
   clientId?: string;
@@ -54,6 +63,8 @@ export interface Message {
   isToolCalling?: boolean;
   // Multimodal support
   attachments?: MessageAttachment[];
+  // Search citations from built-in search
+  citations?: SearchCitation[];
 }
 
 export interface ChatChannel {

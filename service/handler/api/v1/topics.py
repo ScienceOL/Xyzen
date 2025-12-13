@@ -6,7 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from handler.api.v1.sessions import get_current_user
 from middleware.database import get_session
-from models.message import MessageReadWithFiles
+from models.message import MessageReadWithFilesAndCitations
 from models.topic import Topic as TopicModel
 from models.topic import TopicCreate, TopicRead, TopicUpdate
 from repos import MessageRepository, SessionRepository, TopicRepository
@@ -179,32 +179,35 @@ async def update_topic(
     return TopicRead(**updated_topic.model_dump())
 
 
-@router.get("/{topic_id}/messages", response_model=List[MessageReadWithFiles])
+@router.get("/{topic_id}/messages", response_model=List[MessageReadWithFilesAndCitations])
 async def get_topic_messages(
     topic: TopicModel = Depends(get_authorized_topic),
     db: AsyncSession = Depends(get_session),
-) -> List[MessageReadWithFiles]:
+) -> List[MessageReadWithFilesAndCitations]:
     """
-    Retrieve all messages within a topic with their file attachments, chronologically ordered.
+        Retrieve all messages within a topic with their file attachments and citations, chronologically ordered.
 
-    Returns messages in order of creation time (oldest first) for the specified topic.
-    Each message includes its associated file attachments for multimodal support.
-    Authorization is handled by the dependency which ensures the user owns the
-    session containing this topic.
+        Returns messages in order of creation time (oldest first) for the specified topic.
+        Each message includes its associated file attachments and search citations for multimodal support.
+    </text>
+        Authorization is handled by the dependency which ensures the user owns the
+        session containing this topic.
 
-    Args:
-        topic: Authorized topic instance (injected by dependency)
-        db: Database session (injected by dependency)
+        Args:
+            topic: Authorized topic instance (injected by dependency)
+            db: Database session (injected by dependency)
 
-    Returns:
-        List[MessageReadWithFiles]: Chronologically ordered list of messages with attachments
+        Returns:
+            List[MessageReadWithFilesAndCitations]: Chronologically ordered list of messages with attachments and citations
 
-    Raises:
-        HTTPException: 404 if topic/session not found, 403 if access denied
+        Raises:
+            HTTPException: 404 if topic/session not found, 403 if access denied
     """
     message_repo = MessageRepository(db)
-    messages_with_files = await message_repo.get_messages_with_files(topic.id, order_by_created=True)
-    return messages_with_files
+    messages_with_files_and_citations = await message_repo.get_messages_with_files_and_citations(
+        topic.id, order_by_created=True
+    )
+    return messages_with_files_and_citations
 
 
 @router.delete("/{topic_id}", status_code=204)

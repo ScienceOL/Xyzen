@@ -1,6 +1,7 @@
 import Markdown from "@/lib/Markdown";
 import type { Message } from "@/store/types";
 import LoadingMessage from "./LoadingMessage";
+import { SearchCitations } from "./SearchCitations";
 
 interface MessageContentProps {
   message: Message;
@@ -57,5 +58,12 @@ export default function MessageContent({ message }: MessageContentProps) {
   //   );
   // }
 
-  return <Markdown content={content} />;
+  return (
+    <>
+      <Markdown content={content} />
+      {message.citations && message.citations.length > 0 && (
+        <SearchCitations citations={message.citations} />
+      )}
+    </>
+  );
 }

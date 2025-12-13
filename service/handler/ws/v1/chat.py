@@ -13,9 +13,10 @@ from core.chat.topic_generator import generate_and_update_topic_title
 from core.consume import create_consume_for_chat
 from middleware.auth import AuthContext, get_auth_context_websocket
 from middleware.database.connection import AsyncSessionLocal
+from models.citation import CitationCreate
 from models.message import Message as MessageModel
 from models.message import MessageCreate
-from repos import FileRepository, MessageRepository, SessionRepository, TopicRepository
+from repos import CitationRepository, FileRepository, MessageRepository, SessionRepository, TopicRepository
 from schemas.chat_events import ChatClientEventType, ChatEventType, ToolCallStatus
 
 logger = logging.getLogger(__name__)
@@ -489,6 +490,7 @@ async def chat_websocket(
                 # Stream AI response
                 ai_message_id = None
                 full_content = ""
+                citations_data = []  # Track citations to save after message is created
 
                 # Token usage tracking
                 input_tokens = 0
@@ -578,6 +580,14 @@ async def chat_websocket(
                         full_content = stream_event["data"]["content"]
                         # Forward message to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
+                    elif stream_event["type"] == ChatEventType.SEARCH_CITATIONS:
+                        # Capture citations data to save to database after message is created
+                        citations = stream_event["data"].get("citations", [])
+                        if citations:
+                            logger.info(f"Captured {len(citations)} citations to save to database")
+                            citations_data.extend(citations)
+                        # Forward citations to frontend
+                        await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.ERROR:
                         full_content = stream_event["data"]["error"]
                         # Forward error to frontend
@@ -592,6 +602,28 @@ async def chat_websocket(
                     ai_message_create = MessageCreate(role="assistant", content=full_content, topic_id=topic_id)
                     ai_message = MessageModel.model_validate(ai_message_create)
                     ai_message = await message_repo.create_message(ai_message_create)
+
+                    # Save citations to database if any
+                    if citations_data:
+                        try:
+                            citation_repo = CitationRepository(db)
+                            citation_creates = []
+                            for citation in citations_data:
+                                citation_create = CitationCreate(
+                                    message_id=ai_message.id,
+                                    url=citation.get("url", ""),
+                                    title=citation.get("title"),
+                                    cited_text=citation.get("cited_text"),
+                                    start_index=citation.get("start_index"),
+                                    end_index=citation.get("end_index"),
+                                    search_queries=citation.get("search_queries"),
+                                )
+                                citation_creates.append(citation_create)
+
+                            saved_citations = await citation_repo.bulk_create_citations(citation_creates)
+                            logger.info(f"Saved {len(saved_citations)} citations for message {ai_message.id}")
+                        except Exception as e:
+                            logger.error(f"Failed to save citations for message {ai_message.id}: {e}")
 
                     # Update topic's updated_at timestamp again after AI response
                     await topic_repo.update_topic_timestamp(topic_refreshed.id)

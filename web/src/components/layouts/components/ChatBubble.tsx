@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useDeferredValue, useMemo } from "react";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
+import { SearchCitations } from "./SearchCitations";
 import ToolCallCard from "./ToolCallCard";
 
 interface ChatBubbleProps {
@@ -25,6 +26,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     isStreaming,
     toolCalls,
     attachments,
+    citations,
   } = message;
 
   // Use deferred value and memoization to optimize rendering performance
@@ -174,6 +176,13 @@ function ChatBubble({ message }: ChatBubbleProps) {
             {!isUserMessage && attachments && attachments.length > 0 && (
               <div className="mt-3">
                 <MessageAttachments attachments={attachments} />
+              </div>
+            )}
+
+            {/* Search Citations - shown after attachments for assistant messages */}
+            {!isUserMessage && citations && citations.length > 0 && (
+              <div className="mt-3">
+                <SearchCitations citations={citations} />
               </div>
             )}
           </div>

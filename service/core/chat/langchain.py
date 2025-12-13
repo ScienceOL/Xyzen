@@ -409,7 +409,79 @@ async def get_ai_response_stream_langchain_legacy(
                         and (not hasattr(last_message, "tool_calls") or not last_message.tool_calls)
                     ):
                         # Do not emit content here; 'messages' stream provides token chunks.
-                        # Keeping this branch prevents other handlers from treating it as an error.
+                        # However, extract citations from response_metadata if available
+                        if hasattr(last_message, "response_metadata"):
+                            response_metadata = last_message.response_metadata
+                            if isinstance(response_metadata, dict):
+                                grounding_metadata = response_metadata.get("grounding_metadata", {})
+
+                                if grounding_metadata:
+                                    logger.info("Found grounding_metadata in final model response")
+                                    citations = []
+
+                                    # Extract web search queries
+                                    web_search_queries = grounding_metadata.get("web_search_queries", [])
+
+                                    # Extract grounding chunks (sources)
+                                    grounding_chunks = grounding_metadata.get("grounding_chunks", [])
+
+                                    # Extract grounding supports (mappings between text segments and sources)
+                                    grounding_supports = grounding_metadata.get("grounding_supports", [])
+
+                                    # Build a map of chunk_index -> chunk data for quick lookup
+                                    chunk_map = {}
+                                    for idx, chunk in enumerate(grounding_chunks):
+                                        if isinstance(chunk, dict) and "web" in chunk:
+                                            web_info = chunk["web"]
+                                            chunk_map[idx] = {
+                                                "url": web_info.get("uri"),
+                                                "title": web_info.get("title"),
+                                            }
+
+                                    # Create citations from grounding_supports
+                                    for support in grounding_supports:
+                                        if isinstance(support, dict):
+                                            segment = support.get("segment", {})
+                                            chunk_indices = support.get("grounding_chunk_indices", [])
+
+                                            # Get the cited text from segment
+                                            cited_text = segment.get("text", "")
+                                            start_index = segment.get("start_index")
+                                            end_index = segment.get("end_index")
+
+                                            # For each chunk index, create a citation
+                                            for chunk_idx in chunk_indices:
+                                                if chunk_idx in chunk_map:
+                                                    citation = {
+                                                        "url": chunk_map[chunk_idx]["url"],
+                                                        "title": chunk_map[chunk_idx]["title"],
+                                                        "cited_text": cited_text,
+                                                        "start_index": start_index,
+                                                        "end_index": end_index,
+                                                    }
+                                                    if web_search_queries:
+                                                        citation["search_queries"] = web_search_queries
+                                                    citations.append(citation)
+
+                                    # Deduplicate citations by URL
+                                    if citations:
+                                        seen_urls = set()
+                                        unique_citations = []
+                                        for citation in citations:
+                                            url = citation.get("url")
+                                            if url and url not in seen_urls:
+                                                seen_urls.add(url)
+                                                unique_citations.append(citation)
+
+                                        if unique_citations:
+                                            logger.info(
+                                                f"Emitting {len(unique_citations)} unique search citations from final response"
+                                            )
+                                            yield {
+                                                "type": ChatEventType.SEARCH_CITATIONS,
+                                                "data": {"citations": unique_citations},
+                                            }
+
                         logger.debug("Final model response update received; deferring to token stream")
 
             elif mode == "messages":
@@ -422,8 +494,6 @@ async def get_ai_response_stream_langchain_legacy(
                 except Exception:
                     logger.debug("Malformed messages data: %r", data)
                     continue
-
-                logger.debug(f"Metadata: {message_chunk}")
 
                 # Extract token usage metadata if available
                 if hasattr(message_chunk, "usage_metadata"):
