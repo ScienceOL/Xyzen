@@ -1,5 +1,8 @@
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
+import { useXyzen } from "@/store";
+import { useFileDragDrop } from "@/hooks/useFileDragDrop";
+import { DragDropOverlay } from "@/components/shared/DragDropOverlay";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => boolean | void;
@@ -19,6 +22,26 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [inputMessage, setInputMessage] = useState(initialValue);
   // 添加一个状态来跟踪输入法的组合状态
   const [isComposing, setIsComposing] = useState(false);
+
+  const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen();
+
+  // Drag and drop functionality
+  const { isDragging, dragProps } = useFileDragDrop({
+    onFilesDropped: async (files) => {
+      if (!canAddMoreFiles()) {
+        console.error(`Maximum ${fileUploadOptions.maxFiles} files allowed`);
+        return;
+      }
+      try {
+        await addFiles(files);
+      } catch (error) {
+        console.error("Failed to add files:", error);
+      }
+    },
+    disabled,
+    maxFiles: fileUploadOptions.maxFiles,
+    allowedTypes: fileUploadOptions.allowedTypes,
+  });
 
   // Use effect to update input when initialValue changes
   useEffect(() => {
@@ -55,7 +78,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="w-full bg-neutral-50/30 dark:bg-neutral-900/20">
+    <div
+      className="relative w-full bg-neutral-50/30 dark:bg-neutral-900/20"
+      {...dragProps}
+    >
+      {/* Drag and drop overlay */}
+      <DragDropOverlay
+        isVisible={isDragging}
+        title="Drop files here"
+        maxFiles={fileUploadOptions.maxFiles}
+        canAddMore={canAddMoreFiles()}
+      />
+
       {/* 输入框容器 */}
       <div className="relative flex border-t border-neutral-200/40 px-4 py-3 transition-all duration-200 dark:border-neutral-800/40">
         <textarea
