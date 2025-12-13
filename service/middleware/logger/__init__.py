@@ -46,11 +46,6 @@ LOGGING_CONFIG: dict[str, Any] = {
             "handlers": ["default"],
             "propagate": False,
         },
-        "uvicorn.error": {
-            "level": "WARNING",
-            "handlers": ["default"],
-            "propagate": False,
-        },
         "uvicorn": {
             "level": "WARNING",
             "handlers": ["default"],
@@ -62,6 +57,21 @@ LOGGING_CONFIG: dict[str, Any] = {
             "propagate": False,
         },
         "urllib3": {
+            "level": "WARNING",
+            "handlers": ["default"],
+            "propagate": False,
+        },
+        "botocore": {
+            "level": "WARNING",
+            "handlers": ["default"],
+            "propagate": False,
+        },
+        "LiteLLM": {
+            "level": "WARNING",
+            "handlers": ["default"],
+            "propagate": False,
+        },
+        "grpc": {
             "level": "WARNING",
             "handlers": ["default"],
             "propagate": False,
