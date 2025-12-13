@@ -14,7 +14,7 @@ from core.mcp import async_check_mcp_server_status
 from internal.configs import configs
 from middleware.auth import get_current_user
 from middleware.database.connection import get_session
-from models.mcp import McpServer, McpServerCategory, McpServerCreate, McpServerUpdate
+from models.mcp import McpServer, McpServerCreate, McpServerUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -201,11 +201,8 @@ async def read_mcp_servers(
 
     # Filter by category if provided
     if category:
-        try:
-            category_enum = McpServerCategory(category)
-            statement = statement.where(McpServer.category == category_enum)
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
+        # Category filtering removed - category field no longer exists
+        pass
 
     statement = statement.offset(offset).limit(limit)
     result = await session.exec(statement)

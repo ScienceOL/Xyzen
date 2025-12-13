@@ -260,13 +260,12 @@ class SessionRepository:
         result = await self.db.exec(statement)
         return result.first()
 
-    async def get_session_mcp_servers(self, session_id: UUID, category: str | None = None) -> list[McpServer]:
+    async def get_session_mcp_servers(self, session_id: UUID) -> list[McpServer]:
         """
-        Get all MCP servers linked to a session, optionally filtered by category.
+        Get all MCP servers linked to a session.
 
         Args:
             session_id: The UUID of the session.
-            category: Optional category filter (e.g., "search", "capability").
 
         Returns:
             List of McpServer instances linked to the session.
@@ -294,9 +293,7 @@ class SessionRepository:
         for mcp_id in mcp_server_ids:
             server = await self.db.get(McpServer, mcp_id)
             if server:
-                # Apply category filter if provided
-                if category is None or server.category.value == category:
-                    servers.append(server)
+                servers.append(server)
 
         logger.debug(f"Found {len(servers)} MCP servers for session {session_id}")
         return servers
@@ -314,8 +311,8 @@ class SessionRepository:
         """
         logger.debug(f"Fetching active search MCP for session {session_id}")
 
-        # Get all linked MCP servers for this session with search category
-        servers = await self.get_session_mcp_servers(session_id, category="search")
+        # Get all linked MCP servers for this session
+        servers = await self.get_session_mcp_servers(session_id)
 
         # Return the first one if any exists
         if servers:
@@ -347,8 +344,8 @@ class SessionRepository:
         if not mcp_server:
             raise ValueError(f"MCP server {mcp_server_id} not found")
 
-        # Unlink all existing search MCPs for this session (only search category)
-        existing_servers = await self.get_session_mcp_servers(session_id, category="search")
+        # Unlink all existing MCPs for this session
+        existing_servers = await self.get_session_mcp_servers(session_id)
         for server in existing_servers:
             await self.unlink_session_from_mcp(session_id, server.id)
 
