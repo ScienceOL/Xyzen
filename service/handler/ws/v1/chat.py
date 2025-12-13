@@ -490,6 +490,11 @@ async def chat_websocket(
                 ai_message_id = None
                 full_content = ""
 
+                # Token usage tracking
+                input_tokens = 0
+                output_tokens = 0
+                total_tokens = 0
+
                 async for stream_event in get_ai_response_stream(
                     db, message_text, topic_refreshed, user, manager, connection_id
                 ):
@@ -508,6 +513,17 @@ async def chat_websocket(
                     elif stream_event["type"] == ChatEventType.STREAMING_END:
                         full_content = stream_event["data"].get("content", full_content)
                         # Forward streaming_end to frontend
+                        await manager.send_personal_message(json.dumps(stream_event), connection_id)
+                    elif stream_event["type"] == ChatEventType.TOKEN_USAGE:
+                        # Capture token usage information
+                        token_data = stream_event["data"]
+                        input_tokens = token_data.get("input_tokens", 0)
+                        output_tokens = token_data.get("output_tokens", 0)
+                        total_tokens = token_data.get("total_tokens", 0)
+                        logger.info(
+                            f"Captured token usage: input={input_tokens}, output={output_tokens}, total={total_tokens}"
+                        )
+                        # Forward token usage to frontend (optional, for debugging/transparency)
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.TOOL_CALL_REQUEST:
                         # Forward tool call request to frontend
@@ -582,8 +598,25 @@ async def chat_websocket(
 
                     # === 创建消费记录 (Final Settlement) ===
                     try:
-                        # 计算总消费金额
-                        total_cost = 3 + len(full_content) // 100
+                        # 计算总消费金额 - 基于真实的 token 使用量
+                        # Pricing formula: base_cost + token_based_cost
+                        # Token pricing: input tokens cost less, output tokens cost more
+                        # Example: 1 point per 1000 input tokens, 3 points per 1000 output tokens
+                        if total_tokens > 0:
+                            # Use real token counts for accurate billing
+                            token_cost = (input_tokens * 1 + output_tokens * 3) // 1000
+                            total_cost = base_cost + token_cost
+                            logger.info(
+                                f"Token-based billing: input={input_tokens}, output={output_tokens}, "
+                                f"total={total_tokens}, cost={token_cost}, total_cost={total_cost}"
+                            )
+                        else:
+                            # Fallback to character-based estimation if token info not available
+                            total_cost = base_cost + len(full_content) // 100
+                            logger.warning(
+                                f"Token usage not available, using character-based estimation: "
+                                f"content_length={len(full_content)}, total_cost={total_cost}"
+                            )
 
                         # 计算剩余需要扣除的金额
                         remaining_amount = total_cost - pre_deducted_amount
@@ -604,10 +637,14 @@ async def chat_websocket(
                                 topic_id=topic_id,
                                 message_id=ai_message.id,
                                 description=f"Chat message consume (settlement): {remaining_amount} points",
+                                input_tokens=input_tokens if total_tokens > 0 else None,
+                                output_tokens=output_tokens if total_tokens > 0 else None,
+                                total_tokens=total_tokens if total_tokens > 0 else None,
                             )
                             logger.info(
                                 f"Settlement consume record created: {consume_record.id}, "
                                 f"user: {auth_ctx.user_id}, amount: {remaining_amount}, "
+                                f"tokens: input={input_tokens}, output={output_tokens}, total={total_tokens}, "
                                 f"state: {consume_record.consume_state}"
                             )
                     except ErrCodeError as e:

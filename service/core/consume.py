@@ -46,6 +46,9 @@ class ConsumeService:
         topic_id: UUID | None = None,
         message_id: UUID | None = None,
         description: str | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        total_tokens: int | None = None,
     ) -> ConsumeRecord:
         """
         Create consumption record and execute remote billing (if needed)
@@ -61,6 +64,9 @@ class ConsumeService:
             topic_id: Associated topic ID
             message_id: Associated message ID
             description: Consumption description
+            input_tokens: Number of input tokens used
+            output_tokens: Number of output tokens generated
+            total_tokens: Total tokens (input + output)
 
         Returns:
             Created consumption record
@@ -100,6 +106,9 @@ class ConsumeService:
             topic_id=topic_id,
             message_id=message_id,
             description=description,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
             consume_state=initial_state,
         )
 
@@ -315,6 +324,9 @@ async def create_consume_for_chat(
     topic_id: UUID | None = None,
     message_id: UUID | None = None,
     description: str | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    total_tokens: int | None = None,
 ) -> ConsumeRecord:
     """
     Convenience function to create consumption record for chat
@@ -329,6 +341,9 @@ async def create_consume_for_chat(
         topic_id: Topic ID
         message_id: Message ID
         description: Description
+        input_tokens: Number of input tokens used
+        output_tokens: Number of output tokens generated
+        total_tokens: Total tokens (input + output)
 
     Returns:
         Consumption record
@@ -343,4 +358,7 @@ async def create_consume_for_chat(
         topic_id=topic_id,
         message_id=message_id,
         description=description or "Chat message consume",
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
     )

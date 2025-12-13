@@ -20,6 +20,11 @@ class ConsumeRecordBase(SQLModel):
     message_id: UUID | None = Field(default=None, description="Associated message ID")
     description: str | None = Field(default=None, description="Consumption description")
 
+    # Token usage tracking
+    input_tokens: int | None = Field(default=None, description="Number of input tokens used")
+    output_tokens: int | None = Field(default=None, description="Number of output tokens generated")
+    total_tokens: int | None = Field(default=None, description="Total tokens (input + output)")
+
     # Billing status
     consume_state: str = Field(default="pending", description="Consumption state: pending/success/failed")
     remote_error: str | None = Field(default=None, description="Remote billing error information")
@@ -73,6 +78,9 @@ class ConsumeRecordUpdate(SQLModel):
     topic_id: UUID | None = Field(default=None, description="Associated topic ID")
     message_id: UUID | None = Field(default=None, description="Associated message ID")
     description: str | None = Field(default=None, description="Consumption description")
+    input_tokens: int | None = Field(default=None, description="Number of input tokens used")
+    output_tokens: int | None = Field(default=None, description="Number of output tokens generated")
+    total_tokens: int | None = Field(default=None, description="Total tokens (input + output)")
     consume_state: str | None = Field(default=None, description="Consumption state: pending/success/failed")
     remote_error: str | None = Field(default=None, description="Remote billing error information")
     remote_response: str | None = Field(default=None, description="Remote billing response")

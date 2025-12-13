@@ -306,6 +306,11 @@ async def get_ai_response_stream_langchain_legacy(
         # got_stream_tokens = False  # whether we received token-by-token chunks
         token_count = 0  # Track tokens for batch logging
 
+        # Token usage tracking
+        total_input_tokens = 0
+        total_output_tokens = 0
+        total_tokens = 0
+
         # Use astream with multiple stream modes: "updates" for step progress, "messages" for token streaming
         logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
         # Load long-term memory (DB-backed) which includes the current message with attachments
@@ -407,6 +412,23 @@ async def get_ai_response_stream_langchain_legacy(
                     logger.debug("Malformed messages data: %r", data)
                     continue
 
+                logger.debug(f"Metadata: {message_chunk}")
+
+                # Extract token usage metadata if available
+                if hasattr(message_chunk, "usage_metadata"):
+                    usage_metadata = message_chunk.usage_metadata
+                    if isinstance(usage_metadata, dict):
+                        total_input_tokens = usage_metadata.get("input_tokens", total_input_tokens)
+                        total_output_tokens = usage_metadata.get("output_tokens", total_output_tokens)
+                        total_tokens = usage_metadata.get("total_tokens", total_tokens)
+
+                        logger.debug(
+                            "Token usage updated: input=%d, output=%d, total=%d",
+                            total_input_tokens,
+                            total_output_tokens,
+                            total_tokens,
+                        )
+
                 # Batch logging: only log metadata occasionally to reduce overhead
                 token_count += 1
                 if token_count == 1 or token_count % STREAMING_LOG_BATCH_SIZE == 0:
@@ -468,6 +490,23 @@ async def get_ai_response_stream_langchain_legacy(
                 "type": ChatEventType.STREAMING_END,
                 "data": {"id": stream_id, "created_at": asyncio.get_event_loop().time()},
             }
+
+            # Emit token usage information if we captured it
+            if total_tokens > 0 or total_input_tokens > 0 or total_output_tokens > 0:
+                logger.info(
+                    "Emitting token usage: input=%d, output=%d, total=%d",
+                    total_input_tokens,
+                    total_output_tokens,
+                    total_tokens,
+                )
+                yield {
+                    "type": ChatEventType.TOKEN_USAGE,
+                    "data": {
+                        "input_tokens": total_input_tokens,
+                        "output_tokens": total_output_tokens,
+                        "total_tokens": total_tokens,
+                    },
+                }
 
     except Exception as e:
         logger.error(f"Agent execution failed: {e}", exc_info=True)
