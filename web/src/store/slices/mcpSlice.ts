@@ -153,7 +153,6 @@ export const createMcpSlice: StateCreator<
         description: server.description,
         url: `${backendUrl}${mountPath}`,
         token: token || "",
-        category: server.data.category || "capability",
       };
 
       const newServer = await mcpService.createMcpServer(serverToCreate);
