@@ -71,67 +71,94 @@ class MessageRepository:
         await self.db.refresh(message)
         return message
 
-    async def delete_message(self, message_id: UUID) -> bool:
+    async def delete_message(self, message_id: UUID, cascade_files: bool = True) -> bool:
         """
-        Deletes a message by its ID.
+        Deletes a message by its ID with optional cascade deletion of associated files.
         This function does NOT commit the transaction.
 
         Args:
             message_id: The UUID of the message to delete.
+            cascade_files: If True, also deletes associated files from storage and database (default: True)
 
         Returns:
             True if the message was deleted, False if not found.
         """
-        logger.debug(f"Deleting message with id: {message_id}")
+        logger.debug(f"Deleting message with id: {message_id}, cascade_files: {cascade_files}")
         message = await self.db.get(MessageModel, message_id)
         if not message:
             return False
+
+        # Delete associated files if cascade is enabled
+        if cascade_files:
+            from core.storage import get_storage_service
+            from repos.file import FileRepository
+
+            file_repo = FileRepository(self.db)
+            files = await file_repo.get_files_by_message(message_id)
+
+            if files:
+                storage = get_storage_service()
+                storage_keys = [file.storage_key for file in files]
+
+                # Delete from object storage
+                try:
+                    await storage.delete_files(storage_keys)
+                    logger.info(f"Deleted {len(storage_keys)} files from storage for message {message_id}")
+                except Exception as e:
+                    logger.error(f"Failed to delete files from storage for message {message_id}: {e}")
+                    # Continue with database deletion even if storage deletion fails
+
+                # Delete file records from database
+                for file in files:
+                    await file_repo.hard_delete_file(file.id)
+
+                logger.info(f"Deleted {len(files)} file records for message {message_id}")
 
         await self.db.delete(message)
         await self.db.flush()
         return True
 
-    async def delete_messages_by_topic(self, topic_id: UUID) -> int:
+    async def delete_messages_by_topic(self, topic_id: UUID, cascade_files: bool = True) -> int:
         """
-        Deletes all messages for a given topic.
+        Deletes all messages for a given topic with optional cascade deletion of files.
         This function does NOT commit the transaction.
 
         Args:
             topic_id: The UUID of the topic.
+            cascade_files: If True, also deletes associated files from storage and database (default: True)
 
         Returns:
             Number of messages deleted.
         """
-        logger.debug(f"Deleting all messages for topic_id: {topic_id}")
+        logger.debug(f"Deleting all messages for topic_id: {topic_id}, cascade_files: {cascade_files}")
         statement = select(MessageModel).where(MessageModel.topic_id == topic_id)
         result = await self.db.exec(statement)
         messages = list(result.all())
 
         count = 0
         for message in messages:
-            await self.db.delete(message)
-            count += 1
-
-        if count > 0:
-            await self.db.flush()
+            # Use delete_message with cascade to handle files
+            if await self.delete_message(message.id, cascade_files=cascade_files):
+                count += 1
 
         return count
 
-    async def bulk_delete_messages(self, message_ids: list[UUID]) -> int:
+    async def bulk_delete_messages(self, message_ids: list[UUID], cascade_files: bool = True) -> int:
         """
-        Deletes multiple messages by their IDs.
+        Deletes multiple messages by their IDs with optional cascade deletion of files.
         This function does NOT commit the transaction.
 
         Args:
             message_ids: List of message UUIDs to delete.
+            cascade_files: If True, also deletes associated files from storage and database (default: True)
 
         Returns:
             Number of messages deleted.
         """
-        logger.debug(f"Bulk deleting {len(message_ids)} messages")
+        logger.debug(f"Bulk deleting {len(message_ids)} messages, cascade_files: {cascade_files}")
         count = 0
         for message_id in message_ids:
-            if await self.delete_message(message_id):
+            if await self.delete_message(message_id, cascade_files=cascade_files):
                 count += 1
         return count
 
@@ -180,7 +207,7 @@ class MessageRepository:
             files = await file_repo.get_files_by_message(message.id)
 
             # Add download URLs to file records using backend API endpoint
-            file_reads_with_urls = []
+            file_reads_with_urls: list[FileReadWithUrl | FileRead] = []
             for file in files:
                 try:
                     # Use backend download endpoint instead of presigned URL
