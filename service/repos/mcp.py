@@ -190,3 +190,48 @@ class McpRepository:
         servers = list(result.all())
         logger.debug(f"Found {len(servers)} MCP servers with tools for user {user_id}")
         return servers
+
+    async def get_servers_by_category(self, user_id: str, category: str) -> list[McpServer]:
+        """
+        Get MCP servers filtered by category for a user.
+
+        Args:
+            user_id: The user ID to fetch servers for.
+            category: The category to filter by (e.g., "search", "capability", "knowledge").
+
+        Returns:
+            List of McpServer instances matching the category.
+        """
+        logger.debug(f"Fetching MCP servers with category '{category}' for user_id: {user_id}")
+        result = await self.db.exec(
+            select(McpServer).where(
+                McpServer.user_id == user_id,
+                McpServer.category == category,
+            )
+        )
+        servers = list(result.all())
+        logger.debug(f"Found {len(servers)} MCP servers with category '{category}' for user {user_id}")
+        return servers
+
+    async def get_online_servers_by_category(self, user_id: str, category: str) -> list[McpServer]:
+        """
+        Get online MCP servers filtered by category for a user.
+
+        Args:
+            user_id: The user ID to fetch servers for.
+            category: The category to filter by (e.g., "search", "capability", "knowledge").
+
+        Returns:
+            List of online McpServer instances matching the category.
+        """
+        logger.debug(f"Fetching online MCP servers with category '{category}' for user_id: {user_id}")
+        result = await self.db.exec(
+            select(McpServer).where(
+                McpServer.user_id == user_id,
+                McpServer.category == category,
+                McpServer.status == "online",
+            )
+        )
+        servers = list(result.all())
+        logger.debug(f"Found {len(servers)} online MCP servers with category '{category}' for user {user_id}")
+        return servers

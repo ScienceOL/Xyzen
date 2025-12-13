@@ -76,5 +76,15 @@ LOGGING_CONFIG: dict[str, Any] = {
             "handlers": ["default"],
             "propagate": False,
         },
+        "httpcore": {
+            "level": "WARNING",
+            "handlers": ["default"],
+            "propagate": False,
+        },
+        "mcp": {
+            "level": "WARNING",
+            "handlers": ["default"],
+            "propagate": False,
+        },
     },
 }

@@ -1,12 +1,14 @@
-from typing import List
+from typing import Any, Dict, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.agent_type_detector import AgentTypeDetector
 from middleware.auth import get_current_user
 from middleware.database import get_session
+from models.mcp import McpServer
 from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics, SessionUpdate
 from models.topic import TopicCreate, TopicRead
 from repos import MessageRepository, SessionRepository, TopicRepository
@@ -21,6 +23,24 @@ except Exception as e:
     logging.getLogger(__name__).warning(f"Failed to rebuild SessionReadWithTopics: {e}")
 
 router = APIRouter(tags=["sessions"])
+
+
+# Pydantic models for search engine endpoints
+class SetSearchEngineRequest(BaseModel):
+    """Request model for setting session's search engine"""
+
+    mcp_server_id: str
+
+
+class SearchEngineResponse(BaseModel):
+    """Response model for search engine information"""
+
+    id: str
+    name: str
+    description: str | None
+    status: str
+    url: str
+    tools: List[Dict[str, Any]] | None
 
 
 @router.post("/", response_model=SessionRead)
@@ -279,3 +299,164 @@ async def update_session(
 
     await db.commit()
     return SessionRead(**updated_session.model_dump())
+
+
+@router.get("/{session_id}/search-engine", response_model=SearchEngineResponse | None)
+async def get_session_search_engine(
+    *,
+    session_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    user: str = Depends(get_current_user),
+) -> SearchEngineResponse | None:
+    """
+    Get the active search engine (MCP server) for a session.
+
+    Args:
+        session_id: UUID of the session
+        db: Database session (injected by dependency)
+        user: Authenticated user ID (injected by dependency)
+
+    Returns:
+        SearchEngineResponse: The active search engine, or None if not set
+
+    Raises:
+        HTTPException: 404 if session not found, 403 if user doesn't own the session
+    """
+    session_repo = SessionRepository(db)
+
+    # Verify session exists and belongs to user
+    session = await session_repo.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to access this session")
+
+    # Get active search MCP (category='search')
+    search_mcp = await session_repo.get_active_search_mcp(session_id)
+
+    if not search_mcp:
+        return None
+
+    return SearchEngineResponse(
+        id=str(search_mcp.id),
+        name=search_mcp.name,
+        description=search_mcp.description,
+        status=search_mcp.status,
+        url=search_mcp.url,
+        tools=search_mcp.tools,
+    )
+
+
+@router.put("/{session_id}/search-engine", response_model=SearchEngineResponse)
+async def set_session_search_engine(
+    *,
+    session_id: UUID,
+    request: SetSearchEngineRequest,
+    db: AsyncSession = Depends(get_session),
+    user: str = Depends(get_current_user),
+) -> SearchEngineResponse:
+    """
+    Set the active search engine (MCP server) for a session.
+    This will unlink any previously linked search MCP and link the new one.
+    Only MCP servers with category='search' should be used.
+
+    Args:
+        session_id: UUID of the session
+        request: Request containing the MCP server ID to set as active
+        db: Database session (injected by dependency)
+        user: Authenticated user ID (injected by dependency)
+
+    Returns:
+        SearchEngineResponse: The newly set search engine
+
+    Raises:
+        HTTPException: 404 if session or MCP server not found,
+                      403 if user doesn't own the session or MCP server,
+                      400 if MCP server ID is invalid
+    """
+    session_repo = SessionRepository(db)
+
+    # Verify session exists and belongs to user
+    session = await session_repo.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to access this session")
+
+    # Verify MCP server exists
+    try:
+        mcp_server_id = UUID(request.mcp_server_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid MCP server ID format")
+
+    mcp_server = await db.get(McpServer, mcp_server_id)
+    if not mcp_server:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+
+    # Verify MCP server belongs to user
+    if mcp_server.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to use this MCP server")
+
+    # Set as active search MCP
+    try:
+        active_mcp = await session_repo.set_active_search_mcp(session_id, mcp_server_id)
+        await db.commit()
+
+        return SearchEngineResponse(
+            id=str(active_mcp.id),
+            name=active_mcp.name,
+            description=active_mcp.description,
+            status=active_mcp.status,
+            url=active_mcp.url,
+            tools=active_mcp.tools,
+        )
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        import logging
+
+        logging.getLogger(__name__).error(f"Failed to set search engine for session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to set search engine")
+
+
+@router.delete("/{session_id}/search-engine")
+async def remove_session_search_engine(
+    *,
+    session_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    user: str = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Remove the search engine (MCP server) from a session.
+    This unlinks all search category MCPs from the session.
+
+    Args:
+        session_id: UUID of the session
+        db: Database session (injected by dependency)
+        user: Authenticated user ID (injected by dependency)
+
+    Returns:
+        dict: Success response with number of links removed
+
+    Raises:
+        HTTPException: 404 if session not found, 403 if user doesn't own the session
+    """
+    session_repo = SessionRepository(db)
+
+    # Verify session exists and belongs to user
+    session = await session_repo.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to access this session")
+
+    # Unlink all search MCPs
+    count = await session_repo.unlink_all_session_mcps(session_id)
+    await db.commit()
+
+    return {"ok": True, "removed_count": count}

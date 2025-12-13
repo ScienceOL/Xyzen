@@ -4,6 +4,8 @@ from uuid import UUID
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from models.links import SessionMcpServerLink
+from models.mcp import McpServer
 from models.sessions import Session as SessionModel
 from models.sessions import SessionCreate, SessionUpdate
 from models.topic import Topic
@@ -180,3 +182,204 @@ class SessionRepository:
         )
         result = await self.db.exec(statement)
         return list(result.all())
+
+    # Session-MCP link methods (for search engines and other session-level MCPs)
+    async def link_session_to_mcp(self, session_id: UUID, mcp_server_id: UUID) -> SessionMcpServerLink:
+        """
+        Links a session to an MCP server (e.g., search engine).
+        This function does NOT commit the transaction, but it does flush the session.
+
+        Args:
+            session_id: The UUID of the session.
+            mcp_server_id: The UUID of the MCP server.
+
+        Returns:
+            The newly created SessionMcpServerLink instance.
+        """
+        logger.debug(f"Linking session {session_id} to MCP server {mcp_server_id}")
+
+        # Check if link already exists
+        existing = await self.get_session_mcp_link(session_id, mcp_server_id)
+        if existing:
+            logger.debug(f"Link already exists between session {session_id} and MCP server {mcp_server_id}")
+            return existing
+
+        link = SessionMcpServerLink(session_id=session_id, mcp_server_id=mcp_server_id)
+        self.db.add(link)
+        await self.db.flush()
+
+        logger.info(f"Linked session {session_id} to MCP server {mcp_server_id}")
+        return link
+
+    async def unlink_session_from_mcp(self, session_id: UUID, mcp_server_id: UUID) -> bool:
+        """
+        Unlinks a session from an MCP server.
+        This function does NOT commit the transaction.
+
+        Args:
+            session_id: The UUID of the session.
+            mcp_server_id: The UUID of the MCP server.
+
+        Returns:
+            True if the link was deleted, False if not found.
+        """
+        logger.debug(f"Unlinking session {session_id} from MCP server {mcp_server_id}")
+
+        statement = select(SessionMcpServerLink).where(
+            SessionMcpServerLink.session_id == session_id, SessionMcpServerLink.mcp_server_id == mcp_server_id
+        )
+        result = await self.db.exec(statement)
+        link = result.first()
+
+        if not link:
+            logger.debug(f"No link found between session {session_id} and MCP server {mcp_server_id}")
+            return False
+
+        await self.db.delete(link)
+        await self.db.flush()
+
+        logger.info(f"Unlinked session {session_id} from MCP server {mcp_server_id}")
+        return True
+
+    async def get_session_mcp_link(self, session_id: UUID, mcp_server_id: UUID) -> SessionMcpServerLink | None:
+        """
+        Get a specific session-MCP link.
+
+        Args:
+            session_id: The UUID of the session.
+            mcp_server_id: The UUID of the MCP server.
+
+        Returns:
+            The SessionMcpServerLink if found, None otherwise.
+        """
+        logger.debug(f"Fetching link between session {session_id} and MCP server {mcp_server_id}")
+
+        statement = select(SessionMcpServerLink).where(
+            SessionMcpServerLink.session_id == session_id, SessionMcpServerLink.mcp_server_id == mcp_server_id
+        )
+        result = await self.db.exec(statement)
+        return result.first()
+
+    async def get_session_mcp_servers(self, session_id: UUID, category: str | None = None) -> list[McpServer]:
+        """
+        Get all MCP servers linked to a session, optionally filtered by category.
+
+        Args:
+            session_id: The UUID of the session.
+            category: Optional category filter (e.g., "search", "capability").
+
+        Returns:
+            List of McpServer instances linked to the session.
+        """
+        logger.debug(f"Fetching MCP servers for session {session_id}")
+
+        # First, get all link records for this session
+        links_statement = select(SessionMcpServerLink).where(SessionMcpServerLink.session_id == session_id)
+        links_result = await self.db.exec(links_statement)
+        links = list(links_result.all())
+
+        if not links:
+            logger.debug(f"No MCP servers linked to session {session_id}")
+            return []
+
+        # Extract MCP server IDs from links
+        mcp_server_ids = [link.mcp_server_id for link in links if link.mcp_server_id is not None]
+
+        if not mcp_server_ids:
+            logger.debug(f"No valid MCP server IDs found for session {session_id}")
+            return []
+
+        # Fetch all MCP servers by IDs
+        servers = []
+        for mcp_id in mcp_server_ids:
+            server = await self.db.get(McpServer, mcp_id)
+            if server:
+                # Apply category filter if provided
+                if category is None or server.category.value == category:
+                    servers.append(server)
+
+        logger.debug(f"Found {len(servers)} MCP servers for session {session_id}")
+        return servers
+
+    async def get_active_search_mcp(self, session_id: UUID) -> McpServer | None:
+        """
+        Get the active search MCP server for a session.
+        Returns the most recently linked search MCP server.
+
+        Args:
+            session_id: The UUID of the session.
+
+        Returns:
+            The active McpServer for search, or None if no search MCP is linked.
+        """
+        logger.debug(f"Fetching active search MCP for session {session_id}")
+
+        # Get all linked MCP servers for this session with search category
+        servers = await self.get_session_mcp_servers(session_id, category="search")
+
+        # Return the first one if any exists
+        if servers:
+            logger.debug(f"Active search MCP for session {session_id}: {servers[0].name}")
+            return servers[0]
+
+        logger.debug(f"No search MCP linked to session {session_id}")
+        return None
+
+    async def set_active_search_mcp(self, session_id: UUID, mcp_server_id: UUID) -> McpServer:
+        """
+        Set the active search MCP server for a session.
+        This unlinks any existing search MCPs and links the new one.
+
+        Args:
+            session_id: The UUID of the session.
+            mcp_server_id: The UUID of the MCP server to set as active.
+
+        Returns:
+            The newly linked McpServer instance.
+
+        Raises:
+            ValueError: If the MCP server is not found.
+        """
+        logger.debug(f"Setting active search MCP for session {session_id} to {mcp_server_id}")
+
+        # Verify the MCP server exists
+        mcp_server = await self.db.get(McpServer, mcp_server_id)
+        if not mcp_server:
+            raise ValueError(f"MCP server {mcp_server_id} not found")
+
+        # Unlink all existing search MCPs for this session (only search category)
+        existing_servers = await self.get_session_mcp_servers(session_id, category="search")
+        for server in existing_servers:
+            await self.unlink_session_from_mcp(session_id, server.id)
+
+        # Link the new search MCP
+        await self.link_session_to_mcp(session_id, mcp_server_id)
+
+        logger.info(f"Set active search MCP for session {session_id} to {mcp_server.name}")
+        return mcp_server
+
+    async def unlink_all_session_mcps(self, session_id: UUID) -> int:
+        """
+        Unlink all MCP servers from a session.
+
+        Args:
+            session_id: The UUID of the session.
+
+        Returns:
+            Number of links deleted.
+        """
+        logger.debug(f"Unlinking all MCP servers from session {session_id}")
+
+        statement = select(SessionMcpServerLink).where(SessionMcpServerLink.session_id == session_id)
+        result = await self.db.exec(statement)
+        links = list(result.all())
+
+        count = 0
+        for link in links:
+            await self.db.delete(link)
+            count += 1
+
+        await self.db.flush()
+
+        logger.info(f"Unlinked {count} MCP servers from session {session_id}")
+        return count

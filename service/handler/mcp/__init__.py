@@ -101,6 +101,8 @@ class MCPServerRegistry:
             "source": metadata.get("source", "official"),
             "banner": metadata.get("banner"),
             "description": metadata.get("description"),
+            "category": metadata.get("category", "capability"),  # Default to "capability" if not specified
+            "metadata": metadata,  # Store full metadata for filtering
         }
 
     def get_server(self, name: str) -> Optional[Dict[str, Any]]:
@@ -114,6 +116,59 @@ class MCPServerRegistry:
     def list_server_names(self) -> List[str]:
         """获取所有服务器名称列表"""
         return list(self.servers.keys())
+
+    def get_servers_by_category(self, category: str) -> Dict[str, Dict[str, Any]]:
+        """
+        获取指定分类的 MCP 服务器
+        通过元数据中的 category 字段过滤服务器
+
+        Args:
+            category: 服务器分类 (e.g., "search", "capability", "knowledge", "integration", "general")
+
+        Returns:
+            Dict[str, Dict[str, Any]]: 匹配分类的 MCP 服务器配置字典
+        """
+        return {
+            name: config
+            for name, config in self.servers.items()
+            if config.get("metadata", {}).get("category") == category
+        }
+
+    def get_search_servers(self) -> Dict[str, Dict[str, Any]]:
+        """
+        获取所有搜索类型的 MCP 服务器
+        这是 get_servers_by_category("search") 的便捷方法
+
+        Returns:
+            Dict[str, Dict[str, Any]]: 搜索 MCP 服务器配置字典
+        """
+        return self.get_servers_by_category("search")
+
+    def get_capability_servers(self) -> Dict[str, Dict[str, Any]]:
+        """
+        获取所有核心能力类型的 MCP 服务器 (Agent 级别工具)
+        这是 get_servers_by_category("capability") 的便捷方法
+
+        Returns:
+            Dict[str, Dict[str, Any]]: 核心能力 MCP 服务器配置字典
+        """
+        return self.get_servers_by_category("capability")
+
+    def get_servers_excluding_category(self, excluded_category: str) -> Dict[str, Dict[str, Any]]:
+        """
+        获取排除指定分类的所有 MCP 服务器
+
+        Args:
+            excluded_category: 要排除的分类 (e.g., "search")
+
+        Returns:
+            Dict[str, Dict[str, Any]]: 排除指定分类后的 MCP 服务器配置字典
+        """
+        return {
+            name: config
+            for name, config in self.servers.items()
+            if config.get("metadata", {}).get("category") != excluded_category
+        }
 
     def register_server(
         self,
