@@ -21,17 +21,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["mcps"])
 
 
-class SearchServerDiscoveryResponse(BaseModel):
-    """Response model for discovering available search servers"""
-
-    name: str
-    module_name: str
-    mount_path: str
-    description: str | None
-    is_builtin: bool
-    requires_auth: bool
-
-
 class ToolTestRequest(BaseModel):
     parameters: Dict[str, Any] = {}
 
@@ -171,19 +160,16 @@ async def discover_mcp_servers(
     user: str = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
     """
-    Discover available MCP servers registered in the backend (excluding search category).
-    Returns server metadata for agent-level tools (capability, knowledge, integration, general).
-
-    Search category servers have a dedicated endpoint: /search-servers/discover
-    This separation ensures agent tool selection doesn't include session-level search engines.
+    Discover available MCP servers registered in the backend.
+    Returns server metadata for all registered MCP servers.
     """
     from handler.mcp import registry
 
-    # Exclude search category servers - they are session-level, not agent-level
-    non_search_servers = registry.get_servers_excluding_category("search")
+    # Get all servers
+    all_servers = registry.get_all_servers()
 
     discovered = []
-    for server_name, config in non_search_servers.items():
+    for server_name, config in all_servers.items():
         discovered.append(
             {
                 "name": config["name"],
@@ -196,44 +182,6 @@ async def discover_mcp_servers(
                 "is_default": config.get("is_default", False),
                 "category": config.get("category", "general"),
             }
-        )
-
-    return discovered
-
-
-@router.get("/search-servers/discover", response_model=List[SearchServerDiscoveryResponse])
-async def discover_search_servers(
-    user: str = Depends(get_current_user),
-) -> List[SearchServerDiscoveryResponse]:
-    """
-    Discover available search MCP servers registered in the backend.
-    Returns metadata for search servers that can be linked to sessions.
-
-    This endpoint filters MCP servers by category:
-    only servers with category='search' in metadata are returned.
-
-    Args:
-        user: Authenticated user ID (injected by dependency)
-
-    Returns:
-        List[SearchServerDiscoveryResponse]: List of available search servers
-    """
-    from handler.mcp import registry
-
-    # Use generic method to get search category servers
-    search_servers = registry.get_servers_by_category("search")
-
-    discovered = []
-    for server_name, config in search_servers.items():
-        discovered.append(
-            SearchServerDiscoveryResponse(
-                name=config["name"],
-                module_name=server_name,
-                mount_path=config["mount_path"],
-                description=config.get("description") or f"Search engine: {server_name.replace('_', ' ').title()}",
-                is_builtin=True,
-                requires_auth=config.get("auth") is not None,
-            )
         )
 
     return discovered

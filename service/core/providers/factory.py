@@ -21,8 +21,9 @@ class ChatModelFactory:
     ) -> ModelInstance:
         """
         核心入口：创建一个配置好的 LangChain ChatModel 实例
-        :param model_name: 模型名称 (如 "gpt-4o")
-        :param api_key: 用户的 API Key
+        :param model: 模型名称 (如 "gpt-4o")
+        :param provider: Provider type
+        :param credentials: 用户的 API Key
         :param runtime_kwargs: 运行时参数 (如 temperature, streaming, callbacks)
         """
         # Use LiteLLM to get model info
@@ -80,6 +81,15 @@ class ChatModelFactory:
         )
 
     def _create_google(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
+        # Extract google_search_enabled from runtime_kwargs
+        google_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
+
+        # If Google Search is enabled, add it to the tools parameter
+        if google_search_enabled:
+            logger.info(f"Enabling Google Search for model {model}")
+            # Add google_search tool to runtime_kwargs
+            runtime_kwargs["tools"] = [{"google_search": {}}]
+
         return ChatGoogleGenerativeAI(
             model=model,
             google_api_key=credentials["api_key"],

@@ -8,6 +8,7 @@ export interface SessionCreate {
   agent_id?: string;
   provider_id?: string;
   model?: string;
+  google_search_enabled?: boolean;
 }
 
 export interface SessionUpdate {
@@ -16,6 +17,7 @@ export interface SessionUpdate {
   is_active?: boolean;
   provider_id?: string;
   model?: string;
+  google_search_enabled?: boolean;
 }
 
 export interface SessionRead {
@@ -27,6 +29,7 @@ export interface SessionRead {
   user_id: string;
   provider_id?: string;
   model?: string;
+  google_search_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }

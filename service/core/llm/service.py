@@ -294,6 +294,12 @@ class LiteLLMService:
                 # Add supported_openai_params if missing (required by ModelInfo)
                 if "supported_openai_params" not in model_data:
                     model_data["supported_openai_params"] = None
+                # Add supports_web_search for Google/Gemini models that support it
+                if provider_type in ["google", "google_vertex"] and "gemini" in model_name.lower():
+                    # Gemini 2.0 and later support built-in web search
+                    version_info = ModelFilter.extract_version(model_name)
+                    if version_info and version_info[0] >= 2.0:
+                        model_data["supports_web_search"] = True
                 models.append(cast(ModelInfo, model_data))
 
         logger.debug(f"Filtered {len(models)} models for provider {provider_type}")

@@ -36,11 +36,11 @@ ResponseT = TypeVar("ResponseT")
 STREAMING_LOG_BATCH_SIZE = 50  # Log every N tokens instead of every token
 
 
-async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None) -> list[BaseTool]:
-    """Prepare LangChain tools from MCP servers."""
+async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None, session_id: Any = None) -> list[BaseTool]:
+    """Prepare LangChain tools from MCP servers (both agent-level and session-level)."""
     from core.chat.tools import execute_tool_call, prepare_mcp_tools
 
-    mcp_tools = await prepare_mcp_tools(db, agent)
+    mcp_tools = await prepare_mcp_tools(db, agent, session_id)
     langchain_tools: list[BaseTool] = []
 
     for tool in mcp_tools:
@@ -79,12 +79,12 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None) -> lis
         ArgsSchema = create_model(f"{tool_name}Args", **field_definitions)
 
         # Create tool execution function with closure
-        async def make_tool_func(t_name: str, t_db: AsyncSession, t_agent: Any) -> Any:
+        async def make_tool_func(t_name: str, t_db: AsyncSession, t_agent: Any, t_session_id: Any) -> Any:
             async def tool_func(**kwargs: Any) -> str:
                 """Execute the tool with given arguments."""
                 try:
                     args_json = json.dumps(kwargs)
-                    result = await execute_tool_call(t_db, t_name, args_json, t_agent)
+                    result = await execute_tool_call(t_db, t_name, args_json, t_agent, t_session_id)
                     # Format result for AI consumption using the utility function
                     # from core.chat.content_utils import format_tool_result_for_ai
 
@@ -96,7 +96,7 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None) -> lis
 
             return tool_func
 
-        tool_func = await make_tool_func(tool_name, db, agent)
+        tool_func = await make_tool_func(tool_name, db, agent, session_id)
 
         # Create structured tool
         structured_tool = StructuredTool(
@@ -107,6 +107,9 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None) -> lis
         )
 
         langchain_tools.append(structured_tool)
+
+    logger.info(f"Loaded {len(langchain_tools)} tools")
+    logger.debug(f"Loaded {langchain_tools}")
 
     return langchain_tools
 
@@ -292,9 +295,17 @@ async def get_ai_response_stream_langchain_legacy(
     yield {"type": ChatEventType.PROCESSING, "data": {"status": ProcessingStatus.PREPARING_REQUEST}}
 
     try:
+        # Check if Google Search is enabled for this session
+        google_search_enabled = session.google_search_enabled if session else False
+
         # Create langchain agent
-        llm = user_provider_manager.create_langchain_model(provider_id, model=model_name)
-        tools = await _prepare_langchain_tools(db, agent)
+        # Pass google_search_enabled to enable Google's built-in search for Gemini models
+        llm = user_provider_manager.create_langchain_model(
+            provider_id, model=model_name, google_search_enabled=google_search_enabled
+        )
+        # Pass session_id to load both agent-level and session-level MCP tools (e.g., search engines)
+        session_id = topic.session_id if topic else None
+        tools = await _prepare_langchain_tools(db, agent, session_id)
         langchain_agent: CompiledStateGraph = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
 
         logger.info(f"Agent created with {len(tools)} tools")

@@ -177,7 +177,11 @@ export interface ChatSlice {
   clearSessionTopics: (sessionId: string) => Promise<void>;
   updateSessionConfig: (
     sessionId: string,
-    config: { provider_id?: string; model?: string },
+    config: {
+      provider_id?: string;
+      model?: string;
+      google_search_enabled?: boolean;
+    },
   ) => Promise<void>;
   updateSessionProviderAndModel: (
     sessionId: string,
@@ -368,6 +372,9 @@ export const createChatSlice: StateCreator<
         let sessionId = null;
         let topicName = null;
         let sessionAgentId = undefined;
+        let sessionProviderId = undefined;
+        let sessionModel = undefined;
+        let googleSearchEnabled = undefined;
 
         for (const session of sessions) {
           const topic = session.topics.find((t) => t.id === topicId);
@@ -375,6 +382,9 @@ export const createChatSlice: StateCreator<
             sessionId = session.id;
             topicName = topic.name;
             sessionAgentId = session.agent_id; // 获取 session 的 agent_id
+            sessionProviderId = session.provider_id;
+            sessionModel = session.model;
+            googleSearchEnabled = session.google_search_enabled;
             break;
           }
         }
@@ -386,6 +396,9 @@ export const createChatSlice: StateCreator<
             title: topicName,
             messages: [],
             agentId: sessionAgentId, // 使用从 session 获取的 agentId
+            provider_id: sessionProviderId,
+            model: sessionModel,
+            google_search_enabled: googleSearchEnabled,
             connected: false,
             error: null,
           };
@@ -989,6 +1002,7 @@ export const createChatSlice: StateCreator<
             agentId: existingSession.agent_id,
             provider_id: existingSession.provider_id,
             model: existingSession.model,
+            google_search_enabled: existingSession.google_search_enabled,
             connected: false,
             error: null,
           };
@@ -1093,6 +1107,7 @@ export const createChatSlice: StateCreator<
           agentId: newSession.agent_id,
           provider_id: newSession.provider_id,
           model: newSession.model,
+          google_search_enabled: newSession.google_search_enabled,
           connected: false,
           error: null,
         };
@@ -1349,6 +1364,8 @@ export const createChatSlice: StateCreator<
           state.channels[activeChannelId].provider_id =
             updatedSession.provider_id;
           state.channels[activeChannelId].model = updatedSession.model;
+          state.channels[activeChannelId].google_search_enabled =
+            updatedSession.google_search_enabled;
         }
 
         // Also update workshop channel if applicable
@@ -1360,6 +1377,8 @@ export const createChatSlice: StateCreator<
           state.workshopChannels[activeWorkshopId].provider_id =
             updatedSession.provider_id;
           state.workshopChannels[activeWorkshopId].model = updatedSession.model;
+          state.workshopChannels[activeWorkshopId].google_search_enabled =
+            updatedSession.google_search_enabled;
         }
       });
     } catch (error) {

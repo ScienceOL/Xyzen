@@ -16,49 +16,98 @@ from repos.mcp import McpRepository
 logger = logging.getLogger(__name__)
 
 
-async def prepare_mcp_tools(db: AsyncSession, agent: Any) -> list[dict[str, Any]]:
+async def prepare_mcp_tools(db: AsyncSession, agent: Any, session_id: Any = None) -> list[dict[str, Any]]:
+    """
+    Prepare MCP tools from both agent-level and session-level MCP servers.
+
+    Args:
+        db: Database session
+        agent: Agent instance (optional)
+        session_id: Session UUID (optional)
+
+    Returns:
+        List of tool definitions
+    """
     tools: list[dict[str, Any]] = []
+    all_mcp_servers = []
+
+    # 1. Load agent-level MCP servers
     if agent:
-        # Load MCP servers for the agent using AgentRepository
         from repos.agent import AgentRepository
 
         agent_repo = AgentRepository(db)
-        mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+        agent_mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+        if agent_mcp_servers:
+            all_mcp_servers.extend(agent_mcp_servers)
+            logger.info(f"Loaded {len(agent_mcp_servers)} agent-level MCP servers")
 
-        if mcp_servers:
-            logger.info("Updating MCP server tools before generating response...")
-            mcp_repo = McpRepository(db)
+    # 2. Load session-level MCP servers (e.g., search engines)
+    if session_id:
+        from uuid import UUID
 
-            # Update server status for all servers
-            update_tasks = []
-            for server in mcp_servers:
-                update_tasks.append(async_check_mcp_server_status(server.id))
-            await asyncio.gather(*update_tasks, return_exceptions=True)
-            logger.info("MCP server tools updated")
+        from repos.session import SessionRepository
 
-            # Get refreshed servers using repository
-            refreshed_servers = []
-            for server in mcp_servers:
-                refreshed_server = await mcp_repo.get_mcp_server_by_id(server.id)
-                if refreshed_server:
-                    refreshed_servers.append(refreshed_server)
+        # Convert session_id to UUID if it's a string
+        if isinstance(session_id, str):
+            session_id = UUID(session_id)
 
-            # Extract tools from online servers
-            for server in refreshed_servers:
-                if server.tools and server.status == "online":
-                    for tool in server.tools:
-                        standard_tool = {
-                            "name": tool.get("name", ""),
-                            "description": tool.get("description", ""),
-                            "parameters": tool.get("inputSchema", {}),
-                        }
-                        tools.append(standard_tool)
-            if tools:
-                logger.info(f"Using {len(tools)} tools from {len(refreshed_servers)} servers")
+        session_repo = SessionRepository(db)
+        session_mcp_servers = await session_repo.get_session_mcp_servers(session_id)
+        if session_mcp_servers:
+            all_mcp_servers.extend(session_mcp_servers)
+            logger.info(f"Loaded {len(session_mcp_servers)} session-level MCP servers")
+
+    # 3. Update status and extract tools from all MCP servers
+    if all_mcp_servers:
+        logger.info(f"Updating {len(all_mcp_servers)} MCP server tools before generating response...")
+        mcp_repo = McpRepository(db)
+
+        # Update server status for all servers
+        update_tasks = []
+        for server in all_mcp_servers:
+            update_tasks.append(async_check_mcp_server_status(server.id))
+        await asyncio.gather(*update_tasks, return_exceptions=True)
+        logger.info("MCP server tools updated")
+
+        # Get refreshed servers using repository
+        refreshed_servers = []
+        for server in all_mcp_servers:
+            refreshed_server = await mcp_repo.get_mcp_server_by_id(server.id)
+            if refreshed_server:
+                refreshed_servers.append(refreshed_server)
+
+        # Extract tools from online servers
+        for server in refreshed_servers:
+            if server.tools and server.status == "online":
+                for tool in server.tools:
+                    standard_tool = {
+                        "name": tool.get("name", ""),
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("inputSchema", {}),
+                    }
+                    tools.append(standard_tool)
+        if tools:
+            logger.info(f"Using {len(tools)} tools from {len(refreshed_servers)} MCP servers")
+
     return tools
 
 
-async def execute_tool_call(db: AsyncSession, tool_name: str, tool_args: str, agent: Any) -> str:
+async def execute_tool_call(
+    db: AsyncSession, tool_name: str, tool_args: str, agent: Any, session_id: Any = None
+) -> str:
+    """
+    Execute a tool call by searching in both agent-level and session-level MCP servers.
+
+    Args:
+        db: Database session
+        tool_name: Name of the tool to execute
+        tool_args: JSON string of tool arguments
+        agent: Agent instance (optional)
+        session_id: Session UUID (optional)
+
+    Returns:
+        Tool execution result as string
+    """
     try:
         try:
             args_dict = json.loads(tool_args) if tool_args else {}
@@ -66,27 +115,47 @@ async def execute_tool_call(db: AsyncSession, tool_name: str, tool_args: str, ag
             return f"Error: Invalid JSON arguments for tool '{tool_name}'"
         logger.info(f"Executing tool '{tool_name}' with arguments: {args_dict}")
 
+        all_mcp_servers = []
+
+        # 1. Load agent-level MCP servers
         if agent:
-            # Load MCP servers for the agent using AgentRepository
             from repos.agent import AgentRepository
 
             agent_repo = AgentRepository(db)
-            mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+            agent_mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+            if agent_mcp_servers:
+                all_mcp_servers.extend(agent_mcp_servers)
 
-            if mcp_servers:
-                mcp_repo = McpRepository(db)
+        # 2. Load session-level MCP servers
+        if session_id:
+            from uuid import UUID
 
-                for server in mcp_servers:
-                    refreshed_server = await mcp_repo.get_mcp_server_by_id(server.id)
-                    if refreshed_server and refreshed_server.tools and refreshed_server.status == "online":
-                        for tool in refreshed_server.tools:
-                            if tool.get("name") == tool_name:
-                                try:
-                                    result = await call_mcp_tool(refreshed_server, tool_name, args_dict)
-                                    return str(result)
-                                except Exception as exec_error:
-                                    logger.error(f"MCP tool execution failed: {exec_error}")
-                                    return f"Error executing tool '{tool_name}': {exec_error}"
+            from repos.session import SessionRepository
+
+            # Convert session_id to UUID if it's a string
+            if isinstance(session_id, str):
+                session_id = UUID(session_id)
+
+            session_repo = SessionRepository(db)
+            session_mcp_servers = await session_repo.get_session_mcp_servers(session_id)
+            if session_mcp_servers:
+                all_mcp_servers.extend(session_mcp_servers)
+
+        # 3. Search for the tool in all MCP servers
+        if all_mcp_servers:
+            mcp_repo = McpRepository(db)
+
+            for server in all_mcp_servers:
+                refreshed_server = await mcp_repo.get_mcp_server_by_id(server.id)
+                if refreshed_server and refreshed_server.tools and refreshed_server.status == "online":
+                    for tool in refreshed_server.tools:
+                        if tool.get("name") == tool_name:
+                            try:
+                                result = await call_mcp_tool(refreshed_server, tool_name, args_dict)
+                                return str(result)
+                            except Exception as exec_error:
+                                logger.error(f"MCP tool execution failed: {exec_error}")
+                                return f"Error executing tool '{tool_name}': {exec_error}"
         return f"Tool '{tool_name}' not found or server not available"
     except Exception as e:
         logger.error(f"Tool execution error: {e}")

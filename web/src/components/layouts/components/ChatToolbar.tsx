@@ -10,6 +10,7 @@ import {
 } from "@/components/animate-ui/components/radix/sheet";
 import { FileUploadButton, FileUploadPreview } from "@/components/features";
 import { useXyzen } from "@/store";
+import type { ModelInfo } from "@/types/llmProvider";
 import {
   type DragEndEvent,
   type DragMoveEvent,
@@ -24,7 +25,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
 import { ModelSelector } from "./ModelSelector";
-import { SearchSelector } from "./SearchSelector";
+import { GoogleSearchToggle } from "./GoogleSearchToggle";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -65,15 +66,12 @@ export default function ChatToolbar({
     agents,
     systemAgents,
     mcpServers,
-    searchServers,
     llmProviders,
     availableModels,
     updateSessionProviderAndModel,
+    updateSessionConfig,
     uploadedFiles,
     isUploading,
-    fetchSearchServers,
-    setSessionSearchEngine,
-    getSessionSearchEngine,
   } = useXyzen();
 
   // Merge system and user agents for lookup (system + regular/graph)
@@ -132,38 +130,27 @@ export default function ChatToolbar({
     return channel?.model || null;
   }, [activeChatChannel, channels]);
 
-  // State for search engine
-  const [currentSearchServerId, setCurrentSearchServerId] = useState<
-    string | null
-  >(null);
+  // State for Google Search toggle
+  const [googleSearchEnabled, setGoogleSearchEnabled] = useState(false);
 
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
 
-  // Fetch search servers on mount
-  useEffect(() => {
-    fetchSearchServers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fetch current session's search engine
+  // Fetch current session's Google Search enabled status
   useEffect(() => {
     if (!activeChatChannel) {
-      setCurrentSearchServerId(null);
       return;
     }
 
     const channel = channels[activeChatChannel];
     if (!channel?.sessionId) {
-      setCurrentSearchServerId(null);
       return;
     }
 
-    getSessionSearchEngine(channel.sessionId).then((searchEngine) => {
-      setCurrentSearchServerId(searchEngine?.id || null);
-    });
-  }, [activeChatChannel, channels, getSessionSearchEngine]);
+    // Fetch Google Search enabled status
+    setGoogleSearchEnabled(channel.google_search_enabled || false);
+  }, [activeChatChannel, channels]);
 
   // Model change handler - updates session's provider and model
   const handleModelChange = useCallback(
@@ -189,26 +176,41 @@ export default function ChatToolbar({
     [activeChatChannel, channels, updateSessionProviderAndModel],
   );
 
-  // Search engine change handler - updates session's search engine
-  const handleSearchEngineChange = useCallback(
-    async (serverId: string | null) => {
+  // Google Search toggle handler - updates session's google_search_enabled
+  const handleGoogleSearchToggle = useCallback(
+    async (enabled: boolean) => {
       if (!activeChatChannel) return;
 
       const channel = channels[activeChatChannel];
       if (!channel?.sessionId) return;
 
       try {
-        await setSessionSearchEngine(channel.sessionId, serverId);
-        setCurrentSearchServerId(serverId);
+        await updateSessionConfig(channel.sessionId, {
+          google_search_enabled: enabled,
+        });
+        setGoogleSearchEnabled(enabled);
         console.log(
-          `Updated session ${channel.sessionId} search engine to ${serverId || "none"}`,
+          `Updated session ${channel.sessionId} Google Search to ${enabled}`,
         );
       } catch (error) {
-        console.error("Failed to update session search engine:", error);
+        console.error("Failed to update Google Search setting:", error);
       }
     },
-    [activeChatChannel, channels, setSessionSearchEngine],
+    [activeChatChannel, channels, updateSessionConfig],
   );
+
+  // Check if current model supports web search
+  const supportsWebSearch = useMemo(() => {
+    if (!currentSessionModel || !currentSessionProvider) return false;
+
+    // Find the model info from availableModels (it's a Record<string, ModelInfo[]>)
+    const providerModels = Object.values(availableModels).flat();
+    const modelInfo = providerModels.find(
+      (m: ModelInfo) => m.key === currentSessionModel,
+    );
+
+    return modelInfo?.supports_web_search || false;
+  }, [currentSessionModel, currentSessionProvider, availableModels]);
 
   // Setup dnd sensors
   const sensors = useSensors(
@@ -338,12 +340,12 @@ export default function ChatToolbar({
               />
             )}
 
-            {/* Search Selector */}
+            {/* Google Search Toggle - Only for models that support web search */}
             {activeChatChannel && (
-              <SearchSelector
-                searchServers={searchServers}
-                currentSearchServerId={currentSearchServerId}
-                onSearchServerChange={handleSearchEngineChange}
+              <GoogleSearchToggle
+                enabled={googleSearchEnabled}
+                onToggle={handleGoogleSearchToggle}
+                supportsWebSearch={supportsWebSearch}
               />
             )}
 

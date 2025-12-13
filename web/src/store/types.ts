@@ -64,6 +64,7 @@ export interface ChatChannel {
   agentId?: string;
   provider_id?: string;
   model?: string;
+  google_search_enabled?: boolean;
   connected: boolean;
   error: string | null;
   // Whether assistant is currently producing a reply (planning, tool calls, or generating tokens)
@@ -105,6 +106,7 @@ export interface SessionResponse {
   agent_id?: string;
   provider_id?: string;
   model?: string;
+  google_search_enabled?: boolean;
   topics: TopicResponse[];
 }
 
