@@ -1,6 +1,6 @@
 "use client";
 
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon } from "@heroicons/react/24/outline";
 import { motion } from "motion/react";
 import { useState } from "react";
 
@@ -39,8 +39,8 @@ export function BuiltinSearchToggle({
         whileTap={{ scale: 0.98 }}
         title={enabled ? "Built-in Search: 已启用" : "Built-in Search: 已禁用"}
       >
-        <MagnifyingGlassIcon className="h-3.5 w-3.5 shrink-0" />
-        <span>Search</span>
+        <GlobeAltIcon className="h-3.5 w-3.5 shrink-0" />
+        <span>联网搜索</span>
         <div
           className={`h-1.5 w-1.5 rounded-full ${enabled ? "bg-blue-500" : "bg-neutral-400"}`}
         />
@@ -56,7 +56,7 @@ export function BuiltinSearchToggle({
           className="absolute bottom-full left-0 mb-2 z-50 w-64 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-3"
         >
           <div className="flex items-start gap-2">
-            <MagnifyingGlassIcon className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+            <GlobeAltIcon className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
             <div>
               <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                 内置搜索
