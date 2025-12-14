@@ -3,34 +3,32 @@ import type { PreviewFile } from "@/components/preview/types";
 import { fileService, type FileUploadResponse } from "@/service/fileService";
 import {
   ArrowDownTrayIcon,
+  ArrowPathRoundedSquareIcon,
   DocumentIcon,
   EyeIcon,
-  MicrophoneIcon,
-  PhotoIcon,
   TrashIcon,
-  VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
-import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
-import type { KnowledgeTab } from "./types";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
+import { FileIcon } from "./FileIcon";
+import type { KnowledgeTab, ViewMode } from "./types";
 
 interface FileListProps {
   filter: KnowledgeTab;
+  viewMode: ViewMode;
+  refreshTrigger?: number;
+  onFileCountChange?: (count: number) => void;
 }
 
-const getFileIcon = (category: string) => {
-  switch (category) {
-    case "images":
-      return PhotoIcon;
-    case "audio":
-      return MicrophoneIcon;
-    case "videos":
-      return VideoCameraIcon;
-    default:
-      return DocumentIcon;
-  }
-};
+export interface FileListHandle {
+  emptyTrash: () => Promise<void>;
+}
 
 const formatSize = (bytes: number) => {
   if (bytes === 0) return "0 B";
@@ -40,172 +38,318 @@ const formatSize = (bytes: number) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-export const FileList = ({ filter }: FileListProps) => {
-  const [files, setFiles] = useState<FileUploadResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+export const FileList = forwardRef<FileListHandle, FileListProps>(
+  ({ filter, viewMode, refreshTrigger, onFileCountChange }, ref) => {
+    const [files, setFiles] = useState<FileUploadResponse[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-  // Preview State
-  const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    // Preview State
+    const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const loadFiles = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      let categoryFilter: string | undefined;
-      if (["images", "audio", "documents"].includes(filter)) {
-        categoryFilter = filter;
+    useImperativeHandle(
+      ref,
+      () => ({
+        emptyTrash: async () => {
+          if (files.length === 0) return;
+          if (
+            !confirm(
+              `Are you sure you want to permanently delete ${files.length} items? This cannot be undone.`,
+            )
+          )
+            return;
+
+          try {
+            setIsLoading(true);
+            // Hard delete all currently listed files
+            await Promise.all(
+              files.map((f) => fileService.deleteFile(f.id, true)),
+            );
+            setFiles([]);
+            if (onFileCountChange) onFileCountChange(0);
+          } catch (error) {
+            console.error("Failed to empty trash", error);
+            alert("Failed to empty trash completely. Some files may remain.");
+          } finally {
+            setIsLoading(false);
+          }
+        },
+      }),
+      [files, onFileCountChange],
+    );
+
+    const loadFiles = useCallback(async () => {
+      setIsLoading(true);
+      try {
+        const params: { category?: string; include_deleted: boolean } = {
+          include_deleted: filter === "trash",
+        };
+
+        if (["images", "audio", "documents"].includes(filter)) {
+          params.category = filter;
+        }
+
+        const data = await fileService.listFiles(params);
+
+        // Client-side filtering because API might return all files (active + deleted) if include_deleted=true
+        // If filtering for "trash", we only want deleted files.
+        // If filtering for others ("home", "all"), we only want active files (which default include_deleted=false handles, but good to be explicit).
+
+        let filteredData = data;
+        if (filter === "trash") {
+          filteredData = data.filter((f) => f.is_deleted);
+        } else {
+          // Double check we don't show deleted files in normal views
+          filteredData = data.filter((f) => !f.is_deleted);
+        }
+
+        setFiles(filteredData);
+        if (onFileCountChange) {
+          onFileCountChange(filteredData.length);
+        }
+      } catch (error) {
+        console.error("Failed to load files", error);
+      } finally {
+        setIsLoading(false);
       }
+    }, [filter, onFileCountChange]);
 
-      const data = await fileService.listFiles({
-        category: categoryFilter,
-        include_deleted: false,
+    useEffect(() => {
+      loadFiles();
+    }, [loadFiles, refreshTrigger]);
+
+    const handleDelete = async (fileId: string) => {
+      // If in trash, perform hard delete
+      const isHardDelete = filter === "trash";
+      const confirmMsg = isHardDelete
+        ? "Are you sure you want to permanently delete this file? This cannot be undone."
+        : "Are you sure you want to move this file to Trash?";
+
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        await fileService.deleteFile(fileId, isHardDelete);
+        setFiles((prev) => {
+          const next = prev.filter((f) => f.id !== fileId);
+          if (onFileCountChange) onFileCountChange(next.length);
+          return next;
+        });
+      } catch (error) {
+        console.error("Delete failed", error);
+      }
+    };
+
+    const handleRestore = async (fileId: string) => {
+      try {
+        await fileService.restoreFile(fileId);
+        // Remove from trash view
+        setFiles((prev) => {
+          const next = prev.filter((f) => f.id !== fileId);
+          if (onFileCountChange) onFileCountChange(next.length);
+          return next;
+        });
+      } catch (error) {
+        console.error("Restore failed", error);
+      }
+    };
+
+    const handleDownload = async (fileId: string) => {
+      try {
+        const { download_url } = await fileService.getFileUrl(fileId);
+        window.open(download_url, "_blank");
+      } catch (error) {
+        console.error("Download failed", error);
+      }
+    };
+
+    const handlePreview = (file: FileUploadResponse) => {
+      setPreviewFile({
+        id: file.id,
+        name: file.original_filename,
+        type: file.content_type,
+        size: file.file_size,
       });
-      setFiles(data);
-    } catch (error) {
-      console.error("Failed to load files", error);
-    } finally {
-      setIsLoading(false);
+      setIsPreviewOpen(true);
+    };
+
+    if (isLoading) {
+      return (
+        <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+          Loading...
+        </div>
+      );
     }
-  }, [filter]);
 
-  useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
-
-  const handleDelete = async (fileId: string) => {
-    if (!confirm("Are you sure you want to delete this file?")) return;
-    try {
-      await fileService.deleteFile(fileId);
-      setFiles((prev) => prev.filter((f) => f.id !== fileId));
-    } catch (error) {
-      console.error("Delete failed", error);
+    if (files.length === 0) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
+          <DocumentIcon className="h-8 w-8 opacity-50" />
+          <span>{filter === "trash" ? "Trash is empty" : "No items"}</span>
+        </div>
+      );
     }
-  };
 
-  const handleDownload = async (fileId: string) => {
-    try {
-      const { download_url } = await fileService.getFileUrl(fileId);
-      window.open(download_url, "_blank");
-    } catch (error) {
-      console.error("Download failed", error);
-    }
-  };
-
-  const handlePreview = (file: FileUploadResponse) => {
-    setPreviewFile({
-      id: file.id,
-      name: file.original_filename,
-      type: file.content_type,
-      size: file.file_size,
-    });
-    setIsPreviewOpen(true);
-  };
-
-  if (isLoading) {
     return (
-      <div className="flex h-40 items-center justify-center text-sm text-neutral-500">
-        Loading files...
-      </div>
-    );
-  }
+      <div className="h-full w-full" onClick={() => setSelectedId(null)}>
+        {viewMode === "list" ? (
+          <div className="min-w-full inline-block align-middle">
+            <div className="border-b border-neutral-200 dark:border-neutral-800">
+              <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium uppercase text-neutral-500 dark:text-neutral-400">
+                <div className="col-span-6">Name</div>
+                <div className="col-span-2">Size</div>
+                <div className="col-span-3">Date Modified</div>
+                <div className="col-span-1"></div>
+              </div>
+            </div>
+            <div className="divide-y divide-neutral-100 dark:divide-neutral-800/50">
+              {files.map((file) => {
+                const isSelected = selectedId === file.id;
 
-  if (files.length === 0) {
-    return (
-      <div className="flex h-40 items-center justify-center text-sm text-neutral-500">
-        No files found.
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-black">
-        <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
-          <thead className="bg-neutral-50 dark:bg-neutral-900">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                Size
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                Date
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-black">
-            {files.map((file, idx) => {
-              const Icon = getFileIcon(file.category);
-              return (
-                <motion.tr
-                  key={file.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="group hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                >
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <button
-                      onClick={() => handlePreview(file)}
-                      className="flex items-center hover:text-indigo-600 dark:hover:text-indigo-400 text-left"
-                    >
+                return (
+                  <div
+                    key={file.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedId(file.id);
+                    }}
+                    onDoubleClick={() => handlePreview(file)}
+                    className={`group grid grid-cols-12 gap-4 px-4 py-2 text-sm items-center cursor-default ${
+                      isSelected
+                        ? "bg-indigo-600 text-white"
+                        : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800 odd:bg-white even:bg-neutral-50/50 dark:odd:bg-transparent dark:even:bg-white/5"
+                    }`}
+                  >
+                    <div className="col-span-6 flex items-center gap-3 overflow-hidden">
                       <div className="flex-shrink-0">
-                        <Icon className="h-5 w-5 text-neutral-400 group-hover:text-indigo-500" />
+                        <FileIcon
+                          filename={file.original_filename}
+                          mimeType={file.content_type}
+                          className="h-5 w-5"
+                        />
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
-                          {file.original_filename}
-                        </div>
-                      </div>
-                    </button>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400">
-                    {formatSize(file.file_size)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400">
-                    {format(new Date(file.created_at), "MMM d, yyyy")}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        onClick={() => handlePreview(file)}
-                        className="text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                        title="Preview"
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDownload(file.id)}
-                        className="text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                        title="Download"
-                      >
-                        <ArrowDownTrayIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(file.id)}
-                        className="text-neutral-400 hover:text-red-600 dark:hover:text-red-400"
-                        title="Delete"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+                      <span className="truncate">{file.original_filename}</span>
                     </div>
-                  </td>
-                </motion.tr>
+                    <div
+                      className={`col-span-2 text-xs ${isSelected ? "text-indigo-200" : "text-neutral-500 dark:text-neutral-400"}`}
+                    >
+                      {formatSize(file.file_size)}
+                    </div>
+                    <div
+                      className={`col-span-3 text-xs ${isSelected ? "text-indigo-200" : "text-neutral-500 dark:text-neutral-400"}`}
+                    >
+                      {format(new Date(file.created_at), "MMM d, yyyy HH:mm")}
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      {/* Context Menu or Hover Actions */}
+                      <div
+                        className={`flex gap-2 ${isSelected ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePreview(file);
+                          }}
+                          title="Preview"
+                        >
+                          <EyeIcon
+                            className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-indigo-600"}`}
+                          />
+                        </button>
+
+                        {filter === "trash" ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRestore(file.id);
+                            }}
+                            title="Restore"
+                          >
+                            <ArrowPathRoundedSquareIcon
+                              className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-green-600"}`}
+                            />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(file.id);
+                            }}
+                            title="Download"
+                          >
+                            <ArrowDownTrayIcon
+                              className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-indigo-600"}`}
+                            />
+                          </button>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(file.id);
+                          }}
+                          title={
+                            filter === "trash"
+                              ? "Delete Immediately"
+                              : "Move to Trash"
+                          }
+                        >
+                          <TrashIcon
+                            className={`h-4 w-4 ${isSelected ? "hover:text-red-200" : "hover:text-red-500"}`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-4 p-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+            {files.map((file) => {
+              const isSelected = selectedId === file.id;
+
+              return (
+                <div
+                  key={file.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedId(file.id);
+                  }}
+                  onDoubleClick={() => handlePreview(file)}
+                  className={`group flex flex-col items-center gap-2 rounded-md p-3 text-center cursor-default ${
+                    isSelected
+                      ? "bg-indigo-100 ring-2 ring-indigo-500 dark:bg-indigo-900/50"
+                      : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  }`}
+                >
+                  <div className="flex h-12 w-12 items-center justify-center">
+                    <FileIcon
+                      filename={file.original_filename}
+                      mimeType={file.content_type}
+                      className="h-10 w-10"
+                    />
+                  </div>
+                  <span
+                    className={`w-full truncate text-xs font-medium ${isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-neutral-700 dark:text-neutral-300"}`}
+                  >
+                    {file.original_filename}
+                  </span>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        )}
 
-      <PreviewModal
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        file={previewFile}
-      />
-    </>
-  );
-};
+        <PreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          file={previewFile}
+        />
+      </div>
+    );
+  },
+);
+
+FileList.displayName = "FileList";

@@ -5,7 +5,10 @@ export type KnowledgeTab =
   | "pages"
   | "images"
   | "audio"
-  | "videos";
+  | "videos"
+  | "trash";
+
+export type ViewMode = "list" | "grid";
 
 export interface StorageStats {
   used: number; // in bytes

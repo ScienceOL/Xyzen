@@ -31,7 +31,6 @@ export function AppFullscreen({
     openMcpListModal,
     activePanel,
     setActivePanel,
-    activeChatChannel,
   } = useXyzen();
 
   const [mounted, setMounted] = useState(false);
