@@ -169,18 +169,20 @@ const AgentCard: React.FC<AgentCardProps> = ({
       `}
       >
         {/* 头像 */}
-        <img
-          src={
-            agent.avatar ||
-            (agent.agent_type === "builtin"
-              ? agent.id === "00000000-0000-0000-0000-000000000001"
-                ? "/defaults/agents/avatar1.png" // Chat agent fallback
-                : "/defaults/agents/avatar4.png" // Workshop agent fallback
-              : "/defaults/agents/avatar2.png") // Regular agent fallback
-          }
-          alt={agent.name}
-          className="h-10 w-10 flex-shrink-0 rounded-full border border-neutral-200 object-cover dark:border-neutral-700"
-        />
+        <div className="h-10 w-10 flex-shrink-0 avatar-glow">
+          <img
+            src={
+              agent.avatar ||
+              (agent.agent_type === "builtin"
+                ? agent.id === "00000000-0000-0000-0000-000000000001"
+                  ? "/defaults/agents/avatar1.png" // Chat agent fallback
+                  : "/defaults/agents/avatar4.png" // Workshop agent fallback
+                : "/defaults/agents/avatar2.png") // Regular agent fallback
+            }
+            alt={agent.name}
+            className="h-10 w-10 rounded-full border border-neutral-200 object-cover dark:border-neutral-700"
+          />
+        </div>
 
         {/* 内容 */}
         <div className="flex flex-1 flex-col min-w-0">

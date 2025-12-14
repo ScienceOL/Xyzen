@@ -27,6 +27,7 @@
   font-size: 0.7rem /* 0.75rem = 12px */;
   line-height: var(--tw-leading, 1.428 /* calc(1 / 0.75) ≈ 1.333333 */);
 }
+
 /* safelist 一些不会在源码里出现的类 */
 @source inline('to-neutral-100');
 @source inline('to-indigo-700');
@@ -156,4 +157,51 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* 头像容器的基础样式 */
+.avatar-glow {
+  position: relative;
+  /* 必须：为伪元素的绝对定位提供参考 */
+  overflow: hidden;
+  /* 必须：确保光条扫过时不会溢出头像圆形边界 */
+  border-radius: 50%;
+  /* 圆形头像 */
+  cursor: pointer;
+
+  /* 基础过渡动画 */
+  transition: all 200ms ease-out 0s;
+}
+
+/* 定义扫光的伪元素 */
+.avatar-glow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  /* 定义光条的大小和形状 */
+  width: 25%;
+  /* 光条宽度 */
+  height: 100%;
+  /* 充满高度 */
+  background: rgba(255, 255, 255, 0.5);
+  /* 半透明白色 */
+
+  /* 初始位置：倾斜 45 度并隐藏在左侧 */
+  transform: skewX(-45deg) translateX(-400%);
+
+  /* 动画过渡配置 */
+  transition: all 200ms ease-out 0s;
+}
+
+/* 鼠标悬停时的状态 */
+.avatar-glow:hover {
+  /* 1. 外发光圈效果 (颜色可以换成你的主题色) */
+  box-shadow: 0 0 0 2px #1677ff;
+}
+
+.avatar-glow:hover::before {
+  /* 2. 光条移动到右侧，形成扫光动画 */
+  transform: skewX(-45deg) translateX(400%);
 }

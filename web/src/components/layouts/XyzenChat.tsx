@@ -248,18 +248,21 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         {currentAgent ? (
           <div className="relative flex-shrink-0 border-y border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
             <div className="flex items-start gap-3">
-              <img
-                src={
-                  currentAgent.avatar ||
-                  (currentAgent.agent_type === "builtin"
-                    ? currentAgent.id === "00000000-0000-0000-0000-000000000001"
-                      ? "/defaults/agents/avatar1.png" // Chat agent fallback
-                      : "/defaults/agents/avatar4.png" // Workshop agent fallback
-                    : "/defaults/agents/avatar2.png") // Regular agent fallback
-                }
-                alt={currentAgent.name}
-                className={`mt-1 h-8 w-8 flex-shrink-0 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
-              />
+              <div className="mt-1 h-8 w-8 flex-shrink-0 avatar-glow">
+                <img
+                  src={
+                    currentAgent.avatar ||
+                    (currentAgent.agent_type === "builtin"
+                      ? currentAgent.id ===
+                        "00000000-0000-0000-0000-000000000001"
+                        ? "/defaults/agents/avatar1.png" // Chat agent fallback
+                        : "/defaults/agents/avatar4.png" // Workshop agent fallback
+                      : "/defaults/agents/avatar2.png") // Regular agent fallback
+                  }
+                  alt={currentAgent.name}
+                  className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="mb-1 flex items-center gap-2">
                   <span
