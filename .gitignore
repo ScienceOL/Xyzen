@@ -152,5 +152,11 @@ docker-compose.override.yml
 !.keep
 !.placeholder
 
-# ===== AI Editor 文件 =====
+# AI Agent Rules
+.rules
+.cursorrules
+.windsurfrules
+.clinerules
+.github/copilot-instructions.md
 CLAUDE.md
+GEMINI.md

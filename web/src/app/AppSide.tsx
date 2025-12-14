@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import McpIcon from "@/assets/McpIcon";
 import { AuthStatus, SettingsButton } from "@/components/features";
 import ToggleSidePanelShortcutHint from "@/components/features/ToggleSidePanelShortcutHint";
+import { ActivityBar } from "@/components/layouts/ActivityBar";
+import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import { McpListModal } from "@/components/layouts/McpListModal";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
@@ -37,6 +39,7 @@ export function AppSide({
     isXyzenOpen,
     closeXyzen,
     activePanel,
+    setActivePanel,
     setBackendUrl,
     openMcpListModal,
     openSettingsModal,
@@ -112,9 +115,6 @@ export function AppSide({
     let newY = windowStartPos.current.y + dy;
 
     // Constraint: Prevent dragging completely outside the screen
-    // Allow sticking to edges but keep at least some part visible?
-    // User requested "now the chat can be dragged to outside the screen" is a bug.
-    // So we clamp it strictly within viewport for safety.
     const maxX = window.innerWidth - size.width;
     const maxY = window.innerHeight - size.height;
 
@@ -248,7 +248,7 @@ export function AppSide({
         }`}
         style={isMobile ? mobileStyle : desktopStyle}
       >
-        {/* Resize Handles (Desktop Only) - Invisible but interactive */}
+        {/* Resize Handles (Desktop Only) */}
         {!isMobile && (
           <>
             {/* Edge Handles */}
@@ -277,7 +277,7 @@ export function AppSide({
               onPointerUp={handleResizeEnd}
             />
 
-            {/* Corner Handles - Higher z-index to capture events over edges */}
+            {/* Corner Handles */}
             <div
               className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-[51] bg-transparent"
               onPointerDown={(e) => handleResizeStart(e, "nw")}
@@ -305,7 +305,7 @@ export function AppSide({
           </>
         )}
 
-        {/* Header Area - Draggable */}
+        {/* Header Area */}
         <div
           className={`flex h-14 flex-shrink-0 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800 ${
             !isMobile ? "cursor-move select-none active:cursor-grabbing" : ""
@@ -341,7 +341,7 @@ export function AppSide({
 
           <div
             className="flex items-center space-x-1"
-            onPointerDown={(e) => e.stopPropagation()} // Stop drag when interacting with controls
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <SettingsButton />
             <button
@@ -374,42 +374,65 @@ export function AppSide({
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-hidden relative">
-          {activePanel === "chat" &&
-            (activeChatChannel ? (
-              <div className="h-full">
-                <div className="h-full bg-white dark:bg-black">
-                  <XyzenChat />
-                </div>
-              </div>
-            ) : (
-              <div className="h-full bg-white dark:bg-neutral-950 flex flex-col">
-                <div className="border-b border-neutral-200 p-4 dark:border-neutral-800 flex-shrink-0">
-                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                    Assistants
-                  </h2>
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    Choose an agent to start
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto py-4">
-                  <XyzenAgent systemAgentType="chat" />
-                </div>
-              </div>
-            ))}
-
-          {showAuthError && (
-            <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-              <div className="w-full max-w-md px-4">
-                <AuthErrorScreen
-                  onRetry={onRetryAuth ?? (() => {})}
-                  variant="inline"
-                />
-              </div>
-            </div>
+        {/* Content Area with Sidebar */}
+        <div className="flex flex-1 overflow-hidden relative">
+          {/* Activity Bar (Left Sidebar on Desktop) */}
+          {!isMobile && (
+            <ActivityBar
+              activePanel={activePanel}
+              onPanelChange={setActivePanel}
+              isMobile={false}
+            />
           )}
+
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-neutral-950">
+            {activePanel === "chat" &&
+              (activeChatChannel ? (
+                <div className="h-full">
+                  <div className="h-full bg-white dark:bg-black">
+                    <XyzenChat />
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full bg-white dark:bg-neutral-950 flex flex-col">
+                  <div className="border-b border-neutral-200 p-4 dark:border-neutral-800 flex-shrink-0">
+                    <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                      Assistants
+                    </h2>
+                    <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                      Choose an agent to start
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto py-4">
+                    <XyzenAgent systemAgentType="chat" />
+                  </div>
+                </div>
+              ))}
+
+            {activePanel === "knowledge" && <KnowledgeBase />}
+
+            {showAuthError && (
+              <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+                <div className="w-full max-w-md px-4">
+                  <AuthErrorScreen
+                    onRetry={onRetryAuth ?? (() => {})}
+                    variant="inline"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Mobile Activity Bar (Bottom) */}
+        {isMobile && (
+          <ActivityBar
+            activePanel={activePanel}
+            onPanelChange={setActivePanel}
+            isMobile={true}
+          />
+        )}
       </div>
 
       <McpListModal />
