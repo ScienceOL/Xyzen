@@ -7,8 +7,8 @@ import jwt
 import requests
 from fastapi import Header, HTTPException, Query, status
 
-from internal import configs
-from internal.configs.auth import AuthProviderConfigBase
+from core.configs import configs
+from core.configs.auth import AuthProviderConfigBase
 
 # Set up logger
 logger = logging.getLogger(__name__)

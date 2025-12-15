@@ -7,7 +7,7 @@ from fastmcp.server.dependencies import get_access_token
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.tools.tool import ToolResult
 
-from internal import configs
+from core.configs import configs
 from middleware.auth import AuthProvider
 from utils.tool_loader import tool_loader
 

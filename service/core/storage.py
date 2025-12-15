@@ -11,7 +11,7 @@ import aioboto3
 from botocore.exceptions import ClientError
 
 from common.code import ErrCode
-from internal import configs
+from core.configs import configs
 
 logger = logging.getLogger(__name__)
 

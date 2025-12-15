@@ -6,7 +6,7 @@ from urllib import parse, request
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_access_token
 
-from internal import configs
+from core.configs import configs
 from middleware.auth import AuthProvider
 from utils.tool_loader import tool_loader
 
