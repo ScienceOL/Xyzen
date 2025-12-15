@@ -1,12 +1,14 @@
+import { type Folder } from "@/service/folderService";
 import {
   ArrowPathIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   Squares2X2Icon,
   ListBulletIcon,
   TrashIcon,
+  FolderIcon,
+  HomeIcon,
+  ChevronRightIcon as BreadcrumbSeparatorIcon,
 } from "@heroicons/react/24/outline";
 import type { ViewMode } from "./types";
 
@@ -15,10 +17,14 @@ interface KnowledgeToolbarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onSearch: (query: string) => void;
   onUpload: () => void;
+  onCreateFolder?: () => void;
   onRefresh: () => void;
   onEmptyTrash?: () => void;
   title: string;
   isTrash?: boolean;
+  showCreateFolder?: boolean;
+  breadcrumbs?: Folder[];
+  onBreadcrumbClick?: (folderId: string | null) => void;
 }
 
 export const KnowledgeToolbar = ({
@@ -26,29 +32,57 @@ export const KnowledgeToolbar = ({
   onViewModeChange,
   onSearch,
   onUpload,
+  onCreateFolder,
   onRefresh,
   onEmptyTrash,
   title,
   isTrash,
+  showCreateFolder,
+  breadcrumbs,
+  onBreadcrumbClick,
 }: KnowledgeToolbarProps) => {
   return (
     <div className="flex h-12 items-center justify-between border-b border-neutral-200 bg-white/80 px-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
-      {/* Left: Navigation & Title */}
+      {/* Left: Navigation & Title OR Breadcrumbs */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1 text-neutral-400">
-          <button className="rounded p-1 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300">
-            <ChevronLeftIcon className="h-5 w-5" />
-          </button>
-          <button className="rounded p-1 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300">
-            <ChevronRightIcon className="h-5 w-5" />
-          </button>
-        </div>
-        <h1 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 capitalize">
-          {title}
-        </h1>
+        {breadcrumbs ? (
+          <div className="flex items-center gap-1 text-sm font-medium text-neutral-600 dark:text-neutral-300">
+            <button
+              onClick={() => onBreadcrumbClick && onBreadcrumbClick(null)}
+              className={`flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${breadcrumbs.length === 0 ? "text-neutral-900 font-semibold dark:text-white" : ""}`}
+            >
+              <HomeIcon className="h-4 w-4" />
+              <span>Home</span>
+            </button>
+
+            {breadcrumbs.map((folder, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+              return (
+                <div key={folder.id} className="flex items-center gap-1">
+                  <BreadcrumbSeparatorIcon className="h-3 w-3 text-neutral-400" />
+                  <button
+                    onClick={() =>
+                      !isLast &&
+                      onBreadcrumbClick &&
+                      onBreadcrumbClick(folder.id)
+                    }
+                    disabled={isLast}
+                    className={`truncate max-w-[150px] hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${isLast ? "text-neutral-900 font-semibold dark:text-white cursor-default" : "cursor-pointer"}`}
+                  >
+                    {folder.name}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <h1 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 capitalize">
+            {title}
+          </h1>
+        )}
       </div>
 
-      {/* Center: Search (Optional, or moved to right) - kept minimal here or use flex-1 */}
+      {/* Center: Search (Optional) */}
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3">
@@ -92,6 +126,16 @@ export const KnowledgeToolbar = ({
         <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-700" />
 
         {/* Action Buttons */}
+        {showCreateFolder && onCreateFolder && (
+          <button
+            onClick={onCreateFolder}
+            className="flex items-center gap-1 rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+          >
+            <FolderIcon className="h-3 w-3" />
+            <span>New Folder</span>
+          </button>
+        )}
+
         {isTrash && onEmptyTrash ? (
           <button
             onClick={onEmptyTrash}
@@ -106,7 +150,7 @@ export const KnowledgeToolbar = ({
             className="flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
           >
             <PlusIcon className="h-3 w-3" />
-            <span>New</span>
+            <span>Upload</span>
           </button>
         )}
 

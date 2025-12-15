@@ -372,6 +372,8 @@ async def chat_websocket(
                 # Handle regular chat messages
                 message_text = data.get("message")
                 file_ids = data.get("file_ids", [])
+                context = data.get("context")
+                logger.debug(f"Received context: {context}")
 
                 if not message_text:
                     continue
@@ -498,7 +500,7 @@ async def chat_websocket(
                 total_tokens = 0
 
                 async for stream_event in get_ai_response_stream(
-                    db, message_text, topic_refreshed, user, manager, connection_id
+                    db, message_text, topic_refreshed, user, manager, connection_id, context
                 ):
                     logger.debug(f"Received stream event: {stream_event['type']}")
 

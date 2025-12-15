@@ -1,5 +1,6 @@
 import { fileService } from "@/service/fileService";
-import { useRef, useState, useEffect } from "react";
+import { folderService, type Folder } from "@/service/folderService";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { FileList, type FileListHandle } from "./FileList";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { Sidebar } from "./Sidebar";
@@ -8,8 +9,37 @@ import type { KnowledgeTab, ViewMode, StorageStats } from "./types";
 
 export const KnowledgeLayout = () => {
   const [activeTab, setActiveTab] = useState<KnowledgeTab>("home");
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
+
+  // Navigation Helper
+  const handleNavigate = useCallback(
+    (tab: KnowledgeTab, folderId: string | null = null) => {
+      setActiveTab(tab);
+      setCurrentFolderId(folderId);
+    },
+    [],
+  );
+
+  // Fetch breadcrumbs when currentFolderId changes
+  useEffect(() => {
+    const fetchPath = async () => {
+      if (!currentFolderId) {
+        setBreadcrumbs([]);
+        return;
+      }
+      try {
+        const path = await folderService.getFolderPath(currentFolderId);
+        setBreadcrumbs(path);
+      } catch (e) {
+        console.error("Failed to fetch breadcrumbs", e);
+      }
+    };
+    fetchPath();
+  }, [currentFolderId]);
 
   // Stats & File Count
   const [stats, setStats] = useState<StorageStats>({
@@ -48,8 +78,11 @@ export const KnowledgeLayout = () => {
     if (e.target.files && e.target.files.length > 0) {
       try {
         const files = Array.from(e.target.files);
+        // Determine folder ID: only pass if in folders tab
+        const folderId = activeTab === "folders" ? currentFolderId : null;
+
         for (const file of files) {
-          await fileService.uploadFile(file);
+          await fileService.uploadFile(file, "private", undefined, folderId);
         }
         // Trigger refresh
         setRefreshKey((prev) => prev + 1);
@@ -66,6 +99,38 @@ export const KnowledgeLayout = () => {
     }
   };
 
+  const handleCreateFolder = async () => {
+    const name = prompt("Enter folder name:");
+    if (name) {
+      try {
+        await folderService.createFolder({
+          name,
+          parent_id: currentFolderId,
+        });
+        setRefreshKey((prev) => prev + 1);
+      } catch (e) {
+        console.error("Failed to create folder", e);
+        alert("Failed to create folder");
+      }
+    }
+  };
+
+  const handleCreateRootFolder = async () => {
+    const name = prompt("Enter new root folder name:");
+    if (name) {
+      try {
+        await folderService.createFolder({
+          name,
+          parent_id: null,
+        });
+        setRefreshKey((prev) => prev + 1);
+      } catch (e) {
+        console.error("Failed to create root folder", e);
+        alert("Failed to create folder");
+      }
+    }
+  };
+
   // Helper for title
   const getTitle = () => {
     switch (activeTab) {
@@ -73,6 +138,8 @@ export const KnowledgeLayout = () => {
         return "Recents";
       case "all":
         return "All Files";
+      case "folders":
+        return "My Knowledge"; // Or "Folder Name" if available?
       case "trash":
         return "Trash";
       default:
@@ -83,7 +150,13 @@ export const KnowledgeLayout = () => {
   return (
     <div className="flex h-full w-full overflow-hidden bg-white dark:bg-black text-neutral-900 dark:text-white">
       {/* Sidebar */}
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Sidebar
+        activeTab={activeTab}
+        currentFolderId={currentFolderId}
+        onTabChange={handleNavigate}
+        refreshTrigger={refreshKey}
+        onCreateRootFolder={handleCreateRootFolder}
+      />
 
       {/* Main Area */}
       <div className="flex flex-1 flex-col min-w-0 bg-white dark:bg-black">
@@ -97,6 +170,10 @@ export const KnowledgeLayout = () => {
           onRefresh={() => setRefreshKey((k) => k + 1)}
           isTrash={activeTab === "trash"}
           onEmptyTrash={handleEmptyTrash}
+          showCreateFolder={activeTab === "folders"}
+          onCreateFolder={handleCreateFolder}
+          breadcrumbs={activeTab === "folders" ? breadcrumbs : undefined}
+          onBreadcrumbClick={(id) => handleNavigate("folders", id)}
         />
 
         {/* File Content */}
@@ -112,9 +189,10 @@ export const KnowledgeLayout = () => {
             viewMode={viewMode}
             refreshTrigger={refreshKey}
             onFileCountChange={setCurrentFileCount}
+            currentFolderId={currentFolderId}
+            onFolderChange={(id) => handleNavigate("folders", id)}
           />
         </div>
-
         {/* Status Bar */}
         <StatusBar
           itemCount={currentFileCount}

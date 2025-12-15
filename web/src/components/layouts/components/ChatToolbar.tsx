@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionHistory from "./SessionHistory";
 import { ModelSelector } from "./ModelSelector";
 import { BuiltinSearchToggle } from "./BuiltinSearchToggle";
+import { KnowledgeSelector } from "./KnowledgeSelector";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -76,6 +77,10 @@ export default function ChatToolbar({
     updateSessionConfig,
     uploadedFiles,
     isUploading,
+    builtinMcpServers,
+    fetchBuiltinMcpServers,
+    quickAddBuiltinServer,
+    updateAgent,
   } = useXyzen();
 
   // Merge system and user agents for lookup (system + regular/graph)
@@ -112,6 +117,75 @@ export default function ChatToolbar({
       servers: connectedServers,
     };
   }, [activeChatChannel, channels, allAgents, mcpServers]);
+
+  const isKnowledgeMcpConnected = useMemo(() => {
+    return currentMcpInfo?.servers.some((s) => s.name.includes("Knowledge"));
+  }, [currentMcpInfo]);
+
+  const handleConnectKnowledge = async () => {
+    if (!currentAgent) return;
+
+    // 1. Check if already connected (in user's MCP list)
+    let knowledgeMcp = mcpServers.find((s) => s.name.includes("Knowledge"));
+
+    // 2. If not, try to create from builtin
+    if (!knowledgeMcp) {
+      // Find in builtins
+      const builtin = builtinMcpServers.find((s) =>
+        s.name.includes("Knowledge"),
+      );
+
+      // If not loaded, try fetch
+      if (!builtin) {
+        await fetchBuiltinMcpServers();
+        // Since we can't access updated state here immediately due to closure,
+        // we can try to find it in the builtins we just fetched (if fetch returned it, but it doesn't).
+        // However, fetching triggers a re-render.
+        // For now, we will return and rely on the user clicking again or the re-render.
+        // Ideally we should wait for the state update, but React state is async.
+        // A simple workaround is to let the user know or just return.
+        // Since the button remains "Connect", they can click again.
+        return;
+      }
+
+      if (builtin) {
+        knowledgeMcp = await quickAddBuiltinServer(builtin);
+      }
+    }
+
+    if (!knowledgeMcp) return;
+
+    // 3. Attach to Agent
+    if (!currentAgent.mcp_servers?.some((ref) => ref.id === knowledgeMcp!.id)) {
+      // Construct new list
+      const currentIds = currentAgent.mcp_servers?.map((s) => s.id) || [];
+      const newIds = [...currentIds, knowledgeMcp.id];
+
+      try {
+        await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
+      } catch (e) {
+        console.error("Failed to attach knowledge base:", e);
+      }
+    }
+  };
+
+  const handleDisconnectKnowledge = async () => {
+    if (!currentAgent) return;
+
+    const knowledgeMcp = mcpServers.find((s) => s.name.includes("Knowledge"));
+    if (!knowledgeMcp) return;
+
+    const newIds =
+      currentAgent.mcp_servers
+        ?.map((s) => s.id)
+        .filter((id) => id !== knowledgeMcp.id) || [];
+
+    try {
+      await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
+    } catch (e) {
+      console.error("Failed to disconnect knowledge base:", e);
+    }
+  };
 
   // Get current agent
   const currentAgent = useMemo(() => {
@@ -371,6 +445,15 @@ export default function ChatToolbar({
                 enabled={builtinSearchEnabled}
                 onToggle={handleBuiltinSearchToggle}
                 supportsWebSearch={supportsWebSearch}
+              />
+            )}
+
+            {/* Knowledge Selector */}
+            {activeChatChannel && (
+              <KnowledgeSelector
+                isConnected={!!isKnowledgeMcpConnected}
+                onConnect={handleConnectKnowledge}
+                onDisconnect={handleDisconnectKnowledge}
               />
             )}
 

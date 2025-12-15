@@ -23,7 +23,7 @@ export interface McpSlice {
   addMcpServer: (server: McpServerCreate) => Promise<void>;
   quickAddBuiltinServer: (
     server: ExplorableMcpServer<BuiltinMcpData>,
-  ) => Promise<void>;
+  ) => Promise<McpServer | undefined>;
   activateSmitheryServer: (
     qualifiedName: string,
     profile?: string,
@@ -164,6 +164,7 @@ export const createMcpSlice: StateCreator<
         );
       });
       get().closeAddMcpServerModal();
+      return newServer;
     } catch (error) {
       console.error("Failed to add builtin MCP server:", error);
       throw error;

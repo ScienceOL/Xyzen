@@ -208,6 +208,12 @@ export interface ChatSlice {
   confirmToolCall: (channelId: string, toolCallId: string) => void;
   cancelToolCall: (channelId: string, toolCallId: string) => void;
 
+  // Knowledge Context
+  setKnowledgeContext: (
+    channelId: string,
+    context: { folderId: string; folderName: string } | null,
+  ) => void;
+
   // Notification methods
   showNotification: (
     title: string,
@@ -947,8 +953,13 @@ export const createChatSlice: StateCreator<
     },
 
     sendMessage: async (message: string) => {
-      const { activeChatChannel, uploadedFiles, clearFiles, isUploading } =
-        get();
+      const {
+        activeChatChannel,
+        uploadedFiles,
+        clearFiles,
+        isUploading,
+        channels,
+      } = get();
 
       if (!activeChatChannel) return;
 
@@ -969,17 +980,17 @@ export const createChatSlice: StateCreator<
         (f) => f.status === "completed" && f.uploadedId,
       );
 
-      // Send message with file IDs if files exist
+      const payload: Record<string, unknown> = { message };
       if (completedFiles.length > 0) {
-        const fileIds = completedFiles.map((f) => f.uploadedId!);
-        xyzenService.sendStructuredMessage({
-          message,
-          file_ids: fileIds,
-        });
-      } else {
-        // No files, send message normally
-        xyzenService.sendMessage(message);
+        payload.file_ids = completedFiles.map((f) => f.uploadedId!);
       }
+
+      const channel = channels[activeChatChannel];
+      if (channel?.knowledgeContext) {
+        payload.context = channel.knowledgeContext;
+      }
+
+      xyzenService.sendStructuredMessage(payload);
 
       // Clear files after sending (don't delete from server - they're now linked to the message)
       clearFiles(false);
@@ -1841,6 +1852,18 @@ export const createChatSlice: StateCreator<
               });
             }
           });
+        }
+      });
+    },
+
+    setKnowledgeContext: (channelId, context) => {
+      set((state: ChatSlice) => {
+        if (state.channels[channelId]) {
+          state.channels[channelId].knowledgeContext = context || undefined;
+        }
+        if (state.workshopChannels[channelId]) {
+          state.workshopChannels[channelId].knowledgeContext =
+            context || undefined;
         }
       });
     },

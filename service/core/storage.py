@@ -87,8 +87,6 @@ def get_storage_service() -> StorageServiceProto:
     """
     global _storage_service
     if _storage_service is None:
-        # Import dynamically to avoid circular imports and ensure infrastructure is ready
-        # Using relative import from infra package
         try:
             from infra.storage.blob import BlobStorageService
 

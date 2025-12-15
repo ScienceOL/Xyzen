@@ -46,6 +46,7 @@ class ChatExecutionRouter:
         agent_id: UUID | None = None,
         connection_manager: "ConnectionManager | None" = None,
         connection_id: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """
         Route message execution to the appropriate agent handler with streaming support.
@@ -57,6 +58,7 @@ class ChatExecutionRouter:
             agent_id: Optional agent ID override
             connection_manager: WebSocket connection manager
             connection_id: Connection ID for WebSocket
+            context: Optional execution context (e.g. knowledge folder)
 
         Yields:
             Chat event dictionaries for streaming response
@@ -65,7 +67,7 @@ class ChatExecutionRouter:
         if agent_id is None:
             logger.info("No agent specified, using regular chat completion")
             async for event in self._execute_regular_agent_stream(
-                message_text, topic, user_id, None, connection_manager, connection_id
+                message_text, topic, user_id, None, connection_manager, connection_id, context
             ):
                 yield event
             return
@@ -120,6 +122,7 @@ class ChatExecutionRouter:
                     agent,  # type: ignore
                     connection_manager,
                     connection_id,
+                    context,
                 ):
                     yield event
 
@@ -297,6 +300,7 @@ class ChatExecutionRouter:
         agent: Agent | None,
         connection_manager: "ConnectionManager | None" = None,
         connection_id: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """
         Execute a regular agent with streaming support.
@@ -308,6 +312,7 @@ class ChatExecutionRouter:
             agent: The regular agent instance (None for default chat)
             connection_manager: WebSocket connection manager
             connection_id: Connection ID for WebSocket
+            context: Optional execution context
 
         Yields:
             Chat event dictionaries for streaming response
@@ -318,7 +323,7 @@ class ChatExecutionRouter:
 
             # Use the existing regular agent streaming logic
             async for event in get_ai_response_stream_langchain_legacy(
-                self.db, message_text, topic, user_id, agent, connection_manager, connection_id
+                self.db, message_text, topic, user_id, agent, connection_manager, connection_id, context
             ):
                 yield event
 
@@ -337,6 +342,7 @@ async def get_ai_response_stream(
     user_id: str,
     connection_manager: "ConnectionManager | None" = None,
     connection_id: str | None = None,
+    context: dict[str, Any] | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """
     Gets a streaming response using the execution router.
@@ -363,7 +369,7 @@ async def get_ai_response_stream(
         # For builtin agents, pass the UUID but tell the router about the builtin ID
         final_agent_id = agent_id if builtin_agent_id is None else agent_id
         async for event in router.route_execution_stream(
-            message_text, topic, user_id, final_agent_id, connection_manager, connection_id
+            message_text, topic, user_id, final_agent_id, connection_manager, connection_id, context
         ):
             yield event
 

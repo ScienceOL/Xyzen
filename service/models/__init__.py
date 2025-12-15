@@ -4,6 +4,7 @@ from .agent import Agent, AgentReadWithDetails
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
+from .folder import Folder, FolderCreate, FolderRead, FolderUpdate
 from .graph import GraphAgent, GraphEdge, GraphNode
 from .links import AgentMcpServerLink
 from .mcp import McpServer
@@ -34,6 +35,10 @@ __all__ = [
     "FileRead",
     "FileReadWithUrl",
     "FileUpdate",
+    "Folder",
+    "FolderCreate",
+    "FolderRead",
+    "FolderUpdate",
     "AgentMcpServerLink",
     "McpServer",
     "Message",

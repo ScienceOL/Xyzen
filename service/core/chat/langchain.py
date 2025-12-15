@@ -228,6 +228,7 @@ async def get_ai_response_stream_langchain_legacy(
     agent: "Agent | None" = None,
     connection_manager: "ConnectionManager | None" = None,
     connection_id: str | None = None,
+    context: dict[str, Any] | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """
     Gets a streaming response using LangChain Agent.
@@ -327,6 +328,23 @@ async def get_ai_response_stream_langchain_legacy(
         # Load long-term memory (DB-backed) which includes the current message with attachments
         # The current user message should already be saved in DB before calling this function
         history_messages = await _load_db_history(db, topic)
+
+        # Inject context if provided
+        if context:
+            folder_name = context.get("folderName")
+            # folder_id = context.get("folderId")
+            if folder_name:
+                context_instruction = (
+                    f"Current working directory(knowledge base) is set to '{folder_name}' "
+                    "you should pass the folder name while calling knowledge tools (list_files, read_file, etc.)."
+                )
+                logger.info(f"Injecting knowledge context: {context_instruction}")
+                # Insert as SystemMessage right before the last message (User's message)
+                system_msg = SystemMessage(content=context_instruction)
+                if history_messages and isinstance(history_messages[-1], HumanMessage):
+                    history_messages.insert(-1, system_msg)
+                else:
+                    history_messages.append(system_msg)
 
         async for chunk in langchain_agent.astream(
             {"messages": history_messages},

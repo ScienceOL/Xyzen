@@ -29,6 +29,7 @@ export interface FileUploadResponse {
   is_deleted: boolean;
   message_id: string | null;
   status: "pending" | "confirmed" | "expired";
+  folder_id: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -56,6 +57,7 @@ class FileService {
     file: File,
     scope: string = "private",
     category?: string,
+    folderId?: string | null,
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<FileUploadResponse> {
     const formData = new FormData();
@@ -63,6 +65,9 @@ class FileService {
     formData.append("scope", scope);
     if (category) {
       formData.append("category", category);
+    }
+    if (folderId) {
+      formData.append("folder_id", folderId);
     }
 
     const xhr = new XMLHttpRequest();
@@ -123,10 +128,32 @@ class FileService {
     include_deleted?: boolean;
     limit?: number;
     offset?: number;
+    folder_id?: string | null;
+    filter_by_folder?: boolean;
   }): Promise<FileUploadResponse[]> {
     const baseUrl = getBackendUrl();
-    const queryString = params
-      ? "?" + new URLSearchParams(params as Record<string, string>).toString()
+    const queryParams = new URLSearchParams();
+
+    if (params) {
+      if (params.scope) queryParams.append("scope", params.scope);
+      if (params.category) queryParams.append("category", params.category);
+      if (params.include_deleted) queryParams.append("include_deleted", "true");
+      if (params.limit) queryParams.append("limit", params.limit.toString());
+      if (params.offset) queryParams.append("offset", params.offset.toString());
+
+      // Handle folder_id: only append if not null (unless backend supports literal "null" which it usually doesn't for UUID)
+      // If folder_id is null, we assume Root. Backend treats missing folder_id as "don't filter" unless filter_by_folder is true.
+      // If filter_by_folder is true AND folder_id is missing, backend treats it as Root (None).
+      if (params.folder_id) {
+        queryParams.append("folder_id", params.folder_id);
+      }
+      if (params.filter_by_folder) {
+        queryParams.append("filter_by_folder", "true");
+      }
+    }
+
+    const queryString = queryParams.toString()
+      ? "?" + queryParams.toString()
       : "";
     const response = await fetch(
       `${baseUrl}/xyzen/api/v1/files/${queryString}`,
@@ -170,6 +197,7 @@ class FileService {
       metainfo?: Record<string, unknown>;
       message_id?: string | null;
       status?: "pending" | "confirmed" | "expired";
+      folder_id?: string | null;
     },
   ): Promise<FileUploadResponse> {
     const baseUrl = getBackendUrl();
