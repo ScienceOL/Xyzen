@@ -8,12 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastmcp.server.http import create_streamable_http_app
 
 from core.configs import configs
+from core.logger import LOGGING_CONFIG
 from handler import root_router
 from handler.mcp import setup_mcp_routes
 
 # from middleware.auth.casdoor import casdoor_mcp_auth
 from infra.database import create_db_and_tables
-from middleware.logger import LOGGING_CONFIG
 
 
 @asynccontextmanager
