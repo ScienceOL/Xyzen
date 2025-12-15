@@ -11,8 +11,8 @@ from common.code.error_code import ErrCode, ErrCodeError
 from core.chat import get_ai_response_stream
 from core.chat.topic_generator import generate_and_update_topic_title
 from core.consume import create_consume_for_chat
+from infra.database import AsyncSessionLocal
 from middleware.auth import AuthContext, get_auth_context_websocket
-from middleware.database.connection import AsyncSessionLocal
 from models.citation import CitationCreate
 from models.message import Message as MessageModel
 from models.message import MessageCreate

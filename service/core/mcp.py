@@ -8,7 +8,7 @@ from fastmcp import Client
 from fastmcp.client.auth import BearerAuth
 
 from core.websocket import mcp_websocket_manager
-from middleware.database.connection import get_session
+from infra.database import get_session
 from models.mcp import McpServer
 
 logger = logging.getLogger(__name__)

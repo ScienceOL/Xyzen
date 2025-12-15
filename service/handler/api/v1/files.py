@@ -10,8 +10,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code import ErrCode, ErrCodeError, handle_auth_error
 from core.storage import BlobStorageService, FileCategory, FileScope, detect_file_category, generate_storage_key
+from infra.database import get_session
 from middleware.auth import get_current_user
-from middleware.database import get_session
 from models.file import FileCreate, FileRead, FileReadWithUrl, FileUpdate
 from repos.file import FileRepository
 

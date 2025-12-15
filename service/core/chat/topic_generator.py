@@ -6,7 +6,7 @@ from uuid import UUID
 from langchain_core.messages import HumanMessage
 
 from core.providers import get_user_provider_manager
-from middleware.database.connection import AsyncSessionLocal
+from infra.database import AsyncSessionLocal
 from models.topic import TopicUpdate
 from repos.session import SessionRepository
 from repos.topic import TopicRepository

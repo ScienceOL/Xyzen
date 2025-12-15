@@ -13,7 +13,7 @@ from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, Response
 
 from core.configs import configs
-from middleware.database.connection import AsyncSessionLocal
+from infra.database import AsyncSessionLocal
 from repos import SmitheryCacheRepository
 
 logger = logging.getLogger(__name__)

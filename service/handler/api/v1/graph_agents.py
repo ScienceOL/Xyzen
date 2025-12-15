@@ -13,8 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.chat.langgraph import execute_graph_agent_sync
+from infra.database import get_session
 from middleware.auth import get_current_user
-from middleware.database import get_session
 from models.graph import (
     GraphAgent,
     GraphAgentCreate,

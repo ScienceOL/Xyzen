@@ -99,7 +99,7 @@ def register_built_in_tools(mcp: FastMCP) -> None:
         return ""
         # try:
         #     from core.providers import get_user_provider_manager
-        #     from middleware.database.connection import AsyncSessionLocal
+        #     from infra.database.connection import AsyncSessionLocal
 
         #     # Get user info for provider access
         #     access_token = get_access_token()

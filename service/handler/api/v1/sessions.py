@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.agent_type_detector import AgentTypeDetector
+from infra.database import get_session
 from middleware.auth import get_current_user
-from middleware.database import get_session
 from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics, SessionUpdate
 from models.topic import TopicCreate, TopicRead
 from repos import MessageRepository, SessionRepository, TopicRepository

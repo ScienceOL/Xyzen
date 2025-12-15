@@ -12,8 +12,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.configs import configs
 from core.mcp import async_check_mcp_server_status
+from infra.database import get_session
 from middleware.auth import get_current_user
-from middleware.database.connection import get_session
 from models.mcp import McpServer, McpServerCreate, McpServerUpdate
 
 logger = logging.getLogger(__name__)

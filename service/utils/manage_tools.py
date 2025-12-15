@@ -10,8 +10,8 @@ from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import AccessToken, get_access_token
 
+from infra.database import AsyncSessionLocal
 from middleware.auth import AuthProvider, UserInfo
-from middleware.database.connection import AsyncSessionLocal
 from models.tool import (
     ToolCreate,
     ToolFunctionCreate,

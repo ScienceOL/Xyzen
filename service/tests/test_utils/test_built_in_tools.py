@@ -121,7 +121,7 @@ class TestBuiltInTools:
             patch("fastmcp.server.dependencies.get_access_token") as mock_get_token,
             patch("middleware.auth.AuthProvider") as mock_auth_provider,
             patch("core.providers.get_user_provider_manager") as mock_get_manager,
-            patch("middleware.database.connection.AsyncSessionLocal") as mock_session,
+            patch("infra.database.connection.AsyncSessionLocal") as mock_session,
         ):
             # Mock authentication
             mock_token = MagicMock()

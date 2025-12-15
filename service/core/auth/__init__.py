@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from middleware.database import get_session
+from infra.database import get_session
 from models.agent import Agent
 from models.graph import GraphAgent
 from models.provider import Provider
