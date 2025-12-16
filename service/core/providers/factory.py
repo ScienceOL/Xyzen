@@ -3,7 +3,6 @@ from typing import Any, cast
 
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_vertexai import ChatVertexAI
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from common.code import ErrCode
@@ -104,10 +103,14 @@ class ChatModelFactory:
     ) -> BaseChatModel:
         if "vertex_sa" not in credentials:
             raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Vertex service account is not provided")
+        if "vertex_project" not in credentials:
+            raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Vertex project is not provided")
 
         import json
         import os
         import tempfile
+
+        from google.oauth2 import service_account
 
         # Extract google_search_enabled from runtime_kwargs
         google_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
@@ -117,10 +120,16 @@ class ChatModelFactory:
             tmp_path = file.name
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
 
+        google_credentials = service_account.Credentials.from_service_account_file(
+            tmp_path, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+
         # Create the base model
-        llm = ChatVertexAI(
+        llm = ChatGoogleGenerativeAI(
             model=model,
             location="global",
+            credentials=google_credentials,
+            project=credentials["vertex_project"],
             **runtime_kwargs,
         )
 

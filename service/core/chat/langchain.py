@@ -6,8 +6,10 @@ Uses LangChain's create_agent for automatic tool execution and conversation mana
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
+from io import BytesIO
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, TypeVar
 
 from langchain.agents import create_agent
@@ -19,7 +21,10 @@ from pydantic import Field, create_model
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import get_user_provider_manager
+from core.storage import FileCategory, FileScope, generate_storage_key, get_storage_service
+from models.file import FileCreate
 from models.topic import Topic as TopicModel
+from repos.file import FileRepository
 from schemas.chat_events import ChatEventType, ProcessingStatus, ToolCallStatus
 
 from .messages import build_system_prompt
@@ -174,7 +179,22 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
                     logger.error(f"Failed to process files for message {message.id}: {e}", exc_info=True)
                     history.append(HumanMessage(content=content))
             elif role == "assistant":
-                history.append(AIMessage(content=content))
+                # Check if message has file attachments (e.g. generated images)
+                try:
+                    file_contents = await process_message_files(db, message.id)
+                    if file_contents:
+                        # Multimodal assistant message
+                        # Combine text content with file content
+                        multimodal_content: list[dict[str, Any]] = []
+                        if content:
+                            multimodal_content.append({"type": "text", "text": content})
+                        multimodal_content.extend(file_contents)
+                        history.append(AIMessage(content=multimodal_content))  # pyright:ignore
+                    else:
+                        history.append(AIMessage(content=content))
+                except Exception as e:
+                    logger.error(f"Failed to process files for assistant message {message.id}: {e}", exc_info=True)
+                    history.append(AIMessage(content=content))
             elif role == "system":
                 history.append(SystemMessage(content=content))
             elif role == "tool":
@@ -426,6 +446,94 @@ async def get_ai_response_stream_langchain_legacy(
                         and step_name == "model"
                         and (not hasattr(last_message, "tool_calls") or not last_message.tool_calls)
                     ):
+                        # Handle multimodal content (e.g. generated images)
+                        content = last_message.content
+                        if isinstance(content, list):
+                            generated_files = []
+                            for block in content:
+                                if isinstance(block, dict) and block.get("image_url"):
+                                    try:
+                                        image_url_dict = block.get("image_url", {})
+                                        # Handle both dict with url key and direct string (though standard is dict)
+                                        image_url = (
+                                            image_url_dict.get("url")
+                                            if isinstance(image_url_dict, dict)
+                                            else image_url_dict
+                                        )
+
+                                        if (
+                                            image_url
+                                            and isinstance(image_url, str)
+                                            and image_url.startswith("data:image/")
+                                            and ";base64," in image_url
+                                        ):
+                                            # Extract base64
+                                            header, base64_data = image_url.split(";base64,")
+                                            # Determine extension
+                                            file_ext = "png"  # default
+                                            if "jpeg" in header or "jpg" in header:
+                                                file_ext = "jpg"
+                                            elif "webp" in header:
+                                                file_ext = "webp"
+
+                                            image_data = base64.b64decode(base64_data)
+
+                                            # Create file
+                                            storage_service = get_storage_service()
+                                            filename = (
+                                                f"generated_image_{int(asyncio.get_event_loop().time())}.{file_ext}"
+                                            )
+                                            storage_key = generate_storage_key(
+                                                user_id,
+                                                filename,
+                                                scope=FileScope.GENERATED,
+                                                category=FileCategory.IMAGE,
+                                            )
+
+                                            # Upload
+                                            await storage_service.upload_file(
+                                                BytesIO(image_data),
+                                                storage_key,
+                                                content_type=f"image/{file_ext}",
+                                            )
+
+                                            # Create DB record
+                                            file_repo = FileRepository(db)
+                                            file_create = FileCreate(
+                                                user_id=user_id,
+                                                storage_key=storage_key,
+                                                original_filename=filename,
+                                                content_type=f"image/{file_ext}",
+                                                file_size=len(image_data),
+                                                scope=FileScope.GENERATED,
+                                                category=FileCategory.IMAGE,
+                                                status="pending",
+                                            )
+                                            file_obj = await file_repo.create_file(file_create)
+                                            generated_files.append(file_obj)
+
+                                            logger.info(f"Generated image saved: {file_obj.id}")
+                                    except Exception as e:
+                                        logger.error(f"Failed to process generated image: {e}")
+
+                            if generated_files:
+                                files_data = []
+                                for f in generated_files:
+                                    files_data.append(
+                                        {
+                                            "id": str(f.id),
+                                            "name": f.original_filename,
+                                            "type": f.content_type,
+                                            "size": f.file_size,
+                                            "category": f.category,
+                                            "download_url": f"/xyzen/api/v1/files/{f.id}/download",
+                                        }
+                                    )
+                                yield {
+                                    "type": ChatEventType.GENERATED_FILES,
+                                    "data": {"files": files_data},
+                                }
+
                         # Do not emit content here; 'messages' stream provides token chunks.
                         # However, extract citations from response_metadata if available
                         if hasattr(last_message, "response_metadata"):

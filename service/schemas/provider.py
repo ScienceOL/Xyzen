@@ -30,6 +30,7 @@ class LLMCredentials(TypedDict):
 
     # Vertex
     vertex_sa: NotRequired[dict]
+    vertex_project: NotRequired[str]
 
 
 class RuntimeProviderConfig(BaseModel):
@@ -64,5 +65,7 @@ class RuntimeProviderConfig(BaseModel):
         # Vertex
         if "vertex_sa" in self.extra_config:
             creds["vertex_sa"] = self.extra_config["vertex_sa"]
+        if "vertex_project" in self.extra_config:
+            creds["vertex_project"] = self.extra_config["vertex_project"]
 
         return creds

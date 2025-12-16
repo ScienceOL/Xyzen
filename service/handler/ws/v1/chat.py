@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -22,6 +22,31 @@ from schemas.chat_events import ChatClientEventType, ChatEventType, ToolCallStat
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Chat"])
+
+
+def extract_content_text(content: Any) -> str:
+    """
+    从不稳定的 content 中提取纯文本。
+    支持 str 和 Google Vertex AI 的 list[dict] 格式。
+    """
+    if content is None:
+        return ""
+
+    # 情况 1: 普通字符串
+    if isinstance(content, str):
+        return content
+
+    # 情况 2: 列表 (通常是 Vertex AI/Gemini 的多模态或带元数据的响应)
+    if isinstance(content, list):
+        text_parts = []
+        for item in content:
+            # 确保 item 是字典，且 type 为 text
+            if isinstance(item, dict) and item.get("type") == "text":
+                text_parts.append(item.get("text", ""))
+        return "".join(text_parts)
+
+    # 情况 3: 其他未知类型 (做兜底，防止报错)
+    return str(content)
 
 
 # --- Connection Manager ---
@@ -493,6 +518,7 @@ async def chat_websocket(
                 ai_message_id = None
                 full_content = ""
                 citations_data = []  # Track citations to save after message is created
+                generated_file_ids_list = []  # Track generated files to link after message is created
 
                 # Token usage tracking
                 input_tokens = 0
@@ -511,8 +537,10 @@ async def chat_websocket(
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.STREAMING_CHUNK and ai_message_id:
                         chunk_content = stream_event["data"]["content"]
-                        full_content += chunk_content
-                        # Forward streaming_chunk to frontend
+                        text_content = extract_content_text(chunk_content)
+                        full_content += text_content
+                        # Forward streaming_chunk to frontend with only text content
+                        stream_event["data"]["content"] = text_content
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.STREAMING_END:
                         full_content = stream_event["data"].get("content", full_content)
@@ -590,6 +618,15 @@ async def chat_websocket(
                             citations_data.extend(citations)
                         # Forward citations to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
+                    elif stream_event["type"] == ChatEventType.GENERATED_FILES:
+                        # Capture generated file IDs to link to the message
+                        files_data = stream_event["data"].get("files", [])
+                        file_ids = [f["id"] for f in files_data]
+                        if file_ids:
+                            logger.info(f"Captured {len(file_ids)} generated files")
+                            generated_file_ids_list.extend(file_ids)
+                        # Forward to frontend
+                        await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.ERROR:
                         full_content = stream_event["data"]["error"]
                         # Forward error to frontend
@@ -604,6 +641,17 @@ async def chat_websocket(
                     ai_message_create = MessageCreate(role="assistant", content=full_content, topic_id=topic_id)
                     ai_message = MessageModel.model_validate(ai_message_create)
                     ai_message = await message_repo.create_message(ai_message_create)
+
+                    # Link generated files to the message
+                    if generated_file_ids_list:
+                        try:
+                            file_repo = FileRepository(db)
+                            # Convert string IDs to UUIDs
+                            file_uuids = [UUID(fid) for fid in generated_file_ids_list]
+                            await file_repo.update_files_message_id(file_uuids, ai_message.id, user)
+                            logger.info(f"Linked {len(file_uuids)} generated files to message {ai_message.id}")
+                        except Exception as e:
+                            logger.error(f"Failed to link generated files: {e}")
 
                     # Save citations to database if any
                     if citations_data:
@@ -727,7 +775,7 @@ async def chat_websocket(
         except Exception:
             pass  # Rollback failure is not critical for disconnect
     except Exception as e:
-        logger.error(f"An error occurred in WebSocket for topic {connection_id}: {e}")
+        logger.error(f"An error occurred in WebSocket for topic {connection_id}: {e}", exc_info=True)
         try:
             await db.rollback()
         except Exception as rollback_error:

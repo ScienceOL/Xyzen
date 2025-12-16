@@ -41,6 +41,9 @@ class ChatEventType(StrEnum):
     # Built-in search citations
     SEARCH_CITATIONS = "search_citations"
 
+    # Generated content
+    GENERATED_FILES = "generated_files"
+
 
 class ChatClientEventType(StrEnum):
     """Client -> Server event types (messages coming from the frontend)."""
