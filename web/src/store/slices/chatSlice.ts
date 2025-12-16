@@ -755,6 +755,59 @@ export const createChatSlice: StateCreator<
                 break;
               }
 
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore - generated_files is a valid event type from backend
+              case "generated_files": {
+                const eventData = event.data as unknown as {
+                  files: Array<{
+                    id: string;
+                    name: string;
+                    type: string;
+                    size: number;
+                    category: "images" | "documents" | "audio" | "others";
+                    download_url?: string;
+                    thumbnail_url?: string;
+                  }>;
+                };
+
+                // Find the most recent assistant message that's streaming or just finished
+                const lastAssistantIndex = channel.messages
+                  .slice()
+                  .reverse()
+                  .findIndex(
+                    (m) =>
+                      m.role === "assistant" &&
+                      (m.isStreaming || !m.attachments),
+                  );
+
+                if (lastAssistantIndex !== -1) {
+                  const actualIndex =
+                    channel.messages.length - 1 - lastAssistantIndex;
+                  const targetMessage = channel.messages[actualIndex];
+
+                  // Initialize attachments if null
+                  if (!targetMessage.attachments) {
+                    channel.messages[actualIndex].attachments = [];
+                  }
+
+                  // Append new files
+                  const currentAttachments =
+                    channel.messages[actualIndex].attachments || [];
+                  const newAttachments = eventData.files.filter(
+                    (newFile) =>
+                      !currentAttachments.some(
+                        (curr) => curr.id === newFile.id,
+                      ),
+                  );
+
+                  channel.messages[actualIndex].attachments = [
+                    ...currentAttachments,
+                    ...newAttachments,
+                  ];
+                }
+                break;
+              }
+
               case "message_saved": {
                 // Update the streaming message with the real database ID
                 const eventData = event.data as {
