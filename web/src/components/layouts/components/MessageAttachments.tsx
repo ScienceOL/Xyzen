@@ -91,6 +91,7 @@ export default function MessageAttachments({
     return () => {
       Object.values(imageBlobUrls).forEach((url) => URL.revokeObjectURL(url));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachments, backendUrl, token]);
 
   // Fetch audio and document files with authentication
@@ -140,6 +141,7 @@ export default function MessageAttachments({
     return () => {
       Object.values(fileBlobUrls).forEach((url) => URL.revokeObjectURL(url));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachments, backendUrl, token]);
 
   const getImageUrl = (image: MessageAttachment): string => {

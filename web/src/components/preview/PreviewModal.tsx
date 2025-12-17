@@ -92,6 +92,7 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
     } else {
       setBlobUrl(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, file, backendUrl, token]);
 
   const renderContent = () => {

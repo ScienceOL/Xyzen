@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { useXyzen } from "@/store";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
 import { AdminAuthForm } from "./AdminAuthForm";
 import { CodeGenerationForm } from "./CodeGenerationForm";
 import { CodesList } from "./CodesList";
@@ -58,7 +58,7 @@ export function SecretCodePage() {
       } else {
         setAuthError("Failed to verify admin secret key");
       }
-    } catch (err) {
+    } catch {
       setAuthError("Network error: Failed to verify secret key");
     } finally {
       setIsVerifying(false);

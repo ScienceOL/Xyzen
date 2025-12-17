@@ -104,6 +104,7 @@ export function CodesList({
 
   useEffect(() => {
     loadCodes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
