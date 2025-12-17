@@ -1,13 +1,13 @@
+import { useXyzen } from "@/store";
+import type { MessageAttachment } from "@/store/types";
 import {
   DocumentIcon,
   MusicalNoteIcon,
   PhotoIcon,
 } from "@heroicons/react/24/outline";
-import type { MessageAttachment } from "@/store/types";
-import { useState, useEffect, useCallback } from "react";
 import clsx from "clsx";
-import { useXyzen } from "@/store";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
 
 interface MessageAttachmentsProps {
   attachments: MessageAttachment[];

@@ -202,6 +202,7 @@ export const AvatarComponent: React.FC<AvatarComponentProps> = ({
 
       return () => clearTimeout(timeoutId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disableVideo, isVideoAnimation, avatar, videoFrameUrl]);
 
   // 处理鼠标进入容器
