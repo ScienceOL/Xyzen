@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from middleware.database.connection import AsyncSessionLocal
+from infra.database import AsyncSessionLocal
 from models.file import FileRead, FileReadWithUrl
 from models.message import Message as MessageModel
 from models.message import (

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common import ALEMBIC_INI_PATH
-from internal import configs
+from core.configs import configs
 
 
 # 根据配置的数据库引擎类型构建数据库连接 URL

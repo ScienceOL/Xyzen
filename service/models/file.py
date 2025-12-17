@@ -66,6 +66,12 @@ class FileBase(SQLModel):
         max_length=20,
         description="File status: pending, confirmed, or expired",
     )
+    folder_id: UUID | None = Field(
+        default=None,
+        index=True,
+        nullable=True,
+        description="ID of the folder containing this file",
+    )
 
 
 class File(FileBase, table=True):
@@ -133,6 +139,10 @@ class FileUpdate(SQLModel):
         default=None,
         max_length=20,
         description="File status: pending, confirmed, or expired",
+    )
+    folder_id: UUID | None = Field(
+        default=None,
+        description="ID of the folder containing this file",
     )
 
 

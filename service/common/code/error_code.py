@@ -143,6 +143,14 @@ class ErrCode(IntEnum):
     STORAGE_QUOTA_EXCEEDED = 12006  # User storage limit reached
     STORAGE_UNAVAILABLE = 12007  # Storage system unavailable
 
+    # ========== FOLDER MANAGEMENT (125xx) ==========
+    # Use when: Folder operations fail
+    FOLDER_NOT_FOUND = 12500  # Folder doesn't exist
+    FOLDER_ACCESS_DENIED = 12501  # User can't access folder
+    FOLDER_CREATION_FAILED = 12502  # Failed to create folder
+    FOLDER_UPDATE_FAILED = 12503  # Failed to update folder
+    FOLDER_DELETE_FAILED = 12504  # Failed to delete folder
+
     # ========== BILLING / CONSUMPTION (13xxx) ==========
     # Use when: Billing or credit consumption fails
     INSUFFICIENT_BALANCE = 13000  # User has insufficient credits/balance
@@ -228,6 +236,7 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.TOPIC_NOT_FOUND: 404,
         ErrCode.SESSION_NOT_FOUND: 404,
         ErrCode.GRAPH_AGENT_NOT_FOUND: 404,
+        ErrCode.FOLDER_NOT_FOUND: 404,
         # 403 errors
         ErrCode.PROVIDER_ACCESS_DENIED: 403,
         ErrCode.PROVIDER_NOT_OWNED: 403,
@@ -238,6 +247,7 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.SESSION_ACCESS_DENIED: 403,
         ErrCode.GRAPH_AGENT_ACCESS_DENIED: 403,
         ErrCode.GRAPH_AGENT_NOT_OWNED: 403,
+        ErrCode.FOLDER_ACCESS_DENIED: 403,
         # 402 errors
         ErrCode.INSUFFICIENT_BALANCE: 402,
         # 404 errors (redemption)

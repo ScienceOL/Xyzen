@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from core.storage import BlobStorageService, get_storage_service
+from core.storage import StorageServiceProto, get_storage_service
 from models.file import File
 from models.message import Message
 from repos.file import FileRepository
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 async def cleanup_orphaned_files(
     db: AsyncSession,
-    storage: BlobStorageService | None = None,
+    storage: StorageServiceProto | None = None,
     dry_run: bool = False,
 ) -> dict[str, int]:
     """
@@ -107,7 +107,7 @@ async def cleanup_orphaned_files(
 
 async def cleanup_expired_pending_files(
     db: AsyncSession,
-    storage: BlobStorageService | None = None,
+    storage: StorageServiceProto | None = None,
     expiration_hours: int = 24,
     dry_run: bool = False,
 ) -> dict[str, int]:
@@ -154,7 +154,7 @@ async def cleanup_expired_pending_files(
         select(File)
         .where(File.status == "pending")
         .where(File.message_id.is_(None))  # type: ignore
-        .where(File.created_at <= cutoff_datetime)  # type: ignore
+        .where(File.created_at <= cutoff_datetime)
         .where(File.is_deleted == False)  # noqa: E712
     )
     result = await db.exec(statement)
@@ -197,7 +197,7 @@ async def cleanup_expired_pending_files(
 
 async def cleanup_old_soft_deleted_files(
     db: AsyncSession,
-    storage: BlobStorageService | None = None,
+    storage: StorageServiceProto | None = None,
     retention_days: int = 30,
     dry_run: bool = False,
 ) -> dict[str, int]:
@@ -287,7 +287,7 @@ async def cleanup_old_soft_deleted_files(
 
 async def run_full_cleanup(
     db: AsyncSession,
-    storage: BlobStorageService | None = None,
+    storage: StorageServiceProto | None = None,
     expiration_hours: int = 24,
     retention_days: int = 30,
     dry_run: bool = False,

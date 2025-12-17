@@ -1,10 +1,11 @@
 """Tests for database middleware."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from middleware.database.connection import get_session
+from infra.database import get_session
 
 
 class TestDatabaseMiddleware:
@@ -19,7 +20,7 @@ class TestDatabaseMiddleware:
         # but we can verify the function exists and is callable
         assert callable(get_session)
 
-    @patch("middleware.database.connection.AsyncSessionLocal")
+    @patch("infra.database.connection.AsyncSessionLocal")
     async def test_get_session_mock(self, mock_session_local: MagicMock) -> None:
         """Test get_session with mocked session."""
         # Mock the session and its context manager

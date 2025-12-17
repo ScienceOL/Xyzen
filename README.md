@@ -100,6 +100,29 @@ The script will automatically:
 ./launch/dev.sh -h
 ```
 
+## AI Agent Configuration
+
+Xyzen uses a standardized instruction file for AI coding assistants to ensuring consistency across different tools.
+
+The master file is located at **[`AGENTS.md`](./AGENTS.md)**.
+
+To configure your preferred AI tool, create a symbolic link (or copy) `AGENTS.md` to the filename expected by your tool. These specific filenames are ignored by git to keep the repository clean.
+
+**GitHub Copilot:**
+```bash
+mkdir -p .github
+ln -s ../AGENTS.md .github/copilot-instructions.md
+```
+
+**Claude / Cursor / Windsurf / Cline:**
+```bash
+ln -s AGENTS.md CLAUDE.md       # For Claude
+ln -s AGENTS.md .cursorrules    # For Cursor
+ln -s AGENTS.md .windsurfrules  # For Windsurf
+ln -s AGENTS.md .clinerules     # For Cline
+ln -s AGENTS.md .rules          # Generic
+```
+
 ## Contributing
 
 Contributions are the core of open source! We welcome improvements and features.

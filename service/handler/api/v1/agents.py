@@ -7,8 +7,8 @@ from common.code import ErrCodeError, handle_auth_error
 from core.agent_service import AgentService, UnifiedAgentRead
 from core.auth import AuthorizationService, get_auth_service
 from core.system_agent import SystemAgentManager
+from infra.database import get_session
 from middleware.auth import get_current_user
-from middleware.database import get_session
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
 
 # Ensure forward references are resolved after importing both models

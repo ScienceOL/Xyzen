@@ -71,6 +71,8 @@ class FileRepository:
         include_deleted: bool = False,
         limit: int = 100,
         offset: int = 0,
+        folder_id: UUID | None = None,
+        use_folder_filter: bool = False,
     ) -> list[File]:
         """
         Fetches files for a given user with optional filters.
@@ -82,6 +84,8 @@ class FileRepository:
             include_deleted: Whether to include soft-deleted files.
             limit: Maximum number of files to return.
             offset: Number of files to skip.
+            folder_id: Folder ID to filter by (if use_folder_filter is True).
+            use_folder_filter: Whether to apply the folder_id filter.
 
         Returns:
             List of File instances.
@@ -97,6 +101,9 @@ class FileRepository:
 
         if category:
             statement = statement.where(File.category == category)
+
+        if use_folder_filter:
+            statement = statement.where(File.folder_id == folder_id)
 
         statement = statement.order_by(File.created_at.desc()).limit(limit).offset(offset)  # type: ignore
 

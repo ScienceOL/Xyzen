@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from fastmcp import FastMCP
 from fastmcp.tools import FunctionTool
 
-from middleware.database.connection import AsyncSessionLocal
+from infra.database import AsyncSessionLocal
 from models.tool import ToolFunction, ToolStatus, ToolVersion
 from repos.tool import ToolRepository
 from utils.parser import parse_requirements

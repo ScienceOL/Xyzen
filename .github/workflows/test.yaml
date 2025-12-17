@@ -42,7 +42,7 @@ jobs:
         working-directory: ./service
         run: |
           echo "Syncing dependencies..."
-          uv sync --dev --group test
+          uv sync --dev
           echo "Dependencies installed successfully"
 
       - name: Run tests with coverage
@@ -98,7 +98,7 @@ jobs:
       - name: Install dependencies
         working-directory: ./service
         run: |
-          uv sync --dev --group test
+          uv sync --dev
 
       - name: Run tests
         working-directory: ./service

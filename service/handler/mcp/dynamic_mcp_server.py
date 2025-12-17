@@ -18,7 +18,7 @@ from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.server.middleware.logging import StructuredLoggingMiddleware
 from fastmcp.server.middleware.timing import DetailedTimingMiddleware
 
-from internal import configs
+from core.configs import configs
 from middleware.auth import AuthProvider as InternalAuthProvider
 from middleware.auth.token_verifier.bohr_app_token_verifier import BohrAppTokenVerifier
 from middleware.dynamic_mcp_server import DynamicToolMiddleware

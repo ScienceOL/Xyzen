@@ -9,22 +9,22 @@ from fastapi.responses import StreamingResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code import ErrCode, ErrCodeError, handle_auth_error
-from core.storage import BlobStorageService, FileCategory, FileScope, detect_file_category, generate_storage_key
+from core.storage import (
+    FileCategory,
+    FileScope,
+    StorageServiceProto,
+    detect_file_category,
+    generate_storage_key,
+    get_storage_service,
+)
+from infra.database import get_session
 from middleware.auth import get_current_user
-from middleware.database import get_session
 from models.file import FileCreate, FileRead, FileReadWithUrl, FileUpdate
 from repos.file import FileRepository
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["files"])
-
-
-def get_storage_service() -> BlobStorageService:
-    """Dependency to get storage service instance"""
-    from core.storage import get_storage_service
-
-    return get_storage_service()
 
 
 def calculate_file_hash(file_data: bytes) -> str:
@@ -37,8 +37,9 @@ async def upload_file(
     file: UploadFile = File(...),
     scope: str = Form(FileScope.PRIVATE),
     category: str | None = Form(None),
+    folder_id: UUID | None = Form(None),
     user_id: str = Depends(get_current_user),
-    storage: BlobStorageService = Depends(get_storage_service),
+    storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
 ) -> FileReadWithUrl:
     """
@@ -109,6 +110,7 @@ async def upload_file(
             category=category or FileCategory.OTHER,
             file_hash=file_hash,
             metainfo={"original_content_type": file.content_type},
+            folder_id=folder_id,
         )
 
         file_record = await file_repo.create_file(file_create)
@@ -143,6 +145,8 @@ async def list_files(
     include_deleted: bool = False,
     limit: int = 100,
     offset: int = 0,
+    folder_id: UUID | None = None,
+    filter_by_folder: bool = False,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[FileRead]:
@@ -155,6 +159,8 @@ async def list_files(
         include_deleted: Whether to include soft-deleted files, default: False
         limit: Maximum number of files to return, default: 100
         offset: Number of files to skip, default: 0
+        folder_id: Optional folder ID to filter by.
+        filter_by_folder: If True, filters files by folder_id (even if None).
         user_id: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
@@ -170,6 +176,8 @@ async def list_files(
             include_deleted=include_deleted,
             limit=min(limit, 1000),  # Cap at 1000
             offset=offset,
+            folder_id=folder_id,
+            use_folder_filter=filter_by_folder,
         )
 
         return [FileRead(**file.model_dump()) for file in files]
@@ -186,7 +194,7 @@ async def list_files(
 async def get_file(
     file_id: UUID,
     user_id: str = Depends(get_current_user),
-    storage: BlobStorageService = Depends(get_storage_service),
+    storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
 ) -> FileReadWithUrl:
     """
@@ -238,7 +246,7 @@ async def get_file(
 async def download_file(
     file_id: UUID,
     user_id: str = Depends(get_current_user),
-    storage: BlobStorageService = Depends(get_storage_service),
+    storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
     """
@@ -302,7 +310,7 @@ async def get_file_url(
     file_id: UUID,
     expires_in: int = 3600,
     user_id: str = Depends(get_current_user),
-    storage: BlobStorageService = Depends(get_storage_service),
+    storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, str | int]:
     """
@@ -411,7 +419,7 @@ async def delete_file(
     file_id: UUID,
     hard_delete: bool = False,
     user_id: str = Depends(get_current_user),
-    storage: BlobStorageService = Depends(get_storage_service),
+    storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
 ) -> None:
     """

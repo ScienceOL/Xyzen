@@ -230,25 +230,21 @@ class LiteLLMService:
                 ModelFilter.substring_filter("gpt"),
                 ModelFilter.version_filter(min_version=5),
                 ModelFilter.no_slash_filter(),
-                ModelFilter.no_image_filter(),
             ),
             "azure_openai": ModelFilter.combined_filter(
                 ModelFilter.substring_filter("gpt"),
                 ModelFilter.version_filter(min_version=5, max_version=6),
                 ModelFilter.azure_path_filter(),
-                ModelFilter.no_image_filter(),
             ),
             "google": ModelFilter.combined_filter(
                 ModelFilter.substring_filter("gemini"),
                 ModelFilter.version_filter(min_version=2.5),
                 ModelFilter.no_slash_filter(),
-                ModelFilter.no_image_filter(),
             ),
             "google_vertex": ModelFilter.combined_filter(
                 ModelFilter.substring_filter("gemini"),
                 ModelFilter.version_filter(min_version=2.5),
                 ModelFilter.no_slash_filter(),
-                ModelFilter.no_image_filter(),
             ),
         }
 

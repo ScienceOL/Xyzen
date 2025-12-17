@@ -7,10 +7,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code.error_code import ErrCodeError, handle_auth_error
 from core.auth import AuthorizationService, get_auth_service
+from core.configs import configs
 from core.llm.service import LiteLLMService
-from internal import configs
+from infra.database import get_session
 from middleware.auth import get_current_user
-from middleware.database.connection import get_session
 from models.provider import ProviderCreate, ProviderRead, ProviderUpdate
 from repos.provider import ProviderRepository
 from schemas.provider import ProviderType

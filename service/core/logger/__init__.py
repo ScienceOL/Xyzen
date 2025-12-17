@@ -1,6 +1,6 @@
 from typing import Any
 
-from internal import configs
+from core.configs import configs
 
 LOGGING_CONFIG: dict[str, Any] = {
     "version": 1,

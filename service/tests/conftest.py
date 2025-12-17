@@ -18,7 +18,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.pool import StaticPool
 
 from app.main import app
-from middleware.database.connection import get_session
+from infra.database import get_session
 from models.provider import Provider, ProviderCreate
 from schemas.message import (
     ChatCompletionRequest,

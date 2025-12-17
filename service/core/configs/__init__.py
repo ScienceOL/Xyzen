@@ -1,8 +1,6 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from internal.configs.mcps import McpProviderConfig
-
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dify import DifyConfig
@@ -10,6 +8,7 @@ from .dynamic_mcp_server import DynamicMCPConfig
 from .lab import LabConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
+from .mcps import McpProviderConfig
 from .oss import OSSConfig
 from .redemption import AdminConfig
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from handler.api.v1.sessions import get_current_user
-from middleware.database import get_session
+from infra.database import get_session
 from models.message import MessageReadWithFilesAndCitations
 from models.topic import Topic as TopicModel
 from models.topic import TopicCreate, TopicRead, TopicUpdate

@@ -1,9 +1,9 @@
 [project]
 name = "service"
-version = "0.1.0"
+version = "0.4.2"
 description = "The backend service of Xyzen"
 readme = "README.md"
-requires-python = ">=3.13, <3.14"
+requires-python = ">=3.12, <3.13"
 dependencies = [
     "aioboto3>=15.5.0",
     "alembic>=1.16.4",
@@ -23,6 +23,7 @@ dependencies = [
     "langgraph-checkpoint-postgres>=3.0.0",
     "litellm>=1.80.9",
     "llm-sandbox[docker,k8s]>=0.3.20",
+    "loguru>=0.7.3",
     "mcp>=1.11.0",
     "openai>=1.98.0",
     "psycopg[binary,pool]>=3.2.9",
@@ -33,18 +34,16 @@ dependencies = [
     "python-multipart>=0.0.20",
     "requests>=2.32.4",
     "sqlmodel>=0.0.24",
-    "types-pyjwt>=1.7.1",
-    "types-requests>=2.32.4.20250611",
     "websockets>=13.0,<14.0",
 ]
 
 [dependency-groups]
 dev = [
+    "types-pyjwt>=1.7.1",
+    "types-requests>=2.32.4.20250611",
     "pyright>=1.1.390",
     "pre-commit>=4.2.0",
     "ruff>=0.14.3",
-]
-test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
@@ -54,7 +53,7 @@ test = [
 ]
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py312"
 line-length = 120
 
 [tool.ruff.lint]
@@ -81,7 +80,7 @@ known-first-party = [
 [tool.pyright]
 include = ["."]
 ignore = ["**/migrations", "**/.venv/**"]
-pythonVersion = "3.13"
+pythonVersion = "3.12"
 pythonPlatform = "All"
 typeCheckingMode = "standard"
 

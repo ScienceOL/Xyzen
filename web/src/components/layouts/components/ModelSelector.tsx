@@ -1,18 +1,18 @@
 "use client";
 
+import { providerCore } from "@/core/provider";
+import type { Agent } from "@/types/agents";
+import type { LlmProviderResponse, ModelInfo } from "@/types/llmProvider";
 import {
+  ChevronDownIcon,
   CpuChipIcon,
   EyeIcon,
+  GlobeAltIcon,
   MicrophoneIcon,
   VideoCameraIcon,
-  GlobeAltIcon,
-  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-import type { LlmProviderResponse, ModelInfo } from "@/types/llmProvider";
-import type { Agent } from "@/types/agents";
-import { useMemo, useEffect, useState } from "react";
-import { providerCore } from "@/core/provider";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useMemo, useState } from "react";
 
 interface ModelSelectorProps {
   currentAgent: Agent;
@@ -339,7 +339,11 @@ export function ModelSelector({
                       <div
                         className={`h-2 w-2 shrink-0 rounded-full ${getProviderDotColor(provider.provider_type)}`}
                       />
-                      <span className="font-medium">{provider.name}</span>
+                      <span className="font-medium">
+                        {provider.name === "system"
+                          ? "系统默认"
+                          : provider.name}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-neutral-400">

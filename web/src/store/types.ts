@@ -67,6 +67,11 @@ export interface Message {
   citations?: SearchCitation[];
 }
 
+export interface KnowledgeContext {
+  folderId: string;
+  folderName: string;
+}
+
 export interface ChatChannel {
   id: string; // This will now be the Topic ID
   sessionId: string; // The session this topic belongs to
@@ -76,6 +81,7 @@ export interface ChatChannel {
   provider_id?: string;
   model?: string;
   google_search_enabled?: boolean;
+  knowledgeContext?: KnowledgeContext;
   connected: boolean;
   error: string | null;
   // Whether assistant is currently producing a reply (planning, tool calls, or generating tokens)

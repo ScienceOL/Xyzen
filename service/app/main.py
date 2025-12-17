@@ -7,13 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastmcp.server.http import create_streamable_http_app
 
+from core.configs import configs
+from core.logger import LOGGING_CONFIG
 from handler import root_router
 from handler.mcp import setup_mcp_routes
-from internal import configs
 
 # from middleware.auth.casdoor import casdoor_mcp_auth
-from middleware.database import create_db_and_tables
-from middleware.logger import LOGGING_CONFIG
+from infra.database import create_db_and_tables
 
 
 @asynccontextmanager
@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize system agents (Chat and Workshop agents)
     from core.system_agent import SystemAgentManager
-    from middleware.database.connection import AsyncSessionLocal
+    from infra.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         try:

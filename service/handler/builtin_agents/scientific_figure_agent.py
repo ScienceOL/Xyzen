@@ -13,8 +13,8 @@ from typing import Any, Dict, List
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph
-
 from langgraph.graph.state import CompiledStateGraph
+
 from core.chat.langgraph import GraphState
 
 from .base_graph_agent import BaseBuiltinGraphAgent
@@ -151,8 +151,8 @@ Examples:
 - "How are you doing?" → {"intent": "chat", "reasoning": "Casual greeting, no visualization request", "data_context": null}"""
 
         try:
-            from core.providers import get_user_provider_manager, SYSTEM_USER_ID
-            from middleware.database.connection import AsyncSessionLocal
+            from core.providers import SYSTEM_USER_ID, get_user_provider_manager
+            from infra.database import AsyncSessionLocal
 
             # Use system provider as fallback for builtin agents
             async with AsyncSessionLocal() as db:
@@ -284,8 +284,8 @@ IMPORTANT:
 6. Do NOT include "lineStyle" or "areaStyle" for scatter or bar charts"""
 
         try:
-            from core.providers import get_user_provider_manager, SYSTEM_USER_ID
-            from middleware.database.connection import AsyncSessionLocal
+            from core.providers import SYSTEM_USER_ID, get_user_provider_manager
+            from infra.database import AsyncSessionLocal
 
             # Use system provider as fallback for builtin agents
             async with AsyncSessionLocal() as db:
@@ -382,8 +382,8 @@ Key traits:
 Respond conversationally to their message. Keep it natural and engaging."""
 
         try:
-            from core.providers import get_user_provider_manager, SYSTEM_USER_ID
-            from middleware.database.connection import AsyncSessionLocal
+            from core.providers import SYSTEM_USER_ID, get_user_provider_manager
+            from infra.database import AsyncSessionLocal
 
             # Use system provider as fallback for builtin agents
             async with AsyncSessionLocal() as db:
