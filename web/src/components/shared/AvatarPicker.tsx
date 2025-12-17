@@ -375,6 +375,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
                     : bgColor.color,
                 }}
                 title={bgColor.name}
+                aria-label={`选择 ${bgColor.name} 背景色`}
               />
             ))}
           </div>
