@@ -14,7 +14,6 @@ from core.consume import create_consume_for_chat
 from infra.database import AsyncSessionLocal
 from middleware.auth import AuthContext, get_auth_context_websocket
 from models.citation import CitationCreate
-from models.message import Message as MessageModel
 from models.message import MessageCreate
 from repos import CitationRepository, FileRepository, MessageRepository, SessionRepository, TopicRepository
 from schemas.chat_events import ChatClientEventType, ChatEventType, ToolCallStatus
@@ -516,14 +515,16 @@ async def chat_websocket(
 
                 # Stream AI response
                 ai_message_id = None
+                ai_message_obj = None
                 full_content = ""
                 citations_data = []  # Track citations to save after message is created
-                generated_file_ids_list = []  # Track generated files to link after message is created
+                # generated_file_ids_list = []  # No longer needed as we link immediately
 
                 # Token usage tracking
                 input_tokens = 0
                 output_tokens = 0
                 total_tokens = 0
+                generated_files_count = 0
 
                 async for stream_event in get_ai_response_stream(
                     db, message_text, topic_refreshed, user, manager, connection_id, context
@@ -533,6 +534,12 @@ async def chat_websocket(
                     # Track message ID and content for database saving
                     if stream_event["type"] == ChatEventType.STREAMING_START:
                         ai_message_id = stream_event["data"]["id"]
+
+                        # Create DB message early
+                        if not ai_message_obj:
+                            ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
+                            ai_message_obj = await message_repo.create_message(ai_message_create)
+
                         # Forward streaming_start to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.STREAMING_CHUNK and ai_message_id:
@@ -608,6 +615,14 @@ async def chat_websocket(
                         # Handle non-streaming response
                         ai_message_id = stream_event["data"]["id"]
                         full_content = stream_event["data"]["content"]
+
+                        if not ai_message_obj:
+                            ai_message_create = MessageCreate(role="assistant", content=full_content, topic_id=topic_id)
+                            ai_message_obj = await message_repo.create_message(ai_message_create)
+                        else:
+                            ai_message_obj.content = full_content
+                            db.add(ai_message_obj)
+
                         # Forward message to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.SEARCH_CITATIONS:
@@ -622,9 +637,25 @@ async def chat_websocket(
                         # Capture generated file IDs to link to the message
                         files_data = stream_event["data"].get("files", [])
                         file_ids = [f["id"] for f in files_data]
+                        generated_files_count += len(file_ids)
+
+                        # Ensure message exists
+                        if not ai_message_obj:
+                            ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
+                            ai_message_obj = await message_repo.create_message(ai_message_create)
+
                         if file_ids:
                             logger.info(f"Captured {len(file_ids)} generated files")
-                            generated_file_ids_list.extend(file_ids)
+                            # Link immediately
+                            try:
+                                file_repo = FileRepository(db)
+                                # Convert string IDs to UUIDs
+                                file_uuids = [UUID(fid) for fid in file_ids]
+                                await file_repo.update_files_message_id(file_uuids, ai_message_obj.id, user)
+                                logger.info(f"Linked {len(file_uuids)} generated files to message {ai_message_obj.id}")
+                            except Exception as e:
+                                logger.error(f"Failed to link generated files: {e}")
+
                         # Forward to frontend
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
                     elif stream_event["type"] == ChatEventType.ERROR:
@@ -637,21 +668,16 @@ async def chat_websocket(
                         await manager.send_personal_message(json.dumps(stream_event), connection_id)
 
                 # Save AI message to database
-                if ai_message_id and full_content:
-                    ai_message_create = MessageCreate(role="assistant", content=full_content, topic_id=topic_id)
-                    ai_message = MessageModel.model_validate(ai_message_create)
-                    ai_message = await message_repo.create_message(ai_message_create)
+                if ai_message_obj:
+                    # Update content if needed
+                    if full_content and ai_message_obj.content != full_content:
+                        ai_message_obj.content = full_content
+                        db.add(ai_message_obj)
+                        # await db.flush()
 
-                    # Link generated files to the message
-                    if generated_file_ids_list:
-                        try:
-                            file_repo = FileRepository(db)
-                            # Convert string IDs to UUIDs
-                            file_uuids = [UUID(fid) for fid in generated_file_ids_list]
-                            await file_repo.update_files_message_id(file_uuids, ai_message.id, user)
-                            logger.info(f"Linked {len(file_uuids)} generated files to message {ai_message.id}")
-                        except Exception as e:
-                            logger.error(f"Failed to link generated files: {e}")
+                    ai_message = ai_message_obj
+
+                    # No need to link files here anymore as they are linked immediately
 
                     # Save citations to database if any
                     if citations_data:
@@ -680,24 +706,32 @@ async def chat_websocket(
 
                     # === 创建消费记录 (Final Settlement) ===
                     try:
+                        # Image generation cost (e.g., 10 points per image)
+                        IMAGE_GENERATION_COST = 10
+                        generated_files_cost = generated_files_count * IMAGE_GENERATION_COST
+
                         # 计算总消费金额 - 基于真实的 token 使用量
-                        # Pricing formula: base_cost + token_based_cost
+                        # Pricing formula: base_cost + token_based_cost + generated_files_cost
                         # Token pricing: input tokens cost less, output tokens cost more
                         # Example: 1 point per 1000 input tokens, 3 points per 1000 output tokens
                         if total_tokens > 0:
                             # Use real token counts for accurate billing
                             token_cost = (input_tokens * 1 + output_tokens * 3) // 1000
-                            total_cost = base_cost + token_cost
+                            total_cost = base_cost + token_cost + generated_files_cost
                             logger.info(
                                 f"Token-based billing: input={input_tokens}, output={output_tokens}, "
-                                f"total={total_tokens}, cost={token_cost}, total_cost={total_cost}"
+                                f"total={total_tokens}, cost={token_cost}, "
+                                f"files={generated_files_count}, file_cost={generated_files_cost}, "
+                                f"total_cost={total_cost}"
                             )
                         else:
                             # Fallback to character-based estimation if token info not available
-                            total_cost = base_cost + len(full_content) // 100
+                            total_cost = base_cost + len(full_content) // 100 + generated_files_cost
                             logger.warning(
                                 f"Token usage not available, using character-based estimation: "
-                                f"content_length={len(full_content)}, total_cost={total_cost}"
+                                f"content_length={len(full_content)}, "
+                                f"files={generated_files_count}, file_cost={generated_files_cost}, "
+                                f"total_cost={total_cost}"
                             )
 
                         # 计算剩余需要扣除的金额

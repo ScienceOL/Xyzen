@@ -58,6 +58,52 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
+  // Handle paste events for images/files
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    const files: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === "file") {
+        const file = items[i].getAsFile();
+        if (file) {
+          files.push(file);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      e.preventDefault();
+
+      if (!canAddMoreFiles()) {
+        console.error(`Maximum ${fileUploadOptions.maxFiles} files allowed`);
+        return;
+      }
+
+      const { allowedTypes } = fileUploadOptions;
+
+      const filteredFiles = allowedTypes
+        ? files.filter((file) => {
+            return allowedTypes.some((allowedType) => {
+              if (allowedType.endsWith("/*")) {
+                const prefix = allowedType.slice(0, -2);
+                return file.type.startsWith(prefix);
+              }
+              return file.type === allowedType;
+            });
+          })
+        : files;
+
+      if (filteredFiles.length > 0) {
+        try {
+          await addFiles(filteredFiles);
+        } catch (error) {
+          console.error("Failed to add pasted files:", error);
+        }
+      }
+    }
+  };
+
   // 处理输入法组合开始事件
   const handleCompositionStart = () => {
     setIsComposing(true);
@@ -96,6 +142,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           onKeyDown={handleKeyPress}
+          onPaste={handlePaste}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
           placeholder={placeholder}
