@@ -119,7 +119,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
   };
 
   return (
-    <div className="relative overflow-hidden bg-neutral-100 dark:bg-neutral-900">
+    <div className="relative overflow-auto bg-neutral-100 dark:bg-neutral-900 h-full">
       {/* 动态气泡背景 */}
       <BubbleBackground
         className="absolute inset-0 w-full h-full opacity-40 pointer-events-none"
