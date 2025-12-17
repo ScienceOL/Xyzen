@@ -241,8 +241,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     fallbackEmoji={
                       currentAgent?.id ===
                       "00000000-0000-0000-0000-000000000001"
-                        ? "smile"
-                        : "blush"
+                        ? "🙂"
+                        : "😊"
                     }
                     fallbackImageSrc={
                       currentAgent?.id ===
