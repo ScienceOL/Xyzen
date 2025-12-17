@@ -17,6 +17,7 @@ export interface Agent {
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
   avatar?: string | null;
+  avatar_background_color?: string | null;
   tags?: string[] | null;
   model?: string | null;
   temperature?: number | null;
@@ -40,6 +41,7 @@ export interface RegularAgent extends Agent {
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
   avatar?: string | null;
+  avatar_background_color?: string | null;
   tags?: string[] | null;
   model?: string | null;
   temperature?: number | null;

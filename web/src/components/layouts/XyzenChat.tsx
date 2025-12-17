@@ -1,6 +1,7 @@
 import { CHAT_THEMES } from "@/configs/chatThemes";
 
 import EditableTitle from "@/components/base/EditableTitle";
+import AvatarComponent from "@/components/shared/AvatarComponent";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { ShareModal } from "@/components/modals/ShareModal";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
@@ -248,19 +249,31 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         {currentAgent ? (
           <div className="relative flex-shrink-0 border-y border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
             <div className="flex items-start gap-3">
-              <div className="mt-1 h-8 w-8 flex-shrink-0 avatar-glow">
-                <img
-                  src={
-                    currentAgent.avatar ||
-                    (currentAgent.agent_type === "builtin"
+              <div className="mt-1">
+                <AvatarComponent
+                  avatar={currentAgent.avatar ?? undefined}
+                  backgroundColor={
+                    currentAgent.avatar_background_color ?? undefined
+                  }
+                  fallbackEmoji={
+                    currentAgent.agent_type === "builtin"
                       ? currentAgent.id ===
                         "00000000-0000-0000-0000-000000000001"
-                        ? "/defaults/agents/avatar1.png" // Chat agent fallback
-                        : "/defaults/agents/avatar4.png" // Workshop agent fallback
-                      : "/defaults/agents/avatar2.png") // Regular agent fallback
+                        ? "smirk" // Chat agent emoji
+                        : "robot" // Workshop agent emoji
+                      : "alarm" // Regular agent emoji
+                  }
+                  fallbackImageSrc={
+                    currentAgent.agent_type === "builtin"
+                      ? currentAgent.id ===
+                        "00000000-0000-0000-0000-000000000001"
+                        ? "/defaults/agents/avatar1.png"
+                        : "/defaults/agents/avatar4.png"
+                      : "/defaults/agents/avatar2.png"
                   }
                   alt={currentAgent.name}
                   className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
+                  containerClassName="h-8 w-8 flex-shrink-0 avatar-glow"
                 />
               </div>
               <div className="flex-1 min-w-0">

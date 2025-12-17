@@ -1,6 +1,7 @@
 "use client";
 import McpIcon from "@/assets/McpIcon";
 import { Badge } from "@/components/base/Badge";
+import AvatarComponent from "@/components/shared/AvatarComponent";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
@@ -169,20 +170,25 @@ const AgentCard: React.FC<AgentCardProps> = ({
       `}
       >
         {/* 头像 */}
-        <div className="h-10 w-10 flex-shrink-0 avatar-glow">
-          <img
-            src={
-              agent.avatar ||
-              (agent.agent_type === "builtin"
-                ? agent.id === "00000000-0000-0000-0000-000000000001"
-                  ? "/defaults/agents/avatar1.png" // Chat agent fallback
-                  : "/defaults/agents/avatar4.png" // Workshop agent fallback
-                : "/defaults/agents/avatar2.png") // Regular agent fallback
-            }
-            alt={agent.name}
-            className="h-10 w-10 rounded-full border border-neutral-200 object-cover dark:border-neutral-700"
-          />
-        </div>
+        <AvatarComponent
+          avatar={agent.avatar ?? undefined}
+          backgroundColor={agent.avatar_background_color ?? undefined}
+          fallbackEmoji={
+            agent.agent_type === "builtin"
+              ? agent.id === "00000000-0000-0000-0000-000000000001"
+                ? "smirk" // Chat agent emoji
+                : "robot" // Workshop agent emoji
+              : "alarm" // Regular agent emoji
+          }
+          fallbackImageSrc={
+            agent.agent_type === "builtin"
+              ? agent.id === "00000000-0000-0000-0000-000000000001"
+                ? "/defaults/agents/avatar1.png"
+                : "/defaults/agents/avatar4.png"
+              : "/defaults/agents/avatar2.png"
+          }
+          alt={agent.name}
+        />
 
         {/* 内容 */}
         <div className="flex flex-1 flex-col min-w-0">

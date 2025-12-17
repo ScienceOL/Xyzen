@@ -18,6 +18,7 @@ import {
   XIcon,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
+import AvatarComponent from "../shared/AvatarComponent";
 import ChatPreview from "./ChatPreview";
 
 // 临时类型定义，后续根据实际项目结构调整
@@ -26,6 +27,7 @@ export interface Agent {
   name: string;
   avatar?: string;
   description?: string;
+  avatar_background_color?: string | null;
 }
 
 interface ShareModalProps {
@@ -202,13 +204,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           const isUser = msg.role === "user";
           const isSelected = selectedIds.has(msg.id);
 
-          // AI 头像逻辑
-          const robotAvatarUrl =
-            currentAgent?.avatar ||
-            (currentAgent?.id === "00000000-0000-0000-0000-000000000001"
-              ? "/defaults/agents/avatar1.png"
-              : "/defaults/agents/avatar2.png");
-
           return (
             <div
               key={msg.id}
@@ -237,10 +232,26 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     <UserIcon className="w-4 h-4" />
                   </div>
                 ) : (
-                  <img
-                    src={robotAvatarUrl}
+                  <AvatarComponent
+                    avatar={currentAgent?.avatar ?? undefined}
+                    backgroundColor={
+                      currentAgent?.avatar_background_color ?? undefined
+                    }
+                    fallbackEmoji={
+                      currentAgent?.id ===
+                      "00000000-0000-0000-0000-000000000001"
+                        ? "smile"
+                        : "blush"
+                    }
+                    fallbackImageSrc={
+                      currentAgent?.id ===
+                      "00000000-0000-0000-0000-000000000001"
+                        ? "/defaults/agents/avatar1.png"
+                        : "/defaults/agents/avatar2.png"
+                    }
                     alt="AI"
                     className="w-8 h-8 rounded-full object-cover"
+                    containerClassName="w-8 h-8 rounded-full overflow-hidden"
                   />
                 )}
               </div>

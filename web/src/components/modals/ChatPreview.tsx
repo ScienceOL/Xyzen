@@ -1,4 +1,5 @@
 import { BubbleBackground } from "@/components/animate-ui/components/backgrounds/bubble";
+import AvatarComponent from "@/components/shared/AvatarComponent";
 import Markdown from "@/lib/Markdown";
 import type { Message, User } from "@/store/types";
 import type { Agent } from "@/types/agents";
@@ -16,40 +17,17 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
   currentAgent,
   currentUser,
 }) => {
-  // 二维码 URL（API 动态生成）
-  const apiQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("https://www.bohrium.com/apps/xyzen/job?type=app")}`;
-
-  // 备用二维码 URL（预先生成好的静态图片，放在代码仓库里）
-  const fallbackQrCodeUrl = "web/public/defaults/agents/bohr_app_qrcode.png";
-
-  // 当前使用的二维码 URL
-  const [qrCodeUrl, setQrCodeUrl] = React.useState(apiQrCodeUrl);
-
-  // 监听 apiQrCodeUrl 的变化，如果变化了就更新 qrCodeUrl
   React.useEffect(() => {
-    setQrCodeUrl(apiQrCodeUrl);
-  }, [apiQrCodeUrl]);
+    console.log("ChatPreview - currentAgent:", currentAgent);
+    console.log("ChatPreview - avatar:", currentAgent?.avatar);
+  }, [currentAgent]);
 
-  // 处理二维码加载失败
-  const handleQrCodeError = () => {
-    console.warn("API 二维码加载失败，尝试切换到备用二维码");
-    if (qrCodeUrl !== fallbackQrCodeUrl) {
-      setQrCodeUrl(fallbackQrCodeUrl);
-    }
-  };
+  // 使用本地预生成的静态二维码，避免 API CORS 问题
+  const qrCodeUrl = "/defaults/agents/bohr_app_qrcode.png";
 
   // 消息气泡组件，简化版用于预览 - 扁平化风格
   const MessageBubble = ({ message }: { message: Message }) => {
     const isUser = message.role === "user";
-
-    // AI 机器人头像
-    const robotAvatarUrl =
-      currentAgent?.avatar ||
-      (currentAgent?.agent_type === "builtin"
-        ? currentAgent.id === "00000000-0000-0000-0000-000000000001"
-          ? "/defaults/agents/avatar1.png"
-          : "/defaults/agents/avatar4.png"
-        : "/defaults/agents/avatar2.png");
 
     // 用户名
     const userName = currentUser?.username || "用户";
@@ -82,10 +60,28 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
                   <UserIcon className="w-3.5 h-3.5 text-white" />
                 </div>
               ) : (
-                <img
-                  src={robotAvatarUrl}
-                  alt="AI"
-                  className="w-5 h-5 object-cover rounded-full shadow-sm flex-shrink-0 border border-white/20 bg-white/10"
+                <AvatarComponent
+                  avatar={currentAgent?.avatar ?? undefined}
+                  backgroundColor={
+                    currentAgent?.avatar_background_color ?? undefined
+                  }
+                  fallbackEmoji={
+                    currentAgent?.id === "00000000-0000-0000-0000-000000000001"
+                      ? "smile"
+                      : "robot"
+                  }
+                  fallbackImageSrc={
+                    currentAgent?.agent_type === "builtin"
+                      ? currentAgent?.id ===
+                        "00000000-0000-0000-0000-000000000001"
+                        ? "/defaults/agents/avatar1.png"
+                        : "/defaults/agents/avatar4.png"
+                      : "/defaults/agents/avatar2.png"
+                  }
+                  alt={currentAgent?.name || "AI"}
+                  className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                  containerClassName="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"
+                  disableVideo={true}
                 />
               )}
 
@@ -174,13 +170,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
             {/* 二维码 */}
             <div className="flex flex-col items-center gap-1">
               <div className="rounded-xl bg-white p-2 shadow-sm">
-                <img
-                  src={qrCodeUrl}
-                  alt="扫码体验"
-                  className="w-14 h-14"
-                  crossOrigin="anonymous"
-                  onError={handleQrCodeError}
-                />
+                <img src={qrCodeUrl} alt="扫码体验" className="w-14 h-14" />
               </div>
               <span className="text-[10px] font-medium text-neutral-600 dark:text-neutral-300 opacity-80 whitespace-nowrap">
                 扫码开启 AI 对话
