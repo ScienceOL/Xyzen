@@ -67,7 +67,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
                   }
                   fallbackEmoji={
                     currentAgent?.id === "00000000-0000-0000-0000-000000000001"
-                      ? "smile"
+                      ? "😊"
                       : "robot"
                   }
                   fallbackImageSrc={
