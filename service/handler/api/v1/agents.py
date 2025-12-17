@@ -373,8 +373,11 @@ async def get_available_avatars(
         list[dict]: List of available avatars with name, URL, category, and tags
 
     Raises:
-        HTTPException: None - always succeeds with default avatars
+        HTTPException: If authentication is missing or invalid (401 Unauthorized)
     """
+    # Ensure the authenticated user is present; if not, fail securely.
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
     # 定义可用的头像列表（带分类和标签）
     # 基础 URL 指向 MinIO 存储
     base_url = "https://storage.sciol.ac.cn/library/docs/public"
