@@ -140,10 +140,9 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
     [onBackgroundColorChange],
   );
 
-  // 处理分类变更 - 添加额外的检查和日志
+  // 处理分类变更
   const handleCategoryChange = useCallback((categoryId: string | null) => {
     try {
-      console.log(`Switching category to: ${categoryId}`);
       setActiveCategory(categoryId);
     } catch (error) {
       console.error("Error changing category:", error);
