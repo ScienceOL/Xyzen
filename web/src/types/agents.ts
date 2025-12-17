@@ -15,8 +15,33 @@ export interface Agent {
   mcp_server_ids?: string[];
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
+  avatar?: string | null;
+  avatar_background_color?: string | null;
+  tags?: string[] | null;
+  model?: string | null;
+  temperature?: number | null;
+
+  // Graph agent properties
+  state_schema?: Record<string, unknown>;
+  is_active?: boolean;
+  is_published?: boolean;
+  is_official?: boolean;
+  node_count?: number;
+  edge_count?: number;
+  parent_agent_id?: string | null;
+}
+
+// Type-specific interfaces for strict typing when needed
+export interface RegularAgent extends Agent {
+  agent_type: "regular";
+  prompt?: string;
+  mcp_servers?: { id: string }[];
+  mcp_server_ids?: string[];
+  require_tool_confirmation?: boolean;
+  provider_id?: string | null;
   knowledge_set_id?: string | null;
   avatar?: string | null;
+  avatar_background_color?: string | null;
   tags?: string[] | null;
   model?: string | null;
   temperature?: number | null;

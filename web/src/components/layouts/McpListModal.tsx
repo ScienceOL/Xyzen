@@ -351,7 +351,7 @@ export function McpListModal() {
         >
           <button
             onClick={closeMcpListModal}
-            className="absolute -top-6 -right-2 p-1 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 z-10"
+            className="absolute -top-6 -right-2 p-1 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 z-10 lg:hidden"
             aria-label="Close"
           >
             <XMarkIcon className="h-6 w-6" />

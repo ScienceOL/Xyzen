@@ -1,6 +1,7 @@
 "use client";
 import McpIcon from "@/assets/McpIcon";
 import { Badge } from "@/components/base/Badge";
+import AvatarComponent from "@/components/shared/AvatarComponent";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
@@ -8,8 +9,8 @@ import React, { useEffect, useRef, useState } from "react";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EditAgentModal from "@/components/modals/EditAgentModal";
-import { useXyzen } from "@/store";
 import { knowledgeSetService } from "@/service/knowledgeSetService";
+import { useXyzen } from "@/store";
 
 // Import types from separate file
 import type { Agent } from "@/types/agents";
@@ -172,18 +173,17 @@ const AgentCard: React.FC<AgentCardProps> = ({
       `}
       >
         {/* 头像 */}
-        <div className="h-10 w-10 flex-shrink-0 avatar-glow">
-          <img
-            src={
-              agent.avatar ||
-              (agent.tags?.includes("default_chat")
-                ? "/defaults/agents/avatar1.png"
-                : "/defaults/agents/avatar2.png")
-            }
-            alt={agent.name}
-            className="h-10 w-10 rounded-full border border-neutral-200 object-cover dark:border-neutral-700"
-          />
-        </div>
+        <AvatarComponent
+          avatar={agent.avatar ?? undefined}
+          backgroundColor={agent.avatar_background_color ?? undefined}
+          fallbackEmoji={
+            agent.avatar ||
+            (agent.tags?.includes("default_chat")
+              ? "smirk" // Chat agent emoji
+              : "robot") // Workshop agent emoji
+          }
+          alt={agent.name}
+        />
 
         {/* 内容 */}
         <div className="flex flex-1 flex-col min-w-0">

@@ -353,3 +353,197 @@ async def get_all_system_agents(
         agents_with_details.append(AgentReadWithDetails(**agent_dict))
 
     return agents_with_details
+
+
+@router.get("/avatars/available", response_model=list[dict])
+async def get_available_avatars(
+    user: str = Depends(get_current_user),
+) -> list[dict]:
+    """
+    Get all available avatar options for agents.
+
+    Returns a list of available avatar animations with their metadata including
+    category and tags for filtering and categorization. These avatars are loaded
+    from MinIO storage and include WebM video files.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+
+    Returns:
+        list[dict]: List of available avatars with name, URL, category, and tags
+
+    Raises:
+        HTTPException: None - always succeeds with default avatars
+    """
+    # 定义可用的头像列表（带分类和标签）
+    # 基础 URL 指向 MinIO 存储
+    base_url = "https://storage.sciol.ac.cn/library/docs/public"
+
+    avatars = [
+        # 黄脸表情 (9)
+        {
+            "name": "smirk",
+            "url": f"{base_url}/smirk-0.5x.webm",
+            "category": "emoji-face",
+            "tags": ["表情", "黄脸"],
+        },
+        {
+            "name": "cold-face",
+            "url": f"{base_url}/cold-face-0.5x.webm",
+            "category": "emoji-face",
+            "tags": ["表情", "冷脸"],
+        },
+        {
+            "name": "yum",
+            "url": f"{base_url}/yum-0.5x.webm",
+            "category": "emoji-face",
+            "tags": ["表情", "美味"],
+        },
+        {
+            "name": "bandage-face",
+            "url": f"{base_url}/bandage-face-0.5x.webm",
+            "category": "emoji-face",
+            "tags": ["表情", "绷带"],
+        },
+        {
+            "name": "mouth-none",
+            "url": f"{base_url}/mouth-none-1x.webm",
+            "category": "emoji-face",
+            "tags": ["表情", "无口"],
+        },
+        {
+            "name": "pensive",
+            "url": f"{base_url}/pensive-0.5x.mp4",
+            "category": "emoji-face",
+            "tags": ["表情", "沮丧"],
+        },
+        {
+            "name": "scrunched-eyes",
+            "url": f"{base_url}/scrunched-eyes-0.5x.mp4",
+            "category": "emoji-face",
+            "tags": ["表情", "眯眼"],
+        },
+        {
+            "name": "zany-face",
+            "url": f"{base_url}/zany-face-0.5x.webm",
+            "category": "emoji-face",
+            "tags": ["表情", "疯狂"],
+        },
+        {
+            "name": "zipper-face",
+            "url": f"{base_url}/zipper-face-1x.webm",
+            "category": "emoji-face",
+            "tags": ["表情", "拉链嘴"],
+        },
+        # 动物 (1)
+        {
+            "name": "rat",
+            "url": f"{base_url}/rat-0.5x.webm",
+            "category": "animal",
+            "tags": ["动物", "啮齿"],
+        },
+        # 交通工具 (1)
+        {
+            "name": "airplane",
+            "url": f"{base_url}/airplane-departure-2x.webm",
+            "category": "transportation",
+            "tags": ["交通", "飞机"],
+        },
+        # 日常用品 (5)
+        {
+            "name": "alarm",
+            "url": f"{base_url}/alarm-clock-1x.mp4",
+            "category": "daily",
+            "tags": ["用品", "时间", "闹钟"],
+        },
+        {
+            "name": "light-bulb",
+            "url": f"{base_url}/light-bulb-2x.webm",
+            "category": "daily",
+            "tags": ["用品", "灯泡"],
+        },
+        {
+            "name": "maracas",
+            "url": f"{base_url}/maracas-0.5x.webm",
+            "category": "daily",
+            "tags": ["用品", "乐器"],
+        },
+        {
+            "name": "money-with-wings",
+            "url": f"{base_url}/money-with-wings-0.5x.webm",
+            "category": "daily",
+            "tags": ["用品", "金钱"],
+        },
+        {
+            "name": "wine-glass",
+            "url": f"{base_url}/wine-glass-1x.webm",
+            "category": "daily",
+            "tags": ["用品", "酒杯"],
+        },
+        # 人物角色 (3)
+        {
+            "name": "robot",
+            "url": f"{base_url}/robot-0.5x.webm",
+            "category": "character",
+            "tags": ["角色", "机器人"],
+        },
+        {
+            "name": "alien",
+            "url": f"{base_url}/alien-0.5x.webm",
+            "category": "character",
+            "tags": ["角色", "外星人"],
+        },
+        {
+            "name": "dancer-woman",
+            "url": f"{base_url}/dancer-woman-skin-tone-3-0.5x.webm",
+            "category": "character",
+            "tags": ["角色", "舞者"],
+        },
+        # 手势 (4)
+        {
+            "name": "clap-skin-tone",
+            "url": f"{base_url}/clap-skin-tone-1-0.5x.mp4",
+            "category": "gesture",
+            "tags": ["手势", "鼓掌"],
+        },
+        {
+            "name": "crossed-fingers-skin",
+            "url": f"{base_url}/crossed-fingers-skin-tone-4-0.5x.webm",
+            "category": "gesture",
+            "tags": ["手势", "交叉手指"],
+        },
+        {
+            "name": "thumbs-up",
+            "url": f"{base_url}/thumbs-up-skin-tone-2-0.5x.webm",
+            "category": "gesture",
+            "tags": ["手势", "点赞"],
+        },
+        {
+            "name": "victory",
+            "url": f"{base_url}/victory-skin-tone-3-0.5x.webm",
+            "category": "gesture",
+            "tags": ["手势", "胜利"],
+        },
+        # 自然元素 (1)
+        {
+            "name": "fire",
+            "url": f"{base_url}/fire-0.5x.webm",
+            "category": "nature",
+            "tags": ["自然", "火焰"],
+        },
+        # 其他 (2)
+        {
+            "name": "eye",
+            "url": f"{base_url}/eyes-0.5x.webm",
+            "category": "other",
+            "tags": ["其他", "眼睛"],
+        },
+        {
+            "name": "biting-lip",
+            "url": f"{base_url}/biting-lip-0.5x.webm",
+            "category": "other",
+            "tags": ["其他", "嘴唇"],
+        },
+    ]
+
+    return avatars

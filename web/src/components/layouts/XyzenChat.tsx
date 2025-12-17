@@ -3,6 +3,7 @@ import { CHAT_THEMES } from "@/configs/chatThemes";
 import EditableTitle from "@/components/base/EditableTitle";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { ShareModal } from "@/components/modals/ShareModal";
+import AvatarComponent from "@/components/shared/AvatarComponent";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
 import type { Agent } from "@/types/agents";
@@ -143,16 +144,21 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         {currentAgent ? (
           <div className="relative flex-shrink-0 border-y border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
             <div className="flex items-start gap-3">
-              <div className="mt-1 h-8 w-8 flex-shrink-0 avatar-glow">
-                <img
-                  src={
+              <div className="mt-1">
+                <AvatarComponent
+                  avatar={currentAgent.avatar ?? undefined}
+                  backgroundColor={
+                    currentAgent.avatar_background_color ?? undefined
+                  }
+                  fallbackEmoji={
                     currentAgent.avatar ||
                     (currentAgent.tags?.includes("default_chat")
-                      ? "/defaults/agents/avatar1.png"
-                      : "/defaults/agents/avatar2.png")
+                      ? "smirk"
+                      : "alarm")
                   }
                   alt={currentAgent.name}
                   className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
+                  containerClassName="h-8 w-8 flex-shrink-0 avatar-glow"
                 />
               </div>
               <div className="flex-1 min-w-0">

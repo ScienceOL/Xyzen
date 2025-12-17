@@ -47,7 +47,7 @@ SYSTEM_AGENTS: dict[str, AgentConfig] = {
 你的目标是成为用户最可靠的AI助手，帮助他们解决问题并提供有价值的信息。""",
         "personality": "friendly_assistant",
         "capabilities": ["general_chat", "qa", "assistance", "tools"],
-        "avatar": "/defaults/agents/avatar1.png",
+        "avatar": "smirk",
         "tags": ["助手", "对话", "工具", "帮助"],
     },
 }

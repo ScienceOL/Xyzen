@@ -27,6 +27,7 @@ class AgentBase(SQLModel):
     name: str
     description: str | None = None
     avatar: str | None = None
+    avatar_background_color: str | None = Field(default=None, description="Avatar background color (hex format)")
     tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
     model: str | None = None
     temperature: float | None = None
@@ -59,6 +60,7 @@ class AgentCreate(SQLModel):
     name: str
     description: str | None = None
     avatar: str | None = None
+    avatar_background_color: str | None = Field(default=None, description="Avatar background color (hex format)")
     tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
     model: str | None = None
     temperature: float | None = None
@@ -86,6 +88,7 @@ class AgentUpdate(SQLModel):
     model: str | None = None
     temperature: float | None = None
     prompt: str | None = None
+    avatar_background_color: str | None = None
     require_tool_confirmation: bool | None = None
     provider_id: UUID | None = None
     knowledge_set_id: UUID | None = None
