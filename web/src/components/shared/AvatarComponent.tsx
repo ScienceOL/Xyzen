@@ -154,53 +154,60 @@ export const AvatarComponent: React.FC<AvatarComponentProps> = ({
       video.style.display = "none";
       document.body.appendChild(video);
 
-      const extractFrame = () => {
-        try {
-          const canvas = document.createElement("canvas");
-          const width = video.videoWidth || 100;
-          const height = video.videoHeight || 100;
+      try {
+        const extractFrame = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            const width = video.videoWidth || 100;
+            const height = video.videoHeight || 100;
 
-          canvas.width = width;
-          canvas.height = height;
+            canvas.width = width;
+            canvas.height = height;
 
-          const ctx = canvas.getContext("2d");
-          if (ctx && width > 0 && height > 0) {
-            ctx.drawImage(video, 0, 0, width, height);
-            const frameUrl = canvas.toDataURL("image/png");
-            if (frameUrl && frameUrl !== "data:image/png;base64,") {
-              setVideoFrameUrl(frameUrl);
-              console.log("Successfully extracted video frame for:", avatar);
+            const ctx = canvas.getContext("2d");
+            if (ctx && width > 0 && height > 0) {
+              ctx.drawImage(video, 0, 0, width, height);
+              const frameUrl = canvas.toDataURL("image/png");
+              if (frameUrl && frameUrl !== "data:image/png;base64,") {
+                setVideoFrameUrl(frameUrl);
+                console.log("Successfully extracted video frame for:", avatar);
+              }
             }
+          } catch (error) {
+            console.warn("Failed to extract video frame:", error);
+          } finally {
+            document.body.removeChild(video);
           }
-        } catch (error) {
-          console.warn("Failed to extract video frame:", error);
-        } finally {
+        };
+
+        const handleLoadedMetadata = () => {
+          // 等待一点时间让视频真正加载数据
+          setTimeout(extractFrame, 100);
+        };
+
+        video.addEventListener("loadedmetadata", handleLoadedMetadata, {
+          once: true,
+        });
+        video.addEventListener("error", (e) => {
+          console.warn("Failed to load video for frame extraction:", avatar, e);
           document.body.removeChild(video);
-        }
-      };
+        });
 
-      const handleLoadedMetadata = () => {
-        // 等待一点时间让视频真正加载数据
-        setTimeout(extractFrame, 100);
-      };
+        // 超时保护
+        const timeoutId = setTimeout(() => {
+          if (document.body.contains(video)) {
+            console.warn("Video loading timeout for:", avatar);
+            document.body.removeChild(video);
+          }
+        }, 5000);
 
-      video.addEventListener("loadedmetadata", handleLoadedMetadata, {
-        once: true,
-      });
-      video.addEventListener("error", (e) => {
-        console.warn("Failed to load video for frame extraction:", avatar, e);
-        document.body.removeChild(video);
-      });
-
-      // 超时保护
-      const timeoutId = setTimeout(() => {
+        return () => clearTimeout(timeoutId);
+      } catch (error) {
+        console.warn("Error during video setup for frame extraction:", avatar, error);
         if (document.body.contains(video)) {
-          console.warn("Video loading timeout for:", avatar);
           document.body.removeChild(video);
         }
-      }, 5000);
-
-      return () => clearTimeout(timeoutId);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disableVideo, isVideoAnimation, avatar, videoFrameUrl]);
