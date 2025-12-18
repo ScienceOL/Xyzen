@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models.agent import Agent, AgentCreate, AgentUpdate, AgentScope
+from models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
 from models.links import AgentMcpServerLink
 from models.mcp import McpServer
 

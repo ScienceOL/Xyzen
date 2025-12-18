@@ -8,7 +8,7 @@ import { useXyzenChat } from "@/hooks/useXyzenChat";
 import type { Agent } from "@/types/agents";
 import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 import ChatBubble from "./components/ChatBubble";
@@ -24,16 +24,7 @@ interface BaseChatProps {
 }
 
 // Theme-specific styling
-const getThemeStyles = (theme: "indigo" | "purple") => {
-  if (theme === "purple") {
-    return {
-      agentBorder: "border-purple-100 dark:border-purple-900",
-      agentName: "text-purple-600 dark:text-purple-400",
-      responseSpinner:
-        "bg-purple-50 text-purple-600 ring-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:ring-purple-800/40",
-      scrollButton: "bg-purple-600 hover:bg-purple-700",
-    };
-  }
+const getThemeStyles = () => {
   return {
     agentBorder: "border-indigo-100 dark:border-indigo-900",
     agentName: "text-indigo-600 dark:text-indigo-400",
@@ -44,126 +35,30 @@ const getThemeStyles = (theme: "indigo" | "purple") => {
 };
 
 // Empty state component for different themes
-const ThemedEmptyState: React.FC<{ config: XyzenChatConfig }> = ({
-  config,
-}) => {
-  if (config.theme === "indigo") {
-    return <EmptyChat />;
-  }
-
-  // Workshop theme with motion animations
-  return (
-    <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 text-center">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="rounded-full bg-purple-100 p-4 dark:bg-purple-900/20"
-      >
-        <div className="text-4xl">{config.emptyState.icon}</div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-      >
-        <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
-          {config.emptyState.title}
-        </h3>
-        <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-300">
-          {config.emptyState.description}
-        </p>
-      </motion.div>
-
-      {config.emptyState.features && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="flex flex-wrap items-center justify-center gap-4 text-xs text-neutral-400 dark:text-neutral-500"
-        >
-          {config.emptyState.features.map((feature, _index) => (
-            <span
-              key={feature}
-              className="bg-purple-100 text-purple-700 px-2 py-1 rounded dark:bg-purple-900/30 dark:text-purple-400"
-            >
-              {feature}
-            </span>
-          ))}
-        </motion.div>
-      )}
-    </div>
-  );
+const ThemedEmptyState: React.FC<{ config: XyzenChatConfig }> = () => {
+  return <EmptyChat />;
 };
 
-// Welcome message component for different themes
+// Welcome message component
 const ThemedWelcomeMessage: React.FC<{
   config: XyzenChatConfig;
   currentAgent?: Agent | null;
-}> = ({ config, currentAgent }) => {
-  if (!config.welcomeMessage || config.theme === "indigo") {
-    return (
-      <WelcomeMessage
-        assistant={
-          currentAgent
-            ? {
-                id: currentAgent.id,
-                title: currentAgent.name,
-                description: currentAgent.description,
-                iconType: "chat",
-                iconColor: "indigo",
-                category: "general",
-              }
-            : undefined
-        }
-      />
-    );
-  }
-
-  const { welcomeMessage } = config;
+}> = ({ currentAgent }) => {
   return (
-    <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 text-center">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="rounded-full bg-purple-100 p-4 dark:bg-purple-900/20"
-      >
-        <div className="text-4xl">{welcomeMessage.icon}</div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-      >
-        <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
-          {welcomeMessage.title}
-        </h3>
-        <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-300">
-          {welcomeMessage.description}
-        </p>
-      </motion.div>
-
-      {welcomeMessage.tags && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="flex flex-wrap items-center justify-center gap-2 text-xs"
-        >
-          {welcomeMessage.tags.map((tag) => (
-            <span
-              key={tag}
-              className="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full dark:bg-purple-900/30 dark:text-purple-400 font-medium"
-            >
-              {tag}
-            </span>
-          ))}
-        </motion.div>
-      )}
-    </div>
+    <WelcomeMessage
+      assistant={
+        currentAgent
+          ? {
+              id: currentAgent.id,
+              title: currentAgent.name,
+              description: currentAgent.description,
+              iconType: "chat",
+              iconColor: "indigo",
+              category: "general",
+            }
+          : undefined
+      }
+    />
   );
 };
 
@@ -214,7 +109,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     setShowShareModal(true);
   };
 
-  const themeStyles = getThemeStyles(config.theme);
+  const themeStyles = getThemeStyles();
 
   if (!activeChatChannel) {
     return (
@@ -252,12 +147,9 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                 <img
                   src={
                     currentAgent.avatar ||
-                    (currentAgent.agent_type === "builtin"
-                      ? currentAgent.id ===
-                        "00000000-0000-0000-0000-000000000001"
-                        ? "/defaults/agents/avatar1.png" // Chat agent fallback
-                        : "/defaults/agents/avatar4.png" // Workshop agent fallback
-                      : "/defaults/agents/avatar2.png") // Regular agent fallback
+                    (currentAgent.tags?.includes("default_chat")
+                      ? "/defaults/agents/avatar1.png"
+                      : "/defaults/agents/avatar2.png")
                   }
                   alt={currentAgent.name}
                   className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}

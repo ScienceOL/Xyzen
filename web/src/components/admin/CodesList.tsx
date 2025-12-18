@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface GeneratedCode {
   id: string;
@@ -28,7 +28,7 @@ export function CodesList({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const loadCodes = async () => {
+  const loadCodes = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -53,7 +53,7 @@ export function CodesList({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [adminSecret, backendUrl]);
 
   const handleDeactivate = async (codeId: string) => {
     if (!confirm("Are you sure you want to deactivate this code?")) return;
@@ -104,7 +104,7 @@ export function CodesList({
 
   useEffect(() => {
     loadCodes();
-  }, []);
+  }, [loadCodes]);
 
   useEffect(() => {
     if (newCode) {

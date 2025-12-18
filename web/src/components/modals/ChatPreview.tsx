@@ -45,10 +45,8 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
     // AI 机器人头像
     const robotAvatarUrl =
       currentAgent?.avatar ||
-      (currentAgent?.agent_type === "builtin"
-        ? currentAgent.id === "00000000-0000-0000-0000-000000000001"
-          ? "/defaults/agents/avatar1.png"
-          : "/defaults/agents/avatar4.png"
+      (currentAgent?.tags?.includes("default_chat")
+        ? "/defaults/agents/avatar1.png"
         : "/defaults/agents/avatar2.png");
 
     // 用户名

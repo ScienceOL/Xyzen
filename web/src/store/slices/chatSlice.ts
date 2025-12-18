@@ -149,12 +149,6 @@ export interface ChatSlice {
   chatHistoryLoading: boolean;
   channels: Record<string, ChatChannel>;
 
-  // Workshop panel state
-  activeWorkshopChannel: string | null;
-  workshopHistory: ChatHistoryItem[];
-  workshopHistoryLoading: boolean;
-  workshopChannels: Record<string, ChatChannel>;
-
   // Notification state
   notification: {
     isOpen: boolean;
@@ -191,19 +185,6 @@ export interface ChatSlice {
     model: string,
   ) => Promise<void>;
 
-  // Workshop panel methods
-  setActiveWorkshopChannel: (channelUUID: string | null) => void;
-  fetchWorkshopHistory: () => Promise<void>;
-  togglePinWorkshopChat: (chatId: string) => void;
-  activateWorkshopChannel: (topicId: string) => Promise<void>;
-  connectToWorkshopChannel: (sessionId: string, topicId: string) => void;
-  disconnectFromWorkshopChannel: () => void;
-  sendWorkshopMessage: (message: string) => void;
-  createDefaultWorkshopChannel: (agentId?: string) => Promise<void>;
-  updateWorkshopTopicName: (topicId: string, newName: string) => Promise<void>;
-  deleteWorkshopTopic: (topicId: string) => Promise<void>;
-  clearWorkshopSessionTopics: (sessionId: string) => Promise<void>;
-
   // Tool call confirmation methods
   confirmToolCall: (channelId: string, toolCallId: string) => void;
   cancelToolCall: (channelId: string, toolCallId: string) => void;
@@ -236,8 +217,7 @@ export const createChatSlice: StateCreator<
     if (!agentId) return "通用助理";
 
     const state = get();
-    const allAgents = [...state.agents, ...state.systemAgents];
-    const agent = allAgents.find((a) => a.id === agentId);
+    const agent = state.agents.find((a) => a.id === agentId);
 
     return agent?.name || "通用助理";
   };
@@ -249,12 +229,7 @@ export const createChatSlice: StateCreator<
     chatHistoryLoading: true,
     channels: {},
 
-    // Workshop panel state
-    activeWorkshopChannel: null,
-    workshopHistory: [],
-    workshopHistoryLoading: true,
-    workshopChannels: {},
-
+    // Notification state
     notification: null,
 
     setActiveChatChannel: (channelId) => set({ activeChatChannel: channelId }),
@@ -1082,7 +1057,7 @@ export const createChatSlice: StateCreator<
               );
               try {
                 const state = get();
-                const agent = [...state.agents, ...state.systemAgents].find(
+                const agent = state.agents.find(
                   (a) => a.id === existingSession.agent_id,
                 );
 
@@ -1182,9 +1157,7 @@ export const createChatSlice: StateCreator<
         // No existing session found, create a new session
         // Get agent data to include MCP servers
         const state = get();
-        const agent = [...state.agents, ...state.systemAgents].find(
-          (a) => a.id === agentId,
-        );
+        const agent = state.agents.find((a) => a.id === agentId);
 
         const sessionPayload: Record<string, unknown> = {
           name: "New Session",
@@ -1514,20 +1487,6 @@ export const createChatSlice: StateCreator<
             state.channels[activeChannelId].google_search_enabled =
               updatedSession.google_search_enabled;
           }
-
-          // Also update workshop channel if applicable
-          const activeWorkshopId = state.activeWorkshopChannel;
-          if (
-            activeWorkshopId &&
-            state.workshopChannels[activeWorkshopId]?.sessionId === sessionId
-          ) {
-            state.workshopChannels[activeWorkshopId].provider_id =
-              updatedSession.provider_id;
-            state.workshopChannels[activeWorkshopId].model =
-              updatedSession.model;
-            state.workshopChannels[activeWorkshopId].google_search_enabled =
-              updatedSession.google_search_enabled;
-          }
         });
       } catch (error) {
         console.error("Failed to update session config:", error);
@@ -1557,28 +1516,11 @@ export const createChatSlice: StateCreator<
             state.channels[activeChannelId].model = model;
           }
 
-          // Also update workshop channel if applicable
-          const activeWorkshopId = state.activeWorkshopChannel;
-          if (
-            activeWorkshopId &&
-            state.workshopChannels[activeWorkshopId]?.sessionId === sessionId
-          ) {
-            state.workshopChannels[activeWorkshopId].provider_id = providerId;
-            state.workshopChannels[activeWorkshopId].model = model;
-          }
-
           // Update all channels that belong to this session
           Object.keys(state.channels).forEach((channelId) => {
             if (state.channels[channelId].sessionId === sessionId) {
               state.channels[channelId].provider_id = providerId;
               state.channels[channelId].model = model;
-            }
-          });
-
-          Object.keys(state.workshopChannels).forEach((channelId) => {
-            if (state.workshopChannels[channelId].sessionId === sessionId) {
-              state.workshopChannels[channelId].provider_id = providerId;
-              state.workshopChannels[channelId].model = model;
             }
           });
         });
@@ -1590,269 +1532,6 @@ export const createChatSlice: StateCreator<
           "error",
         );
       }
-    },
-
-    // Workshop panel methods
-    setActiveWorkshopChannel: (channelId) =>
-      set({ activeWorkshopChannel: channelId }),
-
-    fetchWorkshopHistory: async () => {
-      // Reuse the regular fetchChatHistory logic - the backend doesn't have separate workshop endpoints
-      // We'll filter the results in the UI layer if needed
-      console.log(
-        "ChatSlice: Fetching workshop history (reusing chat history endpoints)...",
-      );
-
-      try {
-        set({ workshopHistoryLoading: true });
-
-        // Call the regular fetchChatHistory which fetches all sessions and topics
-        await get().fetchChatHistory();
-
-        // Copy relevant data to workshop state for UI separation
-        // In practice, workshopChannels and chatChannels can reference the same data
-        // The separation is maintained through activeWorkshopChannel vs activeChatChannel
-        const { channels, chatHistory } = get();
-
-        set({
-          workshopChannels: channels,
-          workshopHistory: chatHistory,
-          workshopHistoryLoading: false,
-        });
-
-        console.log("ChatSlice: Workshop history synced from chat history");
-      } catch (error) {
-        console.error("ChatSlice: Error fetching workshop history:", error);
-        set({ workshopHistoryLoading: false });
-      }
-    },
-
-    togglePinWorkshopChat: (chatId: string) => {
-      set((state: ChatSlice) => {
-        const historyItem = state.workshopHistory.find(
-          (item) => item.id === chatId,
-        );
-        if (historyItem) {
-          historyItem.isPinned = !historyItem.isPinned;
-        }
-      });
-    },
-
-    activateWorkshopChannel: async (topicId: string) => {
-      // Reuse the regular activateChannel logic but set workshop state
-      const { workshopChannels, activeWorkshopChannel } = get();
-
-      if (
-        topicId === activeWorkshopChannel &&
-        workshopChannels[topicId]?.connected
-      ) {
-        return;
-      }
-
-      console.log(`Activating workshop channel: ${topicId}`);
-      set({ activeWorkshopChannel: topicId });
-
-      // Call the regular activateChannel which handles fetching and connecting
-      // This will update the channels state, which we sync to workshopChannels
-      await get().activateChannel(topicId);
-
-      // Sync the channel to workshop state
-      const { channels } = get();
-      if (channels[topicId]) {
-        set((state: ChatSlice) => {
-          state.workshopChannels[topicId] = channels[topicId];
-        });
-      }
-    },
-
-    connectToWorkshopChannel: (sessionId: string, topicId: string) => {
-      console.log(
-        `Connecting to workshop channel: ${topicId} (reusing chat connection logic)`,
-      );
-
-      // Reuse the regular connectToChannel which handles WebSocket connection
-      get().connectToChannel(sessionId, topicId);
-
-      // Sync the channel state to workshop state
-      const { channels } = get();
-      if (channels[topicId]) {
-        set((state: ChatSlice) => {
-          state.workshopChannels[topicId] = channels[topicId];
-        });
-      }
-    },
-
-    disconnectFromWorkshopChannel: () => {
-      const { activeWorkshopChannel } = get();
-      if (activeWorkshopChannel) {
-        console.log(
-          `Disconnecting from workshop channel: ${activeWorkshopChannel}`,
-        );
-
-        // Reuse the regular disconnectFromChannel logic
-        get().disconnectFromChannel();
-
-        // Update workshop state
-        set((state: ChatSlice) => {
-          if (state.workshopChannels[activeWorkshopChannel]) {
-            state.workshopChannels[activeWorkshopChannel].connected = false;
-          }
-        });
-      }
-    },
-
-    sendWorkshopMessage: (message: string) => {
-      const { activeWorkshopChannel } = get();
-      if (activeWorkshopChannel) {
-        // Update workshop channel responding state
-        set((state: ChatSlice) => {
-          const channel = state.workshopChannels[activeWorkshopChannel];
-          if (channel) channel.responding = true;
-        });
-
-        // Reuse the regular sendMessage logic
-        get().sendMessage(message);
-
-        // 🔧 FIX: Sync messages from chat channel to workshop channel
-        // This ensures workshop channel gets the same messages as the underlying chat channel
-        const syncMessages = () => {
-          const currentState = get();
-          const chatChannel =
-            currentState.channels[
-              currentState.activeChatChannel || activeWorkshopChannel
-            ];
-          const workshopChannel =
-            currentState.workshopChannels[activeWorkshopChannel];
-
-          if (chatChannel && workshopChannel) {
-            set((state: ChatSlice) => {
-              // Sync all messages from chat channel to workshop channel
-              state.workshopChannels[activeWorkshopChannel].messages = [
-                ...chatChannel.messages,
-              ];
-              // Sync responding state
-              state.workshopChannels[activeWorkshopChannel].responding =
-                chatChannel.responding;
-              // Sync connection state
-              state.workshopChannels[activeWorkshopChannel].connected =
-                chatChannel.connected;
-              // Sync error state
-              state.workshopChannels[activeWorkshopChannel].error =
-                chatChannel.error;
-            });
-          }
-        };
-
-        // Sync immediately and set up periodic syncing during message processing
-        syncMessages();
-
-        // Set up periodic syncing to catch real-time message updates
-        const syncInterval = setInterval(() => {
-          const state = get();
-          if (!state.workshopChannels[activeWorkshopChannel]?.responding) {
-            // Stop syncing when no longer responding
-            clearInterval(syncInterval);
-            return;
-          }
-          syncMessages();
-        }, 100); // Sync every 100ms while responding
-
-        // Cleanup after 30 seconds as failsafe
-        setTimeout(() => clearInterval(syncInterval), 30000);
-      }
-    },
-
-    createDefaultWorkshopChannel: async (agentId) => {
-      try {
-        const agentIdParam = agentId || "00000000-0000-0000-0000-000000000002"; // Default workshop agent
-        console.log(
-          `Creating default workshop channel for agent: ${agentIdParam}`,
-        );
-
-        // Reuse the regular createDefaultChannel logic
-        await get().createDefaultChannel(agentIdParam);
-
-        // After creation, sync the new channel to workshop state
-        const { activeChatChannel, channels, chatHistory } = get();
-
-        if (activeChatChannel && channels[activeChatChannel]) {
-          set((state: XyzenState) => {
-            // Copy the newly created channel to workshop state
-            state.workshopChannels[activeChatChannel] =
-              channels[activeChatChannel];
-            state.workshopHistory = chatHistory;
-            state.activeWorkshopChannel = activeChatChannel;
-            // Clear the chat active channel since this is for workshop
-            state.activeChatChannel = null;
-          });
-
-          console.log(`Workshop channel created: ${activeChatChannel}`);
-        }
-      } catch (error) {
-        console.error("Failed to create default workshop channel:", error);
-        get().showNotification(
-          "创建失败",
-          "无法创建新的工作坊会话，请稍后重试",
-          "error",
-        );
-      }
-    },
-
-    updateWorkshopTopicName: async (topicId: string, newName: string) => {
-      // Reuse the regular updateTopicName logic
-      await get().updateTopicName(topicId, newName);
-
-      // Sync the update to workshop state
-      set((state: ChatSlice) => {
-        if (state.workshopChannels[topicId]) {
-          state.workshopChannels[topicId].title = newName;
-        }
-
-        const historyItem = state.workshopHistory.find(
-          (item) => item.id === topicId,
-        );
-        if (historyItem) {
-          historyItem.title = newName;
-        }
-      });
-
-      console.log(`Workshop topic ${topicId} name updated to: ${newName}`);
-    },
-
-    deleteWorkshopTopic: async (topicId: string) => {
-      // Reuse the regular deleteTopic logic
-      await get().deleteTopic(topicId);
-
-      // Sync the deletion to workshop state
-      set((state: XyzenState) => {
-        delete state.workshopChannels[topicId];
-
-        state.workshopHistory = state.workshopHistory.filter(
-          (item) => item.id !== topicId,
-        );
-
-        if (state.activeWorkshopChannel === topicId) {
-          const nextTopic = state.workshopHistory[0];
-          if (nextTopic) {
-            state.activeWorkshopChannel = nextTopic.id;
-            get().activateWorkshopChannel(nextTopic.id);
-          } else {
-            state.activeWorkshopChannel = null;
-          }
-        }
-      });
-
-      console.log(`Workshop topic ${topicId} deleted`);
-    },
-
-    clearWorkshopSessionTopics: async (sessionId: string) => {
-      // Reuse the regular clearSessionTopics logic
-      await get().clearSessionTopics(sessionId);
-
-      // Refresh workshop history to sync with chat history
-      await get().fetchWorkshopHistory();
-
-      console.log(`Workshop session ${sessionId} topics cleared`);
     },
 
     // Tool call confirmation methods
@@ -1913,10 +1592,6 @@ export const createChatSlice: StateCreator<
       set((state: ChatSlice) => {
         if (state.channels[channelId]) {
           state.channels[channelId].knowledgeContext = context || undefined;
-        }
-        if (state.workshopChannels[channelId]) {
-          state.workshopChannels[channelId].knowledgeContext =
-            context || undefined;
         }
       });
     },

@@ -35,7 +35,7 @@ async def agent_has_dynamic_mcp(db: AsyncSession, agent: Optional[Agent]) -> boo
     return any(s.name == "DynamicMCPServer" or "dynamic_mcp_server" in (s.url or "").lower() for s in mcp_servers)
 
 
-async def build_system_prompt(db: AsyncSession, agent: Optional[Agent]) -> str:
+async def build_system_prompt(db: AsyncSession, agent: Optional[Agent], model_name: str | None) -> str:
     """
     Build system prompt for the agent.
 
@@ -54,11 +54,14 @@ async def build_system_prompt(db: AsyncSession, agent: Optional[Agent]) -> str:
     if agent and agent.prompt:
         base_prompt = agent.prompt
 
-    formatting_instructions = """
-Please format your output using Markdown.
-When writing code, use triple backticks with the language identifier (e.g. ```python).
-If you generate HTML that should be previewed, use ```html.
-If you generate ECharts JSON options, use ```echart.
-"""
+    if model_name and "image" in model_name:
+        formatting_instructions = ""
+    else:
+        formatting_instructions = """
+    Please format your output using Markdown.
+    When writing code, use triple backticks with the language identifier (e.g. ```python).
+    If you generate HTML that should be previewed, use ```html.
+    If you generate ECharts JSON options, use ```echart.
+    """
 
     return f"{base_prompt}\n{formatting_instructions}"

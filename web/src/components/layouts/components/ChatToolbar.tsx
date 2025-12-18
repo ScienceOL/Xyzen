@@ -69,7 +69,6 @@ export default function ChatToolbar({
     activeChatChannel,
     channels,
     agents,
-    systemAgents,
     mcpServers,
     llmProviders,
     availableModels,
@@ -83,14 +82,10 @@ export default function ChatToolbar({
     updateAgent,
   } = useXyzen();
 
-  // Merge system and user agents for lookup (system + regular/graph)
+  // All user agents for lookup
   const allAgents = useMemo(() => {
-    // Prefer unique by id; user agents shouldn't duplicate system ids, but guard anyway
-    const map = new Map<string, (typeof agents)[number]>();
-    systemAgents.forEach((a) => map.set(a.id, a));
-    agents.forEach((a) => map.set(a.id, a));
-    return Array.from(map.values());
-  }, [agents, systemAgents]);
+    return agents;
+  }, [agents]);
 
   // State for managing input height
   const [inputHeight, setInputHeight] = useState(() => {
@@ -579,7 +574,6 @@ export default function ChatToolbar({
                   <SheetDescription>当前会话的对话主题</SheetDescription>
                 </VisuallyHidden>
                 <SessionHistory
-                  context="chat"
                   isOpen={showHistory}
                   onClose={handleCloseHistory}
                   onSelectTopic={handleSelectTopic}

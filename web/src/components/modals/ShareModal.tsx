@@ -26,6 +26,7 @@ export interface Agent {
   name: string;
   avatar?: string;
   description?: string;
+  tags?: string[] | null;
 }
 
 interface ShareModalProps {
@@ -205,7 +206,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           // AI 头像逻辑
           const robotAvatarUrl =
             currentAgent?.avatar ||
-            (currentAgent?.id === "00000000-0000-0000-0000-000000000001"
+            (currentAgent?.tags && currentAgent.tags.includes("default_chat")
               ? "/defaults/agents/avatar1.png"
               : "/defaults/agents/avatar2.png");
 

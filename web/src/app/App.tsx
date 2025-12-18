@@ -42,7 +42,6 @@ export function Xyzen({
     setBackendUrl,
     toggleXyzen,
     fetchAgents,
-    fetchSystemAgents,
     fetchMcpServers,
     fetchChatHistory,
     activateChannel,
@@ -131,7 +130,6 @@ export function Xyzen({
           // 1. Fetch all necessary data in parallel
           await Promise.all([
             fetchAgents(),
-            fetchSystemAgents(),
             fetchMcpServers(),
             fetchChatHistory(),
           ]);
@@ -160,7 +158,6 @@ export function Xyzen({
     status,
     initialLoadComplete,
     fetchAgents,
-    fetchSystemAgents,
     fetchMcpServers,
     fetchChatHistory,
     activateChannel,

@@ -3,8 +3,8 @@ import type { Message } from "@/store/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface XyzenChatConfig {
-  theme: "indigo" | "purple";
-  systemAgentId: string;
+  theme: "indigo";
+  systemAgentTag: string;
   storageKeys: {
     inputHeight: string;
     historyPinned?: string;
@@ -41,12 +41,10 @@ export function useXyzenChat(config: XyzenChatConfig) {
     activeChatChannel,
     channels,
     agents,
-    systemAgents,
     sendMessage,
     connectToChannel,
     updateTopicName,
     fetchMyProviders,
-    fetchSystemAgents,
     createDefaultChannel,
     activateChannel,
     llmProviders,
@@ -83,8 +81,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
   // Computed values
   const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
   const currentAgent = currentChannel?.agentId
-    ? agents.find((a) => a.id === currentChannel.agentId) ||
-      systemAgents.find((a) => a.id === currentChannel.agentId)
+    ? agents.find((a) => a.id === currentChannel.agentId)
     : null;
   const messages: Message[] = currentChannel?.messages || [];
   const connected = currentChannel?.connected || false;
@@ -203,46 +200,35 @@ export function useXyzenChat(config: XyzenChatConfig) {
     }
   }, [llmProviders.length, fetchMyProviders]);
 
-  // Fetch system agents on mount if not already loaded
-  useEffect(() => {
-    if (systemAgents.length === 0) {
-      fetchSystemAgents().catch((error) => {
-        console.error("Failed to fetch system agents:", error);
-      });
-    }
-  }, [systemAgents.length, fetchSystemAgents]);
-
   // Auto-switch to correct system agent channel for this panel
   useEffect(() => {
     if (chatHistoryLoading) return;
 
-    if (systemAgents.length > 0) {
-      const targetSystemAgent = systemAgents.find(
-        (agent) => agent.id === config.systemAgentId,
+    if (agents.length > 0) {
+      const targetSystemAgent = agents.find((agent) =>
+        agent.tags?.includes(config.systemAgentTag),
       );
       if (targetSystemAgent) {
         // Check if we need to create/switch to the correct channel for this panel
         const needsCorrectChannel =
           !activeChatChannel ||
           (currentChannel &&
-            currentChannel.agentId !== config.systemAgentId &&
-            // Only switch if current agent is a system agent (not user's regular/graph agent)
-            // This preserves user's regular/graph agent selections while allowing panel switching
-            (currentChannel.agentId ===
-              "00000000-0000-0000-0000-000000000001" ||
-              currentChannel.agentId ===
-                "00000000-0000-0000-0000-000000000002"));
+            currentChannel.agentId !== targetSystemAgent.id &&
+            // Only switch if current agent is a default system agent clone
+            agents
+              .find((a) => a.id === currentChannel.agentId)
+              ?.tags?.some((t) => t.startsWith("default_")));
 
         if (needsCorrectChannel) {
           // Look for existing channel with this system agent first
           const existingChannel = Object.values(channels).find(
-            (channel) => channel.agentId === config.systemAgentId,
+            (channel) => channel.agentId === targetSystemAgent.id,
           );
 
           if (existingChannel) {
             // Switch to existing channel for this system agent
             console.log(
-              `Switching to existing channel for system agent: ${config.systemAgentId}`,
+              `Switching to existing channel for default agent: ${targetSystemAgent.name}`,
             );
             activateChannel(existingChannel.id).catch((error) => {
               console.error("Failed to activate existing channel:", error);
@@ -252,9 +238,9 @@ export function useXyzenChat(config: XyzenChatConfig) {
             if (isCreatingChannelRef.current) return;
             isCreatingChannelRef.current = true;
             console.log(
-              `Creating new channel for system agent: ${config.systemAgentId}`,
+              `Creating new channel for default agent: ${targetSystemAgent.name}`,
             );
-            createDefaultChannel(config.systemAgentId)
+            createDefaultChannel(targetSystemAgent.id)
               .catch((error) => {
                 console.error(
                   "Failed to create default channel with system agent:",
@@ -269,8 +255,8 @@ export function useXyzenChat(config: XyzenChatConfig) {
       }
     }
   }, [
-    systemAgents,
-    config.systemAgentId,
+    agents,
+    config.systemAgentTag,
     createDefaultChannel,
     activeChatChannel,
     currentChannel,

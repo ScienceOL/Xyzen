@@ -58,7 +58,7 @@ export function SecretCodePage() {
       } else {
         setAuthError("Failed to verify admin secret key");
       }
-    } catch (err) {
+    } catch {
       setAuthError("Network error: Failed to verify secret key");
     } finally {
       setIsVerifying(false);

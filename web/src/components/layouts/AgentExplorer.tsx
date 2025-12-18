@@ -314,8 +314,8 @@ export default function AgentExplorer() {
             Official and community published graph agents will appear here.
           </p>
           <p className="text-xs text-neutral-400 dark:text-neutral-500">
-            Create and publish your own graph agents in the Workshop to share
-            with the community.
+            Create and publish your own graph agents to share with the
+            community.
           </p>
         </div>
       </div>

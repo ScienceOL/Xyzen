@@ -102,6 +102,8 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
       editor.dispose();
       editorRef.current = null;
     };
+    // Intentionally using parameters only for initial value, not as a dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update editor when isOpen changes

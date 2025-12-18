@@ -4,7 +4,7 @@ import {
   PhotoIcon,
 } from "@heroicons/react/24/outline";
 import type { MessageAttachment } from "@/store/types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import clsx from "clsx";
 import { useXyzen } from "@/store";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,15 +34,18 @@ export default function MessageAttachments({
   const token = useXyzen((state) => state.token);
 
   // Helper to convert relative URLs to absolute
-  const getFullUrl = (url: string | undefined): string => {
-    if (!url) return "";
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      return url;
-    }
-    // Relative URL - prepend backend URL
-    const base = backendUrl || window.location.origin;
-    return `${base}${url.startsWith("/") ? url : `/${url}`}`;
-  };
+  const getFullUrl = useCallback(
+    (url: string | undefined): string => {
+      if (!url) return "";
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+      }
+      // Relative URL - prepend backend URL
+      const base = backendUrl || window.location.origin;
+      return `${base}${url.startsWith("/") ? url : `/${url}`}`;
+    },
+    [backendUrl],
+  );
 
   // Fetch images with authentication and convert to blob URLs
   useEffect(() => {
@@ -91,6 +94,8 @@ export default function MessageAttachments({
     return () => {
       Object.values(imageBlobUrls).forEach((url) => URL.revokeObjectURL(url));
     };
+    // Intentionally omitting imageBlobUrls and getFullUrl - we check imageBlobUrls[image.id] to avoid re-fetching
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachments, backendUrl, token]);
 
   // Fetch audio and document files with authentication
@@ -140,6 +145,8 @@ export default function MessageAttachments({
     return () => {
       Object.values(fileBlobUrls).forEach((url) => URL.revokeObjectURL(url));
     };
+    // Intentionally omitting fileBlobUrls and getFullUrl - we check fileBlobUrls[file.id] to avoid re-fetching
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachments, backendUrl, token]);
 
   const getImageUrl = (image: MessageAttachment): string => {

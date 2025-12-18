@@ -2,13 +2,14 @@
 System Agent Manager
 
 Manages system-wide default agents that are available to all users.
-Creates and maintains the Chat Agent and Workshop Agent with distinct personalities.
+Creates and maintains the Chat Agent with distinct personalities.
 """
 
 import logging
 from typing import TypedDict
 from uuid import UUID
 
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import SYSTEM_USER_ID
@@ -46,31 +47,8 @@ SYSTEM_AGENTS: dict[str, AgentConfig] = {
 你的目标是成为用户最可靠的AI助手，帮助他们解决问题并提供有价值的信息。""",
         "personality": "friendly_assistant",
         "capabilities": ["general_chat", "qa", "assistance", "tools"],
-        "avatar": "https://avatars.githubusercontent.com/u/176685?v=4",
+        "avatar": "/defaults/agents/avatar1.png",
         "tags": ["助手", "对话", "工具", "帮助"],
-    },
-    "workshop": {
-        "name": "创作工坊",
-        "description": "专注于AI助手的设计、创建和优化的专业助手",
-        "prompt": """你是一个专业的AI助手设计师和创作顾问。你专门帮助用户设计、创建和优化AI助手。
-
-专业能力：
-- 深入了解各种AI能力和工具集成方案
-- 熟悉对话设计模式和用户体验最佳实践
-- 能够分析需求并提供专业的架构建议
-- 指导用户进行提示词工程和角色设定
-
-工作方式：
-- 通过提问来深入了解用户的具体需求
-- 提供结构化的设计建议和实施步骤
-- 推荐合适的工具和能力组合
-- 帮助优化现有助手的表现
-
-你的目标是帮助用户创建出色的AI助手，提供专业指导和创意灵感。""",
-        "personality": "creative_mentor",
-        "capabilities": ["agent_design", "tool_selection", "prompt_engineering", "workflow_optimization"],
-        "avatar": "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png",
-        "tags": ["设计", "创作", "优化", "专业"],
     },
 }
 
@@ -88,92 +66,103 @@ class SystemAgentManager:
         self.agent_repo = AgentRepository(db)
         self.provider_repo = ProviderRepository(db)
 
-    async def ensure_system_agents(self) -> dict[str, Agent]:
+    async def ensure_user_default_agents(self, user_id: str) -> list[Agent]:
         """
-        Create or update both system agents on startup.
+        Check and ensure user has all default agents by verifying tags.
+        If a specific default agent is missing, it will be recreated.
+
+        Args:
+            user_id: The ID of the user to initialize defaults for.
 
         Returns:
-            Dictionary mapping agent keys to Agent instances
+            List of newly created default agents for the user.
         """
-        logger.info("Ensuring system agents exist...")
+        # Fetch existing agents for the user to check tags
+        statement = select(Agent).where(Agent.user_id == user_id)
+        result = await self.db.exec(statement)
+        existing_agents = result.all()
+        existing_tags = set()
+        for agent in existing_agents:
+            if agent.tags:
+                existing_tags.update(agent.tags)
 
-        # Get system provider for both agents
+        logger.info(f"Checking default agents for user: {user_id}")
+
+        # Get system provider to set as default if available
         system_provider = await self.provider_repo.get_system_provider()
-        if not system_provider:
-            logger.warning("No system provider found - system agents will use user providers")
 
+        created_agents = []
+        for agent_key, config in SYSTEM_AGENTS.items():
+            tag = f"default_{agent_key}"
+            if tag in existing_tags:
+                continue
+
+            # Add a tag to identify which default agent this is
+            tags = config.get("tags", [])
+            if tag not in tags:
+                tags = tags + [tag]
+
+            agent_data = AgentCreate(
+                scope=AgentScope.USER,
+                name=config["name"],
+                description=config["description"],
+                prompt=config["prompt"],
+                avatar=config.get("avatar"),
+                tags=tags,
+                provider_id=system_provider.id if system_provider else None,
+                mcp_server_ids=[],  # Defaults start clean
+                require_tool_confirmation=False,
+                model=None,
+                temperature=0.7,
+            )
+
+            agent = await self.agent_repo.create_agent(agent_data, user_id)
+            created_agents.append(agent)
+            logger.info(f"Created default {agent_key} agent for user {user_id}: {agent.id}")
+
+        return created_agents
+
+    async def ensure_system_agents(self) -> dict[str, Agent]:
+        """
+        Legacy: Create or update system agents.
+        Now primarily used for global/template reference if needed.
+        """
+        logger.info("Ensuring system reference agents exist...")
+
+        system_provider = await self.provider_repo.get_system_provider()
         created_agents: dict[str, Agent] = {}
 
         for agent_key, agent_config in SYSTEM_AGENTS.items():
             try:
-                agent = await self._ensure_single_agent(agent_config, system_provider)
+                # Check if agent already exists by name and scope
+                existing = await self.agent_repo.get_agent_by_name_and_scope(agent_config["name"], AgentScope.SYSTEM)
+
+                if existing:
+                    agent = await self._update_system_agent(existing, agent_config, system_provider)
+                else:
+                    logger.info(f"Creating new system reference agent: {agent_config['name']}")
+                    mcp_server_ids = await self._get_default_mcp_servers(agent_config["personality"])
+                    agent_data = AgentCreate(
+                        scope=AgentScope.SYSTEM,
+                        name=agent_config["name"],
+                        description=agent_config["description"],
+                        prompt=agent_config["prompt"],
+                        avatar=agent_config.get("avatar"),
+                        tags=agent_config.get("tags"),
+                        provider_id=system_provider.id if system_provider else None,
+                        mcp_server_ids=mcp_server_ids,
+                        require_tool_confirmation=False,
+                        model=None,
+                        temperature=0.7,
+                    )
+                    agent = await self.agent_repo.create_agent(agent_data, SYSTEM_USER_ID)
+
                 created_agents[agent_key] = agent
-                logger.info(f"System agent '{agent_key}' ready: {agent.name} (ID: {agent.id})")
             except Exception as e:
-                logger.error(f"Failed to create system agent '{agent_key}': {e}")
+                logger.error(f"Failed to handle system agent '{agent_key}': {e}")
                 continue
 
-        logger.info(f"System agent initialization complete: {len(created_agents)}/{len(SYSTEM_AGENTS)} agents ready")
         return created_agents
-
-    async def _ensure_single_agent(self, agent_config: AgentConfig, system_provider: "Provider | None") -> Agent:
-        """
-        Create or update a single system agent.
-
-        Args:
-            agent_config: Agent configuration dictionary
-            system_provider: System provider instance or None
-
-        Returns:
-            Agent instance
-        """
-        # Check if agent already exists by name and scope
-        existing = await self.agent_repo.get_agent_by_name_and_scope(agent_config["name"], AgentScope.SYSTEM)
-
-        if existing:
-            # Update existing agent if needed
-            updated = await self._update_system_agent(existing, agent_config, system_provider)
-            return updated
-        else:
-            # Create new system agent
-            created = await self._create_system_agent(agent_config, system_provider)
-            return created
-
-    async def _create_system_agent(self, agent_config: AgentConfig, system_provider: "Provider | None") -> Agent:
-        """
-        Create a new system agent.
-
-        Args:
-            agent_config: Agent configuration dictionary
-            system_provider: System provider instance or None
-
-        Returns:
-            Newly created Agent instance
-        """
-        logger.info(f"Creating new system agent: {agent_config['name']}")
-
-        # Get default MCP servers for this agent type
-        mcp_server_ids = await self._get_default_mcp_servers(agent_config["personality"])
-
-        agent_data = AgentCreate(
-            scope=AgentScope.SYSTEM,
-            name=agent_config["name"],
-            description=agent_config["description"],
-            prompt=agent_config["prompt"],
-            avatar=agent_config.get("avatar"),
-            tags=agent_config.get("tags"),
-            provider_id=system_provider.id if system_provider else None,
-            mcp_server_ids=mcp_server_ids,
-            require_tool_confirmation=False,
-            model=None,  # Will use provider default
-            temperature=0.7,  # Balanced creativity
-        )
-
-        # Create agent
-        created_agent = await self.agent_repo.create_agent(agent_data, SYSTEM_USER_ID)
-
-        logger.info(f"Created system agent: {created_agent.name} (ID: {created_agent.id})")
-        return created_agent
 
     async def _update_system_agent(
         self, existing: Agent, agent_config: AgentConfig, system_provider: "Provider | None"
@@ -226,7 +215,7 @@ class SystemAgentManager:
         Get default MCP servers for each agent personality.
 
         Args:
-            agent_personality: Personality type ('friendly_assistant' or 'creative_mentor')
+            agent_personality: Personality type ('friendly_assistant')
 
         Returns:
             List of MCP server UUIDs
@@ -237,9 +226,6 @@ class SystemAgentManager:
         if agent_personality == "friendly_assistant":
             # Chat agent: basic utility tools
             return await self._get_basic_mcp_servers()
-        elif agent_personality == "creative_mentor":
-            # Workshop agent: creation and design tools
-            return await self._get_workshop_mcp_servers()
 
         return []
 
@@ -254,23 +240,12 @@ class SystemAgentManager:
         # For now, return empty list - can be enhanced with actual MCP servers
         return []
 
-    async def _get_workshop_mcp_servers(self) -> list[UUID]:
-        """
-        Get workshop-focused MCP servers for creation assistant.
-
-        Returns:
-            List of workshop MCP server UUIDs
-        """
-        # TODO: Query for workshop MCP servers (design tools, templates, etc.)
-        # For now, return empty list - can be enhanced with actual MCP servers
-        return []
-
     async def get_system_agent(self, agent_type: str) -> Agent | None:
         """
         Get a specific system agent by type.
 
         Args:
-            agent_type: Either 'chat' or 'workshop'
+            agent_type: 'chat'
 
         Returns:
             Agent instance or None if not found

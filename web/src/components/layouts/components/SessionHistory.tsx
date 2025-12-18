@@ -20,14 +20,12 @@ import {
 import { memo, useEffect, useMemo, useState } from "react";
 
 interface SessionHistoryProps {
-  context?: "chat" | "workshop";
   isOpen: boolean;
   onClose: () => void;
   onSelectTopic?: (topicId: string) => void;
 }
 
 function SessionHistory({
-  context = "chat",
   isOpen,
   onClose,
   onSelectTopic,
@@ -41,58 +39,28 @@ function SessionHistory({
 
   // Select only what we need to minimize re-renders
   const user = useXyzen((s) => s.user);
-  const chatHistory = useXyzen((s) => s.chatHistory);
-  const chatHistoryLoading = useXyzen((s) => s.chatHistoryLoading);
-  const workshopHistory = useXyzen((s) => s.workshopHistory);
-  const workshopHistoryLoading = useXyzen((s) => s.workshopHistoryLoading);
+  const history = useXyzen((s) => s.chatHistory);
+  const historyLoading = useXyzen((s) => s.chatHistoryLoading);
 
-  const activateChannel = useXyzen((s) => s.activateChannel);
-  const activateWorkshopChannel = useXyzen((s) => s.activateWorkshopChannel);
-  const togglePinChat = useXyzen((s) => s.togglePinChat);
-  const togglePinWorkshopChat = useXyzen((s) => s.togglePinWorkshopChat);
-  const fetchChatHistory = useXyzen((s) => s.fetchChatHistory);
-  const updateTopicName = useXyzen((s) => s.updateTopicName);
-  const updateWorkshopTopicName = useXyzen((s) => s.updateWorkshopTopicName);
-  const deleteTopic = useXyzen((s) => s.deleteTopic);
-  const deleteWorkshopTopic = useXyzen((s) => s.deleteWorkshopTopic);
-  const clearSessionTopics = useXyzen((s) => s.clearSessionTopics);
-  const clearWorkshopSessionTopics = useXyzen(
-    (s) => s.clearWorkshopSessionTopics,
-  );
+  const activateChannelFn = useXyzen((s) => s.activateChannel);
+  const togglePinFn = useXyzen((s) => s.togglePinChat);
+  const fetchHistoryFn = useXyzen((s) => s.fetchChatHistory);
+  const updateTopicFn = useXyzen((s) => s.updateTopicName);
+  const deleteTopicFn = useXyzen((s) => s.deleteTopic);
+  const clearSessionFn = useXyzen((s) => s.clearSessionTopics);
 
   // Active channel topic id
-  const activeChatChannel = useXyzen((s) => s.activeChatChannel);
-  const activeWorkshopChannel = useXyzen((s) => s.activeWorkshopChannel);
+  const activeChannel = useXyzen((s) => s.activeChatChannel);
 
   // Subscribe only to the primitive sessionId of the active channel to avoid message-driven re-renders
   const activeSessionId = useXyzen((s) => {
-    const topicId =
-      context === "workshop" ? s.activeWorkshopChannel : s.activeChatChannel;
-    const map = context === "workshop" ? s.workshopChannels : s.channels;
+    const topicId = s.activeChatChannel;
+    const map = s.channels;
     return topicId ? (map[topicId]?.sessionId ?? null) : null;
   });
-
-  // Use appropriate state based on context
-  const isWorkshop = context === "workshop";
-  const history = isWorkshop ? workshopHistory : chatHistory;
-  const historyLoading = isWorkshop
-    ? workshopHistoryLoading
-    : chatHistoryLoading;
-  const activeChannel = isWorkshop ? activeWorkshopChannel : activeChatChannel;
-  const activateChannelFn = isWorkshop
-    ? activateWorkshopChannel
-    : activateChannel;
-  const togglePinFn = isWorkshop ? togglePinWorkshopChat : togglePinChat;
-  const fetchHistoryFn = fetchChatHistory; // Always use fetchChatHistory - workshop syncs from it
-  const updateTopicFn = isWorkshop ? updateWorkshopTopicName : updateTopicName;
-  const deleteTopicFn = isWorkshop ? deleteWorkshopTopic : deleteTopic;
-  const clearSessionFn = isWorkshop
-    ? clearWorkshopSessionTopics
-    : clearSessionTopics;
   // 当组件打开时获取历史记录
   useEffect(() => {
     if (isOpen) {
-      // fetch once on open; workshop view syncs from chat
       void fetchHistoryFn();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
