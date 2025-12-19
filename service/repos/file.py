@@ -383,3 +383,54 @@ class FileRepository:
         )
         result = await self.db.exec(statement)
         return list(result.all())
+
+    async def validate_user_quota(
+        self,
+        user_id: str,
+        file_size: int,
+        max_storage_bytes: int,
+        max_file_count: int,
+        max_file_size_bytes: int,
+    ) -> tuple[bool, str | None]:
+        """
+        Validate if a user can upload a file based on quota limits.
+
+        This is a convenience method that performs quota validation without
+        requiring external dependencies. For full quota management, use
+        StorageQuotaService from core.storage.
+
+        Args:
+            user_id: The user ID to check quota for
+            file_size: Size of the file to upload in bytes
+            max_storage_bytes: Maximum total storage per user in bytes
+            max_file_count: Maximum number of files per user
+            max_file_size_bytes: Maximum individual file size in bytes
+
+        Returns:
+            Tuple of (is_valid: bool, error_message: str | None)
+            - (True, None) if upload is allowed
+            - (False, "error message") if upload would violate quota
+        """
+        # Check individual file size limit
+        if file_size > max_file_size_bytes:
+            max_mb = max_file_size_bytes / (1024 * 1024)
+            actual_mb = file_size / (1024 * 1024)
+            return False, f"File size ({actual_mb:.2f}MB) exceeds maximum allowed size ({max_mb:.2f}MB)"
+
+        # Check file count limit
+        current_file_count = await self.get_file_count_by_user(user_id, include_deleted=False)
+        if current_file_count >= max_file_count:
+            return False, f"Maximum file count reached ({current_file_count}/{max_file_count})"
+
+        # Check total storage limit
+        current_storage = await self.get_total_size_by_user(user_id, include_deleted=False)
+        if current_storage + file_size > max_storage_bytes:
+            current_gb = current_storage / (1024 * 1024 * 1024)
+            max_gb = max_storage_bytes / (1024 * 1024 * 1024)
+            file_gb = file_size / (1024 * 1024 * 1024)
+            return (
+                False,
+                f"Storage quota exceeded. Current: {current_gb:.2f}GB, File: {file_gb:.2f}GB, Limit: {max_gb:.2f}GB",
+            )
+
+        return True, None

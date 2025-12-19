@@ -54,6 +54,9 @@ export const KnowledgeLayout = () => {
     total: 0,
     used: 0,
     fileCount: 0,
+    usagePercentage: 0,
+    availableBytes: 0,
+    maxFileSize: 100 * 1024 * 1024, // Default 100MB
   });
   const [currentFileCount, setCurrentFileCount] = useState(0);
 
@@ -69,9 +72,12 @@ export const KnowledgeLayout = () => {
     try {
       const data = await fileService.getStorageStats();
       setStats({
-        used: data.total_size,
-        total: 100 * 1024 * 1024, // Hardcoded 100MB limit from previous code
-        fileCount: data.total_files,
+        used: data.quota.storage.used_bytes,
+        total: data.quota.storage.limit_bytes,
+        fileCount: data.quota.file_count.used,
+        usagePercentage: data.quota.storage.usage_percentage,
+        availableBytes: data.quota.storage.available_bytes,
+        maxFileSize: data.quota.max_file_size.bytes,
       });
     } catch (error) {
       console.error("Stats fetch failed", error);
@@ -89,7 +95,33 @@ export const KnowledgeLayout = () => {
         // Determine folder ID: only pass if in folders tab
         const folderId = activeTab === "folders" ? currentFolderId : null;
 
+        // Validate files before upload
         for (const file of files) {
+          // Check if file exceeds max size
+          if (stats.maxFileSize && file.size > stats.maxFileSize) {
+            const maxSizeMB = (stats.maxFileSize / (1024 * 1024)).toFixed(0);
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            alert(
+              `File "${file.name}" (${fileSizeMB}MB) exceeds the maximum file size limit of ${maxSizeMB}MB`,
+            );
+            continue;
+          }
+
+          // Check if upload would exceed storage quota
+          if (
+            stats.availableBytes !== undefined &&
+            file.size > stats.availableBytes
+          ) {
+            const availableMB = (stats.availableBytes / (1024 * 1024)).toFixed(
+              2,
+            );
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            alert(
+              `Not enough storage space. File size: ${fileSizeMB}MB, Available: ${availableMB}MB. Please delete some files first.`,
+            );
+            continue;
+          }
+
           await fileService.uploadFile(file, "private", undefined, folderId);
         }
         // Trigger refresh
