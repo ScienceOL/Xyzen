@@ -2,6 +2,7 @@ from .agent import AgentRepository
 from .citation import CitationRepository
 from .consume import ConsumeRepository
 from .file import FileRepository
+from .knowledge_set import KnowledgeSetRepository
 from .message import MessageRepository
 from .provider import ProviderRepository
 from .session import SessionRepository
@@ -18,6 +19,7 @@ __all__ = [
     "TopicRepository",
     "SessionRepository",
     "ProviderRepository",
+    "KnowledgeSetRepository",
     "ToolRepository",
     "SmitheryCacheRepository",
 ]

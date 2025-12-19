@@ -4,8 +4,20 @@ from .agent import Agent, AgentReadWithDetails
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
+from .file_knowledge_set_link import (
+    FileKnowledgeSetLink,
+    FileKnowledgeSetLinkCreate,
+    FileKnowledgeSetLinkRead,
+)
 from .folder import Folder, FolderCreate, FolderRead, FolderUpdate
 from .graph import GraphAgent, GraphEdge, GraphNode
+from .knowledge_set import (
+    KnowledgeSet,
+    KnowledgeSetCreate,
+    KnowledgeSetRead,
+    KnowledgeSetUpdate,
+    KnowledgeSetWithFileCount,
+)
 from .links import AgentMcpServerLink
 from .mcp import McpServer
 from .message import (
@@ -39,6 +51,14 @@ __all__ = [
     "FolderCreate",
     "FolderRead",
     "FolderUpdate",
+    "KnowledgeSet",
+    "KnowledgeSetCreate",
+    "KnowledgeSetRead",
+    "KnowledgeSetUpdate",
+    "KnowledgeSetWithFileCount",
+    "FileKnowledgeSetLink",
+    "FileKnowledgeSetLinkCreate",
+    "FileKnowledgeSetLinkRead",
     "AgentMcpServerLink",
     "McpServer",
     "Message",

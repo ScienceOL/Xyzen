@@ -3,6 +3,10 @@ import type { PreviewFile } from "@/components/preview/types";
 import { fileService, type FileUploadResponse } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
 import {
+  knowledgeSetService,
+  type KnowledgeSetWithFileCount,
+} from "@/service/knowledgeSetService";
+import {
   ArrowDownTrayIcon,
   ArrowPathRoundedSquareIcon,
   DocumentIcon,
@@ -30,6 +34,7 @@ interface FileListProps {
   onFileCountChange?: (count: number) => void;
   currentFolderId?: string | null;
   onFolderChange?: (folderId: string | null) => void;
+  currentKnowledgeSetId?: string | null;
 }
 
 export interface FileListHandle {
@@ -54,6 +59,7 @@ export const FileList = React.memo(
         onFileCountChange,
         currentFolderId,
         onFolderChange,
+        currentKnowledgeSetId,
       },
       ref,
     ) => {
@@ -79,6 +85,15 @@ export const FileList = React.memo(
         item: Folder | FileUploadResponse;
         type: ContextMenuType;
       } | null>(null);
+
+      const [knowledgeSetModal, setKnowledgeSetModal] = useState<{
+        isOpen: boolean;
+        file: FileUploadResponse;
+      } | null>(null);
+
+      const [knowledgeSets, setKnowledgeSets] = useState<
+        KnowledgeSetWithFileCount[]
+      >([]);
 
       useImperativeHandle(
         ref,
@@ -118,9 +133,49 @@ export const FileList = React.memo(
         [files, folders, onFileCountChange],
       );
 
+      // Load knowledge sets for the modal
+      useEffect(() => {
+        const loadKnowledgeSets = async () => {
+          try {
+            const sets = await knowledgeSetService.listKnowledgeSets(false);
+            setKnowledgeSets(sets);
+          } catch (error) {
+            console.error("Failed to load knowledge sets", error);
+          }
+        };
+        loadKnowledgeSets();
+      }, [refreshTrigger]);
+
       const loadFiles = useCallback(async () => {
         setIsLoading(true);
         try {
+          // Handle Knowledge Set view
+          if (filter === "knowledge" && currentKnowledgeSetId) {
+            // Get file IDs linked to this knowledge set
+            const fileIds = await knowledgeSetService.getFilesInKnowledgeSet(
+              currentKnowledgeSetId,
+            );
+
+            // Fetch file details for each ID
+            if (fileIds.length > 0) {
+              const filePromises = fileIds.map((id) =>
+                fileService.getFile(id).catch(() => null),
+              );
+              const filesData = await Promise.all(filePromises);
+              const validFiles = filesData.filter(
+                (f) => f !== null && !f.is_deleted,
+              ) as FileUploadResponse[];
+              setFiles(validFiles);
+              setFolders([]);
+              if (onFileCountChange) onFileCountChange(validFiles.length);
+            } else {
+              setFiles([]);
+              setFolders([]);
+              if (onFileCountChange) onFileCountChange(0);
+            }
+            return;
+          }
+
           if (filter === "folders") {
             // ... (existing logic)
             const folderData = await folderService.listFolders(
@@ -173,7 +228,7 @@ export const FileList = React.memo(
         } finally {
           setIsLoading(false);
         }
-      }, [filter, currentFolderId, onFileCountChange]);
+      }, [filter, currentFolderId, currentKnowledgeSetId, onFileCountChange]);
 
       useEffect(() => {
         loadFiles();
@@ -331,6 +386,49 @@ export const FileList = React.memo(
       const handleFolderClick = (folderId: string) => {
         if (onFolderChange) {
           onFolderChange(folderId);
+        }
+      };
+
+      const handleAddToKnowledgeSet = (file: FileUploadResponse) => {
+        setKnowledgeSetModal({ isOpen: true, file });
+      };
+
+      const handleRemoveFromKnowledgeSet = async (file: FileUploadResponse) => {
+        if (!currentKnowledgeSetId) return;
+
+        if (
+          !confirm(
+            `Remove "${file.original_filename}" from this knowledge set?`,
+          )
+        )
+          return;
+
+        try {
+          await knowledgeSetService.unlinkFileFromKnowledgeSet(
+            currentKnowledgeSetId,
+            file.id,
+          );
+          // Refresh the file list
+          loadFiles();
+        } catch (error) {
+          console.error("Failed to remove file from knowledge set", error);
+          alert("Failed to remove file from knowledge set");
+        }
+      };
+
+      const handleLinkToKnowledgeSet = async (knowledgeSetId: string) => {
+        if (!knowledgeSetModal) return;
+
+        try {
+          await knowledgeSetService.linkFileToKnowledgeSet(
+            knowledgeSetId,
+            knowledgeSetModal.file.id,
+          );
+          setKnowledgeSetModal(null);
+          alert("File added to knowledge set successfully");
+        } catch (error) {
+          console.error("Failed to link file to knowledge set", error);
+          alert("Failed to add file to knowledge set");
         }
       };
 
@@ -614,6 +712,17 @@ export const FileList = React.memo(
                 setMoveModal({ isOpen: true, item, type })
               }
               onDownload={(item) => handleDownload(item.id)}
+              onAddToKnowledgeSet={
+                contextMenu.type === "file"
+                  ? handleAddToKnowledgeSet
+                  : undefined
+              }
+              onRemoveFromKnowledgeSet={
+                contextMenu.type === "file"
+                  ? handleRemoveFromKnowledgeSet
+                  : undefined
+              }
+              isInKnowledgeSetView={filter === "knowledge"}
             />
           )}
 
@@ -634,6 +743,56 @@ export const FileList = React.memo(
             onClose={() => setIsPreviewOpen(false)}
             file={previewFile}
           />
+
+          {/* Knowledge Set Selection Modal */}
+          {knowledgeSetModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="w-full max-w-md rounded-lg border border-neutral-200 bg-white p-6 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+                <h3 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">
+                  Add to Knowledge Set
+                </h3>
+                <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
+                  Select a knowledge set to add "
+                  {knowledgeSetModal.file.original_filename}"
+                </p>
+                <div className="mb-4 max-h-64 space-y-2 overflow-y-auto">
+                  {knowledgeSets.length === 0 ? (
+                    <p className="text-sm text-neutral-400 italic">
+                      No knowledge sets available. Create one first.
+                    </p>
+                  ) : (
+                    knowledgeSets.map((ks) => (
+                      <button
+                        key={ks.id}
+                        onClick={() => handleLinkToKnowledgeSet(ks.id)}
+                        className="flex w-full items-center justify-between rounded-lg border border-neutral-200 p-3 text-left hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-neutral-900 dark:text-white">
+                            {ks.name}
+                          </div>
+                          {ks.description && (
+                            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                              {ks.description}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs text-neutral-400">
+                          {ks.file_count} files
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+                <button
+                  onClick={() => setKnowledgeSetModal(null)}
+                  className="w-full rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       );
     },

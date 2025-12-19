@@ -15,6 +15,7 @@ export interface Agent {
   mcp_server_ids?: string[];
   require_tool_confirmation?: boolean;
   provider_id?: string | null;
+  knowledge_set_id?: string | null;
   avatar?: string | null;
   tags?: string[] | null;
   model?: string | null;

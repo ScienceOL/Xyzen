@@ -6,6 +6,8 @@ import {
   TrashIcon,
   ArrowDownTrayIcon,
   ArrowsRightLeftIcon, // Move icon
+  PlusIcon,
+  MinusIcon,
 } from "@heroicons/react/24/outline";
 
 export type ContextMenuType = "file" | "folder";
@@ -19,6 +21,9 @@ export interface ContextMenuProps {
   onDelete: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
   onMove: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
   onDownload?: (item: FileUploadResponse) => void;
+  onAddToKnowledgeSet?: (item: FileUploadResponse) => void;
+  onRemoveFromKnowledgeSet?: (item: FileUploadResponse) => void;
+  isInKnowledgeSetView?: boolean;
 }
 
 export const ContextMenu = ({
@@ -30,6 +35,9 @@ export const ContextMenu = ({
   onDelete,
   onMove,
   onDownload,
+  onAddToKnowledgeSet,
+  onRemoveFromKnowledgeSet,
+  isInKnowledgeSetView = false,
 }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
@@ -104,6 +112,34 @@ export const ContextMenu = ({
           <ArrowsRightLeftIcon className="h-4 w-4" />
           Move to...
         </button>
+
+        {type === "file" && onAddToKnowledgeSet && !isInKnowledgeSetView && (
+          <button
+            onClick={() => {
+              onAddToKnowledgeSet(item as FileUploadResponse);
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Add to Knowledge Set
+          </button>
+        )}
+
+        {type === "file" &&
+          onRemoveFromKnowledgeSet &&
+          isInKnowledgeSetView && (
+            <button
+              onClick={() => {
+                onRemoveFromKnowledgeSet(item as FileUploadResponse);
+                onClose();
+              }}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+            >
+              <MinusIcon className="h-4 w-4" />
+              Remove from Knowledge Set
+            </button>
+          )}
 
         <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
 

@@ -36,7 +36,7 @@ class OSSConfig(BaseModel):
         description="MinIO region",
     )
     MaxUserStorageBytes: int = Field(
-        default=5 * 1024 * 1024 * 1024,  # 5GB default
+        default=1024 * 1024 * 1024,  # 1GB default
         description="Maximum storage per user in bytes",
     )
     MaxFileUploadBytes: int = Field(

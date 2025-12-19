@@ -4,6 +4,7 @@ import {
 } from "@/components/animate-ui/components/radix/sheet";
 import { fileService } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
+import { knowledgeSetService } from "@/service/knowledgeSetService";
 import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,6 +17,12 @@ import type { KnowledgeTab, StorageStats, ViewMode } from "./types";
 export const KnowledgeLayout = () => {
   const [activeTab, setActiveTab] = useState<KnowledgeTab>("home");
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentKnowledgeSetId, setCurrentKnowledgeSetId] = useState<
+    string | null
+  >(null);
+  const [currentKnowledgeSetName, setCurrentKnowledgeSetName] = useState<
+    string | null
+  >(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -24,9 +31,18 @@ export const KnowledgeLayout = () => {
 
   // Navigation Helper
   const handleNavigate = useCallback(
-    (tab: KnowledgeTab, folderId: string | null = null) => {
+    (tab: KnowledgeTab, idOrFolderId: string | null = null) => {
       setActiveTab(tab);
-      setCurrentFolderId(folderId);
+      if (tab === "knowledge") {
+        setCurrentKnowledgeSetId(idOrFolderId);
+        setCurrentFolderId(null);
+      } else if (tab === "folders") {
+        setCurrentFolderId(idOrFolderId);
+        setCurrentKnowledgeSetId(null);
+      } else {
+        setCurrentFolderId(null);
+        setCurrentKnowledgeSetId(null);
+      }
       setIsSidebarOpen(false);
     },
     [],
@@ -48,6 +64,25 @@ export const KnowledgeLayout = () => {
     };
     fetchPath();
   }, [currentFolderId]);
+
+  // Fetch knowledge set name when currentKnowledgeSetId changes
+  useEffect(() => {
+    const fetchKnowledgeSetName = async () => {
+      if (!currentKnowledgeSetId) {
+        setCurrentKnowledgeSetName(null);
+        return;
+      }
+      try {
+        const ks = await knowledgeSetService.getKnowledgeSet(
+          currentKnowledgeSetId,
+        );
+        setCurrentKnowledgeSetName(ks.name);
+      } catch (e) {
+        console.error("Failed to fetch knowledge set name", e);
+      }
+    };
+    fetchKnowledgeSetName();
+  }, [currentKnowledgeSetId]);
 
   // Stats & File Count
   const [stats, setStats] = useState<StorageStats>({
@@ -155,18 +190,19 @@ export const KnowledgeLayout = () => {
     }
   };
 
-  const handleCreateRootFolder = async () => {
-    const name = prompt("Enter new root folder name:");
+  const handleCreateKnowledgeSet = async () => {
+    const name = prompt("Enter knowledge set name:");
     if (name) {
+      const description = prompt("Enter description (optional):");
       try {
-        await folderService.createFolder({
+        await knowledgeSetService.createKnowledgeSet({
           name,
-          parent_id: null,
+          description: description || null,
         });
         setRefreshKey((prev) => prev + 1);
       } catch (e) {
-        console.error("Failed to create root folder", e);
-        alert("Failed to create folder");
+        console.error("Failed to create knowledge set", e);
+        alert("Failed to create knowledge set");
       }
     }
   };
@@ -179,7 +215,9 @@ export const KnowledgeLayout = () => {
       case "all":
         return "All Files";
       case "folders":
-        return "My Knowledge"; // Or "Folder Name" if available?
+        return "My Knowledge";
+      case "knowledge":
+        return currentKnowledgeSetName || "Knowledge Base";
       case "trash":
         return "Trash";
       default:
@@ -193,10 +231,10 @@ export const KnowledgeLayout = () => {
       <div className="hidden md:flex h-full">
         <Sidebar
           activeTab={activeTab}
-          currentFolderId={currentFolderId}
+          currentKnowledgeSetId={currentKnowledgeSetId}
           onTabChange={handleNavigate}
           refreshTrigger={refreshKey}
-          onCreateRootFolder={handleCreateRootFolder}
+          onCreateKnowledgeSet={handleCreateKnowledgeSet}
         />
       </div>
 
@@ -215,10 +253,10 @@ export const KnowledgeLayout = () => {
           </VisuallyHidden>
           <Sidebar
             activeTab={activeTab}
-            currentFolderId={currentFolderId}
+            currentKnowledgeSetId={currentKnowledgeSetId}
             onTabChange={handleNavigate}
             refreshTrigger={refreshKey}
-            onCreateRootFolder={handleCreateRootFolder}
+            onCreateKnowledgeSet={handleCreateKnowledgeSet}
           />
         </SheetContent>
       </Sheet>
@@ -256,6 +294,7 @@ export const KnowledgeLayout = () => {
             refreshTrigger={refreshKey}
             onFileCountChange={setCurrentFileCount}
             currentFolderId={currentFolderId}
+            currentKnowledgeSetId={currentKnowledgeSetId}
             onFolderChange={(id) => handleNavigate("folders", id)}
           />
         </div>

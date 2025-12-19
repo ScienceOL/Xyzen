@@ -6,6 +6,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
+from models.knowledge_set import KnowledgeSet
 from models.links import AgentMcpServerLink
 from models.mcp import McpServer
 
@@ -71,6 +72,42 @@ class AgentRepository:
         statement = select(Agent).where(Agent.name == name, Agent.scope == scope)
         result = await self.db.exec(statement)
         return result.first()
+
+    async def get_agents_by_knowledge_set(self, knowledge_set_id: UUID) -> Sequence[Agent]:
+        """
+        Fetches all agents linked to a given knowledge set.
+
+        Args:
+            knowledge_set_id: The UUID of the knowledge set.
+
+        Returns:
+            List of Agent instances.
+        """
+        logger.debug(f"Fetching agents for knowledge_set_id: {knowledge_set_id}")
+        statement = select(Agent).where(Agent.knowledge_set_id == knowledge_set_id)
+        result = await self.db.exec(statement)
+        return result.all()
+
+    async def validate_knowledge_set_access(self, knowledge_set_id: UUID, user_id: str) -> KnowledgeSet | None:
+        """
+        Validates that a knowledge set exists and belongs to the user.
+
+        Args:
+            knowledge_set_id: The UUID of the knowledge set.
+            user_id: The user ID.
+
+        Returns:
+            The KnowledgeSet if valid, None otherwise.
+        """
+        logger.debug(f"Validating knowledge set {knowledge_set_id} for user {user_id}")
+        knowledge_set = await self.db.get(KnowledgeSet, knowledge_set_id)
+        if not knowledge_set:
+            return None
+        if knowledge_set.user_id != user_id:
+            return None
+        if knowledge_set.is_deleted:
+            return None
+        return knowledge_set
 
     async def get_agent_with_mcp_servers(self, agent_id: UUID) -> Agent | None:
         """
@@ -142,6 +179,12 @@ class AgentRepository:
         """
         logger.debug(f"Creating new agent for user_id: {user_id}")
 
+        # Validate knowledge_set_id if provided
+        if agent_data.knowledge_set_id:
+            knowledge_set = await self.validate_knowledge_set_access(agent_data.knowledge_set_id, user_id)
+            if not knowledge_set:
+                raise ValueError("Knowledge set not found or access denied")
+
         # Extract MCP server IDs before creating agent
         mcp_server_ids = agent_data.mcp_server_ids
 
@@ -179,6 +222,13 @@ class AgentRepository:
         agent = await self.db.get(Agent, agent_id)
         if not agent:
             return None
+
+        # Validate knowledge_set_id if being updated
+        if agent_data.knowledge_set_id is not None and agent.user_id:
+            knowledge_set = await self.validate_knowledge_set_access(agent_data.knowledge_set_id, agent.user_id)
+            if not knowledge_set:
+                raise ValueError("Knowledge set not found or access denied")
+
         mcp_server_ids = agent_data.mcp_server_ids
         # Use safe update pattern to avoid null constraint violations
         update_data = agent_data.model_dump(exclude_unset=True, exclude_none=True, exclude={"mcp_server_ids"})
