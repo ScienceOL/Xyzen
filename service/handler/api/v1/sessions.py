@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from core.agent_type_detector import AgentTypeDetector
 from infra.database import get_session
 from middleware.auth import get_current_user
 from models.sessions import SessionCreate, SessionRead, SessionReadWithTopics, SessionUpdate
@@ -70,36 +69,35 @@ async def create_session_with_default_topic(
     session_repo = SessionRepository(db)
     topic_repo = TopicRepository(db)
 
-    # Validate agent_id if provided - handle builtin agents
+    # Validate agent_id if provided
     if session_data.agent_id is not None:
-        agent_detector = AgentTypeDetector(db)
+        from repos.agent import AgentRepository
 
         try:
-            # Check if it's a valid agent
-            agent_type = await agent_detector.detect_agent_type(session_data.agent_id)
-            if agent_type is None:
+            # Convert string to UUID if needed
+            if isinstance(session_data.agent_id, str):
+                agent_id_uuid = UUID(session_data.agent_id)
+            else:
+                agent_id_uuid = session_data.agent_id
+
+            agent_repo = AgentRepository(db)
+            # Try to load as regular agent
+            agent = await agent_repo.get_agent_by_id(agent_id_uuid)
+            if agent is None:
                 raise HTTPException(status_code=400, detail=f"Agent not found: {session_data.agent_id}")
 
-            # For builtin agents, convert string ID to UUID for database storage
-            if agent_type == "builtin":
-                from models.sessions import builtin_agent_id_to_uuid
-
-                # Ensure agent_id is a string for builtin agents
-                if not isinstance(session_data.agent_id, str):
-                    raise HTTPException(status_code=400, detail="Builtin agent ID must be a string")
-
-                builtin_uuid = builtin_agent_id_to_uuid(session_data.agent_id)
-                validated_session_data = SessionCreate(
-                    name=session_data.name,
-                    description=session_data.description,
-                    is_active=session_data.is_active,
-                    agent_id=builtin_uuid,
-                    provider_id=session_data.provider_id,
-                    model=session_data.model,
-                )
-            else:
-                # Regular/graph agents use UUID as-is
-                validated_session_data = session_data
+            # Create validated session data with UUID
+            validated_session_data = SessionCreate(
+                name=session_data.name,
+                description=session_data.description,
+                is_active=session_data.is_active,
+                agent_id=agent_id_uuid,
+                provider_id=session_data.provider_id,
+                model=session_data.model,
+                google_search_enabled=session_data.google_search_enabled,
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid agent ID format: {session_data.agent_id}")
         except Exception:
             raise HTTPException(status_code=400, detail=f"Invalid agent ID: {session_data.agent_id}")
     else:
@@ -139,7 +137,6 @@ async def get_session_by_agent(
         HTTPException: 404 if no session found for this user-agent combination
     """
     session_repo = SessionRepository(db)
-    agent_detector = AgentTypeDetector(db)
 
     # Handle different agent ID types
     agent_uuid = None
@@ -153,23 +150,16 @@ async def get_session_by_agent(
         if not chat_agent:
             raise HTTPException(status_code=500, detail="System chat agent not found")
         agent_uuid = chat_agent.id
-    elif agent_id.startswith("builtin_"):
-        # Builtin agent case - verify it exists using the builtin registry
-        from handler.builtin_agents import registry as builtin_registry
-        from models.sessions import builtin_agent_id_to_uuid
-
-        agent_name = agent_id[8:]  # Remove "builtin_" prefix
-        if not builtin_registry.get_agent(agent_name):
-            raise HTTPException(status_code=404, detail=f"Builtin agent '{agent_id}' not found")
-        # Convert builtin agent ID to UUID for database lookup
-        agent_uuid = builtin_agent_id_to_uuid(agent_id)
     else:
-        # Regular/Graph agent case - try to parse as UUID
+        # Regular agent case - try to parse as UUID
+        from repos.agent import AgentRepository
+
         try:
             agent_uuid = UUID(agent_id)
             # Verify the agent exists
-            agent_type = await agent_detector.detect_agent_type(agent_uuid)
-            if agent_type is None:
+            agent_repo = AgentRepository(db)
+            agent = await agent_repo.get_agent_by_id(agent_uuid)
+            if agent is None:
                 raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid agent ID format: '{agent_id}'")

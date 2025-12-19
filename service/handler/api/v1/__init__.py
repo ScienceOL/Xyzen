@@ -5,7 +5,6 @@ from .agents import router as agents_router
 from .auth import router as auth_router
 from .files import router as files_router
 from .folders import router as folders_router
-from .graph_agents import router as graph_agents_router
 from .mcps import router as mcps_router
 from .providers import router as providers_router
 from .redemption import router as redemption_router
@@ -79,7 +78,7 @@ v1_router.include_router(providers_router, prefix="/providers")
 v1_router.include_router(sessions_router, prefix="/sessions")
 v1_router.include_router(topics_router, prefix="/topics")
 v1_router.include_router(agents_router, prefix="/agents")
-v1_router.include_router(graph_agents_router, prefix="/graph-agents")
+
 v1_router.include_router(mcps_router, prefix="/mcps")
 v1_router.include_router(redemption_router, prefix="/redemption")
 v1_router.include_router(files_router, prefix="/files")
