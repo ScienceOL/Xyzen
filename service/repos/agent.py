@@ -2,7 +2,7 @@ import logging
 from typing import Sequence
 from uuid import UUID
 
-from sqlmodel import col, select
+from sqlmodel import col, null, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
@@ -344,6 +344,7 @@ class AgentRepository:
             if server_id not in existing_ids:
                 link = AgentMcpServerLink(agent_id=agent_id, mcp_server_id=server_id)
                 self.db.add(link)
+
     async def sync_agent_mcps(self, agent_id: UUID) -> None:
         """
         Synchronize the Agent <-> MCP server links for the given agent.
@@ -363,7 +364,7 @@ class AgentRepository:
 
         # Desired MCP servers: system-level (user_id IS NULL) or owned by agent.user_id
         # Use null() to generate proper SQL IS NULL clause for system-level servers
-        statement = select(McpServer).where((McpServer.user_id == null()) | (McpServer.user_id == agent.user_id))
+        statement = select(McpServer).where((McpServer.user_id == null()) | (McpServer.user_id == agent.user_id))  # noqa: F821
         result = await self.db.exec(statement)
         desired_servers = result.all()
         desired_ids = {s.id for s in desired_servers}

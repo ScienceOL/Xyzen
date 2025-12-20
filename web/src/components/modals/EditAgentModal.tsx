@@ -1,5 +1,6 @@
 import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
+import PublishAgentModal from "@/components/features/PublishAgentModal";
 import { AvatarEditor } from "@/components/shared/AvatarEditor";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
@@ -7,7 +8,6 @@ import { Button, Field, Label } from "@headlessui/react";
 import { PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { McpServerItem } from "./McpServerItem";
-import PublishAgentModal from "@/components/features/PublishAgentModal";
 
 interface EditAgentModalProps {
   isOpen: boolean;
@@ -248,84 +248,86 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
               )}
             </div>
           </Field>
-          <div className="mt-6 flex justify-end gap-4">
+          <Field>
+            <div className="mt-6 flex justify-end gap-4">
+              <Button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-[hover]:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
+                  isSaving
+                    ? "bg-indigo-400 text-white cursor-not-allowed dark:bg-indigo-700"
+                    : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
+                }`}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </Field>
+          <div className="mt-6 flex justify-between">
             <Button
               type="button"
-              onClick={onClose}
-              className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-[hover]:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
+              onClick={() => setShowPublishModal(true)}
+              disabled={!agent.prompt}
+              className="inline-flex items-center gap-2 rounded-sm bg-purple-100 py-1.5 px-3 text-sm/6 font-semibold text-purple-700 shadow-sm focus:outline-none data-[hover]:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-purple-900/30 dark:text-purple-300 dark:data-[hover]:bg-purple-900/50"
+              title={
+                !agent.prompt
+                  ? "Add a prompt before publishing"
+                  : "Publish to Marketplace"
+              }
             >
-              Cancel
+              <SparklesIcon className="h-4 w-4" />
+              Publish to Marketplace
             </Button>
-            <Button
-              type="submit"
-              disabled={isSaving}
-              className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
-                isSaving
-                  ? "bg-indigo-400 text-white cursor-not-allowed dark:bg-indigo-700"
-                  : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
-              }`}
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-[hover]:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
+                  isSaving
+                    ? "bg-indigo-400 text-white cursor-not-allowed dark:bg-indigo-700"
+                    : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
+                }`}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </div>
-        </Field>
-        <div className="mt-6 flex justify-between">
-          <Button
-            type="button"
-            onClick={() => setShowPublishModal(true)}
-            disabled={!agent.prompt}
-            className="inline-flex items-center gap-2 rounded-sm bg-purple-100 py-1.5 px-3 text-sm/6 font-semibold text-purple-700 shadow-sm focus:outline-none data-[hover]:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-purple-900/30 dark:text-purple-300 dark:data-[hover]:bg-purple-900/50"
-            title={
-              !agent.prompt
-                ? "Add a prompt before publishing"
-                : "Publish to Marketplace"
-            }
-          >
-            <SparklesIcon className="h-4 w-4" />
-            Publish to Marketplace
-          </Button>
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-[hover]:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSaving}
-              className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
-                isSaving
-                  ? "bg-indigo-400 text-white cursor-not-allowed dark:bg-indigo-700"
-                  : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
-              }`}
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </div>
-      </form>
+        </form>
 
-      {/* Publish to Marketplace Modal */}
-      <PublishAgentModal
-        open={showPublishModal}
-        onOpenChange={setShowPublishModal}
-        agentId={agent.id}
-        agentName={agent.name}
-        agentDescription={agent.description}
-        agentPrompt={agent.prompt}
-        mcpServers={agent.mcp_servers?.map((s) => ({
-          id: s.id,
-          name: s.name,
-          description: s.description || undefined,
-        }))}
-        onPublishSuccess={(marketplaceId) => {
-          console.log("Agent published to marketplace:", marketplaceId);
-          setShowPublishModal(false);
-          // Optionally show a success notification
-        }}
-      />
+        {/* Publish to Marketplace Modal */}
+        <PublishAgentModal
+          open={showPublishModal}
+          onOpenChange={setShowPublishModal}
+          agentId={agent.id}
+          agentName={agent.name}
+          agentDescription={agent.description}
+          agentPrompt={agent.prompt}
+          mcpServers={agent.mcp_servers?.map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description || undefined,
+          }))}
+          onPublishSuccess={(marketplaceId) => {
+            console.log("Agent published to marketplace:", marketplaceId);
+            setShowPublishModal(false);
+            // Optionally show a success notification
+          }}
+        />
+      </div>
     </Modal>
   );
 };
