@@ -14,6 +14,7 @@ import {
 
 import type { MarketplaceListing } from "@/service/marketplaceService";
 import AgentMarketplaceDetail from "./AgentMarketplaceDetail";
+import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
 
 /**
  * AgentMarketplace Component
@@ -29,6 +30,8 @@ export default function AgentMarketplace() {
   const [selectedMarketplaceId, setSelectedMarketplaceId] = useState<
     string | null
   >(null);
+
+  const [activeTab, setActiveTab] = useState<"all" | "my-listings">("all");
 
   // Fetch listings
   const {
@@ -87,153 +90,190 @@ export default function AgentMarketplace() {
           </p>
         </div>
 
-        {/* Search and Filters */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              placeholder="Search agents..."
-              value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                handleSearch(e.target.value)
-              }
-              className="w-full rounded-md border border-neutral-200 bg-white px-4 py-2 pl-10 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => handleSortChange(e.target.value)}
-              className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
-            >
-              <option value="recent">Most Recent</option>
-              <option value="likes">Most Liked</option>
-              <option value="forks">Most Forked</option>
-              <option value="views">Most Viewed</option>
-              <option value="oldest">Oldest</option>
-            </select>
-
+        {/* Tab Navigation */}
+        <div className="mb-6 border-b border-neutral-200 dark:border-neutral-800">
+          <nav className="-mb-px flex space-x-8">
             <button
-              onClick={() => refetch()}
-              disabled={isLoading}
-              className="rounded-md border border-neutral-200 bg-white p-2 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+              onClick={() => setActiveTab("all")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "all"
+                  ? "border-indigo-500 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+                  : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 dark:hover:border-neutral-600"
+              }`}
             >
-              <ArrowPathIcon
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-              />
+              All Agents
             </button>
-          </div>
+            <button
+              onClick={() => setActiveTab("my-listings")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "my-listings"
+                  ? "border-indigo-500 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+                  : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 dark:hover:border-neutral-600"
+              }`}
+            >
+              My Listings
+            </button>
+          </nav>
         </div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <ArrowPathIcon className="mx-auto h-8 w-8 animate-spin text-neutral-400" />
-              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-                Loading agents...
-              </p>
+        {/* Search and Filters - Only show for "All" tab */}
+        {activeTab === "all" && (
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="relative flex-1 max-w-md">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search agents..."
+                value={searchQuery}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleSearch(e.target.value)
+                }
+                className="w-full rounded-md border border-neutral-200 bg-white px-4 py-2 pl-10 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => handleSortChange(e.target.value)}
+                className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              >
+                <option value="recent">Most Recent</option>
+                <option value="likes">Most Liked</option>
+                <option value="forks">Most Forked</option>
+                <option value="views">Most Viewed</option>
+                <option value="oldest">Oldest</option>
+              </select>
+
+              <button
+                onClick={() => refetch()}
+                disabled={isLoading}
+                className="rounded-md border border-neutral-200 bg-white p-2 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+              >
+                <ArrowPathIcon
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
+              </button>
             </div>
           </div>
         )}
 
-        {/* Error State */}
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-            <p className="text-sm text-red-600 dark:text-red-400">
-              Failed to load marketplace listings. Please try again.
-            </p>
-            <p className="mt-2 text-xs text-red-500 dark:text-red-400">
-              Error: {error instanceof Error ? error.message : "Unknown error"}
-            </p>
-          </div>
-        )}
-
-        {/* Listings Grid */}
-        {!isLoading && !error && listings && (
+        {/* Content based on active tab */}
+        {activeTab === "all" ? (
           <>
-            {listings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="relative mb-8">
-                  <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 opacity-20 blur-2xl"></div>
-                  <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
-                    <svg
-                      className="h-16 w-16 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                  </div>
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <ArrowPathIcon className="mx-auto h-8 w-8 animate-spin text-neutral-400" />
+                  <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+                    Loading agents...
+                  </p>
                 </div>
-                <h3 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                  No Agents Yet
-                </h3>
-                <p className="mb-6 max-w-md text-center text-neutral-600 dark:text-neutral-400">
-                  {searchQuery
-                    ? "No agents match your search. Try different keywords or clear filters."
-                    : "Be the first to share your amazing agent with the community!"}
-                </p>
-                {!searchQuery && (
-                  <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                    <h4 className="mb-3 font-semibold text-neutral-900 dark:text-neutral-100">
-                      How to publish your agent:
-                    </h4>
-                    <ol className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
-                      <li className="flex items-start gap-2">
-                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
-                          1
-                        </span>
-                        <span>
-                          Go to the Chat panel and create or edit an agent
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
-                          2
-                        </span>
-                        <span>
-                          Make sure your agent has a name, description, and
-                          prompt
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
-                          3
-                        </span>
-                        <span>Click "Publish to Marketplace" button</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
-                          4
-                        </span>
-                        <span>Share your agent with the community!</span>
-                      </li>
-                    </ol>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {listings.map((listing) => (
-                  <AgentListingCard
-                    key={listing.id}
-                    listing={listing}
-                    onMouseEnter={() => handleMouseEnter(listing.id)}
-                    onClick={() => handleSelectListing(listing.id)}
-                  />
-                ))}
               </div>
             )}
+
+            {/* Error State */}
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  Failed to load marketplace listings. Please try again.
+                </p>
+                <p className="mt-2 text-xs text-red-500 dark:text-red-400">
+                  Error:{" "}
+                  {error instanceof Error ? error.message : "Unknown error"}
+                </p>
+              </div>
+            )}
+
+            {/* Listings Grid */}
+            {!isLoading && !error && listings && (
+              <>
+                {listings.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <div className="relative mb-8">
+                      <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 opacity-20 blur-2xl"></div>
+                      <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
+                        <svg
+                          className="h-16 w-16 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                      No Agents Yet
+                    </h3>
+                    <p className="mb-6 max-w-md text-center text-neutral-600 dark:text-neutral-400">
+                      {searchQuery
+                        ? "No agents match your search. Try different keywords or clear filters."
+                        : "Be the first to share your amazing agent with the community!"}
+                    </p>
+                    {!searchQuery && (
+                      <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                        <h4 className="mb-3 font-semibold text-neutral-900 dark:text-neutral-100">
+                          How to publish your agent:
+                        </h4>
+                        <ol className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+                          <li className="flex items-start gap-2">
+                            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                              1
+                            </span>
+                            <span>
+                              Go to the Chat panel and create or edit an agent
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                              2
+                            </span>
+                            <span>
+                              Make sure your agent has a name, description, and
+                              prompt
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                              3
+                            </span>
+                            <span>Click "Publish to Marketplace" button</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                              4
+                            </span>
+                            <span>Share your agent with the community!</span>
+                          </li>
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {listings.map((listing) => (
+                      <AgentListingCard
+                        key={listing.id}
+                        listing={listing}
+                        onMouseEnter={() => handleMouseEnter(listing.id)}
+                        onClick={() => handleSelectListing(listing.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </>
+        ) : (
+          // My Listings Tab Content
+          <MyMarketplaceListings onSelectListing={handleSelectListing} />
         )}
       </div>
     </div>

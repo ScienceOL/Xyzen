@@ -5,6 +5,7 @@ import {
   useMarketplaceListing,
   useMarketplaceRequirements,
   useToggleLike,
+  useUnpublishAgent,
 } from "@/hooks/useMarketplace";
 import {
   HeartIcon,
@@ -14,9 +15,12 @@ import {
   InformationCircleIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import ForkAgentModal from "@/components/features/ForkAgentModal";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { useIsMarketplaceOwner } from "@/utils/marketplace";
 
 interface AgentMarketplaceDetailProps {
   marketplaceId: string;
@@ -33,6 +37,7 @@ export default function AgentMarketplaceDetail({
   onBack,
 }: AgentMarketplaceDetailProps) {
   const [showForkModal, setShowForkModal] = useState(false);
+  const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false);
 
   // Fetch listing data
   const {
@@ -46,6 +51,10 @@ export default function AgentMarketplaceDetail({
 
   // Like mutation
   const toggleLike = useToggleLike();
+
+  // Unpublish mutation
+  const unpublishMutation = useUnpublishAgent();
+  const isOwner = useIsMarketplaceOwner(listing);
 
   const handleBack = () => {
     onBack();
@@ -65,6 +74,20 @@ export default function AgentMarketplaceDetail({
     // Navigate to agent editor or show success message
     console.log("Agent forked successfully:", agentId);
     // You might want to navigate to the agent detail page or show a notification
+  };
+
+  const handleUnpublish = () => {
+    if (!listing) return;
+    unpublishMutation.mutate(listing.id, {
+      onSuccess: () => {
+        // Navigate back to marketplace after successful unpublish
+        onBack();
+      },
+      onError: (error) => {
+        console.error("Failed to unpublish agent:", error);
+        // Error handling is managed by the mutation hook
+      },
+    });
   };
 
   // Loading state
@@ -414,6 +437,24 @@ export default function AgentMarketplaceDetail({
                       </span>
                     </div>
                   </button>
+
+                  {/* Unpublish Button - Only visible to owner */}
+                  {isOwner && (
+                    <button
+                      onClick={() => setShowUnpublishConfirm(true)}
+                      disabled={unpublishMutation.isPending}
+                      className="w-full rounded-xl border-2 border-red-300 bg-white px-4 py-3 text-sm font-semibold text-red-700 transition-all hover:bg-red-50 hover:scale-[1.02] disabled:opacity-50 dark:border-red-800 dark:bg-neutral-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <TrashIcon className="h-5 w-5" />
+                        <span>
+                          {unpublishMutation.isPending
+                            ? "Unpublishing..."
+                            : "Unpublish Agent"}
+                        </span>
+                      </div>
+                    </button>
+                  )}
                 </div>
 
                 <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />
@@ -480,6 +521,22 @@ export default function AgentMarketplaceDetail({
           agentDescription={listing.description || undefined}
           requirements={requirements}
           onForkSuccess={handleForkSuccess}
+        />
+      )}
+
+      {/* Unpublish Confirmation Modal */}
+      {listing && (
+        <ConfirmationModal
+          isOpen={showUnpublishConfirm}
+          onClose={() => setShowUnpublishConfirm(false)}
+          onConfirm={handleUnpublish}
+          title="Unpublish Agent"
+          message={`Are you sure you want to unpublish "${listing.name}"? It will be removed from the marketplace, but you can republish it later if needed.`}
+          confirmLabel={
+            unpublishMutation.isPending ? "Unpublishing..." : "Unpublish"
+          }
+          cancelLabel="Cancel"
+          destructive={true}
         />
       )}
     </div>
