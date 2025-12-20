@@ -1,10 +1,11 @@
 import {
   ChatBubbleLeftRightIcon,
   FolderIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 
-export type ActivityPanel = "chat" | "knowledge";
+export type ActivityPanel = "chat" | "knowledge" | "marketplace";
 
 interface ActivityBarProps {
   activePanel: ActivityPanel;
@@ -101,6 +102,12 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
       panel: "knowledge" as ActivityPanel,
       icon: FolderIcon, // Using FolderIcon for Knowledge Base
       label: "Knowledge",
+      disabled: false,
+    },
+    {
+      panel: "marketplace" as ActivityPanel,
+      icon: SparklesIcon,
+      label: "Community",
       disabled: false,
     },
   ];

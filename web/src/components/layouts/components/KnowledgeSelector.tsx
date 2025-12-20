@@ -26,11 +26,22 @@ export function KnowledgeSelector({
   onConnect,
   onDisconnect,
 }: KnowledgeSelectorProps) {
-  const { activeChatChannel, setKnowledgeContext } = useXyzen();
+  const {
+    activeChatChannel,
+    setKnowledgeContext,
+    channels,
+    agents,
+    updateAgent,
+  } = useXyzen();
   const [knowledgeSets, setKnowledgeSets] = useState<KnowledgeSet[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedKnowledgeSet, setSelectedKnowledgeSet] =
     useState<KnowledgeSet | null>(null);
+
+  // Get current agent
+  const currentAgent = activeChatChannel
+    ? agents.find((a) => a.id === channels[activeChatChannel]?.agentId)
+    : null;
 
   // Fetch knowledge sets when connected
   useEffect(() => {
@@ -39,28 +50,66 @@ export function KnowledgeSelector({
         try {
           const sets = await knowledgeSetService.listKnowledgeSets();
           setKnowledgeSets(sets);
+
+          // Sync selection with agent
+          if (currentAgent?.knowledge_set_id) {
+            const boundSet = sets.find(
+              (s) => s.id === currentAgent.knowledge_set_id,
+            );
+            if (boundSet) {
+              setSelectedKnowledgeSet(boundSet);
+            }
+          }
         } catch (error) {
           console.error("Failed to fetch knowledge sets:", error);
         }
       };
       fetchKnowledgeSets();
     }
-  }, [isConnected]);
+  }, [isConnected, currentAgent?.knowledge_set_id]);
 
-  const handleSelect = (ks: KnowledgeSet) => {
+  const handleSelect = async (ks: KnowledgeSet) => {
     setSelectedKnowledgeSet(ks);
+
+    // Update local context (legacy/UI)
     if (activeChatChannel) {
       setKnowledgeContext(activeChatChannel, {
         folderId: ks.id,
         folderName: ks.name,
       });
     }
+
+    // Update Agent
+    if (currentAgent) {
+      try {
+        await updateAgent({ ...currentAgent, knowledge_set_id: ks.id });
+      } catch (error) {
+        console.error("Failed to bind knowledge set to agent:", error);
+      }
+    }
+
     setIsOpen(false);
   };
 
-  const handleDisconnectClick = (e: React.MouseEvent) => {
+  const handleDisconnectClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedKnowledgeSet(null);
+
+    // Unbind from Agent if just disconnecting the set, but keep MCP?
+    // The prop onDisconnect usually disconnects the MCP server entirely.
+    // If we just want to unbind the set, we should do it here.
+    // But onDisconnect is passed from parent.
+    // Let's assume onDisconnect handles the MCP level.
+    // We should probably also clear the knowledge_set_id.
+
+    if (currentAgent && currentAgent.knowledge_set_id) {
+      try {
+        await updateAgent({ ...currentAgent, knowledge_set_id: null });
+      } catch (error) {
+        console.error("Failed to unbind knowledge set from agent:", error);
+      }
+    }
+
     onDisconnect();
   };
 
