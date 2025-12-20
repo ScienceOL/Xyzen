@@ -341,37 +341,6 @@ async def get_all_system_agents(
     return agents_with_details
 
 
-@router.get("/avatars/available", response_model=list[dict])
-async def get_available_avatars(
-    user: str = Depends(get_current_user),
-) -> list[dict]:
-    """
-    Get all available avatar options for agents.
-
-    Returns a list of available emoji avatars with their metadata including
-    name, unicode character, and animation file references. The frontend uses
-    this to populate avatar selection UI and can render animations from the
-    configured CDN.
-
-    Args:
-        user: Authenticated user ID (injected by dependency)
-
-    Returns:
-        list[dict]: List of available avatars with name, unicode, and animation info
-
-    Raises:
-        HTTPException: If authentication is missing or invalid (401 Unauthorized)
-    """
-    # Ensure the authenticated user is present; if not, fail securely.
-    if not user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    # Return a list indicating avatar options are available on the frontend
-    # The frontend has the complete emoji animation configuration (emojiAnimationConfig.ts)
-    # This endpoint mainly serves as a validation that avatars are enabled
-    return [{"message": "avatars_available"}]
-
-
 @router.post("/{agent_id}/sync-mcps", status_code=204)
 async def sync_agent_mcps(
     agent_id: UUID,

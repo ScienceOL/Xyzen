@@ -1,4 +1,4 @@
-"""add colume avatar_background_color
+"""add column avatar_background_color
 
 Revision ID: 32960112cc33
 Revises: d00feda08541
