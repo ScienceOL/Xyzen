@@ -81,7 +81,7 @@ class DynamicToolMiddleware(Middleware):
             tool_call_result = await self.browser_mcp_client.call_tool(
                 tool_name, getattr(context.message, "arguments", {})
             )
-            result = ToolResult(tool_call_result.content, tool_call_result.structured_content)  # type: ignore
+            result = ToolResult(tool_call_result.content, tool_call_result.structured_content)
         else:
             result = await call_next(context)
         end_time = datetime.now()
@@ -122,4 +122,4 @@ class DynamicToolMiddleware(Middleware):
 
         # Continue executing list tools
         # This will return tools visible to MCP (built-in + current user's)
-        return await call_next(context)  # type: ignore
+        return await call_next(context)

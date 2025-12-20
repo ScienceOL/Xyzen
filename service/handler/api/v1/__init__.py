@@ -6,6 +6,7 @@ from .auth import router as auth_router
 from .files import router as files_router
 from .folders import router as folders_router
 from .knowledge_sets import router as knowledge_sets_router
+from .marketplace import router as marketplace_router
 from .mcps import router as mcps_router
 from .providers import router as providers_router
 from .redemption import router as redemption_router
@@ -85,3 +86,4 @@ v1_router.include_router(redemption_router, prefix="/redemption")
 v1_router.include_router(files_router, prefix="/files")
 v1_router.include_router(folders_router, prefix="/folders")
 v1_router.include_router(knowledge_sets_router, prefix="/knowledge-sets")
+v1_router.include_router(marketplace_router, prefix="/marketplace")
