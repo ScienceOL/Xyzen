@@ -6,7 +6,9 @@ from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class MCPServerBase(SQLModel):
-    user_id: str = Field(default=None, index=True, description="The user ID of mcp server owner")
+    user_id: Optional[str] = Field(
+        default=None, index=True, nullable=True, description="The user ID of mcp server owner"
+    )
     name: str = Field(index=True)
     description: Optional[str] = Field(default=None)
     url: str
