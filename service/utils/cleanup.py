@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timezone
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.storage import StorageServiceProto, get_storage_service
@@ -55,8 +55,8 @@ async def cleanup_orphaned_files(
 
     # Find all files with message_id set
     statement = select(File).where(
-        File.message_id.isnot(None),  # type: ignore
-        File.is_deleted == False,  # noqa: E712
+        col(File.message_id).isnot(None),
+        col(File.is_deleted).is_(False),
     )
     result = await db.exec(statement)
     files_with_message = list(result.all())
@@ -64,7 +64,7 @@ async def cleanup_orphaned_files(
     logger.info(f"Found {len(files_with_message)} files with message_id set")
 
     # Check which ones are orphaned
-    orphaned_files = []
+    orphaned_files: list[File] = []
     for file in files_with_message:
         message = await db.get(Message, file.message_id)
         if not message:
@@ -153,9 +153,9 @@ async def cleanup_expired_pending_files(
     statement = (
         select(File)
         .where(File.status == "pending")
-        .where(File.message_id.is_(None))  # type: ignore
+        .where(col(File.message_id).is_(None))
         .where(File.created_at <= cutoff_datetime)
-        .where(File.is_deleted == False)  # noqa: E712
+        .where(col(File.is_deleted).is_(False))
     )
     result = await db.exec(statement)
     expired_files = list(result.all())
@@ -239,11 +239,7 @@ async def cleanup_old_soft_deleted_files(
         cutoff_datetime = datetime.fromtimestamp(cutoff_time, tz=timezone.utc)
 
         # Count old soft-deleted files
-        statement = (
-            select(File)
-            .where(File.is_deleted == True)  # noqa: E712
-            .where(File.deleted_at <= cutoff_datetime)  # type: ignore
-        )
+        statement = select(File).where(col(File.is_deleted).is_(True)).where(col(File.deleted_at) <= cutoff_datetime)
         result = await db.exec(statement)
         old_files = list(result.all())
         stats["old_deleted_count"] = len(old_files)
@@ -253,11 +249,7 @@ async def cleanup_old_soft_deleted_files(
         cutoff_time = datetime.now(timezone.utc).timestamp() - (retention_days * 24 * 3600)
         cutoff_datetime = datetime.fromtimestamp(cutoff_time, tz=timezone.utc)
 
-        statement = (
-            select(File)
-            .where(File.is_deleted == True)  # noqa: E712
-            .where(File.deleted_at <= cutoff_datetime)  # type: ignore
-        )
+        statement = select(File).where(col(File.is_deleted).is_(True)).where(col(File.deleted_at) <= cutoff_datetime)
         result = await db.exec(statement)
         old_files = list(result.all())
 
