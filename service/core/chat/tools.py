@@ -152,6 +152,29 @@ async def execute_tool_call(
                 if refreshed_server and refreshed_server.tools and refreshed_server.status == "online":
                     for tool in refreshed_server.tools:
                         if tool.get("name") == tool_name:
+                            # TODO: Add better logic for knowledge_set_id filtering
+                            input_schema = tool.get("inputSchema", {})
+
+                            # Debug logging
+                            logger.info(
+                                f"Checking tool '{tool_name}' for injection. Schema props: {list(input_schema.get('properties', {}).keys())}"
+                            )
+
+                            if "knowledge_set_id" in input_schema.get("properties", {}):
+                                logger.info(f"Tool '{tool_name}' requires knowledge_set_id.")
+                                if agent:
+                                    ks_id = getattr(agent, "knowledge_set_id", None)
+                                    logger.info(f"Agent found. Knowledge Set ID: {ks_id}")
+                                    if ks_id:
+                                        args_dict["knowledge_set_id"] = str(ks_id)
+                                        logger.info(f"Injected knowledge_set_id: {ks_id} into args")
+                                    else:
+                                        logger.warning(f"Agent {agent.id} has NO knowledge_set_id bound!")
+                                else:
+                                    logger.warning("No agent context available for injection!")
+                            else:
+                                logger.info(f"Tool '{tool_name}' does NOT require knowledge_set_id.")
+
                             try:
                                 result = await call_mcp_tool(refreshed_server, tool_name, args_dict)
                                 return str(result)
