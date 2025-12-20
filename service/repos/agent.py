@@ -1,5 +1,4 @@
 import logging
-import sqlalchemy as sa
 from typing import Sequence
 from uuid import UUID
 
@@ -362,10 +361,9 @@ class AgentRepository:
         if not agent:
             raise ValueError("Agent not found")
 
-        # Desired MCP servers: system-level (user_id is NULL) or owned by agent.user_id
-        # Use sa.null() to build a SQL NULL literal so static type checkers don't treat
-        # `McpServer.user_id` as a plain `str` attribute.
-        statement = select(McpServer).where((McpServer.user_id == sa.null()) | (McpServer.user_id == agent.user_id))
+        # Desired MCP servers: system-level (user_id IS NULL) or owned by agent.user_id
+        # Use null() to generate proper SQL IS NULL clause for system-level servers
+        statement = select(McpServer).where((McpServer.user_id == null()) | (McpServer.user_id == agent.user_id))
         result = await self.db.exec(statement)
         desired_servers = result.all()
         desired_ids = {s.id for s in desired_servers}

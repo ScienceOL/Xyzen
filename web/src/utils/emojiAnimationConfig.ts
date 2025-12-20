@@ -64,7 +64,7 @@ const EMOJI_CONFIGS: EmojiConfig[] = [
   {
     name: "bandaged-heart",
     videoFileName: "bandaged-heart-0.5x.webm",
-    unicode: "💔",
+    unicode: "❤️‍🩹",
   },
   { name: "baseball", videoFileName: "baseball-0.5x.webm", unicode: "⚾" },
   { name: "bat", videoFileName: "bat-0.5x.webm", unicode: "🦇" },
@@ -178,7 +178,7 @@ const EMOJI_CONFIGS: EmojiConfig[] = [
     unicode: "🏗️",
   },
   { name: "cooking", videoFileName: "cooking-0.5x.webm", unicode: "🍳" },
-  { name: "cool", videoFileName: "cool-0.5x.webm", unicode: "😎" },
+  { name: "cool", videoFileName: "cool-0.5x.webm", unicode: "🆒" },
   { name: "cow-face", videoFileName: "cow-face-0.5x.webm", unicode: "🐄" },
   { name: "cowboy", videoFileName: "cowboy-0.5x.webm", unicode: "🤠" },
   { name: "crab", videoFileName: "crab-0.5x.webm", unicode: "🦀" },
@@ -603,7 +603,7 @@ const EMOJI_CONFIGS: EmojiConfig[] = [
   {
     name: "scrunched-mouth",
     videoFileName: "scrunched-mouth-0.5x.webm",
-    unicode: "🤐",
+    unicode: "😣",
   },
   { name: "seal", videoFileName: "seal-0.5x.webm", unicode: "🦭" },
   {
