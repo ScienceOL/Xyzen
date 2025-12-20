@@ -1,3 +1,5 @@
+<img src="https://storage.sciol.ac.cn/library/xyzen/coverage.png" style="width:100%; object-fit: contain;" />
+
 # Xyzen
 
 AI Laboratory Server
@@ -24,6 +26,7 @@ Xyzen supports two development approaches:
 ### Prerequisites
 
 - **For Containerized Development:**
+
   - Docker and Docker Compose
   - [uv](https://docs.astral.sh/uv/) for pre-commit hooks
 
@@ -48,16 +51,19 @@ The easiest way to get started with Xyzen is using the containerized development
 2. Start the development environment:
 
    **On Unix/Linux/macOS:**
+
    ```bash
    ./launch/dev.sh
    ```
 
    **On Windows (PowerShell):**
+
    ```powershell
    .\launch\dev.ps1
    ```
 
    Or use the Makefile:
+
    ```bash
    make dev              # Start in foreground (shows logs)
    make dev ARGS="-d"    # Start in background (daemon mode)
@@ -66,6 +72,7 @@ The easiest way to get started with Xyzen is using the containerized development
    ```
 
 The script will automatically:
+
 - Check Docker and validate `.env.dev` file
 - Set up global Sciol virtual environment at `~/.sciol/venv`
 - Install and configure pre-commit hooks
@@ -76,26 +83,31 @@ The script will automatically:
 ### Container Development Options
 
 **Start in foreground (see logs):**
+
 ```bash
 ./launch/dev.sh
 ```
 
 **Start in background:**
+
 ```bash
 ./launch/dev.sh -d
 ```
 
 **Stop containers:**
+
 ```bash
 ./launch/dev.sh -s
 ```
 
 **Stop and remove containers:**
+
 ```bash
 ./launch/dev.sh -e
 ```
 
 **Show help:**
+
 ```bash
 ./launch/dev.sh -h
 ```
@@ -109,12 +121,14 @@ The master file is located at **[`AGENTS.md`](./AGENTS.md)**.
 To configure your preferred AI tool, create a symbolic link (or copy) `AGENTS.md` to the filename expected by your tool. These specific filenames are ignored by git to keep the repository clean.
 
 **GitHub Copilot:**
+
 ```bash
 mkdir -p .github
 ln -s ../AGENTS.md .github/copilot-instructions.md
 ```
 
 **Claude / Cursor / Windsurf / Cline:**
+
 ```bash
 ln -s AGENTS.md CLAUDE.md       # For Claude
 ln -s AGENTS.md .cursorrules    # For Cursor
@@ -132,18 +146,21 @@ Contributions are the core of open source! We welcome improvements and features.
 Xyzen has a comprehensive unit test suite. All PRs must introduce or update tests as appropriate and pass the full suite.
 
 **Run all tests:**
+
 ```bash
 cd service
 uv run pytest
 ```
 
 **Run tests with coverage:**
+
 ```bash
 cd service
 uv run pytest --cov=src --cov=examples --cov-report=html
 ```
 
 **Run specific tests:**
+
 ```bash
 cd service
 uv run pytest tests/test_models/        # Run all model tests
@@ -156,12 +173,14 @@ uv run pytest -m "unit"                # Run only unit tests
 Xyzen uses `pre-commit` for code formatting, linting, and type-checking. All PRs must pass these checks (they run automatically in CI).
 
 **Install pre-commit hooks** (done automatically by `make dev` or `dev.sh`):
+
 ```bash
 cd service
 uv run pre-commit install
 ```
 
 **Run checks manually:**
+
 ```bash
 cd service
 uv run pre-commit run --all-files      # Run all hooks on all files
@@ -169,6 +188,7 @@ uv run pre-commit run                  # Run on staged files only
 ```
 
 The pre-commit hooks include:
+
 - **Python Backend:** Ruff (formatting & linting), Pyright (type checking)
 - **Frontend:** Prettier, ESLint, TypeScript checking
 - **General:** Trailing whitespace, end-of-file fixes, YAML validation

@@ -107,7 +107,7 @@ class UserWalletBase(SQLModel):
     user_id: str = Field(unique=True, index=True, description="User ID")
     virtual_balance: int = Field(default=0, sa_type=BigInteger, description="Current virtual balance")
     total_credited: int = Field(default=0, sa_type=BigInteger, description="Total amount credited (audit trail)")
-    total_consumed: int = Field(default=0, sa_type=BigInteger, description="Total amount consumed from virtual balance")
+    total_consumed: int = Field(default=0, sa_type=BigInteger, description="Total amount consumed from virtual balance")  # noqa: E501
 
 
 class UserWallet(UserWalletBase, table=True):

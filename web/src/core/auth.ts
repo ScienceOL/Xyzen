@@ -112,5 +112,24 @@ export const logout = () => {
  * 应用启动时执行的自动登录检查
  */
 export const autoLogin = async () => {
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromQuery =
+      params.get("access_token") ?? params.get("access_toekn");
+
+    if (tokenFromQuery && tokenFromQuery.trim()) {
+      // 清理 URL，避免 token 长期暴露在地址栏/历史记录里
+      params.delete("access_token");
+      params.delete("access_toekn");
+      const next = `${window.location.pathname}${
+        params.toString() ? `?${params.toString()}` : ""
+      }${window.location.hash}`;
+      window.history.replaceState({}, "", next);
+
+      await login(tokenFromQuery.trim());
+      return;
+    }
+  }
+
   await checkAuthState(true);
 };

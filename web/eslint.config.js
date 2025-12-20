@@ -6,7 +6,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config([
-  globalIgnores(["dist", "site"]),
+  globalIgnores(["dist", "site", "dev-dist", "node_modules"]),
   // TypeScript/TSX files in src directory
   {
     files: ["src/**/*.{ts,tsx}"],

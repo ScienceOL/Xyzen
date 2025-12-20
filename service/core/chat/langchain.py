@@ -140,8 +140,6 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
         for message in messages:
             role = (message.role or "").lower()
             content = message.content or ""
-            if not content:
-                continue
             if role == "user":
                 # Check if message has file attachments
                 try:
@@ -153,10 +151,6 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
                         # Multimodal message: combine text and file content
                         multimodal_content: list[dict[str, Any]] = [{"type": "text", "text": content}]
                         multimodal_content.extend(file_contents)
-                        # Debug: Log the exact content being sent
-                        logger.debug(
-                            f"Multimodal content types for message {message.id}: {[item.get('type') for item in multimodal_content]}"
-                        )
                         for idx, item in enumerate(file_contents):
                             item_type = item.get("type")
                             if item_type == "image_url":
@@ -183,6 +177,7 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
                 try:
                     file_contents = await process_message_files(db, message.id)
                     if file_contents:
+                        logger.debug("Successfully processed files for message")
                         # Multimodal assistant message
                         # Combine text content with file content
                         multimodal_content: list[dict[str, Any]] = []
@@ -234,6 +229,7 @@ async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
             else:
                 # Skip unknown/tool roles for now
                 continue
+        logger.info(f"Length of history: {len(history)}")
         return history
     except Exception as e:
         logger.warning(f"Failed to load DB chat history for topic {getattr(topic, 'id', None)}: {e}")
@@ -311,7 +307,7 @@ async def get_ai_response_stream_langchain_legacy(
         model_name = agent.model
 
     # Get system prompt with MCP awareness
-    system_prompt = await build_system_prompt(db, agent)
+    system_prompt = await build_system_prompt(db, agent, model_name)
 
     yield {"type": ChatEventType.PROCESSING, "data": {"status": ProcessingStatus.PREPARING_REQUEST}}
 
@@ -366,10 +362,7 @@ async def get_ai_response_stream_langchain_legacy(
                 else:
                     history_messages.append(system_msg)
 
-        async for chunk in langchain_agent.astream(
-            {"messages": history_messages},
-            stream_mode=["updates", "messages"],
-        ):
+        async for chunk in langchain_agent.astream({"messages": history_messages}, stream_mode=["updates", "messages"]):
             # chunk is a tuple: (stream_mode, data)
             try:
                 mode, data = chunk
@@ -398,7 +391,7 @@ async def get_ai_response_stream_langchain_legacy(
                         continue
 
                     last_message = messages[-1]
-                    logger.debug("Last message in step '%s': %r", step_name, last_message)
+                    # logger.debug("Last message in step '%s': %r", step_name, last_message)
 
                     # Check if this is a tool call request (from LLM node)
                     if hasattr(last_message, "tool_calls") and last_message.tool_calls:

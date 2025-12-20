@@ -1,131 +1,61 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/animate-ui/components/radix/dropdown-menu";
+import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserWallet } from "@/hooks/useUserWallet";
+import {
+  ArrowTopRightOnSquareIcon,
   ExclamationTriangleIcon,
+  InformationCircleIcon,
   UserIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 export interface AuthStatusProps {
   onTokenInput?: (token: string) => void;
   className?: string;
 }
 
-// Token输入弹窗组件
-function TokenInputModal({
-  isOpen,
-  onClose,
-  onSubmit,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (token: string) => void;
-}) {
-  const [tokenInput, setTokenInput] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (tokenInput.trim()) {
-      onSubmit(tokenInput.trim());
-      setTokenInput("");
-      onClose();
-    }
-  };
-
-  const handleClose = useCallback(() => {
-    setTokenInput("");
-    onClose();
-  }, [onClose]);
-
-  // 点击外部关闭弹窗
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  };
-
-  // ESC键关闭弹窗
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        handleClose();
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleEsc);
-      return () => document.removeEventListener("keydown", handleEsc);
-    }
-  }, [isOpen, handleClose]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-      onClick={handleBackdropClick}
-    >
-      <div className="w-full max-w-md rounded-sm bg-white p-6 shadow-xl dark:bg-neutral-800">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
-            输入访问令牌
-          </h3>
-          <button
-            onClick={handleClose}
-            className="rounded-sm p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-500 dark:hover:bg-neutral-700"
-          >
-            <XMarkIcon className="h-5 w-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label
-              htmlFor="token-input"
-              className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-            >
-              访问令牌
-            </label>
-            <input
-              id="token-input"
-              type="password"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="请输入您的访问令牌"
-              className="w-full rounded-sm border border-neutral-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
-              autoFocus
-              required
-            />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              请输入有效的访问令牌进行身份验证
-            </p>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="rounded-sm px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              className="rounded-sm bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              确认
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   const auth = useAuth();
   const [showTokenModal, setShowTokenModal] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [showPointsInfo, setShowPointsInfo] = useState(false);
+
+  const isAuthedForUi = auth.isAuthenticated || !!auth.token;
+  const walletQuery = useUserWallet(auth.token, isAuthedForUi);
+
+  const maskedToken = (() => {
+    const token = auth.token;
+    if (!token) return "暂无 access_token";
+    if (token.length <= 20) return "***";
+    return `${token.slice(0, 10)}…${token.slice(-8)}`;
+  })();
+
+  const copyTokenFallback = useCallback(async () => {
+    if (!auth.token) return;
+    try {
+      await navigator.clipboard.writeText(auth.token);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = auth.token;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+  }, [auth.token]);
 
   // 处理token输入
   const handleTokenSubmit = async (token: string) => {
@@ -133,38 +63,145 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
     onTokenInput?.(token);
   };
 
+  const handleCloseTokenModal = useCallback(() => {
+    setTokenInput("");
+    setShowTokenModal(false);
+  }, []);
+
   if (auth.isLoading) {
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600 dark:border-neutral-700 dark:border-t-indigo-500"></div>
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600 dark:border-neutral-700 dark:border-t-indigo-500" />
         <span className="text-sm text-neutral-500">检查认证状态...</span>
       </div>
     );
   }
 
   // 已登录：展示用户信息
-  if (auth.isAuthenticated) {
+  if (isAuthedForUi) {
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="flex items-center space-x-2">
-          {auth.user?.avatar ? (
-            <img
-              src={auth.user.avatar}
-              alt={auth.user.username}
-              className="h-6 w-6 rounded-full"
-            />
-          ) : (
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900">
-              <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+      <>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={`flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${className}`}
+              title="认证信息"
+            >
+              {auth.user?.avatar ? (
+                <img
+                  src={auth.user.avatar}
+                  alt={auth.user?.username ?? "User"}
+                  className="h-6 w-6 rounded-full"
+                />
+              ) : (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900">
+                  <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+              )}
+
+              <span className="text-sm font-medium max-w-32 truncate text-neutral-900 dark:text-neutral-100">
+                {auth.user?.username ?? "已登录"}
+              </span>
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel className="text-xs">账户</DropdownMenuLabel>
+
+            <div className="px-2 py-1.5">
+              <div className="flex items-center justify-between gap-2 rounded-md bg-neutral-50 px-2.5 py-2 dark:bg-neutral-900/40">
+                <div className="min-w-0">
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    积分余额
+                  </div>
+                  <div className="mt-0.5 truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                    {walletQuery.isLoading
+                      ? "加载中…"
+                      : (walletQuery.data?.virtual_balance ?? "--")}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPointsInfo(true)}
+                  className="shrink-0 rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+                  title="积分说明"
+                >
+                  <InformationCircleIcon className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          )}
-          <div className="flex flex-col">
-            <span className="text-sm font-medium max-w-32 truncate text-neutral-900 dark:text-neutral-100">
-              {auth.user?.username}
-            </span>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuLabel className="text-xs">凭证</DropdownMenuLabel>
+            <div className="px-2 py-1.5">
+              <div className="mb-1 flex items-center justify-between">
+                <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                  access_token
+                </div>
+                <div className="flex items-center gap-1">
+                  <CopyButton
+                    content={auth.token ?? ""}
+                    variant="ghost"
+                    size="xs"
+                    disabled={!auth.token}
+                    className="text-neutral-500 hover:text-neutral-700 disabled:cursor-not-allowed disabled:opacity-60 dark:text-neutral-400 dark:hover:text-neutral-200"
+                    title="复制"
+                  />
+                  <button
+                    type="button"
+                    disabled={!auth.token}
+                    onClick={() => {
+                      if (!auth.token) return;
+                      const encoded = encodeURIComponent(auth.token);
+                      window.open(
+                        `https://chat.sciol.ac.cn/?access_token=${encoded}`,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                    }}
+                    className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 disabled:cursor-not-allowed disabled:opacity-60 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                    title="打开 Web"
+                  >
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={!auth.token}
+                onClick={() => void copyTokenFallback()}
+                className="w-full rounded-md bg-neutral-100 px-2 py-1.5 text-left font-mono text-[11px] text-neutral-800 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                title={auth.token ? "点击复制" : "暂无 access_token"}
+              >
+                <span className="block truncate">{maskedToken}</span>
+              </button>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Modal
+          isOpen={showPointsInfo}
+          onClose={() => setShowPointsInfo(false)}
+          title="积分说明"
+          maxWidth="max-w-md"
+        >
+          <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-200">
+            在 Bohrium 平台使用时，将自动使用光子兑换等量积分，请至光子处查看
           </div>
-        </div>
-      </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowPointsInfo(false)}
+              className="rounded-sm bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              知道了
+            </button>
+          </div>
+        </Modal>
+      </>
     );
   }
 
@@ -183,11 +220,60 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
         </button>
       </div>
 
-      <TokenInputModal
+      <Modal
         isOpen={showTokenModal}
-        onClose={() => setShowTokenModal(false)}
-        onSubmit={handleTokenSubmit}
-      />
+        onClose={handleCloseTokenModal}
+        title="输入访问令牌"
+        maxWidth="max-w-md"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!tokenInput.trim()) return;
+            void handleTokenSubmit(tokenInput.trim());
+            handleCloseTokenModal();
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label
+              htmlFor="token-input"
+              className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            >
+              访问令牌
+            </label>
+            <input
+              id="token-input"
+              type="password"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder="请输入您的访问令牌"
+              className="w-full rounded-sm border border-neutral-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
+              autoFocus
+              required
+            />
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              请输入有效的访问令牌进行身份验证
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleCloseTokenModal}
+              className="rounded-sm px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="rounded-sm bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              确认
+            </button>
+          </div>
+        </form>
+      </Modal>
     </>
   );
 }

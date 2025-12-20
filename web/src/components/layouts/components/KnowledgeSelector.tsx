@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { folderService, type Folder } from "@/service/folderService";
+import { useXyzen } from "@/store";
 import {
+  ArchiveBoxXMarkIcon,
   FolderIcon,
   FolderOpenIcon,
   PlusIcon,
   XMarkIcon,
-  ArchiveBoxXMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useXyzen } from "@/store";
-import { folderService, type Folder } from "@/service/folderService";
-import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
 
 interface KnowledgeSelectorProps {
   isConnected: boolean;
@@ -70,13 +70,13 @@ export function KnowledgeSelector({
     return (
       <motion.button
         onClick={onConnect}
-        className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+        className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
         title="连接知识库"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
         <PlusIcon className="h-3.5 w-3.5" />
-        <span>知识库</span>
+        <span className="flex-1 text-left">知识库</span>
       </motion.button>
     );
   }
@@ -89,7 +89,7 @@ export function KnowledgeSelector({
     >
       <motion.div
         className={cn(
-          "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-default select-none",
+          "flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-default select-none",
           "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400",
           isOpen
             ? "shadow-md bg-indigo-100 dark:bg-indigo-900/30"
@@ -103,7 +103,9 @@ export function KnowledgeSelector({
         ) : (
           <FolderIcon className="h-3.5 w-3.5 shrink-0" />
         )}
-        <span className="max-w-[100px] truncate">{currentFolderName}</span>
+        <span className="flex-1 text-left max-w-[100px] truncate">
+          {currentFolderName}
+        </span>
 
         <div
           role="button"

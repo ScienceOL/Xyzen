@@ -66,6 +66,7 @@ function SheetContent({
     <SheetPortalPrimitive>
       <SheetOverlay />
       <SheetContentPrimitive
+        side={side}
         className={cn(
           "bg-background fixed z-50 flex flex-col gap-4 shadow-lg",
           side === "right" && "h-full w-[350px] border-l",

@@ -30,7 +30,7 @@ export function BuiltinSearchToggle({
     >
       <motion.button
         onClick={() => onToggle(!enabled)}
-        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+        className={`flex w-full min-w-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
           enabled
             ? "bg-blue-500/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 shadow-sm"
             : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
@@ -40,7 +40,9 @@ export function BuiltinSearchToggle({
         title={enabled ? "Built-in Search: 已启用" : "Built-in Search: 已禁用"}
       >
         <GlobeAltIcon className="h-3.5 w-3.5 shrink-0" />
-        <span>联网搜索</span>
+        <span className="min-w-0 flex-1 truncate whitespace-nowrap text-left">
+          联网搜索
+        </span>
         <div
           className={`h-1.5 w-1.5 rounded-full ${enabled ? "bg-blue-500" : "bg-neutral-400"}`}
         />

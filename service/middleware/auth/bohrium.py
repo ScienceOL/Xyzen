@@ -19,13 +19,13 @@ class BohriumAuthProvider(BaseAuthProvider):
     def is_configured(self) -> bool:
         """检查提供商是否已正确配置 - Bohrium 只需要 issuer"""
         is_valid = bool(self.issuer)
-        logger.info(f"Bohrium 配置检查: issuer={self.issuer}, valid={is_valid}")
+        logger.debug(f"Bohrium 配置检查: issuer={self.issuer}, valid={is_valid}")
         return is_valid
 
     @cached_token_validation
     def validate_token(self, access_token: str) -> AuthResult:
         """验证 access_token 并获取用户信息"""
-        logger.info(f"Bohrium: 开始验证 token (前20字符): {access_token[:20]}...")
+        logger.debug(f"Bohrium: 开始验证 token (前20字符): {access_token[:20]}...")
 
         if not self.is_configured():
             logger.error("Bohrium: 认证服务未配置")
@@ -43,11 +43,11 @@ class BohriumAuthProvider(BaseAuthProvider):
                 error_message="Bohrium issuer is not configured",
             )
 
-        logger.info("Bohrium: 认证服务已配置，开始通过 API 验证token...")
+        logger.debug("Bohrium: 认证服务已配置，开始通过 API 验证token...")
         try:
             # 直接使用 issuer 作为用户信息接口地址
             userinfo_url = self.issuer
-            logger.info(f"Bohrium: 调用用户信息接口: {userinfo_url}")
+            logger.debug(f"Bohrium: 调用用户信息接口: {userinfo_url}")
 
             headers = {
                 "Authorization": f"Bearer {access_token}",
@@ -67,7 +67,7 @@ class BohriumAuthProvider(BaseAuthProvider):
             }
 
             response = requests.get(userinfo_url, headers=headers, timeout=10)
-            logger.info(f"Bohrium: userinfo API 响应状态: {response.status_code}")
+            logger.debug(f"Bohrium: userinfo API 响应状态: {response.status_code}")
 
             if response.status_code == 401:
                 logger.warning("Bohrium: Token 无效或已过期")
@@ -80,7 +80,7 @@ class BohriumAuthProvider(BaseAuthProvider):
                 )
 
             userinfo_data = response.json()
-            logger.info(f"Bohrium: 获取用户信息响应: {userinfo_data}")
+            logger.debug(f"Bohrium: 获取用户信息响应: {userinfo_data}")
 
             # 检查 Bohrium API 响应状态
             if userinfo_data.get("code") != 0:
@@ -90,7 +90,7 @@ class BohriumAuthProvider(BaseAuthProvider):
 
             # 解析用户信息
             user_info = self.parse_userinfo_response(userinfo_data)
-            logger.info(f"Bohrium: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}")
+            logger.debug(f"Bohrium: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}")
             return AuthResult(success=True, user_info=user_info)
 
         except requests.RequestException as e:
@@ -104,8 +104,8 @@ class BohriumAuthProvider(BaseAuthProvider):
 
     def parse_userinfo_response(self, userinfo_data: dict[str, Any]) -> UserInfo:
         """从 Bohrium userinfo API 响应解析用户信息"""
-        logger.info("Bohrium: 解析 userinfo API 响应中的用户信息")
-        logger.info(f"Bohrium: userinfo 数据: {userinfo_data}")
+        logger.debug("Bohrium: 解析 userinfo API 响应中的用户信息")
+        logger.debug(f"Bohrium: userinfo 数据: {userinfo_data}")
 
         # 获取 data 字段中的用户信息
         data = userinfo_data.get("data", {})
@@ -135,7 +135,7 @@ class BohriumAuthProvider(BaseAuthProvider):
             },
         )
 
-        logger.info(f"Bohrium: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 邮箱: {user_info.email}")
+        logger.debug(f"Bohrium: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 邮箱: {user_info.email}")
         return user_info
 
     def parse_user_info(self, token_payload: dict[str, Any]) -> UserInfo:
@@ -143,8 +143,8 @@ class BohriumAuthProvider(BaseAuthProvider):
         从 token payload 解析用户信息 - Bohrium 主要通过 API 获取用户信息
         """
 
-        logger.info("Bohrium: 解析token payload中的用户信息")
-        logger.info(f"Bohrium: payload内容: {token_payload}")
+        logger.debug("Bohrium: 解析token payload中的用户信息")
+        logger.debug(f"Bohrium: payload内容: {token_payload}")
 
         identity = token_payload.get("identity", {})
         user_id = str(identity.get("userId") or token_payload.get("userId") or token_payload.get("sub", ""))
@@ -168,5 +168,5 @@ class BohriumAuthProvider(BaseAuthProvider):
             },
         )
 
-        logger.info(f"Bohrium: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 邮箱: {user_info.email}")
+        logger.debug(f"Bohrium: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 邮箱: {user_info.email}")
         return user_info

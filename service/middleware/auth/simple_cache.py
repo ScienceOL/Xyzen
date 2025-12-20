@@ -83,7 +83,7 @@ class SimpleTokenCache:
     def clear(self) -> None:
         """清空缓存"""
         self._cache.clear()
-        logger.info("Token cache cleared")
+        logger.debug("Token cache cleared")
 
     def get_stats(self) -> dict[str, Any]:
         """获取缓存统计"""

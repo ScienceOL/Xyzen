@@ -1,9 +1,6 @@
 import logging
+from typing import Any
 from uuid import UUID
-
-from sqlalchemy import func
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.consume import (
     ConsumeRecord,
@@ -13,6 +10,9 @@ from models.consume import (
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
 )
+from sqlalchemy import func
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class ConsumeRepository:
 
         record_dict = record_data.model_dump()
         record_dict["user_id"] = user_id
+
         record = ConsumeRecord(**record_dict)
 
         self.db.add(record)
@@ -266,6 +267,8 @@ class ConsumeRepository:
         success = 1 if consume_state == "success" else 0
         failed = 1 if consume_state == "failed" else 0
 
+        summary_data: UserConsumeSummaryCreate | UserConsumeSummaryUpdate
+
         if summary is None:
             # Create new summary using the new pattern
             summary_data = UserConsumeSummaryCreate(
@@ -321,3 +324,135 @@ class ConsumeRepository:
         count = result.one() or 0
         logger.debug(f"Successful consumption count for user {user_id}: {count}")
         return count
+
+    async def get_daily_token_stats(self, date: str | None = None) -> dict[str, Any]:
+        """
+        Get daily token consumption statistics.
+
+        Args:
+            date: Date in YYYY-MM-DD format. If None, uses today.
+
+        Returns:
+            Dictionary with total_tokens, input_tokens, output_tokens, total_amount
+        """
+        from datetime import datetime, timezone
+
+        if date:
+            # Parse the provided date
+            target_date = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        else:
+            # Use today
+            target_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Get start and end of day
+        start_of_day = target_date
+        end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        logger.debug(f"Getting daily token stats for {start_of_day} to {end_of_day}")
+
+        # Query for sum of tokens and amount
+        stmt = select(
+            func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),  # type: ignore
+            func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
+            func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
+            func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
+            func.count().label("record_count"),  #
+        ).where(
+            ConsumeRecord.created_at >= start_of_day,
+            ConsumeRecord.created_at <= end_of_day,
+        )
+
+        result = await self.db.exec(stmt)  # type: ignore
+
+        row = result.one()
+        stats: dict[str, Any] = {
+            "date": start_of_day.strftime("%Y-%m-%d"),
+            "total_tokens": int(row.total_tokens),  # type: ignore
+            "input_tokens": int(row.input_tokens),  # type: ignore
+            "output_tokens": int(row.output_tokens),  # type: ignore
+            "total_amount": int(row.total_amount),  # type: ignore
+            "record_count": int(row.record_count),  # type: ignore
+        }
+
+        logger.debug(f"Daily token stats: {stats}")
+        return stats
+
+    async def get_top_users_by_consumption(self, limit: int = 20) -> list[dict[str, Any]]:
+        """
+        Get top users by consumption amount.
+
+        Args:
+            limit: Maximum number of users to return
+
+        Returns:
+            List of dictionaries with user_id, auth_provider, total_amount, total_count, etc.
+        """
+        logger.debug(f"Getting top {limit} users by consumption")
+
+        result = await self.db.exec(
+            select(UserConsumeSummary)
+            .order_by(UserConsumeSummary.total_amount.desc())  # type: ignore
+            .limit(limit)
+        )
+
+        summaries = list(result.all())
+
+        users: list[dict[str, Any]] = [
+            {
+                "user_id": summary.user_id,
+                "auth_provider": summary.auth_provider,
+                "total_amount": summary.total_amount,
+                "total_count": summary.total_count,
+                "success_count": summary.success_count,
+                "failed_count": summary.failed_count,
+            }
+            for summary in summaries
+        ]
+
+        logger.debug(f"Found {len(users)} top users")
+        return users
+
+    async def list_all_consume_records(
+        self, start_date: str | None = None, end_date: str | None = None, limit: int = 10000
+    ) -> list[ConsumeRecord]:
+        """
+        Get all consumption records with optional date filtering.
+
+        Args:
+            start_date: Start date in YYYY-MM-DD format (optional)
+            end_date: End date in YYYY-MM-DD format (optional)
+            limit: Maximum number of records to return (default: 10000)
+
+        Returns:
+            List of ConsumeRecord instances ordered by creation time (asc)
+        """
+        from datetime import datetime, timezone
+
+        logger.debug(f"Fetching consume records from {start_date} to {end_date}, limit: {limit}")
+
+        query = select(ConsumeRecord)
+
+        # Apply date filters if provided
+        if start_date:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            query = query.where(ConsumeRecord.created_at >= start_dt)
+
+        if end_date:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)  # noqa: E501
+            query = query.where(ConsumeRecord.created_at <= end_dt)
+
+        # Order by creation time ascending for chronological trend analysis
+        query = query.order_by(ConsumeRecord.created_at.asc()).limit(limit)  # type: ignore
+
+        result = await self.db.exec(query)
+        records = list(result.all())
+
+        logger.debug(f"Found {len(records)} consume records")
+        return records
+        return records
+        return records
+        return records
+        return records
+        return records
+        return records
+        return records

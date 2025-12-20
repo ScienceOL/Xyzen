@@ -4,8 +4,8 @@ import {
   DocumentIcon,
   FolderIcon,
   PhotoIcon,
-  TrashIcon,
   PlusIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import type { KnowledgeTab } from "./types";
@@ -57,7 +57,7 @@ const SidebarComp = ({
   ];
 
   return (
-    <div className="flex w-56 flex-col border-r border-neutral-200 bg-neutral-100/80 pt-4 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/80">
+    <div className="flex h-full w-56 flex-col border-r border-neutral-200 bg-neutral-100/80 pt-4 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/80">
       {/* Navigation */}
       <nav className="flex-1 space-y-6 px-3 overflow-y-auto custom-scrollbar">
         {/* Static Groups */}

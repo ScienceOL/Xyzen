@@ -2,8 +2,6 @@ import { PreviewModal } from "@/components/preview/PreviewModal";
 import type { PreviewFile } from "@/components/preview/types";
 import { fileService, type FileUploadResponse } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
-import { ContextMenu, type ContextMenuType } from "./ContextMenu";
-import { MoveToModal } from "./MoveToModal";
 import {
   ArrowDownTrayIcon,
   ArrowPathRoundedSquareIcon,
@@ -20,7 +18,9 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
+import { ContextMenu, type ContextMenuType } from "./ContextMenu";
 import { FileIcon } from "./FileIcon";
+import { MoveToModal } from "./MoveToModal";
 import type { KnowledgeTab, ViewMode } from "./types";
 
 interface FileListProps {
@@ -357,10 +357,12 @@ export const FileList = React.memo(
             <div className="min-w-full inline-block align-middle">
               <div className="border-b border-neutral-200 dark:border-neutral-800">
                 <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium uppercase text-neutral-500 dark:text-neutral-400">
-                  <div className="col-span-6">Name</div>
-                  <div className="col-span-2">Size</div>
-                  <div className="col-span-3">Date Modified</div>
-                  <div className="col-span-1"></div>
+                  <div className="col-span-8 md:col-span-6">Name</div>
+                  <div className="hidden md:block md:col-span-2">Size</div>
+                  <div className="hidden md:block md:col-span-3">
+                    Date Modified
+                  </div>
+                  <div className="col-span-4 md:col-span-1"></div>
                 </div>
               </div>
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800/50">
@@ -381,7 +383,7 @@ export const FileList = React.memo(
                         : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
                     }`}
                   >
-                    <div className="col-span-6 flex items-center gap-3 overflow-hidden">
+                    <div className="col-span-8 md:col-span-6 flex items-center gap-3 overflow-hidden">
                       <div className="flex-shrink-0">
                         <FolderIcon className="h-5 w-5 text-yellow-500" />
                       </div>
@@ -389,11 +391,13 @@ export const FileList = React.memo(
                         {folder.name}
                       </span>
                     </div>
-                    <div className="col-span-2 text-xs opacity-50">-</div>
-                    <div className="col-span-3 text-xs opacity-50">
+                    <div className="hidden md:block md:col-span-2 text-xs opacity-50">
+                      -
+                    </div>
+                    <div className="hidden md:block md:col-span-3 text-xs opacity-50">
                       {format(new Date(folder.created_at), "MMM d, yyyy HH:mm")}
                     </div>
-                    <div className="col-span-1 flex justify-end">
+                    <div className="col-span-4 md:col-span-1 flex justify-end">
                       {/* Folder Actions */}
                       <div
                         className={`flex gap-2 ${selectedId === folder.id ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}
@@ -447,7 +451,7 @@ export const FileList = React.memo(
                           : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800 odd:bg-white even:bg-neutral-50/50 dark:odd:bg-transparent dark:even:bg-white/5"
                       }`}
                     >
-                      <div className="col-span-6 flex items-center gap-3 overflow-hidden">
+                      <div className="col-span-8 md:col-span-6 flex items-center gap-3 overflow-hidden">
                         <div className="flex-shrink-0">
                           <FileIcon
                             filename={file.original_filename}
@@ -460,16 +464,16 @@ export const FileList = React.memo(
                         </span>
                       </div>
                       <div
-                        className={`col-span-2 text-xs ${isSelected ? "text-indigo-200" : "text-neutral-500 dark:text-neutral-400"}`}
+                        className={`hidden md:block md:col-span-2 text-xs ${isSelected ? "text-indigo-200" : "text-neutral-500 dark:text-neutral-400"}`}
                       >
                         {formatSize(file.file_size)}
                       </div>
                       <div
-                        className={`col-span-3 text-xs ${isSelected ? "text-indigo-200" : "text-neutral-500 dark:text-neutral-400"}`}
+                        className={`hidden md:block md:col-span-3 text-xs ${isSelected ? "text-indigo-200" : "text-neutral-500 dark:text-neutral-400"}`}
                       >
                         {format(new Date(file.created_at), "MMM d, yyyy HH:mm")}
                       </div>
-                      <div className="col-span-1 flex justify-end">
+                      <div className="col-span-4 md:col-span-1 flex justify-end">
                         {/* Context Menu or Hover Actions */}
                         <div
                           className={`flex gap-2 ${isSelected ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}

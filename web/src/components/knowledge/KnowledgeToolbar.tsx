@@ -1,15 +1,17 @@
 import { type Folder } from "@/service/folderService";
 import {
   ArrowPathIcon,
+  ChevronRightIcon as BreadcrumbSeparatorIcon,
+  FolderIcon,
+  HomeIcon,
+  ListBulletIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   Squares2X2Icon,
-  ListBulletIcon,
   TrashIcon,
-  FolderIcon,
-  HomeIcon,
-  ChevronRightIcon as BreadcrumbSeparatorIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { useState } from "react";
 import type { ViewMode } from "./types";
 
 interface KnowledgeToolbarProps {
@@ -25,6 +27,7 @@ interface KnowledgeToolbarProps {
   showCreateFolder?: boolean;
   breadcrumbs?: Folder[];
   onBreadcrumbClick?: (folderId: string | null) => void;
+  onMenuClick?: () => void;
 }
 
 export const KnowledgeToolbar = ({
@@ -40,11 +43,47 @@ export const KnowledgeToolbar = ({
   showCreateFolder,
   breadcrumbs,
   onBreadcrumbClick,
+  onMenuClick,
 }: KnowledgeToolbarProps) => {
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
   return (
-    <div className="flex h-12 items-center justify-between border-b border-neutral-200 bg-white/80 px-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
+    <div className="relative flex h-12 items-center justify-between border-b border-neutral-200 bg-white/80 px-2 md:px-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
+      {/* Mobile Search Overlay */}
+      {isMobileSearchOpen && (
+        <div className="absolute inset-0 z-10 flex items-center bg-white px-2 dark:bg-neutral-900">
+          <MagnifyingGlassIcon className="mr-2 h-5 w-5 text-neutral-400" />
+          <input
+            type="text"
+            placeholder="Search files..."
+            autoFocus
+            onChange={(e) => onSearch(e.target.value)}
+            className="flex-1 border-none bg-transparent text-sm text-neutral-900 placeholder-neutral-400 focus:ring-0 dark:text-white"
+          />
+          <button
+            onClick={() => {
+              setIsMobileSearchOpen(false);
+              onSearch("");
+            }}
+            className="p-2 text-neutral-500"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
       {/* Left: Navigation & Title OR Breadcrumbs */}
-      <div className="flex items-center gap-4">
+      <div
+        className={`flex items-center gap-2 md:gap-4 ${isMobileSearchOpen ? "invisible" : ""}`}
+      >
+        {/* Mobile Menu Button */}
+        <button
+          onClick={onMenuClick}
+          className="p-2 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 md:hidden"
+        >
+          <ListBulletIcon className="h-5 w-5" />
+        </button>
+
         {breadcrumbs ? (
           <div className="flex items-center gap-1 text-sm font-medium text-neutral-600 dark:text-neutral-300">
             <button
@@ -85,7 +124,17 @@ export const KnowledgeToolbar = ({
       {/* Center: Search (Optional) */}
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-3">
+      <div
+        className={`flex items-center gap-1 md:gap-3 ${isMobileSearchOpen ? "invisible" : ""}`}
+      >
+        {/* Mobile Search Trigger */}
+        <button
+          onClick={() => setIsMobileSearchOpen(true)}
+          className="p-1.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 md:hidden"
+        >
+          <MagnifyingGlassIcon className="h-5 w-5" />
+        </button>
+
         {/* View Toggle */}
         <div className="flex items-center rounded-md bg-neutral-100 p-0.5 dark:bg-neutral-800">
           <button
@@ -112,8 +161,8 @@ export const KnowledgeToolbar = ({
           </button>
         </div>
 
-        {/* Search Input */}
-        <div className="relative">
+        {/* Desktop Search Input */}
+        <div className="relative hidden md:block">
           <MagnifyingGlassIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
@@ -123,40 +172,44 @@ export const KnowledgeToolbar = ({
           />
         </div>
 
-        <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-700" />
+        <div className="hidden h-4 w-px bg-neutral-200 dark:bg-neutral-700 md:block" />
 
         {/* Action Buttons */}
         {showCreateFolder && onCreateFolder && (
           <button
             onClick={onCreateFolder}
-            className="flex items-center gap-1 rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 md:px-3"
+            title="New Folder"
           >
-            <FolderIcon className="h-3 w-3" />
-            <span>New Folder</span>
+            <FolderIcon className="h-4 w-4 md:h-3 md:w-3" />
+            <span className="hidden md:inline">New Folder</span>
           </button>
         )}
 
         {isTrash && onEmptyTrash ? (
           <button
             onClick={onEmptyTrash}
-            className="flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+            className="flex items-center gap-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 md:px-3"
+            title="Empty Trash"
           >
-            <TrashIcon className="h-3 w-3" />
-            <span>Empty</span>
+            <TrashIcon className="h-4 w-4 md:h-3 md:w-3" />
+            <span className="hidden md:inline">Empty</span>
           </button>
         ) : (
           <button
             onClick={onUpload}
-            className="flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+            className="flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 md:px-3"
+            title="Upload File"
           >
-            <PlusIcon className="h-3 w-3" />
-            <span>Upload</span>
+            <PlusIcon className="h-4 w-4 md:h-3 md:w-3" />
+            <span className="hidden md:inline">Upload</span>
           </button>
         )}
 
         <button
           onClick={onRefresh}
-          className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          className="hidden rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 md:block"
+          title="Refresh"
         >
           <ArrowPathIcon className="h-4 w-4" />
         </button>

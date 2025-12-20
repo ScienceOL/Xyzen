@@ -5,15 +5,14 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
-from pydantic import BaseModel, Field
-from sqlmodel.ext.asyncio.session import AsyncSession
-
 from common.code.error_code import ErrCodeError, handle_auth_error
 from core.configs import configs
 from core.redemption import RedemptionService
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from infra.database import get_session as get_db_session
 from middleware.auth import get_current_user
+from pydantic import BaseModel, Field
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -482,6 +481,235 @@ async def get_redemption_history(
 
     except Exception as e:
         logger.error(f"Error fetching redemption history for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+# ==================== Admin Statistics Endpoints ====================
+class DailyTokenStatsResponse(BaseModel):
+    """Response model for daily token statistics."""
+
+    date: str
+    total_tokens: int
+    input_tokens: int
+    output_tokens: int
+    total_amount: int
+    record_count: int
+
+
+class UserConsumptionResponse(BaseModel):
+    """Response model for user consumption statistics."""
+
+    user_id: str
+    username: str
+    auth_provider: str
+    total_amount: int
+    total_count: int
+    success_count: int
+    failed_count: int
+
+
+@router.get("/admin/stats/daily-tokens", response_model=DailyTokenStatsResponse)
+async def get_daily_token_stats(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    date: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get daily token consumption statistics (admin only).
+
+    Requires X-Admin-Secret header for authentication.
+
+    Args:
+        admin_secret: Admin secret key from header
+        date: Date in YYYY-MM-DD format (optional, defaults to today)
+        db: Database session
+
+    Returns:
+        Daily token statistics
+    """
+    logger.info(f"Admin fetching daily token stats for date: {date or 'today'}")
+
+    # Verify admin secret
+    if admin_secret != configs.Admin.secret:
+        logger.warning("Invalid admin secret key provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin secret key",
+        )
+
+    try:
+        from repos.consume import ConsumeRepository
+
+        consume_repo = ConsumeRepository(db)
+        stats = await consume_repo.get_daily_token_stats(date)
+
+        return DailyTokenStatsResponse(**stats)
+
+    except ValueError as e:
+        logger.error(f"Invalid date format: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Use YYYY-MM-DD",
+        )
+    except Exception as e:
+        logger.error(f"Error fetching daily token stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/admin/stats/top-users", response_model=list[UserConsumptionResponse])
+async def get_top_users_by_consumption(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get top users by consumption amount (admin only).
+
+    Requires X-Admin-Secret header for authentication.
+
+    Args:
+        admin_secret: Admin secret key from header
+        limit: Maximum number of users to return (default: 20)
+        db: Database session
+
+    Returns:
+        List of top users by consumption
+    """
+    logger.info(f"Admin fetching top {limit} users by consumption")
+
+    # Verify admin secret
+    if admin_secret != configs.Admin.secret:
+        logger.warning("Invalid admin secret key provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin secret key",
+        )
+
+    try:
+        from repos.consume import ConsumeRepository
+
+        consume_repo = ConsumeRepository(db)
+        users = await consume_repo.get_top_users_by_consumption(limit)
+
+        # Get usernames from auth provider
+
+        response_users = []
+        for user in users:
+            # Try to get username from user_id by parsing token
+            # For now, we'll use user_id as username and can enhance later
+            username = user["user_id"]
+
+            # Try to extract a more readable username if possible
+            # Some auth providers store username in the user_id field
+            if "@" in username:
+                username = username.split("@")[0]
+            elif "/" in username:
+                username = username.split("/")[-1]
+
+            response_users.append(
+                UserConsumptionResponse(
+                    user_id=user["user_id"],
+                    username=username,
+                    auth_provider=user["auth_provider"],
+                    total_amount=user["total_amount"],
+                    total_count=user["total_count"],
+                    success_count=user["success_count"],
+                    failed_count=user["failed_count"],
+                )
+            )
+
+        return response_users
+
+    except Exception as e:
+        logger.error(f"Error fetching top users: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+class ConsumeRecordResponse(BaseModel):
+    """Response model for consume record."""
+
+    id: UUID
+    user_id: str
+    amount: int
+    auth_provider: str
+    input_tokens: Optional[int]
+    output_tokens: Optional[int]
+    total_tokens: Optional[int]
+    consume_state: str
+    created_at: datetime
+
+
+@router.get("/admin/stats/consume-records", response_model=list[ConsumeRecordResponse])
+async def get_consume_records(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 10000,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get all consume records with optional date filtering (admin only).
+
+    Requires X-Admin-Secret header for authentication.
+
+    Args:
+        admin_secret: Admin secret key from header
+        start_date: Start date in YYYY-MM-DD format (optional)
+        end_date: End date in YYYY-MM-DD format (optional)
+        limit: Maximum number of records to return (default: 10000)
+        db: Database session
+
+    Returns:
+        List of consume records
+    """
+    logger.info(f"Admin fetching consume records from {start_date} to {end_date}, limit: {limit}")
+
+    # Verify admin secret
+    if admin_secret != configs.Admin.secret:
+        logger.warning("Invalid admin secret key provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin secret key",
+        )
+
+    try:
+        from repos.consume import ConsumeRepository
+
+        consume_repo = ConsumeRepository(db)
+        records = await consume_repo.list_all_consume_records(start_date, end_date, limit)
+
+        return [
+            ConsumeRecordResponse(
+                id=record.id,
+                user_id=record.user_id,
+                amount=record.amount,
+                auth_provider=record.auth_provider,
+                input_tokens=record.input_tokens,
+                output_tokens=record.output_tokens,
+                total_tokens=record.total_tokens,
+                consume_state=record.consume_state,
+                created_at=record.created_at,
+            )
+            for record in records
+        ]
+
+    except ValueError as e:
+        logger.error(f"Invalid date format: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Use YYYY-MM-DD",
+        )
+    except Exception as e:
+        logger.error(f"Error fetching consume records: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),

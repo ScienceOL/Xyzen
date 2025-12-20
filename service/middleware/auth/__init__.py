@@ -5,10 +5,9 @@ from typing import Any
 
 import jwt
 import requests
-from fastapi import Header, HTTPException, Query, status
-
 from core.configs import configs
 from core.configs.auth import AuthProviderConfigBase
+from fastapi import Header, HTTPException, Query, status
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -83,14 +82,14 @@ class BaseAuthProvider(ABC):
             logger.warning("JWKS URI not configured")
             return None
 
-        logger.info(f"Getting JWKS information from {self.jwks_uri}...")
+        logger.debug(f"Getting JWKS information from {self.jwks_uri}...")
         try:
             response = requests.get(self.jwks_uri, timeout=10)
             response.raise_for_status()
             jwks_data = response.json()
 
             if isinstance(jwks_data, dict):
-                logger.info(f"Successfully retrieved JWKS, containing {len(jwks_data.get('keys', []))} keys")
+                logger.debug(f"Successfully retrieved JWKS, containing {len(jwks_data.get('keys', []))} keys")
                 return jwks_data
             else:
                 logger.error("Invalid JWKS response format, not a dictionary type")
@@ -101,27 +100,27 @@ class BaseAuthProvider(ABC):
 
     def decode_jwt_token(self, token: str) -> dict[str, Any] | None:
         """Decode JWT token"""
-        logger.info("Start decoding JWT token")
+        logger.debug("Start decoding JWT token")
         try:
             # Get JWKS
-            logger.info("Getting JWKS public key information...")
+            logger.debug("Getting JWKS public key information...")
             jwks = self.get_jwks()
             if not jwks:
                 logger.error("Unable to get JWKS public key information")
                 return None
 
             # Get kid from token header
-            logger.info("Parsing token header...")
+            logger.debug("Parsing token header...")
             unverified_header = jwt.get_unverified_header(token)
             kid = unverified_header.get("kid")
-            logger.info(f"Token header kid: {kid}")
+            logger.debug(f"Token header kid: {kid}")
 
             # Find the corresponding public key
-            logger.info("Finding matching public key...")
+            logger.debug("Finding matching public key...")
             key = None
             for jwk in jwks.get("keys", []):
                 if jwk.get("kid") == kid:
-                    logger.info(f"Found matching public key, kid: {kid}")
+                    logger.debug(f"Found matching public key, kid: {kid}")
                     key = jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
                     break
 
@@ -130,7 +129,7 @@ class BaseAuthProvider(ABC):
                 return None
 
             # Validate and decode token
-            logger.info(
+            logger.debug(
                 f"Verifying token with algorithm {self.algorithm}, issuer: {self.issuer}, audience: {self.audience}"
             )
             payload = jwt.decode(
@@ -141,7 +140,7 @@ class BaseAuthProvider(ABC):
                 issuer=self.issuer,
                 options={"verify_exp": True},
             )
-            logger.info(f"Token validation successful, payload sub: {payload.get('sub')}")
+            logger.debug(f"Token validation successful, payload sub: {payload.get('sub')}")
             return payload
 
         except jwt.ExpiredSignatureError:
@@ -157,7 +156,7 @@ class BaseAuthProvider(ABC):
     def is_configured(self) -> bool:
         """Check if the provider is configured correctly"""
         is_valid = bool(self.issuer and self.audience)
-        logger.info(
+        logger.debug(
             f"Auth provider configuration check: issuer={self.issuer}, audience={self.audience}, valid={is_valid}"
         )
         return is_valid
@@ -169,10 +168,10 @@ def _get_auth_provider() -> BaseAuthProvider:
     then initialize it with the Class
     and throw an error if the configuration is invalid
     """
-    logger.info("Start initializing authentication provider...")
+    logger.debug("Start initializing authentication provider...")
     auth_config = configs.Auth
     provider_name = auth_config.Provider.lower()
-    logger.info(f"Configured authentication provider: {provider_name}")
+    logger.debug(f"Configured authentication provider: {provider_name}")
 
     provider: BaseAuthProvider
 
@@ -181,23 +180,23 @@ def _get_auth_provider() -> BaseAuthProvider:
         case "casdoor":
             from .casdoor import CasdoorAuthProvider
 
-            logger.info("Initializing Casdoor authentication provider")
+            logger.debug("Initializing Casdoor authentication provider")
             casdoor_config = auth_config.Casdoor
-            logger.info(f"Casdoor configuration: {casdoor_config.model_dump()}")
+            logger.debug(f"Casdoor configuration: {casdoor_config.model_dump()}")
             provider = CasdoorAuthProvider(casdoor_config)
         case "bohrium":
             from .bohrium import BohriumAuthProvider
 
-            logger.info("Initializing Bohrium authentication provider")
+            logger.debug("Initializing Bohrium authentication provider")
             bohrium_config = auth_config.Bohrium
-            logger.info(f"Bohrium configuration: {bohrium_config.model_dump()}")
+            logger.debug(f"Bohrium configuration: {bohrium_config.model_dump()}")
             provider = BohriumAuthProvider(bohrium_config)
         case "bohr_app":
             from .bohr_app import BohrAppAuthProvider
 
-            logger.info("Initializing Bohr App authentication provider")
+            logger.debug("Initializing Bohr App authentication provider")
             bohrapp_config = auth_config.BohrApp
-            logger.info(f"Bohr App configuration: {bohrapp_config.model_dump()}")
+            logger.debug(f"Bohr App configuration: {bohrapp_config.model_dump()}")
             provider = BohrAppAuthProvider(bohrapp_config)
         case _:
             error_msg = f"Unsupported authentication provider type: {provider_name}"
@@ -210,7 +209,7 @@ def _get_auth_provider() -> BaseAuthProvider:
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-    logger.info(f"Authentication provider {provider_name} initialized and configuration check passed")
+    logger.debug(f"Authentication provider {provider_name} initialized and configuration check passed")
     return provider
 
 

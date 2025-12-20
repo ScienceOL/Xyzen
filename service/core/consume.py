@@ -9,12 +9,11 @@ from typing import Any
 from uuid import UUID
 
 import requests
-from sqlmodel.ext.asyncio.session import AsyncSession
-
 from common.code.error_code import ErrCode, ErrCodeError
 from models.consume import ConsumeRecord, ConsumeRecordCreate, ConsumeRecordUpdate, UserConsumeSummary
 from repos.consume import ConsumeRepository
 from repos.redemption import RedemptionRepository
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +127,7 @@ class ConsumeService:
                     if amount_from_virtual > 0:
                         await self.redemption_repo.credit_wallet(user_id, amount_from_virtual)
                         logger.info(
-                            f"Refunded {amount_from_virtual} to user {user_id} virtual balance due to missing access_key"
+                            f"Refunded {amount_from_virtual} to user {user_id} virtual balance due to missing access_key"  # noqa: E501
                         )
 
                     # Update record state to failed

@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.code import ErrCode
-from models.agent import Agent
+from models.agent import Agent, AgentScope
 from repos.agent import AgentRepository
 
 from .resource_policy import ResourcePolicyBase
@@ -17,7 +17,9 @@ class AgentPolicy(ResourcePolicyBase[Agent]):
         agent = await self.agent_repo.get_agent_by_id(resource_id)
         if not agent:
             raise ErrCode.AGENT_NOT_FOUND.with_messages(f"Agent {resource_id} not found")
-        if agent.user_id == user_id:
+
+        # System agents are readable by everyone, user agents only by owner
+        if agent.scope == AgentScope.SYSTEM or agent.user_id == user_id:
             return agent
 
         raise ErrCode.AGENT_ACCESS_DENIED.with_messages(f"User {user_id} can not access agent {resource_id}")

@@ -12,15 +12,11 @@ export interface AgentSlice {
   officialAgents: Agent[];
   officialAgentsLoading: boolean;
   hiddenGraphAgentIds: string[];
-  systemAgents: Agent[];
-  systemAgentsLoading: boolean;
+
   fetchAgents: () => Promise<void>;
   fetchPublishedGraphAgents: () => Promise<void>;
   fetchOfficialGraphAgents: () => Promise<void>;
-  fetchSystemAgents: () => Promise<void>;
-  getSystemChatAgent: () => Promise<Agent>;
-  getSystemWorkshopAgent: () => Promise<Agent>;
-  syncSystemAgentMcps: () => Promise<void>;
+
   isCreatingAgent: boolean;
   createAgent: (agent: Omit<Agent, "id">) => Promise<void>;
   createGraphAgent: (graphAgent: GraphAgentCreate) => Promise<void>;
@@ -40,13 +36,12 @@ export interface AgentSlice {
   // Helper methods for filtering by type
   getRegularAgents: () => Agent[];
   getGraphAgents: () => Agent[];
-  getSystemAgents: () => Agent[];
+
   // Debug helper
   getAgentStats: () => {
     total: number;
     regular: number;
     graph: number;
-    system: number;
     regularAgents: { id: string; name: string }[];
     graphAgents: { id: string; name: string; is_published?: boolean }[];
   };
@@ -109,8 +104,7 @@ export const createAgentSlice: StateCreator<
   officialAgents: [],
   officialAgentsLoading: false,
   hiddenGraphAgentIds: loadHiddenGraphAgentIds(),
-  systemAgents: [],
-  systemAgentsLoading: false,
+
   isCreatingAgent: false,
   fetchAgents: async () => {
     set({ agentsLoading: true });
@@ -490,68 +484,6 @@ export const createAgentSlice: StateCreator<
     saveHiddenGraphAgentIds(get().hiddenGraphAgentIds);
     // Note: Don't call fetchAgents() here as it might override our changes
   },
-  fetchSystemAgents: async () => {
-    set({ systemAgentsLoading: true });
-    try {
-      const response = await fetch(
-        `${get().backendUrl}/xyzen/api/v1/agents/system/all`,
-        {
-          headers: createAuthHeaders(),
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch system agents");
-      }
-      const systemAgents: Agent[] = await response.json();
-      // Do not auto-attach any MCP servers; show exactly what backend returns
-      set({ systemAgents, systemAgentsLoading: false });
-    } catch (error) {
-      console.error("Failed to fetch system agents:", error);
-      set({ systemAgentsLoading: false });
-      throw error;
-    }
-  },
-  getSystemChatAgent: async () => {
-    try {
-      const response = await fetch(
-        `${get().backendUrl}/xyzen/api/v1/agents/system/chat`,
-        {
-          headers: createAuthHeaders(),
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch system chat agent");
-      }
-      const agent = await response.json();
-      return agent;
-    } catch (error) {
-      console.error("Failed to fetch system chat agent:", error);
-      throw error;
-    }
-  },
-  getSystemWorkshopAgent: async () => {
-    try {
-      const response = await fetch(
-        `${get().backendUrl}/xyzen/api/v1/agents/system/workshop`,
-        {
-          headers: createAuthHeaders(),
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch system workshop agent");
-      }
-      const agent = await response.json();
-      return agent;
-    } catch (error) {
-      console.error("Failed to fetch system workshop agent:", error);
-      throw error;
-    }
-  },
-  // Sync system agents with their default MCPs in the backend
-  syncSystemAgentMcps: async () => {
-    // No-op: we've removed auto-syncing of system agent MCPs
-    return;
-  },
   // Helper methods for filtering by agent type
   getRegularAgents: () => {
     return get().agents.filter((agent) => agent.agent_type === "regular");
@@ -559,24 +491,16 @@ export const createAgentSlice: StateCreator<
   getGraphAgents: () => {
     return get().agents.filter((agent) => agent.agent_type === "graph");
   },
-  getSystemAgents: () => {
-    return get().systemAgents;
-  },
   // Debug helper to verify agent types and counts
   getAgentStats: () => {
     const { agents } = get();
     const regular = agents.filter((agent) => agent.agent_type === "regular");
     const graph = agents.filter((agent) => agent.agent_type === "graph");
-    const system = agents.filter(
-      (agent) =>
-        agent.agent_type === "builtin" || agent.agent_type === "system",
-    );
 
     return {
       total: agents.length,
       regular: regular.length,
       graph: graph.length,
-      system: system.length,
       regularAgents: regular.map((a) => ({ id: a.id, name: a.name })),
       graphAgents: graph.map((a) => ({
         id: a.id,

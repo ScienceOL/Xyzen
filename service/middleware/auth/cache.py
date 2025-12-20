@@ -103,7 +103,7 @@ class TokenCache:
         """清空所有缓存"""
         async with self._lock:
             self._cache.clear()
-            logger.info("Token cache cleared")
+            logger.debug("Token cache cleared")
 
     async def _cleanup_expired(self) -> None:
         """清理过期的缓存条目"""

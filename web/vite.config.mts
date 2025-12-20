@@ -3,12 +3,45 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { defineConfig, type BuildOptions, type PluginOption } from "vite";
 import dts from "vite-plugin-dts";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig(() => {
   const isLibBuild = process.env.BUILD_MODE === "library";
 
   const plugins: PluginOption[] = [react(), tailwindcss()];
+
+  // PWA 仅用于站点构建；库构建会生成很大的 UMD 包，不应进入 Workbox precache
+  if (!isLibBuild) {
+    plugins.push(
+      VitePWA({
+        registerType: "autoUpdate",
+        includeAssets: ["pwa-icon.png", "favicon.ico"],
+        manifest: {
+          name: "Xyzen",
+          short_name: "Xyzen",
+          description: "Xyzen Application",
+          display: "standalone",
+          display_override: ["window-controls-overlay"],
+          icons: [
+            {
+              src: "pwa-icon.png",
+              sizes: "192x192 512x512",
+              type: "image/png",
+            },
+          ],
+        },
+        devOptions: {
+          enabled: true,
+        },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB
+          // 排除 /api 和 /xyzen 开头的请求，避免 Service Worker 拦截后端接口
+          navigateFallbackDenylist: [/^\/api/, /^\/xyzen/],
+        },
+      }),
+    );
+  }
 
   if (isLibBuild) {
     plugins.push(

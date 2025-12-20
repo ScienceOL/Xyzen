@@ -22,7 +22,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
     def is_configured(self) -> bool:
         """检查提供商是否已正确配置 - BohrApp 只需要 issuer"""
         is_valid = bool(self.issuer)
-        logger.info(f"BohrApp 配置检查: issuer={self.issuer}, valid={is_valid}")
+        logger.debug(f"BohrApp 配置检查: issuer={self.issuer}, valid={is_valid}")
         return is_valid
 
     @cached_token_validation
@@ -33,7 +33,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
         注意: BohrApp 使用 accessKey 而不是传统的 Bearer token
         accessKey 通过请求头 'accessKey' 传递，同时需要 'x-app-key' 头部
         """
-        logger.info(f"BohrApp: 开始验证 accessKey (前20字符): {access_token[:20]}...")
+        logger.debug(f"BohrApp: 开始验证 accessKey (前20字符): {access_token[:20]}...")
 
         if not self.is_configured():
             logger.error("BohrApp: 认证服务未配置")
@@ -51,11 +51,11 @@ class BohrAppAuthProvider(BaseAuthProvider):
                 error_message="BohrApp issuer is not configured",
             )
 
-        logger.info("BohrApp: 认证服务已配置，开始通过 API 验证 accessKey...")
+        logger.debug("BohrApp: 认证服务已配置，开始通过 API 验证 accessKey...")
         try:
             # 使用 issuer 作为用户信息接口地址
             userinfo_url = self.issuer
-            logger.info(f"BohrApp: 调用用户信息接口: {userinfo_url}")
+            logger.debug(f"BohrApp: 调用用户信息接口: {userinfo_url}")
 
             # BohrApp 使用 x-app-key 和 accessKey 头部进行鉴权
             headers = {
@@ -66,7 +66,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
             }
 
             response = requests.get(userinfo_url, headers=headers, timeout=10)
-            logger.info(f"BohrApp: userinfo API 响应状态: {response.status_code}")
+            logger.debug(f"BohrApp: userinfo API 响应状态: {response.status_code}")
 
             if response.status_code == 401:
                 logger.warning("BohrApp: accessKey 无效或已过期")
@@ -81,7 +81,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
                 )
 
             userinfo_data = response.json()
-            logger.info(f"BohrApp: 获取用户信息响应: {userinfo_data}")
+            logger.debug(f"BohrApp: 获取用户信息响应: {userinfo_data}")
 
             # 检查 BohrApp API 响应状态
             if userinfo_data.get("code") != 0:
@@ -91,7 +91,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
 
             # 解析用户信息
             user_info = self.parse_userinfo_response(userinfo_data)
-            logger.info(f"BohrApp: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}")
+            logger.debug(f"BohrApp: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}")
             return AuthResult(success=True, user_info=user_info)
 
         except requests.RequestException as e:
@@ -119,8 +119,8 @@ class BohrAppAuthProvider(BaseAuthProvider):
             }
         }
         """
-        logger.info("BohrApp: 解析 userinfo API 响应中的用户信息")
-        logger.info(f"BohrApp: userinfo 数据: {userinfo_data}")
+        logger.debug("BohrApp: 解析 userinfo API 响应中的用户信息")
+        logger.debug(f"BohrApp: userinfo 数据: {userinfo_data}")
 
         # 获取 data 字段中的用户信息
         data = userinfo_data.get("data", {})
@@ -143,7 +143,7 @@ class BohrAppAuthProvider(BaseAuthProvider):
             },
         )
 
-        logger.info(
+        logger.debug(
             f"BohrApp: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 显示名称: {user_info.display_name}"
         )
         return user_info
@@ -155,8 +155,8 @@ class BohrAppAuthProvider(BaseAuthProvider):
         注意: BohrApp 不使用 JWT token，此方法主要用于接口兼容性
         实际用户信息通过 API 获取
         """
-        logger.info("BohrApp: 解析 token payload 中的用户信息 (仅用于兼容性)")
-        logger.info(f"BohrApp: payload 内容: {token_payload}")
+        logger.debug("BohrApp: 解析 token payload 中的用户信息 (仅用于兼容性)")
+        logger.debug(f"BohrApp: payload 内容: {token_payload}")
 
         user_id = str(token_payload.get("bohr_user_id", token_payload.get("user_id", token_payload.get("sub", ""))))
 
@@ -170,5 +170,5 @@ class BohrAppAuthProvider(BaseAuthProvider):
             extra=token_payload,
         )
 
-        logger.info(f"BohrApp: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}")
+        logger.debug(f"BohrApp: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}")
         return user_info

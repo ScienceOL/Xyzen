@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await initialize_providers_on_startup()
 
-    # Initialize system agents (Chat and Workshop agents)
+    # Initialize system agents (Chat agent)
     from core.system_agent import SystemAgentManager
     from infra.database import AsyncSessionLocal
 

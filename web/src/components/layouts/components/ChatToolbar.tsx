@@ -23,14 +23,16 @@ import {
 import {
   ArrowPathIcon,
   ClockIcon,
+  EllipsisHorizontalIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import SessionHistory from "./SessionHistory";
-import { ModelSelector } from "./ModelSelector";
 import { BuiltinSearchToggle } from "./BuiltinSearchToggle";
 import { KnowledgeSelector } from "./KnowledgeSelector";
+import { ModelSelector } from "./ModelSelector";
+import SessionHistory from "./SessionHistory";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -69,7 +71,6 @@ export default function ChatToolbar({
     activeChatChannel,
     channels,
     agents,
-    systemAgents,
     mcpServers,
     llmProviders,
     availableModels,
@@ -83,14 +84,10 @@ export default function ChatToolbar({
     updateAgent,
   } = useXyzen();
 
-  // Merge system and user agents for lookup (system + regular/graph)
+  // All user agents for lookup
   const allAgents = useMemo(() => {
-    // Prefer unique by id; user agents shouldn't duplicate system ids, but guard anyway
-    const map = new Map<string, (typeof agents)[number]>();
-    systemAgents.forEach((a) => map.set(a.id, a));
-    agents.forEach((a) => map.set(a.id, a));
-    return Array.from(map.values());
-  }, [agents, systemAgents]);
+    return agents;
+  }, [agents]);
 
   // State for managing input height
   const [inputHeight, setInputHeight] = useState(() => {
@@ -213,6 +210,7 @@ export default function ChatToolbar({
 
   // State for new chat creation loading
   const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
@@ -386,8 +384,74 @@ export default function ChatToolbar({
           <FileUploadPreview className="border-b border-neutral-200 dark:border-neutral-800" />
         )}
 
-        <div className="flex items-center justify-between bg-white px-2 py-1.5 dark:bg-black dark:border-t dark:border-neutral-800">
-          <div className="flex items-center space-x-1">
+        <AnimatePresence>
+          {showMoreMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="absolute bottom-full left-0 right-0 mx-2 mb-2 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-1.5"
+            >
+              <div className="flex flex-col gap-1">
+                {/* Built-in Search Toggle */}
+                {activeChatChannel && supportsWebSearch && (
+                  <div className="w-full">
+                    <BuiltinSearchToggle
+                      enabled={builtinSearchEnabled}
+                      onToggle={(enabled) => {
+                        handleBuiltinSearchToggle(enabled);
+                        setShowMoreMenu(false);
+                      }}
+                      supportsWebSearch={supportsWebSearch}
+                    />
+                  </div>
+                )}
+
+                {/* Knowledge Selector */}
+                {activeChatChannel && (
+                  <div className="w-full">
+                    <KnowledgeSelector
+                      isConnected={!!isKnowledgeMcpConnected}
+                      onConnect={() => {
+                        handleConnectKnowledge();
+                        setShowMoreMenu(false);
+                      }}
+                      onDisconnect={() => {
+                        handleDisconnectKnowledge();
+                        setShowMoreMenu(false);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* MCP Tool Info */}
+                {currentMcpInfo && (
+                  <div className="w-full px-2.5 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                    <div className="flex items-center justify-between text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                      <div className="flex items-center gap-1.5">
+                        <McpIcon className="h-3.5 w-3.5" />
+                        <span>MCP 工具</span>
+                      </div>
+                      {currentMcpInfo.servers.length > 0 && (
+                        <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                          {currentMcpInfo.servers.reduce(
+                            (total, server) =>
+                              total + (server.tools?.length || 0),
+                            0,
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex flex-wrap items-center justify-between bg-white px-2 py-1.5 dark:bg-black dark:border-t dark:border-neutral-800 gap-2">
+          <div className="flex flex-wrap items-center gap-1">
             <button
               onClick={handleNewChat}
               disabled={isCreatingNewChat}
@@ -439,116 +503,134 @@ export default function ChatToolbar({
               />
             )}
 
-            {/* Built-in Search Toggle - Only for models that support web search */}
-            {activeChatChannel && (
-              <BuiltinSearchToggle
-                enabled={builtinSearchEnabled}
-                onToggle={handleBuiltinSearchToggle}
-                supportsWebSearch={supportsWebSearch}
-              />
-            )}
+            {/* Desktop View: Expanded Items */}
+            <div className="hidden md:flex items-center space-x-1">
+              {/* Built-in Search Toggle - Only for models that support web search */}
+              {activeChatChannel && (
+                <BuiltinSearchToggle
+                  enabled={builtinSearchEnabled}
+                  onToggle={handleBuiltinSearchToggle}
+                  supportsWebSearch={supportsWebSearch}
+                />
+              )}
 
-            {/* Knowledge Selector */}
-            {activeChatChannel && (
-              <KnowledgeSelector
-                isConnected={!!isKnowledgeMcpConnected}
-                onConnect={handleConnectKnowledge}
-                onDisconnect={handleDisconnectKnowledge}
-              />
-            )}
+              {/* Knowledge Selector */}
+              {activeChatChannel && (
+                <KnowledgeSelector
+                  isConnected={!!isKnowledgeMcpConnected}
+                  onConnect={handleConnectKnowledge}
+                  onDisconnect={handleDisconnectKnowledge}
+                />
+              )}
 
-            {/* MCP Tool Button */}
-            {currentMcpInfo && (
-              <div className="relative group/mcp w-fit">
-                <button
-                  className="flex items-center w-fit justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-                  title="当前连接的MCP工具"
-                >
-                  <McpIcon className="h-4 w-4" />
-                  {currentMcpInfo.servers.length > 0 && (
-                    <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                      {currentMcpInfo.servers.reduce(
-                        (total, server) => total + (server.tools?.length || 0),
-                        0,
-                      )}
-                    </span>
-                  )}
-                </button>
+              {/* MCP Tool Button */}
+              {currentMcpInfo && (
+                <div className="relative group/mcp w-fit">
+                  <button
+                    className="flex items-center w-fit justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
+                    title="当前连接的MCP工具"
+                  >
+                    <McpIcon className="h-4 w-4" />
+                    {currentMcpInfo.servers.length > 0 && (
+                      <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                        {currentMcpInfo.servers.reduce(
+                          (total, server) =>
+                            total + (server.tools?.length || 0),
+                          0,
+                        )}
+                      </span>
+                    )}
+                  </button>
 
-                {/* MCP Tooltip */}
-                <div
-                  className=" transition-opacity
+                  {/* MCP Tooltip */}
+                  <div
+                    className=" transition-opacity
                   overflow-hidden hidden w-80
                   group-hover/mcp:block absolute bottom-full
                   left-0 mb-2 rounded-sm border
                  border-neutral-200 bg-white p-3 shadow-lg
                   dark:border-neutral-700 dark:bg-neutral-800 z-50"
-                >
-                  <div className="mb-2">
-                    <div className="flex items-center space-x-2">
-                      <McpIcon className="h-4 w-4 text-indigo-500" />
-                      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                        MCP 工具连接
-                      </span>
+                  >
+                    <div className="mb-2">
+                      <div className="flex items-center space-x-2">
+                        <McpIcon className="h-4 w-4 text-indigo-500" />
+                        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                          MCP 工具连接
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                        助手: {currentMcpInfo.agent.name}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                      助手: {currentMcpInfo.agent.name}
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    {currentMcpInfo.servers.map((server) => (
-                      <div
-                        key={server.id}
-                        className="rounded-sm bg-neutral-50 p-2
+                    <div className="space-y-2">
+                      {currentMcpInfo.servers.map((server) => (
+                        <div
+                          key={server.id}
+                          className="rounded-sm bg-neutral-50 p-2
                          dark:bg-neutral-700/50"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <div
-                              className={`h-2 w-2 rounded-full ${
-                                server.status === "online"
-                                  ? "bg-green-500"
-                                  : "bg-red-500"
-                              }`}
-                            />
-                            <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                              {server.name}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div
+                                className={`h-2 w-2 rounded-full ${
+                                  server.status === "online"
+                                    ? "bg-green-500"
+                                    : "bg-red-500"
+                                }`}
+                              />
+                              <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                {server.name}
+                              </span>
+                            </div>
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                              {server.tools?.length || 0} 工具
                             </span>
                           </div>
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                            {server.tools?.length || 0} 工具
-                          </span>
-                        </div>
 
-                        {server.tools && server.tools.length > 0 && (
-                          <div className="mt-2">
-                            <div className="flex flex-wrap gap-1">
-                              {server.tools.slice(0, 5).map((tool, index) => (
-                                <span
-                                  key={index}
-                                  className="inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                >
-                                  {tool.name}
-                                </span>
-                              ))}
-                              {server.tools.length > 5 && (
-                                <span className="inline-block rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-600 dark:text-neutral-300">
-                                  +{server.tools.length - 5}
-                                </span>
-                              )}
+                          {server.tools && server.tools.length > 0 && (
+                            <div className="mt-2">
+                              <div className="flex flex-wrap gap-1">
+                                {server.tools.slice(0, 5).map((tool, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                  >
+                                    {tool.name}
+                                  </span>
+                                ))}
+                                {server.tools.length > 5 && (
+                                  <span className="inline-block rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-600 dark:text-neutral-300">
+                                    +{server.tools.length - 5}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
 
-                  {/* Arrow */}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-neutral-800"></div>
+                    {/* Arrow */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-neutral-800"></div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Mobile View: More Button */}
+            <div className="md:hidden relative">
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className={`flex items-center justify-center rounded-sm p-1.5 transition-colors ${
+                  showMoreMenu
+                    ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
+                    : "text-neutral-500 hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
+                }`}
+              >
+                <EllipsisHorizontalIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="flex items-center space-x-1">
             <Sheet
@@ -579,7 +661,6 @@ export default function ChatToolbar({
                   <SheetDescription>当前会话的对话主题</SheetDescription>
                 </VisuallyHidden>
                 <SessionHistory
-                  context="chat"
                   isOpen={showHistory}
                   onClose={handleCloseHistory}
                   onSelectTopic={handleSelectTopic}

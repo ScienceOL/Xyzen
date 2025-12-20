@@ -1,9 +1,20 @@
+import {
+  Tabs,
+  TabsContent,
+  TabsContents,
+  TabsList,
+  TabsTrigger,
+} from "@/components/animate-ui/components/animate/tabs";
 import { useXyzen } from "@/store";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { AdminAuthForm } from "./AdminAuthForm";
 import { CodeGenerationForm } from "./CodeGenerationForm";
 import { CodesList } from "./CodesList";
+import { DailyStatsTab } from "./DailyStatsTab";
+import { TopUsersTab } from "./TopUsersTab";
+import { TrendChartTab } from "./TrendChartTab";
+import { UserRankingsTab } from "./UserRankingsTab";
 
 interface GeneratedCode {
   id: string;
@@ -103,10 +114,10 @@ export function SecretCodePage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                Redemption Code Management
+                Admin Dashboard
               </h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                Generate and manage redemption codes
+                Manage redemption codes and view consumption statistics
               </p>
             </div>
             <button
@@ -119,21 +130,72 @@ export function SecretCodePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Generate Code Form */}
-          <CodeGenerationForm
-            adminSecret={adminSecret!}
-            backendUrl={getBackendUrl()}
-            onCodeGenerated={handleCodeGenerated}
-          />
+        {/* Tabs */}
+        <Tabs defaultValue="daily-stats" className="w-full">
+          <TabsList>
+            <TabsTrigger value="daily-stats">📊 Daily Stats</TabsTrigger>
+            <TabsTrigger value="top-users">👥 Top Users</TabsTrigger>
+            <TabsTrigger value="trend">📈 Trend Chart</TabsTrigger>
+            <TabsTrigger value="rankings">🏆 Rankings</TabsTrigger>
+            <TabsTrigger value="codes">🎟️ Codes</TabsTrigger>
+          </TabsList>
 
-          {/* Generated Codes List */}
-          <CodesList
-            adminSecret={adminSecret!}
-            backendUrl={getBackendUrl()}
-            newCode={newCode}
-          />
-        </div>
+          <TabsContents>
+            <TabsContent value="daily-stats">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6 mt-4">
+                <DailyStatsTab
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="top-users">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6 mt-4">
+                <TopUsersTab
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="trend">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6 mt-4">
+                <TrendChartTab
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="rankings">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6 mt-4">
+                <UserRankingsTab
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="codes">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                {/* Generate Code Form */}
+                <CodeGenerationForm
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                  onCodeGenerated={handleCodeGenerated}
+                />
+
+                {/* Generated Codes List */}
+                <CodesList
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                  newCode={newCode}
+                />
+              </div>
+            </TabsContent>
+          </TabsContents>
+        </Tabs>
       </div>
     </div>
   );

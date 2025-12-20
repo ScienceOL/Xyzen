@@ -90,24 +90,20 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       className="fixed z-50 w-48 rounded-sm border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
       style={{ left: x, top: y }}
     >
-      {isDefaultAgent ? (
-        <div className="px-4 py-3 text-center">
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            默认助手不可编辑
-          </p>
-        </div>
-      ) : (
-        <>
-          <button
-            onClick={() => {
-              onEdit();
-              onClose();
-            }}
-            className="flex w-full items-center gap-2 rounded-t-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
-          >
-            <PencilIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-            编辑助手
-          </button>
+      <>
+        <button
+          onClick={() => {
+            onEdit();
+            onClose();
+          }}
+          className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700 ${
+            isDefaultAgent ? "rounded-lg" : "rounded-t-lg"
+          }`}
+        >
+          <PencilIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          编辑助手
+        </button>
+        {!isDefaultAgent && (
           <button
             onClick={() => {
               onDelete();
@@ -118,8 +114,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
             <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
             {agent?.agent_type === "graph" ? "移除助手" : "删除助手"}
           </button>
-        </>
-      )}
+        )}
+      </>
     </motion.div>
   );
 };
@@ -137,12 +133,8 @@ const AgentCard: React.FC<AgentCardProps> = ({
     y: number;
   } | null>(null);
 
-  // Treat the two built-in system agents as non-editable defaults
-  const isDefaultSystemAgent =
-    agent.id === "00000000-0000-0000-0000-000000000001" ||
-    agent.id === "00000000-0000-0000-0000-000000000002" ||
-    agent.agent_type === "builtin" ||
-    agent.agent_type === "system";
+  // Check if it's a default agent based on tags
+  const isDefaultAgent = agent.tags?.some((tag) => tag.startsWith("default_"));
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -233,7 +225,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
           onEdit={() => onEdit?.(agent)}
           onDelete={() => onDelete?.(agent)}
           onClose={() => setContextMenu(null)}
-          isDefaultAgent={isDefaultSystemAgent}
+          isDefaultAgent={isDefaultAgent}
           agent={agent}
         />
       )}
@@ -253,7 +245,7 @@ const containerVariants: Variants = {
 };
 
 interface XyzenAgentProps {
-  systemAgentType?: "chat" | "workshop" | "all";
+  systemAgentType?: "chat" | "all";
 }
 
 export default function XyzenAgent({
@@ -266,9 +258,7 @@ export default function XyzenAgent({
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
   const {
     agents,
-    systemAgents,
     fetchAgents,
-    fetchSystemAgents,
     createDefaultChannel,
     deleteAgent,
     removeGraphAgentFromSidebar,
@@ -295,19 +285,18 @@ export default function XyzenAgent({
     }
   }, [llmProviders.length, llmProvidersLoading, fetchMyProviders]);
 
-  // Ensure MCP servers are loaded first, then fetch system agents
+  // Ensure MCP servers are loaded first
   useEffect(() => {
-    const loadAgentsWithMcps = async () => {
+    const loadMcps = async () => {
       try {
         await fetchMcpServers();
-        await fetchSystemAgents();
       } catch (error) {
-        console.error("Failed to load agents with MCPs:", error);
+        console.error("Failed to load MCP servers:", error);
       }
     };
 
-    loadAgentsWithMcps();
-  }, [fetchMcpServers, fetchSystemAgents]);
+    loadMcps();
+  }, [fetchMcpServers]);
 
   const handleAgentClick = async (agent: Agent) => {
     // 使用实际的 agent ID（系统助手和普通助手都有真实的 ID）
@@ -352,21 +341,24 @@ export default function XyzenAgent({
     setConfirmModalOpen(true);
   };
 
-  // 过滤系统助手基于当前面板类型
-  const filteredSystemAgents = systemAgents.filter((agent) => {
-    if (systemAgentType === "all") return true;
-    if (systemAgentType === "chat") {
-      return agent.id === "00000000-0000-0000-0000-000000000001"; // System Chat Agent
+  // Find system agents within the user's agents list using tags
+  const filteredSystemAgents = agents.filter((agent) => {
+    if (!agent.tags) return false;
+
+    if (systemAgentType === "all") {
+      return agent.tags.some((tag) => tag.startsWith("default_"));
     }
-    if (systemAgentType === "workshop") {
-      return agent.id === "00000000-0000-0000-0000-000000000002"; // System Workshop Agent
+    if (systemAgentType === "chat") {
+      return agent.tags.includes("default_chat");
     }
     return false;
   });
 
-  // 合并过滤后的系统助手、用户助手和可见的图形助手
+  // Regular agents (excluding the ones already identified as default)
   const regularAgents = agents.filter(
-    (agent) => agent.agent_type === "regular",
+    (agent) =>
+      agent.agent_type === "regular" &&
+      !agent.tags?.some((tag) => tag.startsWith("default_")),
   );
   const visibleGraphAgents = agents.filter(
     (agent) =>

@@ -8,7 +8,6 @@ from langchain_core.messages import HumanMessage
 from core.providers import get_user_provider_manager
 from infra.database import AsyncSessionLocal
 from models.topic import TopicUpdate
-from repos.session import SessionRepository
 from repos.topic import TopicRepository
 
 if TYPE_CHECKING:
@@ -40,19 +39,11 @@ async def generate_and_update_topic_title(
     async with AsyncSessionLocal() as db:
         try:
             topic_repo = TopicRepository(db)
-            session_repo = SessionRepository(db)
 
             topic = await topic_repo.get_topic_by_id(topic_id)
             if not topic:
                 logger.warning(f"Topic {topic_id} not found for title generation")
                 return
-            session = await session_repo.get_session_by_id(session_id)
-
-            provider_name = None
-            model_name = None
-            if session and session.provider_id:
-                provider_name = str(session.provider_id)
-                model_name = session.model
 
             user_provider_manager = await get_user_provider_manager(user_id, db)
             prompt = (
@@ -62,8 +53,8 @@ async def generate_and_update_topic_title(
                 f"{message_text}"
             )
 
-            # Use the active model
-            llm = user_provider_manager.create_langchain_model(provider_name, model_name)
+            # TODO: Use system provider now, should add a map for provider to default model
+            llm = user_provider_manager.create_langchain_model(None, "gemini-2.5-flash")
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             logger.debug(f"LLM response: {response}")
 

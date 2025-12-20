@@ -1,15 +1,22 @@
+import {
+  Sheet,
+  SheetContent,
+} from "@/components/animate-ui/components/radix/sheet";
 import { fileService } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FileList, type FileListHandle } from "./FileList";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
-import type { KnowledgeTab, ViewMode, StorageStats } from "./types";
+import type { KnowledgeTab, StorageStats, ViewMode } from "./types";
 
 export const KnowledgeLayout = () => {
   const [activeTab, setActiveTab] = useState<KnowledgeTab>("home");
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -20,6 +27,7 @@ export const KnowledgeLayout = () => {
     (tab: KnowledgeTab, folderId: string | null = null) => {
       setActiveTab(tab);
       setCurrentFolderId(folderId);
+      setIsSidebarOpen(false);
     },
     [],
   );
@@ -149,14 +157,39 @@ export const KnowledgeLayout = () => {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-white dark:bg-black text-neutral-900 dark:text-white">
-      {/* Sidebar */}
-      <Sidebar
-        activeTab={activeTab}
-        currentFolderId={currentFolderId}
-        onTabChange={handleNavigate}
-        refreshTrigger={refreshKey}
-        onCreateRootFolder={handleCreateRootFolder}
-      />
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex h-full">
+        <Sidebar
+          activeTab={activeTab}
+          currentFolderId={currentFolderId}
+          onTabChange={handleNavigate}
+          refreshTrigger={refreshKey}
+          onCreateRootFolder={handleCreateRootFolder}
+        />
+      </div>
+
+      {/* Mobile Sidebar Sheet */}
+      <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+        <SheetContent
+          side="left"
+          className="p-0 w-56 border-r-0"
+          showCloseButton={false}
+        >
+          <VisuallyHidden>
+            <DialogTitle>Navigation Menu</DialogTitle>
+            <DialogDescription>
+              Navigate through your knowledge base
+            </DialogDescription>
+          </VisuallyHidden>
+          <Sidebar
+            activeTab={activeTab}
+            currentFolderId={currentFolderId}
+            onTabChange={handleNavigate}
+            refreshTrigger={refreshKey}
+            onCreateRootFolder={handleCreateRootFolder}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Main Area */}
       <div className="flex flex-1 flex-col min-w-0 bg-white dark:bg-black">
@@ -174,6 +207,7 @@ export const KnowledgeLayout = () => {
           onCreateFolder={handleCreateFolder}
           breadcrumbs={activeTab === "folders" ? breadcrumbs : undefined}
           onBreadcrumbClick={(id) => handleNavigate("folders", id)}
+          onMenuClick={() => setIsSidebarOpen(true)}
         />
 
         {/* File Content */}

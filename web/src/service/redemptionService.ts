@@ -29,6 +29,37 @@ export interface RedemptionHistoryResponse {
   redeemed_at: string;
 }
 
+export interface DailyTokenStatsResponse {
+  date: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_amount: number;
+  record_count: number;
+}
+
+export interface UserConsumptionResponse {
+  user_id: string;
+  username: string;
+  auth_provider: string;
+  total_amount: number;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+}
+
+export interface ConsumeRecordResponse {
+  id: string;
+  user_id: string;
+  amount: number;
+  auth_provider: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  total_tokens: number | null;
+  consume_state: string;
+  created_at: string;
+}
+
 class RedemptionService {
   private getBackendUrl(): string {
     const { backendUrl } = useXyzen.getState();
@@ -117,6 +148,104 @@ class RedemptionService {
       const error = await response.json();
       throw new Error(
         error.detail?.msg || error.detail || "Failed to get history",
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get daily token statistics (admin only)
+   */
+  async getDailyTokenStats(
+    adminSecret: string,
+    date?: string,
+  ): Promise<DailyTokenStatsResponse> {
+    const url = new URL(
+      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/daily-tokens`,
+    );
+    if (date) {
+      url.searchParams.append("date", date);
+    }
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Secret": adminSecret,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.detail?.msg || error.detail || "Failed to get daily token stats",
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get top users by consumption (admin only)
+   */
+  async getTopUsersByConsumption(
+    adminSecret: string,
+    limit = 20,
+  ): Promise<UserConsumptionResponse[]> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/top-users?limit=${limit}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Secret": adminSecret,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.detail?.msg || error.detail || "Failed to get top users",
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all consume records (admin only)
+   */
+  async getConsumeRecords(
+    adminSecret: string,
+    startDate?: string,
+    endDate?: string,
+    limit = 10000,
+  ): Promise<ConsumeRecordResponse[]> {
+    const url = new URL(
+      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/consume-records`,
+    );
+    if (startDate) {
+      url.searchParams.append("start_date", startDate);
+    }
+    if (endDate) {
+      url.searchParams.append("end_date", endDate);
+    }
+    url.searchParams.append("limit", limit.toString());
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Secret": adminSecret,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.detail?.msg || error.detail || "Failed to get consume records",
       );
     }
 

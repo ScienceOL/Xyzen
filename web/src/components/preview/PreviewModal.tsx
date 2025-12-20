@@ -1,7 +1,7 @@
 import { useXyzen } from "@/store";
 import { Dialog, Transition } from "@headlessui/react";
 import { ArrowDownTrayIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useCallback } from "react";
 import { AudioRenderer } from "./renderers/AudioRenderer";
 import { ImageRenderer } from "./renderers/ImageRenderer";
 import { PdfRenderer } from "./renderers/PdfRenderer";
@@ -22,14 +22,17 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
   const token = useXyzen((state) => state.token);
 
   // Helper to ensure URL is absolute
-  const getFullUrl = (url: string | undefined): string => {
-    if (!url) return "";
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      return url;
-    }
-    const base = backendUrl || window.location.origin;
-    return `${base}${url.startsWith("/") ? url : `/${url}`}`;
-  };
+  const getFullUrl = useCallback(
+    (url: string | undefined): string => {
+      if (!url) return "";
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+      }
+      const base = backendUrl || window.location.origin;
+      return `${base}${url.startsWith("/") ? url : `/${url}`}`;
+    },
+    [backendUrl],
+  );
 
   useEffect(() => {
     if (isOpen && file) {
