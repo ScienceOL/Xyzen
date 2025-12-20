@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.redemption import (
@@ -145,7 +145,7 @@ class RedemptionRepository:
         query = select(RedemptionCode)
         if is_active is not None:
             query = query.where(RedemptionCode.is_active == is_active)
-        query = query.order_by(RedemptionCode.created_at.desc()).limit(limit).offset(offset)  # type: ignore
+        query = query.order_by(col(RedemptionCode.created_at).desc()).limit(limit).offset(offset)
 
         result = await self.db.exec(query)
         codes = list(result.all())
@@ -192,7 +192,7 @@ class RedemptionRepository:
         result = await self.db.exec(
             select(RedemptionHistory)
             .where(RedemptionHistory.user_id == user_id)
-            .order_by(RedemptionHistory.redeemed_at.desc())  # type: ignore
+            .order_by(col(RedemptionHistory.redeemed_at).desc())
             .limit(limit)
             .offset(offset)
         )
@@ -218,7 +218,7 @@ class RedemptionRepository:
         result = await self.db.exec(
             select(RedemptionHistory)
             .where(RedemptionHistory.code_id == code_id)
-            .order_by(RedemptionHistory.redeemed_at.desc())  # type: ignore
+            .order_by(col(RedemptionHistory.redeemed_at).desc())
             .limit(limit)
             .offset(offset)
         )

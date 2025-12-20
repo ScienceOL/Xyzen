@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from io import BytesIO
+from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from core.storage import (
     FileCategory,
     FileScope,
     StorageServiceProto,
+    create_quota_service,
     detect_file_category,
     generate_storage_key,
     get_storage_service,
@@ -49,6 +51,7 @@ async def upload_file(
         file: The file to upload (multipart/form-data)
         scope: File scope (public/private/generated), default: private
         category: File category (images/documents/audio/others), auto-detected if not provided
+        folder_id: Optional folder ID to organize the file
         user_id: Authenticated user ID (injected by dependency)
         storage: Storage service instance (injected by dependency)
         db: Database session (injected by dependency)
@@ -57,7 +60,7 @@ async def upload_file(
         FileReadWithUrl: The created file record with download URL
 
     Raises:
-        HTTPException: 400 if file validation fails, 500 if upload fails
+        HTTPException: 400 if file validation fails, 413 if quota exceeded, 500 if upload fails
     """
     try:
         # Validate file
@@ -69,10 +72,11 @@ async def upload_file(
         if not file_data:
             raise ErrCode.EMPTY_MESSAGE.with_messages("File is empty")
 
-        # Check file size (limit: 100MB)
-        max_size = 100 * 1024 * 1024  # 100MB
-        if len(file_data) > max_size:
-            raise ErrCode.FILE_TOO_LARGE.with_messages(f"File size exceeds {max_size / (1024 * 1024)}MB limit")
+        file_size = len(file_data)
+
+        # Validate storage quota BEFORE uploading
+        quota_service = create_quota_service(db)
+        await quota_service.validate_upload(user_id, file_size)
 
         # Calculate file hash
         file_hash = calculate_file_hash(file_data)
@@ -105,7 +109,7 @@ async def upload_file(
             storage_key=storage_key,
             original_filename=file.filename,
             content_type=file.content_type or "application/octet-stream",
-            file_size=len(file_data),
+            file_size=file_size,
             scope=scope,
             category=category or FileCategory.OTHER,
             file_hash=file_hash,
@@ -120,7 +124,7 @@ async def upload_file(
         # Use API download endpoint (consistent with message attachments)
         download_url = f"/xyzen/api/v1/files/{file_record.id}/download"
 
-        logger.info(f"File uploaded successfully: {storage_key} by user {user_id}")
+        logger.info(f"File uploaded successfully: {storage_key} by user {user_id} ({file_size / (1024 * 1024):.2f}MB)")
 
         return FileReadWithUrl(
             **file_record.model_dump(),
@@ -528,33 +532,39 @@ async def restore_file(
         )
 
 
-@router.get("/stats/summary", response_model=dict[str, int | float])
+@router.get("/stats/summary")
 async def get_user_storage_stats(
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> dict[str, int | float]:
+) -> dict[str, Any]:
     """
-    Get storage statistics for the current user.
+    Get storage statistics and quota information for the current user.
 
     Args:
         user_id: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
     Returns:
-        dict: Dictionary with total_files, total_size, and deleted_files
+        dict: Dictionary with storage usage, quota limits, and file statistics
     """
     try:
         file_repo = FileRepository(db)
+        quota_service = create_quota_service(db)
 
         total_size = await file_repo.get_total_size_by_user(user_id, include_deleted=False)
         total_files = await file_repo.get_file_count_by_user(user_id, include_deleted=False)
         deleted_files = await file_repo.get_file_count_by_user(user_id, include_deleted=True) - total_files
+
+        # Get quota information
+        quota_info = await quota_service.get_quota_info(user_id)
 
         return {
             "total_files": total_files,
             "total_size": total_size,
             "deleted_files": deleted_files,
             "total_size_mb": round(total_size / (1024 * 1024), 2),
+            "total_size_gb": round(total_size / (1024 * 1024 * 1024), 2),
+            "quota": quota_info,
         }
 
     except Exception as e:

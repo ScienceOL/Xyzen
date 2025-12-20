@@ -15,6 +15,7 @@ import { DEFAULT_WIDTH, MIN_WIDTH } from "@/configs/common";
 import { useXyzen } from "@/store";
 import { PanelRightCloseIcon } from "lucide-react";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
+import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 
 export interface AppSideProps {
   backendUrl?: string;
@@ -411,6 +412,12 @@ export function AppSide({
               ))}
 
             {activePanel === "knowledge" && <KnowledgeBase />}
+
+            {activePanel === "marketplace" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <AgentMarketplace />
+              </div>
+            )}
 
             {showAuthError && (
               <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">

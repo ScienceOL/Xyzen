@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import func
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.tool import (
@@ -144,7 +144,7 @@ class ToolRepository:
         if is_active is not None:
             query = query.where(Tool.is_active == is_active)
 
-        query = query.order_by(Tool.created_at.desc()).limit(limit).offset(offset)  # type: ignore
+        query = query.order_by(col(Tool.created_at).desc()).limit(limit).offset(offset)
         result = await self.db.exec(query)
         tools = list(result.all())
 
@@ -231,10 +231,7 @@ class ToolRepository:
         """
         logger.debug(f"Fetching latest tool version for tool_id: {tool_id}")
         result = await self.db.exec(
-            select(ToolVersion)
-            .where(ToolVersion.tool_id == tool_id)
-            .order_by(ToolVersion.version.desc())  # type: ignore
-            .limit(1)
+            select(ToolVersion).where(ToolVersion.tool_id == tool_id).order_by(col(ToolVersion.version).desc()).limit(1)
         )
         version = result.one_or_none()
         logger.debug(f"Found latest version for tool {tool_id}: {'Yes' if version else 'No'}")
@@ -263,7 +260,7 @@ class ToolRepository:
         if status is not None:
             query = query.where(ToolVersion.status == status)
 
-        query = query.order_by(ToolVersion.version.desc()).limit(limit).offset(offset)  # type: ignore
+        query = query.order_by(col(ToolVersion.version).desc()).limit(limit).offset(offset)
         result = await self.db.exec(query)
         versions = list(result.all())
 
@@ -452,8 +449,8 @@ class ToolRepository:
 
         result = await self.db.exec(
             select(Tool)
-            .where(Tool.user_id == user_id, Tool.is_active, Tool.id.in_(ready_tool_ids))  # type: ignore
-            .order_by(Tool.created_at.desc())  # type: ignore
+            .where(Tool.user_id == user_id, Tool.is_active, col(Tool.id).in_(ready_tool_ids))
+            .order_by(col(Tool.created_at).desc())
         )
         tools = list(result.all())
 
@@ -498,7 +495,7 @@ class ToolRepository:
         result = await self.db.exec(
             select(ToolFunction).where(
                 ToolFunction.tool_version_id == tool_version_id,
-                ToolFunction.function_name.in_(function_names),  # type: ignore
+                col(ToolFunction.function_name).in_(function_names),
             )
         )
         functions = list(result.all())
@@ -556,7 +553,7 @@ class ToolRepository:
         result = await self.db.exec(
             select(Tool)
             .where(Tool.user_id == user_id, Tool.updated_at >= since)
-            .order_by(Tool.updated_at.desc())  # type: ignore
+            .order_by(col(Tool.updated_at).desc())
             .limit(limit)
         )
         tools = list(result.all())
@@ -579,9 +576,9 @@ class ToolRepository:
         logger.debug(f"Fetching versions created since {since} for user_id: {user_id}")
         result = await self.db.exec(
             select(ToolVersion)
-            .join(Tool, ToolVersion.tool_id == Tool.id)  # type: ignore
+            .join(Tool, col(ToolVersion.tool_id) == Tool.id)
             .where(Tool.user_id == user_id, ToolVersion.created_at >= since)
-            .order_by(ToolVersion.created_at.desc())  # type: ignore
+            .order_by(col(ToolVersion.created_at).desc())
             .limit(limit)
         )
         versions = list(result.all())
@@ -599,9 +596,7 @@ class ToolRepository:
         """
         logger.debug(f"Fetching all versions for user_id: {user_id}")
         result = await self.db.exec(
-            select(ToolVersion)
-            .join(Tool, ToolVersion.tool_id == Tool.id)  # type: ignore
-            .where(Tool.user_id == user_id)
+            select(ToolVersion).join(Tool, col(ToolVersion.tool_id) == Tool.id).where(Tool.user_id == user_id)
         )
         versions = list(result.all())
         return versions
@@ -619,8 +614,8 @@ class ToolRepository:
         logger.debug(f"Fetching all functions for user_id: {user_id}")
         result = await self.db.exec(
             select(ToolFunction)
-            .join(ToolVersion, ToolFunction.tool_version_id == ToolVersion.id)  # type: ignore
-            .join(Tool, ToolVersion.tool_id == Tool.id)  # type: ignore
+            .join(ToolVersion, col(ToolFunction.tool_version_id) == ToolVersion.id)
+            .join(Tool, col(ToolVersion.tool_id) == Tool.id)
             .where(Tool.user_id == user_id)
         )
         functions = list(result.all())

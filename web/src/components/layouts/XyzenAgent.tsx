@@ -9,6 +9,7 @@ import AddAgentModal from "@/components/modals/AddAgentModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EditAgentModal from "@/components/modals/EditAgentModal";
 import { useXyzen } from "@/store";
+import { knowledgeSetService } from "@/service/knowledgeSetService";
 
 // Import types from separate file
 import type { Agent } from "@/types/agents";
@@ -18,7 +19,6 @@ interface AgentCardProps {
   onClick?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
-  hiddenGraphAgentIds?: string[];
 }
 
 // 定义动画变体
@@ -53,7 +53,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onDelete,
   onClose,
   isDefaultAgent = false,
-  agent,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -111,7 +110,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
             className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
           >
             <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-            {agent?.agent_type === "graph" ? "移除助手" : "删除助手"}
+            删除助手
           </button>
         )}
       </>
@@ -125,15 +124,27 @@ const AgentCard: React.FC<AgentCardProps> = ({
   onClick,
   onEdit,
   onDelete,
-  hiddenGraphAgentIds = [],
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
   } | null>(null);
+  const [knowledgeSetName, setKnowledgeSetName] = useState<string | null>(null);
 
   // Check if it's a default agent based on tags
   const isDefaultAgent = agent.tags?.some((tag) => tag.startsWith("default_"));
+
+  // Fetch knowledge set name if agent has one
+  useEffect(() => {
+    if (agent.knowledge_set_id) {
+      knowledgeSetService
+        .getKnowledgeSet(agent.knowledge_set_id)
+        .then((ks) => setKnowledgeSetName(ks.name))
+        .catch(() => setKnowledgeSetName(null));
+    } else {
+      setKnowledgeSetName(null);
+    }
+  }, [agent.knowledge_set_id]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -184,27 +195,6 @@ const AgentCard: React.FC<AgentCardProps> = ({
               {agent.name}
             </h3>
 
-            {/* Agent type badge */}
-            {/*{agent.agent_type === "graph" && (
-              <Badge
-                variant="blue"
-                className="flex items-center gap-1 flex-shrink-0"
-              >
-                📊 {agent.node_count || 0} nodes
-              </Badge>
-            )}*/}
-
-            {/* Graph agent sidebar status badge */}
-            {agent.agent_type === "graph" &&
-              !hiddenGraphAgentIds.includes(agent.id) && (
-                <Badge
-                  variant="green"
-                  className="flex items-center gap-1 flex-shrink-0"
-                >
-                  ✓ Added
-                </Badge>
-              )}
-
             {/* MCP servers badge */}
             {agent.mcp_servers && agent.mcp_servers.length > 0 && (
               <Badge
@@ -214,6 +204,18 @@ const AgentCard: React.FC<AgentCardProps> = ({
                 <McpIcon className="h-3 w-3" />
                 {agent.mcp_servers.length}
               </Badge>
+            )}
+
+            {/* Knowledge set badge */}
+            {knowledgeSetName && (
+              <div title={`Bound to knowledge set: ${knowledgeSetName}`}>
+                <Badge
+                  variant="purple"
+                  className="flex items-center gap-1 flex-shrink-0"
+                >
+                  📚 {knowledgeSetName}
+                </Badge>
+              </div>
             )}
           </div>
 
@@ -267,11 +269,11 @@ export default function XyzenAgent({
     fetchAgents,
     createDefaultChannel,
     deleteAgent,
-    removeGraphAgentFromSidebar,
+
     chatHistory,
     channels,
     activateChannel,
-    hiddenGraphAgentIds,
+
     fetchMcpServers,
     fetchMyProviders,
     llmProviders,
@@ -362,19 +364,10 @@ export default function XyzenAgent({
 
   // Regular agents (excluding the ones already identified as default)
   const regularAgents = agents.filter(
-    (agent) =>
-      agent.agent_type === "regular" &&
-      !agent.tags?.some((tag) => tag.startsWith("default_")),
+    (agent) => !agent.tags?.some((tag) => tag.startsWith("default_")),
   );
-  const visibleGraphAgents = agents.filter(
-    (agent) =>
-      agent.agent_type === "graph" && !hiddenGraphAgentIds.includes(agent.id),
-  );
-  const allAgents = [
-    ...filteredSystemAgents,
-    ...regularAgents,
-    ...visibleGraphAgents,
-  ];
+
+  const allAgents = [...filteredSystemAgents, ...regularAgents];
 
   // Clean sidebar with auto-loaded MCPs for system agents
 
@@ -392,7 +385,6 @@ export default function XyzenAgent({
           onClick={handleAgentClick}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
-          hiddenGraphAgentIds={hiddenGraphAgentIds}
         />
       ))}
       <button
@@ -415,26 +407,12 @@ export default function XyzenAgent({
           isOpen={isConfirmModalOpen}
           onClose={() => setConfirmModalOpen(false)}
           onConfirm={() => {
-            if (agentToDelete.agent_type === "graph") {
-              // Remove graph agent from sidebar only
-              removeGraphAgentFromSidebar(agentToDelete.id);
-            } else {
-              // Delete regular agent permanently
-              deleteAgent(agentToDelete.id);
-            }
+            deleteAgent(agentToDelete.id);
             setConfirmModalOpen(false);
             setAgentToDelete(null);
           }}
-          title={
-            agentToDelete.agent_type === "graph"
-              ? "Remove Graph Agent"
-              : "Delete Agent"
-          }
-          message={
-            agentToDelete.agent_type === "graph"
-              ? `Are you sure you want to remove "${agentToDelete.name}" from the sidebar? The graph agent will still exist and can be added back later.`
-              : `Are you sure you want to permanently delete the agent "${agentToDelete.name}"? This action cannot be undone.`
-          }
+          title="删除助手"
+          message={`确定要永久删除助手"${agentToDelete.name}"吗？此操作无法撤销。`}
         />
       )}
     </motion.div>

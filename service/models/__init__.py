@@ -1,11 +1,32 @@
 import logging
 
 from .agent import Agent, AgentReadWithDetails
+from .agent_like import AgentLike, AgentLikeCreate, AgentLikeRead
+from .agent_marketplace import (
+    AgentMarketplace,
+    AgentMarketplaceCreate,
+    AgentMarketplaceRead,
+    AgentMarketplaceReadWithSnapshot,
+    AgentMarketplaceUpdate,
+)
+from .agent_snapshot import AgentSnapshot, AgentSnapshotCreate, AgentSnapshotRead
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
+from .file_knowledge_set_link import (
+    FileKnowledgeSetLink,
+    FileKnowledgeSetLinkCreate,
+    FileKnowledgeSetLinkRead,
+)
 from .folder import Folder, FolderCreate, FolderRead, FolderUpdate
 from .graph import GraphAgent, GraphEdge, GraphNode
+from .knowledge_set import (
+    KnowledgeSet,
+    KnowledgeSetCreate,
+    KnowledgeSetRead,
+    KnowledgeSetUpdate,
+    KnowledgeSetWithFileCount,
+)
 from .links import AgentMcpServerLink
 from .mcp import McpServer
 from .message import (
@@ -26,6 +47,17 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "Agent",
+    "AgentSnapshot",
+    "AgentSnapshotCreate",
+    "AgentSnapshotRead",
+    "AgentMarketplace",
+    "AgentMarketplaceCreate",
+    "AgentMarketplaceRead",
+    "AgentMarketplaceReadWithSnapshot",
+    "AgentMarketplaceUpdate",
+    "AgentLike",
+    "AgentLikeCreate",
+    "AgentLikeRead",
     "Citation",
     "CitationCreate",
     "CitationRead",
@@ -39,6 +71,14 @@ __all__ = [
     "FolderCreate",
     "FolderRead",
     "FolderUpdate",
+    "KnowledgeSet",
+    "KnowledgeSetCreate",
+    "KnowledgeSetRead",
+    "KnowledgeSetUpdate",
+    "KnowledgeSetWithFileCount",
+    "FileKnowledgeSetLink",
+    "FileKnowledgeSetLinkCreate",
+    "FileKnowledgeSetLinkRead",
     "AgentMcpServerLink",
     "McpServer",
     "Message",
@@ -82,6 +122,8 @@ try:
     SessionReadWithTopics.model_rebuild()
     # AgentReadWithDetails depends on McpServer
     AgentReadWithDetails.model_rebuild()
+    # AgentMarketplaceReadWithSnapshot depends on AgentSnapshotRead
+    AgentMarketplaceReadWithSnapshot.model_rebuild()
 except (NameError, TypeError, Exception) as e:
     logger.warning(
         f"Could not rebuild Pydantic models with forward references. "

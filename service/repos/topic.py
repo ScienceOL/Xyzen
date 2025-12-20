@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.topic import Topic, TopicCreate, TopicUpdate
@@ -55,7 +55,7 @@ class TopicRepository:
         logger.debug(f"Fetching topics for session_id: {session_id}")
         statement = select(Topic).where(Topic.session_id == session_id)
         if order_by_updated:
-            statement = statement.order_by(Topic.updated_at.desc())  # type: ignore
+            statement = statement.order_by(col(Topic.updated_at).desc())
         result = await self.db.exec(statement)
         return list(result.all())
 

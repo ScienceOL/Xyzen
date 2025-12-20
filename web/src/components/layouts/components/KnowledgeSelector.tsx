@@ -1,12 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { folderService, type Folder } from "@/service/folderService";
+import {
+  knowledgeSetService,
+  type KnowledgeSet,
+} from "@/service/knowledgeSetService";
 import { useXyzen } from "@/store";
 import {
-  ArchiveBoxXMarkIcon,
-  FolderIcon,
-  FolderOpenIcon,
+  BookOpenIcon,
+  ChevronDownIcon,
   PlusIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -24,45 +26,90 @@ export function KnowledgeSelector({
   onConnect,
   onDisconnect,
 }: KnowledgeSelectorProps) {
-  const { activeChatChannel, channels, setKnowledgeContext } = useXyzen();
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const {
+    activeChatChannel,
+    setKnowledgeContext,
+    channels,
+    agents,
+    updateAgent,
+  } = useXyzen();
+  const [knowledgeSets, setKnowledgeSets] = useState<KnowledgeSet[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedKnowledgeSet, setSelectedKnowledgeSet] =
+    useState<KnowledgeSet | null>(null);
 
-  const activeChannel = activeChatChannel ? channels[activeChatChannel] : null;
-  const currentFolderId = activeChannel?.knowledgeContext?.folderId;
-  const currentFolderName =
-    activeChannel?.knowledgeContext?.folderName || "知识库";
+  // Get current agent
+  const currentAgent = activeChatChannel
+    ? agents.find((a) => a.id === channels[activeChatChannel]?.agentId)
+    : null;
 
+  // Fetch knowledge sets when connected
   useEffect(() => {
     if (isConnected) {
-      const fetchFolders = async () => {
+      const fetchKnowledgeSets = async () => {
         try {
-          const roots = await folderService.listFolders(null);
-          setFolders(roots);
+          const sets = await knowledgeSetService.listKnowledgeSets();
+          setKnowledgeSets(sets);
+
+          // Sync selection with agent
+          if (currentAgent?.knowledge_set_id) {
+            const boundSet = sets.find(
+              (s) => s.id === currentAgent.knowledge_set_id,
+            );
+            if (boundSet) {
+              setSelectedKnowledgeSet(boundSet);
+            }
+          }
         } catch (error) {
-          console.error("Failed to fetch root folders for selector:", error);
+          console.error("Failed to fetch knowledge sets:", error);
         }
       };
-      fetchFolders();
+      fetchKnowledgeSets();
     }
-  }, [isConnected]);
+  }, [isConnected, currentAgent?.knowledge_set_id]);
 
-  const handleSelect = (folder: Folder | null) => {
-    if (!activeChatChannel) return;
+  const handleSelect = async (ks: KnowledgeSet) => {
+    setSelectedKnowledgeSet(ks);
 
-    if (folder) {
+    // Update local context (legacy/UI)
+    if (activeChatChannel) {
       setKnowledgeContext(activeChatChannel, {
-        folderId: folder.id,
-        folderName: folder.name,
+        folderId: ks.id,
+        folderName: ks.name,
       });
-    } else {
-      setKnowledgeContext(activeChatChannel, null);
     }
+
+    // Update Agent
+    if (currentAgent) {
+      try {
+        await updateAgent({ ...currentAgent, knowledge_set_id: ks.id });
+      } catch (error) {
+        console.error("Failed to bind knowledge set to agent:", error);
+      }
+    }
+
     setIsOpen(false);
   };
 
-  const handleDisconnectClick = (e: React.MouseEvent) => {
+  const handleDisconnectClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    setSelectedKnowledgeSet(null);
+
+    // Unbind from Agent if just disconnecting the set, but keep MCP?
+    // The prop onDisconnect usually disconnects the MCP server entirely.
+    // If we just want to unbind the set, we should do it here.
+    // But onDisconnect is passed from parent.
+    // Let's assume onDisconnect handles the MCP level.
+    // We should probably also clear the knowledge_set_id.
+
+    if (currentAgent && currentAgent.knowledge_set_id) {
+      try {
+        await updateAgent({ ...currentAgent, knowledge_set_id: null });
+      } catch (error) {
+        console.error("Failed to unbind knowledge set from agent:", error);
+      }
+    }
+
     onDisconnect();
   };
 
@@ -81,6 +128,8 @@ export function KnowledgeSelector({
     );
   }
 
+  const displayName = selectedKnowledgeSet?.name || "选择知识库";
+
   return (
     <div
       className="relative"
@@ -89,7 +138,7 @@ export function KnowledgeSelector({
     >
       <motion.div
         className={cn(
-          "flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-default select-none",
+          "flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer select-none",
           "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400",
           isOpen
             ? "shadow-md bg-indigo-100 dark:bg-indigo-900/30"
@@ -98,14 +147,11 @@ export function KnowledgeSelector({
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        {currentFolderId ? (
-          <FolderOpenIcon className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <FolderIcon className="h-3.5 w-3.5 shrink-0" />
-        )}
+        <BookOpenIcon className="h-3.5 w-3.5 shrink-0" />
         <span className="flex-1 text-left max-w-[100px] truncate">
-          {currentFolderName}
+          {displayName}
         </span>
+        <ChevronDownIcon className="h-3 w-3 shrink-0" />
 
         <div
           role="button"
@@ -124,63 +170,54 @@ export function KnowledgeSelector({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-full left-0 mb-1 z-50 w-48 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+            className="absolute bottom-full left-0 mb-1 z-50 w-64 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="px-2 py-1.5 border-b border-neutral-100 dark:border-neutral-800 mb-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                选择文件夹
+                选择知识库
               </span>
             </div>
 
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-0.5">
-              {/* Clear / Root Option */}
-              <motion.button
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0, duration: 0.2 }}
-                onClick={() => handleSelect(null)}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors text-left",
-                  !currentFolderId
-                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-medium"
-                    : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                )}
-              >
-                <ArchiveBoxXMarkIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                <span className="truncate">无上下文</span>
-              </motion.button>
-
-              {folders.length === 0 && (
-                <div className="px-2 py-2 text-xs text-neutral-400 text-center">
-                  无文件夹
+              {knowledgeSets.length === 0 ? (
+                <div className="px-2 py-4 text-xs text-neutral-400 text-center">
+                  <p className="mb-1">暂无知识库</p>
+                  <p className="text-[10px]">请先在知识库面板创建</p>
                 </div>
-              )}
-
-              {folders.map((folder, index) => (
-                <motion.button
-                  key={folder.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (index + 1) * 0.03, duration: 0.2 }}
-                  onClick={() => handleSelect(folder)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors text-left",
-                    currentFolderId === folder.id
-                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-medium"
-                      : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                  )}
-                >
-                  <FolderIcon
+              ) : (
+                knowledgeSets.map((ks, index) => (
+                  <motion.button
+                    key={ks.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.03, duration: 0.2 }}
+                    onClick={() => handleSelect(ks)}
                     className={cn(
-                      "h-3.5 w-3.5 shrink-0",
-                      currentFolderId === folder.id
-                        ? "text-indigo-500"
-                        : "text-neutral-400",
+                      "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-xs transition-colors text-left",
+                      selectedKnowledgeSet?.id === ks.id
+                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-medium"
+                        : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800",
                     )}
-                  />
-                  <span className="truncate">{folder.name}</span>
-                </motion.button>
-              ))}
+                  >
+                    <BookOpenIcon
+                      className={cn(
+                        "h-3.5 w-3.5 shrink-0 mt-0.5",
+                        selectedKnowledgeSet?.id === ks.id
+                          ? "text-indigo-500"
+                          : "text-neutral-400",
+                      )}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate">{ks.name}</div>
+                      {ks.description && (
+                        <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
+                          {ks.description}
+                        </div>
+                      )}
+                    </div>
+                  </motion.button>
+                ))
+              )}
             </div>
           </motion.div>
         )}

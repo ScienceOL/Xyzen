@@ -22,7 +22,7 @@ from core.system_agent import SystemAgentManager
 from infra.database import get_session
 from middleware.auth import get_current_user
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
-from repos import AgentRepository, ProviderRepository
+from repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
 
 router = APIRouter(tags=["agents"])
 
@@ -57,6 +57,13 @@ async def create_agent(
             await auth_service.authorize_provider_read(agent_data.provider_id, user_id)
         except ErrCodeError as e:
             raise handle_auth_error(e)
+
+    # Validate knowledge_set_id if provided
+    if agent_data.knowledge_set_id:
+        knowledge_set_repo = KnowledgeSetRepository(db)
+        knowledge_set = await knowledge_set_repo.get_knowledge_set_by_id(agent_data.knowledge_set_id)
+        if not knowledge_set or knowledge_set.user_id != user_id or knowledge_set.is_deleted:
+            raise HTTPException(status_code=400, detail="Knowledge set not found or access denied")
 
     # Force scope to USER for user-created agents
     agent_data.scope = AgentScope.USER
@@ -191,6 +198,13 @@ async def update_agent(
             # Check if user can access this provider (own or system)
             if provider.user_id != agent.user_id and not provider.is_system:
                 raise HTTPException(status_code=403, detail="Provider access denied")
+
+        # Validate knowledge_set_id if being updated
+        if agent_data.knowledge_set_id is not None:
+            knowledge_set_repo = KnowledgeSetRepository(db)
+            knowledge_set = await knowledge_set_repo.get_knowledge_set_by_id(agent_data.knowledge_set_id)
+            if not knowledge_set or knowledge_set.user_id != user_id or knowledge_set.is_deleted:
+                raise HTTPException(status_code=400, detail="Knowledge set not found or access denied")
 
         agent_repo = AgentRepository(db)
         updated_agent = await agent_repo.update_agent(agent.id, agent_data)

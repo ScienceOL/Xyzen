@@ -42,12 +42,10 @@ class ProviderRepository:
 
         if include_system:
             # Include both user's providers and system providers
-            statement = select(Provider).where(
-                (Provider.user_id == user_id) | (Provider.scope == ProviderScope.SYSTEM)  # noqa: E712
-            )
+            statement = select(Provider).where((Provider.user_id == user_id) | (Provider.scope == ProviderScope.SYSTEM))
         else:
             # Only user's own providers
-            statement = select(Provider).where(Provider.user_id == user_id, Provider.scope == ProviderScope.USER)  # noqa: E712
+            statement = select(Provider).where(Provider.user_id == user_id, Provider.scope == ProviderScope.USER)
         result = await self.db.exec(statement)
         providers = list(result.all())
         logger.debug(f"Found {len(providers)} providers for user {user_id}")
@@ -61,7 +59,7 @@ class ProviderRepository:
             The system Provider instance if it exists, None otherwise.
         """
         logger.debug("Fetching system provider")
-        statement = select(Provider).where(Provider.scope == ProviderScope.SYSTEM)  # noqa: E712
+        statement = select(Provider).where(Provider.scope == ProviderScope.SYSTEM)
         result = await self.db.exec(statement)
         provider = result.first()
         if provider:

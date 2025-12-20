@@ -41,6 +41,32 @@ export interface FileStats {
   total_size: number;
   deleted_files: number;
   total_size_mb: number;
+  total_size_gb: number;
+  quota: {
+    storage: {
+      used_bytes: number;
+      used_mb: number;
+      used_gb: number;
+      limit_bytes: number;
+      limit_mb: number;
+      limit_gb: number;
+      available_bytes: number;
+      available_mb: number;
+      available_gb: number;
+      usage_percentage: number;
+    };
+    file_count: {
+      used: number;
+      limit: number;
+      available: number;
+      usage_percentage: number;
+    };
+    max_file_size: {
+      bytes: number;
+      mb: number;
+      gb: number;
+    };
+  };
 }
 
 export interface UploadProgress {

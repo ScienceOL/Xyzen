@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.file import File, FileCreate, FileUpdate
@@ -94,7 +94,7 @@ class FileRepository:
         statement = select(File).where(File.user_id == user_id)
 
         if not include_deleted:
-            statement = statement.where(File.is_deleted == False)  # noqa: E712
+            statement = statement.where(col(File.is_deleted).is_(False))
 
         if scope:
             statement = statement.where(File.scope == scope)
@@ -105,7 +105,7 @@ class FileRepository:
         if use_folder_filter:
             statement = statement.where(File.folder_id == folder_id)
 
-        statement = statement.order_by(File.created_at.desc()).limit(limit).offset(offset)  # type: ignore
+        statement = statement.order_by(col(File.created_at).desc()).limit(limit).offset(offset)
 
         result = await self.db.exec(statement)
         return list(result.all())
@@ -215,7 +215,7 @@ class FileRepository:
             List of File instances with matching hash.
         """
         logger.debug(f"Fetching files with hash: {file_hash}")
-        statement = select(File).where(File.file_hash == file_hash, File.is_deleted == False)  # noqa: E712
+        statement = select(File).where(File.file_hash == file_hash, col(File.is_deleted).is_(False))
 
         if user_id:
             statement = statement.where(File.user_id == user_id)
@@ -238,7 +238,7 @@ class FileRepository:
         statement = select(File).where(File.user_id == user_id)
 
         if not include_deleted:
-            statement = statement.where(File.is_deleted == False)  # noqa: E712
+            statement = statement.where(col(File.is_deleted).is_(False))
 
         result = await self.db.exec(statement)
         files = result.all()
@@ -259,8 +259,7 @@ class FileRepository:
         statement = select(File).where(File.user_id == user_id)
 
         if not include_deleted:
-            statement = statement.where(File.is_deleted == False)  # noqa: E712
-
+            statement = statement.where(col(File.is_deleted).is_(False))
         result = await self.db.exec(statement)
         return len(list(result.all()))
 
@@ -307,11 +306,7 @@ class FileRepository:
         cutoff_date = datetime.now(timezone.utc).timestamp() - (days * 24 * 60 * 60)
         cutoff_datetime = datetime.fromtimestamp(cutoff_date, tz=timezone.utc)
 
-        statement = (
-            select(File)
-            .where(File.is_deleted == True)  # noqa: E712
-            .where(File.deleted_at <= cutoff_datetime)  # type: ignore
-        )
+        statement = select(File).where(col(File.is_deleted).is_(True)).where(col(File.deleted_at) <= cutoff_datetime)
 
         result = await self.db.exec(statement)
         files = list(result.all())
@@ -379,7 +374,58 @@ class FileRepository:
         logger.debug(f"Fetching files for message_id: {message_id}")
         statement = select(File).where(
             File.message_id == message_id,
-            File.is_deleted == False,  # noqa: E712
+            col(File.is_deleted).is_(False),
         )
         result = await self.db.exec(statement)
         return list(result.all())
+
+    async def validate_user_quota(
+        self,
+        user_id: str,
+        file_size: int,
+        max_storage_bytes: int,
+        max_file_count: int,
+        max_file_size_bytes: int,
+    ) -> tuple[bool, str | None]:
+        """
+        Validate if a user can upload a file based on quota limits.
+
+        This is a convenience method that performs quota validation without
+        requiring external dependencies. For full quota management, use
+        StorageQuotaService from core.storage.
+
+        Args:
+            user_id: The user ID to check quota for
+            file_size: Size of the file to upload in bytes
+            max_storage_bytes: Maximum total storage per user in bytes
+            max_file_count: Maximum number of files per user
+            max_file_size_bytes: Maximum individual file size in bytes
+
+        Returns:
+            Tuple of (is_valid: bool, error_message: str | None)
+            - (True, None) if upload is allowed
+            - (False, "error message") if upload would violate quota
+        """
+        # Check individual file size limit
+        if file_size > max_file_size_bytes:
+            max_mb = max_file_size_bytes / (1024 * 1024)
+            actual_mb = file_size / (1024 * 1024)
+            return False, f"File size ({actual_mb:.2f}MB) exceeds maximum allowed size ({max_mb:.2f}MB)"
+
+        # Check file count limit
+        current_file_count = await self.get_file_count_by_user(user_id, include_deleted=False)
+        if current_file_count >= max_file_count:
+            return False, f"Maximum file count reached ({current_file_count}/{max_file_count})"
+
+        # Check total storage limit
+        current_storage = await self.get_total_size_by_user(user_id, include_deleted=False)
+        if current_storage + file_size > max_storage_bytes:
+            current_gb = current_storage / (1024 * 1024 * 1024)
+            max_gb = max_storage_bytes / (1024 * 1024 * 1024)
+            file_gb = file_size / (1024 * 1024 * 1024)
+            return (
+                False,
+                f"Storage quota exceeded. Current: {current_gb:.2f}GB, File: {file_gb:.2f}GB, Limit: {max_gb:.2f}GB",
+            )
+
+        return True, None

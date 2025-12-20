@@ -12,6 +12,7 @@ import { ActivityBar } from "@/components/layouts/ActivityBar";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
+import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 
 import { SettingsModal } from "@/components/modals/SettingsModal";
 
@@ -133,6 +134,12 @@ export function AppFullscreen({
               {activePanel === "knowledge" && (
                 <div className="h-full w-full">
                   <KnowledgeBase />
+                </div>
+              )}
+
+              {activePanel === "marketplace" && (
+                <div className="h-full w-full">
+                  <AgentMarketplace />
                 </div>
               )}
             </div>

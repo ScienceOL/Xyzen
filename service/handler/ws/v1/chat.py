@@ -525,7 +525,7 @@ async def chat_websocket(
                 generated_files_count = 0
 
                 async for stream_event in get_ai_response_stream(
-                    db, message_text, topic_refreshed, user, manager, connection_id, context
+                    db, message_text, topic_refreshed, user, None, manager, connection_id, context
                 ):
                     logger.debug(f"Received stream event: {stream_event['type']}")
 

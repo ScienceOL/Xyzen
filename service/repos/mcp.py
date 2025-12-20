@@ -3,9 +3,10 @@ import logging
 from typing import Any, Dict, List
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from core.providers import SYSTEM_USER_ID
 from models.mcp import McpServer, McpServerCreate, McpServerUpdate
 
 logger = logging.getLogger(__name__)
@@ -184,9 +185,23 @@ class McpRepository:
             select(McpServer).where(
                 McpServer.user_id == user_id,
                 McpServer.status == "online",
-                McpServer.tools.is_not(None),  # type: ignore
+                col(McpServer.tools).is_not(None),
             )
         )
         servers = list(result.all())
         logger.debug(f"Found {len(servers)} MCP servers with tools for user {user_id}")
+        return servers
+
+    async def get_system_mcp_servers(self) -> list[McpServer]:
+        """
+        Get list of system (global) MCP servers.
+        These are servers where user_id is SYSTEM_USER_ID.
+
+        Returns:
+            List of McpServer instances.
+        """
+        logger.debug("Fetching system MCP servers")
+        result = await self.db.exec(select(McpServer).where(McpServer.user_id == SYSTEM_USER_ID))
+        servers = list(result.all())
+        logger.debug(f"Found {len(servers)} system MCP servers")
         return servers

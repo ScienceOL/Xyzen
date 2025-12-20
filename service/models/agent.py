@@ -34,6 +34,12 @@ class AgentBase(SQLModel):
     user_id: str | None = Field(index=True, default=None, nullable=True)
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
+    knowledge_set_id: UUID | None = Field(default=None, index=True)
+    original_source_id: UUID | None = Field(
+        default=None,
+        index=True,
+        description="UUID of the marketplace listing this agent was forked from",
+    )
 
 
 class Agent(AgentBase, table=True):
@@ -59,6 +65,7 @@ class AgentCreate(SQLModel):
     prompt: str | None = None
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
+    knowledge_set_id: UUID | None = Field(default=None)
     mcp_server_ids: list[UUID] = []
 
 
@@ -81,4 +88,5 @@ class AgentUpdate(SQLModel):
     prompt: str | None = None
     require_tool_confirmation: bool | None = None
     provider_id: UUID | None = None
+    knowledge_set_id: UUID | None = None
     mcp_server_ids: list[UUID] | None = None

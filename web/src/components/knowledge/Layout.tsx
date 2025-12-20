@@ -4,6 +4,7 @@ import {
 } from "@/components/animate-ui/components/radix/sheet";
 import { fileService } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
+import { knowledgeSetService } from "@/service/knowledgeSetService";
 import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,6 +17,12 @@ import type { KnowledgeTab, StorageStats, ViewMode } from "./types";
 export const KnowledgeLayout = () => {
   const [activeTab, setActiveTab] = useState<KnowledgeTab>("home");
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentKnowledgeSetId, setCurrentKnowledgeSetId] = useState<
+    string | null
+  >(null);
+  const [currentKnowledgeSetName, setCurrentKnowledgeSetName] = useState<
+    string | null
+  >(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -24,9 +31,18 @@ export const KnowledgeLayout = () => {
 
   // Navigation Helper
   const handleNavigate = useCallback(
-    (tab: KnowledgeTab, folderId: string | null = null) => {
+    (tab: KnowledgeTab, idOrFolderId: string | null = null) => {
       setActiveTab(tab);
-      setCurrentFolderId(folderId);
+      if (tab === "knowledge") {
+        setCurrentKnowledgeSetId(idOrFolderId);
+        setCurrentFolderId(null);
+      } else if (tab === "folders") {
+        setCurrentFolderId(idOrFolderId);
+        setCurrentKnowledgeSetId(null);
+      } else {
+        setCurrentFolderId(null);
+        setCurrentKnowledgeSetId(null);
+      }
       setIsSidebarOpen(false);
     },
     [],
@@ -49,11 +65,33 @@ export const KnowledgeLayout = () => {
     fetchPath();
   }, [currentFolderId]);
 
+  // Fetch knowledge set name when currentKnowledgeSetId changes
+  useEffect(() => {
+    const fetchKnowledgeSetName = async () => {
+      if (!currentKnowledgeSetId) {
+        setCurrentKnowledgeSetName(null);
+        return;
+      }
+      try {
+        const ks = await knowledgeSetService.getKnowledgeSet(
+          currentKnowledgeSetId,
+        );
+        setCurrentKnowledgeSetName(ks.name);
+      } catch (e) {
+        console.error("Failed to fetch knowledge set name", e);
+      }
+    };
+    fetchKnowledgeSetName();
+  }, [currentKnowledgeSetId]);
+
   // Stats & File Count
   const [stats, setStats] = useState<StorageStats>({
     total: 0,
     used: 0,
     fileCount: 0,
+    usagePercentage: 0,
+    availableBytes: 0,
+    maxFileSize: 100 * 1024 * 1024, // Default 100MB
   });
   const [currentFileCount, setCurrentFileCount] = useState(0);
 
@@ -69,9 +107,12 @@ export const KnowledgeLayout = () => {
     try {
       const data = await fileService.getStorageStats();
       setStats({
-        used: data.total_size,
-        total: 100 * 1024 * 1024, // Hardcoded 100MB limit from previous code
-        fileCount: data.total_files,
+        used: data.quota.storage.used_bytes,
+        total: data.quota.storage.limit_bytes,
+        fileCount: data.quota.file_count.used,
+        usagePercentage: data.quota.storage.usage_percentage,
+        availableBytes: data.quota.storage.available_bytes,
+        maxFileSize: data.quota.max_file_size.bytes,
       });
     } catch (error) {
       console.error("Stats fetch failed", error);
@@ -89,7 +130,33 @@ export const KnowledgeLayout = () => {
         // Determine folder ID: only pass if in folders tab
         const folderId = activeTab === "folders" ? currentFolderId : null;
 
+        // Validate files before upload
         for (const file of files) {
+          // Check if file exceeds max size
+          if (stats.maxFileSize && file.size > stats.maxFileSize) {
+            const maxSizeMB = (stats.maxFileSize / (1024 * 1024)).toFixed(0);
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            alert(
+              `File "${file.name}" (${fileSizeMB}MB) exceeds the maximum file size limit of ${maxSizeMB}MB`,
+            );
+            continue;
+          }
+
+          // Check if upload would exceed storage quota
+          if (
+            stats.availableBytes !== undefined &&
+            file.size > stats.availableBytes
+          ) {
+            const availableMB = (stats.availableBytes / (1024 * 1024)).toFixed(
+              2,
+            );
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            alert(
+              `Not enough storage space. File size: ${fileSizeMB}MB, Available: ${availableMB}MB. Please delete some files first.`,
+            );
+            continue;
+          }
+
           await fileService.uploadFile(file, "private", undefined, folderId);
         }
         // Trigger refresh
@@ -123,18 +190,19 @@ export const KnowledgeLayout = () => {
     }
   };
 
-  const handleCreateRootFolder = async () => {
-    const name = prompt("Enter new root folder name:");
+  const handleCreateKnowledgeSet = async () => {
+    const name = prompt("Enter knowledge set name:");
     if (name) {
+      const description = prompt("Enter description (optional):");
       try {
-        await folderService.createFolder({
+        await knowledgeSetService.createKnowledgeSet({
           name,
-          parent_id: null,
+          description: description || null,
         });
         setRefreshKey((prev) => prev + 1);
       } catch (e) {
-        console.error("Failed to create root folder", e);
-        alert("Failed to create folder");
+        console.error("Failed to create knowledge set", e);
+        alert("Failed to create knowledge set");
       }
     }
   };
@@ -147,7 +215,9 @@ export const KnowledgeLayout = () => {
       case "all":
         return "All Files";
       case "folders":
-        return "My Knowledge"; // Or "Folder Name" if available?
+        return "My Knowledge";
+      case "knowledge":
+        return currentKnowledgeSetName || "Knowledge Base";
       case "trash":
         return "Trash";
       default:
@@ -161,10 +231,10 @@ export const KnowledgeLayout = () => {
       <div className="hidden md:flex h-full">
         <Sidebar
           activeTab={activeTab}
-          currentFolderId={currentFolderId}
+          currentKnowledgeSetId={currentKnowledgeSetId}
           onTabChange={handleNavigate}
           refreshTrigger={refreshKey}
-          onCreateRootFolder={handleCreateRootFolder}
+          onCreateKnowledgeSet={handleCreateKnowledgeSet}
         />
       </div>
 
@@ -183,10 +253,10 @@ export const KnowledgeLayout = () => {
           </VisuallyHidden>
           <Sidebar
             activeTab={activeTab}
-            currentFolderId={currentFolderId}
+            currentKnowledgeSetId={currentKnowledgeSetId}
             onTabChange={handleNavigate}
             refreshTrigger={refreshKey}
-            onCreateRootFolder={handleCreateRootFolder}
+            onCreateKnowledgeSet={handleCreateKnowledgeSet}
           />
         </SheetContent>
       </Sheet>
@@ -224,6 +294,7 @@ export const KnowledgeLayout = () => {
             refreshTrigger={refreshKey}
             onFileCountChange={setCurrentFileCount}
             currentFolderId={currentFolderId}
+            currentKnowledgeSetId={currentKnowledgeSetId}
             onFolderChange={(id) => handleNavigate("folders", id)}
           />
         </div>

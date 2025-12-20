@@ -151,6 +151,16 @@ class ErrCode(IntEnum):
     FOLDER_UPDATE_FAILED = 12503  # Failed to update folder
     FOLDER_DELETE_FAILED = 12504  # Failed to delete folder
 
+    # ========== KNOWLEDGE SET MANAGEMENT (126xx) ==========
+    # Use when: Knowledge set operations fail
+    KNOWLEDGE_SET_NOT_FOUND = 12600  # Knowledge set doesn't exist
+    KNOWLEDGE_SET_ACCESS_DENIED = 12601  # User can't access knowledge set
+    KNOWLEDGE_SET_CREATION_FAILED = 12602  # Failed to create knowledge set
+    KNOWLEDGE_SET_UPDATE_FAILED = 12603  # Failed to update knowledge set
+    KNOWLEDGE_SET_DELETE_FAILED = 12604  # Failed to delete knowledge set
+    KNOWLEDGE_SET_LINK_EXISTS = 12605  # File already linked to knowledge set
+    KNOWLEDGE_SET_LINK_NOT_FOUND = 12606  # Link doesn't exist
+
     # ========== BILLING / CONSUMPTION (13xxx) ==========
     # Use when: Billing or credit consumption fails
     INSUFFICIENT_BALANCE = 13000  # User has insufficient credits/balance

@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from infra.database import AsyncSessionLocal
@@ -51,7 +51,7 @@ class MessageRepository:
         logger.debug(f"Fetching messages for topic_id: {topic_id}")
         statement = select(MessageModel).where(MessageModel.topic_id == topic_id)
         if order_by_created:
-            statement = statement.order_by(MessageModel.created_at)  # type: ignore
+            statement = statement.order_by(col(MessageModel.created_at))
         if limit is not None:
             statement = statement.limit(limit)
         result = await self.db.exec(statement)
@@ -273,7 +273,7 @@ class MessageRepository:
         files = await file_repo.get_files_by_message(message.id)
 
         # Add download URLs to file records using backend API endpoint
-        file_reads_with_urls = []
+        file_reads_with_urls: list[FileReadWithUrl | FileRead] = []
         for file in files:
             try:
                 # Use backend download endpoint instead of presigned URL

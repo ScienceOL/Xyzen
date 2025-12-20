@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.folder import Folder, FolderCreate, FolderUpdate
@@ -51,10 +51,10 @@ class FolderRepository:
         statement = select(Folder).where(Folder.user_id == user_id)
 
         if not include_deleted:
-            statement = statement.where(Folder.is_deleted == False)  # noqa: E712
+            statement = statement.where(col(Folder.is_deleted).is_(False))
 
         statement = statement.where(Folder.parent_id == parent_id)
-        statement = statement.order_by(Folder.name.asc())  # type: ignore
+        statement = statement.order_by(col(Folder.name).asc())
 
         result = await self.db.exec(statement)
         return list(result.all())
