@@ -54,6 +54,13 @@ async def build_system_prompt(db: AsyncSession, agent: Optional[Agent], model_na
     if agent and agent.prompt:
         base_prompt = agent.prompt
 
+    if agent and agent.knowledge_set_id:
+        knowledge_instruction = (
+            f"\nCurrent working directory(knowledge base) is set to '{agent.knowledge_set_id}' "
+            "you should pass the folder name while calling knowledge tools (list_files, read_file, etc.)."
+        )
+        base_prompt += knowledge_instruction
+
     if model_name and "image" in model_name:
         formatting_instructions = ""
     else:

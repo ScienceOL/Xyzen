@@ -338,9 +338,12 @@ async def refresh_all_mcp_servers(
     """
     Trigger a background task to refresh the status of all MCP servers for the current user.
     """
+    logger.info(f"Triggering MCP refresh for user {user}")
     statement = select(McpServer).where(McpServer.user_id == user)
     result = await session.exec(statement)
     mcp_servers = result.all()
+
+    logger.info(f"Found {len(mcp_servers)} MCP servers to refresh for user {user}")
 
     for server in mcp_servers:
         if server.id:

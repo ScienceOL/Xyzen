@@ -9,7 +9,7 @@ import AddAgentModal from "@/components/modals/AddAgentModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EditAgentModal from "@/components/modals/EditAgentModal";
 import { useXyzen } from "@/store";
-import { knowledgeSetService } from "@/service/knowledgeSetService";
+// import { knowledgeSetService } from "@/service/knowledgeSetService";
 
 // Import types from separate file
 import type { Agent } from "@/types/agents";
@@ -129,22 +129,22 @@ const AgentCard: React.FC<AgentCardProps> = ({
     x: number;
     y: number;
   } | null>(null);
-  const [knowledgeSetName, setKnowledgeSetName] = useState<string | null>(null);
+  // const [knowledgeSetName, setKnowledgeSetName] = useState<string | null>(null);
 
   // Check if it's a default agent based on tags
   const isDefaultAgent = agent.tags?.some((tag) => tag.startsWith("default_"));
 
   // Fetch knowledge set name if agent has one
-  useEffect(() => {
-    if (agent.knowledge_set_id) {
-      knowledgeSetService
-        .getKnowledgeSet(agent.knowledge_set_id)
-        .then((ks) => setKnowledgeSetName(ks.name))
-        .catch(() => setKnowledgeSetName(null));
-    } else {
-      setKnowledgeSetName(null);
-    }
-  }, [agent.knowledge_set_id]);
+  // useEffect(() => {
+  //   if (agent.knowledge_set_id) {
+  //     knowledgeSetService
+  //       .getKnowledgeSet(agent.knowledge_set_id)
+  //       .then((ks) => setKnowledgeSetName(ks.name))
+  //       .catch(() => setKnowledgeSetName(null));
+  //   } else {
+  //     setKnowledgeSetName(null);
+  //   }
+  // }, [agent.knowledge_set_id]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -207,7 +207,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
             )}
 
             {/* Knowledge set badge */}
-            {knowledgeSetName && (
+            {/* {knowledgeSetName && (
               <div title={`Bound to knowledge set: ${knowledgeSetName}`}>
                 <Badge
                   variant="purple"
@@ -216,7 +216,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
                   📚 {knowledgeSetName}
                 </Badge>
               </div>
-            )}
+            )} */}
           </div>
 
           <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">

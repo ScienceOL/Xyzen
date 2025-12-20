@@ -234,18 +234,75 @@ class AgentMarketplaceService:
         self.db.add(forked_agent)
         await self.db.flush()
 
-        # Handle MCP servers: Link builtin/system MCPs if available
+        # Handle MCP servers: Link or clone MCPs
         if snapshot.mcp_server_configs:
-            # Fetch all system MCP servers
-            system_servers = await self.mcp_repo.get_system_mcp_servers()
-            system_server_map = {s.name: s for s in system_servers}
+            from core.configs import configs
+            from handler.mcp import registry
+            from models.mcp import McpServerCreate
+
+            # Get all system (registry) servers for matching
+            registry_servers = registry.get_all_servers()
+            # Map by display name for easy lookup
+            registry_map = {s["name"]: s for s in registry_servers.values()}
+
+            # Get user's existing MCPs to avoid duplicates
+            user_mcps = await self.mcp_repo.get_mcp_servers_by_user(user_id)
+            user_mcp_map = {m.name: m for m in user_mcps}
+
             linked_mcp_ids: list[UUID] = []
 
             for mcp_config in snapshot.mcp_server_configs:
-                # Try to find matching MCP by name (for builtin MCPs)
                 mcp_name = mcp_config.get("name")
-                if mcp_name and mcp_name in system_server_map:
-                    linked_mcp_ids.append(system_server_map[mcp_name].id)
+                if not mcp_name:
+                    continue
+
+                # Check if this is a System MCP (exists in registry)
+                system_config = registry_map.get(mcp_name)
+
+                if system_config:
+                    # It's a System MCP. Check if user already has it.
+                    if mcp_name in user_mcp_map:
+                        # Use existing user instance
+                        linked_mcp_ids.append(user_mcp_map[mcp_name].id)
+                    else:
+                        # Create new instance for user based on system config
+                        mount_path = system_config.get("mount_path", "")
+                        # Construct local URL
+                        # Use localhost/port from config, defaulting to standard dev defaults if missing
+                        host = configs.Host if configs.Host != "0.0.0.0" else "127.0.0.1"
+                        port = configs.Port
+                        system_url = f"http://{host}:{port}{mount_path}/sse"
+
+                        new_mcp_data = McpServerCreate(
+                            name=mcp_name,
+                            description=system_config.get("description"),
+                            url=system_url,
+                            token="",  # System MCPs don't need external token usually
+                        )
+                        # Create and track
+                        new_mcp = await self.mcp_repo.create_mcp_server(new_mcp_data, user_id)
+                        # Auto-set status to online since we know it's internal
+                        new_mcp.status = "online"
+                        self.db.add(new_mcp)
+                        linked_mcp_ids.append(new_mcp.id)
+
+                else:
+                    # It's a Custom/Private MCP.
+                    # We must clone it as a "Shell" (placeholder) for the user to configure.
+                    # We check if they already have one with this name to be safe/nice?
+                    # No, for custom tools, better to create a new one to avoid semantic collision
+                    # unless we want to be smart. Let's create new for now to be safe.
+
+                    new_mcp_data = McpServerCreate(
+                        name=mcp_name,
+                        description=mcp_config.get("description"),
+                        url="",  # Placeholder
+                        token="",  # Placeholder
+                    )
+                    new_mcp = await self.mcp_repo.create_mcp_server(new_mcp_data, user_id)
+                    linked_mcp_ids.append(new_mcp.id)
+
+            await self.db.flush()
 
             if linked_mcp_ids:
                 # Link these MCPs to the agent

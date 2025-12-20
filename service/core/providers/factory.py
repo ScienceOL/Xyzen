@@ -48,15 +48,27 @@ class ChatModelFactory:
         return ModelInstance(llm=llm, config=config)
 
     def _create_openai(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
-        return ChatOpenAI(
+        # Extract generic search flag
+        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
+
+        llm = ChatOpenAI(
             model=model,
             api_key=credentials["api_key"],
             **runtime_kwargs,
         )
 
+        if web_search_enabled:
+            logger.info(f"Enabling native web search for OpenAI model {model}")
+            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
+
+        return llm
+
     def _create_azure_openai(
         self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]
     ) -> BaseChatModel:
+        # Extract generic search flag
+        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
+
         if "azure_endpoint" not in credentials:
             if "api_endpoint" not in credentials:
                 raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Azure endpoint is not provided")
@@ -68,16 +80,25 @@ class ChatModelFactory:
         else:
             azure_deployment = credentials["azure_deployment"]
 
+        # Prevent duplicate argument error: remove azure_deployment from runtime_kwargs if present
+        if "azure_deployment" in runtime_kwargs:
+            del runtime_kwargs["azure_deployment"]
+
         # Get api_version from credentials, default to a recent stable version if not provided
         api_version = credentials.get("azure_version", "2024-02-15-preview")
-
-        return AzureChatOpenAI(
+        llm = AzureChatOpenAI(
             azure_deployment=azure_deployment,
             api_key=credentials["api_key"],
             azure_endpoint=azure_endpoint,
             api_version=api_version,
-            **runtime_kwargs,
+            # **runtime_kwargs,
         )
+
+        if web_search_enabled:
+            logger.info(f"Enabling native web search for Azure OpenAI model {model}")
+            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
+
+        return llm
 
     def _create_google(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
         # Extract google_search_enabled from runtime_kwargs
