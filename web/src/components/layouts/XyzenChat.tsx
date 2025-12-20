@@ -1,9 +1,9 @@
 import { CHAT_THEMES } from "@/configs/chatThemes";
 
 import EditableTitle from "@/components/base/EditableTitle";
-import AvatarComponent from "@/components/shared/AvatarComponent";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { ShareModal } from "@/components/modals/ShareModal";
+import AvatarComponent from "@/components/shared/AvatarComponent";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
 import type { Agent } from "@/types/agents";
@@ -254,22 +254,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                   avatar={currentAgent.avatar ?? undefined}
                   backgroundColor={
                     currentAgent.avatar_background_color ?? undefined
-                  }
-                  fallbackEmoji={
-                    currentAgent.agent_type === "builtin"
-                      ? currentAgent.id ===
-                        "00000000-0000-0000-0000-000000000001"
-                        ? "smirk" // Chat agent emoji
-                        : "robot" // Workshop agent emoji
-                      : "alarm" // Regular agent emoji
-                  }
-                  fallbackImageSrc={
-                    currentAgent.agent_type === "builtin"
-                      ? currentAgent.id ===
-                        "00000000-0000-0000-0000-000000000001"
-                        ? "/defaults/agents/avatar1.png"
-                        : "/defaults/agents/avatar4.png"
-                      : "/defaults/agents/avatar2.png"
                   }
                   alt={currentAgent.name}
                   className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}

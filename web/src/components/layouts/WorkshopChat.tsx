@@ -1,8 +1,8 @@
 import { CHAT_THEMES } from "@/configs/chatThemes";
 
 import EditableTitle from "@/components/base/EditableTitle";
-import AvatarComponent from "@/components/shared/AvatarComponent";
 import NotificationModal from "@/components/modals/NotificationModal";
+import AvatarComponent from "@/components/shared/AvatarComponent";
 import type { WorkShopChatConfig } from "@/hooks/useWorkShopChat";
 import { useWorkShopChat } from "@/hooks/useWorkShopChat";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
@@ -226,22 +226,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                   avatar={currentAgent.avatar ?? undefined}
                   backgroundColor={
                     currentAgent.avatar_background_color ?? undefined
-                  }
-                  fallbackEmoji={
-                    currentAgent.agent_type === "builtin"
-                      ? currentAgent.id ===
-                        "00000000-0000-0000-0000-000000000001"
-                        ? "smirk" // Chat agent emoji
-                        : "robot" // Workshop agent emoji
-                      : "alien" // Regular agent emoji
-                  }
-                  fallbackImageSrc={
-                    currentAgent.agent_type === "builtin"
-                      ? currentAgent.id ===
-                        "00000000-0000-0000-0000-000000000001"
-                        ? "https://avatars.githubusercontent.com/u/176685?v=4"
-                        : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png"
-                      : "https://cdn1.deepmd.net/static/img/affb038eChatGPT Image 2025年8月6日 10_33_07.png"
                   }
                   alt={currentAgent.name}
                   className={`h-8 w-8 flex-shrink-0 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}

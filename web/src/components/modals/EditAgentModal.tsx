@@ -1,6 +1,6 @@
 import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
-import { AvatarPicker } from "@/components/shared/AvatarPicker";
+import { AvatarEditor } from "@/components/shared/AvatarEditor";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { Button, Field, Label } from "@headlessui/react";
@@ -76,6 +76,103 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
           Update the details for your agent.
         </p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {/* Avatar Section */}
+          <Field>
+            <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              Avatar
+            </Label>
+            <div className="mt-1">
+              <AvatarEditor
+                avatarName={agent.avatar ?? "smirk"}
+                avatarBackgroundColor={
+                  agent.avatar_background_color ?? undefined
+                }
+                onAvatarChange={(value) =>
+                  setAgent({ ...agent, avatar: value })
+                }
+                onBackgroundColorChange={(color) =>
+                  setAgent({ ...agent, avatar_background_color: color })
+                }
+              />
+            </div>
+          </Field>
+
+          {/* Background Color Section */}
+          <Field>
+            <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              Background Color
+            </Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[
+                { id: "white", name: "白色", color: "#ffffff" },
+                { id: "black", name: "黑色", color: "#000000" },
+                { id: "pink", name: "粉色", color: "#ec4899" },
+                { id: "red", name: "红色", color: "#ef4444" },
+                { id: "yellow", name: "黄色", color: "#eab308" },
+                { id: "green", name: "绿色", color: "#22c55e" },
+                { id: "teal", name: "青色", color: "#14b8a6" },
+                { id: "cyan", name: "青蓝", color: "#06b6d4" },
+                {
+                  id: "gradient-sunset",
+                  name: "夕阳",
+                  gradientStart: "#f97316",
+                  gradientEnd: "#f43f5e",
+                },
+                {
+                  id: "gradient-ocean",
+                  name: "海洋",
+                  gradientStart: "#0ea5e9",
+                  gradientEnd: "#3b82f6",
+                },
+                {
+                  id: "gradient-forest",
+                  name: "森林",
+                  gradientStart: "#10b981",
+                  gradientEnd: "#059669",
+                },
+                {
+                  id: "gradient-royal",
+                  name: "皇家",
+                  gradientStart: "#a855f7",
+                  gradientEnd: "#7c3aed",
+                },
+              ].map((bgColor) => (
+                <button
+                  type="button"
+                  key={bgColor.id}
+                  onClick={() => {
+                    const colorValue =
+                      "gradientEnd" in bgColor
+                        ? `linear-gradient(135deg, ${bgColor.gradientStart}, ${bgColor.gradientEnd})`
+                        : bgColor.color;
+                    setAgent({
+                      ...agent,
+                      avatar_background_color: colorValue,
+                    });
+                  }}
+                  className={`h-10 w-10 rounded-full ring-2 transition-all ${
+                    agent.avatar_background_color?.includes(
+                      "gradientStart" in bgColor
+                        ? bgColor.gradientStart!
+                        : bgColor.color,
+                    )
+                      ? "ring-blue-500 ring-offset-2 scale-110"
+                      : "ring-neutral-300 hover:scale-105 dark:ring-neutral-600"
+                  }`}
+                  style={{
+                    background:
+                      "gradientEnd" in bgColor
+                        ? `linear-gradient(135deg, ${bgColor.gradientStart}, ${bgColor.gradientEnd})`
+                        : bgColor.color,
+                  }}
+                  title={bgColor.name}
+                  aria-label={`选择 ${bgColor.name} 背景色`}
+                />
+              ))}
+            </div>
+          </Field>
+
+          {/* Name Section */}
           <Field>
             <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
               Name
@@ -86,24 +183,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
               onChange={handleChange}
               placeholder="e.g., Research Assistant"
               required
+              className="mt-1"
             />
           </Field>
-          <Field>
-            <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Avatar Selection
-            </Label>
-            <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800">
-              <AvatarPicker
-                value={agent.avatar ?? undefined}
-                onChange={(value) => setAgent({ ...agent, avatar: value })}
-                backgroundColor={agent.avatar_background_color ?? undefined}
-                onBackgroundColorChange={(color) =>
-                  setAgent({ ...agent, avatar_background_color: color })
-                }
-                className="p-4"
-              />
-            </div>
-          </Field>
+
           <Field>
             <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
               Description

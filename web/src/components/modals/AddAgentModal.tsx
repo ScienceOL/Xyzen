@@ -1,6 +1,6 @@
 import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
-import { AvatarPicker } from "@/components/shared/AvatarPicker";
+import { AvatarEditor } from "@/components/shared/AvatarEditor";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { Button, Field, Label } from "@headlessui/react";
@@ -47,6 +47,8 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
     description: "",
     prompt: "",
     agent_type: "regular" as const,
+    avatar: "🤖",
+    avatar_background_color: "#4F46E5",
   });
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,21 +58,21 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
     const agentMap = new Map<string, Agent>();
 
     // Add user's own graph agents
-    agents.forEach((agent) => {
+    agents.forEach((agent: Agent) => {
       if (agent.agent_type === "graph" && agent.id !== "default-chat") {
         agentMap.set(agent.id, agent);
       }
     });
 
     // Add published graph agents
-    publishedAgents.forEach((agent) => {
+    publishedAgents.forEach((agent: Agent) => {
       if (agent.agent_type === "graph" && agent.id !== "default-chat") {
         agentMap.set(agent.id, agent);
       }
     });
 
     // Add official graph agents
-    officialAgents.forEach((agent) => {
+    officialAgents.forEach((agent: Agent) => {
       if (agent.agent_type === "graph" && agent.id !== "default-chat") {
         agentMap.set(agent.id, agent);
       }
@@ -183,6 +185,8 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
       description: "",
       prompt: "",
       agent_type: "regular" as const,
+      avatar: "🤖",
+      avatar_background_color: "#4F46E5",
     });
     setSelectedExistingAgent(null);
     setMcpServerIds([]);
@@ -191,7 +195,7 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="添加助手">
-      <div className="max-h-[60vh] overflow-y-auto pr-2">
+      <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           创建普通助手或从 Agent Explorer 中添加图形助手到您的侧边栏。
         </p>
@@ -227,6 +231,73 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
             <>
               {/* Create Mode - Regular Agent Only */}
 
+              {/* Avatar Section */}
+              <Field>
+                <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  头像选择
+                </Label>
+                <div className="mt-1">
+                  <AvatarEditor
+                    avatarName={agent.avatar ?? undefined}
+                    avatarBackgroundColor={
+                      agent.avatar_background_color ?? undefined
+                    }
+                    onAvatarChange={(value) =>
+                      setAgent({ ...agent, avatar: value })
+                    }
+                    onBackgroundColorChange={(color) =>
+                      setAgent({ ...agent, avatar_background_color: color })
+                    }
+                  />
+                </div>
+              </Field>
+
+              {/* Background Color Section */}
+              <Field>
+                <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  背景颜色
+                </Label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[
+                    {
+                      id: "white",
+                      color: "#ffffff",
+                      border: "border-neutral-300",
+                    },
+                    { id: "black", color: "#000000" },
+                    { id: "pink", color: "#ec4899" },
+                    { id: "red", color: "#ef4444" },
+                    { id: "yellow", color: "#fbbf24" },
+                    { id: "green", color: "#10b981" },
+                    { id: "cyan", color: "#06b6d4" },
+                    { id: "sky", color: "#0ea5e9" },
+                    { id: "orange", color: "#f97316" },
+                    { id: "blue", color: "#3b82f6" },
+                    { id: "emerald", color: "#10b981" },
+                    { id: "purple", color: "#a855f7" },
+                  ].map((bgColor) => (
+                    <button
+                      key={bgColor.id}
+                      type="button"
+                      className={`h-8 w-8 rounded-full border-2 transition-all ${
+                        agent.avatar_background_color === bgColor.color
+                          ? "border-blue-500"
+                          : bgColor.border || "border-neutral-300"
+                      }`}
+                      style={{ backgroundColor: bgColor.color }}
+                      onClick={() =>
+                        setAgent({
+                          ...agent,
+                          avatar_background_color: bgColor.color,
+                        })
+                      }
+                      title={bgColor.id}
+                    />
+                  ))}
+                </div>
+              </Field>
+
+              {/* Name Section */}
               <Field>
                 <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   名称
@@ -238,23 +309,6 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
                   placeholder="例如：研究助手"
                   required
                 />
-              </Field>
-
-              <Field>
-                <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  头像选择
-                </Label>
-                <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800">
-                  <AvatarPicker
-                    value={agent.avatar ?? undefined}
-                    onChange={(value) => setAgent({ ...agent, avatar: value })}
-                    backgroundColor={agent.avatar_background_color ?? undefined}
-                    onBackgroundColorChange={(color) =>
-                      setAgent({ ...agent, avatar_background_color: color })
-                    }
-                    className="p-4"
-                  />
-                </div>
               </Field>
 
               <Field>
@@ -348,7 +402,7 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
                       📊 Published Graph Agents
                     </h3>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                       {availableGraphAgents.map((agent) => (
                         <div
                           key={agent.id}

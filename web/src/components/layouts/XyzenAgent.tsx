@@ -173,20 +173,6 @@ const AgentCard: React.FC<AgentCardProps> = ({
         <AvatarComponent
           avatar={agent.avatar ?? undefined}
           backgroundColor={agent.avatar_background_color ?? undefined}
-          fallbackEmoji={
-            agent.agent_type === "builtin"
-              ? agent.id === "00000000-0000-0000-0000-000000000001"
-                ? "smirk" // Chat agent emoji
-                : "robot" // Workshop agent emoji
-              : "alarm" // Regular agent emoji
-          }
-          fallbackImageSrc={
-            agent.agent_type === "builtin"
-              ? agent.id === "00000000-0000-0000-0000-000000000001"
-                ? "/defaults/agents/avatar1.png"
-                : "/defaults/agents/avatar4.png"
-              : "/defaults/agents/avatar2.png"
-          }
           alt={agent.name}
         />
 
