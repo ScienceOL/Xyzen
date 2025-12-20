@@ -288,7 +288,7 @@ class SessionRepository:
             return []
 
         # Fetch all MCP servers by IDs
-        servers = []
+        servers: list[McpServer] = []
         for mcp_id in mcp_server_ids:
             server = await self.db.get(McpServer, mcp_id)
             if server:
