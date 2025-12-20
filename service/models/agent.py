@@ -35,6 +35,11 @@ class AgentBase(SQLModel):
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
     knowledge_set_id: UUID | None = Field(default=None, index=True)
+    original_source_id: UUID | None = Field(
+        default=None,
+        index=True,
+        description="UUID of the marketplace listing this agent was forked from",
+    )
 
 
 class Agent(AgentBase, table=True):

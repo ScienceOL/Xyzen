@@ -1,6 +1,15 @@
 import logging
 
 from .agent import Agent, AgentReadWithDetails
+from .agent_like import AgentLike, AgentLikeCreate, AgentLikeRead
+from .agent_marketplace import (
+    AgentMarketplace,
+    AgentMarketplaceCreate,
+    AgentMarketplaceRead,
+    AgentMarketplaceReadWithSnapshot,
+    AgentMarketplaceUpdate,
+)
+from .agent_snapshot import AgentSnapshot, AgentSnapshotCreate, AgentSnapshotRead
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
@@ -38,6 +47,17 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "Agent",
+    "AgentSnapshot",
+    "AgentSnapshotCreate",
+    "AgentSnapshotRead",
+    "AgentMarketplace",
+    "AgentMarketplaceCreate",
+    "AgentMarketplaceRead",
+    "AgentMarketplaceReadWithSnapshot",
+    "AgentMarketplaceUpdate",
+    "AgentLike",
+    "AgentLikeCreate",
+    "AgentLikeRead",
     "Citation",
     "CitationCreate",
     "CitationRead",
@@ -102,6 +122,8 @@ try:
     SessionReadWithTopics.model_rebuild()
     # AgentReadWithDetails depends on McpServer
     AgentReadWithDetails.model_rebuild()
+    # AgentMarketplaceReadWithSnapshot depends on AgentSnapshotRead
+    AgentMarketplaceReadWithSnapshot.model_rebuild()
 except (NameError, TypeError, Exception) as e:
     logger.warning(
         f"Could not rebuild Pydantic models with forward references. "
