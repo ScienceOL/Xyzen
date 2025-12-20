@@ -385,16 +385,12 @@ class AgentMarketplaceService:
         if has_liked:
             # Unlike
             await self.like_repo.unlike(user_id, marketplace_id)
-            await self.marketplace_repo.decrement_likes(marketplace_id)
+            likes_count = await self.marketplace_repo.decrement_likes(marketplace_id)
             is_liked = False
         else:
             # Like
             await self.like_repo.like(user_id, marketplace_id)
-            await self.marketplace_repo.increment_likes(marketplace_id)
+            likes_count = await self.marketplace_repo.increment_likes(marketplace_id)
             is_liked = True
-
-        # Get updated count
-        listing = await self.marketplace_repo.get_by_id(marketplace_id)
-        likes_count = listing.likes_count if listing else 0
 
         return (is_liked, likes_count)

@@ -197,7 +197,7 @@ class AgentMarketplaceRepository:
         result = await self.db.exec(statement)
         return result.all()
 
-    async def increment_likes(self, marketplace_id: UUID) -> bool:
+    async def increment_likes(self, marketplace_id: UUID) -> int:
         """
         Increments the likes count for a marketplace listing atomically.
         This function does NOT commit the transaction.
@@ -213,11 +213,15 @@ class AgentMarketplaceRepository:
             update(AgentMarketplace)
             .where(col(AgentMarketplace.id) == marketplace_id)
             .values(likes_count=AgentMarketplace.likes_count + 1)
+            .returning(col(AgentMarketplace.likes_count))
         )
         result = await self.db.exec(statement)
-        return result.rowcount > 0
+        new_count = result.first()
+        if new_count:
+            return new_count[0]
+        return 0
 
-    async def decrement_likes(self, marketplace_id: UUID) -> bool:
+    async def decrement_likes(self, marketplace_id: UUID) -> int:
         """
         Decrements the likes count for a marketplace listing atomically.
         This function does NOT commit the transaction.
@@ -234,9 +238,13 @@ class AgentMarketplaceRepository:
             update(AgentMarketplace)
             .where(col(AgentMarketplace.id) == marketplace_id)
             .values(likes_count=func.greatest(0, AgentMarketplace.likes_count - 1))
+            .returning(col(AgentMarketplace.likes_count))
         )
         result = await self.db.exec(statement)
-        return result.rowcount > 0
+        new_count = result.first()
+        if new_count:
+            return new_count[0]
+        return 0
 
     async def increment_forks(self, marketplace_id: UUID) -> bool:
         """
