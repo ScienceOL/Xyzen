@@ -273,7 +273,7 @@ class MessageRepository:
         files = await file_repo.get_files_by_message(message.id)
 
         # Add download URLs to file records using backend API endpoint
-        file_reads_with_urls = []
+        file_reads_with_urls: list[FileReadWithUrl | FileRead] = []
         for file in files:
             try:
                 # Use backend download endpoint instead of presigned URL
