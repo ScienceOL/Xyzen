@@ -2,7 +2,7 @@ import logging
 from typing import Sequence
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
@@ -127,11 +127,9 @@ class AgentRepository:
         if not agent:
             return None
 
-        join_condition = McpServer.id == AgentMcpServerLink.mcp_server_id
+        join_condition = col(McpServer.id) == col(AgentMcpServerLink.mcp_server_id)
         statement = (
-            select(McpServer)
-            .join(AgentMcpServerLink, join_condition)  # pyright: ignore[reportArgumentType]
-            .where(AgentMcpServerLink.agent_id == agent_id)
+            select(McpServer).join(AgentMcpServerLink, join_condition).where(AgentMcpServerLink.agent_id == agent_id)
         )
         result = await self.db.exec(statement)
         mcp_servers = result.all()
@@ -154,11 +152,9 @@ class AgentRepository:
         """
         logger.debug(f"Fetching MCP servers for agent_id: {agent_id}")
 
-        join_condition = McpServer.id == AgentMcpServerLink.mcp_server_id
+        join_condition = col(McpServer.id) == col(AgentMcpServerLink.mcp_server_id)
         statement = (
-            select(McpServer)
-            .join(AgentMcpServerLink, join_condition)  # pyright: ignore[reportArgumentType]
-            .where(AgentMcpServerLink.agent_id == agent_id)
+            select(McpServer).join(AgentMcpServerLink, join_condition).where(AgentMcpServerLink.agent_id == agent_id)
         )
 
         mcp_result = await self.db.exec(statement)
@@ -326,3 +322,27 @@ class AgentRepository:
         await self.db.delete(link)
         await self.db.flush()
         return True
+
+    async def link_agent_to_mcp_servers(self, agent_id: UUID, mcp_server_ids: Sequence[UUID]) -> None:
+        """
+        Links an agent to multiple MCP servers.
+        Ignores existing links.
+        This function does NOT commit the transaction.
+
+        Args:
+            agent_id: The UUID of the agent.
+            mcp_server_ids: List of MCP server UUIDs.
+        """
+        logger.debug(f"Linking agent {agent_id} to {len(mcp_server_ids)} MCP servers")
+
+        # Get existing links to avoid duplicates
+        statement = select(AgentMcpServerLink.mcp_server_id).where(AgentMcpServerLink.agent_id == agent_id)
+        result = await self.db.exec(statement)
+        existing_ids = set(result.all())
+
+        for server_id in mcp_server_ids:
+            if server_id not in existing_ids:
+                link = AgentMcpServerLink(agent_id=agent_id, mcp_server_id=server_id)
+                self.db.add(link)
+
+        await self.db.flush()

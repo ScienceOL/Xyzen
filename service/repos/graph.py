@@ -2,7 +2,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.graph import (
@@ -70,9 +70,7 @@ class GraphRepository:
         """
         logger.debug("Fetching all published graph agents")
         statement = (
-            select(GraphAgent)
-            .where(GraphAgent.is_published == True)  # noqa: E712
-            .order_by(GraphAgent.created_at.desc())  # type: ignore
+            select(GraphAgent).where(col(GraphAgent.is_published).is_(True)).order_by(col(GraphAgent.created_at).desc())
         )
         result = await self.db.exec(statement)
         return list(result.all())
@@ -88,7 +86,9 @@ class GraphRepository:
             List of GraphAgent instances.
         """
         logger.debug(f"Fetching published graph agents for user_id: {user_id}")
-        statement = select(GraphAgent).where(GraphAgent.user_id == user_id).where(GraphAgent.is_published == True)  # noqa: E712
+        statement = (
+            select(GraphAgent).where(GraphAgent.user_id == user_id).where(col(GraphAgent.is_published).is_(True))
+        )
         result = await self.db.exec(statement)
         return list(result.all())
 
@@ -104,9 +104,7 @@ class GraphRepository:
         """
         logger.debug("Fetching all official graph agents")
         statement = (
-            select(GraphAgent)
-            .where(GraphAgent.is_official == True)  # noqa: E712
-            .order_by(GraphAgent.created_at.desc())  # type: ignore
+            select(GraphAgent).where(col(GraphAgent.is_official).is_(True)).order_by(col(GraphAgent.created_at).desc())
         )
         result = await self.db.exec(statement)
         return list(result.all())
@@ -124,9 +122,9 @@ class GraphRepository:
         logger.debug("Fetching published official graph agents")
         statement = (
             select(GraphAgent)
-            .where(GraphAgent.is_official == True)  # noqa: E712
-            .where(GraphAgent.is_published == True)  # noqa: E712
-            .order_by(GraphAgent.created_at.desc())  # type: ignore
+            .where(col(GraphAgent.is_official).is_(True))
+            .where(col(GraphAgent.is_published).is_(True))
+            .order_by(col(GraphAgent.created_at).desc())
         )
         result = await self.db.exec(statement)
         return list(result.all())

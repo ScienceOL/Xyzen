@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from sqlmodel import func, select
+from sqlmodel import col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.links import SessionMcpServerLink
@@ -167,7 +167,7 @@ class SessionRepository:
         max_topic_activity = (
             select(Topic.session_id, func.max(Topic.updated_at).label("latest_activity"))
             # Type UUID is not compatible with accepted types
-            .group_by(Topic.session_id)  # pyright: ignore[reportArgumentType]
+            .group_by(col(Topic.session_id))
             .subquery()
         )
         statement = (
@@ -175,8 +175,7 @@ class SessionRepository:
             .where(SessionModel.user_id == user_id)
             .outerjoin(
                 max_topic_activity,
-                # Type bool is not compatible with accepted types
-                SessionModel.id == max_topic_activity.c.session_id,  # pyright: ignore[reportArgumentType]
+                col(SessionModel.id) == max_topic_activity.c.session_id,
             )
             .order_by(max_topic_activity.c.latest_activity.desc().nulls_last())
         )

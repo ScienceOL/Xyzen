@@ -2,6 +2,10 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func
+from sqlmodel import col, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from models.consume import (
     ConsumeRecord,
     ConsumeRecordCreate,
@@ -10,9 +14,6 @@ from models.consume import (
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
 )
-from sqlalchemy import func
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ class ConsumeRepository:
         result = await self.db.exec(
             select(ConsumeRecord)
             .where(ConsumeRecord.user_id == user_id)
-            .order_by(ConsumeRecord.created_at.desc())  # type: ignore
+            .order_by(col(ConsumeRecord.created_at).desc())
             .limit(limit)
             .offset(offset)
         )
@@ -148,7 +149,7 @@ class ConsumeRepository:
         result = await self.db.exec(
             select(ConsumeRecord)
             .where(ConsumeRecord.session_id == session_id)
-            .order_by(ConsumeRecord.created_at.desc())  # type: ignore
+            .order_by(col(ConsumeRecord.created_at).desc())
         )
         records = list(result.all())
         logger.debug(f"Found {len(records)} consume records for session {session_id}")
@@ -166,7 +167,9 @@ class ConsumeRepository:
         """
         logger.debug(f"Fetching consume records for topic_id: {topic_id}")
         result = await self.db.exec(
-            select(ConsumeRecord).where(ConsumeRecord.topic_id == topic_id).order_by(ConsumeRecord.created_at.desc())  # type: ignore
+            select(ConsumeRecord)
+            .where(ConsumeRecord.topic_id == topic_id)
+            .order_by(col(ConsumeRecord.created_at).desc())
         )
         records = list(result.all())
         logger.debug(f"Found {len(records)} consume records for topic {topic_id}")

@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models.file_knowledge_set_link import FileKnowledgeSetLink
@@ -51,9 +51,9 @@ class KnowledgeSetRepository:
         statement = select(KnowledgeSet).where(KnowledgeSet.user_id == user_id)
 
         if not include_deleted:
-            statement = statement.where(KnowledgeSet.is_deleted == False)  # noqa: E712
+            statement = statement.where(col(KnowledgeSet.is_deleted).is_(False))
 
-        statement = statement.order_by(KnowledgeSet.name.asc())  # type: ignore
+        statement = statement.order_by(col(KnowledgeSet.name).asc())
 
         result = await self.db.exec(statement)
         return list(result.all())
