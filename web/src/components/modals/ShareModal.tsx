@@ -238,18 +238,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     backgroundColor={
                       currentAgent?.avatar_background_color ?? undefined
                     }
-                    fallbackEmoji={
-                      currentAgent?.id ===
-                      "00000000-0000-0000-0000-000000000001"
-                        ? "🙂"
-                        : "😊"
-                    }
-                    fallbackImageSrc={
-                      currentAgent?.id ===
-                      "00000000-0000-0000-0000-000000000001"
-                        ? "/defaults/agents/avatar1.png"
-                        : "/defaults/agents/avatar2.png"
-                    }
                     alt="AI"
                     className="w-8 h-8 rounded-full object-cover"
                     containerClassName="w-8 h-8 rounded-full overflow-hidden"

@@ -65,19 +65,6 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
                   backgroundColor={
                     currentAgent?.avatar_background_color ?? undefined
                   }
-                  fallbackEmoji={
-                    currentAgent?.id === "00000000-0000-0000-0000-000000000001"
-                      ? "😊"
-                      : "robot"
-                  }
-                  fallbackImageSrc={
-                    currentAgent?.agent_type === "builtin"
-                      ? currentAgent?.id ===
-                        "00000000-0000-0000-0000-000000000001"
-                        ? "/defaults/agents/avatar1.png"
-                        : "/defaults/agents/avatar4.png"
-                      : "/defaults/agents/avatar2.png"
-                  }
                   alt={currentAgent?.name || "AI"}
                   className="w-5 h-5 rounded-full object-cover flex-shrink-0"
                   containerClassName="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"

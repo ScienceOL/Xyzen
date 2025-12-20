@@ -1,4 +1,5 @@
 import logging
+import sqlalchemy as sa
 from typing import Sequence
 from uuid import UUID
 
@@ -344,5 +345,46 @@ class AgentRepository:
             if server_id not in existing_ids:
                 link = AgentMcpServerLink(agent_id=agent_id, mcp_server_id=server_id)
                 self.db.add(link)
+    async def sync_agent_mcps(self, agent_id: UUID) -> None:
+        """
+        Synchronize the Agent <-> MCP server links for the given agent.
+
+        Desired behavior:
+        - Keep links to all MCP servers that are either system-scoped (user_id is None)
+          or owned by the same user as the agent.
+        - Create missing links and remove stale links.
+
+        This method does NOT commit the transaction; caller should commit as needed.
+        """
+        logger.debug(f"Syncing MCP servers for agent {agent_id}")
+
+        agent = await self.db.get(Agent, agent_id)
+        if not agent:
+            raise ValueError("Agent not found")
+
+        # Desired MCP servers: system-level (user_id is NULL) or owned by agent.user_id
+        # Use sa.null() to build a SQL NULL literal so static type checkers don't treat
+        # `McpServer.user_id` as a plain `str` attribute.
+        statement = select(McpServer).where((McpServer.user_id == sa.null()) | (McpServer.user_id == agent.user_id))
+        result = await self.db.exec(statement)
+        desired_servers = result.all()
+        desired_ids = {s.id for s in desired_servers}
+
+        # Existing links
+        link_stmt = select(AgentMcpServerLink).where(AgentMcpServerLink.agent_id == agent_id)
+        link_result = await self.db.exec(link_stmt)
+        existing_links = link_result.all()
+        existing_ids = {link_obj.mcp_server_id for link_obj in existing_links}
+
+        # Add missing links
+        for sid in desired_ids - existing_ids:
+            link = AgentMcpServerLink(agent_id=agent_id, mcp_server_id=sid)
+            self.db.add(link)
+
+        # Remove stale links
+        for sid in existing_ids - desired_ids:
+            # find the specific link objects and delete them
+            for link in [link_obj for link_obj in existing_links if link_obj.mcp_server_id == sid]:
+                await self.db.delete(link)
 
         await self.db.flush()
