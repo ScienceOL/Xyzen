@@ -263,18 +263,6 @@ export default function AgentMarketplaceDetail({
                     </div>
                   )}
 
-                  {/* Temperature */}
-                  {listing.snapshot.configuration.temperature !== undefined && (
-                    <div>
-                      <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                        Temperature
-                      </h3>
-                      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                        {listing.snapshot.configuration.temperature}
-                      </p>
-                    </div>
-                  )}
-
                   <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />
 
                   {/* System Prompt */}
@@ -332,10 +320,15 @@ export default function AgentMarketplaceDetail({
                             key={index}
                             className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900"
                           >
-                            <div className="flex items-start gap-2">
-                              <span className="mt-0.5 inline-flex items-center rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:border-neutral-700 dark:text-neutral-300">
-                                {mcp.name}
-                              </span>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:border-neutral-700 dark:text-neutral-300">
+                                  {mcp.name}
+                                </span>
+                                <span className="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  ✅ Auto-configured
+                                </span>
+                              </div>
                               {mcp.description && (
                                 <p className="text-xs text-neutral-600 dark:text-neutral-400">
                                   {mcp.description}
@@ -345,23 +338,19 @@ export default function AgentMarketplaceDetail({
                           </div>
                         ))}
                       </div>
-                      <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                        ⚠️ You'll need to configure these MCP servers after
-                        forking
-                      </p>
                     </div>
                   )}
 
                   {/* Knowledge Base */}
                   {requirements.knowledge_base && (
-                    <div className="relative w-full rounded-lg border border-amber-500/50 bg-amber-50 p-4 text-amber-900 dark:bg-amber-950/50 dark:text-amber-400">
+                    <div className="relative w-full rounded-lg border border-blue-500/50 bg-blue-50 p-4 text-blue-900 dark:bg-blue-950/50 dark:text-blue-400">
                       <div className="flex gap-2">
-                        <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0" />
+                        <InformationCircleIcon className="h-4 w-4 flex-shrink-0" />
                         <div className="text-sm">
                           <strong>Knowledge Base:</strong> The original agent
                           uses {requirements.knowledge_base.file_count} files.
-                          Your fork will have an empty knowledge base. You'll
-                          need to upload your own documents.
+                          These files will be copied to your workspace when you
+                          fork this agent.
                         </div>
                       </div>
                     </div>

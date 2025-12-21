@@ -4,6 +4,7 @@ import type {
   ForkRequest,
   ForkResponse,
   LikeResponse,
+  MarketplaceListing,
   MarketplaceListingWithSnapshot,
   PublishRequest,
   PublishResponse,
@@ -155,6 +156,8 @@ export function useForkAgent() {
 /**
  * Hook to toggle like on a marketplace listing
  */
+// ... existing imports
+
 export function useToggleLike() {
   const queryClient = useQueryClient();
 
@@ -162,18 +165,29 @@ export function useToggleLike() {
     mutationFn: (marketplaceId: string) =>
       marketplaceService.toggleLike(marketplaceId),
     onMutate: async (marketplaceId: string) => {
-      // Cancel outgoing refetches
+      // 1. Cancel relevant queries
       await queryClient.cancelQueries({
         queryKey: marketplaceKeys.listing(marketplaceId),
       });
+      await queryClient.cancelQueries({
+        queryKey: marketplaceKeys.all, // Broadly cancel to catch lists
+      });
 
-      // Snapshot the previous value
+      // 2. Snapshot previous values
       const previousListing =
         queryClient.getQueryData<MarketplaceListingWithSnapshot>(
           marketplaceKeys.listing(marketplaceId),
         );
 
-      // Optimistically update the cache
+      // Snapshot list queries
+      // We find all queries that look like listing lists
+      const previousListQueries = queryClient.getQueriesData<
+        MarketplaceListing[]
+      >({
+        queryKey: marketplaceKeys.listings(),
+      });
+
+      // 3. Optimistic Update - Single Listing
       if (previousListing) {
         queryClient.setQueryData<MarketplaceListingWithSnapshot>(
           marketplaceKeys.listing(marketplaceId),
@@ -187,20 +201,46 @@ export function useToggleLike() {
         );
       }
 
-      // Return context with previous value
-      return { previousListing };
+      // 4. Optimistic Update - Lists
+      previousListQueries.forEach(([queryKey, oldData]) => {
+        if (!oldData) return;
+
+        queryClient.setQueryData(
+          queryKey,
+          oldData.map((listing) => {
+            if (listing.id === marketplaceId) {
+              return {
+                ...listing,
+                has_liked: !listing.has_liked,
+                likes_count: listing.has_liked
+                  ? listing.likes_count - 1
+                  : listing.likes_count + 1,
+              };
+            }
+            return listing;
+          }),
+        );
+      });
+
+      // Return context
+      return { previousListing, previousListQueries };
     },
     onError: (_err, marketplaceId, context) => {
-      // Rollback on error
+      // Rollback
       if (context?.previousListing) {
         queryClient.setQueryData(
           marketplaceKeys.listing(marketplaceId),
           context.previousListing,
         );
       }
+      if (context?.previousListQueries) {
+        context.previousListQueries.forEach(([queryKey, oldData]) => {
+          queryClient.setQueryData(queryKey, oldData);
+        });
+      }
     },
     onSuccess: (data: LikeResponse, marketplaceId) => {
-      // Update with actual server response
+      // Update Single Listing
       const currentListing =
         queryClient.getQueryData<MarketplaceListingWithSnapshot>(
           marketplaceKeys.listing(marketplaceId),
@@ -217,10 +257,34 @@ export function useToggleLike() {
         );
       }
 
-      // Invalidate listings to update counts
-      queryClient.invalidateQueries({
+      // Update Lists (to ensure consistency without full refetch if possible)
+      // This prevents the UI from flickering back to old state if invalidation is slow
+      const listQueries = queryClient.getQueriesData<MarketplaceListing[]>({
         queryKey: marketplaceKeys.listings(),
       });
+
+      listQueries.forEach(([queryKey, oldData]) => {
+        if (!oldData) return;
+        queryClient.setQueryData(
+          queryKey,
+          oldData.map((listing) => {
+            if (listing.id === marketplaceId) {
+              return {
+                ...listing,
+                has_liked: data.is_liked,
+                likes_count: data.likes_count,
+              };
+            }
+            return listing;
+          }),
+        );
+      });
+
+      // Invalidate to be safe (eventual consistency)
+      // We debounce this slightly or just let it happen to pick up other changes
+      // queryClient.invalidateQueries({
+      //   queryKey: marketplaceKeys.listings(),
+      // });
     },
   });
 }

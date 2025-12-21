@@ -11,6 +11,7 @@ import {
   MagnifyingGlassIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 
 import type { MarketplaceListing } from "@/service/marketplaceService";
 import AgentMarketplaceDetail from "./AgentMarketplaceDetail";
@@ -344,7 +345,11 @@ function AgentListingCard({
             onClick={handleLikeClick}
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
           >
-            <HeartIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-red-500" />
+            {listing.has_liked ? (
+              <HeartSolidIcon className="h-5 w-5 text-red-500" />
+            ) : (
+              <HeartIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-red-500" />
+            )}
           </button>
         </div>
 

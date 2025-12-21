@@ -270,8 +270,7 @@ export default function ForkAgentModal({
                           MCP Servers ({requirements.mcp_servers.length})
                         </h4>
                         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                          This agent uses the following MCP servers. You'll need
-                          to configure them in your forked agent:
+                          This agent uses the following MCP servers:
                         </p>
                         <ul className="mt-3 space-y-2">
                           {requirements.mcp_servers.map((mcp, index) => (
@@ -279,9 +278,14 @@ export default function ForkAgentModal({
                               key={index}
                               className="flex items-start gap-2 text-sm text-neutral-700 dark:text-neutral-300"
                             >
-                              <span className="mt-0.5 inline-flex items-center rounded-full border border-transparent bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
-                                {mcp.name}
-                              </span>
+                              <div className="mt-0.5 flex flex-wrap gap-2">
+                                <span className="inline-flex items-center rounded-full border border-transparent bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
+                                  {mcp.name}
+                                </span>
+                                <span className="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  ✅ Auto-configured
+                                </span>
+                              </div>
                               {mcp.description && (
                                 <span className="text-neutral-600 dark:text-neutral-400">
                                   {mcp.description}
@@ -298,26 +302,25 @@ export default function ForkAgentModal({
               {/* Knowledge Base */}
               {requirements?.knowledge_base &&
                 requirements.knowledge_base.file_count > 0 && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
+                        <InformationCircleIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-neutral-900 dark:text-neutral-100">
-                          Knowledge Base Empty
+                          Knowledge Base Included
                         </h4>
                         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                           The original agent uses a knowledge base with{" "}
                           <strong>
                             {requirements.knowledge_base.file_count} files
                           </strong>
-                          . Your fork will have an empty knowledge base. You'll
-                          need to upload your own documents.
+                          . These files will be copied to your personal
+                          workspace automatically.
                         </p>
-                        <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-                          ⚠️ File content is never copied for privacy and
-                          storage reasons
+                        <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
+                          ℹ️ You will have full access to these files
                         </p>
                       </div>
                     </div>
