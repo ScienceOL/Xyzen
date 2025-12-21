@@ -23,6 +23,7 @@ export interface MarketplaceListing {
   created_at: string;
   updated_at: string;
   first_published_at: string | null;
+  has_liked: boolean;
 }
 
 export interface AgentSnapshot {

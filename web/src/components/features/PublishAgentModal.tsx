@@ -113,9 +113,9 @@ export default function PublishAgentModal({
               <div className="text-sm">
                 <strong>What gets published:</strong> Agent configuration
                 (prompt, model, settings), MCP server requirements (names only),
-                and knowledge base structure (file count).{" "}
-                <strong>Not published:</strong> API keys, credentials, or file
-                content.
+                and knowledge base structure (including file references).{" "}
+                <strong>Note:</strong> Users forking your agent will receive a
+                copy of your knowledge base files.
               </div>
             </div>
           </div>
@@ -253,9 +253,9 @@ export default function PublishAgentModal({
                     {knowledgeSetInfo.name} ({knowledgeSetInfo.file_count}{" "}
                     files)
                   </p>
-                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                    ⚠️ Users will get an empty knowledge base and need to add
-                    their own files
+                  <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                    ℹ️ Users will receive a copy of these files in their
+                    workspace
                   </p>
                 </div>
               )}

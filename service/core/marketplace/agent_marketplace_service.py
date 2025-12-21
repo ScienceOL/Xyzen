@@ -211,9 +211,21 @@ class AgentMarketplaceService:
 
         # Build forked agent from snapshot configuration
         config = snapshot.configuration
+        base_name = fork_name or f"{config.get('name', 'Agent')} (Fork)"
+
+        # Ensure unique name for user
+        user_agents = await self.agent_repo.get_agents_by_user(user_id)
+        existing_names = {a.name for a in user_agents}
+
+        final_name = base_name
+        counter = 1
+        while final_name in existing_names:
+            final_name = f"{base_name} ({counter})"
+            counter += 1
+
         agent_create = AgentCreate(
             scope=AgentScope.USER,
-            name=fork_name or f"{config.get('name', 'Agent')} (Fork)",
+            name=final_name,
             description=config.get("description"),
             avatar=config.get("avatar"),
             tags=config.get("tags", []),
@@ -288,19 +300,19 @@ class AgentMarketplaceService:
 
                 else:
                     # It's a Custom/Private MCP.
-                    # We must clone it as a "Shell" (placeholder) for the user to configure.
-                    # We check if they already have one with this name to be safe/nice?
-                    # No, for custom tools, better to create a new one to avoid semantic collision
-                    # unless we want to be smart. Let's create new for now to be safe.
-
-                    new_mcp_data = McpServerCreate(
-                        name=mcp_name,
-                        description=mcp_config.get("description"),
-                        url="",  # Placeholder
-                        token="",  # Placeholder
-                    )
-                    new_mcp = await self.mcp_repo.create_mcp_server(new_mcp_data, user_id)
-                    linked_mcp_ids.append(new_mcp.id)
+                    if mcp_name in user_mcp_map:
+                        # Reuse existing user instance to avoid collision
+                        linked_mcp_ids.append(user_mcp_map[mcp_name].id)
+                    else:
+                        # We must clone it as a "Shell" (placeholder) for the user to configure.
+                        new_mcp_data = McpServerCreate(
+                            name=mcp_name,
+                            description=mcp_config.get("description"),
+                            url="",  # User must configure
+                            token="",  # Placeholder
+                        )
+                        new_mcp = await self.mcp_repo.create_mcp_server(new_mcp_data, user_id)
+                        linked_mcp_ids.append(new_mcp.id)
 
             await self.db.flush()
 
@@ -310,10 +322,13 @@ class AgentMarketplaceService:
 
         # Handle knowledge set: Create empty knowledge set for user
         if snapshot.knowledge_set_config:
-            kb_config = snapshot.knowledge_set_config
-            # Create empty knowledge set
+            import io
+
+            from core.storage import generate_storage_key, get_storage_service
             from models.knowledge_set import KnowledgeSetCreate
 
+            kb_config = snapshot.knowledge_set_config
+            # Create empty knowledge set
             kb_create = KnowledgeSetCreate(
                 name=f"{forked_agent.name} Knowledge Base",
                 description=f"Knowledge base for forked agent. Original had {kb_config.get('file_count', 0)} files.",
@@ -325,30 +340,53 @@ class AgentMarketplaceService:
 
             # Clone files from snapshot to new knowledge set
             file_ids = kb_config.get("file_ids", [])
+            storage = get_storage_service()
+
             for file_id_str in file_ids:
                 try:
                     file_id = UUID(file_id_str)
                     original_file = await self.file_repo.get_file_by_id(file_id)
 
                     if original_file and not original_file.is_deleted:
-                        # Create a new file record pointing to the same storage key
-                        # This effectively "copies" the file without duplicating storage bytes
-                        new_file_data = FileCreate(
-                            user_id=user_id,
-                            folder_id=None,  # Knowledge sets are flat
-                            original_filename=original_file.original_filename,
-                            storage_key=original_file.storage_key,
-                            file_size=original_file.file_size,
-                            content_type=original_file.content_type,
-                            scope=FileScope.PRIVATE,  # User owns this copy
-                            category=original_file.category,
-                            status=original_file.status,
-                        )
+                        target_file_id: UUID | None = None
 
-                        new_file = await self.file_repo.create_file(new_file_data)
+                        # Strategy:
+                        # 1. If user owns the original file, just link it (Efficient).
+                        # 2. If user is different, we MUST physically copy to avoid Unique Constraint on storage_key.
 
-                        # Link to the new knowledge set
-                        await self.knowledge_set_repo.link_file_to_knowledge_set(new_file.id, knowledge_set.id)
+                        if original_file.user_id == user_id:
+                            # Self-fork or re-fork: Reuse existing file record
+                            target_file_id = original_file.id
+                        else:
+                            # Cross-fork: Physical Copy required
+                            # Download content
+                            buffer = io.BytesIO()
+                            await storage.download_file(original_file.storage_key, buffer)
+                            content_bytes = buffer.getvalue()
+
+                            # Upload to new key
+                            new_key = generate_storage_key(user_id, original_file.original_filename, FileScope.PRIVATE)
+                            data_stream = io.BytesIO(content_bytes)
+                            await storage.upload_file(data_stream, new_key, content_type=original_file.content_type)
+
+                            # Create new file record
+                            new_file_data = FileCreate(
+                                user_id=user_id,
+                                folder_id=None,
+                                original_filename=original_file.original_filename,
+                                storage_key=new_key,
+                                file_size=len(content_bytes),
+                                content_type=original_file.content_type,
+                                scope=FileScope.PRIVATE,
+                                category=original_file.category,
+                                status=original_file.status,
+                            )
+                            new_file = await self.file_repo.create_file(new_file_data)
+                            target_file_id = new_file.id
+
+                        if target_file_id:
+                            # Link to the new knowledge set
+                            await self.knowledge_set_repo.link_file_to_knowledge_set(target_file_id, knowledge_set.id)
 
                 except Exception as e:
                     logger.warning(f"Failed to clone file {file_id_str} during fork: {e}")
