@@ -170,6 +170,39 @@ async def unpublish_agent(
     await db.commit()
 
 
+@router.delete("/{marketplace_id}", status_code=204)
+async def delete_listing(
+    marketplace_id: UUID,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    """
+    Permanently delete a marketplace listing.
+
+    Only the owner of the listing can delete it. This action cannot be undone.
+    It does not delete the original agent or any forked agents.
+
+    Args:
+        marketplace_id: UUID of the marketplace listing to delete.
+        user_id: Authenticated user ID (injected by dependency).
+        db: Database session (injected by dependency).
+
+    Raises:
+        HTTPException: 404 if listing not found, 403 if user doesn't own it.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    if listing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
+
+    await marketplace_repo.delete_listing(marketplace_id)
+    await db.commit()
+
+
 @router.post("/fork/{marketplace_id}", response_model=ForkResponse)
 async def fork_agent(
     marketplace_id: UUID,

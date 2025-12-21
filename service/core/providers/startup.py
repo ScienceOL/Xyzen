@@ -21,6 +21,7 @@ class SystemProviderManager:
         Ensure system provider exists and is up-to-date.
         Uses upsert pattern for cleaner logic.
         """
+        logger.debug(f"Current LLM config: {llm_config}")
         if not llm_config.is_enabled:
             logger.info("LLM config not enabled, skipping system provider")
             return None

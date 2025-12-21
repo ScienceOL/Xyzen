@@ -81,17 +81,6 @@ async def prepare_mcp_tools(db: AsyncSession, agent: Any, session_id: Any = None
             if server.tools and server.status == "online":
                 for tool in server.tools:
                     schema = tool.get("inputSchema", {})
-                    # TODO: Add better logic for knowledge_set_id filtering
-                    if "properties" in schema:
-                        properties = schema["properties"].copy()
-                        if "knowledge_set_id" in properties:
-                            del properties["knowledge_set_id"]
-
-                        required = schema.get("required", []).copy()
-                        if "knowledge_set_id" in required:
-                            required.remove("knowledge_set_id")
-
-                        schema = {**schema, "properties": properties, "required": required}
 
                     standard_tool = {
                         "name": tool.get("name", ""),
@@ -128,7 +117,7 @@ async def execute_tool_call(
             return f"Error: Invalid JSON arguments for tool '{tool_name}'"
         logger.info(f"Executing tool '{tool_name}' with arguments: {args_dict}")
 
-        all_mcp_servers = []
+        all_mcp_servers: list[McpServer] = []
 
         # 1. Load agent-level MCP servers
         if agent:

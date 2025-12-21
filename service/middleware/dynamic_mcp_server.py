@@ -76,12 +76,20 @@ class DynamicToolMiddleware(Middleware):
         # Execute tool
         logger.warning(f"🚀 Execute: {tool_name} Arguments: {getattr(context.message, 'arguments', {})}")
         if tool_name.startswith("browser_"):
-            await self.init_client()
-            assert self.browser_mcp_client is not None
-            tool_call_result = await self.browser_mcp_client.call_tool(
-                tool_name, getattr(context.message, "arguments", {})
-            )
-            result = ToolResult(tool_call_result.content, tool_call_result.structured_content)
+            try:
+                await self.init_client()
+                if self.browser_mcp_client is None:
+                    logger.error("Browser MCP client failed to initialize")
+                    raise RuntimeError("Browser MCP client failed to initialize")
+
+                logger.info(f"Calling browser tool: {tool_name}")
+                tool_call_result = await self.browser_mcp_client.call_tool(
+                    tool_name, getattr(context.message, "arguments", {})
+                )
+                result = ToolResult(tool_call_result.content, tool_call_result.structured_content)
+            except Exception as e:
+                logger.error(f"Failed to execute browser tool {tool_name}: {e}", exc_info=True)
+                raise
         else:
             result = await call_next(context)
         end_time = datetime.now()

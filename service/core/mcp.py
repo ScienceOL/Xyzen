@@ -32,6 +32,7 @@ async def async_check_mcp_server_status(server_id: UUID | None) -> None:
             auth = BearerAuth(server.token) if server.token else None
 
             # Initialize the client with the server URL, auth helper, and a 10-second timeout
+            logger.info(f"Checking MCP server '{server.name}' at {server.url} (Auth: {'Yes' if auth else 'No'})")
             client = Client(server.url, auth=auth, timeout=30.0)
 
             async with client:
@@ -43,12 +44,14 @@ async def async_check_mcp_server_status(server_id: UUID | None) -> None:
         except httpx.TimeoutException:
             server.status = "offline"
             server.tools = []
-            logger.warning(f"Timeout while checking MCP server '{server.name}' ({server.id}) at {server.url}.")
+            logger.warning(
+                f"Timeout (30s) while checking MCP server '{server.name}' ({server.id}) at {server.url}. The server might be busy or unreachable."
+            )
         except Exception as e:
             server.status = "offline"
             server.tools = []
             logger.error(
-                f"An unexpected error occurred while checking MCP server '{server.name}' ({server.id}): {e}",
+                f"An unexpected error occurred while checking MCP server '{server.name}' ({server.id}) at {server.url}: {e}",
                 exc_info=True,
             )
         finally:

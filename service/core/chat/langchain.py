@@ -514,12 +514,13 @@ async def get_ai_response_stream_langchain_legacy(
                         # However, extract citations from response_metadata if available
                         if hasattr(last_message, "response_metadata"):
                             response_metadata = last_message.response_metadata
+                            citations = []
                             if isinstance(response_metadata, dict):
+                                # 1. Handle Google Grounding Metadata
                                 grounding_metadata = response_metadata.get("grounding_metadata", {})
 
                                 if grounding_metadata:
                                     logger.info("Found grounding_metadata in final model response")
-                                    citations = []
 
                                     # Extract web search queries
                                     web_search_queries = grounding_metadata.get("web_search_queries", [])
@@ -564,6 +565,23 @@ async def get_ai_response_stream_langchain_legacy(
                                                     if web_search_queries:
                                                         citation["search_queries"] = web_search_queries
                                                     citations.append(citation)
+
+                                # 2. Handle OpenAI Annotations (Responses API)
+                                annotations = response_metadata.get("annotations", [])
+                                if annotations:
+                                    logger.info("Found annotations in final model response (OpenAI)")
+                                    for annotation in annotations:
+                                        if isinstance(annotation, dict) and annotation.get("type") == "citation":
+                                            citation = {
+                                                "url": annotation.get("url"),
+                                                "title": annotation.get("title"),
+                                                "cited_text": annotation.get(
+                                                    "text"
+                                                ),  # OpenAI might not return full text, but sometimes does
+                                                "start_index": annotation.get("start_index"),
+                                                "end_index": annotation.get("end_index"),
+                                            }
+                                            citations.append(citation)
 
                                     # Deduplicate citations by URL
                                     if citations:
