@@ -5,26 +5,28 @@ import {
   useMarketplaceListing,
   useMarketplaceRequirements,
   useToggleLike,
-  useUnpublishAgent,
 } from "@/hooks/useMarketplace";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   HeartIcon,
   ArrowLeftIcon,
-  ArrowPathIcon,
   EyeIcon,
   InformationCircleIcon,
-  ExclamationTriangleIcon,
   CheckCircleIcon,
-  TrashIcon,
+  PencilIcon,
+  DocumentTextIcon,
+  Cog6ToothIcon,
+  CubeIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import ForkAgentModal from "@/components/features/ForkAgentModal";
-import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
 
 interface AgentMarketplaceDetailProps {
   marketplaceId: string;
   onBack: () => void;
+  onManage?: () => void;
 }
 
 /**
@@ -35,9 +37,14 @@ interface AgentMarketplaceDetailProps {
 export default function AgentMarketplaceDetail({
   marketplaceId,
   onBack,
+  onManage,
 }: AgentMarketplaceDetailProps) {
   const [showForkModal, setShowForkModal] = useState(false);
-  const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "readme" | "config" | "requirements"
+  >("readme");
+
+  // Note: Unpublish and Edit README states removed as they moved to dedicated Manage view
 
   // Fetch listing data
   const {
@@ -52,8 +59,6 @@ export default function AgentMarketplaceDetail({
   // Like mutation
   const toggleLike = useToggleLike();
 
-  // Unpublish mutation
-  const unpublishMutation = useUnpublishAgent();
   const isOwner = useIsMarketplaceOwner(listing);
 
   const handleBack = () => {
@@ -76,26 +81,13 @@ export default function AgentMarketplaceDetail({
     // You might want to navigate to the agent detail page or show a notification
   };
 
-  const handleUnpublish = () => {
-    if (!listing) return;
-    unpublishMutation.mutate(listing.id, {
-      onSuccess: () => {
-        // Navigate back to marketplace after successful unpublish
-        onBack();
-      },
-      onError: (error) => {
-        console.error("Failed to unpublish agent:", error);
-        // Error handling is managed by the mutation hook
-      },
-    });
-  };
-
   // Loading state
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
-          <ArrowPathIcon className="mx-auto h-8 w-8 animate-spin text-neutral-400" />
+          {/* Loading Icon */}
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
             Loading agent details...
           </p>
@@ -110,7 +102,7 @@ export default function AgentMarketplaceDetail({
       <div className="flex h-full items-center justify-center p-4">
         <div className="max-w-md relative w-full rounded-lg border border-red-500/50 bg-red-50 p-4 text-red-900 dark:bg-red-950/50 dark:text-red-400">
           <div className="flex gap-2">
-            <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0" />
+            <InformationCircleIcon className="h-4 w-4 flex-shrink-0" />
             <div className="text-sm">
               Failed to load agent details. Please try again.
             </div>
@@ -234,145 +226,236 @@ export default function AgentMarketplaceDetail({
               </div>
             </div>
 
-            {/* Configuration Preview */}
-            {listing.snapshot && (
-              <div className="rounded-2xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="flex flex-col space-y-1.5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-white p-6 dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950">
-                  <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
-                    Configuration
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                      v{listing.snapshot.version}
-                    </span>
-                    <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                      {listing.snapshot.commit_message}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-4 p-6 pt-0">
-                  {/* Model */}
-                  {listing.snapshot.configuration.model && (
-                    <div>
-                      <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                        Model
-                      </h3>
-                      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                        {listing.snapshot.configuration.model}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />
-
-                  {/* System Prompt */}
-                  {listing.snapshot.configuration.prompt && (
-                    <div>
-                      <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                        System Prompt
-                      </h3>
-                      <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                        <pre className="whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
-                          {listing.snapshot.configuration.prompt}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {/* Tabbed Content Section */}
+            <div className="rounded-2xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-950">
+              {/* Tab Bar */}
+              <div className="flex border-b border-neutral-200 dark:border-neutral-800">
+                <button
+                  onClick={() => setActiveTab("readme")}
+                  className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-medium transition-colors ${
+                    activeTab === "readme"
+                      ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                  }`}
+                >
+                  <DocumentTextIcon className="h-4 w-4" />
+                  README
+                </button>
+                <button
+                  onClick={() => setActiveTab("config")}
+                  className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-medium transition-colors ${
+                    activeTab === "config"
+                      ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                  }`}
+                >
+                  <Cog6ToothIcon className="h-4 w-4" />
+                  Configuration
+                </button>
+                <button
+                  onClick={() => setActiveTab("requirements")}
+                  className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-medium transition-colors ${
+                    activeTab === "requirements"
+                      ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                  }`}
+                >
+                  <CubeIcon className="h-4 w-4" />
+                  Requirements
+                </button>
               </div>
-            )}
 
-            {/* Requirements Section */}
-            {requirements && (
-              <div className="rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="flex flex-col space-y-1.5 p-6">
-                  <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                    Requirements
-                  </h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    What you'll need to use this agent
-                  </p>
-                </div>
-                <div className="space-y-4 p-6 pt-0">
-                  {/* Provider */}
-                  {requirements.provider_needed && (
-                    <div className="relative w-full rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                      <div className="flex gap-2">
-                        <InformationCircleIcon className="h-4 w-4 flex-shrink-0" />
-                        <div className="text-sm">
-                          <strong>LLM Provider Required:</strong> You'll need to
-                          configure an AI provider (OpenAI, Anthropic, etc.) to
-                          use this agent.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* MCP Servers */}
-                  {requirements.mcp_servers.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                        MCP Servers ({requirements.mcp_servers.length})
-                      </h3>
-                      <div className="mt-2 space-y-2">
-                        {requirements.mcp_servers.map((mcp, index) => (
-                          <div
-                            key={index}
-                            className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900"
+              {/* Tab Content */}
+              <div className="p-6">
+                {/* README Tab */}
+                {activeTab === "readme" && (
+                  <div className="prose prose-neutral max-w-none dark:prose-invert">
+                    {listing.readme ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {listing.readme}
+                      </ReactMarkdown>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
+                        <DocumentTextIcon className="mb-3 h-12 w-12 opacity-20" />
+                        <p>No README provided for this agent.</p>
+                        {isOwner && onManage && (
+                          <button
+                            onClick={onManage}
+                            className="mt-2 text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
                           >
-                            <div className="flex flex-col gap-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:border-neutral-700 dark:text-neutral-300">
-                                  {mcp.name}
-                                </span>
-                                <span className="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                  ✅ Auto-configured
-                                </span>
-                              </div>
-                              {mcp.description && (
-                                <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                                  {mcp.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Knowledge Base */}
-                  {requirements.knowledge_base && (
-                    <div className="relative w-full rounded-lg border border-blue-500/50 bg-blue-50 p-4 text-blue-900 dark:bg-blue-950/50 dark:text-blue-400">
-                      <div className="flex gap-2">
-                        <InformationCircleIcon className="h-4 w-4 flex-shrink-0" />
-                        <div className="text-sm">
-                          <strong>Knowledge Base:</strong> The original agent
-                          uses {requirements.knowledge_base.file_count} files.
-                          These files will be copied to your workspace when you
-                          fork this agent.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* No Requirements */}
-                  {!requirements.provider_needed &&
-                    requirements.mcp_servers.length === 0 &&
-                    !requirements.knowledge_base && (
-                      <div className="relative w-full rounded-lg border border-green-500/50 bg-green-50 p-4 text-green-900 dark:bg-green-950/50 dark:text-green-400">
-                        <div className="flex gap-2">
-                          <CheckCircleIcon className="h-4 w-4 flex-shrink-0 text-green-600" />
-                          <div className="text-sm">
-                            No special requirements! This agent is ready to use
-                            after forking.
-                          </div>
-                        </div>
+                            Manage to add a README
+                          </button>
+                        )}
                       </div>
                     )}
-                </div>
+                  </div>
+                )}
+
+                {/* Configuration Tab */}
+                {activeTab === "config" && (
+                  <div className="space-y-6">
+                    {listing.snapshot ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                            v{listing.snapshot.version}
+                          </span>
+                          <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                            {listing.snapshot.commit_message}
+                          </span>
+                        </div>
+
+                        {/* Model */}
+                        {listing.snapshot.configuration.model && (
+                          <div>
+                            <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                              Model
+                            </h3>
+                            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                              {listing.snapshot.configuration.model}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* System Prompt */}
+                        {listing.snapshot.configuration.prompt && (
+                          <div>
+                            <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                              System Prompt
+                            </h3>
+                            <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                              <pre className="whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
+                                {listing.snapshot.configuration.prompt}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* MCP Servers in Configuration */}
+                        {listing.snapshot.mcp_server_configs &&
+                          listing.snapshot.mcp_server_configs.length > 0 && (
+                            <div>
+                              <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                                MCP Servers (
+                                {listing.snapshot.mcp_server_configs.length})
+                              </h3>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {listing.snapshot.mcp_server_configs.map(
+                                  (mcp, index) => (
+                                    <span
+                                      key={index}
+                                      className="inline-flex items-center rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"
+                                    >
+                                      {mcp.name}
+                                    </span>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+                          )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
+                        <Cog6ToothIcon className="mb-3 h-12 w-12 opacity-20" />
+                        <p>No configuration available.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Requirements Tab */}
+                {activeTab === "requirements" && (
+                  <div className="space-y-4">
+                    {requirements ? (
+                      <>
+                        {/* Provider */}
+                        {requirements.provider_needed && (
+                          <div className="relative w-full rounded-lg border border-amber-500/50 bg-amber-50 p-4 text-amber-900 dark:bg-amber-950/50 dark:text-amber-400">
+                            <div className="flex gap-2">
+                              <InformationCircleIcon className="h-4 w-4 flex-shrink-0" />
+                              <div className="text-sm">
+                                <strong>LLM Provider Required:</strong> You'll
+                                need to configure an AI provider (OpenAI,
+                                Anthropic, etc.) to use this agent.
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* MCP Servers */}
+                        {requirements.mcp_servers.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                              MCP Servers ({requirements.mcp_servers.length})
+                            </h3>
+                            <div className="mt-2 space-y-2">
+                              {requirements.mcp_servers.map((mcp, index) => (
+                                <div
+                                  key={index}
+                                  className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900"
+                                >
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="inline-flex items-center rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:border-neutral-700 dark:text-neutral-300">
+                                        {mcp.name}
+                                      </span>
+                                      <span className="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                        ✅ Auto-configured
+                                      </span>
+                                    </div>
+                                    {mcp.description && (
+                                      <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                                        {mcp.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Knowledge Base */}
+                        {requirements.knowledge_base && (
+                          <div className="relative w-full rounded-lg border border-blue-500/50 bg-blue-50 p-4 text-blue-900 dark:bg-blue-950/50 dark:text-blue-400">
+                            <div className="flex gap-2">
+                              <InformationCircleIcon className="h-4 w-4 flex-shrink-0" />
+                              <div className="text-sm">
+                                <strong>Knowledge Base:</strong> The original
+                                agent uses{" "}
+                                {requirements.knowledge_base.file_count} files.
+                                These files will be copied to your workspace
+                                when you fork this agent.
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* No Requirements */}
+                        {!requirements.provider_needed &&
+                          requirements.mcp_servers.length === 0 &&
+                          !requirements.knowledge_base && (
+                            <div className="relative w-full rounded-lg border border-green-500/50 bg-green-50 p-4 text-green-900 dark:bg-green-950/50 dark:text-green-400">
+                              <div className="flex gap-2">
+                                <CheckCircleIcon className="h-4 w-4 flex-shrink-0 text-green-600" />
+                                <div className="text-sm">
+                                  No special requirements! This agent is ready
+                                  to use after forking.
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
+                        <CubeIcon className="mb-3 h-12 w-12 opacity-20" />
+                        <p>Loading requirements...</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Right Column - Actions */}
@@ -427,20 +510,15 @@ export default function AgentMarketplaceDetail({
                     </div>
                   </button>
 
-                  {/* Unpublish Button - Only visible to owner */}
-                  {isOwner && (
+                  {/* Manage Button - Only visible to owner */}
+                  {isOwner && onManage && (
                     <button
-                      onClick={() => setShowUnpublishConfirm(true)}
-                      disabled={unpublishMutation.isPending}
-                      className="w-full rounded-xl border-2 border-red-300 bg-white px-4 py-3 text-sm font-semibold text-red-700 transition-all hover:bg-red-50 hover:scale-[1.02] disabled:opacity-50 dark:border-red-800 dark:bg-neutral-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                      onClick={onManage}
+                      className="w-full rounded-xl border-2 border-indigo-300 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-50 hover:scale-[1.02] dark:border-indigo-800 dark:bg-neutral-900 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
                     >
                       <div className="flex items-center justify-center gap-2">
-                        <TrashIcon className="h-5 w-5" />
-                        <span>
-                          {unpublishMutation.isPending
-                            ? "Unpublishing..."
-                            : "Unpublish Agent"}
-                        </span>
+                        <PencilIcon className="h-5 w-5" />
+                        <span>Manage Agent</span>
                       </div>
                     </button>
                   )}
@@ -513,21 +591,7 @@ export default function AgentMarketplaceDetail({
         />
       )}
 
-      {/* Unpublish Confirmation Modal */}
-      {listing && (
-        <ConfirmationModal
-          isOpen={showUnpublishConfirm}
-          onClose={() => setShowUnpublishConfirm(false)}
-          onConfirm={handleUnpublish}
-          title="Unpublish Agent"
-          message={`Are you sure you want to unpublish "${listing.name}"? It will be removed from the marketplace, but you can republish it later if needed.`}
-          confirmLabel={
-            unpublishMutation.isPending ? "Unpublishing..." : "Unpublish"
-          }
-          cancelLabel="Cancel"
-          destructive={true}
-        />
-      )}
+      {/* Unpublish Confirmation Modal Removed */}
     </div>
   );
 }

@@ -20,6 +20,7 @@ interface PublishAgentModalProps {
   mcpServers?: Array<{ id: string; name: string; description?: string }>;
   knowledgeSetInfo?: { name: string; file_count: number };
   isPublished?: boolean;
+  readme?: string | null;
   onPublishSuccess?: (marketplaceId: string) => void;
 }
 
@@ -39,9 +40,11 @@ export default function PublishAgentModal({
   mcpServers = [],
   knowledgeSetInfo,
   isPublished = false,
+  readme,
   onPublishSuccess,
 }: PublishAgentModalProps) {
   const [commitMessage, setCommitMessage] = useState("");
+  const [readmeContent, setReadmeContent] = useState(readme || "");
   const [publishImmediately, setPublishImmediately] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -57,6 +60,7 @@ export default function PublishAgentModal({
         agent_id: agentId,
         commit_message: commitMessage.trim(),
         is_published: publishImmediately,
+        readme: readmeContent.trim() || null,
       });
 
       // Success callback
@@ -135,6 +139,25 @@ export default function PublishAgentModal({
             />
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {commitMessage.length}/500 characters
+            </p>
+          </Field>
+
+          {/* README Editor */}
+          <Field className="space-y-2">
+            <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              README.md
+            </Label>
+            <textarea
+              id="readme-editor"
+              placeholder="Add comprehensive documentation for your agent... (Markdown supported)"
+              value={readmeContent}
+              onChange={(e) => setReadmeContent(e.target.value)}
+              rows={6}
+              className="w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+            />
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Basic Markdown syntax is supported. This will be displayed on the
+              agent's marketplace page.
             </p>
           </Field>
 

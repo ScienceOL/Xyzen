@@ -24,6 +24,7 @@ class AgentMarketplace(SQLModel, table=True):
     description: str | None = None
     avatar: str | None = None
     tags: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    readme: str | None = None
 
     # Social stats
     likes_count: int = Field(default=0, index=True)
@@ -58,6 +59,7 @@ class AgentMarketplaceCreate(SQLModel):
     description: str | None = None
     avatar: str | None = None
     tags: list[str] = []
+    readme: str | None = None
 
 
 class AgentMarketplaceRead(SQLModel):
@@ -71,6 +73,7 @@ class AgentMarketplaceRead(SQLModel):
     description: str | None
     avatar: str | None
     tags: list[str]
+    readme: str | None
     likes_count: int
     forks_count: int
     views_count: int
@@ -88,6 +91,7 @@ class AgentMarketplaceUpdate(SQLModel):
     description: str | None = None
     avatar: str | None = None
     tags: list[str] | None = None
+    readme: str | None = None
     is_published: bool | None = None
 
 

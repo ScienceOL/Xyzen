@@ -9,7 +9,7 @@ import {
 import {
   HeartIcon,
   ArrowPathIcon,
-  TrashIcon,
+  EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import type { MarketplaceListing } from "@/service/marketplaceService";
@@ -235,7 +235,7 @@ function MyMarketplaceListingCard({
 
   return (
     <div
-      className="group relative cursor-pointer overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+      className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
       onMouseEnter={onMouseEnter}
       onClick={handleCardClick}
     >
@@ -247,13 +247,13 @@ function MyMarketplaceListingCard({
         <button
           onClick={handleUnpublishClick}
           disabled={isUnpublishing}
-          className="flex h-8 w-8 items-center justify-center rounded-md bg-red-100 text-red-600 transition-all hover:bg-red-200 disabled:opacity-50 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
-          title="Unpublish Agent"
+          className="flex h-8 w-8 items-center justify-center rounded-md bg-amber-100 text-amber-600 transition-all hover:bg-amber-200 disabled:opacity-50 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
+          title="Unpublish from Marketplace"
         >
           {isUnpublishing ? (
             <ArrowPathIcon className="h-4 w-4 animate-spin" />
           ) : (
-            <TrashIcon className="h-4 w-4" />
+            <EyeSlashIcon className="h-4 w-4" />
           )}
         </button>
       </div>
@@ -288,7 +288,7 @@ function MyMarketplaceListingCard({
         </p>
       </div>
 
-      <div className="relative border-t border-neutral-100 p-6 pt-4 dark:border-neutral-800">
+      <div className="relative mt-auto border-t border-neutral-100 p-6 pt-4 dark:border-neutral-800">
         {/* Tags */}
         {listing.tags && listing.tags.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1.5">
