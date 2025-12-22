@@ -1,7 +1,7 @@
 import type { ConsumeRecordResponse } from "@/service/redemptionService";
 import { redemptionService } from "@/service/redemptionService";
 import { ArrowTrendingUpIcon, CalendarIcon } from "@heroicons/react/24/outline";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface TrendChartTabProps {
   adminSecret: string;
@@ -21,7 +21,7 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [daysToShow, setDaysToShow] = useState(30);
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -41,11 +41,11 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminSecret]);
 
   useEffect(() => {
     fetchRecords();
-  }, [adminSecret]);
+  }, [fetchRecords]);
 
   // Aggregate data by day
   const dailyData = useMemo(() => {

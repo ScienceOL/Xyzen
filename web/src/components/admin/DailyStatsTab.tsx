@@ -20,28 +20,31 @@ export function DailyStatsTab({ adminSecret }: DailyStatsTabProps) {
     new Date().toISOString().split("T")[0],
   );
 
-  const fetchStats = async (date?: string) => {
-    setLoading(true);
-    setError(null);
+  const fetchStats = useCallback(
+    async (date?: string) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const data = await redemptionService.getDailyTokenStats(
-        adminSecret,
-        date,
-      );
-      setStats(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch statistics",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        const data = await redemptionService.getDailyTokenStats(
+          adminSecret,
+          date,
+        );
+        setStats(data);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch statistics",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [adminSecret],
+  );
 
   useEffect(() => {
     fetchStats(selectedDate);
-  }, [selectedDate, adminSecret]);
+  }, [selectedDate, fetchStats]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedDate(e.target.value);

@@ -5,7 +5,7 @@ import {
   TrophyIcon,
   UserIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface UserRankingsTabProps {
   adminSecret: string;
@@ -29,7 +29,7 @@ export function UserRankingsTab({ adminSecret }: UserRankingsTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>("all"); // Changed default from "today" to "all"
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -49,11 +49,11 @@ export function UserRankingsTab({ adminSecret }: UserRankingsTabProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminSecret]);
 
   useEffect(() => {
     fetchRecords();
-  }, [adminSecret]);
+  }, [fetchRecords]);
 
   // Helper function to extract username from user_id
   const extractUsername = (userId: string): string => {

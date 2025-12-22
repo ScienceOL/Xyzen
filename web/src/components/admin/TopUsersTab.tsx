@@ -6,7 +6,7 @@ import {
   UserIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface TopUsersTabProps {
   adminSecret: string;
@@ -19,7 +19,7 @@ export function TopUsersTab({ adminSecret }: TopUsersTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState(20);
 
-  const fetchTopUsers = async () => {
+  const fetchTopUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -36,11 +36,11 @@ export function TopUsersTab({ adminSecret }: TopUsersTabProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminSecret, limit]);
 
   useEffect(() => {
     fetchTopUsers();
-  }, [adminSecret, limit]);
+  }, [fetchTopUsers]);
 
   const formatNumber = (num: number) => {
     return num.toLocaleString();

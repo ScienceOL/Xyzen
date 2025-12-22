@@ -1,5 +1,6 @@
 import io
 import logging
+import mimetypes
 from datetime import datetime, timezone
 from typing import Any, List
 from uuid import UUID
@@ -209,14 +210,28 @@ async def write_file(knowledge_set_id: UUID, filename: str, content: str) -> dic
                     existing_file = file
                     break
 
+            # Determine content type
+            content_type, _ = mimetypes.guess_type(filename)
+            if not content_type:
+                content_type = "text/plain"
+
+            # Ensure utf-8 charset for text files to prevent garbled text
+            if content_type.startswith("text/") or content_type in ["application/json", "application/xml"]:
+                if "charset=" not in content_type:
+                    content_type += "; charset=utf-8"
+
             new_key = generate_storage_key(user_id, filename, FileScope.PRIVATE)
-            data = io.BytesIO(content.encode("utf-8"))
-            await storage.upload_file(data, new_key, content_type="text/plain")
+            encoded_content = content.encode("utf-8")
+            data = io.BytesIO(encoded_content)
+            file_size_bytes = len(encoded_content)
+
+            await storage.upload_file(data, new_key, content_type=content_type)
 
             if existing_file:
                 # Update existing
                 existing_file.storage_key = new_key
-                existing_file.file_size = len(content)
+                existing_file.file_size = file_size_bytes
+                existing_file.content_type = content_type
                 existing_file.updated_at = datetime.now(timezone.utc)
                 db.add(existing_file)
                 await db.commit()
@@ -228,8 +243,8 @@ async def write_file(knowledge_set_id: UUID, filename: str, content: str) -> dic
                     folder_id=None,
                     original_filename=filename,
                     storage_key=new_key,
-                    file_size=len(content),
-                    content_type="text/plain",
+                    file_size=file_size_bytes,
+                    content_type=content_type,
                     scope=FileScope.PRIVATE,
                     category=FileCategory.DOCUMENT,
                 )
