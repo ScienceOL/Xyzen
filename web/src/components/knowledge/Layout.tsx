@@ -292,6 +292,7 @@ export const KnowledgeLayout = () => {
             filter={activeTab}
             viewMode={viewMode}
             refreshTrigger={refreshKey}
+            onRefresh={() => setRefreshKey((k) => k + 1)}
             onFileCountChange={setCurrentFileCount}
             currentFolderId={currentFolderId}
             currentKnowledgeSetId={currentKnowledgeSetId}

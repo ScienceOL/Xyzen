@@ -18,6 +18,11 @@
   }
 }
 
+/* Necessary for Safari to show dark scrollbar*/
+.dark {
+  color-scheme: dark;
+}
+
 @utility custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;

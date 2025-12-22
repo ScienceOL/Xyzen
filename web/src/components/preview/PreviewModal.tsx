@@ -76,9 +76,15 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
           } else {
             URL.revokeObjectURL(objectUrl);
           }
-        } catch (err) {
+        } catch (err: unknown) {
           console.error(err);
-          if (active) setError("Failed to load file preview");
+          if (active) {
+            const errorMessage =
+              err instanceof Error
+                ? err.message
+                : "Failed to load file preview";
+            setError(errorMessage);
+          }
         } finally {
           if (active) setLoading(false);
         }
@@ -119,7 +125,12 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
     if (type === "application/pdf") {
       return <PdfRenderer file={file} url={blobUrl} />;
     }
-    if (type === "text/markdown" || file.name.endsWith(".md")) {
+    if (
+      type === "text/markdown" ||
+      type === "text/plain" ||
+      file.name.endsWith(".md") ||
+      file.name.endsWith(".txt")
+    ) {
       return <MarkdownRenderer file={file} url={blobUrl} />;
     }
 
