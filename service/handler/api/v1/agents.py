@@ -23,6 +23,7 @@ from infra.database import get_session
 from middleware.auth import get_current_user
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
 from repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
+from repos.session import SessionRepository
 
 router = APIRouter(tags=["agents"])
 
@@ -97,13 +98,24 @@ async def get_agents(
     Raises:
         HTTPException: None - this endpoint always succeeds
     """
-    # Ensure user has default agents if they have none
-    system_manager = SystemAgentManager(db)
-    await system_manager.ensure_user_default_agents(user)
-    await db.commit()
-
+    # Check if user has any agents
     agent_repo = AgentRepository(db)
     agents = await agent_repo.get_agents_by_user(user)
+
+    # Heuristic: If user has 0 agents, check if they are a new user or just deleted everything.
+    # We assume "New User" has 0 Agents AND 0 Sessions.
+    # If they have sessions but no agents, they likely deleted the default agent intentionally.
+    if not agents:
+        session_repo = SessionRepository(db)
+        sessions = await session_repo.get_sessions_by_user(user)
+
+        if not sessions:
+            # New user detected (no history), restore default agents
+            system_manager = SystemAgentManager(db)
+            await system_manager.ensure_user_default_agents(user)
+            await db.commit()
+            # Refetch agents
+            agents = await agent_repo.get_agents_by_user(user)
 
     # Load MCP servers for each agent and create AgentReadWithDetails
     agents_with_details = []
@@ -256,9 +268,9 @@ async def delete_agent(
         if agent.scope == AgentScope.SYSTEM:
             raise HTTPException(status_code=403, detail="Cannot delete system agents")
 
-        # Prevent deletion of default agents
-        if agent.tags and any(tag.startswith("default_") for tag in agent.tags):
-            raise HTTPException(status_code=403, detail="Cannot delete default agents")
+        # ALLOW deletion of default agents
+        # if agent.tags and any(tag.startswith("default_") for tag in agent.tags):
+        #     raise HTTPException(status_code=403, detail="Cannot delete default agents")
 
         agent_repo = AgentRepository(db)
         await agent_repo.delete_agent(agent.id)

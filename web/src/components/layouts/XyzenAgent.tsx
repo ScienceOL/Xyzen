@@ -101,18 +101,16 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           <PencilIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           编辑助手
         </button>
-        {!isDefaultAgent && (
-          <button
-            onClick={() => {
-              onDelete();
-              onClose();
-            }}
-            className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
-          >
-            <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-            删除助手
-          </button>
-        )}
+        <button
+          onClick={() => {
+            onDelete();
+            onClose();
+          }}
+          className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
+        >
+          <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+          删除助手
+        </button>
       </>
     </motion.div>
   );

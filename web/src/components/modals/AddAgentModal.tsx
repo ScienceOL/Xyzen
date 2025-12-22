@@ -176,7 +176,7 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2 rounded-sm border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+              <div className="max-h-60 overflow-y-auto space-y-2 rounded-sm border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
                 {mcpServers.map((server) => (
                   <McpServerItem
                     key={server.id}

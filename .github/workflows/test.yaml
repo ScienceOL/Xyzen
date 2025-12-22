@@ -78,7 +78,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.12"]
 
     steps:
       - name: Checkout code
@@ -153,7 +153,7 @@ jobs:
           TESTING: true
         run: |
           # Run integration tests (if you have them)
-          uv run pytest tests/test_integration.py -v --tb=short --no-cov
+          uv run pytest tests/integration/ -v --tb=short --no-cov
 
   test-summary:
     needs: [test, test-matrix, integration-test]

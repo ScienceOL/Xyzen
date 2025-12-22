@@ -38,6 +38,15 @@ Xyzen is an AI Laboratory Server - a full-stack application with a Python FastAP
   - **Framework:** **LangGraph** for multi-agent workflows and state management.
   - **Integration:** LangChain-compatible provider system.
   - **MCP:** FastMCP integration for Model Context Protocol.
+- **Testing:**
+  - **Runner:** `uv run pytest`.
+  - **Structure:**
+    - `tests/unit/`: Logic tests without external dependencies.
+    - `tests/integration/`: API and database integration tests.
+  - **Style:**
+    - Use `async_client` fixture for API tests.
+    - Use `db_session` fixture for database operations.
+    - Ensure tests clean up created resources or rely on database transaction rollbacks.
 
 ## Project Structure
 
