@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
+from pydantic import computed_field
 from sqlalchemy import JSON, TIMESTAMP, Column
 from sqlmodel import Field, SQLModel
 
@@ -113,6 +114,21 @@ class FileRead(FileBase):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.original_filename
+
+    @computed_field
+    @property
+    def size(self) -> int:
+        return self.file_size
+
+    @computed_field
+    @property
+    def type(self) -> str:
+        return self.content_type
 
 
 class FileUpdate(SQLModel):

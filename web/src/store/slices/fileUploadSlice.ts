@@ -55,6 +55,7 @@ export const createFileUploadSlice: StateCreator<
       "text/markdown",
       "audio/mpeg",
       "audio/wav",
+      ".md",
     ],
     autoUpload: true,
   },
