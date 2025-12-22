@@ -8,9 +8,9 @@ from sqlmodel import SQLModel, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.pool import StaticPool
 
-# Test database configuration
-TEST_DATABASE_URL = "sqlite+aiosqlite:///test_database.db"
-TEST_SYNC_DATABASE_URL = "sqlite:///test_database.db"
+# Use shared memory database for async tests to maintain state across connections in a session
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:?cache=shared"
+TEST_SYNC_DATABASE_URL = "sqlite:///:memory:"
 
 
 @pytest.fixture(scope="session")
@@ -59,7 +59,7 @@ async def db_session(async_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, 
     connection = await async_engine.connect()
     transaction = await connection.begin()
 
-    session = AsyncSession(bind=connection)
+    session = AsyncSession(bind=connection, expire_on_commit=False)
 
     try:
         yield session

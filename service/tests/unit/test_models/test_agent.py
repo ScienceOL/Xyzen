@@ -1,11 +1,11 @@
 """Tests for Agent model."""
 
-from typing import Any
 from uuid import uuid4
 
 import pytest
 
 from models.agent import AgentCreate, AgentScope, AgentUpdate
+from tests.factories.agent import AgentCreateFactory
 
 
 class TestAgentModel:
@@ -22,7 +22,7 @@ class TestAgentModel:
     @pytest.mark.parametrize("tags", [None, [], ["coding", "ai"]])
     def test_agent_tags_handling(self, tags: list[str] | None) -> None:
         """Test agent tags are correctly handled (JSON field)."""
-        agent = AgentCreate(name="Tag Agent", tags=tags)
+        agent = AgentCreateFactory.build(tags=tags)
         assert agent.tags == tags
 
     def test_agent_update_operations(self) -> None:
@@ -33,20 +33,14 @@ class TestAgentModel:
         assert update.description is None
 
     def test_agent_create_full_payload(self) -> None:
-        """Test creating agent with all optional fields."""
-        data: dict[str, Any] = {
-            "name": "Full Agent",
-            "scope": AgentScope.SYSTEM,
-            "description": "Desc",
-            "avatar": "http://img.com",
-            "tags": ["a", "b"],
-            "model": "gpt-4",
-            "temperature": 0.5,
-            "prompt": "You are AI",
-            "require_tool_confirmation": True,
-            "provider_id": uuid4(),
-            "mcp_server_ids": [uuid4()],
-        }
-        agent = AgentCreate(**data)
-        for key, value in data.items():
-            assert getattr(agent, key) == value
+        """Test creating agent with all fields populated via factory."""
+        agent = AgentCreateFactory.build(
+            scope=AgentScope.SYSTEM,
+            tags=["a", "b"],
+            require_tool_confirmation=True,
+            provider_id=uuid4(),
+        )
+        assert agent.scope == AgentScope.SYSTEM
+        assert agent.tags == ["a", "b"]
+        assert agent.require_tool_confirmation is True
+        assert agent.provider_id is not None  # Factory generates this

@@ -73,6 +73,22 @@ class AgentRepository:
         result = await self.db.exec(statement)
         return result.first()
 
+    async def get_agent_by_user_and_name(self, user_id: str, name: str) -> Agent | None:
+        """
+        Fetches an agent by its user_id and name.
+
+        Args:
+            user_id: The user ID.
+            name: The name of the agent.
+
+        Returns:
+            The Agent, or None if not found.
+        """
+        logger.debug(f"Fetching agent with name: {name} for user: {user_id}")
+        statement = select(Agent).where(Agent.user_id == user_id, Agent.name == name)
+        result = await self.db.exec(statement)
+        return result.first()
+
     async def get_agents_by_knowledge_set(self, knowledge_set_id: UUID) -> Sequence[Agent]:
         """
         Fetches all agents linked to a given knowledge set.

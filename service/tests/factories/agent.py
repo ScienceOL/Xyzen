@@ -16,3 +16,5 @@ class AgentCreateFactory(ModelFactory[AgentCreate]):
     __model__ = AgentCreate
 
     scope = Use(lambda: AgentScope.USER)
+    knowledge_set_id = None
+    provider_id = None

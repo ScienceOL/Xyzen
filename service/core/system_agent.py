@@ -9,11 +9,10 @@ import logging
 from typing import TypedDict
 from uuid import UUID
 
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.providers import SYSTEM_USER_ID
-from models.agent import Agent, AgentCreate, AgentScope
+from models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
 from models.provider import Provider
 from repos.agent import AgentRepository
 from repos.provider import ProviderRepository
@@ -78,9 +77,7 @@ class SystemAgentManager:
             List of newly created default agents for the user.
         """
         # Fetch existing agents for the user to check tags
-        statement = select(Agent).where(Agent.user_id == user_id)
-        result = await self.db.exec(statement)
-        existing_agents = result.all()
+        existing_agents = await self.agent_repo.get_agents_by_user(user_id)
         existing_tags = set()
         for agent in existing_agents:
             if agent.tags:
@@ -95,6 +92,26 @@ class SystemAgentManager:
         for agent_key, config in SYSTEM_AGENTS.items():
             tag = f"default_{agent_key}"
             if tag in existing_tags:
+                continue
+
+            # Double check: Check if agent exists by name for this user
+            # This helps prevent race conditions where multiple requests might try to create it
+            existing_by_name = await self.agent_repo.get_agent_by_user_and_name(user_id, config["name"])
+
+            if existing_by_name:
+                # If agent exists but tag is missing, we might want to add the tag
+                # For now, just logging and skipping to avoid duplication
+                logger.info(
+                    f"Agent '{config['name']}' exists for user {user_id} but missing tag {tag}. Skipping creation."
+                )
+
+                # Optionally add tag here if we want to "repair" it
+                # current_tags = existing_by_name.tags or []
+                # if tag not in current_tags:
+                #     existing_by_name.tags = current_tags + [tag]
+                #     self.db.add(existing_by_name)
+                #     await self.db.flush()
+
                 continue
 
             # Add a tag to identify which default agent this is
@@ -124,8 +141,7 @@ class SystemAgentManager:
 
     async def ensure_system_agents(self) -> dict[str, Agent]:
         """
-        Legacy: Create or update system agents.
-        Now primarily used for global/template reference if needed.
+        Create or update system agents (legacy support, kept for main.py).
         """
         logger.info("Ensuring system reference agents exist...")
 
@@ -168,17 +184,24 @@ class SystemAgentManager:
         self, existing: Agent, agent_config: AgentConfig, system_provider: "Provider | None"
     ) -> Agent:
         """
-        Update existing system agent if configuration has changed.
-
-        Args:
-            existing: Existing Agent instance
-            agent_config: New agent configuration
-            system_provider: System provider instance or None
-
-        Returns:
-            Updated Agent instance
+        Update existing system agent using repository.
         """
-        # Check if update is needed
+        # Prepare update data
+        update_data = AgentUpdate(
+            name=agent_config["name"],
+            description=agent_config["description"],
+            prompt=agent_config["prompt"],
+            avatar=agent_config.get("avatar"),
+            tags=agent_config.get("tags"),
+            provider_id=system_provider.id if system_provider else None,
+        )
+
+        # Check against existing to avoid unnecessary updates logic is handled inside repo roughly,
+        # but here we can just call update. The repo update does a lot of checks, but let's just use it.
+        # Actually, let's keep the manual check to minimize DB writes if nothing changed,
+        # or just rely on repo.
+
+        # Simple check before calling repo update
         needs_update = (
             existing.name != agent_config["name"]
             or existing.description != agent_config["description"]
@@ -193,21 +216,10 @@ class SystemAgentManager:
             return existing
 
         logger.info(f"Updating system agent: {agent_config['name']}")
+        updated_agent = await self.agent_repo.update_agent(existing.id, update_data)
 
-        # Update agent fields
-        existing.name = agent_config["name"]
-        existing.description = agent_config["description"]
-        existing.prompt = agent_config["prompt"]
-        existing.avatar = agent_config.get("avatar")
-        existing.tags = agent_config.get("tags")
-        existing.provider_id = system_provider.id if system_provider else None
-
-        # Save changes
-        self.db.add(existing)
-        await self.db.flush()
-        await self.db.refresh(existing)
-
-        logger.info(f"Updated system agent: {existing.name}")
+        if updated_agent:
+            return updated_agent
         return existing
 
     async def _get_default_mcp_servers(self, agent_personality: str) -> list[UUID]:
