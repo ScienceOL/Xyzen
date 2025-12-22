@@ -8,30 +8,48 @@ export const MarkdownRenderer = ({ url, className }: RendererProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchContent = async () => {
+      // Reset state on new fetch
+      setLoading(true);
+      setError(null);
+
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load markdown: ${response.status} ${response.statusText}`,
+          );
+        }
         const text = await response.text();
-        setContent(text);
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setContent(text);
+          setLoading(false);
+        }
       } catch (err) {
-        console.error("Failed to load markdown content:", err);
-        setError("Failed to load content");
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          console.error("Failed to load markdown content:", err);
+          setError("Failed to load content");
+          setLoading(false);
+        }
       }
     };
 
     if (url) {
       fetchContent();
     }
+
+    return () => {
+      controller.abort();
+    };
   }, [url]);
 
   if (loading) {
-    return <div className="text-neutral-400">Loading markdown...</div>;
+    return <div className="text-neutral-400 p-6">Loading markdown...</div>;
   }
 
   if (error) {
-    return <div className="text-red-400">{error}</div>;
+    return <div className="text-red-400 p-6">{error}</div>;
   }
 
   return (

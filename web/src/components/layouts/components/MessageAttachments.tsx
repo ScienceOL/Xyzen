@@ -564,8 +564,16 @@ export default function MessageAttachments({
 
               {/* Document Viewer */}
               <div className="flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-950">
-                {selectedDoc.name?.toLowerCase().endsWith(".md") ? (
+                {selectedDoc.type === "text/markdown" ||
+                selectedDoc.name?.toLowerCase().endsWith(".md") ? (
                   <MarkdownRenderer
+                    file={{
+                      id: selectedDoc.id,
+                      name: selectedDoc.name,
+                      type: selectedDoc.type,
+                      size: selectedDoc.size,
+                      url: fileBlobUrls[selectedDoc.id],
+                    }}
                     url={fileBlobUrls[selectedDoc.id]}
                     className="h-full w-full overflow-y-auto bg-white dark:bg-neutral-950 p-8"
                   />
