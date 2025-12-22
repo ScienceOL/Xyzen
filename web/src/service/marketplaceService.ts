@@ -24,6 +24,7 @@ export interface MarketplaceListing {
   updated_at: string;
   first_published_at: string | null;
   has_liked: boolean;
+  readme: string | null;
 }
 
 export interface AgentSnapshot {
@@ -62,10 +63,20 @@ export interface MarketplaceListingWithSnapshot extends MarketplaceListing {
   has_liked: boolean;
 }
 
+export interface UpdateAgentRequest {
+  name?: string;
+  description?: string;
+  avatar?: string;
+  tags?: string[];
+  readme?: string | null;
+  commit_message: string;
+}
+
 export interface PublishRequest {
   agent_id: string;
   commit_message: string;
   is_published?: boolean;
+  readme?: string | null;
 }
 
 export interface PublishResponse {
@@ -73,6 +84,12 @@ export interface PublishResponse {
   agent_id: string;
   snapshot_version: number;
   is_published: boolean;
+  readme: string | null;
+}
+
+export interface UpdateListingRequest {
+  is_published?: boolean;
+  readme?: string | null;
 }
 
 export interface ForkRequest {
@@ -173,6 +190,29 @@ class MarketplaceService {
     if (!response.ok) {
       throw new Error(`Failed to unpublish agent: ${response.statusText}`);
     }
+  }
+
+  /**
+   * Update listing details (e.g. README)
+   */
+  async updateListing(
+    marketplaceId: string,
+    request: UpdateListingRequest,
+  ): Promise<MarketplaceListing> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/${marketplaceId}`,
+      {
+        method: "PATCH",
+        headers: this.createAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update listing: ${response.statusText}`);
+    }
+
+    return response.json();
   }
 
   /**
@@ -314,6 +354,116 @@ class MarketplaceService {
 
     if (!response.ok) {
       throw new Error(`Failed to get my listings: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get starred marketplace listings
+   */
+  async getStarredListings(): Promise<MarketplaceListing[]> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/starred`,
+      {
+        method: "GET",
+        headers: this.createAuthHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get starred listings: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get version history of a marketplace listing
+   */
+  async getListingHistory(marketplaceId: string): Promise<AgentSnapshot[]> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/${marketplaceId}/history`,
+      {
+        method: "GET",
+        headers: this.createAuthHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get listing history: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Publish a specific version of the agent
+   */
+  async publishVersion(
+    marketplaceId: string,
+    version: number,
+  ): Promise<MarketplaceListing> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/${marketplaceId}/publish-version`,
+      {
+        method: "POST",
+        headers: this.createAuthHeaders(),
+        body: JSON.stringify({ version }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to publish version: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update agent and publish a new version
+   */
+  async updateAgentAndPublish(
+    marketplaceId: string,
+    request: UpdateAgentRequest,
+  ): Promise<MarketplaceListing> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/${marketplaceId}/agent`,
+      {
+        method: "PATCH",
+        headers: this.createAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to update agent and publish: ${response.statusText}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Pull update for a forked agent
+   */
+  async pullListingUpdate(agentId: string): Promise<{
+    agent_id: string;
+    updated: boolean;
+    new_version: number | null;
+    message: string;
+  }> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/agents/${agentId}/pull-update`,
+      {
+        method: "POST",
+        headers: this.createAuthHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to pull listing update: ${response.statusText}`);
     }
 
     return response.json();

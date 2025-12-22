@@ -1,14 +1,14 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Sequence
 from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from core.storage import FileScope
 from models.agent import Agent, AgentCreate, AgentScope
-from models.agent_marketplace import AgentMarketplaceCreate, AgentMarketplaceUpdate
-from models.agent_snapshot import AgentSnapshotCreate
+from models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate
+from models.agent_snapshot import AgentSnapshot, AgentSnapshotCreate
 from models.file import FileCreate
 from repos import (
     AgentLikeRepository,
@@ -36,7 +36,7 @@ class AgentMarketplaceService:
         self.file_repo = FileRepository(db)
         self.mcp_repo = McpRepository(db)
 
-    async def create_snapshot_from_agent(self, agent: Agent, commit_message: str) -> Any:
+    async def create_snapshot_from_agent(self, agent: Agent, commit_message: str) -> AgentSnapshot:
         """
         Creates a snapshot from the current agent configuration.
 
@@ -100,7 +100,9 @@ class AgentMarketplaceService:
         snapshot = await self.snapshot_repo.create_snapshot(snapshot_data)
         return snapshot
 
-    async def publish_agent(self, agent: Agent, commit_message: str, is_published: bool = True) -> Any:
+    async def publish_agent(
+        self, agent: Agent, commit_message: str, is_published: bool = True, readme: str | None = None
+    ) -> AgentMarketplace | None:
         """
         Publishes an agent to the marketplace or updates an existing listing.
 
@@ -108,6 +110,7 @@ class AgentMarketplaceService:
             agent: The agent to publish.
             commit_message: Description of changes.
             is_published: Whether to set the listing as published.
+            readme: Optional markdown README content.
 
         Returns:
             The marketplace listing.
@@ -129,6 +132,7 @@ class AgentMarketplaceService:
                 avatar=agent.avatar,
                 tags=agent.tags or [],
                 is_published=is_published,
+                readme=readme,
             )
             listing = await self.marketplace_repo.update_listing(existing_listing.id, update_data)
 
@@ -148,6 +152,7 @@ class AgentMarketplaceService:
                 description=agent.description,
                 avatar=agent.avatar,
                 tags=agent.tags or [],
+                readme=readme,
             )
             listing = await self.marketplace_repo.create_listing(listing_data)
 
@@ -159,6 +164,22 @@ class AgentMarketplaceService:
                 await self.db.flush()
 
         return listing
+
+    async def update_listing_details(
+        self, marketplace_id: UUID, update_data: AgentMarketplaceUpdate
+    ) -> AgentMarketplace | None:
+        """
+        Updates listing details (e.g. README) without creating a new snapshot.
+
+        Args:
+            marketplace_id: The marketplace listing ID.
+            update_data: The update data.
+
+        Returns:
+            The updated marketplace listing.
+        """
+        logger.info(f"Updating details for marketplace listing {marketplace_id}")
+        return await self.marketplace_repo.update_listing(marketplace_id, update_data)
 
     async def unpublish_agent(self, marketplace_id: UUID) -> bool:
         """
@@ -241,8 +262,8 @@ class AgentMarketplaceService:
         # Create the forked agent
         forked_agent = await self.agent_repo.create_agent(agent_create, user_id)
 
-        # Set original_source_id to track provenance
         forked_agent.original_source_id = marketplace_id
+        forked_agent.source_version = snapshot.version
         self.db.add(forked_agent)
         await self.db.flush()
 
@@ -399,7 +420,7 @@ class AgentMarketplaceService:
         logger.info(f"Successfully forked agent {listing.agent_id} to {forked_agent.id} for user {user_id}")
         return forked_agent
 
-    async def get_listing_with_snapshot(self, marketplace_id: UUID) -> tuple[Any, Any] | None:
+    async def get_listing_with_snapshot(self, marketplace_id: UUID) -> tuple[AgentMarketplace, AgentSnapshot] | None:
         """
         Gets a marketplace listing with its active snapshot.
 
@@ -462,7 +483,171 @@ class AgentMarketplaceService:
         Returns:
             True if user has liked, False otherwise.
         """
+
         return await self.like_repo.has_liked(user_id, marketplace_id)
+
+    async def get_starred_listings(self, user_id: str) -> Sequence[Any]:
+        """
+        Gets all marketplace listings starred by a user.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            List of starred listings.
+        """
+        return await self.marketplace_repo.get_liked_listings_by_user(user_id)
+
+    async def get_listing_history(self, marketplace_id: UUID) -> Sequence[AgentSnapshot]:
+        """
+        Gets the version history of a marketplace listing.
+
+        Args:
+            marketplace_id: The marketplace listing ID.
+
+        Returns:
+            List of AgentSnapshot instances.
+        """
+        listing = await self.marketplace_repo.get_by_id(marketplace_id)
+        if not listing:
+            return []
+        return await self.snapshot_repo.list_snapshots(listing.agent_id)
+
+    async def update_agent_and_publish(
+        self,
+        marketplace_id: UUID,
+        agent_update: AgentMarketplaceUpdate,
+        commit_message: str,
+    ) -> AgentMarketplace | None:
+        """
+        Updates the underlying agent and publishes a new version.
+
+        Args:
+            marketplace_id: The marketplace listing ID.
+            agent_update: Data to update (name, description, tags, readme).
+            commit_message: Description of the update.
+
+        Returns:
+            The updated marketplace listing.
+        """
+        listing = await self.marketplace_repo.get_by_id(marketplace_id)
+        if not listing:
+            raise ValueError("Listing not found")
+
+        # 1. Update the underlying Agent
+        from models.agent import AgentUpdate
+
+        agent = await self.agent_repo.get_agent_by_id(listing.agent_id)
+        if not agent:
+            raise ValueError("Agent not found")
+
+        # Prepare agent update
+        update_data = AgentUpdate(
+            name=agent_update.name,
+            description=agent_update.description,
+            avatar=agent_update.avatar,
+            tags=agent_update.tags,
+        )
+        await self.agent_repo.update_agent(agent.id, update_data)
+        # Refresh agent to get latest state for snapshot
+        await self.db.refresh(agent)
+
+        # 2. Create new Snapshot
+        snapshot = await self.create_snapshot_from_agent(agent, commit_message)
+
+        # 3. Update Listing with new snapshot and metadata
+        # We merge the agent_update with the new snapshot ID
+        agent_update.active_snapshot_id = snapshot.id
+        updated_listing = await self.marketplace_repo.update_listing(marketplace_id, agent_update)
+
+        await self.db.commit()
+        return updated_listing
+
+    async def publish_specific_version(self, marketplace_id: UUID, version: int) -> AgentMarketplace | None:
+        """
+        Publishes a specific past version of the agent.
+
+        Args:
+            marketplace_id: The marketplace listing ID.
+            version: The version number to publish.
+
+        Returns:
+            The updated marketplace listing.
+        """
+        listing = await self.marketplace_repo.get_by_id(marketplace_id)
+        if not listing:
+            raise ValueError("Listing not found")
+
+        snapshot = await self.snapshot_repo.get_snapshot_by_version(listing.agent_id, version)
+        if not snapshot:
+            raise ValueError(f"Snapshot version {version} not found")
+
+        # Update listing to point to this snapshot
+        update_data = AgentMarketplaceUpdate(active_snapshot_id=snapshot.id)
+        updated_listing = await self.marketplace_repo.update_listing(marketplace_id, update_data)
+        await self.db.commit()
+        return updated_listing
+
+    async def pull_listing_update(self, agent_id: UUID, user_id: str) -> Agent:
+        """
+        Updates a forked agent to the latest version from the marketplace.
+
+        Args:
+            agent_id: The UUID of the forked agent.
+            user_id: The user requesting the update.
+
+        Returns:
+            The updated Agent.
+        """
+        agent = await self.agent_repo.get_agent_by_id(agent_id)
+        if not agent:
+            raise ValueError("Agent not found")
+
+        if agent.user_id != user_id:
+            raise ValueError("Permission denied")
+
+        if not agent.original_source_id:
+            raise ValueError("Agent is not a fork")
+
+        # Get the marketplace listing
+        listing = await self.marketplace_repo.get_by_id(agent.original_source_id)
+        if not listing:
+            raise ValueError("Original listing not found")
+
+        # Get active snapshot
+        snapshot = await self.snapshot_repo.get_snapshot_by_id(listing.active_snapshot_id)
+        if not snapshot:
+            raise ValueError("Active snapshot not found")
+
+        # Update Agent Configuration
+        config = snapshot.configuration
+
+        # We preserve the user's provider_id and knowledge_set_id if possible
+        # but update core logic fields
+
+        from models.agent import AgentUpdate
+
+        update_data = AgentUpdate(
+            description=config.get("description"),
+            avatar=config.get("avatar"),
+            tags=config.get("tags", []),
+            model=config.get("model"),
+            temperature=config.get("temperature"),
+            prompt=config.get("prompt"),
+            require_tool_confirmation=config.get("require_tool_confirmation", False),
+        )
+
+        updated_agent = await self.agent_repo.update_agent(agent.id, update_data)
+        if not updated_agent:
+            raise Exception("Failed to update agent")
+
+        # Manually update source_version
+        updated_agent.source_version = snapshot.version
+        self.db.add(updated_agent)
+        await self.db.commit()
+        await self.db.refresh(updated_agent)
+
+        return updated_agent
 
     async def toggle_like(self, marketplace_id: UUID, user_id: str) -> tuple[bool, int]:
         """

@@ -23,7 +23,12 @@ from core.auth import AuthorizationService, get_auth_service
 from core.marketplace import AgentMarketplaceService
 from infra.database import get_session
 from middleware.auth import get_current_user
-from models.agent_marketplace import AgentMarketplaceRead, AgentMarketplaceReadWithSnapshot
+from models.agent import AgentRead
+from models.agent_marketplace import (
+    AgentMarketplaceRead,
+    AgentMarketplaceReadWithSnapshot,
+    AgentMarketplaceUpdate,
+)
 from models.agent_snapshot import AgentSnapshotRead
 from repos import AgentMarketplaceRepository, AgentSnapshotRepository
 
@@ -36,6 +41,7 @@ class PublishRequest(BaseModel):
     agent_id: UUID
     commit_message: str
     is_published: bool = True
+    readme: str | None = None
 
 
 class PublishResponse(BaseModel):
@@ -45,6 +51,31 @@ class PublishResponse(BaseModel):
     agent_id: UUID
     snapshot_version: int
     is_published: bool
+    readme: str | None = None
+
+
+class UpdateListingRequest(BaseModel):
+    """Request model for updating listing details"""
+
+    readme: str | None = None
+    is_published: bool | None = None
+
+
+class PublishVersionRequest(BaseModel):
+    """Request model for publishing a specific version"""
+
+    version: int
+
+
+class UpdateAgentRequest(BaseModel):
+    """Request model for updating agent and listing"""
+
+    name: str | None = None
+    description: str | None = None
+    avatar: str | None = None
+    tags: list[str] | None = None
+    readme: str | None = None
+    commit_message: str
 
 
 class ForkRequest(BaseModel):
@@ -118,7 +149,10 @@ async def publish_agent(
             agent=agent,
             commit_message=request.commit_message,
             is_published=request.is_published,
+            readme=request.readme,
         )
+        if not listing:
+            raise HTTPException(status_code=404, detail="Marketplace listing not found")
 
         await db.commit()
 
@@ -131,9 +165,57 @@ async def publish_agent(
             agent_id=listing.agent_id,
             snapshot_version=snapshot.version if snapshot else 1,
             is_published=listing.is_published,
+            readme=listing.readme,
         )
     except ErrCodeError as e:
         raise handle_auth_error(e)
+
+
+@router.patch("/{marketplace_id}", response_model=AgentMarketplaceRead)
+async def update_listing(
+    marketplace_id: UUID,
+    request: UpdateListingRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentMarketplaceRead:
+    """
+    Update details of a marketplace listing (e.g. README, publication status).
+    Does NOT create a new snapshot.
+
+    Args:
+        marketplace_id: UUID of the marketplace listing.
+        request: Update request with optional fields.
+        user_id: Authenticated user ID (injected by dependency).
+        db: Database session (injected by dependency).
+
+    Returns:
+        Updated marketplace listing.
+
+    Raises:
+        HTTPException: 404 if listing not found, 403 if user doesn't own it.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    if listing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
+
+    marketplace_service = AgentMarketplaceService(db)
+    update_data = AgentMarketplaceUpdate(
+        readme=request.readme,
+        is_published=request.is_published,
+    )
+    updated_listing = await marketplace_service.update_listing_details(marketplace_id, update_data)
+
+    if not updated_listing:
+        raise HTTPException(status_code=500, detail="Failed to update listing")
+
+    await db.commit()
+
+    return AgentMarketplaceRead(**updated_listing.model_dump())
 
 
 @router.post("/unpublish/{marketplace_id}", status_code=204)
@@ -286,6 +368,26 @@ async def search_marketplace(
     return [AgentMarketplaceRead(**listing.model_dump()) for listing in listings]
 
 
+@router.get("/starred", response_model=list[AgentMarketplaceRead])
+async def get_starred_listings(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> list[AgentMarketplaceRead]:
+    """
+    Get all marketplace listings starred by the current user.
+
+    Args:
+        user_id: Authenticated user ID (injected by dependency).
+        db: Database session (injected by dependency).
+
+    Returns:
+        List of starred marketplace listings.
+    """
+    marketplace_service = AgentMarketplaceService(db)
+    listings = await marketplace_service.get_starred_listings(user_id)
+    return [AgentMarketplaceRead(**listing.model_dump()) for listing in listings]
+
+
 @router.get("/{marketplace_id}", response_model=AgentMarketplaceReadWithSnapshot)
 async def get_marketplace_listing(
     marketplace_id: UUID,
@@ -413,6 +515,137 @@ async def toggle_like(
     await db.commit()
 
     return LikeResponse(is_liked=is_liked, likes_count=likes_count)
+
+
+@router.get("/{marketplace_id}/history", response_model=list[AgentSnapshotRead])
+async def get_listing_history(
+    marketplace_id: UUID,
+    db: AsyncSession = Depends(get_session),
+) -> list[AgentSnapshotRead]:
+    """
+    Get version history of a marketplace listing.
+
+    Args:
+        marketplace_id: UUID of the marketplace listing.
+        db: Database session (injected by dependency).
+
+    Returns:
+        List of agent snapshots.
+    """
+    marketplace_service = AgentMarketplaceService(db)
+    snapshots = await marketplace_service.get_listing_history(marketplace_id)
+    return [AgentSnapshotRead(**snapshot.model_dump()) for snapshot in snapshots]
+
+
+@router.post("/{marketplace_id}/publish-version", response_model=AgentMarketplaceRead)
+async def publish_version(
+    marketplace_id: UUID,
+    request: PublishVersionRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentMarketplaceRead:
+    """
+    Publish a specific version of the agent to the marketplace.
+
+    Args:
+        marketplace_id: UUID of the marketplace listing.
+        request: Request containing the version number.
+        user_id: Authenticated user ID (injected by dependency).
+        db: Database session (injected by dependency).
+
+    Returns:
+        Updated marketplace listing.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    if listing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
+
+    marketplace_service = AgentMarketplaceService(db)
+    try:
+        updated_listing = await marketplace_service.publish_specific_version(marketplace_id, request.version)
+        if not updated_listing:
+            raise HTTPException(status_code=404, detail="Marketplace listing not found")
+        return AgentMarketplaceRead(**updated_listing.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{marketplace_id}/agent", response_model=AgentMarketplaceRead)
+async def update_agent_and_listing(
+    marketplace_id: UUID,
+    request: UpdateAgentRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentMarketplaceRead:
+    """
+    Update agent details and publish a new version.
+
+    Args:
+        marketplace_id: UUID of the marketplace listing.
+        request: Request containing update data and commit message.
+        user_id: Authenticated user ID (injected by dependency).
+        db: Database session (injected by dependency).
+
+    Returns:
+        Updated marketplace listing.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    if listing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
+
+    marketplace_service = AgentMarketplaceService(db)
+    update_data = AgentMarketplaceUpdate(
+        name=request.name,
+        description=request.description,
+        avatar=request.avatar,
+        tags=request.tags,
+        readme=request.readme,
+    )
+
+    try:
+        updated_listing = await marketplace_service.update_agent_and_publish(
+            marketplace_id, update_data, request.commit_message
+        )
+        if not updated_listing:
+            raise HTTPException(status_code=404, detail="Marketplace listing not found")
+        return AgentMarketplaceRead(**updated_listing.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/agents/{agent_id}/pull-update", response_model=AgentRead)
+async def pull_update(
+    agent_id: UUID,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentRead:
+    """
+    Update a forked agent to the latest marketplace version.
+
+    Args:
+        agent_id: UUID of the forked agent.
+        user_id: Authenticated user ID (injected by dependency).
+        db: Database session (injected by dependency).
+
+    Returns:
+        Updated agent.
+    """
+    marketplace_service = AgentMarketplaceService(db)
+    try:
+        updated_agent = await marketplace_service.pull_listing_update(agent_id, user_id)
+        return AgentRead(**updated_agent.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/my-listings/all", response_model=list[AgentMarketplaceRead])

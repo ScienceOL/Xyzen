@@ -40,6 +40,10 @@ class AgentBase(SQLModel):
         index=True,
         description="UUID of the marketplace listing this agent was forked from",
     )
+    source_version: int | None = Field(
+        default=None,
+        description="Version of the marketplace listing this agent was forked from",
+    )
 
 
 class Agent(AgentBase, table=True):

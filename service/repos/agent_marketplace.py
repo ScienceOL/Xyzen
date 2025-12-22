@@ -2,10 +2,10 @@ import logging
 from typing import Literal, Sequence
 from uuid import UUID
 
-from sqlalchemy import func, update
-from sqlmodel import asc, col, desc, or_, select
+from sqlmodel import asc, case, col, desc, func, or_, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from models.agent_like import AgentLike
 from models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ class AgentMarketplaceRepository:
             description=listing_data.description,
             avatar=listing_data.avatar,
             tags=listing_data.tags,
+            readme=listing_data.readme,
         )
 
         self.db.add(listing)
@@ -197,6 +198,48 @@ class AgentMarketplaceRepository:
         result = await self.db.exec(statement)
         return result.all()
 
+    async def get_liked_listings_by_user(
+        self,
+        user_id: str,
+        query: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> Sequence[AgentMarketplace]:
+        """
+        Fetches marketplace listings liked by a specific user.
+
+        Args:
+            user_id: The ID of the user who liked the listings.
+            query: Optional search query to filter liked listings.
+            limit: Maximum number of results.
+            offset: Pagination offset.
+
+        Returns:
+            List of liked AgentMarketplace instances.
+        """
+        logger.debug(f"Fetching liked listings for user {user_id}")
+
+        statement = (
+            select(AgentMarketplace)
+            .join(AgentLike, col(AgentMarketplace.id) == AgentLike.marketplace_id)
+            .where(AgentLike.user_id == user_id)
+            .where(col(AgentMarketplace.is_published).is_(True))
+        )
+
+        if query:
+            search_pattern = f"%{query}%"
+            statement = statement.where(
+                or_(
+                    col(AgentMarketplace.name).ilike(search_pattern),
+                    col(AgentMarketplace.description).ilike(search_pattern),
+                )
+            )
+
+        statement = statement.order_by(desc(AgentLike.created_at)).limit(limit).offset(offset)
+
+        result = await self.db.exec(statement)
+        return result.all()
+
     async def increment_likes(self, marketplace_id: UUID) -> int:
         """
         Increments the likes count for a marketplace listing atomically.
@@ -237,12 +280,17 @@ class AgentMarketplaceRepository:
         statement = (
             update(AgentMarketplace)
             .where(col(AgentMarketplace.id) == marketplace_id)
-            .values(likes_count=func.greatest(0, AgentMarketplace.likes_count - 1))
+            .values(
+                likes_count=case(
+                    (AgentMarketplace.likes_count > 0, AgentMarketplace.likes_count - 1),
+                    else_=0,
+                )
+            )
             .returning(col(AgentMarketplace.likes_count))
         )
         result = await self.db.exec(statement)
         new_count = result.first()
-        if new_count:
+        if new_count is not None:
             return new_count[0]
         return 0
 

@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from "react";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EditAgentModal from "@/components/modals/EditAgentModal";
+import { useMyMarketplaceListings } from "@/hooks/useMarketplace";
 import { useXyzen } from "@/store";
 // import { knowledgeSetService } from "@/service/knowledgeSetService";
 
@@ -278,6 +279,9 @@ export default function XyzenAgent({
     llmProvidersLoading,
   } = useXyzen();
 
+  // Fetch marketplace listings to check if deleted agent has a published version
+  const { data: myListings } = useMyMarketplaceListings();
+
   useEffect(() => {
     fetchAgents();
   }, [fetchAgents]);
@@ -410,7 +414,15 @@ export default function XyzenAgent({
             setAgentToDelete(null);
           }}
           title="删除助手"
-          message={`确定要永久删除助手"${agentToDelete.name}"吗？此操作无法撤销。`}
+          message={(() => {
+            const hasListing = myListings?.some(
+              (l) => l.agent_id === agentToDelete.id,
+            );
+            if (hasListing) {
+              return `⚠️ 此助手已发布到市场。删除后，市场中的发布版本也将被移除。\n\n确定要永久删除助手"${agentToDelete.name}"吗？此操作无法撤销。`;
+            }
+            return `确定要永久删除助手"${agentToDelete.name}"吗？此操作无法撤销。`;
+          })()}
         />
       )}
     </motion.div>

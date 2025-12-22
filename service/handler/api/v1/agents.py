@@ -23,6 +23,7 @@ from infra.database import get_session
 from middleware.auth import get_current_user
 from models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
 from repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
+from repos.agent_marketplace import AgentMarketplaceRepository
 from repos.session import SessionRepository
 
 router = APIRouter(tags=["agents"])
@@ -271,6 +272,12 @@ async def delete_agent(
         # ALLOW deletion of default agents
         # if agent.tags and any(tag.startswith("default_") for tag in agent.tags):
         #     raise HTTPException(status_code=403, detail="Cannot delete default agents")
+
+        # Cascade delete: Clean up marketplace listing if exists
+        marketplace_repo = AgentMarketplaceRepository(db)
+        listing = await marketplace_repo.get_by_agent_id(agent.id)
+        if listing:
+            await marketplace_repo.delete_listing(listing.id)
 
         agent_repo = AgentRepository(db)
         await agent_repo.delete_agent(agent.id)
