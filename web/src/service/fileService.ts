@@ -347,11 +347,20 @@ class FileService {
       };
     }
 
-    if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
-      return {
-        valid: false,
-        error: `File type ${file.type} is not supported`,
-      };
+    if (allowedTypes.length > 0) {
+      const typeMatches = allowedTypes.includes(file.type);
+      const extensionMatches = allowedTypes.some(
+        (type) =>
+          type.startsWith(".") &&
+          file.name.toLowerCase().endsWith(type.toLowerCase()),
+      );
+
+      if (!typeMatches && !extensionMatches) {
+        return {
+          valid: false,
+          error: `File type ${file.type || "unknown"} is not supported`,
+        };
+      }
     }
 
     return { valid: true };
@@ -366,7 +375,8 @@ class FileService {
     if (
       file.type.includes("pdf") ||
       file.type.includes("text") ||
-      file.type.includes("document")
+      file.type.includes("document") ||
+      file.name.toLowerCase().endsWith(".md")
     ) {
       return "documents";
     }

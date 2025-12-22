@@ -9,6 +9,8 @@ import clsx from "clsx";
 import { useXyzen } from "@/store";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { MarkdownRenderer } from "@/components/preview/renderers/MarkdownRenderer";
+
 interface MessageAttachmentsProps {
   attachments: MessageAttachment[];
   className?: string;
@@ -19,7 +21,9 @@ export default function MessageAttachments({
   className,
 }: MessageAttachmentsProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<MessageAttachment | null>(
+    null,
+  );
   const [imageBlobUrls, setImageBlobUrls] = useState<Record<string, string>>(
     {},
   );
@@ -275,7 +279,7 @@ export default function MessageAttachments({
               style={{ height: "140px", width: "100%" }}
               onClick={() => {
                 if (fileBlobUrls[doc.id]) {
-                  setSelectedPdf(fileBlobUrls[doc.id]);
+                  setSelectedDoc(doc);
                 }
               }}
             >
@@ -471,15 +475,15 @@ export default function MessageAttachments({
         )}
       </AnimatePresence>
 
-      {/* PDF Preview Modal */}
+      {/* Document Preview Modal */}
       <AnimatePresence>
-        {selectedPdf && (
+        {selectedDoc && fileBlobUrls[selectedDoc.id] && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
-            onClick={() => setSelectedPdf(null)}
+            onClick={() => setSelectedDoc(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -508,15 +512,15 @@ export default function MessageAttachments({
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
-                    Document Preview
+                    {selectedDoc.name || "Document Preview"}
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
                   <motion.a
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    href={selectedPdf}
-                    download
+                    href={fileBlobUrls[selectedDoc.id]}
+                    download={selectedDoc.name}
                     className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
                   >
                     <svg
@@ -537,7 +541,7 @@ export default function MessageAttachments({
                   <motion.button
                     whileHover={{ scale: 1.05, rotate: 90 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setSelectedPdf(null)}
+                    onClick={() => setSelectedDoc(null)}
                     className="rounded-lg p-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                     aria-label="Close"
                   >
@@ -558,13 +562,28 @@ export default function MessageAttachments({
                 </div>
               </div>
 
-              {/* PDF Viewer */}
+              {/* Document Viewer */}
               <div className="flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-950">
-                <iframe
-                  src={selectedPdf}
-                  className="w-full h-full border-0"
-                  title="PDF Preview"
-                />
+                {selectedDoc.type === "text/markdown" ||
+                selectedDoc.name?.toLowerCase().endsWith(".md") ? (
+                  <MarkdownRenderer
+                    file={{
+                      id: selectedDoc.id,
+                      name: selectedDoc.name,
+                      type: selectedDoc.type,
+                      size: selectedDoc.size,
+                      url: fileBlobUrls[selectedDoc.id],
+                    }}
+                    url={fileBlobUrls[selectedDoc.id]}
+                    className="h-full w-full overflow-y-auto bg-white dark:bg-neutral-950 p-8"
+                  />
+                ) : (
+                  <iframe
+                    src={fileBlobUrls[selectedDoc.id]}
+                    className="w-full h-full border-0"
+                    title="Document Preview"
+                  />
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -85,6 +85,20 @@ async def upload_file(
         if not category:
             category = detect_file_category(file.filename)
 
+        # Determine content type
+        content_type = file.content_type
+        if not content_type or content_type == "application/octet-stream":
+            import mimetypes
+
+            content_type, _ = mimetypes.guess_type(file.filename)
+
+            # Explicit fallback for markdown
+            if not content_type and file.filename.lower().endswith(".md"):
+                content_type = "text/markdown"
+
+            if not content_type:
+                content_type = "application/octet-stream"
+
         # Generate unique storage key (always create new file, no deduplication)
         storage_key = generate_storage_key(
             user_id=user_id,
@@ -99,7 +113,7 @@ async def upload_file(
         await storage.upload_file(
             file_data=file_stream,
             storage_key=storage_key,
-            content_type=file.content_type,
+            content_type=content_type,
             metadata={"user_id": user_id},
         )
 
@@ -108,7 +122,7 @@ async def upload_file(
             user_id=user_id,
             storage_key=storage_key,
             original_filename=file.filename,
-            content_type=file.content_type or "application/octet-stream",
+            content_type=content_type,
             file_size=file_size,
             scope=scope,
             category=category or FileCategory.OTHER,
