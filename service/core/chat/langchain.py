@@ -85,7 +85,7 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None, sessio
 
         # Create tool execution function with closure
         async def make_tool_func(t_name: str, t_db: AsyncSession, t_agent: Any, t_session_id: Any) -> Any:
-            async def tool_func(**kwargs: Any) -> str:
+            async def tool_func(**kwargs: Any) -> Any:
                 """Execute the tool with given arguments."""
                 try:
                     args_json = json.dumps(kwargs)
@@ -93,7 +93,30 @@ async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None, sessio
                     # Format result for AI consumption using the utility function
                     # from core.chat.content_utils import format_tool_result_for_ai
 
-                    # return format_tool_result_for_ai(result)
+                    if isinstance(result, list):
+                        formatted_content = []
+                        for item in result:
+                            # Check for FastMCP Image object (has data and format) or similar
+                            # We check attributes dynamically to avoid importing fastmcp here directly if possible,
+                            # or we can rely on standard structure.
+                            if hasattr(item, "data") and hasattr(item, "format") and item.format:
+                                # Convert to base64
+                                b64_data = base64.b64encode(item.data).decode("utf-8")
+                                formatted_content.append(
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/{item.format};base64,{b64_data}",
+                                            "detail": "auto",
+                                        },
+                                    }
+                                )
+                            elif hasattr(item, "type") and item.type == "text" and hasattr(item, "text"):
+                                formatted_content.append({"type": "text", "text": item.text})
+                            else:
+                                formatted_content.append(item)
+                        return formatted_content
+
                     return result
                 except Exception as e:
                     logger.error(f"Tool {t_name} execution failed: {e}")
@@ -273,8 +296,9 @@ async def get_ai_response_stream_langchain_legacy(
         user_provider_manager = await get_user_provider_manager(user_id, db)
     except ValueError as e:
         logger.error(f"Failed to get provider manager for user {user_id}: {e}")
-        yield {"type": ChatEventType.ERROR, "data": {"error": "No LLM providers configured."}}
         return
+
+    from core.chat.tools import format_tool_result
 
     # Use the provided agent parameter (for legacy compatibility)
     # If no agent provided, try to load from session
@@ -407,12 +431,15 @@ async def get_ai_response_stream_langchain_legacy(
                             last_message.content,
                         )
                         # Format result for frontend display using the utility function
+                        # Use loose retrieval for name since tool_call var might be unbound if we didn't enter previous block
+                        tool_name = getattr(last_message, "name", "unknown")
+                        formatted_result = format_tool_result(last_message.content, tool_name)
                         yield {
                             "type": ChatEventType.TOOL_CALL_RESPONSE,
                             "data": {
                                 "toolCallId": tool_call_id,
                                 "status": ToolCallStatus.COMPLETED,
-                                "result": last_message.content,
+                                "result": formatted_result,
                             },
                         }
 
@@ -710,5 +737,17 @@ async def get_ai_response_stream_langchain_legacy(
                 }
 
     except Exception as e:
-        logger.error(f"Agent execution failed: {e}", exc_info=True)
-        yield {"type": ChatEventType.ERROR, "data": {"error": f"Service unavailable: {e}"}}
+        error_str = str(e).lower()
+        if "context_length_exceeded" in error_str or (
+            hasattr(e, "code") and getattr(e, "code") == "context_length_exceeded"
+        ):
+            logger.warning(f"Context length exceeded for user {user_id}: {e}")
+            yield {
+                "type": ChatEventType.ERROR,
+                "data": {
+                    "error": "The conversation is too long for the model to process. Please try starting a new chat or reducing the number of attached files."
+                },
+            }
+        else:
+            logger.error(f"Agent execution failed: {e}", exc_info=True)
+            yield {"type": ChatEventType.ERROR, "data": {"error": f"Service unavailable: {e}"}}
