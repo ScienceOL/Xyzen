@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from models.agent import AgentCreate, AgentScope, AgentUpdate
+from app.models.agent import AgentCreate, AgentScope, AgentUpdate
 from tests.factories.agent import AgentCreateFactory
 
 

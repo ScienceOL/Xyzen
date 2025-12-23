@@ -2,8 +2,8 @@
 
 import pytest
 
-from models.provider import ProviderCreate, ProviderUpdate
-from schemas.provider import ProviderScope, ProviderType
+from app.models.provider import ProviderCreate, ProviderUpdate
+from app.schemas.provider import ProviderScope, ProviderType
 
 
 class TestProviderModel:

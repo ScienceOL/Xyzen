@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
-from schemas.provider import ProviderScope, ProviderType
+from app.schemas.provider import ProviderScope, ProviderType
 from tests.factories.provider import ProviderCreateFactory
 
 

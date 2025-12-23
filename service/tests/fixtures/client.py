@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.infra.database import get_session
 from app.main import app
-from infra.database import get_session
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ async def async_client(
     override_get_session: Callable[[], AsyncGenerator[AsyncSession, None]],
 ) -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client with mocked database session and user auth."""
-    from middleware.auth import get_current_user
+    from app.middleware.auth import get_current_user
 
     async def mock_get_current_user() -> str:
         return "test-user-id"

@@ -1,6 +1,6 @@
 """Tests for McpServer model."""
 
-from models.mcp import McpServerCreate, McpServerUpdate
+from app.models.mcp import McpServerCreate, McpServerUpdate
 
 
 class TestMcpServerModel:

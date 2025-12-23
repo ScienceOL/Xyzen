@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from models.message import MessageCreate, MessageUpdate
+from app.models.message import MessageCreate, MessageUpdate
 
 
 class TestMessageModel:

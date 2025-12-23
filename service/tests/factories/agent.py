@@ -1,7 +1,7 @@
 from polyfactory import Use
 from polyfactory.factories.pydantic_factory import ModelFactory
 
-from models.agent import Agent, AgentCreate, AgentScope
+from app.models.agent import Agent, AgentCreate, AgentScope
 
 
 class AgentFactory(ModelFactory[Agent]):

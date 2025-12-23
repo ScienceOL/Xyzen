@@ -4,9 +4,9 @@ import pytest
 from httpx import AsyncClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models.agent import AgentCreate, AgentScope
-from repos.agent import AgentRepository
-from repos.agent_marketplace import AgentMarketplaceRepository
+from app.models.agent import AgentCreate, AgentScope
+from app.repos.agent import AgentRepository
+from app.repos.agent_marketplace import AgentMarketplaceRepository
 
 
 @pytest.mark.asyncio

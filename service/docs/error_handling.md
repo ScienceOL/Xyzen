@@ -9,7 +9,7 @@
 使用 `IntEnum` 定义标准化错误码，分段管理：
 
 ```python
-from common.code.error_code import ErrCode
+from app.common.code.error_code import ErrCode
 
 # 通用错误 (0-999)
 ErrCode.SUCCESS            # 0
@@ -39,7 +39,7 @@ ErrCode.STREAM_INTERRUPTED       # 5000
 ### 2. 异常封装（ErrCodeError）
 
 ```python
-from common.code.error_code import ErrCode, ErrCodeError
+from app.common.code.error_code import ErrCode, ErrCodeError
 
 # 基础用法：直接抛出
 raise ErrCodeError(ErrCode.SESSION_NOT_FOUND)
@@ -61,7 +61,7 @@ except ValueError as e:
 ### 3. 响应封装（ResponseEnvelope）
 
 ```python
-from schemas.response import ResponseEnvelope
+from app.schemas.response import ResponseEnvelope
 
 # ✅ 成功响应
 return ResponseEnvelope.success({"result": "AI response here"})
@@ -85,8 +85,8 @@ except ErrCodeError as e:
 
 ```python
 from fastapi import APIRouter
-from common.code.error_code import ErrCode, ErrCodeError
-from schemas.response import ResponseEnvelope
+from app.common.code.error_code import ErrCode, ErrCodeError
+from app.schemas.response import ResponseEnvelope
 
 router = APIRouter()
 
@@ -123,8 +123,8 @@ async def chat_endpoint(message: str):
 ```python
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from common.code.error_code import ErrCodeError
-from schemas.response import ResponseEnvelope
+from app.common.code.error_code import ErrCodeError
+from app.schemas.response import ResponseEnvelope
 
 app = FastAPI()
 
@@ -152,7 +152,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 ```python
 from fastapi import WebSocket
-from schemas.response import ResponseEnvelope, WSData, WSMetadata
+from app.schemas.response import ResponseEnvelope, WSData, WSMetadata
 import uuid
 
 async def handle_websocket_message(websocket: WebSocket, message: dict):
@@ -182,7 +182,7 @@ async def handle_websocket_message(websocket: WebSocket, message: dict):
 ### 业务层抛出异常
 
 ```python
-from common.code.error_code import ErrCode, ErrCodeError
+from app.common.code.error_code import ErrCode, ErrCodeError
 
 async def get_topic(topic_id: str) -> Topic:
     """获取 topic，不存在时抛出标准异常"""

@@ -8,13 +8,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastmcp.server.http import create_streamable_http_app
 
-from core.configs import configs
-from core.logger import LOGGING_CONFIG
-from handler import root_router
-from handler.mcp import setup_mcp_routes
+from app.api import root_router
+from app.common.configs import configs
+from app.core.logger import LOGGING_CONFIG
 
-# from middleware.auth.casdoor import casdoor_mcp_auth
-from infra.database import create_db_and_tables
+# from app.middleware.auth.casdoor import casdoor_mcp_auth
+from app.infra.database import create_db_and_tables
+from app.mcp import setup_mcp_routes
 
 
 @asynccontextmanager
@@ -23,13 +23,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await create_db_and_tables()
 
     # Initialize system provider from environment config
-    from core.providers import initialize_providers_on_startup
+    from app.core.providers import initialize_providers_on_startup
 
     await initialize_providers_on_startup()
 
     # Initialize system agents (Chat agent)
-    from core.system_agent import SystemAgentManager
-    from infra.database import AsyncSessionLocal
+    from app.core.system_agent import SystemAgentManager
+    from app.infra.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         try:
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             pass
 
     # Seed builtin graph agents to database
-    from handler.builtin_agents import registry as builtin_agent_registry
+    from app.agents import registry as builtin_agent_registry
 
     async with AsyncSessionLocal() as db:
         try:
@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             pass
 
     # 自动创建和管理所有 MCP 服务器
-    from handler.mcp import registry
+    from app.mcp import registry
 
     mcp_apps = {}
     lifespan_contexts: list[

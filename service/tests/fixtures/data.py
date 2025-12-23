@@ -3,9 +3,9 @@ from uuid import uuid4
 
 import pytest
 
-from models.provider import Provider, ProviderCreate
-from schemas.message import ChatCompletionRequest, ChatMessage
-from schemas.provider import ProviderScope, ProviderType
+from app.models.provider import Provider, ProviderCreate
+from app.schemas.message import ChatCompletionRequest, ChatMessage
+from app.schemas.provider import ProviderScope, ProviderType
 
 
 @pytest.fixture

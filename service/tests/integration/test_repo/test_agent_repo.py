@@ -1,8 +1,8 @@
 import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models.agent import AgentScope
-from repos.agent import AgentRepository
+from app.models.agent import AgentScope
+from app.repos.agent import AgentRepository
 from tests.factories.agent import AgentCreateFactory
 
 

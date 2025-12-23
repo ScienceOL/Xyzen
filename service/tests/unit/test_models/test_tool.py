@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from models.tool import (
+from app.models.tool import (
     ToolCreate,
     ToolFunctionCreate,
     ToolFunctionUpdate,

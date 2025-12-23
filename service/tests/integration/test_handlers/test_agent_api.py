@@ -2,9 +2,9 @@ import pytest
 from httpx import AsyncClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models.agent import AgentScope
-from models.sessions import SessionCreate
-from repos.session import SessionRepository
+from app.models.agent import AgentScope
+from app.models.sessions import SessionCreate
+from app.repos.session import SessionRepository
 from tests.factories.agent import AgentCreateFactory
 
 

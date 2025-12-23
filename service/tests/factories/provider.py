@@ -1,8 +1,8 @@
 from polyfactory import Use
 from polyfactory.factories.pydantic_factory import ModelFactory
 
-from models.provider import Provider, ProviderCreate
-from schemas.provider import ProviderScope, ProviderType
+from app.models.provider import Provider, ProviderCreate
+from app.schemas.provider import ProviderScope, ProviderType
 
 
 class ProviderFactory(ModelFactory[Provider]):

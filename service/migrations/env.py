@@ -13,10 +13,10 @@ sys.path.insert(0, str(service_dir))
 
 
 # Ensure all models are imported to register with SQLModel.metadata
-importlib.import_module("models")
+importlib.import_module("app.models")
 
 # Import project modules after adding to path
-from core.configs import configs  # noqa: E402
+from app.common.configs import configs  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
