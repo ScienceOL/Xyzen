@@ -20,15 +20,15 @@ def mock_deps(mocker: MockerFixture) -> Generator[tuple[MagicMock, MagicMock], N
     mock_session.__aenter__.return_value = mock_session
     mock_session.__aexit__.return_value = None
 
-    mocker.patch("handler.mcp.knowledge._get_current_user_id", new_callable=mocker.AsyncMock, return_value="user123")
-    mocker.patch("handler.mcp.knowledge.AsyncSessionLocal", return_value=mock_session)
-    mocker.patch("handler.mcp.knowledge.FileRepository", return_value=mock_file_repo)
+    mocker.patch("app.mcp.knowledge._get_current_user_id", new_callable=mocker.AsyncMock, return_value="user123")
+    mocker.patch("app.mcp.knowledge.AsyncSessionLocal", return_value=mock_session)
+    mocker.patch("app.mcp.knowledge.FileRepository", return_value=mock_file_repo)
     mocker.patch(
-        "handler.mcp.knowledge._get_files_in_knowledge_set", new_callable=mocker.AsyncMock, return_value=["file123"]
+        "app.mcp.knowledge._get_files_in_knowledge_set", new_callable=mocker.AsyncMock, return_value=["file123"]
     )
-    mocker.patch("handler.mcp.knowledge.get_storage_service", return_value=mock_storage)
+    mocker.patch("app.mcp.knowledge.get_storage_service", return_value=mock_storage)
     # mock_get_handler needs to be captured
-    mock_get_handler = mocker.patch("handler.mcp.file_handlers.FileHandlerFactory.get_handler")
+    mock_get_handler = mocker.patch("app.mcp.file_handlers.FileHandlerFactory.get_handler")
 
     yield mock_file_repo, mock_get_handler
 
