@@ -51,13 +51,12 @@ async def test_read_file_image_limit_exceeded(mock_deps: tuple[MagicMock, MagicM
     mock_get_handler.return_value = mock_handler
 
     # Test call
-    result: list[Any] = await read_file.fn("ks123", "large.pdf", mode="image")  # type: ignore
-
+    result: list[Any] = await read_file.fn("ks123", "large.pdf", mode="image")
     # Verify
     assert isinstance(result, list), f"Expected list, got {type(result)}"
     assert len(result) == 6, f"Expected 6 items, got {len(result)}"  # 5 images + 1 warning text
     assert hasattr(result[5], "text"), "Last item missing 'text' attribute"
-    assert result[5].text.startswith("\n\n[Warning:"), f"Text mismatch: {result[5].text}"  # type: ignore
+    assert result[5].text.startswith("\n\n[Warning:"), f"Text mismatch: {result[5].text}"
 
 
 @pytest.mark.asyncio
@@ -78,8 +77,7 @@ async def test_read_file_under_limit(mock_deps: tuple[MagicMock, MagicMock], moc
     mock_get_handler.return_value = mock_handler
 
     # Test call
-    result: list[Any] = await read_file.fn("ks123", "small.pdf", mode="image")  # type: ignore
-
+    result: list[Any] = await read_file.fn("ks123", "small.pdf", mode="image")
     # Verify
     assert isinstance(result, list)
     assert len(result) == 3

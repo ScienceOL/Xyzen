@@ -139,6 +139,36 @@ class ModelFilter:
         return filter_fn
 
     @staticmethod
+    def no_date_suffix_filter() -> Callable[[str], bool]:
+        """
+        Create a filter that excludes model names ending with a date-like suffix.
+        Example: "gpt-4-0325", "claude-3-03-25"
+
+        Returns:
+            Filter function that returns True if no date suffix is found
+        """
+
+        def filter_fn(model_name: str) -> bool:
+            # Matches suffixes like -03-25, -0325, 03-25, 0325 at the end
+            return not re.search(r"[-]?\d{2}-?\d{2}$", model_name)
+
+        return filter_fn
+
+    @staticmethod
+    def no_tts_filter() -> Callable[[str], bool]:
+        """
+        Create a filter that excludes model names containing "tts".
+
+        Returns:
+            Filter function that returns True if "tts" is not in the name
+        """
+
+        def filter_fn(model_name: str) -> bool:
+            return "tts" not in model_name.lower()
+
+        return filter_fn
+
+    @staticmethod
     def combined_filter(*filters: Callable[[str], bool]) -> Callable[[str], bool]:
         """
         Combine multiple filter functions with AND logic.
@@ -227,21 +257,29 @@ class LiteLLMService:
         """
         filter_rules = {
             "openai": ModelFilter.combined_filter(
+                ModelFilter.no_date_suffix_filter(),
+                ModelFilter.no_tts_filter(),
                 ModelFilter.substring_filter("gpt"),
                 ModelFilter.version_filter(min_version=5),
                 ModelFilter.no_slash_filter(),
             ),
             "azure_openai": ModelFilter.combined_filter(
+                ModelFilter.no_date_suffix_filter(),
+                ModelFilter.no_tts_filter(),
                 ModelFilter.substring_filter("gpt"),
                 ModelFilter.version_filter(min_version=5, max_version=6),
                 ModelFilter.azure_path_filter(),
             ),
             "google": ModelFilter.combined_filter(
+                ModelFilter.no_date_suffix_filter(),
+                ModelFilter.no_tts_filter(),
                 ModelFilter.substring_filter("gemini"),
                 ModelFilter.version_filter(min_version=2.5),
                 ModelFilter.no_slash_filter(),
             ),
             "google_vertex": ModelFilter.combined_filter(
+                ModelFilter.no_date_suffix_filter(),
+                ModelFilter.no_tts_filter(),
                 ModelFilter.substring_filter("gemini"),
                 ModelFilter.version_filter(min_version=2.5),
                 ModelFilter.no_slash_filter(),
