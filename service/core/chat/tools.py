@@ -26,7 +26,7 @@ async def prepare_mcp_tools(db: AsyncSession, agent: Any, session_id: Any = None
         session_id: Session UUID (optional)
 
     Returns:
-        List of tool definitions
+        List of Tool definitions
     """
     tools: list[dict[str, Any]] = []
     all_mcp_servers = []
@@ -96,7 +96,7 @@ async def prepare_mcp_tools(db: AsyncSession, agent: Any, session_id: Any = None
 
 async def execute_tool_call(
     db: AsyncSession, tool_name: str, tool_args: str, agent: Any, session_id: Any = None
-) -> str:
+) -> Any:
     """
     Execute a tool call by searching in both agent-level and session-level MCP servers.
 
@@ -108,7 +108,7 @@ async def execute_tool_call(
         session_id: Session UUID (optional)
 
     Returns:
-        Tool execution result as string
+        Tool execution result (Any type, preserving structure)
     """
     try:
         try:
@@ -177,7 +177,8 @@ async def execute_tool_call(
 
                             try:
                                 result = await call_mcp_tool(refreshed_server, tool_name, args_dict)
-                                return str(result)
+                                # Return raw result (could be dict, list, str) to preserve structure
+                                return result
                             except Exception as exec_error:
                                 logger.error(f"MCP tool execution failed: {exec_error}")
                                 return f"Error executing tool '{tool_name}': {exec_error}"
@@ -198,7 +199,7 @@ async def call_mcp_tool(server: McpServer, tool_name: str, args_dict: dict[str, 
         async with client:
             result = await client.call_tool(tool_name, args_dict)
             logger.info(f"MCP tool '{tool_name}' returned: {result}")
-            return result.structured_content
+            return result.content
     except ImportError:
         logger.warning(f"MCP integration not available, mocking tool '{tool_name}' result")
         return f"Mock result for tool '{tool_name}' with args {args_dict}"
@@ -209,9 +210,22 @@ async def call_mcp_tool(server: McpServer, tool_name: str, args_dict: dict[str, 
 
 def format_tool_result(tool_result: Any, tool_name: str) -> str:
     try:
+        # If it's a FastMCP structure with 'content'
         if hasattr(tool_result, "content") and tool_result.content:
             content = tool_result.content
-            if isinstance(content, list) and len(content) > 0:
+            # Handle list of content
+            if isinstance(content, list):
+                if not content:
+                    return f"Tool '{tool_name}' returned empty content list"
+
+                # Check for multimodal content (images)
+                image_count = sum(1 for item in content if hasattr(item, "type") and item.type == "image")
+                if image_count > 0:
+                    text_parts = [item.text for item in content if hasattr(item, "type") and item.type == "text"]
+                    text_summary = " ".join(text_parts)[:500] + "..." if text_parts else ""
+                    return f"Tool '{tool_name}' returned {len(content)} items including {image_count} images. Text preview: {text_summary}"
+
+                # Assume text
                 first_content = content[0]
                 if hasattr(first_content, "text"):
                     result_text = first_content.text
@@ -220,7 +234,55 @@ def format_tool_result(tool_result: Any, tool_name: str) -> str:
             else:
                 result_text = str(content)
         else:
+            # Check for direct list (e.g. from our new handlers returning list[Image])
+            if isinstance(tool_result, list):
+                # Simple heuristic for list of images/objects
+                if len(tool_result) > 0:
+                    first_item = tool_result[0]
+                    # Check for FastMCP objects
+                    if hasattr(first_item, "format") or "image" in str(type(first_item)).lower():
+                        return f"Tool '{tool_name}' returned {len(tool_result)} image/binary items."
+
+                    # Unified handling for lists of dicts (text, images, mixed)
+                    if isinstance(first_item, dict):
+                        # fast-path: check if it looks like our standard content objects
+                        if "type" in first_item or "image_url" in first_item or "text" in first_item:
+                            text_content = []
+                            image_count = 0
+                            for item in tool_result:
+                                if isinstance(item, dict):
+                                    i_type = item.get("type")
+                                    # Handle Text
+                                    if i_type == "text" or "text" in item:
+                                        # Avoid duplicating if type is text but content is empty
+                                        text_val = item.get("text", "")
+                                        if text_val:
+                                            text_content.append(text_val)
+
+                                    # Handle Images
+                                    if i_type == "image_url" or "image_url" in item:
+                                        image_count += 1
+
+                            # Construct summary
+                            result_str = "\n".join(text_content).strip()
+
+                            if image_count > 0:
+                                image_msg = f"[{image_count} Images]"
+                                if result_str:
+                                    result_str += f"\n\n{image_msg}"
+                                else:
+                                    result_str = image_msg
+
+                            # If we successfully extracted something, return it
+                            if result_str:
+                                if len(result_str) > 2000:
+                                    truncated_result = f"Tool '{tool_name}' result (truncated): {result_str[:1500]}..."
+                                    length_info = f"\n(Result was {len(result_str)} characters long)"
+                                    return truncated_result + length_info
+                                return f"Tool '{tool_name}' result: {result_str}"
+
             result_text = str(tool_result)
+
         try:
             data = json.loads(result_text)
             if tool_name == "tool_environment_current_functions" and isinstance(data, dict):
@@ -246,6 +308,8 @@ def format_tool_result(tool_result: Any, tool_name: str) -> str:
                 return f"Tool '{tool_name}' returned a list with {len(data)} items"
         except json.JSONDecodeError:
             pass
+
+        # Truncate very long strings for display/logging
         if len(result_text) > 2000:
             truncated_result = f"Tool '{tool_name}' result (truncated): {result_text[:1500]}..."
             length_info = f"\n(Result was {len(result_text)} characters long)"
