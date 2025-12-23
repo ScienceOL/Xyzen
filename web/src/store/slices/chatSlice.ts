@@ -896,6 +896,7 @@ export const createChatSlice: StateCreator<
                 const errorLoadingIndex = channel.messages.findIndex(
                   (m) => m.isLoading,
                 );
+
                 if (errorLoadingIndex !== -1) {
                   channel.messages[errorLoadingIndex] = {
                     ...channel.messages[errorLoadingIndex],
@@ -903,7 +904,19 @@ export const createChatSlice: StateCreator<
                     isLoading: false,
                     isStreaming: false,
                   };
+                } else {
+                  // Fallback: If no loading message found, create a new error message
+                  // This ensures the error is visible in the chat usage context without duplicate notifications
+                  const errorMessageId = `error-${Date.now()}`;
+                  channel.messages.push({
+                    id: errorMessageId,
+                    clientId: generateClientId(),
+                    role: "assistant", // Use assistant role to show on left side
+                    content: `⚠️ Error: ${errorData.error || "An error occurred"}`,
+                    created_at: new Date().toISOString(),
+                  });
                 }
+
                 console.error("Chat error:", errorData.error);
                 break;
               }
@@ -937,20 +950,22 @@ export const createChatSlice: StateCreator<
                 }
 
                 // Show notification to user
-                get().showNotification(
-                  "余额不足",
-                  balanceData.message_cn ||
+                state.notification = {
+                  isOpen: true,
+                  title: "余额不足",
+                  message:
+                    balanceData.message_cn ||
                     balanceData.message ||
                     "Your photon balance is insufficient. Please recharge to continue.",
-                  "warning",
-                  "去充值",
-                  () => {
+                  type: "warning",
+                  actionLabel: "去充值",
+                  onAction: () => {
                     window.open(
                       "https://bohrium.dp.tech/personal/center/recharge",
                       "_blank",
                     );
                   },
-                );
+                };
                 break;
               }
 

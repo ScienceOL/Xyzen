@@ -19,6 +19,8 @@ from app.models.file import FileCreate
 from app.repos.file import FileRepository
 from app.repos.knowledge_set import KnowledgeSetRepository
 
+from .file_handlers import FileHandlerFactory, ReadMode
+
 logger = logging.getLogger(__name__)
 
 knowledge_mcp = FastMCP(name="Knowledge 🧠")
@@ -126,13 +128,15 @@ async def list_files(knowledge_set_id: UUID) -> dict[str, Any]:
 
 
 @knowledge_mcp.tool
-async def read_file(knowledge_set_id: UUID, filename: str) -> dict[str, Any]:
+async def read_file(knowledge_set_id: UUID, filename: str, mode: ReadMode = "text") -> Any:
     """
     Reads the content of a file from the knowledge set.
 
     Args:
         knowledge_set_id: The ID of the knowledge set.
         filename: The name of the file to read.
+        mode: The reading mode ("text" or "image"). Default is "text".
+              Use "image" for PDFs to get pages as images (multimodal).
     """
     try:
         user_id = await _get_current_user_id()
@@ -163,14 +167,51 @@ async def read_file(knowledge_set_id: UUID, filename: str) -> dict[str, Any]:
             storage = get_storage_service()
             buffer = io.BytesIO()
             await storage.download_file(target_file.storage_key, buffer)
-            content = buffer.getvalue().decode("utf-8", errors="replace")
+            file_bytes = buffer.getvalue()
 
-            return {
-                "success": True,
-                "filename": target_file.original_filename,
-                "content": content,
-                "size_bytes": target_file.file_size,
-            }
+            # Use handler to process content
+            handler = FileHandlerFactory.get_handler(target_file.original_filename)
+
+            try:
+                result = handler.read_content(file_bytes, mode=mode)
+
+                if mode == "image" and isinstance(result, list):
+                    # Limit the number of images to prevent context overflow
+                    MAX_IMAGES = 5
+                    if len(result) > MAX_IMAGES:
+                        # Return strict list of images + text description if possible
+                        # FastMCP handles list of Content objects
+                        # But we can't easily mix "Image" and "Text" string in a simple list return
+                        # if the agent expects pure images.
+                        # However, based on our tools.py implementation, we handle mixed content.
+                        from typing import Union
+
+                        from fastmcp import Image
+                        from mcp.types import TextContent
+
+                        # Cast to list of Union to allow mixed content types
+                        truncated_result: List[Union[Image, TextContent]] = list(result[:MAX_IMAGES])
+
+                        truncated_result.append(
+                            TextContent(
+                                type="text",
+                                text=f"\n\n[Warning: Content truncated. The document has {len(result)} pages, but only the first {MAX_IMAGES} are shown to prevent context overflow. Please refine your reading strategy.]",
+                            )
+                        )
+                        return truncated_result
+
+                    # For image mode, return the list of images directly which FastMCP handles as multimodal
+                    return result
+
+                # For text mode, return standard dictionary response
+                return {
+                    "success": True,
+                    "filename": target_file.original_filename,
+                    "content": result,
+                    "size_bytes": target_file.file_size,
+                }
+            except Exception as e:
+                return {"error": f"Error parsing file: {str(e)}", "success": False}
 
     except Exception as e:
         logger.error(f"Error reading file: {e}")
@@ -181,6 +222,7 @@ async def read_file(knowledge_set_id: UUID, filename: str) -> dict[str, Any]:
 async def write_file(knowledge_set_id: UUID, filename: str, content: str) -> dict[str, Any]:
     """
     Creates or updates a file in the knowledge set.
+    The content is text that will be converted to the target file format.
 
     Args:
         knowledge_set_id: The ID of the knowledge set.
@@ -210,18 +252,26 @@ async def write_file(knowledge_set_id: UUID, filename: str, content: str) -> dic
                     existing_file = file
                     break
 
-            # Determine content type
+            # Determine content type and generate file bytes using handler
             content_type, _ = mimetypes.guess_type(filename)
             if not content_type:
-                content_type = "text/plain"
+                # If cannot guess, default to what the handler produces or octet-stream
+                if filename.endswith(".docx"):
+                    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                elif filename.endswith(".xlsx"):
+                    content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                elif filename.endswith(".pptx"):
+                    content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                elif filename.endswith(".pdf"):
+                    content_type = "application/pdf"
+                else:
+                    content_type = "text/plain"
 
-            # Ensure utf-8 charset for text files to prevent garbled text
-            if content_type.startswith("text/") or content_type in ["application/json", "application/xml"]:
-                if "charset=" not in content_type:
-                    content_type += "; charset=utf-8"
+            # Use handler to create content bytes
+            handler = FileHandlerFactory.get_handler(filename)
+            encoded_content = handler.create_content(content)
 
             new_key = generate_storage_key(user_id, filename, FileScope.PRIVATE)
-            encoded_content = content.encode("utf-8")
             data = io.BytesIO(encoded_content)
             file_size_bytes = len(encoded_content)
 
