@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from handler.mcp.file_handlers import (
+from app.mcp.file_handlers import (
     DocxFileHandler,
     ExcelFileHandler,
     FileHandlerFactory,

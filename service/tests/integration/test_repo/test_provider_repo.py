@@ -1,8 +1,8 @@
 import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from repos.provider import ProviderRepository
-from schemas.provider import ProviderScope, ProviderType
+from app.repos.provider import ProviderRepository
+from app.schemas.provider import ProviderScope, ProviderType
 from tests.factories.provider import ProviderCreateFactory
 
 
@@ -74,7 +74,7 @@ class TestProviderRepository:
             ProviderCreateFactory.build(provider_type=ProviderType.OPENAI), user_id
         )
 
-        from models.provider import ProviderUpdate
+        from app.models.provider import ProviderUpdate
 
         update_data = ProviderUpdate(name="Updated Name")
         updated = await provider_repo.update_provider(created.id, update_data)

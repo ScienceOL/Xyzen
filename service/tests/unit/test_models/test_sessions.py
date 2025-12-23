@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from models.sessions import SessionCreate, SessionUpdate
+from app.models.sessions import SessionCreate, SessionUpdate
 
 
 class TestSessionModel:

@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from models.topic import TopicCreate
+from app.models.topic import TopicCreate
 
 
 class TestTopicModel:
