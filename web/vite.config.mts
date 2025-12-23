@@ -82,7 +82,15 @@ export default defineConfig(() => {
       },
     },
     optimizeDeps: {
-      include: ["shiki", "upng-js"],
+      include: [
+        "shiki",
+        "upng-js",
+        "platejs",
+        "platejs/react",
+        "platejs/static",
+        "@platejs/markdown",
+        "@platejs/media/react",
+      ],
     },
     ssr: {
       noExternal: ["shiki"],

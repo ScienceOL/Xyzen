@@ -9,8 +9,6 @@ import {
 } from "@/hooks/useMarketplace";
 import { marketplaceService } from "@/service/marketplaceService";
 import { useQueryClient } from "@tanstack/react-query";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -24,6 +22,8 @@ import {
   GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { PlateReadmeEditor } from "@/components/editor/PlateReadmeEditor";
+import { PlateReadmeViewer } from "@/components/editor/PlateReadmeViewer";
 import type { AgentSnapshot } from "@/service/marketplaceService";
 
 interface AgentMarketplaceManageProps {
@@ -291,11 +291,10 @@ export default function AgentMarketplaceManage({
                 <div className="p-6">
                   {isEditingReadme ? (
                     <div className="space-y-4">
-                      <textarea
-                        value={readmeContent}
-                        onChange={(e) => setReadmeContent(e.target.value)}
-                        rows={20}
-                        className="w-full resize-y rounded-lg border border-neutral-200 bg-neutral-50 p-4 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
+                      <PlateReadmeEditor
+                        initialContent={readmeContent}
+                        onChange={setReadmeContent}
+                        disabled={isSavingReadme}
                         placeholder="# Agent Documentation\n\nDescribe your agent here..."
                       />
                       <div className="flex justify-end gap-3">
@@ -323,9 +322,7 @@ export default function AgentMarketplaceManage({
                   ) : (
                     <div className="prose prose-neutral max-w-none dark:prose-invert">
                       {listing.readme ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {listing.readme}
-                        </ReactMarkdown>
+                        <PlateReadmeViewer content={listing.readme} />
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
                           <DocumentTextIcon className="mb-3 h-12 w-12 opacity-20" />

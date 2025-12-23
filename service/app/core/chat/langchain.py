@@ -298,7 +298,7 @@ async def get_ai_response_stream_langchain_legacy(
         logger.error(f"Failed to get provider manager for user {user_id}: {e}")
         return
 
-    from core.chat.tools import format_tool_result
+    from app.core.chat.tools import format_tool_result
 
     # Use the provided agent parameter (for legacy compatibility)
     # If no agent provided, try to load from session

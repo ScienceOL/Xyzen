@@ -370,7 +370,7 @@ async def search_marketplace(
     # If user is authenticated, check which listings they've liked
     liked_map: dict[UUID, bool] = {}
     if user_id and listings:
-        from repos.agent_like import AgentLikeRepository
+        from app.repos.agent_like import AgentLikeRepository
 
         like_repo = AgentLikeRepository(db)
         listing_ids = [listing.id for listing in listings]
