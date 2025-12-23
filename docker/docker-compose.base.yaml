@@ -29,7 +29,6 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
 
-
   redis:
     image: redis:7.4.2-alpine
     network_mode: 'service:network-service'
@@ -44,6 +43,17 @@ services:
       timeout: 5s
       retries: 5
 
+  # celery:
+  #   image: registry.sciol.ac.cn/sciol/xyzen-service:latest
+  #   pull_policy: if_not_present
+  #   network_mode: 'service:network-service'
+  #   restart: unless-stopped
+  #   depends_on:
+  #     postgresql:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   command: celery -A app.worker worker --loglevel=info
 
   service:
     image: registry.sciol.ac.cn/sciol/xyzen-service:latest

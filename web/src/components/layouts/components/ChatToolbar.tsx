@@ -2,6 +2,12 @@
 
 import McpIcon from "@/assets/McpIcon";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/animate-ui/components/animate/tooltip";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -9,6 +15,7 @@ import {
   SheetTrigger,
 } from "@/components/animate-ui/components/radix/sheet";
 import { FileUploadButton, FileUploadPreview } from "@/components/features";
+import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import type { ModelInfo } from "@/types/llmProvider";
 import {
@@ -368,6 +375,14 @@ export default function ChatToolbar({
     dragDeltaRef.current = 0;
   };
 
+  const toolbarButtonClass = cn(
+    "flex h-8 w-8 items-center justify-center rounded-md transition-all duration-200",
+    "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900",
+    "dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+    "[&>svg]:h-5 [&>svg]:w-5",
+  );
+
   return (
     <DndContext
       sensors={sensors}
@@ -450,30 +465,45 @@ export default function ChatToolbar({
           )}
         </AnimatePresence>
 
-        <div className="flex flex-wrap items-center justify-between bg-white px-2 py-1.5 dark:bg-black dark:border-t dark:border-neutral-800 gap-2">
-          <div className="flex flex-wrap items-center gap-1">
-            <button
-              onClick={handleNewChat}
-              disabled={isCreatingNewChat}
-              className={`flex items-center justify-center rounded-sm p-1.5 transition-colors ${
-                isCreatingNewChat
-                  ? "text-neutral-400 cursor-not-allowed dark:text-neutral-600"
-                  : "text-neutral-500 hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-              }`}
-              title={isCreatingNewChat ? "创建中..." : "新对话"}
-            >
-              {isCreatingNewChat ? (
-                <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              ) : (
-                <PlusIcon className="h-4 w-4" />
-              )}
-            </button>
+        <TooltipProvider>
+          <div className="flex flex-wrap items-center justify-between bg-white px-2 py-1.5 dark:bg-black dark:border-t dark:border-neutral-800 gap-2">
+            <div className="flex flex-wrap items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleNewChat}
+                    disabled={isCreatingNewChat}
+                    className={toolbarButtonClass}
+                  >
+                    {isCreatingNewChat ? (
+                      <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <PlusIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isCreatingNewChat ? "创建中..." : "新对话"}</p>
+                </TooltipContent>
+              </Tooltip>
 
-            {/* File Upload Button */}
-            <FileUploadButton disabled={isUploading} className="rounded-sm" />
+              {/* File Upload Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-flex">
+                    <FileUploadButton
+                      disabled={isUploading}
+                      className={toolbarButtonClass}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>上传文件</p>
+                </TooltipContent>
+              </Tooltip>
 
-            {/* Tool Call Confirmation Toggle */}
-            {/* {activeChatChannel && (
+              {/* Tool Call Confirmation Toggle */}
+              {/* {activeChatChannel && (
               <button
                 onClick={handleToggleToolCallConfirmation}
                 className={`flex items-center justify-center rounded-sm p-1.5 transition-colors ${
@@ -491,184 +521,191 @@ export default function ChatToolbar({
               </button>
             )} */}
 
-            {/* Model Selector */}
-            {activeChatChannel && currentAgent && (
-              <ModelSelector
-                currentAgent={currentAgent}
-                currentSessionProvider={currentSessionProvider}
-                currentSessionModel={currentSessionModel}
-                llmProviders={llmProviders}
-                availableModels={availableModels}
-                onModelChange={handleModelChange}
-              />
-            )}
-
-            {/* Desktop View: Expanded Items */}
-            <div className="hidden md:flex items-center space-x-1">
-              {/* Built-in Search Toggle - Only for models that support web search */}
-              {activeChatChannel && (
-                <BuiltinSearchToggle
-                  enabled={builtinSearchEnabled}
-                  onToggle={handleBuiltinSearchToggle}
-                  supportsWebSearch={supportsWebSearch}
+              {/* Model Selector */}
+              {activeChatChannel && currentAgent && (
+                <ModelSelector
+                  currentAgent={currentAgent}
+                  currentSessionProvider={currentSessionProvider}
+                  currentSessionModel={currentSessionModel}
+                  llmProviders={llmProviders}
+                  availableModels={availableModels}
+                  onModelChange={handleModelChange}
                 />
               )}
 
-              {/* Knowledge Selector */}
-              {activeChatChannel && (
-                <KnowledgeSelector
-                  isConnected={!!isKnowledgeMcpConnected}
-                  onConnect={handleConnectKnowledge}
-                  onDisconnect={handleDisconnectKnowledge}
-                />
-              )}
+              {/* Desktop View: Expanded Items */}
+              <div className="hidden md:flex items-center space-x-1">
+                {/* Built-in Search Toggle - Only for models that support web search */}
+                {activeChatChannel && (
+                  <BuiltinSearchToggle
+                    enabled={builtinSearchEnabled}
+                    onToggle={handleBuiltinSearchToggle}
+                    supportsWebSearch={supportsWebSearch}
+                  />
+                )}
 
-              {/* MCP Tool Button */}
-              {currentMcpInfo && (
-                <div className="relative group/mcp w-fit">
-                  <button
-                    className="flex items-center w-fit justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-                    title="当前连接的MCP工具"
-                  >
-                    <McpIcon className="h-4 w-4" />
-                    {currentMcpInfo.servers.length > 0 && (
-                      <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                        {currentMcpInfo.servers.reduce(
-                          (total, server) =>
-                            total + (server.tools?.length || 0),
-                          0,
-                        )}
-                      </span>
-                    )}
-                  </button>
+                {/* Knowledge Selector */}
+                {activeChatChannel && (
+                  <KnowledgeSelector
+                    isConnected={!!isKnowledgeMcpConnected}
+                    onConnect={handleConnectKnowledge}
+                    onDisconnect={handleDisconnectKnowledge}
+                  />
+                )}
 
-                  {/* MCP Tooltip */}
-                  <div
-                    className=" transition-opacity
+                {/* MCP Tool Button */}
+                {currentMcpInfo && (
+                  <div className="relative group/mcp w-fit">
+                    <button
+                      className={cn(toolbarButtonClass, "w-auto px-2 gap-1.5")}
+                      title="当前连接的MCP工具"
+                    >
+                      <McpIcon className="h-4 w-4" />
+                      {currentMcpInfo.servers.length > 0 && (
+                        <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                          {currentMcpInfo.servers.reduce(
+                            (total, server) =>
+                              total + (server.tools?.length || 0),
+                            0,
+                          )}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* MCP Tooltip */}
+                    <div
+                      className=" transition-opacity
                   overflow-hidden hidden w-80
                   group-hover/mcp:block absolute bottom-full
                   left-0 mb-2 rounded-sm border
                  border-neutral-200 bg-white p-3 shadow-lg
                   dark:border-neutral-700 dark:bg-neutral-800 z-50"
-                  >
-                    <div className="mb-2">
-                      <div className="flex items-center space-x-2">
-                        <McpIcon className="h-4 w-4 text-indigo-500" />
-                        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                          MCP 工具连接
-                        </span>
+                    >
+                      <div className="mb-2">
+                        <div className="flex items-center space-x-2">
+                          <McpIcon className="h-4 w-4 text-indigo-500" />
+                          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                            MCP 工具连接
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                          助手: {currentMcpInfo.agent.name}
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                        助手: {currentMcpInfo.agent.name}
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      {currentMcpInfo.servers.map((server) => (
-                        <div
-                          key={server.id}
-                          className="rounded-sm bg-neutral-50 p-2
+                      <div className="space-y-2">
+                        {currentMcpInfo.servers.map((server) => (
+                          <div
+                            key={server.id}
+                            className="rounded-sm bg-neutral-50 p-2
                          dark:bg-neutral-700/50"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div
-                                className={`h-2 w-2 rounded-full ${
-                                  server.status === "online"
-                                    ? "bg-green-500"
-                                    : "bg-red-500"
-                                }`}
-                              />
-                              <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                                {server.name}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <div
+                                  className={`h-2 w-2 rounded-full ${
+                                    server.status === "online"
+                                      ? "bg-green-500"
+                                      : "bg-red-500"
+                                  }`}
+                                />
+                                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                  {server.name}
+                                </span>
+                              </div>
+                              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                                {server.tools?.length || 0} 工具
                               </span>
                             </div>
-                            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                              {server.tools?.length || 0} 工具
-                            </span>
-                          </div>
 
-                          {server.tools && server.tools.length > 0 && (
-                            <div className="mt-2">
-                              <div className="flex flex-wrap gap-1">
-                                {server.tools.slice(0, 5).map((tool, index) => (
-                                  <span
-                                    key={index}
-                                    className="inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                  >
-                                    {tool.name}
-                                  </span>
-                                ))}
-                                {server.tools.length > 5 && (
-                                  <span className="inline-block rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-600 dark:text-neutral-300">
-                                    +{server.tools.length - 5}
-                                  </span>
-                                )}
+                            {server.tools && server.tools.length > 0 && (
+                              <div className="mt-2">
+                                <div className="flex flex-wrap gap-1">
+                                  {server.tools
+                                    .slice(0, 5)
+                                    .map((tool, index) => (
+                                      <span
+                                        key={index}
+                                        className="inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                      >
+                                        {tool.name}
+                                      </span>
+                                    ))}
+                                  {server.tools.length > 5 && (
+                                    <span className="inline-block rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-600 dark:text-neutral-300">
+                                      +{server.tools.length - 5}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Arrow */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-neutral-800"></div>
                     </div>
-
-                    {/* Arrow */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-neutral-800"></div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Mobile View: More Button */}
-            <div className="md:hidden relative">
-              <button
-                onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className={`flex items-center justify-center rounded-sm p-1.5 transition-colors ${
-                  showMoreMenu
-                    ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
-                    : "text-neutral-500 hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-                }`}
+              {/* Mobile View: More Button */}
+              <div className="md:hidden relative">
+                <button
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className={cn(
+                    toolbarButtonClass,
+                    showMoreMenu &&
+                      "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100",
+                  )}
+                >
+                  <EllipsisHorizontalIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Sheet
+                open={showHistory}
+                onOpenChange={(open) => {
+                  if (open) {
+                    onShowHistory();
+                  } else {
+                    handleCloseHistory();
+                  }
+                }}
               >
-                <EllipsisHorizontalIcon className="h-4 w-4" />
-              </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SheetTrigger asChild>
+                      <button className={toolbarButtonClass}>
+                        <ClockIcon className="h-5 w-5" />
+                      </button>
+                    </SheetTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>历史记录</p>
+                  </TooltipContent>
+                </Tooltip>
+                <SheetContent
+                  showCloseButton={false}
+                  side="right"
+                  className="w-11/12 max-w-md p-0 h-full"
+                >
+                  <VisuallyHidden>
+                    <SheetTitle>会话历史</SheetTitle>
+                    <SheetDescription>当前会话的对话主题</SheetDescription>
+                  </VisuallyHidden>
+                  <SessionHistory
+                    isOpen={showHistory}
+                    onClose={handleCloseHistory}
+                    onSelectTopic={handleSelectTopic}
+                  />
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
-            <Sheet
-              open={showHistory}
-              onOpenChange={(open) => {
-                if (open) {
-                  onShowHistory();
-                } else {
-                  handleCloseHistory();
-                }
-              }}
-            >
-              <SheetTrigger asChild>
-                <button
-                  className="flex items-center justify-center rounded-sm p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-                  title="历史记录"
-                >
-                  <ClockIcon className="h-4 w-4" />
-                </button>
-              </SheetTrigger>
-              <SheetContent
-                showCloseButton={false}
-                side="right"
-                className="w-11/12 max-w-md p-0 h-full"
-              >
-                <VisuallyHidden>
-                  <SheetTitle>会话历史</SheetTitle>
-                  <SheetDescription>当前会话的对话主题</SheetDescription>
-                </VisuallyHidden>
-                <SessionHistory
-                  isOpen={showHistory}
-                  onClose={handleCloseHistory}
-                  onSelectTopic={handleSelectTopic}
-                />
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
+        </TooltipProvider>
       </div>
     </DndContext>
   );

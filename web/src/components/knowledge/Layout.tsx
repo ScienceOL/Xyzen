@@ -226,7 +226,7 @@ export const KnowledgeLayout = () => {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-white dark:bg-black text-neutral-900 dark:text-white">
+    <div className="flex h-full w-full overflow-hidden border-t bg-white dark:bg-black text-neutral-900 dark:text-white">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex h-full">
         <Sidebar
