@@ -81,6 +81,7 @@ class AgentMarketplaceRead(SQLModel):
     created_at: datetime
     updated_at: datetime
     first_published_at: datetime | None
+    has_liked: bool = False  # Whether current user has liked this listing
 
 
 class AgentMarketplaceUpdate(SQLModel):

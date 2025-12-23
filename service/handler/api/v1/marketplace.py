@@ -337,6 +337,7 @@ async def search_marketplace(
     sort_by: Literal["likes", "forks", "views", "recent", "oldest"] = Query("recent", description="Sort order"),
     limit: int = Query(20, ge=1, le=100, description="Number of results per page"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
+    user_id: str | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[AgentMarketplaceRead]:
     """
@@ -350,10 +351,11 @@ async def search_marketplace(
         sort_by: Sort order (likes, forks, views, recent, oldest).
         limit: Maximum number of results (1-100).
         offset: Pagination offset.
+        user_id: Authenticated user ID (optional, injected by dependency).
         db: Database session (injected by dependency).
 
     Returns:
-        List of marketplace listings.
+        List of marketplace listings with has_liked populated if user is authenticated.
     """
     marketplace_repo = AgentMarketplaceRepository(db)
     listings = await marketplace_repo.search_listings(
@@ -365,7 +367,23 @@ async def search_marketplace(
         offset=offset,
     )
 
-    return [AgentMarketplaceRead(**listing.model_dump()) for listing in listings]
+    # If user is authenticated, check which listings they've liked
+    liked_map: dict[UUID, bool] = {}
+    if user_id and listings:
+        from repos.agent_like import AgentLikeRepository
+
+        like_repo = AgentLikeRepository(db)
+        listing_ids = [listing.id for listing in listings]
+        liked_map = await like_repo.get_likes_for_listings(listing_ids, user_id)
+
+    # Build response with has_liked populated
+    return [
+        AgentMarketplaceRead(
+            **listing.model_dump(),
+            has_liked=liked_map.get(listing.id, False),
+        )
+        for listing in listings
+    ]
 
 
 @router.get("/starred", response_model=list[AgentMarketplaceRead])
@@ -381,11 +399,12 @@ async def get_starred_listings(
         db: Database session (injected by dependency).
 
     Returns:
-        List of starred marketplace listings.
+        List of starred marketplace listings with has_liked=True.
     """
     marketplace_service = AgentMarketplaceService(db)
     listings = await marketplace_service.get_starred_listings(user_id)
-    return [AgentMarketplaceRead(**listing.model_dump()) for listing in listings]
+    # All starred listings have has_liked=True by definition
+    return [AgentMarketplaceRead(**listing.model_dump(), has_liked=True) for listing in listings]
 
 
 @router.get("/{marketplace_id}", response_model=AgentMarketplaceReadWithSnapshot)
