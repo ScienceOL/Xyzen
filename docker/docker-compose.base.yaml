@@ -3,9 +3,9 @@ services:
   network-service:
     image: alpine:3.22
     ports:
-      - '${WEB_PORT:-32233}:32233'
-      - '${SERVICE_PORT:-48196}:48196'
-      - '${POSTGRES_PORT:-5432}:5432'
+      - "${WEB_PORT:-32233}:32233"
+      - "${SERVICE_PORT:-48196}:48196"
+      - "${POSTGRES_PORT:-5432}:5432"
       # - '${REDIS_PORT:-6379}:6379'
     command: tail -f /dev/null
     networks:
@@ -14,7 +14,7 @@ services:
   postgresql:
     image: postgres:16.8-alpine
     pull_policy: if_not_present
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: unless-stopped
     attach: false
     environment:
@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -31,34 +31,34 @@ services:
 
   redis:
     image: redis:7.4.2-alpine
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: unless-stopped
     attach: false
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # celery:
-  #   image: registry.sciol.ac.cn/sciol/xyzen-service:latest
-  #   pull_policy: if_not_present
-  #   network_mode: 'service:network-service'
-  #   restart: unless-stopped
-  #   depends_on:
-  #     postgresql:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   command: celery -A app.worker worker --loglevel=info
+  celery:
+    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
+    pull_policy: if_not_present
+    network_mode: "service:network-service"
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uv run celery -A app.worker worker --loglevel=info
 
   service:
     image: registry.sciol.ac.cn/sciol/xyzen-service:latest
     pull_policy: if_not_present
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: unless-stopped
     depends_on:
       postgresql:
@@ -68,9 +68,9 @@ services:
     healthcheck:
       test:
         [
-          'CMD',
-          'python',
-          '-c',
+          "CMD",
+          "python",
+          "-c",
           "import urllib.request; urllib.request.urlopen('http://localhost:48196/xyzen/api/health', timeout=5)",
         ]
       interval: 60s
@@ -81,7 +81,7 @@ services:
   web:
     image: registry.sciol.ac.cn/sciol/xyzen-web:latest
     pull_policy: if_not_present
-    network_mode: 'service:network-service'
+    network_mode: "service:network-service"
     restart: unless-stopped
     depends_on:
       service:

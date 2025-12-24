@@ -11,6 +11,7 @@ from .logger import LoggerConfig
 from .mcps import McpProviderConfig
 from .oss import OSSConfig
 from .redemption import AdminConfig
+from .redis import RedisConfig
 
 
 class AppConfig(BaseSettings):
@@ -87,6 +88,11 @@ class AppConfig(BaseSettings):
     OSS: OSSConfig = Field(
         default_factory=lambda: OSSConfig(),
         description="OSS configuration",
+    )
+
+    Redis: RedisConfig = Field(
+        default_factory=lambda: RedisConfig(),
+        description="Redis configuration",
     )
 
 

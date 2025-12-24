@@ -15,6 +15,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: sh -c "uv sync && uv run python -m app.main"
 
+  celery:
+    env_file:
+      - .env.dev
+    volumes:
+      - ../service:/app
+      - /app/.venv
+    command: sh -c "uv sync && uv run celery -A app.worker worker --loglevel=info"
+
   web:
     image: registry.sciol.ac.cn/sciol/xyzen-web:latest
     env_file:
