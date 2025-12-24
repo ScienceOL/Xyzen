@@ -44,9 +44,14 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-async def redis_listener(websocket: WebSocket, connection_id: str):
+async def redis_listener(websocket: WebSocket, connection_id: str, ready_event: asyncio.Event):
     """
     Listens to Redis channel and forwards messages to WebSocket.
+    
+    Args:
+        websocket: The WebSocket connection
+        connection_id: Unique identifier for this connection
+        ready_event: Event to signal when subscription is ready
     """
     r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
     pubsub = r.pubsub()
@@ -54,6 +59,9 @@ async def redis_listener(websocket: WebSocket, connection_id: str):
     await pubsub.subscribe(channel)
 
     logger.info(f"Subscribed to Redis channel: {channel}")
+    
+    # Signal that subscription is ready
+    ready_event.set()
 
     try:
         async for message in pubsub.listen():
@@ -110,8 +118,18 @@ async def chat_websocket(
             await websocket.close(code=4003, reason="Session not found or access denied")
             return
 
-    # Start Redis listener task
-    listener_task = asyncio.create_task(redis_listener(websocket, connection_id))
+    # Start Redis listener task and wait for it to be ready
+    redis_ready = asyncio.Event()
+    listener_task = asyncio.create_task(redis_listener(websocket, connection_id, redis_ready))
+    
+    # Wait for Redis subscription to be established before processing messages
+    try:
+        await asyncio.wait_for(redis_ready.wait(), timeout=5.0)
+        logger.info(f"Redis listener ready for {connection_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Redis subscription timeout for {connection_id}")
+        await websocket.close(code=1011, reason="Failed to establish Redis connection")
+        return
 
     try:
         while True:

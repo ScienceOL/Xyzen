@@ -33,9 +33,9 @@ def mock_redis_listener() -> Generator[None, None, None]:
     The listener runs in the background and can cause test hangs.
     """
 
-    async def mock_listener(websocket: WebSocket, connection_id: str) -> None:
-        # Do nothing - just exit immediately
-        pass
+    async def mock_listener(websocket: WebSocket, connection_id: str, ready_event: Any) -> None:
+        # Signal ready immediately and exit
+        ready_event.set()
 
     with patch("app.api.ws.v1.chat.redis_listener", mock_listener):
         yield
