@@ -2884,7 +2884,7 @@ requires-dist = [
     { name = "python-docx", specifier = ">=1.1.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "python-pptx", specifier = ">=0.6.23" },
-    { name = "reportlab", specifier = ">=4.0.0" },
+    { name = "reportlab", specifier = ">=4.4.7" },
     { name = "requests", specifier = ">=2.32.4" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
     { name = "websockets", specifier = ">=13.0,<14.0" },
