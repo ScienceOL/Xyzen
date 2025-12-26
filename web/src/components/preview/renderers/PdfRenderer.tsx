@@ -7,6 +7,7 @@ export const PdfRenderer = ({ url, className }: RendererProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [, setIsLandscape] = useState(false);
 
   useEffect(() => {
     if (!url) return;

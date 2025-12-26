@@ -9,12 +9,19 @@ import {
 import clsx from "clsx";
 import ReactECharts from "echarts-for-react";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
+
+// Lazy load MermaidRenderer to avoid SSR issues with mermaid library
+const MermaidRenderer = React.lazy(() =>
+  import("@/components/preview/renderers/MermaidRenderer").then((m) => ({
+    default: m.MermaidRenderer,
+  })),
+);
 
 import "katex/dist/katex.css";
 
@@ -131,7 +138,9 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
         const lang =
           language === "echart" || language === "echarts"
             ? "json"
-            : language || "text";
+            : language === "mermaid"
+              ? "markdown" // Use markdown highlighting for mermaid code view
+              : language || "text";
 
         const html = highlighter.codeToHtml(code, {
           lang,
@@ -196,11 +205,28 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
 
   const isHtml = language === "html" || language === "xml";
   const isEChart = language === "echart" || language === "echarts";
-  const canPreview = isHtml || isEChart;
+  const isMermaid = language === "mermaid";
+  const canPreview = isHtml || isEChart || isMermaid;
 
   const PreviewContent = ({ fullscreen = false }: { fullscreen?: boolean }) => (
     <>
-      {isEChart ? (
+      {isMermaid ? (
+        <div
+          className="w-full p-4 overflow-auto not-prose"
+          style={{
+            height: fullscreen ? "calc(100vh - 120px)" : "auto",
+            minHeight: "200px",
+          }}
+        >
+          <Suspense
+            fallback={
+              <div className="p-4 text-zinc-500">Loading diagram...</div>
+            }
+          >
+            <MermaidRenderer code={code} />
+          </Suspense>
+        </div>
+      ) : isEChart ? (
         <div
           className="w-full bg-white p-4"
           style={{ height: fullscreen ? "calc(100vh - 120px)" : "400px" }}
