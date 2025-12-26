@@ -1,262 +1,41 @@
 """
-LangGraph-based streaming chat implementation with multi-turn conversation support.
+LangChain-based streaming chat implementation with multi-turn conversation support.
+
 Uses LangChain's create_agent for automatic tool execution and conversation management.
+This module orchestrates the streaming process using extracted helper modules.
 """
 
 from __future__ import annotations
 
 import asyncio
-import base64
-import json
 import logging
-from io import BytesIO
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator
 
-from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.messages.tool import ToolMessage
-from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.graph.state import CompiledStateGraph
-from pydantic import Field, create_model
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.agents.factory import create_chat_agent
 from app.core.providers import get_user_provider_manager
-from app.core.storage import FileCategory, FileScope, generate_storage_key, get_storage_service
-from app.models.file import FileCreate
 from app.models.topic import Topic as TopicModel
-from app.repos.file import FileRepository
-from app.schemas.chat_events import ChatEventType, ProcessingStatus, ToolCallStatus
+from app.schemas.chat_event_types import StreamingEvent
 
+from .history import load_conversation_history
 from .messages import build_system_prompt
+from .stream_handlers import (
+    CitationExtractor,
+    GeneratedFileHandler,
+    StreamContext,
+    StreamingEventHandler,
+    TokenStreamProcessor,
+    ToolEventHandler,
+)
+from .tools import format_tool_result
 
 if TYPE_CHECKING:
     from app.core.chat.interfaces import ChatPublisher
     from app.models.agent import Agent
 
 logger = logging.getLogger(__name__)
-
-ResponseT = TypeVar("ResponseT")
-
-# Configuration for batch logging to reduce performance impact
-STREAMING_LOG_BATCH_SIZE = 50  # Log every N tokens instead of every token
-
-
-async def _prepare_langchain_tools(db: AsyncSession, agent: Agent | None, session_id: Any = None) -> list[BaseTool]:
-    """Prepare LangChain tools from MCP servers (both agent-level and session-level)."""
-    from app.core.chat.tools import execute_tool_call, prepare_mcp_tools
-
-    mcp_tools = await prepare_mcp_tools(db, agent, session_id)
-    langchain_tools: list[BaseTool] = []
-
-    for tool in mcp_tools:
-        tool_name = tool.get("name", "")
-        tool_description = tool.get("description", "")
-        tool_parameters = tool.get("parameters", {})
-
-        properties = tool_parameters.get("properties", {})
-        required = tool_parameters.get("required", [])
-
-        # Build Pydantic field definitions for create_model
-        field_definitions: dict[str, Any] = {}
-        for prop_name, prop_info in properties.items():
-            prop_type = prop_info.get("type", "string")
-            prop_desc = prop_info.get("description", "")
-            is_required = prop_name in required
-
-            # Map JSON schema types to Python types
-            type_mapping = {
-                "integer": int,
-                "number": float,
-                "boolean": bool,
-                "array": list,
-                "object": dict,
-                "string": str,
-            }
-            python_type = type_mapping.get(prop_type, str)
-
-            # Use create_model compatible format: (type, Field(...))
-            if is_required:
-                field_definitions[prop_name] = (python_type, Field(description=prop_desc))
-            else:
-                field_definitions[prop_name] = (Optional[python_type], Field(default=None, description=prop_desc))
-
-        # Create dynamic Pydantic model using create_model
-        ArgsSchema = create_model(f"{tool_name}Args", **field_definitions)
-
-        # Create tool execution function with closure
-        async def make_tool_func(t_name: str, t_db: AsyncSession, t_agent: Any, t_session_id: Any) -> Any:
-            async def tool_func(**kwargs: Any) -> Any:
-                """Execute the tool with given arguments."""
-                try:
-                    args_json = json.dumps(kwargs)
-                    result = await execute_tool_call(t_db, t_name, args_json, t_agent, t_session_id)
-                    # Format result for AI consumption using the utility function
-                    # from app.core.chat.content_utils import format_tool_result_for_ai
-
-                    if isinstance(result, list):
-                        formatted_content = []
-                        for item in result:
-                            # Check for FastMCP Image object (has data and format) or similar
-                            # We check attributes dynamically to avoid importing fastmcp here directly if possible,
-                            # or we can rely on standard structure.
-                            if hasattr(item, "data") and hasattr(item, "format") and item.format:
-                                # Convert to base64
-                                b64_data = base64.b64encode(item.data).decode("utf-8")
-                                formatted_content.append(
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": f"data:image/{item.format};base64,{b64_data}",
-                                            "detail": "auto",
-                                        },
-                                    }
-                                )
-                            elif hasattr(item, "type") and item.type == "text" and hasattr(item, "text"):
-                                formatted_content.append({"type": "text", "text": item.text})
-                            else:
-                                formatted_content.append(item)
-                        return formatted_content
-
-                    return result
-                except Exception as e:
-                    logger.error(f"Tool {t_name} execution failed: {e}")
-                    return f"Error: {e}"
-
-            return tool_func
-
-        tool_func = await make_tool_func(tool_name, db, agent, session_id)
-
-        # Create structured tool
-        structured_tool = StructuredTool(
-            name=tool_name,
-            description=tool_description,
-            args_schema=ArgsSchema,
-            coroutine=tool_func,
-        )
-
-        langchain_tools.append(structured_tool)
-
-    logger.info(f"Loaded {len(langchain_tools)} tools")
-    logger.debug(f"Loaded {langchain_tools}")
-
-    return langchain_tools
-
-
-async def _load_db_history(db: AsyncSession, topic: TopicModel) -> list[Any]:
-    """Load historical messages for the topic and map to LangChain message types.
-
-    Only user/assistant/system messages are included to avoid confusing the agent
-    with raw tool execution transcripts.
-
-    Supports multimodal messages: fetches file attachments and converts them to
-    base64-encoded content for vision/audio models.
-    """
-    try:
-        from app.core.chat.multimodal import process_message_files
-        from app.repos.message import MessageRepository
-
-        message_repo = MessageRepository(db)
-        messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
-
-        num_tool_calls = 0
-        history: list[Any] = []
-        for message in messages:
-            role = (message.role or "").lower()
-            content = message.content or ""
-            if role == "user":
-                # Check if message has file attachments
-                try:
-                    logger.debug(f"Checking files for message {message.id}")
-                    file_contents = await process_message_files(db, message.id)
-                    logger.debug(f"Message {message.id} has {len(file_contents) if file_contents else 0} file contents")
-
-                    if file_contents:
-                        # Multimodal message: combine text and file content
-                        multimodal_content: list[dict[str, Any]] = [{"type": "text", "text": content}]
-                        multimodal_content.extend(file_contents)
-                        for idx, item in enumerate(file_contents):
-                            item_type = item.get("type")
-                            if item_type == "image_url":
-                                logger.debug(
-                                    f"File content {idx}: type={item_type}, has image_url={bool(item.get('image_url'))}"
-                                )
-                            elif item_type == "text":
-                                text_preview = item.get("text", "")[:100]
-                                logger.debug(f"File content {idx}: type={item_type}, text_preview='{text_preview}'")
-                            else:
-                                logger.debug(f"File content {idx}: type={item_type}")
-                        history.append(HumanMessage(content=multimodal_content))  # type: ignore
-                        logger.info(f"Loaded multimodal message {message.id} with {len(file_contents)} attachments")
-                    else:
-                        # Text-only message
-                        logger.debug(f"Message {message.id} has no file attachments, loading as text-only")
-                        history.append(HumanMessage(content=content))
-                except Exception as e:
-                    # If file processing fails, fall back to text-only
-                    logger.error(f"Failed to process files for message {message.id}: {e}", exc_info=True)
-                    history.append(HumanMessage(content=content))
-            elif role == "assistant":
-                # Check if message has file attachments (e.g. generated images)
-                try:
-                    file_contents = await process_message_files(db, message.id)
-                    if file_contents:
-                        logger.debug("Successfully processed files for message")
-                        # Multimodal assistant message
-                        # Combine text content with file content
-                        multimodal_content: list[dict[str, Any]] = []
-                        if content:
-                            multimodal_content.append({"type": "text", "text": content})
-                        multimodal_content.extend(file_contents)
-                        history.append(AIMessage(content=multimodal_content))  # pyright:ignore
-                    else:
-                        history.append(AIMessage(content=content))
-                except Exception as e:
-                    logger.error(f"Failed to process files for assistant message {message.id}: {e}", exc_info=True)
-                    history.append(AIMessage(content=content))
-            elif role == "system":
-                history.append(SystemMessage(content=content))
-            elif role == "tool":
-                formatted_content = json.loads(content)
-                if formatted_content.get("event") == ChatEventType.TOOL_CALL_REQUEST:
-                    if num_tool_calls == 0:
-                        history.append(
-                            AIMessage(
-                                content=[],
-                                tool_calls=[
-                                    {
-                                        "name": formatted_content["name"],
-                                        "args": formatted_content["arguments"],
-                                        "id": formatted_content["id"],
-                                    }
-                                ],
-                            )
-                        )
-                        num_tool_calls += 1
-                    else:
-                        history[-1].tool_calls.append(
-                            {
-                                "name": formatted_content["name"],
-                                "args": formatted_content["arguments"],
-                                "id": formatted_content["id"],
-                            }
-                        )
-                        num_tool_calls += 1
-                elif formatted_content.get("event") == ChatEventType.TOOL_CALL_RESPONSE:
-                    history.append(
-                        ToolMessage(
-                            content=formatted_content["result"],
-                            tool_call_id=formatted_content["toolCallId"],
-                        )
-                    )
-                    num_tool_calls -= 1
-            else:
-                # Skip unknown/tool roles for now
-                continue
-        logger.info(f"Length of history: {len(history)}")
-        return history
-    except Exception as e:
-        logger.warning(f"Failed to load DB chat history for topic {getattr(topic, 'id', None)}: {e}")
-        return []
 
 
 async def get_ai_response_stream_langchain_legacy(
@@ -268,28 +47,29 @@ async def get_ai_response_stream_langchain_legacy(
     connection_manager: "ChatPublisher | None" = None,
     connection_id: str | None = None,
     context: dict[str, Any] | None = None,
-) -> AsyncGenerator[dict[str, Any], None]:
+) -> AsyncGenerator[StreamingEvent, None]:
     """
-    Gets a streaming response using LangChain Agent.
-    Supports multi-turn conversation with automatic tool execution.
-    Supports multimodal input (images, PDFs, audio).
+    Get a streaming response using LangChain Agent.
 
-    Uses astream with stream_mode="updates" and "messages" to get:
-    1. Step-by-step agent progress (LLM calls, tool executions)
-    2. Token-by-token LLM streaming
+    Supports multi-turn conversation with automatic tool execution and
+    multimodal input (images, PDFs, audio).
 
     Args:
         db: Database session
-        message_text: Text content of the user's message (current message is already saved in DB with files linked)
+        message_text: Text content of the user's message
         topic: Topic/conversation context
         user_id: User ID for provider management
         agent: Optional agent configuration
-        connection_manager: WebSocket connection manager
-        connection_id: WebSocket connection ID
+        connection_manager: WebSocket connection manager (unused, for compatibility)
+        connection_id: WebSocket connection ID (unused, for compatibility)
+        context: Optional additional context
+
+    Yields:
+        StreamingEvent dicts for each event in the streaming process
 
     Note:
-        The current user message should already be saved to the database with files linked
-        before calling this function. History loading will automatically include it.
+        The current user message should already be saved to the database with files
+        linked before calling this function. History loading will automatically include it.
     """
     # Get provider manager
     try:
@@ -298,25 +78,81 @@ async def get_ai_response_stream_langchain_legacy(
         logger.error(f"Failed to get provider manager for user {user_id}: {e}")
         return
 
-    from app.core.chat.tools import format_tool_result
+    # Resolve agent if not provided
+    agent = await _resolve_agent(db, agent, topic)
 
-    # Use the provided agent parameter (for legacy compatibility)
-    # If no agent provided, try to load from session
+    # Determine provider and model
+    provider_id, model_name = await _resolve_provider_and_model(db, agent, topic)
+
+    # Build system prompt
+    system_prompt = await build_system_prompt(db, agent, model_name)
+
+    # Emit processing status
+    yield StreamingEventHandler.create_processing_event()
+
+    try:
+        # Create LangChain agent
+        langchain_agent = await _create_langchain_agent(
+            db=db,
+            agent=agent,
+            topic=topic,
+            user_provider_manager=user_provider_manager,
+            provider_id=provider_id,
+            model_name=model_name,
+            system_prompt=system_prompt,
+        )
+
+        # Initialize stream context
+        ctx = StreamContext(
+            stream_id=f"stream_{int(asyncio.get_event_loop().time() * 1000)}",
+            db=db,
+            user_id=user_id,
+        )
+
+        # Load conversation history
+        history_messages = await load_conversation_history(db, topic)
+
+        # Process stream
+        async for event in _process_agent_stream(langchain_agent, history_messages, ctx):
+            yield event
+
+    except Exception as e:
+        yield _handle_streaming_error(e, user_id)
+
+
+async def _resolve_agent(db: AsyncSession, agent: "Agent | None", topic: TopicModel) -> "Agent | None":
+    """Resolve agent from session if not provided."""
+    if agent is not None:
+        return agent
+
     from app.repos.agent import AgentRepository
     from app.repos.session import SessionRepository
 
     session_repo = SessionRepository(db)
     session = await session_repo.get_session_by_id(topic.session_id)
 
-    if agent is None:
-        if session and session.agent_id:
-            agent_repo = AgentRepository(db)
-            agent = await agent_repo.get_agent_by_id(session.agent_id)
+    if session and session.agent_id:
+        agent_repo = AgentRepository(db)
+        return await agent_repo.get_agent_by_id(session.agent_id)
 
-    # Determine provider and model to use
-    # Priority: Session Override > Agent Default > System Default (handled by provider manager if None)
-    provider_id = None
-    model_name = None
+    return None
+
+
+async def _resolve_provider_and_model(
+    db: AsyncSession, agent: "Agent | None", topic: TopicModel
+) -> tuple[str | None, str | None]:
+    """
+    Determine provider and model to use.
+
+    Priority: Session Override > Agent Default > System Default
+    """
+    from app.repos.session import SessionRepository
+
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(topic.session_id)
+
+    provider_id: str | None = None
+    model_name: str | None = None
 
     if session:
         if session.provider_id:
@@ -330,424 +166,219 @@ async def get_ai_response_stream_langchain_legacy(
     if not model_name and agent and agent.model:
         model_name = agent.model
 
-    # Get system prompt with MCP awareness
-    system_prompt = await build_system_prompt(db, agent, model_name)
+    return provider_id, model_name
 
-    yield {"type": ChatEventType.PROCESSING, "data": {"status": ProcessingStatus.PREPARING_REQUEST}}
 
-    try:
-        # Check if built-in search is enabled for this session
-        google_search_enabled = session.google_search_enabled if session else False
+async def _create_langchain_agent(
+    db: AsyncSession,
+    agent: "Agent | None",
+    topic: TopicModel,
+    user_provider_manager: Any,
+    provider_id: str | None,
+    model_name: str | None,
+    system_prompt: str,
+) -> CompiledStateGraph:
+    """Create and configure the LangChain agent using the agent factory."""
+    return await create_chat_agent(
+        db=db,
+        agent_config=agent,
+        topic=topic,
+        user_provider_manager=user_provider_manager,
+        provider_id=provider_id,
+        model_name=model_name,
+        system_prompt=system_prompt,
+    )
 
-        # Create langchain model
-        # Pass google_search_enabled to enable built-in web search for supported models
-        llm = user_provider_manager.create_langchain_model(
-            provider_id, model=model_name, google_search_enabled=google_search_enabled
-        )
-        # Pass session_id to load both agent-level and session-level MCP tools
-        session_id = topic.session_id if topic else None
-        tools = await _prepare_langchain_tools(db, agent, session_id)
-        langchain_agent: CompiledStateGraph = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
 
-        logger.info(f"Agent created with {len(tools)} tools")
+async def _process_agent_stream(
+    agent: CompiledStateGraph,
+    history_messages: list[Any],
+    ctx: StreamContext,
+) -> AsyncGenerator[StreamingEvent, None]:
+    """Process the agent stream and yield events."""
+    logger.info("Starting agent.astream with stream_mode=['updates','messages']")
+    logger.info(f"Length of history: {len(history_messages)}")
 
-        stream_id = f"stream_{int(asyncio.get_event_loop().time() * 1000)}"
-        is_streaming = False
-        # current_step = None
-        assistant_buffer: list[str] = []  # collect tokens/final text for persistence
-        # got_stream_tokens = False  # whether we received token-by-token chunks
-        token_count = 0  # Track tokens for batch logging
+    chunk_count = 0
+    async for chunk in agent.astream({"messages": history_messages}, stream_mode=["updates", "messages"]):
+        chunk_count += 1
+        try:
+            mode, data = chunk
+            logger.info(f"[Chunk {chunk_count}] mode={mode}, data_type={type(data).__name__}")
+        except Exception:
+            logger.warning("Received malformed chunk from astream: %r", chunk)
+            continue
 
-        # Token usage tracking
-        total_input_tokens = 0
-        total_output_tokens = 0
-        total_tokens = 0
-
-        # Use astream with multiple stream modes: "updates" for step progress, "messages" for token streaming
-        logger.debug("Starting agent.astream with stream_mode=['updates','messages']")
-        # Load long-term memory (DB-backed) which includes the current message with attachments
-        # The current user message should already be saved in DB before calling this function
-        history_messages = await _load_db_history(db, topic)
-
-        async for chunk in langchain_agent.astream({"messages": history_messages}, stream_mode=["updates", "messages"]):
-            # chunk is a tuple: (stream_mode, data)
-            try:
-                mode, data = chunk
-            except Exception:
-                logger.debug("Received malformed chunk from astream: %r", chunk)
-                continue
-
-            # Reduced logging: only log mode changes, not every chunk
-            if mode == "updates":
-                logger.debug(f"Received stream chunk - mode: {mode}")
-
-            if mode == "updates":
-                # Step updates - emitted after each node execution
-                if not isinstance(data, dict):
-                    logger.debug("Updates data is not a dict: %r", data)
-                    continue
-
+        if mode == "updates":
+            if isinstance(data, dict):
+                logger.info(f"[Updates] step_names={list(data.keys())}")
+                # Log content of each step for debugging
                 for step_name, step_data in data.items():
-                    # current_step = step_name
-                    logger.debug("Update step: %s", step_name)
-
-                    # Extract messages from step data
-                    messages = step_data.get("messages", [])
-                    logger.debug("Step '%s' messages count: %d", step_name, len(messages))
-                    if not messages:
-                        continue
-
-                    last_message = messages[-1]
-                    # logger.debug("Last message in step '%s': %r", step_name, last_message)
-
-                    # Check if this is a tool call request (from LLM node)
-                    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-                        logger.debug("Detected tool_calls in step '%s': %r", step_name, last_message.tool_calls)
-                        for tool_call in last_message.tool_calls:
-                            logger.debug(
-                                "Tool call requested: %s args=%s",
-                                tool_call.get("name"),
-                                tool_call.get("args"),
-                            )
-                            yield {
-                                "type": ChatEventType.TOOL_CALL_REQUEST,
-                                "data": {
-                                    "id": tool_call.get("id", ""),
-                                    "name": tool_call.get("name", ""),
-                                    "description": f"Tool: {tool_call.get('name', '')}",
-                                    "arguments": tool_call.get("args", {}),
-                                    "status": ToolCallStatus.EXECUTING,
-                                    "timestamp": asyncio.get_event_loop().time(),
-                                },
-                            }
-
-                    # Check if this is a tool execution result (from tools node)
-                    elif hasattr(last_message, "content") and step_name == "tools":
-                        tool_call_id = getattr(last_message, "tool_call_id", "")
-                        logger.debug(
-                            "Tool finished in step '%s' id=%s content=%r",
-                            step_name,
-                            tool_call_id,
-                            last_message.content,
+                    messages = step_data.get("messages", []) if isinstance(step_data, dict) else []
+                    logger.info(f"[Updates/{step_name}] messages_count={len(messages)}")
+                    if messages:
+                        last_msg = messages[-1]
+                        logger.info(
+                            f"[Updates/{step_name}] last_msg_type={type(last_msg).__name__}, has_content={hasattr(last_msg, 'content')}"
                         )
-                        # Format result for frontend display using the utility function
-                        # Use loose retrieval for name since tool_call var might be unbound if we didn't enter previous block
-                        tool_name = getattr(last_message, "name", "unknown")
-                        formatted_result = format_tool_result(last_message.content, tool_name)
-                        yield {
-                            "type": ChatEventType.TOOL_CALL_RESPONSE,
-                            "data": {
-                                "toolCallId": tool_call_id,
-                                "status": ToolCallStatus.COMPLETED,
-                                "result": formatted_result,
-                            },
-                        }
-
-                    # Final model response update: we rely on token stream ('messages' mode) to avoid duplication
-                    elif (
-                        hasattr(last_message, "content")
-                        and step_name == "model"
-                        and (not hasattr(last_message, "tool_calls") or not last_message.tool_calls)
-                    ):
-                        # Handle multimodal content (e.g. generated images)
-                        content = last_message.content
-                        if isinstance(content, list):
-                            generated_files = []
-                            for block in content:
-                                if isinstance(block, dict) and block.get("image_url"):
-                                    try:
-                                        image_url_dict = block.get("image_url", {})
-                                        # Handle both dict with url key and direct string (though standard is dict)
-                                        image_url = (
-                                            image_url_dict.get("url")
-                                            if isinstance(image_url_dict, dict)
-                                            else image_url_dict
-                                        )
-
-                                        if (
-                                            image_url
-                                            and isinstance(image_url, str)
-                                            and image_url.startswith("data:image/")
-                                            and ";base64," in image_url
-                                        ):
-                                            # Extract base64
-                                            header, base64_data = image_url.split(";base64,")
-                                            # Determine extension
-                                            file_ext = "png"  # default
-                                            if "jpeg" in header or "jpg" in header:
-                                                file_ext = "jpg"
-                                            elif "webp" in header:
-                                                file_ext = "webp"
-
-                                            image_data = base64.b64decode(base64_data)
-
-                                            # Create file
-                                            storage_service = get_storage_service()
-                                            filename = (
-                                                f"generated_image_{int(asyncio.get_event_loop().time())}.{file_ext}"
-                                            )
-                                            storage_key = generate_storage_key(
-                                                user_id,
-                                                filename,
-                                                scope=FileScope.GENERATED,
-                                                category=FileCategory.IMAGE,
-                                            )
-
-                                            # Upload
-                                            await storage_service.upload_file(
-                                                BytesIO(image_data),
-                                                storage_key,
-                                                content_type=f"image/{file_ext}",
-                                            )
-
-                                            # Create DB record
-                                            file_repo = FileRepository(db)
-                                            file_create = FileCreate(
-                                                user_id=user_id,
-                                                storage_key=storage_key,
-                                                original_filename=filename,
-                                                content_type=f"image/{file_ext}",
-                                                file_size=len(image_data),
-                                                scope=FileScope.GENERATED,
-                                                category=FileCategory.IMAGE,
-                                                status="pending",
-                                            )
-                                            file_obj = await file_repo.create_file(file_create)
-                                            generated_files.append(file_obj)
-
-                                            logger.info(f"Generated image saved: {file_obj.id}")
-                                    except Exception as e:
-                                        logger.error(f"Failed to process generated image: {e}")
-
-                            if generated_files:
-                                files_data = []
-                                for f in generated_files:
-                                    files_data.append(
-                                        {
-                                            "id": str(f.id),
-                                            "name": f.original_filename,
-                                            "type": f.content_type,
-                                            "size": f.file_size,
-                                            "category": f.category,
-                                            "download_url": f"/xyzen/api/v1/files/{f.id}/download",
-                                        }
-                                    )
-                                yield {
-                                    "type": ChatEventType.GENERATED_FILES,
-                                    "data": {"files": files_data},
-                                }
-
-                        # Do not emit content here; 'messages' stream provides token chunks.
-                        # However, extract citations from response_metadata if available
-                        if hasattr(last_message, "response_metadata"):
-                            response_metadata = last_message.response_metadata
-                            citations = []
-                            if isinstance(response_metadata, dict):
-                                # 1. Handle Google Grounding Metadata
-                                grounding_metadata = response_metadata.get("grounding_metadata", {})
-
-                                if grounding_metadata:
-                                    logger.info("Found grounding_metadata in final model response")
-
-                                    # Extract web search queries
-                                    web_search_queries = grounding_metadata.get("web_search_queries", [])
-
-                                    # Extract grounding chunks (sources)
-                                    grounding_chunks = grounding_metadata.get("grounding_chunks", [])
-
-                                    # Extract grounding supports (mappings between text segments and sources)
-                                    grounding_supports = grounding_metadata.get("grounding_supports", [])
-
-                                    # Build a map of chunk_index -> chunk data for quick lookup
-                                    chunk_map = {}
-                                    for idx, chunk in enumerate(grounding_chunks):
-                                        if isinstance(chunk, dict) and "web" in chunk:
-                                            web_info = chunk["web"]
-                                            chunk_map[idx] = {
-                                                "url": web_info.get("uri"),
-                                                "title": web_info.get("title"),
-                                            }
-
-                                    # Create citations from grounding_supports
-                                    for support in grounding_supports:
-                                        if isinstance(support, dict):
-                                            segment = support.get("segment", {})
-                                            chunk_indices = support.get("grounding_chunk_indices", [])
-
-                                            # Get the cited text from segment
-                                            cited_text = segment.get("text", "")
-                                            start_index = segment.get("start_index")
-                                            end_index = segment.get("end_index")
-
-                                            # For each chunk index, create a citation
-                                            for chunk_idx in chunk_indices:
-                                                if chunk_idx in chunk_map:
-                                                    citation = {
-                                                        "url": chunk_map[chunk_idx]["url"],
-                                                        "title": chunk_map[chunk_idx]["title"],
-                                                        "cited_text": cited_text,
-                                                        "start_index": start_index,
-                                                        "end_index": end_index,
-                                                    }
-                                                    if web_search_queries:
-                                                        citation["search_queries"] = web_search_queries
-                                                    citations.append(citation)
-
-                                # 2. Handle OpenAI Annotations (Responses API)
-                                annotations = response_metadata.get("annotations", [])
-                                if annotations:
-                                    logger.info("Found annotations in final model response (OpenAI)")
-                                    for annotation in annotations:
-                                        if isinstance(annotation, dict) and annotation.get("type") == "citation":
-                                            citation = {
-                                                "url": annotation.get("url"),
-                                                "title": annotation.get("title"),
-                                                "cited_text": annotation.get(
-                                                    "text"
-                                                ),  # OpenAI might not return full text, but sometimes does
-                                                "start_index": annotation.get("start_index"),
-                                                "end_index": annotation.get("end_index"),
-                                            }
-                                            citations.append(citation)
-
-                                    # Deduplicate citations by URL
-                                    if citations:
-                                        seen_urls = set()
-                                        unique_citations = []
-                                        for citation in citations:
-                                            url = citation.get("url")
-                                            if url and url not in seen_urls:
-                                                seen_urls.add(url)
-                                                unique_citations.append(citation)
-
-                                        if unique_citations:
-                                            logger.info(
-                                                f"Emitting {len(unique_citations)} unique search citations from final response"
-                                            )
-                                            yield {
-                                                "type": ChatEventType.SEARCH_CITATIONS,
-                                                "data": {"citations": unique_citations},
-                                            }
-
-                        logger.debug("Final model response update received; deferring to token stream")
-
-            elif mode == "messages":
-                # Token-by-token streaming from LLM
-                # data is a tuple: (message_chunk, metadata)
-                assert isinstance(data, tuple), f"Messages data is not a tuple: {data}"
-
-                try:
-                    message_chunk, metadata = data
-                except Exception:
-                    logger.debug("Malformed messages data: %r", data)
-                    continue
-
-                # Extract token usage metadata if available
-                if hasattr(message_chunk, "usage_metadata"):
-                    usage_metadata = message_chunk.usage_metadata
-                    if isinstance(usage_metadata, dict):
-                        total_input_tokens = usage_metadata.get("input_tokens", total_input_tokens)
-                        total_output_tokens = usage_metadata.get("output_tokens", total_output_tokens)
-                        total_tokens = usage_metadata.get("total_tokens", total_tokens)
-
-                        logger.debug(
-                            "Token usage updated: input=%d, output=%d, total=%d",
-                            total_input_tokens,
-                            total_output_tokens,
-                            total_tokens,
-                        )
-
-                # Batch logging: only log metadata occasionally to reduce overhead
-                token_count += 1
-                if token_count == 1 or token_count % STREAMING_LOG_BATCH_SIZE == 0:
-                    logger.debug(
-                        "Received message chunks (token count: %d) | node=%s | provider=%s | model=%s",
-                        token_count,
-                        metadata.get("langgraph_node") if isinstance(metadata, dict) else None,
-                        metadata.get("ls_provider") if isinstance(metadata, dict) else None,
-                        metadata.get("ls_model_name") if isinstance(metadata, dict) else None,
-                    )
-
-                # Only stream user-visible tokens for LLM ('model') node
-                node = None
+            async for event in _handle_updates_mode(data, ctx):
+                yield event
+        elif mode == "messages":
+            if isinstance(data, tuple) and len(data) >= 2:
+                msg_chunk, metadata = data
                 if isinstance(metadata, dict):
                     node = metadata.get("langgraph_node") or metadata.get("node")
-                if node and node != "model":
-                    # Skip non-model nodes to avoid streaming raw tool outputs
-                    continue
+                    logger.info(f"[Messages] node={node}, chunk_type={type(msg_chunk).__name__}")
+                    # Log if there's content in the chunk
+                    if hasattr(msg_chunk, "content"):
+                        content = msg_chunk.content
+                        content_preview = str(content)[:100] if content else "None"
+                        logger.info(f"[Messages] content_preview={content_preview}")
+            async for event in _handle_messages_mode(data, ctx):
+                yield event
 
-                # Extract token text
-                token_text: Optional[str] = None
-                if isinstance(message_chunk, str):
-                    token_text = message_chunk
-                elif hasattr(message_chunk, "content"):
-                    token_text = getattr(message_chunk, "content") or None
-                elif hasattr(message_chunk, "text"):
-                    token_text = getattr(message_chunk, "text") or None
-                else:
-                    # Fallback best-effort
-                    try:
-                        token_text = str(message_chunk)
-                    except Exception:
-                        token_text = None
+    logger.info(f"Stream finished after {chunk_count} chunks, is_streaming={ctx.is_streaming}")
 
-                if token_text:
-                    if not is_streaming:
-                        logger.debug("Emitting streaming_start for stream_id=%s (from messages)", stream_id)
-                        yield {"type": ChatEventType.STREAMING_START, "data": {"id": stream_id}}
-                        is_streaming = True
+    # Finalize streaming
+    async for event in _finalize_streaming(ctx):
+        yield event
 
-                    # Batch logging: only log occasionally instead of every token
-                    # This significantly improves performance during streaming
-                    yield {
-                        "type": ChatEventType.STREAMING_CHUNK,
-                        "data": {"id": stream_id, "content": token_text},
-                    }
-                    assistant_buffer.append(token_text)
-                    # got_stream_tokens = True
 
-        # Finalize streaming after processing all chunks
-        if is_streaming:
-            logger.debug(
-                "Emitting streaming_end for stream_id=%s (total tokens: %d, total chars: %d)",
-                stream_id,
-                token_count,
-                sum(len(t) for t in assistant_buffer),
-            )
-            yield {
-                "type": ChatEventType.STREAMING_END,
-                "data": {"id": stream_id, "created_at": asyncio.get_event_loop().time()},
-            }
+async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
+    """Handle 'updates' mode events (tool calls, model responses)."""
+    if not isinstance(data, dict):
+        return
 
-            # Emit token usage information if we captured it
-            if total_tokens > 0 or total_input_tokens > 0 or total_output_tokens > 0:
-                logger.info(
-                    "Emitting token usage: input=%d, output=%d, total=%d",
-                    total_input_tokens,
-                    total_output_tokens,
-                    total_tokens,
+    for step_name, step_data in data.items():
+        logger.debug("Update step: %s", step_name)
+
+        messages = step_data.get("messages", [])
+        if not messages:
+            continue
+
+        last_message = messages[-1]
+
+        # Tool call request
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+            logger.debug("Detected tool_calls in step '%s'", step_name)
+            for tool_call in last_message.tool_calls:
+                logger.debug(
+                    "Tool call requested: %s args=%s",
+                    tool_call.get("name"),
+                    tool_call.get("args"),
                 )
-                yield {
-                    "type": ChatEventType.TOKEN_USAGE,
-                    "data": {
-                        "input_tokens": total_input_tokens,
-                        "output_tokens": total_output_tokens,
-                        "total_tokens": total_tokens,
-                    },
-                }
+                yield ToolEventHandler.create_tool_request_event(tool_call)
 
-    except Exception as e:
-        error_str = str(e).lower()
-        if "context_length_exceeded" in error_str or (
-            hasattr(e, "code") and getattr(e, "code") == "context_length_exceeded"
+        # Tool execution result
+        elif hasattr(last_message, "content") and step_name == "tools":
+            tool_call_id = getattr(last_message, "tool_call_id", "")
+            tool_name = getattr(last_message, "name", "unknown")
+            formatted_result = format_tool_result(last_message.content, tool_name)
+            logger.debug("Tool finished in step '%s' id=%s", step_name, tool_call_id)
+            yield ToolEventHandler.create_tool_response_event(tool_call_id, formatted_result)
+
+        # Final model response (from 'model' or 'agent' step)
+        elif (
+            hasattr(last_message, "content")
+            and step_name in ("model", "agent")
+            and (not hasattr(last_message, "tool_calls") or not last_message.tool_calls)
         ):
-            logger.warning(f"Context length exceeded for user {user_id}: {e}")
-            yield {
-                "type": ChatEventType.ERROR,
-                "data": {
-                    "error": "The conversation is too long for the model to process. Please try starting a new chat or reducing the number of attached files."
-                },
-            }
-        else:
-            logger.error(f"Agent execution failed: {e}", exc_info=True)
-            yield {"type": ChatEventType.ERROR, "data": {"error": f"Service unavailable: {e}"}}
+            # Handle generated files
+            if isinstance(last_message.content, list):
+                _, files_data = await GeneratedFileHandler.process_generated_content(
+                    last_message.content, ctx.user_id, ctx.db
+                )
+                if files_data:
+                    yield GeneratedFileHandler.create_generated_files_event(files_data)
+
+            # Handle citations
+            if hasattr(last_message, "response_metadata"):
+                citations = CitationExtractor.extract_citations(last_message.response_metadata)
+                if citations:
+                    logger.info(f"Emitting {len(citations)} unique search citations")
+                    yield CitationExtractor.create_citations_event(citations)
+
+
+async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
+    """Handle 'messages' mode events (token streaming)."""
+    if not isinstance(data, tuple):
+        return
+
+    try:
+        message_chunk, metadata = data
+    except Exception:
+        logger.debug("Malformed messages data: %r", data)
+        return
+
+    # Extract token usage
+    usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
+    if usage:
+        ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens = usage
+
+    # Batch logging
+    ctx.token_count += 1
+    if TokenStreamProcessor.should_log_batch(ctx.token_count):
+        logger.debug(
+            "Received message chunks (token count: %d)",
+            ctx.token_count,
+        )
+
+    # Only stream from LLM-related nodes ('model' or 'agent')
+    # Note: 'model' is used by older LangGraph, 'agent' is used by create_react_agent
+    if isinstance(metadata, dict):
+        node = metadata.get("langgraph_node") or metadata.get("node")
+        if node and node not in ("model", "agent"):
+            return
+
+    # Extract and emit token
+    token_text = TokenStreamProcessor.extract_token_text(message_chunk)
+    if not token_text:
+        return
+
+    if not ctx.is_streaming:
+        logger.debug("Emitting streaming_start for stream_id=%s", ctx.stream_id)
+        ctx.is_streaming = True
+        yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
+
+    ctx.assistant_buffer.append(token_text)
+    yield StreamingEventHandler.create_streaming_chunk(ctx.stream_id, token_text)
+
+
+async def _finalize_streaming(ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
+    """Finalize the streaming session."""
+    if ctx.is_streaming:
+        logger.debug(
+            "Emitting streaming_end for stream_id=%s (total tokens: %d)",
+            ctx.stream_id,
+            ctx.token_count,
+        )
+        yield StreamingEventHandler.create_streaming_end(ctx.stream_id)
+
+        # Emit token usage
+        if ctx.total_tokens > 0 or ctx.total_input_tokens > 0 or ctx.total_output_tokens > 0:
+            logger.info(
+                "Emitting token usage: input=%d, output=%d, total=%d",
+                ctx.total_input_tokens,
+                ctx.total_output_tokens,
+                ctx.total_tokens,
+            )
+            yield StreamingEventHandler.create_token_usage_event(
+                ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens
+            )
+
+
+def _handle_streaming_error(e: Exception, user_id: str) -> StreamingEvent:
+    """Handle and format streaming errors."""
+    error_str = str(e).lower()
+
+    if "context_length_exceeded" in error_str or (
+        hasattr(e, "code") and getattr(e, "code") == "context_length_exceeded"
+    ):
+        logger.warning(f"Context length exceeded for user {user_id}: {e}")
+        return StreamingEventHandler.create_error_event(
+            "The conversation is too long for the model to process. "
+            "Please try starting a new chat or reducing the number of attached files."
+        )
+    else:
+        logger.error(f"Agent execution failed: {e}", exc_info=True)
+        return StreamingEventHandler.create_error_event(f"Service unavailable: {e}")

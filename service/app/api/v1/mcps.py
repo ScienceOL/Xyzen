@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.common.configs import configs
+from app.configs import configs
 from app.core.mcp import async_check_mcp_server_status
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user

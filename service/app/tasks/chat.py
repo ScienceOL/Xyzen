@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCode, ErrCodeError
-from app.common.configs import configs
+from app.configs import configs
 from app.core.celery_app import celery_app
 from app.core.chat import get_ai_response_stream
 from app.core.consume import create_consume_for_chat
@@ -17,6 +17,7 @@ from app.infra.database import ASYNC_DATABASE_URL
 from app.models.citation import CitationCreate
 from app.models.message import Message, MessageCreate
 from app.repos import CitationRepository, FileRepository, MessageRepository, TopicRepository
+from app.schemas.chat_event_types import CitationData, StreamingEvent
 from app.schemas.chat_events import ChatEventType
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def extract_content_text(content: Any) -> str:
         text_parts: List[str] = []
         for item in content:
             if isinstance(item, dict) and item.get("type") == "text":
-                text_parts.append(str(item.get("text", "")))
+                text_parts.append(str(item.get("text", "")))  # pyright: ignore
         return "".join(text_parts)
     return str(content)
 
@@ -144,7 +145,7 @@ async def _process_chat_message_async(
             ai_message_id = None
             ai_message_obj: Message | None = None
             full_content = ""
-            citations_data: List[Dict] = []
+            citations_data: List[CitationData] = []
             generated_files_count = 0
 
             input_tokens: int = 0
@@ -161,10 +162,11 @@ async def _process_chat_message_async(
             async for stream_event in get_ai_response_stream(
                 db, message_text, topic, user_id, None, publisher, connection_id, context
             ):
+                stream_event: StreamingEvent  # Type annotation for better type narrowing
                 # Logic copied and adapted from chat.py
                 event_type = stream_event["type"]
 
-                if event_type == ChatEventType.STREAMING_START:
+                if stream_event["type"] == ChatEventType.STREAMING_START:
                     ai_message_id = stream_event["data"]["id"]
                     if not ai_message_obj:
                         ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
@@ -172,7 +174,7 @@ async def _process_chat_message_async(
 
                     await publisher.publish(json.dumps(stream_event))
 
-                elif event_type == ChatEventType.STREAMING_CHUNK and ai_message_id:
+                elif stream_event["type"] == ChatEventType.STREAMING_CHUNK and ai_message_id:
                     chunk_content = stream_event["data"]["content"]
                     text_content = extract_content_text(chunk_content)
                     full_content += text_content
@@ -188,18 +190,18 @@ async def _process_chat_message_async(
                         last_save_time = current_time
                         logger.debug(f"Incremental save: {len(full_content)} chars")
 
-                elif event_type == ChatEventType.STREAMING_END:
+                elif stream_event["type"] == ChatEventType.STREAMING_END:
                     full_content = stream_event["data"].get("content", full_content)
                     await publisher.publish(json.dumps(stream_event))
 
-                elif event_type == ChatEventType.TOKEN_USAGE:
+                elif stream_event["type"] == ChatEventType.TOKEN_USAGE:
                     token_data = stream_event["data"]
                     input_tokens = token_data.get("input_tokens", 0)
                     output_tokens = token_data.get("output_tokens", 0)
                     total_tokens = token_data.get("total_tokens", 0)
                     await publisher.publish(json.dumps(stream_event))
 
-                elif event_type == ChatEventType.TOOL_CALL_REQUEST:
+                elif stream_event["type"] == ChatEventType.TOOL_CALL_REQUEST:
                     # Persist tool call request
                     try:
                         req = stream_event["data"]
@@ -223,7 +225,7 @@ async def _process_chat_message_async(
                         logger.warning(f"Failed to persist tool call request message: {e}")
                     await publisher.publish(json.dumps(stream_event))
 
-                elif event_type == ChatEventType.TOOL_CALL_RESPONSE:
+                elif stream_event["type"] == ChatEventType.TOOL_CALL_RESPONSE:
                     # Persist tool call response
                     try:
                         resp = stream_event["data"]
@@ -245,7 +247,7 @@ async def _process_chat_message_async(
                         logger.warning(f"Failed to persist tool call response message: {e}")
                     await publisher.publish(json.dumps(stream_event))
 
-                elif event_type == ChatEventType.MESSAGE:
+                elif stream_event["type"] == ChatEventType.MESSAGE:
                     ai_message_id = stream_event["data"]["id"]
                     full_content = stream_event["data"]["content"]
                     if not ai_message_obj:
@@ -262,7 +264,7 @@ async def _process_chat_message_async(
                         citations_data.extend(citations)
                     await publisher.publish(json.dumps(stream_event))
 
-                elif event_type == ChatEventType.GENERATED_FILES:
+                elif stream_event["type"] == ChatEventType.GENERATED_FILES:
                     files_data = stream_event["data"].get("files", [])
                     file_ids = [f["id"] for f in files_data]
                     generated_files_count += len(file_ids)
@@ -281,7 +283,7 @@ async def _process_chat_message_async(
 
                     await publisher.publish(json.dumps(stream_event))
 
-                elif event_type == ChatEventType.ERROR:
+                elif stream_event["type"] == ChatEventType.ERROR:
                     await publisher.publish(json.dumps(stream_event))
                     break
                 else:
@@ -298,7 +300,7 @@ async def _process_chat_message_async(
                 if citations_data:
                     try:
                         citation_repo = CitationRepository(db)
-                        citation_creates = []
+                        citation_creates: List[CitationCreate] = []
                         for citation in citations_data:
                             citation_create = CitationCreate(
                                 message_id=ai_message_obj.id,

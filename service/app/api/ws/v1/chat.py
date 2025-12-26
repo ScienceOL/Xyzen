@@ -7,7 +7,7 @@ import redis.asyncio as redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from app.common.code.error_code import ErrCode, ErrCodeError
-from app.common.configs import configs
+from app.configs import configs
 from app.core.chat.topic_generator import generate_and_update_topic_title
 from app.core.consume import create_consume_for_chat
 from app.infra.database import AsyncSessionLocal

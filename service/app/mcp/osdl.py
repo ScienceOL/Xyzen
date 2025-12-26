@@ -7,7 +7,7 @@ from fastmcp import FastMCP
 from fastmcp.server.auth import JWTVerifier, TokenVerifier
 from fastmcp.server.dependencies import get_access_token
 
-from app.common.configs import configs
+from app.configs import configs
 from app.middleware.auth import AuthProvider
 from app.middleware.auth.token_verifier.bohr_app_token_verifier import BohrAppTokenVerifier
 

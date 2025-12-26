@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastmcp.server.http import create_streamable_http_app
 
 from app.api import root_router
-from app.common.configs import configs
+from app.configs import configs
 from app.core.logger import LOGGING_CONFIG
 
 # from app.middleware.auth.casdoor import casdoor_mcp_auth
