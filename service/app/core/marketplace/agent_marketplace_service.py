@@ -269,7 +269,7 @@ class AgentMarketplaceService:
 
         # Handle MCP servers: Link or clone MCPs
         if snapshot.mcp_server_configs:
-            from app.common.configs import configs
+            from app.configs import configs
             from app.mcp import registry
             from app.models.mcp import McpServerCreate
 

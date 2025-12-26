@@ -7,8 +7,8 @@ import jwt
 import requests
 from fastapi import Header, HTTPException, Query, status
 
-from app.common.configs import configs
-from app.common.configs.auth import AuthProviderConfigBase
+from app.configs import configs
+from app.configs.auth import AuthProviderConfigBase
 
 # Set up logger
 logger = logging.getLogger(__name__)

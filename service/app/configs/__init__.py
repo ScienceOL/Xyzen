@@ -12,6 +12,7 @@ from .mcps import McpProviderConfig
 from .oss import OSSConfig
 from .redemption import AdminConfig
 from .redis import RedisConfig
+from .searxng import SearXNGConfig
 
 
 class AppConfig(BaseSettings):
@@ -93,6 +94,11 @@ class AppConfig(BaseSettings):
     Redis: RedisConfig = Field(
         default_factory=lambda: RedisConfig(),
         description="Redis configuration",
+    )
+
+    SearXNG: SearXNGConfig = Field(
+        default_factory=lambda: SearXNGConfig(),
+        description="SearXNG search configuration",
     )
 
 

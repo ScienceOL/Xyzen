@@ -1,6 +1,6 @@
 from celery import Celery
 
-from app.common.configs import configs
+from app.configs import configs
 
 celery_app = Celery(
     "xyzen_worker",

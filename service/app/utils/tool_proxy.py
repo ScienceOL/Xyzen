@@ -20,7 +20,7 @@ from llm_sandbox.security import (
     SecurityPolicy,
 )
 
-from app.common.configs import configs
+from app.configs import configs
 
 logger = logging.getLogger(__name__)
 policy = SecurityPolicy(

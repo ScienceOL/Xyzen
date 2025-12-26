@@ -12,7 +12,7 @@ import httpx
 from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, Response
 
-from app.common.configs import configs
+from app.configs import configs
 from app.infra.database import AsyncSessionLocal
 from app.repos import SmitheryCacheRepository
 

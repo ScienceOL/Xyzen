@@ -6,19 +6,19 @@ must inherit from. It defines the interface and common functionality for
 graph agents that are automatically discovered and loaded by the system.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from langgraph.graph.state import CompiledStateGraph
+if TYPE_CHECKING:
+    from langgraph.graph.state import CompiledStateGraph
 
 
-class BaseBuiltinGraphAgent(ABC):
-    """
-    Abstract base class for all builtin graph agents.
+class AgentMetadata:
+    """Type-safe container for agent metadata."""
 
-    This class defines the interface that all builtin graph agents must implement
-    to be automatically discovered and loaded by the registry system.
-    """
+    __slots__ = ("name", "description", "version", "capabilities", "tags", "author", "license_")
 
     def __init__(
         self,
@@ -29,7 +29,63 @@ class BaseBuiltinGraphAgent(ABC):
         tags: list[str] | None = None,
         author: str | None = None,
         license_: str | None = None,
-    ):
+    ) -> None:
+        self.name = name
+        self.description = description
+        self.version = version
+        self.capabilities = capabilities or []
+        self.tags = tags or []
+        self.author = author
+        self.license_ = license_
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert metadata to dictionary."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "version": self.version,
+            "capabilities": self.capabilities,
+            "tags": self.tags,
+            "author": self.author,
+            "license": self.license_,
+        }
+
+
+class BaseBuiltinGraphAgent(ABC):
+    """
+    Abstract base class for all builtin graph agents.
+
+    This class defines the interface that all builtin graph agents must implement
+    to be automatically discovered and loaded by the registry system.
+
+    Attributes:
+        name: Human-readable name of the agent
+        description: Detailed description of what the agent does
+        version: Version string (semantic versioning recommended)
+        capabilities: List of capabilities this agent provides
+        tags: Tags for categorization and discovery
+        author: Author of the agent
+        license_: License under which the agent is provided
+    """
+
+    name: str
+    description: str
+    version: str
+    capabilities: list[str]
+    tags: list[str]
+    author: str | None
+    license_: str | None
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        version: str = "1.0.0",
+        capabilities: list[str] | None = None,
+        tags: list[str] | None = None,
+        author: str | None = None,
+        license_: str | None = None,
+    ) -> None:
         """
         Initialize the builtin graph agent.
 
@@ -37,7 +93,7 @@ class BaseBuiltinGraphAgent(ABC):
             name: Human-readable name of the agent
             description: Detailed description of what the agent does
             version: Version string (semantic versioning recommended)
-            capabilities: list of capabilities this agent provides
+            capabilities: List of capabilities this agent provides
             tags: Tags for categorization and discovery
             author: Author of the agent
             license_: License under which the agent is provided
@@ -51,7 +107,7 @@ class BaseBuiltinGraphAgent(ABC):
         self.license_ = license_
 
     @abstractmethod
-    def build_graph(self) -> CompiledStateGraph:
+    def build_graph(self) -> "CompiledStateGraph":
         """
         Build and return the LangGraph StateGraph for this agent.
 
@@ -62,9 +118,9 @@ class BaseBuiltinGraphAgent(ABC):
         - Entry and exit points
 
         Returns:
-            StateGraph: The compiled graph ready for execution
+            Compiled StateGraph ready for execution
         """
-        pass
+        ...
 
     @abstractmethod
     def get_state_schema(self) -> dict[str, Any]:
@@ -76,17 +132,16 @@ class BaseBuiltinGraphAgent(ABC):
         to their types or descriptions.
 
         Returns:
-            dict[str, Any]: State schema definition
+            State schema definition
         """
-        pass
+        ...
 
     def get_metadata(self) -> dict[str, Any]:
         """
         Return comprehensive metadata about this agent.
 
         Returns:
-            dict[str, Any]: Agent metadata including name, description,
-                           version, capabilities, etc.
+            Agent metadata including name, description, version, capabilities, etc.
         """
         return {
             "name": self.name,
@@ -103,7 +158,7 @@ class BaseBuiltinGraphAgent(ABC):
         Get the display name for this agent.
 
         Returns:
-            str: Display name (defaults to name if not overridden)
+            Display name (defaults to name if not overridden)
         """
         return self.name
 
@@ -112,7 +167,7 @@ class BaseBuiltinGraphAgent(ABC):
         Get the icon identifier for this agent.
 
         Returns:
-            str | None: Icon identifier or None if no specific icon
+            Icon identifier or None if no specific icon
         """
         return None
 
@@ -124,12 +179,11 @@ class BaseBuiltinGraphAgent(ABC):
             state: State object to validate
 
         Returns:
-            bool: True if valid, False otherwise
+            True if valid, False otherwise
         """
         try:
-            # schema = self.get_state_schema()
-            # Basic validation - check if all required fields are present
-            # This could be enhanced with more sophisticated validation
+            # Basic validation - could be enhanced with schema validation
+            _ = state  # Unused for now
             return True
         except Exception:
             return False
@@ -139,7 +193,7 @@ class BaseBuiltinGraphAgent(ABC):
         Get the entry point node name for this graph.
 
         Returns:
-            str | None: Name of the entry node, or None to use default
+            Name of the entry node, or None to use default
         """
         return None
 
@@ -148,7 +202,7 @@ class BaseBuiltinGraphAgent(ABC):
         Get the exit point node names for this graph.
 
         Returns:
-            list[str]: Names of exit nodes
+            Names of exit nodes
         """
         return []
 
@@ -157,7 +211,7 @@ class BaseBuiltinGraphAgent(ABC):
         Check if this agent supports streaming execution.
 
         Returns:
-            bool: True if streaming is supported, False otherwise
+            True if streaming is supported, False otherwise
         """
         return True
 
@@ -166,7 +220,7 @@ class BaseBuiltinGraphAgent(ABC):
         Get the list of required tools/MCP servers for this agent.
 
         Returns:
-            list[str]: List of required tool names
+            List of required tool names
         """
         return []
 
@@ -175,7 +229,7 @@ class BaseBuiltinGraphAgent(ABC):
         Get estimated execution time in seconds.
 
         Returns:
-            int | None: Estimated execution time or None if unknown
+            Estimated execution time or None if unknown
         """
         return None
 

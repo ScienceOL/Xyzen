@@ -2,7 +2,7 @@ import logging
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.common.configs import LLMConfig, configs
+from app.configs import LLMConfig, configs
 from app.infra.database import AsyncSessionLocal
 from app.models.provider import Provider, ProviderCreate, ProviderScope, ProviderUpdate
 from app.repos.provider import ProviderRepository
