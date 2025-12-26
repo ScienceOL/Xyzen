@@ -6,6 +6,7 @@ services:
       - "${WEB_PORT:-32233}:32233"
       - "${SERVICE_PORT:-48196}:48196"
       - "${POSTGRES_PORT:-5432}:5432"
+      - "${SEARXNG_PORT:-8888}:8080"
       # - '${REDIS_PORT:-6379}:6379'
     command: tail -f /dev/null
     networks:
@@ -86,6 +87,24 @@ services:
     depends_on:
       service:
         condition: service_healthy
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: sciol-xyzen-searxng
+    network_mode: "service:network-service"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../infra/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ../infra/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-754b4bf6bfd589a450139b40c2420d41c0e92760d0594dbcbc5d90e8a3c5aa24}
+    restart: unless-stopped
+    deploy:
+      replicas: ${SEARXNG_REPLICAS:-1}
+    attach: false
 
 volumes:
   db-data:

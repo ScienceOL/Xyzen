@@ -1,0 +1,78 @@
+use_default_settings: true
+
+general:
+  instance_name: "Xyzen Search"
+  privacypolicy_url: false
+  donation_url: false
+
+server:
+  secret_key: "754b4bf6bfd589a450139b40c2420d41c0e92760d0594dbcbc5d90e8a3c5aa24"
+  limiter: false
+  public_instance: false
+
+search:
+  safe_search: 0
+  autocomplete: "wikipedia"
+  formats:
+    - html
+    - json
+
+ui:
+  default_locale: "en"
+  query_in_title: true
+  infinite_scroll: false
+  default_theme: simple
+
+# Engine configuration
+# DuckDuckGo often triggers CAPTCHA for automated requests, so disabled
+# Focus on engines less likely to block automated queries
+engines:
+  # Disabled - prone to CAPTCHA issues
+  - name: duckduckgo
+    engine: duckduckgo
+    disabled: true
+
+  # Reliable search engines
+  - name: google
+    engine: google
+    shortcut: go
+    use_mobile_ui: false
+
+  - name: bing
+    engine: bing
+    shortcut: bi
+
+  - name: brave
+    engine: brave
+    shortcut: br
+
+  - name: qwant
+    engine: qwant
+    shortcut: qw
+
+  # Knowledge sources (stable, rarely rate-limit)
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+
+  - name: wikidata
+    engine: wikidata
+    shortcut: wd
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: ar
+
+  # Code search
+  - name: github
+    engine: github
+    shortcut: gh
+
+  # Academic
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gs
+
+  - name: semantic scholar
+    engine: semantic_scholar
+    shortcut: ss
