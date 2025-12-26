@@ -58,6 +58,8 @@ export interface Message {
   // New fields for loading and streaming
   isLoading?: boolean;
   isStreaming?: boolean;
+  // Typewriter effect flag - only applies typewriter effect to newly created messages, not loaded history
+  isNewMessage?: boolean;
   // Tool call related fields
   toolCalls?: ToolCall[];
   isToolCalling?: boolean;

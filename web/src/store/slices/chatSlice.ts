@@ -509,7 +509,11 @@ export const createChatSlice: StateCreator<
             const channel = state.channels[topicId];
             if (channel) {
               if (!channel.messages.some((m) => m.id === message.id)) {
-                channel.messages.push(message);
+                // Mark messages from WebSocket as new (should show typewriter effect)
+                channel.messages.push({
+                  ...message,
+                  isNewMessage: true,
+                });
               }
             }
           });
@@ -547,6 +551,7 @@ export const createChatSlice: StateCreator<
                     created_at: new Date().toISOString(),
                     isLoading: true,
                     isStreaming: false,
+                    isNewMessage: true,
                   });
                 }
                 break;
@@ -569,6 +574,7 @@ export const createChatSlice: StateCreator<
                     created_at: new Date().toISOString(),
                     isLoading: true,
                     isStreaming: false,
+                    isNewMessage: true,
                   });
                 }
                 break;
@@ -598,6 +604,7 @@ export const createChatSlice: StateCreator<
                     clientId: generateClientId(),
                     role: "assistant" as const,
                     content: "",
+                    isNewMessage: true,
                     created_at: new Date().toISOString(),
                     isStreaming: true,
                   });
@@ -663,7 +670,10 @@ export const createChatSlice: StateCreator<
                 // Handle regular message (fallback)
                 const regularMessage = event.data as import("../types").Message;
                 if (!channel.messages.some((m) => m.id === regularMessage.id)) {
-                  channel.messages.push(regularMessage);
+                  channel.messages.push({
+                    ...regularMessage,
+                    isNewMessage: true,
+                  });
                 }
                 break;
               }
@@ -832,6 +842,7 @@ export const createChatSlice: StateCreator<
                   created_at: new Date().toISOString(),
                   isLoading: false,
                   isStreaming: false,
+                  isNewMessage: true,
                   toolCalls: [
                     {
                       id: toolCallData.id,
@@ -914,6 +925,7 @@ export const createChatSlice: StateCreator<
                     role: "assistant", // Use assistant role to show on left side
                     content: `⚠️ Error: ${errorData.error || "An error occurred"}`,
                     created_at: new Date().toISOString(),
+                    isNewMessage: true,
                   });
                 }
 
