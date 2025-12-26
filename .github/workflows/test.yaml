@@ -51,7 +51,8 @@ jobs:
           echo "Running tests with coverage..."
           # Run tests with coverage - single run for efficiency
           # Override coverage failure threshold for CI (don't fail on low coverage)
-          uv run pytest --cov=src --cov=examples --cov-report=html --cov-report=xml --cov-report=term-missing --tb=short -v --cov-fail-under=0
+          # Exclude integration tests - they run in the integration-test job with PostgreSQL
+          uv run pytest --ignore=tests/integration --cov=src --cov=examples --cov-report=html --cov-report=xml --cov-report=term-missing --tb=short -v --cov-fail-under=0
           echo "Tests and coverage completed successfully"
 
       - name: Upload coverage reports to Codecov
