@@ -4,6 +4,7 @@ import { Badge } from "@/components/base/Badge";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -279,6 +280,9 @@ export default function XyzenAgent({
     llmProvidersLoading,
   } = useXyzen();
 
+  // Get auth state
+  const { isAuthenticated } = useAuth();
+
   // Fetch marketplace listings to check if deleted agent has a published version
   const { data: myListings } = useMyMarketplaceListings();
 
@@ -286,14 +290,19 @@ export default function XyzenAgent({
     fetchAgents();
   }, [fetchAgents]);
 
-  // Ensure providers are loaded on mount
+  // Ensure providers are loaded on mount (only if authenticated)
   useEffect(() => {
-    if (llmProviders.length === 0 && !llmProvidersLoading) {
+    if (isAuthenticated && llmProviders.length === 0 && !llmProvidersLoading) {
       fetchMyProviders().catch((error) => {
         console.error("Failed to fetch providers:", error);
       });
     }
-  }, [llmProviders.length, llmProvidersLoading, fetchMyProviders]);
+  }, [
+    isAuthenticated,
+    llmProviders.length,
+    llmProvidersLoading,
+    fetchMyProviders,
+  ]);
 
   // Ensure MCP servers are loaded first
   useEffect(() => {
