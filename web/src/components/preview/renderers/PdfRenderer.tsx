@@ -1,13 +1,12 @@
 import { useXyzen } from "@/store";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { RendererProps } from "../types";
 
 export const PdfRenderer = ({ url, className }: RendererProps) => {
   const token = useXyzen((state) => state.token);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
-  const [, setIsLandscape] = useState(false);
+  const pdfBlobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!url) return;
@@ -38,9 +37,9 @@ export const PdfRenderer = ({ url, className }: RendererProps) => {
           // 将响应转换为 Blob
           const blob = await response.blob();
 
-          // 创建 Object URL
+          // 创建 Object URL 并存储在 ref 中
           const blobUrl = URL.createObjectURL(blob);
-          setPdfBlobUrl(blobUrl);
+          pdfBlobUrlRef.current = blobUrl;
           pdfUrl = blobUrl;
         }
 
@@ -57,12 +56,11 @@ export const PdfRenderer = ({ url, className }: RendererProps) => {
             `[PdfRenderer] PDF orientation: ${isLandscapeOrientation ? "landscape" : "portrait"}`,
           );
         } catch (error) {
-          // PDF.js 不可用或出错，设置默认值
+          // PDF.js 不可用或出错，继续加载
           console.warn(
             "[PdfRenderer] Could not detect PDF orientation:",
             error,
           );
-          setIsLandscape(false);
         }
 
         // 设置 iframe src
@@ -77,14 +75,12 @@ export const PdfRenderer = ({ url, className }: RendererProps) => {
     loadPDF();
 
     return () => {
-      // Clean up blob URL
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
-        setPdfBlobUrl(null);
+      // Clean up blob URL using ref
+      if (pdfBlobUrlRef.current) {
+        URL.revokeObjectURL(pdfBlobUrlRef.current);
+        pdfBlobUrlRef.current = null;
       }
     };
-    // 注意：intentionally excluding pdfBlobUrl from dependencies to avoid infinite loops
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, token]);
 
   return (

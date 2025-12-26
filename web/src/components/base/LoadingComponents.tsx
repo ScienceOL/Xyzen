@@ -70,8 +70,7 @@ export function InlineLoading({
   return <>{children}</>;
 }
 
-interface LoadingButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface LoadingButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loadingKey?: LoadingKey | string;
   loading?: boolean;
   children: React.ReactNode;

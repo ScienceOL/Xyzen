@@ -1,9 +1,11 @@
 import ProfileIcon from "@/assets/ProfileIcon";
+import { TYPEWRITER_CONFIG } from "@/configs/typewriterConfig";
+import { useStreamingTypewriter } from "@/hooks/useTypewriterEffect";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
 import { motion } from "framer-motion";
-import { useDeferredValue, useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
@@ -24,17 +26,61 @@ function ChatBubble({ message }: ChatBubbleProps) {
     created_at,
     isLoading,
     isStreaming,
+    isNewMessage,
     toolCalls,
     attachments,
     citations,
   } = message;
 
-  // Use deferred value and memoization to optimize rendering performance
-  const deferredContent = useDeferredValue(content);
-  const markdownContent = useMemo(
-    () => <Markdown content={deferredContent} />,
-    [deferredContent],
+  // 流式消息打字效果
+  // 记录消息是否首次是新消息，确保打字效果只在首次时启用
+  const wasNewMessageRef = useRef(isNewMessage ?? false);
+
+  useEffect(() => {
+    // 一旦 isNewMessage 变成 false，就不再启用打字效果
+    if (!isNewMessage && wasNewMessageRef.current) {
+      wasNewMessageRef.current = false;
+    }
+  }, [isNewMessage]);
+
+  // 仅在消息首次是新消息且为 Assistant 消息时才启用打字效果
+  // 一旦消息完成流式传输（isNewMessage 变为 false），就禁用打字效果
+  const shouldEnableTypewriter =
+    TYPEWRITER_CONFIG.enabled &&
+    role === "assistant" &&
+    wasNewMessageRef.current;
+
+  const { opacity } = useStreamingTypewriter(
+    content,
+    (isStreaming ?? false) || (isLoading ?? false),
+    {
+      enabled: shouldEnableTypewriter,
+      fadeDuration: TYPEWRITER_CONFIG.fadeDuration || 300,
+    },
   );
+
+  // Use deferred value and memoization to optimize rendering performance
+  // 创建带有渐变效果的 Markdown 内容
+  const markdownContent = useMemo(() => {
+    // 如果启用打字效果，包裹整个内容并应用透明度
+    if (shouldEnableTypewriter) {
+      return (
+        <div
+          style={{
+            opacity,
+            transition: `opacity ${TYPEWRITER_CONFIG.fadeDuration || 300}ms ease-in-out`,
+          }}
+        >
+          <Markdown content={content} />
+        </div>
+      );
+    }
+    // 否则直接显示完整内容
+    return <Markdown content={content} />;
+  }, [opacity, content, shouldEnableTypewriter]);
+
+  // 仅当正在接收流式数据且启用了打字效果时才显示打字状态
+  const isTyping = shouldEnableTypewriter && (isStreaming ?? false);
 
   const isUserMessage = role === "user";
   const isToolMessage = toolCalls && toolCalls.length > 0;
@@ -163,7 +209,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
               ) : (
                 markdownContent
               )}
-              {isStreaming && !isLoading && (
+              {(isStreaming || isTyping) && !isLoading && (
                 <motion.span
                   animate={{ opacity: [0.3, 1, 0.3] }}
                   transition={{ duration: 1, repeat: Infinity }}

@@ -10,10 +10,11 @@
     "module": "ESNext",
     "declaration": true,
     "skipLibCheck": true,
+    "esModuleInterop": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "moduleDetection": "force",
     "noEmit": false,
     "outDir": "./site",
