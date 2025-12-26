@@ -1,8 +1,8 @@
+import { DragDropOverlay } from "@/components/shared/DragDropOverlay";
+import { useFileDragDrop } from "@/hooks/useFileDragDrop";
+import { useXyzen } from "@/store";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import { useXyzen } from "@/store";
-import { useFileDragDrop } from "@/hooks/useFileDragDrop";
-import { DragDropOverlay } from "@/components/shared/DragDropOverlay";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => boolean | void;
@@ -137,7 +137,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       />
 
       {/* 输入框容器 */}
-      <div className="relative flex border-t border-neutral-200/40 px-4 py-3 transition-all duration-200 dark:border-neutral-800/40">
+      <div
+        className="relative flex flex-col border-t border-neutral-200/40 px-4 py-3 transition-colors duration-200 dark:border-neutral-800/40"
+        style={{ height: `${height}px` }}
+      >
         <textarea
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
@@ -147,17 +150,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onCompositionEnd={handleCompositionEnd}
           placeholder={placeholder}
           wrap="soft"
-          className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none dark:text-white dark:placeholder-neutral-500 overflow-y-auto overflow-x-hidden"
+          className="w-full flex-1 resize-none bg-transparent text-base font-normal focus:font-medium text-neutral-900 placeholder-neutral-400 focus:outline-none dark:text-white dark:placeholder-neutral-500 overflow-y-auto overflow-x-hidden caret-orange-600 selection:bg-orange-100 selection:text-orange-900 dark:caret-orange-400 dark:selection:bg-orange-900/90 dark:selection:text-white"
           style={{
-            height: `${height - 24}px`,
-            minHeight: "24px",
+            minHeight: "48px",
             boxSizing: "border-box",
           }}
           disabled={disabled}
         />
 
-        {/* 右侧区域:发送按钮和提示在同一行 - 绝对定位 */}
-        <div className="absolute right-4 bottom-3 flex items-center gap-3 whitespace-nowrap">
+        {/* 底部工具栏 */}
+        <div className="flex items-center justify-end gap-3 pt-2">
           {/* 快捷键提示 - 淡色，移动端隐藏 */}
           <div className="hidden sm:flex items-center gap-2 text-[11px] text-neutral-400/60 dark:text-neutral-500/60">
             <span className="flex items-center gap-1">
@@ -181,7 +183,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <button
             onClick={handleSendMessage}
             disabled={disabled || !inputMessage.trim()}
-            className="rounded-full p-2 text-neutral-400 transition-all duration-200 hover:text-neutral-900 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed dark:text-neutral-500 dark:hover:text-white"
+            className="rounded-full p-1.5 text-neutral-400 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed dark:text-neutral-500 dark:hover:bg-orange-900/20 dark:hover:text-orange-400"
             aria-label="发送消息"
           >
             <PaperAirplaneIcon className="h-5 w-5" />

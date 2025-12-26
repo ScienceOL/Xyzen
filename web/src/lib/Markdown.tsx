@@ -1,22 +1,79 @@
+import { zIndexClasses } from "@/constants/zIndex";
+import { Dialog, DialogPanel } from "@headlessui/react";
 import {
+  ArrowsPointingOutIcon,
   CheckIcon,
   ClipboardIcon,
-  ArrowsPointingOutIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import ReactECharts from "echarts-for-react";
+import { AnimatePresence, motion } from "framer-motion";
 import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
-import { Dialog, DialogPanel } from "@headlessui/react";
-import { AnimatePresence, motion } from "framer-motion";
-import { zIndexClasses } from "@/constants/zIndex";
 
 import "katex/dist/katex.css";
+
+type MdastNode = {
+  type: string;
+  value?: string;
+  children?: MdastNode[];
+};
+
+function remarkStrongQuotedText() {
+  const pattern = /\*\*([“"「『])([\s\S]+?)(["”」』])\*\*/g;
+
+  const transform = (node: MdastNode) => {
+    if (!node || !Array.isArray(node.children)) return;
+
+    const nextChildren: MdastNode[] = [];
+
+    for (const child of node.children) {
+      if (child?.type === "text" && typeof child.value === "string") {
+        const text = child.value;
+        let lastIndex = 0;
+        pattern.lastIndex = 0;
+
+        for (
+          let match = pattern.exec(text);
+          match;
+          match = pattern.exec(text)
+        ) {
+          const start = match.index;
+          const end = start + match[0].length;
+
+          const before = text.slice(lastIndex, start);
+          if (before) nextChildren.push({ type: "text", value: before });
+
+          const quoted = `${match[1]}${match[2]}${match[3]}`;
+          nextChildren.push({
+            type: "strong",
+            children: [{ type: "text", value: quoted }],
+          });
+
+          lastIndex = end;
+        }
+
+        const after = text.slice(lastIndex);
+        if (after) nextChildren.push({ type: "text", value: after });
+        continue;
+      }
+
+      transform(child);
+      nextChildren.push(child);
+    }
+
+    node.children = nextChildren;
+  };
+
+  return (tree: MdastNode) => {
+    transform(tree);
+  };
+}
 
 interface CodeBlockProps {
   language: string;
@@ -465,7 +522,7 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
     >
       <ReactMarkdown
         components={MarkdownComponents}
-        remarkPlugins={[remarkMath, remarkGfm]}
+        remarkPlugins={[remarkMath, remarkGfm, remarkStrongQuotedText]}
         rehypePlugins={[rehypeKatex]}
       >
         {content}

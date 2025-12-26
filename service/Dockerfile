@@ -1,7 +1,12 @@
 # Use the official Python image as a base
 FROM python:3.13.5-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libreoffice \
+    fonts-noto-cjk \
+    fonts-noto-cjk-extra \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
