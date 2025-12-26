@@ -1,12 +1,15 @@
 import { useXyzen } from "@/store";
 import { Dialog, Transition } from "@headlessui/react";
 import { ArrowDownTrayIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Fragment, useEffect, useState, useCallback } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { AudioRenderer } from "./renderers/AudioRenderer";
+import { ExcelRenderer } from "./renderers/ExcelRenderer";
 import { ImageRenderer } from "./renderers/ImageRenderer";
-import { PdfRenderer } from "./renderers/PdfRenderer";
-import { VideoRenderer } from "./renderers/VideoRenderer";
 import { MarkdownRenderer } from "./renderers/MarkdownRenderer";
+import { PdfRenderer } from "./renderers/PdfRenderer";
+import { PowerPointRenderer } from "./renderers/PowerPointRenderer";
+import { VideoRenderer } from "./renderers/VideoRenderer";
+import { WordRenderer } from "./renderers/WordRenderer";
 import type { PreviewFile } from "./types";
 
 interface PreviewModalProps {
@@ -126,12 +129,48 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
       return <PdfRenderer file={file} url={blobUrl} />;
     }
     if (
+      type === "application/vnd.ms-powerpoint" ||
+      type ===
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+      type ===
+        "application/vnd.openxmlformats-officedocument.presentationml.slideshow" ||
+      file.name.endsWith(".ppt") ||
+      file.name.endsWith(".pptx") ||
+      file.name.endsWith(".odp")
+    ) {
+      return <PowerPointRenderer file={file} url={blobUrl} />;
+    }
+    if (
       type === "text/markdown" ||
       type === "text/plain" ||
       file.name.endsWith(".md") ||
       file.name.endsWith(".txt")
     ) {
       return <MarkdownRenderer file={file} url={blobUrl} />;
+    }
+
+    // Word 文档支持 (.doc, .docx)
+    if (
+      type === "application/msword" ||
+      type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      type === "application/vnd.ms-word.document.macroenabled.12" ||
+      file.name.endsWith(".doc") ||
+      file.name.endsWith(".docx")
+    ) {
+      return <WordRenderer file={file} url={blobUrl} />;
+    }
+
+    // Excel 电子表格支持 (.xls, .xlsx)
+    if (
+      type === "application/vnd.ms-excel" ||
+      type ===
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      type === "application/vnd.ms-excel.sheet.macroenabled.12" ||
+      file.name.endsWith(".xls") ||
+      file.name.endsWith(".xlsx")
+    ) {
+      return <ExcelRenderer file={file} url={blobUrl} />;
     }
 
     return (

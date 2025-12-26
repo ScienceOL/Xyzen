@@ -9,6 +9,7 @@ import {
   knowledgeSetService,
   type KnowledgeSetWithFileCount,
 } from "@/service/knowledgeSetService";
+import { useXyzen } from "@/store";
 import {
   ArrowDownTrayIcon,
   ArrowPathRoundedSquareIcon,
@@ -17,7 +18,6 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { FolderIcon } from "@heroicons/react/24/solid";
-import { useXyzen } from "@/store";
 import { format } from "date-fns";
 import React, {
   forwardRef,
