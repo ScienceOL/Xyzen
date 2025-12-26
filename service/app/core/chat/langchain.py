@@ -30,7 +30,7 @@ from app.schemas.chat_events import ChatEventType, ProcessingStatus, ToolCallSta
 from .messages import build_system_prompt
 
 if TYPE_CHECKING:
-    from app.api.ws.v1.chat import ConnectionManager
+    from app.core.chat.interfaces import ChatPublisher
     from app.models.agent import Agent
 
 logger = logging.getLogger(__name__)
@@ -265,7 +265,7 @@ async def get_ai_response_stream_langchain_legacy(
     topic: TopicModel,
     user_id: str,
     agent: "Agent | None" = None,
-    connection_manager: "ConnectionManager | None" = None,
+    connection_manager: "ChatPublisher | None" = None,
     connection_id: str | None = None,
     context: dict[str, Any] | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
