@@ -15,12 +15,12 @@ from langgraph.graph.state import CompiledStateGraph
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.agents.factory import create_chat_agent
+from app.core.prompts import build_system_prompt
 from app.core.providers import get_user_provider_manager
 from app.models.topic import Topic as TopicModel
 from app.schemas.chat_event_types import StreamingEvent
 
 from .history import load_conversation_history
-from .messages import build_system_prompt
 from .stream_handlers import (
     CitationExtractor,
     GeneratedFileHandler,
@@ -86,6 +86,7 @@ async def get_ai_response_stream_langchain_legacy(
 
     # Build system prompt
     system_prompt = await build_system_prompt(db, agent, model_name)
+    logger.info(f"System prompt: {system_prompt}")
 
     # Emit processing status
     yield StreamingEventHandler.create_processing_event()
