@@ -1,3 +1,4 @@
+import { useAuth } from "@/hooks/useAuth";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -191,14 +192,17 @@ export function useXyzenChat(config: XyzenChatConfig) {
     }
   }, [messages.length, autoScroll, scrollToBottom]);
 
-  // Fetch providers on mount if not already loaded
+  // Get auth state
+  const { isAuthenticated } = useAuth();
+
+  // Fetch providers on mount if not already loaded AND user is authenticated
   useEffect(() => {
-    if (llmProviders.length === 0) {
+    if (isAuthenticated && llmProviders.length === 0) {
       fetchMyProviders().catch((error) => {
         console.error("Failed to fetch providers:", error);
       });
     }
-  }, [llmProviders.length, fetchMyProviders]);
+  }, [isAuthenticated, llmProviders.length, fetchMyProviders]);
 
   // Auto-switch to correct system agent channel for this panel
   useEffect(() => {
