@@ -160,7 +160,7 @@ export function SearchMethodSelector({
                   {!supportsBuiltinSearch
                     ? "当前模型不支持"
                     : mcpEnabled
-                      ? "⚠️ 无法和MCP工具一起使用"
+                      ? "⚠️ 切换后将断开 MCP 工具"
                       : "使用模型原生搜索能力"}
                 </div>
               </div>

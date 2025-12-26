@@ -132,6 +132,11 @@ export default function ChatToolbar({
   const handleConnectKnowledge = async () => {
     if (!currentAgent) return;
 
+    // If builtin search is enabled, switch to searxng first since MCP can't work with builtin search
+    if (searchMethod === "builtin") {
+      await handleSearchMethodChange("searxng");
+    }
+
     // 1. Check if already connected (in user's MCP list)
     let knowledgeMcp = mcpServers.find((s) => s.name.includes("Knowledge"));
 
@@ -403,6 +408,27 @@ export default function ChatToolbar({
       disconnectSearchMcp,
     ],
   );
+
+  // Auto-switch from builtin search to searxng when non-search MCPs are added
+  // This handles the case when MCPs are added via agent modals (AddAgentModal, EditAgentModal)
+  useEffect(() => {
+    if (!activeChatChannel || !currentMcpInfo) return;
+
+    // Check if there are any non-search MCPs connected
+    const hasNonSearchMcp = currentMcpInfo.servers.some(
+      (s) => !s.name.includes("Web Search"),
+    );
+
+    // If builtin search is enabled and non-search MCPs are connected, auto-switch to searxng
+    if (searchMethod === "builtin" && hasNonSearchMcp) {
+      handleSearchMethodChange("searxng");
+    }
+  }, [
+    activeChatChannel,
+    currentMcpInfo,
+    searchMethod,
+    handleSearchMethodChange,
+  ]);
 
   // Handle MCP conflict when switching to builtin search
   const handleMcpConflict = useCallback(() => {
