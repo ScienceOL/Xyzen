@@ -74,7 +74,7 @@ const convertSvgToPng = (
         // cnum = 256 (256色)
         // rgba.buffer 是 ArrayBuffer，UPNG 需要 [ArrayBuffer]
         const pngBuffer = UPNG.encode(
-          [rgba.buffer],
+          [rgba.buffer as ArrayBuffer],
           canvas.width,
           canvas.height,
           256,

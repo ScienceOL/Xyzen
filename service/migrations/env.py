@@ -16,7 +16,7 @@ sys.path.insert(0, str(service_dir))
 importlib.import_module("app.models")
 
 # Import project modules after adding to path
-from app.common.configs import configs  # noqa: E402
+from app.configs import configs  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

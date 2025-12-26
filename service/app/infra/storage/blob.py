@@ -7,7 +7,7 @@ import aioboto3
 from botocore.exceptions import ClientError
 
 from app.common.code import ErrCode
-from app.common.configs import configs
+from app.configs import configs
 from app.core.storage import StorageServiceProto
 
 logger = logging.getLogger(__name__)

@@ -36,9 +36,12 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BuiltinSearchToggle } from "./BuiltinSearchToggle";
 import { KnowledgeSelector } from "./KnowledgeSelector";
 import { ModelSelector } from "./ModelSelector";
+import {
+  SearchMethodSelector,
+  type SearchMethod,
+} from "./SearchMethodSelector";
 import SessionHistory from "./SessionHistory";
 
 interface ChatToolbarProps {
@@ -129,6 +132,11 @@ export default function ChatToolbar({
   const handleConnectKnowledge = async () => {
     if (!currentAgent) return;
 
+    // If builtin search is enabled, switch to searxng first since MCP can't work with builtin search
+    if (searchMethod === "builtin") {
+      await handleSearchMethodChange("searxng");
+    }
+
     // 1. Check if already connected (in user's MCP list)
     let knowledgeMcp = mcpServers.find((s) => s.name.includes("Knowledge"));
 
@@ -212,8 +220,8 @@ export default function ChatToolbar({
     return channel?.model || null;
   }, [activeChatChannel, channels]);
 
-  // State for built-in search toggle
-  const [builtinSearchEnabled, setBuiltinSearchEnabled] = useState(false);
+  // State for search method: none, builtin, or searxng
+  const [searchMethod, setSearchMethod] = useState<SearchMethod>("none");
 
   // State for new chat creation loading
   const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
@@ -222,6 +230,76 @@ export default function ChatToolbar({
   // Refs for drag handling
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
+
+  // Connect Web Search MCP
+  const connectSearchMcp = useCallback(async () => {
+    if (!currentAgent) return;
+
+    // 1. Check if already connected (in user's MCP list)
+    let searchMcp = mcpServers.find((s) => s.name.includes("Web Search"));
+
+    // 2. If not, try to create from builtin
+    if (!searchMcp) {
+      // Find in builtins
+      const builtin = builtinMcpServers.find((s) =>
+        s.name.includes("Web Search"),
+      );
+
+      // If not loaded, try fetch
+      if (!builtin) {
+        await fetchBuiltinMcpServers();
+        return;
+      }
+
+      if (builtin) {
+        searchMcp = await quickAddBuiltinServer(builtin);
+      }
+    }
+
+    if (!searchMcp) return;
+
+    // 3. Attach to Agent
+    if (!currentAgent.mcp_servers?.some((ref) => ref.id === searchMcp!.id)) {
+      // Construct new list
+      const currentIds = currentAgent.mcp_servers?.map((s) => s.id) || [];
+      const newIds = [...currentIds, searchMcp.id];
+
+      try {
+        await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
+      } catch (e) {
+        console.error("Failed to attach Web Search:", e);
+      }
+    }
+  }, [
+    currentAgent,
+    mcpServers,
+    builtinMcpServers,
+    fetchBuiltinMcpServers,
+    quickAddBuiltinServer,
+    updateAgent,
+  ]);
+
+  // Disconnect Web Search MCP
+  const disconnectSearchMcp = useCallback(async () => {
+    if (!currentAgent) return;
+
+    const searchMcp = mcpServers.find((s) => s.name.includes("Web Search"));
+    if (!searchMcp) return;
+
+    // Only remove if it is currently connected
+    if (currentAgent.mcp_servers?.some((ref) => ref.id === searchMcp.id)) {
+      const newIds =
+        currentAgent.mcp_servers
+          ?.map((s) => s.id)
+          .filter((id) => id !== searchMcp.id) || [];
+
+      try {
+        await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
+      } catch (e) {
+        console.error("Failed to disconnect Web Search:", e);
+      }
+    }
+  }, [currentAgent, mcpServers, updateAgent]);
 
   // Fetch current session's built-in search enabled status
   useEffect(() => {
@@ -234,9 +312,31 @@ export default function ChatToolbar({
       return;
     }
 
-    // Fetch built-in search enabled status
-    setBuiltinSearchEnabled(channel.google_search_enabled || false);
-  }, [activeChatChannel, channels]);
+    // Fetch search method from session config
+    if (channel.google_search_enabled) {
+      setSearchMethod("builtin");
+    } else {
+      // Check if Search MCP is connected
+      // We need to check the agent's MCP servers, which we can access via currentAgent
+      // But currentAgent is derived from activeChatChannel, so it should be available/consistent
+      // We need to look at currentAgent (from useMemo) instead of just mcpServers (which updates separately?)
+      // Actually currentAgent is stable enough.
+      // Let's us allAgents or currentAgent to be safe.
+
+      const agent = agents.find((a) => a.id === channel.agentId);
+      const hasSearchMcp = agent?.mcp_servers?.some((s) => {
+        // We need to find the name of the server by ID, because mcp_servers on agent only has ID/name snapshot
+        // The snapshot name might be enough.
+        return s.name?.includes("Web Search");
+      });
+
+      if (hasSearchMcp) {
+        setSearchMethod("searxng");
+      } else {
+        setSearchMethod("none");
+      }
+    }
+  }, [activeChatChannel, channels, agents]);
 
   // Model change handler - updates session's provider and model
   const handleModelChange = useCallback(
@@ -262,28 +362,79 @@ export default function ChatToolbar({
     [activeChatChannel, channels, updateSessionProviderAndModel],
   );
 
-  // Built-in search toggle handler - updates session's google_search_enabled
-  const handleBuiltinSearchToggle = useCallback(
-    async (enabled: boolean) => {
+  // Search method change handler
+  const handleSearchMethodChange = useCallback(
+    async (method: SearchMethod) => {
       if (!activeChatChannel) return;
 
       const channel = channels[activeChatChannel];
       if (!channel?.sessionId) return;
 
       try {
-        await updateSessionConfig(channel.sessionId, {
-          google_search_enabled: enabled,
-        });
-        setBuiltinSearchEnabled(enabled);
+        // Update google_search_enabled based on method
+        const enabled = method === "builtin";
+
+        // 1. Update session config for built-in search
+        if (channel.google_search_enabled !== enabled) {
+          await updateSessionConfig(channel.sessionId, {
+            google_search_enabled: enabled,
+          });
+        }
+
+        // 2. Handle MCP binding
+        if (method === "searxng") {
+          // Enable MCP
+          await connectSearchMcp();
+        } else {
+          // Disable MCP (for both 'builtin' and 'none')
+          // Only disconnect if we are switching FROM searxng or if it's currently connected.
+          // The disconnectSearchMcp checks if connected, so it's safe to call.
+          await disconnectSearchMcp();
+        }
+
+        setSearchMethod(method);
         console.log(
-          `Updated session ${channel.sessionId} built-in search to ${enabled}`,
+          `Updated session ${channel.sessionId} search method to ${method}`,
         );
       } catch (error) {
-        console.error("Failed to update built-in search setting:", error);
+        console.error("Failed to update search method:", error);
       }
     },
-    [activeChatChannel, channels, updateSessionConfig],
+    [
+      activeChatChannel,
+      channels,
+      updateSessionConfig,
+      connectSearchMcp,
+      disconnectSearchMcp,
+    ],
   );
+
+  // Auto-switch from builtin search to searxng when non-search MCPs are added
+  // This handles the case when MCPs are added via agent modals (AddAgentModal, EditAgentModal)
+  useEffect(() => {
+    if (!activeChatChannel || !currentMcpInfo) return;
+
+    // Check if there are any non-search MCPs connected
+    const hasNonSearchMcp = currentMcpInfo.servers.some(
+      (s) => !s.name.includes("Web Search"),
+    );
+
+    // If builtin search is enabled and non-search MCPs are connected, auto-switch to searxng
+    if (searchMethod === "builtin" && hasNonSearchMcp) {
+      handleSearchMethodChange("searxng");
+    }
+  }, [
+    activeChatChannel,
+    currentMcpInfo,
+    searchMethod,
+    handleSearchMethodChange,
+  ]);
+
+  // Handle MCP conflict when switching to builtin search
+  const handleMcpConflict = useCallback(() => {
+    console.warn("MCP tools will be disabled when using builtin search");
+    // TODO: Show toast notification about MCP being disabled
+  }, []);
 
   // Check if current model supports web search
   const supportsWebSearch = useMemo(() => {
@@ -409,16 +560,18 @@ export default function ChatToolbar({
               className="absolute bottom-full left-0 right-0 mx-2 mb-2 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-1.5"
             >
               <div className="flex flex-col gap-1">
-                {/* Built-in Search Toggle */}
-                {activeChatChannel && supportsWebSearch && (
+                {/* Search Method Selector */}
+                {activeChatChannel && (
                   <div className="w-full">
-                    <BuiltinSearchToggle
-                      enabled={builtinSearchEnabled}
-                      onToggle={(enabled) => {
-                        handleBuiltinSearchToggle(enabled);
+                    <SearchMethodSelector
+                      method={searchMethod}
+                      onMethodChange={(method) => {
+                        handleSearchMethodChange(method);
                         setShowMoreMenu(false);
                       }}
-                      supportsWebSearch={supportsWebSearch}
+                      supportsBuiltinSearch={supportsWebSearch}
+                      mcpEnabled={!!currentMcpInfo?.servers.length}
+                      onMcpConflict={handleMcpConflict}
                     />
                   </div>
                 )}
@@ -535,12 +688,14 @@ export default function ChatToolbar({
 
               {/* Desktop View: Expanded Items */}
               <div className="hidden md:flex items-center space-x-1">
-                {/* Built-in Search Toggle - Only for models that support web search */}
+                {/* Search Method Selector */}
                 {activeChatChannel && (
-                  <BuiltinSearchToggle
-                    enabled={builtinSearchEnabled}
-                    onToggle={handleBuiltinSearchToggle}
-                    supportsWebSearch={supportsWebSearch}
+                  <SearchMethodSelector
+                    method={searchMethod}
+                    onMethodChange={handleSearchMethodChange}
+                    supportsBuiltinSearch={supportsWebSearch}
+                    mcpEnabled={!!currentMcpInfo?.servers.length}
+                    onMcpConflict={handleMcpConflict}
                   />
                 )}
 

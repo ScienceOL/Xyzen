@@ -4,7 +4,7 @@ import logging
 import requests
 from fastmcp import FastMCP
 
-from app.common.configs import configs
+from app.configs import configs
 
 logger = logging.getLogger(__name__)
 

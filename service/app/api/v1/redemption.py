@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCodeError, handle_auth_error
-from app.common.configs import configs
+from app.configs import configs
 from app.core.redemption import RedemptionService
 from app.infra.database import get_session as get_db_session
 from app.middleware.auth import get_current_user

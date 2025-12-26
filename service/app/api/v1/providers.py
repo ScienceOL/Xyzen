@@ -6,7 +6,7 @@ from litellm.types.utils import ModelInfo
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCodeError, handle_auth_error
-from app.common.configs import configs
+from app.configs import configs
 from app.core.auth import AuthorizationService, get_auth_service
 from app.core.llm.service import LiteLLMService
 from app.infra.database import get_session

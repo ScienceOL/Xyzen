@@ -381,7 +381,7 @@ def create_quota_service(db: AsyncSession) -> StorageQuotaService:
     Returns:
         StorageQuotaService instance configured with limits from OSSConfig
     """
-    from app.common.configs import configs
+    from app.configs import configs
 
     oss_config = configs.OSS
     return StorageQuotaService(

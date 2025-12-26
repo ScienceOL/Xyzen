@@ -44,6 +44,9 @@ class ChatEventType(StrEnum):
     # Generated content
     GENERATED_FILES = "generated_files"
 
+    # Balance/billing events
+    INSUFFICIENT_BALANCE = "insufficient_balance"
+
 
 class ChatClientEventType(StrEnum):
     """Client -> Server event types (messages coming from the frontend)."""
