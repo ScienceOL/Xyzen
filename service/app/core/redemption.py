@@ -179,7 +179,7 @@ class RedemptionService:
         # 3. Increment code usage
         await self.repo.increment_code_usage(redemption_code.id)
         logger.info(
-            f"Incremented code usage for {code}, usage: {redemption_code.current_usage + 1}/{redemption_code.max_usage}"
+            f"Incremented code usage for {code}, usage: {redemption_code.current_usage + 1}/{redemption_code.max_usage}"  # noqa
         )
 
         return wallet, history
@@ -266,6 +266,30 @@ class RedemptionService:
 
         logger.info(f"Deactivated redemption code: {code_id}")
         return updated_code  # type: ignore
+
+    async def credit_balance(self, user_id: str, amount: int, description: str = "积分充值") -> UserWallet:
+        """
+        Credit virtual balance directly to a user's wallet (for internal use).
+
+        Args:
+            user_id: User ID to credit
+            amount: Amount to credit (must be positive)
+            description: Description of the credit operation
+
+        Returns:
+            Updated user wallet
+
+        Raises:
+            ErrCode.INVALID_PARAMETER: If amount is not positive
+        """
+        if amount <= 0:
+            raise ErrCode.INVALID_PARAMETER.with_messages("Amount must be positive")
+
+        logger.info(f"Crediting {amount} to user {user_id}: {description}")
+        wallet = await self.repo.credit_wallet(user_id, amount)
+        logger.info(f"Credited {amount} to user {user_id}, new balance: {wallet.virtual_balance}")
+
+        return wallet
 
 
 # Convenience function for easy access

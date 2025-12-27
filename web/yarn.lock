@@ -1175,7 +1175,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.13.10, @babel/runtime@npm:^7.20.13, @babel/runtime@npm:^7.9.2":
+"@babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.13.10, @babel/runtime@npm:^7.20.13, @babel/runtime@npm:^7.21.0, @babel/runtime@npm:^7.9.2":
   version: 7.28.4
   resolution: "@babel/runtime@npm:7.28.4"
   checksum: 10c0/792ce7af9750fb9b93879cc9d1db175701c4689da890e6ced242ea0207c9da411ccf16dc04e689cc01158b28d7898c40d75598f4559109f761c12ce01e959bf7
@@ -5321,6 +5321,7 @@ __metadata:
     html2canvas-pro: "npm:^1.6.2"
     immer: "npm:^10.1.1"
     katex: "npm:^0.16.22"
+    little-date: "npm:^1.2.1"
     lodash: "npm:^4.17.21"
     lowlight: "npm:^3.3.0"
     lucide-react: "npm:^0.562.0"
@@ -8255,6 +8256,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"date-fns@npm:^2.0.0":
+  version: 2.30.0
+  resolution: "date-fns@npm:2.30.0"
+  dependencies:
+    "@babel/runtime": "npm:^7.21.0"
+  checksum: 10c0/e4b521fbf22bc8c3db332bbfb7b094fd3e7627de0259a9d17c7551e2d2702608a7307a449206065916538e384f37b181565447ce2637ae09828427aed9cb5581
+  languageName: node
+  linkType: hard
+
 "date-fns@npm:^4.1.0":
   version: 4.1.0
   resolution: "date-fns@npm:4.1.0"
@@ -10874,6 +10884,15 @@ __metadata:
   version: 1.2.4
   resolution: "lines-and-columns@npm:1.2.4"
   checksum: 10c0/3da6ee62d4cd9f03f5dc90b4df2540fb85b352081bee77fe4bbcd12c9000ead7f35e0a38b8d09a9bb99b13223446dd8689ff3c4959807620726d788701a83d2d
+  languageName: node
+  linkType: hard
+
+"little-date@npm:^1.2.1":
+  version: 1.2.1
+  resolution: "little-date@npm:1.2.1"
+  dependencies:
+    date-fns: "npm:^2.0.0"
+  checksum: 10c0/9ebcfde28122bce2178d65ea9432279df35bba29fcc5a3f3379ae7197affc1019feb93563ee7f73a49d9f2c989f7b54527bdc400169470597101f1e059fcc3e4
   languageName: node
   linkType: hard
 

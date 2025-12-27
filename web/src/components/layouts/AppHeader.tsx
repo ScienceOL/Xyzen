@@ -1,10 +1,12 @@
 import McpIcon from "@/assets/McpIcon";
 import { AuthStatus, SettingsButton } from "@/components/features";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
+import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserWallet } from "@/hooks/useUserWallet";
 import { useXyzen } from "@/store";
 import {
+  CalendarDaysIcon,
   ChevronLeftIcon,
   CogIcon,
   InformationCircleIcon,
@@ -42,6 +44,7 @@ export function AppHeader({
   const { openMcpListModal, openSettingsModal, closeXyzen } = useXyzen();
   const auth = useAuth();
   const [showPointsInfo, setShowPointsInfo] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
   const walletQuery = useUserWallet(auth.token, isAuthedForUi);
@@ -124,6 +127,17 @@ export function AppHeader({
                   <InformationCircleIcon className="h-4 w-4" />
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowCheckInModal(true)}
+                className="rounded-md border border-amber-100 bg-gradient-to-br from-amber-50/80 to-white px-2.5 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:from-amber-100/80 hover:to-amber-50 dark:border-amber-500/20 dark:from-amber-950/20 dark:to-neutral-900/20 dark:text-amber-400 dark:hover:from-amber-900/30 dark:hover:to-amber-950/30"
+                title="每日签到"
+              >
+                <div className="flex items-center gap-1.5">
+                  <CalendarDaysIcon className="h-4 w-4" />
+                  <span>签到</span>
+                </div>
+              </button>
               <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700"></div>
             </>
           )}
@@ -162,6 +176,10 @@ export function AppHeader({
       <PointsInfoModal
         isOpen={showPointsInfo}
         onClose={() => setShowPointsInfo(false)}
+      />
+      <CheckInModal
+        isOpen={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
       />
     </>
   );

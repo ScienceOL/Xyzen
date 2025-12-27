@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .agents import router as agents_router
 from .auth import router as auth_router
+from .checkin import router as checkin_router
 from .files import router as files_router
 from .folders import router as folders_router
 from .knowledge_sets import router as knowledge_sets_router
@@ -83,6 +84,7 @@ v1_router.include_router(agents_router, prefix="/agents")
 
 v1_router.include_router(mcps_router, prefix="/mcps")
 v1_router.include_router(redemption_router, prefix="/redemption")
+v1_router.include_router(checkin_router, prefix="/checkin")
 v1_router.include_router(files_router, prefix="/files")
 v1_router.include_router(folders_router, prefix="/folders")
 v1_router.include_router(knowledge_sets_router, prefix="/knowledge-sets")

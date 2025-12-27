@@ -10,14 +10,11 @@ from .agent_marketplace import (
     AgentMarketplaceUpdate,
 )
 from .agent_snapshot import AgentSnapshot, AgentSnapshotCreate, AgentSnapshotRead
+from .checkin import CheckIn, CheckInCreate, CheckInRead
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
-from .file_knowledge_set_link import (
-    FileKnowledgeSetLink,
-    FileKnowledgeSetLinkCreate,
-    FileKnowledgeSetLinkRead,
-)
+from .file_knowledge_set_link import FileKnowledgeSetLink, FileKnowledgeSetLinkCreate, FileKnowledgeSetLinkRead
 from .folder import Folder, FolderCreate, FolderRead, FolderUpdate
 from .graph import GraphAgent, GraphEdge, GraphNode
 from .knowledge_set import (
@@ -61,6 +58,9 @@ __all__ = [
     "Citation",
     "CitationCreate",
     "CitationRead",
+    "CheckIn",
+    "CheckInCreate",
+    "CheckInRead",
     "ConsumeRecord",
     "File",
     "FileCreate",

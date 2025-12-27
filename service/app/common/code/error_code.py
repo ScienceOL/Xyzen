@@ -175,6 +175,10 @@ class ErrCode(IntEnum):
     REDEMPTION_CODE_ALREADY_EXISTS = 14005  # Code already exists (duplicate)
     INVALID_PARAMETER = 14006  # Invalid parameter provided
 
+    # ========== CHECK-IN (14100-14199) ==========
+    # Use when: Check-in operations fail
+    ALREADY_CHECKED_IN_TODAY = 14100  # User has already checked in today
+
     # ========== OSS (OBJECT STORAGE SERVICE) (15xxx) ==========
     # Use when: OSS operations fail
     OSS_UPLOAD_FAILED = 15000  # Failed to upload file to OSS
@@ -269,6 +273,8 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.REDEMPTION_CODE_ALREADY_USED: 400,
         ErrCode.REDEMPTION_CODE_ALREADY_EXISTS: 409,
         ErrCode.INVALID_PARAMETER: 400,
+        # 400 errors (check-in)
+        ErrCode.ALREADY_CHECKED_IN_TODAY: 400,
         # 404 errors (OSS)
         ErrCode.OSS_BUCKET_NOT_FOUND: 404,
         ErrCode.OSS_OBJECT_NOT_FOUND: 404,
