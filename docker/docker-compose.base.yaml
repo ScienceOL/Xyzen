@@ -56,6 +56,24 @@ services:
         condition: service_healthy
     command: uv run celery -A app.worker worker --loglevel=info
 
+  searxng:
+    image: registry.sciol.ac.cn/sciol/searxng:latest
+    container_name: sciol-xyzen-searxng
+    network_mode: 'service:network-service'
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../infra/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ../infra/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-754b4bf6bfd589a450139b40c2420d41c0e92760d0594dbcbc5d90e8a3c5aa24}
+    restart: unless-stopped
+    deploy:
+      replicas: ${SEARXNG_REPLICAS:-1}
+    attach: false
+
   service:
     image: registry.sciol.ac.cn/sciol/xyzen-service:latest
     pull_policy: if_not_present
@@ -87,24 +105,6 @@ services:
     depends_on:
       service:
         condition: service_healthy
-
-  searxng:
-    image: registry.sciol.ac.cn/sciol/searxng:latest
-    container_name: sciol-xyzen-searxng
-    network_mode: 'service:network-service'
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ../infra/searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ../infra/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
-    environment:
-      - SEARXNG_BASE_URL=http://localhost:8080/
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-754b4bf6bfd589a450139b40c2420d41c0e92760d0594dbcbc5d90e8a3c5aa24}
-    restart: unless-stopped
-    deploy:
-      replicas: ${SEARXNG_REPLICAS:-1}
-    attach: false
 
 volumes:
   db-data:

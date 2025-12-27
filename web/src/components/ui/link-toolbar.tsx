@@ -159,12 +159,10 @@ export function LinkFloatingToolbar({
 
   return (
     <>
-      {/* @ts-expect-error - floating-ui style type compatibility */}
       <div ref={insertRef} className={popoverVariants()} {...insertProps}>
         {input}
       </div>
 
-      {/* @ts-expect-error - floating-ui style type compatibility */}
       <div ref={editRef} className={popoverVariants()} {...editProps}>
         {editContent}
       </div>
