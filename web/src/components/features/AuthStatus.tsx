@@ -8,8 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
+import { TokenInputModal } from "@/components/features/TokenInputModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserWallet } from "@/hooks/useUserWallet";
 import {
@@ -29,7 +29,6 @@ export interface AuthStatusProps {
 export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   const auth = useAuth();
   const [showTokenModal, setShowTokenModal] = useState(false);
-  const [tokenInput, setTokenInput] = useState("");
   const [showPointsInfo, setShowPointsInfo] = useState(false);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
@@ -60,16 +59,11 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   }, [auth.token]);
 
   // 处理token输入
+  // 处理token输入
   const handleTokenSubmit = async (token: string) => {
     await auth.login(token);
     onTokenInput?.(token);
   };
-
-  const handleCloseTokenModal = useCallback(() => {
-    setTokenInput("");
-    setShowTokenModal(false);
-  }, []);
-
   if (auth.isLoading) {
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
@@ -214,60 +208,11 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
         </button>
       </div>
 
-      <Modal
+      <TokenInputModal
         isOpen={showTokenModal}
-        onClose={handleCloseTokenModal}
-        title="输入访问令牌"
-        maxWidth="max-w-md"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!tokenInput.trim()) return;
-            void handleTokenSubmit(tokenInput.trim());
-            handleCloseTokenModal();
-          }}
-          className="space-y-4"
-        >
-          <div>
-            <label
-              htmlFor="token-input"
-              className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
-            >
-              访问令牌
-            </label>
-            <input
-              id="token-input"
-              type="password"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="请输入您的访问令牌"
-              className="w-full rounded-sm border border-neutral-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
-              autoFocus
-              required
-            />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              请输入有效的访问令牌进行身份验证
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleCloseTokenModal}
-              className="rounded-sm px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              className="rounded-sm bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              确认
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => setShowTokenModal(false)}
+        onSubmit={handleTokenSubmit}
+      />
     </>
   );
 }

@@ -6,13 +6,12 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import McpIcon from "@/assets/McpIcon";
-import { AuthStatus, SettingsButton } from "@/components/features";
+import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
+import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
-import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 
 import { SettingsModal } from "@/components/modals/SettingsModal";
 
@@ -29,7 +28,6 @@ export function AppFullscreen({
   const {
     setBackendUrl,
     // centralized UI actions
-    openMcpListModal,
     activePanel,
     setActivePanel,
   } = useXyzen();
@@ -67,28 +65,7 @@ export function AppFullscreen({
       >
         <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-black">
           {/* Header Bar */}
-          <header className="flex h-14 flex-shrink-0 items-center justify-between px-4 bg-white/80 dark:bg-black/60 backdrop-blur-md supports-[backdrop-filter]:backdrop-blur-md shadow-sm ring-1 ring-neutral-200/60 dark:ring-neutral-800/60">
-            <div className="flex items-center gap-3">
-              <h1 className="text-base sm:text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                Xyzen
-              </h1>
-              {/* Breadcrumbs or current context could go here */}
-            </div>
-
-            <div className="flex items-center space-x-1">
-              <SettingsButton />
-              <button
-                className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                title="MCP Management"
-                onClick={openMcpListModal}
-              >
-                <McpIcon className="h-5 w-5" />
-              </button>
-              <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700"></div>
-              <AuthStatus className="ml-2" />
-            </div>
-          </header>
-
+          <AppHeader />
           {/* Main Content Layout */}
           <main className="flex flex-1 overflow-hidden">
             {/* Activity Bar */}

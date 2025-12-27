@@ -31,7 +31,7 @@ ENV VITE_XYZEN_BACKEND_URL=${VITE_XYZEN_BACKEND_URL}
 # Build the application
 # The build script in package.json is "rimraf site && tsc -b && vite build"
 RUN \
-  if [ -f yarn.lock ]; then NODE_OPTIONS=--max_old_space_size=2048 yarn run build; \
+  if [ -f yarn.lock ]; then yarn run build; \
   else echo "Lockfile not found." && exit 1; \
   fi
 
