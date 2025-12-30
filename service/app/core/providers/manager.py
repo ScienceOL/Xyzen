@@ -135,10 +135,14 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
     all_providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
     if not all_providers:
         raise ErrCode.PROVIDER_NOT_FOUND.with_messages("No providers found for user")
+
+    from app.configs import configs
+
+    default_system_provider_type = configs.LLM.default_provider
     user_provider_manager = ProviderManager()
     for db_provider in all_providers:
         try:
-            provider_name = SYSTEM_PROVIDER_NAME if db_provider.scope == ProviderScope.SYSTEM else str(db_provider.id)
+            provider_name = str(db_provider.id)
 
             extra_config: dict[str, Any] = db_provider.provider_config or {}
             logger.debug(f"Add {extra_config} to {provider_name}")
@@ -154,6 +158,25 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
                 timeout=db_provider.timeout,
                 extra_config=extra_config,
             )
+
+            # Backward-compatible alias: keep a single "system" key as default fallback.
+            if (
+                db_provider.scope == ProviderScope.SYSTEM
+                and default_system_provider_type
+                and db_provider.provider_type == default_system_provider_type
+            ):
+                user_provider_manager.add_provider(
+                    name=SYSTEM_PROVIDER_NAME,
+                    provider_scope=db_provider.scope,
+                    provider_type=db_provider.provider_type,
+                    api_key=SecretStr(db_provider.key),
+                    api_endpoint=db_provider.api,
+                    model=db_provider.model,
+                    max_tokens=db_provider.max_tokens,
+                    temperature=db_provider.temperature,
+                    timeout=db_provider.timeout,
+                    extra_config=extra_config,
+                )
         except Exception as e:
             logger.error(f"Failed to load provider {db_provider.name} for user {user_id}: {e}")
             continue

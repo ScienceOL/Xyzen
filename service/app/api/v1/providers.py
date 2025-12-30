@@ -44,8 +44,13 @@ async def get_default_model_config() -> DefaultModelInfo:
         ModelInfo with additional provider_type field for system provider type
     """
     llm_config = configs.LLM
-    model = llm_config.model
-    provider_type = llm_config.provider.value
+    default_provider = llm_config.default_provider
+    default_cfg = llm_config.default_config
+    if not default_provider or not default_cfg:
+        raise HTTPException(status_code=500, detail="No default system LLM provider configured")
+
+    model = default_cfg.model
+    provider_type = default_provider.value
 
     model_info = LiteLLMService.get_model_info(model)
 

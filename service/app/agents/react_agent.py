@@ -98,14 +98,8 @@ class ReActAgent(BaseBuiltinGraphAgent):
 
         # Combine all tools for binding
         # MCP tools (client-side) are passed as-is
-        # Google search (provider-side) is added as a special dict format
-        all_tools: list[BaseTool | dict[str, Any]] = list(self.tools)
-
-        if self.google_search_enabled:
-            # Add Google's builtin search as a provider-side tool
-            # This format is recognized by Google models for native search
-            all_tools.append({"google_search": {}})
-            logger.info("Added google_search to agent tools")
+        # Provider-side web search is bound at model creation time.
+        all_tools: list[BaseTool] = list(self.tools)
 
         # Use LangChain's create_agent (replacement for deprecated create_react_agent)
         # Pass all tools together so they're bound in a single call
@@ -138,8 +132,6 @@ class ReActAgent(BaseBuiltinGraphAgent):
     def get_required_tools(self) -> list[str]:
         """Return names of tools configured for this agent."""
         tool_names = [tool.name for tool in self.tools]
-        if self.google_search_enabled:
-            tool_names.append("google_search")
         return tool_names
 
 
