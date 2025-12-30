@@ -59,15 +59,25 @@ export default function MessageAttachments({
 
     const fetchImages = async () => {
       const newBlobUrls: Record<string, string> = {};
-      const loadingStates: Record<string, boolean> = {};
+      // const loadingStates: Record<string, boolean> = {}; // Removed unused variable
+      const newLoadingStates: Record<string, boolean> = {};
+
+      for (const image of imageAttachments) {
+        if (image.download_url && !imageBlobUrls[image.id]) {
+          newLoadingStates[image.id] = true;
+        }
+      }
+      if (Object.keys(newLoadingStates).length > 0) {
+        setImageLoadingStates((prev) => ({ ...prev, ...newLoadingStates }));
+      }
 
       for (const image of imageAttachments) {
         if (!image.download_url) continue;
         if (imageBlobUrls[image.id]) continue; // Already fetched
 
         // Set loading state
-        loadingStates[image.id] = true;
-        setImageLoadingStates((prev) => ({ ...prev, [image.id]: true }));
+        // loadingStates[image.id] = true;
+        // setImageLoadingStates((prev) => ({ ...prev, [image.id]: true }));
 
         try {
           const fullUrl = getFullUrl(image.download_url);
@@ -155,12 +165,25 @@ export default function MessageAttachments({
 
   const getImageUrl = (image: MessageAttachment): string => {
     // Use blob URL if available, otherwise fallback to thumbnail or download URL
-    return (
-      imageBlobUrls[image.id] ||
-      image.thumbnail_url ||
-      getFullUrl(image.download_url) ||
-      ""
-    );
+    if (imageBlobUrls[image.id]) {
+      return imageBlobUrls[image.id];
+    }
+    if (image.thumbnail_url) {
+      return image.thumbnail_url;
+    }
+
+    // Fallback to download URL with token
+    const fullUrl = getFullUrl(image.download_url);
+    if (!fullUrl) return "";
+
+    // If we have a token, append it to the URL for authentication
+    if (token) {
+      // Check if URL already has query parameters
+      const separator = fullUrl.includes("?") ? "&" : "?";
+      return `${fullUrl}${separator}token=${token}`;
+    }
+
+    return fullUrl;
   };
 
   if (!attachments || attachments.length === 0) {
