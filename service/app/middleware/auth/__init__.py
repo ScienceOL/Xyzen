@@ -224,18 +224,28 @@ except ValueError as e:
 
 
 # === Unified Authentication Dependency Function ===
-async def get_current_user(authorization: str | None = Header(None)) -> str:
-    """Get the current user ID from the Authorization header (for HTTP API)"""
+async def get_current_user(
+    authorization: str | None = Header(None),
+    token: str | None = Query(None),
+) -> str:
+    """Get the current user ID from the Authorization header or query parameter"""
 
-    # Check Authorization header
-    if not authorization:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header")
+    access_token = None
 
-    # Parse Bearer token
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format")
+    # 1. Check Authorization header
+    if authorization:
+        if authorization.startswith("Bearer "):
+            access_token = authorization[7:]
+        else:
+            # Check if it is a direct token without Bearer prefix (sometimes happens)
+            access_token = authorization
 
-    access_token = authorization[7:]  # Remove "Bearer " prefix
+    # 2. Check query parameter if header is missing
+    if not access_token and token:
+        access_token = token
+
+    if not access_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authentication credentials")
 
     # Validate token
     auth_result = AuthProvider.validate_token(access_token)
