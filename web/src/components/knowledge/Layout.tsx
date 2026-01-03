@@ -8,6 +8,8 @@ import { knowledgeSetService } from "@/service/knowledgeSetService";
 import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { CreateKnowledgeSetModal } from "./CreateKnowledgeSetModal";
 import { FileList, type FileListHandle } from "./FileList";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { Sidebar } from "./Sidebar";
@@ -15,6 +17,7 @@ import { StatusBar } from "./StatusBar";
 import type { KnowledgeTab, StorageStats, ViewMode } from "./types";
 
 export const KnowledgeLayout = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<KnowledgeTab>("home");
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [currentKnowledgeSetId, setCurrentKnowledgeSetId] = useState<
@@ -24,6 +27,8 @@ export const KnowledgeLayout = () => {
     string | null
   >(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCreateKnowledgeSetOpen, setIsCreateKnowledgeSetOpen] =
+    useState(false);
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -137,7 +142,11 @@ export const KnowledgeLayout = () => {
             const maxSizeMB = (stats.maxFileSize / (1024 * 1024)).toFixed(0);
             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
             alert(
-              `File "${file.name}" (${fileSizeMB}MB) exceeds the maximum file size limit of ${maxSizeMB}MB`,
+              t("knowledge.upload.errors.fileTooLarge", {
+                name: file.name,
+                fileSizeMB,
+                maxSizeMB,
+              }),
             );
             continue;
           }
@@ -152,7 +161,10 @@ export const KnowledgeLayout = () => {
             );
             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
             alert(
-              `Not enough storage space. File size: ${fileSizeMB}MB, Available: ${availableMB}MB. Please delete some files first.`,
+              t("knowledge.upload.errors.notEnoughStorage", {
+                fileSizeMB,
+                availableMB,
+              }),
             );
             continue;
           }
@@ -163,7 +175,7 @@ export const KnowledgeLayout = () => {
         setRefreshKey((prev) => prev + 1);
       } catch (error) {
         console.error("Upload failed", error);
-        alert("Upload failed");
+        alert(t("knowledge.upload.errors.uploadFailed"));
       }
     }
   };
@@ -175,7 +187,7 @@ export const KnowledgeLayout = () => {
   };
 
   const handleCreateFolder = async () => {
-    const name = prompt("Enter folder name:");
+    const name = prompt(t("knowledge.prompts.folderName"));
     if (name) {
       try {
         await folderService.createFolder({
@@ -185,25 +197,28 @@ export const KnowledgeLayout = () => {
         setRefreshKey((prev) => prev + 1);
       } catch (e) {
         console.error("Failed to create folder", e);
-        alert("Failed to create folder");
+        alert(t("knowledge.errors.createFolderFailed"));
       }
     }
   };
 
   const handleCreateKnowledgeSet = async () => {
-    const name = prompt("Enter knowledge set name:");
-    if (name) {
-      const description = prompt("Enter description (optional):");
-      try {
-        await knowledgeSetService.createKnowledgeSet({
-          name,
-          description: description || null,
-        });
-        setRefreshKey((prev) => prev + 1);
-      } catch (e) {
-        console.error("Failed to create knowledge set", e);
-        alert("Failed to create knowledge set");
-      }
+    setIsCreateKnowledgeSetOpen(true);
+  };
+
+  const handleSubmitCreateKnowledgeSet = async (values: {
+    name: string;
+    description: string;
+  }) => {
+    try {
+      await knowledgeSetService.createKnowledgeSet({
+        name: values.name,
+        description: values.description ? values.description : null,
+      });
+      setRefreshKey((prev) => prev + 1);
+    } catch (e) {
+      console.error("Failed to create knowledge set", e);
+      throw e;
     }
   };
 
@@ -211,15 +226,15 @@ export const KnowledgeLayout = () => {
   const getTitle = () => {
     switch (activeTab) {
       case "home":
-        return "Recents";
+        return t("knowledge.titles.recents");
       case "all":
-        return "All Files";
+        return t("knowledge.titles.allFiles");
       case "folders":
-        return "My Knowledge";
+        return t("knowledge.titles.myKnowledge");
       case "knowledge":
-        return currentKnowledgeSetName || "Knowledge Base";
+        return currentKnowledgeSetName || t("knowledge.titles.knowledgeBase");
       case "trash":
-        return "Trash";
+        return t("knowledge.titles.trash");
       default:
         return activeTab;
     }
@@ -246,9 +261,9 @@ export const KnowledgeLayout = () => {
           showCloseButton={false}
         >
           <VisuallyHidden>
-            <DialogTitle>Navigation Menu</DialogTitle>
+            <DialogTitle>{t("knowledge.a11y.navTitle")}</DialogTitle>
             <DialogDescription>
-              Navigate through your knowledge base
+              {t("knowledge.a11y.navDescription")}
             </DialogDescription>
           </VisuallyHidden>
           <Sidebar
@@ -317,6 +332,12 @@ export const KnowledgeLayout = () => {
         className="hidden"
         multiple
         onChange={handleFileChange}
+      />
+
+      <CreateKnowledgeSetModal
+        isOpen={isCreateKnowledgeSetOpen}
+        onClose={() => setIsCreateKnowledgeSetOpen(false)}
+        onCreate={handleSubmitCreateKnowledgeSet}
       />
     </div>
   );

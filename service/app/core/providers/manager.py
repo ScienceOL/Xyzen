@@ -6,6 +6,7 @@ from pydantic import SecretStr
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
+from app.core.llm.service import LiteLLMService
 from app.models.provider import ProviderScope
 from app.schemas.provider import LLMCredentials, ProviderType, RuntimeProviderConfig
 
@@ -90,7 +91,44 @@ class ProviderManager:
         if not model:
             raise ErrCode.MODEL_NOT_SPECIFIED.with_messages("Model must be specified")
 
-        # If no provider specified, try system provider as fallback
+        def infer_provider_preference(model_name: str) -> list[ProviderType]:
+            """Infer likely provider type(s) for a model.
+
+            Used only for system fallback routing when provider_id is missing.
+            """
+            try:
+                info = LiteLLMService.get_model_info(model_name)
+                litellm_provider = str(info.get("litellm_provider") or "").lower()
+            except Exception:
+                litellm_provider = ""
+
+            # LiteLLM providers mapping (best-effort)
+            if litellm_provider in {"azure", "azure_ai", "azure_openai"}:
+                return [ProviderType.AZURE_OPENAI, ProviderType.OPENAI]
+            if litellm_provider in {"openai"}:
+                return [ProviderType.OPENAI, ProviderType.AZURE_OPENAI]
+            if litellm_provider in {"vertex_ai", "vertex"}:
+                return [ProviderType.GOOGLE_VERTEX, ProviderType.GOOGLE]
+            if litellm_provider in {"google"}:
+                return [ProviderType.GOOGLE, ProviderType.GOOGLE_VERTEX]
+
+            # Heuristics fallback
+            lower = model_name.lower()
+            if "gemini" in lower:
+                return [ProviderType.GOOGLE_VERTEX, ProviderType.GOOGLE]
+            if "gpt" in lower:
+                return [ProviderType.AZURE_OPENAI, ProviderType.OPENAI]
+            return []
+
+        # If no provider specified, try to route by model to an appropriate system provider.
+        if not provider_id:
+            for preferred in infer_provider_preference(model):
+                alias = f"{SYSTEM_PROVIDER_NAME}:{preferred.value}"
+                if alias in self._provider_configs:
+                    provider_id = alias
+                    break
+
+        # Fall back to default system provider alias
         if not provider_id:
             provider_id = SYSTEM_PROVIDER_NAME
             logger.info("No provider specified, using system provider as fallback")
@@ -100,7 +138,14 @@ class ProviderManager:
         # If provider not found, try system provider as fallback
         if not config:
             logger.warning(f"Provider '{provider_id}' not found, falling back to system provider")
-            config = self._provider_configs.get(SYSTEM_PROVIDER_NAME)
+            # Try route-by-model system alias first
+            for preferred in infer_provider_preference(model):
+                alias = f"{SYSTEM_PROVIDER_NAME}:{preferred.value}"
+                if alias in self._provider_configs:
+                    config = self._provider_configs.get(alias)
+                    break
+            if not config:
+                config = self._provider_configs.get(SYSTEM_PROVIDER_NAME)
 
         if not config:
             raise ErrCode.PROVIDER_NOT_AVAILABLE.with_messages("No provider available (including system fallback)")
@@ -135,10 +180,14 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
     all_providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
     if not all_providers:
         raise ErrCode.PROVIDER_NOT_FOUND.with_messages("No providers found for user")
+
+    from app.configs import configs
+
+    default_system_provider_type = configs.LLM.default_provider
     user_provider_manager = ProviderManager()
     for db_provider in all_providers:
         try:
-            provider_name = SYSTEM_PROVIDER_NAME if db_provider.scope == ProviderScope.SYSTEM else str(db_provider.id)
+            provider_name = str(db_provider.id)
 
             extra_config: dict[str, Any] = db_provider.provider_config or {}
             logger.debug(f"Add {extra_config} to {provider_name}")
@@ -154,6 +203,42 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
                 timeout=db_provider.timeout,
                 extra_config=extra_config,
             )
+
+            # System aliases:
+            # - system:<provider_type> lets us route default provider by model.
+            # - system keeps backward compatible single fallback.
+            if db_provider.scope == ProviderScope.SYSTEM:
+                user_provider_manager.add_provider(
+                    name=f"{SYSTEM_PROVIDER_NAME}:{str(db_provider.provider_type)}",
+                    provider_scope=db_provider.scope,
+                    provider_type=db_provider.provider_type,
+                    api_key=SecretStr(db_provider.key),
+                    api_endpoint=db_provider.api,
+                    model=db_provider.model,
+                    max_tokens=db_provider.max_tokens,
+                    temperature=db_provider.temperature,
+                    timeout=db_provider.timeout,
+                    extra_config=extra_config,
+                )
+
+            # Backward-compatible alias: keep a single "system" key as default fallback.
+            if (
+                db_provider.scope == ProviderScope.SYSTEM
+                and default_system_provider_type
+                and db_provider.provider_type == default_system_provider_type
+            ):
+                user_provider_manager.add_provider(
+                    name=SYSTEM_PROVIDER_NAME,
+                    provider_scope=db_provider.scope,
+                    provider_type=db_provider.provider_type,
+                    api_key=SecretStr(db_provider.key),
+                    api_endpoint=db_provider.api,
+                    model=db_provider.model,
+                    max_tokens=db_provider.max_tokens,
+                    temperature=db_provider.temperature,
+                    timeout=db_provider.timeout,
+                    extra_config=extra_config,
+                )
         except Exception as e:
             logger.error(f"Failed to load provider {db_provider.name} for user {user_id}: {e}")
             continue

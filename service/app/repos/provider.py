@@ -5,6 +5,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.provider import Provider, ProviderCreate, ProviderScope, ProviderUpdate
+from app.schemas.provider import ProviderType
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class ProviderRepository:
 
         if include_system:
             # Include both user's providers and system providers
-            statement = select(Provider).where((Provider.user_id == user_id) | (Provider.scope == ProviderScope.SYSTEM))
+            statement = select(Provider).where((Provider.user_id == user_id) | (Provider.scope == ProviderScope.SYSTEM))  # noqa
         else:
             # Only user's own providers
             statement = select(Provider).where(Provider.user_id == user_id, Provider.scope == ProviderScope.USER)
@@ -65,6 +66,16 @@ class ProviderRepository:
         if provider:
             logger.debug(f"Found system provider: {provider.name}")
         return provider
+
+    async def get_system_provider_by_type(self, provider_type: ProviderType) -> Provider | None:
+        """Fetch a system provider for a specific ProviderType."""
+        logger.debug(f"Fetching system provider for type: {provider_type}")
+        statement = select(Provider).where(
+            Provider.scope == ProviderScope.SYSTEM,
+            Provider.provider_type == provider_type,
+        )
+        result = await self.db.exec(statement)
+        return result.first()
 
     async def create_provider(self, provider_data: ProviderCreate, user_id: str | None) -> Provider:
         """

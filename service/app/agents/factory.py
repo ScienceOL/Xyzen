@@ -71,9 +71,13 @@ async def create_chat_agent(
     # Check if built-in search is enabled
     google_search_enabled: bool = session.google_search_enabled if session else False
 
-    # Create LangChain model WITHOUT google_search binding
-    # The search will be bound with other tools in the agent layer
-    llm: BaseChatModel = user_provider_manager.create_langchain_model(provider_id, model=model_name)
+    # Create LangChain model WITH provider-side web search binding.
+    # This ensures OpenAI gets `web_search_preview` and Gemini/Vertex gets `google_search`.
+    llm: BaseChatModel = user_provider_manager.create_langchain_model(
+        provider_id,
+        model=model_name,
+        google_search_enabled=google_search_enabled,
+    )
 
     # Prepare tools from MCP servers
     session_id: UUID | None = topic.session_id if topic else None

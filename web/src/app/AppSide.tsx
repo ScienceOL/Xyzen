@@ -1,10 +1,8 @@
-import { ChevronLeftIcon, CogIcon } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
 
-import McpIcon from "@/assets/McpIcon";
-import { AuthStatus, SettingsButton } from "@/components/features";
-import ToggleSidePanelShortcutHint from "@/components/features/ToggleSidePanelShortcutHint";
+import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
+import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import { McpListModal } from "@/components/layouts/McpListModal";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
@@ -13,9 +11,8 @@ import { SettingsModal } from "@/components/modals/SettingsModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { DEFAULT_WIDTH, MIN_WIDTH } from "@/configs/common";
 import { useXyzen } from "@/store";
-import { PanelRightCloseIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
-import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 
 export interface AppSideProps {
   backendUrl?: string;
@@ -36,14 +33,13 @@ export function AppSide({
   showAuthError = false,
   onRetryAuth,
 }: AppSideProps) {
+  const { t } = useTranslation();
   const {
     isXyzenOpen,
     closeXyzen,
     activePanel,
     setActivePanel,
     setBackendUrl,
-    openMcpListModal,
-    openSettingsModal,
   } = useXyzen();
   const { activeChatChannel, setActiveChatChannel } = useXyzen();
 
@@ -280,25 +276,25 @@ export function AppSide({
 
             {/* Corner Handles */}
             <div
-              className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-[51] bg-transparent"
+              className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-51 bg-transparent"
               onPointerDown={(e) => handleResizeStart(e, "nw")}
               onPointerMove={handleResizeMove}
               onPointerUp={handleResizeEnd}
             />
             <div
-              className="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize z-[51] bg-transparent"
+              className="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize z-51 bg-transparent"
               onPointerDown={(e) => handleResizeStart(e, "ne")}
               onPointerMove={handleResizeMove}
               onPointerUp={handleResizeEnd}
             />
             <div
-              className="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize z-[51] bg-transparent"
+              className="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize z-51 bg-transparent"
               onPointerDown={(e) => handleResizeStart(e, "sw")}
               onPointerMove={handleResizeMove}
               onPointerUp={handleResizeEnd}
             />
             <div
-              className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-[51] bg-transparent"
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-51 bg-transparent"
               onPointerDown={(e) => handleResizeStart(e, "se")}
               onPointerMove={handleResizeMove}
               onPointerUp={handleResizeEnd}
@@ -307,73 +303,21 @@ export function AppSide({
         )}
 
         {/* Header Area */}
-        <div
-          className={`flex h-14 flex-shrink-0 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800 ${
-            !isMobile ? "cursor-move select-none active:cursor-grabbing" : ""
-          }`}
-          onPointerDown={handleDragStart}
-          onPointerMove={handleDragMove}
-          onPointerUp={handleDragEnd}
-        >
-          <div className="flex items-center gap-2">
-            {activePanel === "chat" && activeChatChannel ? (
-              <button
-                className="rounded-sm flex items-center gap-2 p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                title="Back to Assistants"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveChatChannel(null);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <ChevronLeftIcon className="size-4" />
-                <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {activeChatChannel ? "Chat" : "Assistants"}
-                </h3>
-              </button>
-            ) : (
-              <h1 className="text-base sm:text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent pointer-events-none">
-                Xyzen
-              </h1>
-            )}
-
-            {!isMobile && <ToggleSidePanelShortcutHint />}
-          </div>
-
-          <div
-            className="flex items-center space-x-1"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <SettingsButton />
-            <button
-              className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-              title="MCP Management"
-              onClick={openMcpListModal}
-            >
-              <McpIcon className="h-5 w-5" />
-            </button>
-            {showLlmProvider && (
-              <button
-                className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                title="LLM Providers"
-                onClick={() => openSettingsModal("provider")}
-              >
-                <CogIcon className="h-5 w-5" />
-              </button>
-            )}
-            <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700" />
-            <AuthStatus className="ml-2" />
-            {!isMobile && (
-              <button
-                onClick={closeXyzen}
-                className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-red-400"
-                title="Close"
-              >
-                <PanelRightCloseIcon className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-        </div>
+        <AppHeader
+          variant="side"
+          isMobile={isMobile}
+          showLlmProvider={showLlmProvider}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+          showBackButton={activePanel === "chat" && !!activeChatChannel}
+          onBackClick={() => setActiveChatChannel(null)}
+          backButtonLabel={
+            activeChatChannel
+              ? t("app.chat.chatLabel")
+              : t("app.chat.assistantsTitle")
+          }
+        />
 
         {/* Content Area with Sidebar */}
         <div className="flex flex-1 overflow-hidden relative">
@@ -397,12 +341,12 @@ export function AppSide({
                 </div>
               ) : (
                 <div className="h-full bg-white dark:bg-neutral-950 flex flex-col">
-                  <div className="border-b border-neutral-200 p-4 dark:border-neutral-800 flex-shrink-0">
+                  <div className="border-b border-neutral-200 p-4 dark:border-neutral-800 shrink-0">
                     <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                      Assistants
+                      {t("app.chat.assistantsTitle")}
                     </h2>
                     <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                      Choose an agent to start
+                      {t("app.chat.chooseAgentHint")}
                     </p>
                   </div>
                   <div className="flex-1 overflow-y-auto py-4">

@@ -544,6 +544,9 @@ async def get_daily_token_stats(
     try:
         from app.repos.consume import ConsumeRepository
 
+        if date is None:
+            date = datetime.utcnow().strftime("%Y-%m-%d")
+
         consume_repo = ConsumeRepository(db)
         stats = await consume_repo.get_daily_token_stats(date)
 

@@ -328,30 +328,27 @@ class ConsumeRepository:
         logger.debug(f"Successful consumption count for user {user_id}: {count}")
         return count
 
-    async def get_daily_token_stats(self, date: str | None = None) -> dict[str, Any]:
+    async def get_daily_token_stats(self, date_str: str, user_id: str | None = None) -> dict[str, Any]:
         """
-        Get daily token consumption statistics.
+        Get token consumption statistics for a specific day.
 
         Args:
-            date: Date in YYYY-MM-DD format. If None, uses today.
+            date_str: Date string in YYYY-MM-DD format.
+            user_id: Optional user ID to filter by.
 
         Returns:
-            Dictionary with total_tokens, input_tokens, output_tokens, total_amount
+            Dictionary containing total_tokens, input_tokens, output_tokens, total_amount, record_count.
         """
         from datetime import datetime, timezone
 
-        if date:
-            # Parse the provided date
-            target_date = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        else:
-            # Use today
-            target_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        # Parse date string
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
         # Get start and end of day
         start_of_day = target_date
         end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        logger.debug(f"Getting daily token stats for {start_of_day} to {end_of_day}")
+        logger.debug(f"Getting daily token stats for {start_of_day} to {end_of_day}, user_id: {user_id}")
 
         # Query for sum of tokens and amount
         stmt = select(
@@ -364,6 +361,9 @@ class ConsumeRepository:
             ConsumeRecord.created_at >= start_of_day,
             ConsumeRecord.created_at <= end_of_day,
         )
+
+        if user_id:
+            stmt = stmt.where(ConsumeRecord.user_id == user_id)
 
         result = await self.db.exec(stmt)  # type: ignore
 

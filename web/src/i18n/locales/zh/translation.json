@@ -1,0 +1,463 @@
+{
+  "app": {
+    "title": "Xyzen",
+    "chat": {
+      "assistantsTitle": "助手",
+      "chooseAgentHint": "选择一个助手开始",
+      "chatLabel": "聊天"
+    }
+  },
+  "common": {
+    "ok": "确定",
+    "cancel": "取消",
+    "loading": "加载中..."
+  },
+  "settings": {
+    "modal": {
+      "title": "设置",
+      "back": "返回"
+    },
+    "categories": {
+      "provider": "模型服务",
+      "ui": "界面设置",
+      "redemption": "兑换中心"
+    },
+    "provider": {
+      "emptyHint": "请选择或添加一个模型服务商"
+    },
+    "ui": {
+      "title": "界面设置",
+      "subtitle": "自定义你的界面",
+      "options": {
+        "theme": {
+          "label": "主题",
+          "description": "自定义外观"
+        },
+        "style": {
+          "label": "布局样式",
+          "description": "切换侧边栏或全屏布局"
+        },
+        "language": {
+          "label": "语言",
+          "description": "切换界面语言"
+        }
+      }
+    },
+    "language": {
+      "title": "语言设置",
+      "subtitle": "选择你偏好的界面语言",
+      "en": {
+        "description": "使用英文作为界面语言"
+      },
+      "zh": {
+        "description": "使用中文作为界面语言"
+      }
+    },
+    "theme": {
+      "title": "主题设置",
+      "subtitle": "选择你喜欢的显示风格",
+      "options": {
+        "light": {
+          "label": "浅色",
+          "description": "明亮清晰的界面"
+        },
+        "dark": {
+          "label": "深色",
+          "description": "暗光环境下更护眼"
+        },
+        "system": {
+          "label": "跟随系统",
+          "description": "自动匹配系统偏好"
+        }
+      },
+      "about": {
+        "title": "关于主题",
+        "body": "主题设置会控制整个应用的配色方案。选择“跟随系统”时，会根据你的操作系统偏好在浅色/深色之间自动切换。"
+      }
+    },
+    "style": {
+      "title": "界面设置",
+      "subtitle": "自定义 Xyzen 的外观与交互行为",
+      "sections": {
+        "layout": "布局样式",
+        "inputPosition": "快捷输入位置"
+      },
+      "layout": {
+        "sidebar": {
+          "label": "侧边栏",
+          "description": "经典右侧面板布局",
+          "features": {
+            "resizable": "可调整宽度（280-600px）",
+            "floatingButton": "关闭时显示浮动按钮",
+            "overlay": "覆盖在内容之上"
+          }
+        },
+        "fullscreen": {
+          "label": "全屏",
+          "description": "沉浸式三栏工作区",
+          "features": {
+            "agentsLeft": "左侧 Agent 列表",
+            "chatCenter": "中间对话区",
+            "topicsRight": "右侧主题区",
+            "fullWidth": "全宽布局"
+          }
+        }
+      },
+      "inputPositions": {
+        "topLeft": { "label": "左上", "description": "左上角" },
+        "top": { "label": "顶部", "description": "顶部居中" },
+        "topRight": { "label": "右上", "description": "右上角" },
+        "center": { "label": "居中", "description": "聚焦模式（屏幕中间）" },
+        "bottomLeft": { "label": "左下", "description": "左下角" },
+        "bottom": { "label": "底部", "description": "底部居中" },
+        "bottomRight": { "label": "右下", "description": "右下角" }
+      },
+      "tip": {
+        "title": "💡 小贴士",
+        "body": "全屏布局适合大屏幕，一眼看到更多信息；侧边栏布局适合专注工作与小屏幕场景。"
+      }
+    },
+    "providers": {
+      "my": {
+        "title": "已配置的服务"
+      },
+      "templates": {
+        "title": "添加新服务",
+        "supports": "支持 {{count}} 个模型"
+      },
+      "deleteConfirm": "确定要删除 {{name}} 吗？",
+      "deleteAria": "删除服务商 {{name}}",
+      "form": {
+        "empty": {
+          "title": "选择一个模板或已有服务",
+          "subtitle": "在列表中点击开始配置"
+        },
+        "title": {
+          "edit": "编辑服务商",
+          "create": "新建服务商"
+        },
+        "systemBadge": "系统提供商（只读）",
+        "providerType": {
+          "title": "服务类型",
+          "availableModels": "可用模型：{{count}} 个"
+        },
+        "fields": {
+          "name": {
+            "label": "名称 *",
+            "placeholder": "例如：我的 Gemini 服务商"
+          },
+          "api": {
+            "label": "API 地址",
+            "placeholder": "例如：https://api.openai.com/v1",
+            "help": "已预填默认地址。如需自定义端点或使用代理，可在此修改。"
+          },
+          "key": {
+            "label": "API Key *",
+            "placeholder": "你的 API Key"
+          },
+          "azureVersion": {
+            "label": "API 版本 *",
+            "placeholder": "例如：2024-02-15-preview",
+            "help": "Azure OpenAI API 版本（例如：2024-02-15-preview、2023-05-15）"
+          },
+          "default": {
+            "label": "默认服务商"
+          }
+        },
+        "confirm": {
+          "delete": "确定要删除这个服务商吗？"
+        },
+        "defaults": {
+          "name": "我的 {{name}}"
+        },
+        "actions": {
+          "delete": "删除",
+          "save": "保存修改",
+          "create": "创建服务商"
+        },
+        "success": {
+          "updated": "服务商已更新！",
+          "created": "服务商已创建！",
+          "deleted": "服务商已删除！",
+          "defaultSet": "已设为默认服务商！"
+        },
+        "errors": {
+          "systemReadOnlyEdit": "系统提供商为只读，无法编辑。",
+          "systemReadOnlyDelete": "无法删除系统提供商。系统提供商为只读。",
+          "systemReadOnlyDefault": "无法将系统提供商设为默认。系统提供商会自动作为兜底。",
+          "required": "名称、API 地址和 Key 为必填项",
+          "saveFailed": "保存失败",
+          "deleteFailed": "删除失败",
+          "defaultFailed": "设置默认失败"
+        }
+      }
+    },
+    "redemption": {
+      "title": "兑换码",
+      "subtitle": "兑换后获得用于消费的虚拟余额",
+      "card": {
+        "title": "兑换"
+      },
+      "form": {
+        "label": "输入兑换码",
+        "placeholder": "请输入兑换码",
+        "redeem": "兑换",
+        "redeeming": "兑换中..."
+      },
+      "errors": {
+        "empty": "请输入兑换码"
+      }
+    }
+  },
+  "marketplace": {
+    "title": "Agent 市场",
+    "tabs": {
+      "all": "全部",
+      "starred": "已收藏",
+      "my": "我的"
+    },
+    "search": {
+      "placeholder": "搜索 Agent..."
+    },
+    "sort": {
+      "recent": "最新",
+      "likes": "最多点赞",
+      "forks": "最多 Fork",
+      "views": "最多浏览",
+      "oldest": "最早"
+    },
+    "filters": {
+      "filteredBy": "筛选标签：",
+      "clear": "清除筛选"
+    },
+    "loadError": "加载列表失败，请稍后重试。",
+    "retry": "重试",
+    "empty": {
+      "starred": {
+        "title": "暂无收藏的 Agent",
+        "body": "你还没有收藏任何 Agent。浏览市场并点击爱心图标即可收藏。",
+        "browse": "去逛逛"
+      },
+      "all": {
+        "title": "暂无 Agent",
+        "body": "成为第一个把你的 Agent 分享给社区的人吧！"
+      },
+      "search": {
+        "body": "没有匹配你搜索的 Agent，试试换个关键词或清除筛选。"
+      },
+      "publish": {
+        "title": "如何发布你的 Agent：",
+        "steps": {
+          "1": "前往聊天面板创建或编辑一个 Agent",
+          "2": "确保 Agent 有名称、描述和提示词",
+          "3": "点击“发布到市场”按钮",
+          "4": "分享给社区，一起交流！"
+        }
+      }
+    },
+    "card": {
+      "by": "来自 {{author}}",
+      "noDescription": "暂无描述",
+      "tagsMore": "+{{count}} 更多"
+    }
+  },
+  "knowledge": {
+    "titles": {
+      "recents": "最近",
+      "allFiles": "全部文件",
+      "myKnowledge": "我的知识库",
+      "knowledgeBase": "知识库",
+      "trash": "回收站"
+    },
+    "a11y": {
+      "navTitle": "导航菜单",
+      "navDescription": "在你的知识库中进行导航"
+    },
+    "prompts": {
+      "folderName": "请输入文件夹名称：",
+      "knowledgeSetName": "请输入知识集名称：",
+      "knowledgeSetDescription": "请输入描述（可选）："
+    },
+    "errors": {
+      "createFolderFailed": "创建文件夹失败",
+      "createKnowledgeSetFailed": "创建知识集失败"
+    },
+    "upload": {
+      "errors": {
+        "fileTooLarge": "文件“{{name}}”（{{fileSizeMB}}MB）超过最大大小限制 {{maxSizeMB}}MB",
+        "notEnoughStorage": "存储空间不足。文件大小：{{fileSizeMB}}MB，可用：{{availableMB}}MB。请先删除一些文件。",
+        "uploadFailed": "上传失败"
+      }
+    },
+    "toolbar": {
+      "home": "主页",
+      "searchFilesPlaceholder": "搜索文件...",
+      "searchPlaceholder": "搜索",
+      "listView": "列表视图",
+      "gridView": "网格视图",
+      "newFolder": "新建文件夹",
+      "emptyTrash": "清空回收站",
+      "empty": "清空",
+      "uploadFile": "上传文件",
+      "upload": "上传",
+      "refresh": "刷新"
+    },
+    "sidebar": {
+      "groups": {
+        "favorites": "常用",
+        "media": "媒体",
+        "locations": "位置"
+      },
+      "items": {
+        "images": "图片",
+        "documents": "文档"
+      },
+      "newKnowledgeSet": "新建知识集",
+      "noKnowledgeSets": "暂无知识集"
+    },
+    "status": {
+      "items": "{{count}} 项",
+      "usedOfTotal": "已用 {{used}} / {{total}}",
+      "available": "可用 {{available}}"
+    },
+    "contextMenu": {
+      "download": "下载",
+      "rename": "重命名",
+      "moveTo": "移动到...",
+      "addToKnowledgeSet": "添加到知识集",
+      "removeFromKnowledgeSet": "从知识集中移除",
+      "delete": "删除"
+    },
+    "moveModal": {
+      "title": "移动 \"{{name}}\"",
+      "home": "主页",
+      "noSubfolders": "没有子文件夹",
+      "moveHere": "移动到这里"
+    },
+    "fileList": {
+      "itemTypes": {
+        "file": "文件",
+        "folder": "文件夹"
+      },
+      "columns": {
+        "name": "名称",
+        "size": "大小",
+        "dateModified": "修改时间"
+      },
+      "empty": {
+        "trash": "回收站为空",
+        "noItems": "暂无内容"
+      },
+      "actions": {
+        "preview": "预览",
+        "download": "下载",
+        "restore": "还原",
+        "delete": "删除",
+        "deleteForever": "永久删除",
+        "moveToTrash": "移到回收站",
+        "deleteImmediately": "立即删除",
+        "deleteFailed": "删除失败",
+        "restoreFailed": "还原失败",
+        "downloadFailed": "下载失败"
+      },
+      "deleteItem": {
+        "title": "删除{{itemType}}",
+        "message": "确定要删除这个{{itemType}}吗？"
+      },
+      "moveToTrash": {
+        "message": "确定要将此文件移到回收站吗？"
+      },
+      "deleteForever": {
+        "message": "确定要永久删除此文件吗？此操作无法撤销。"
+      },
+      "emptyTrash": {
+        "title": "清空回收站",
+        "message": "确定要永久删除 {{count}} 个项目吗？此操作无法撤销。",
+        "confirm": "清空回收站",
+        "failed": "清空回收站失败，可能仍有部分项目未删除。"
+      },
+      "rename": {
+        "titleFile": "重命名文件",
+        "titleFolder": "重命名文件夹",
+        "placeholder": "输入新名称",
+        "confirm": "重命名",
+        "failed": "重命名失败"
+      },
+      "move": {
+        "failed": "移动失败"
+      },
+      "knowledgeSet": {
+        "add": {
+          "title": "添加到知识集",
+          "subtitle": "选择一个知识集来添加 \"{{name}}\""
+        },
+        "none": "暂无可用知识集，请先创建一个。",
+        "fileCount": "{{count}} 个文件",
+        "added": "已成功添加到知识集",
+        "alreadyInSet": "该文件已在此知识集中。",
+        "addFailed": "添加到知识集失败",
+        "remove": {
+          "title": "从知识集中移除",
+          "message": "确定要将 \"{{name}}\" 从此知识集中移除吗？",
+          "confirm": "移除",
+          "failed": "从知识集中移除失败"
+        }
+      },
+      "notifications": {
+        "successTitle": "成功",
+        "noticeTitle": "提示",
+        "errorTitle": "错误"
+      }
+    },
+    "createKnowledgeSetModal": {
+      "title": "创建知识集",
+      "fields": {
+        "name": {
+          "label": "名称",
+          "placeholder": "请输入名称"
+        },
+        "description": {
+          "label": "描述（可选）",
+          "placeholder": "添加简短描述"
+        }
+      },
+      "actions": {
+        "create": "创建",
+        "creating": "创建中..."
+      },
+      "validation": {
+        "nameRequired": "名称不能为空"
+      },
+      "errors": {
+        "createFailed": "创建知识集失败"
+      }
+    }
+  },
+  "mcp": {
+    "title": "我的服务",
+    "subtitle": "浏览市场并管理你的服务",
+    "refresh": "刷新",
+    "addCustom": "添加自定义",
+    "market": {
+      "title": "MCP 市场",
+      "quickAdd": "快速添加",
+      "close": "关闭"
+    },
+    "added": {
+      "title": "已添加服务",
+      "online": "在线",
+      "offline": "离线",
+      "tools": "工具",
+      "noDescription": "暂无描述",
+      "edit": "编辑服务",
+      "remove": "移除服务",
+      "test": "测试工具",
+      "empty": {
+        "title": "暂无已添加服务",
+        "description": "在左侧浏览市场添加服务，或创建自定义连接。",
+        "button": "添加自定义服务"
+      },
+      "loading": "加载 MCP 服务中..."
+    }
+  }
+}

@@ -46,77 +46,46 @@ export const OfficeToPdfRenderer = ({
         setError(null);
 
         if (!file?.id) {
-          const msg = "File ID not available";
-          console.error("[OfficeToPdfRenderer] Error:", msg);
-          throw new Error(msg);
+          throw new Error("File ID not available");
         }
 
         // Build conversion URL
         const convertApiPath = `/xyzen/api/v1/files/${file.id}${conversionPath}`;
         const convertUrl = getFullUrl(convertApiPath);
 
-        console.log("[OfficeToPdfRenderer] 开始转换");
-        console.log("[OfficeToPdfRenderer] 文件ID:", file.id);
-        console.log("[OfficeToPdfRenderer] 文件名:", file.name);
-        console.log("[OfficeToPdfRenderer] 转换路径:", conversionPath);
-        console.log("[OfficeToPdfRenderer] 转换URL:", convertUrl);
-        console.log("[OfficeToPdfRenderer] Token存在:", !!token);
-
         const response = await fetch(convertUrl, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
-        console.log("[OfficeToPdfRenderer] 响应状态码:", response.status);
-        console.log("[OfficeToPdfRenderer] 响应状态文本:", response.statusText);
-        console.log(
-          "[OfficeToPdfRenderer] Content-Type:",
-          response.headers.get("content-type"),
-        );
-
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("[OfficeToPdfRenderer] 服务器错误:", errorText);
+          console.error("Server response:", errorText);
           throw new Error(
-            `转换失败: ${response.status} ${response.statusText}`,
+            `Failed to convert file: ${response.status} ${response.statusText}`,
           );
         }
 
         // Get the PDF as blob
         const blob = await response.blob();
-        console.log("[OfficeToPdfRenderer] PDF Blob 创建成功");
-        console.log("[OfficeToPdfRenderer] Blob 大小:", blob.size, "字节");
-        console.log("[OfficeToPdfRenderer] Blob 类型:", blob.type);
-
         const objectUrl = URL.createObjectURL(blob);
-        console.log("[OfficeToPdfRenderer] Object URL:", objectUrl);
-
         setPdfUrl(objectUrl);
         setLoading(false);
-        console.log("[OfficeToPdfRenderer] 转换完成！");
       } catch (err) {
-        console.error("[OfficeToPdfRenderer] 转换异常:", err);
-        const errorMsg = err instanceof Error ? err.message : "转换失败";
-        setError(errorMsg);
+        console.error("Failed to convert file to PDF:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to convert file to PDF",
+        );
         setLoading(false);
       }
     };
 
-    console.log(
-      "[OfficeToPdfRenderer] useEffect 触发, url:",
-      !!url,
-      "fileId:",
-      file?.id,
-    );
-
     if (url && file?.id) {
-      console.log("[OfficeToPdfRenderer] 开始执行转换");
       convertAndPreview();
     }
 
     return () => {
       // Clean up blob URL
       if (pdfUrl) {
-        console.log("[OfficeToPdfRenderer] 清理 Object URL");
         URL.revokeObjectURL(pdfUrl);
       }
     };

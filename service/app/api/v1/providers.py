@@ -18,6 +18,16 @@ from app.schemas.provider import ProviderType
 router = APIRouter(tags=["providers"])
 
 
+def _sanitize_provider_read(provider: Any) -> ProviderRead:
+    provider_dict = provider.model_dump()
+    # Never expose system provider secrets to clients.
+    if provider.is_system:
+        provider_dict["key"] = "••••••••"
+        provider_dict["api"] = "•••••••••••••••••"
+        provider_dict["provider_config"] = None
+    return ProviderRead(**provider_dict)
+
+
 class DefaultModelInfo(ModelInfo, total=False):
     provider_type: NotRequired[str]
 
@@ -34,8 +44,13 @@ async def get_default_model_config() -> DefaultModelInfo:
         ModelInfo with additional provider_type field for system provider type
     """
     llm_config = configs.LLM
-    model = llm_config.model
-    provider_type = llm_config.provider.value
+    default_provider = llm_config.default_provider
+    default_cfg = llm_config.default_config
+    if not default_provider or not default_cfg:
+        raise HTTPException(status_code=500, detail="No default system LLM provider configured")
+
+    model = default_cfg.model
+    provider_type = default_provider.value
 
     model_info = LiteLLMService.get_model_info(model)
 
@@ -129,7 +144,7 @@ async def get_provider_available_models(
     except ErrCodeError as e:
         raise handle_auth_error(e)
 
-    models = LiteLLMService.get_models_by_provider(provider.provider_type.value)
+    models = LiteLLMService.get_models_by_provider(str(provider.provider_type))
     return models
 
 
@@ -159,8 +174,7 @@ async def get_system_providers(
     if not provider:
         raise HTTPException(status_code=404, detail="System provider not found")
 
-    provider = ProviderRead.model_validate(provider)
-    return [provider]
+    return [_sanitize_provider_read(provider)]
 
 
 @router.get("/me", response_model=list[ProviderRead])
@@ -169,10 +183,7 @@ async def get_my_providers(
     db: AsyncSession = Depends(get_session),
 ) -> list[ProviderRead]:
     """
-    Get all providers accessible to the current authenticated user.
-
-    Includes both user's own providers and system providers. System provider
-    API keys and endpoints are masked for security reasons.
+    Get all user-scoped providers owned by the current authenticated user.
 
     Args:
         user: Authenticated user ID (injected by dependency)
@@ -186,17 +197,7 @@ async def get_my_providers(
     """
     provider_repo = ProviderRepository(db)
     providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
-
-    # Convert to response models and mask sensitive data for system providers
-    provider_reads = []
-    for provider in providers:
-        provider_dict = provider.model_dump()
-        if provider.is_system:
-            provider_dict["key"] = "••••••••"
-            provider_dict["api"] = "•••••••••••••••••"
-        provider_reads.append(ProviderRead(**provider_dict))
-
-    return provider_reads
+    return [_sanitize_provider_read(p) for p in providers]
 
 
 @router.post("/", response_model=ProviderRead, status_code=201)
@@ -289,6 +290,7 @@ async def get_provider(
     if provider.is_system:
         provider_dict["key"] = "••••••••"
         provider_dict["api"] = "•••••••••••••••••"
+        provider_dict["provider_config"] = None
 
     return ProviderRead(**provider_dict)
 

@@ -12,6 +12,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ViewMode } from "./types";
 
 interface KnowledgeToolbarProps {
@@ -45,6 +46,7 @@ export const KnowledgeToolbar = ({
   onBreadcrumbClick,
   onMenuClick,
 }: KnowledgeToolbarProps) => {
+  const { t } = useTranslation();
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   return (
@@ -55,7 +57,7 @@ export const KnowledgeToolbar = ({
           <MagnifyingGlassIcon className="mr-2 h-5 w-5 text-neutral-400" />
           <input
             type="text"
-            placeholder="Search files..."
+            placeholder={t("knowledge.toolbar.searchFilesPlaceholder")}
             autoFocus
             onChange={(e) => onSearch(e.target.value)}
             className="flex-1 border-none bg-transparent text-sm text-neutral-900 placeholder-neutral-400 focus:ring-0 dark:text-white"
@@ -91,7 +93,7 @@ export const KnowledgeToolbar = ({
               className={`flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${breadcrumbs.length === 0 ? "text-neutral-900 font-semibold dark:text-white" : ""}`}
             >
               <HomeIcon className="h-4 w-4" />
-              <span>Home</span>
+              <span>{t("knowledge.toolbar.home")}</span>
             </button>
 
             {breadcrumbs.map((folder, index) => {
@@ -106,7 +108,7 @@ export const KnowledgeToolbar = ({
                       onBreadcrumbClick(folder.id)
                     }
                     disabled={isLast}
-                    className={`truncate max-w-[150px] hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${isLast ? "text-neutral-900 font-semibold dark:text-white cursor-default" : "cursor-pointer"}`}
+                    className={`truncate max-w-37.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${isLast ? "text-neutral-900 font-semibold dark:text-white cursor-default" : "cursor-pointer"}`}
                   >
                     {folder.name}
                   </button>
@@ -144,7 +146,7 @@ export const KnowledgeToolbar = ({
                 ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
                 : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400"
             }`}
-            title="List View"
+            title={t("knowledge.toolbar.listView")}
           >
             <ListBulletIcon className="h-4 w-4" />
           </button>
@@ -155,7 +157,7 @@ export const KnowledgeToolbar = ({
                 ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
                 : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400"
             }`}
-            title="Grid View"
+            title={t("knowledge.toolbar.gridView")}
           >
             <Squares2X2Icon className="h-4 w-4" />
           </button>
@@ -166,7 +168,7 @@ export const KnowledgeToolbar = ({
           <MagnifyingGlassIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
-            placeholder="Search"
+            placeholder={t("knowledge.toolbar.searchPlaceholder")}
             onChange={(e) => onSearch(e.target.value)}
             className="h-8 w-48 rounded-md border-0 bg-neutral-100 pl-8 pr-4 text-xs text-neutral-900 focus:ring-1 focus:ring-indigo-500 dark:bg-neutral-800 dark:text-white"
           />
@@ -179,10 +181,12 @@ export const KnowledgeToolbar = ({
           <button
             onClick={onCreateFolder}
             className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 md:px-3"
-            title="New Folder"
+            title={t("knowledge.toolbar.newFolder")}
           >
             <FolderIcon className="h-4 w-4 md:h-3 md:w-3" />
-            <span className="hidden md:inline">New Folder</span>
+            <span className="hidden md:inline">
+              {t("knowledge.toolbar.newFolder")}
+            </span>
           </button>
         )}
 
@@ -190,26 +194,30 @@ export const KnowledgeToolbar = ({
           <button
             onClick={onEmptyTrash}
             className="flex items-center gap-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 md:px-3"
-            title="Empty Trash"
+            title={t("knowledge.toolbar.emptyTrash")}
           >
             <TrashIcon className="h-4 w-4 md:h-3 md:w-3" />
-            <span className="hidden md:inline">Empty</span>
+            <span className="hidden md:inline">
+              {t("knowledge.toolbar.empty")}
+            </span>
           </button>
         ) : (
           <button
             onClick={onUpload}
             className="flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 md:px-3"
-            title="Upload File"
+            title={t("knowledge.toolbar.uploadFile")}
           >
             <PlusIcon className="h-4 w-4 md:h-3 md:w-3" />
-            <span className="hidden md:inline">Upload</span>
+            <span className="hidden md:inline">
+              {t("knowledge.toolbar.upload")}
+            </span>
           </button>
         )}
 
         <button
           onClick={onRefresh}
           className="hidden rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 md:block"
-          title="Refresh"
+          title={t("knowledge.toolbar.refresh")}
         >
           <ArrowPathIcon className="h-4 w-4" />
         </button>

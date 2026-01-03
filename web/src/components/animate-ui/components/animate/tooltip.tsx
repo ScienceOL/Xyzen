@@ -12,6 +12,7 @@ import {
   type TooltipProviderProps as TooltipProviderPrimitiveProps,
   type TooltipTriggerProps as TooltipTriggerPrimitiveProps,
 } from "@/components/animate-ui/primitives/animate/tooltip";
+import { zIndexClasses } from "@/constants/zIndex";
 import { cn } from "@/lib/utils";
 
 type TooltipProviderProps = TooltipProviderPrimitiveProps;
@@ -46,7 +47,8 @@ function TooltipContent({
   return (
     <TooltipContentPrimitive
       className={cn(
-        "z-50 w-fit rounded-md shadow-md",
+        zIndexClasses.tooltip,
+        "w-fit rounded-md shadow-md",
         // Light mode: Dark background, light text
         "bg-neutral-900 text-neutral-50",
         // Dark mode: Dark grey background, light text, subtle border
@@ -59,7 +61,7 @@ function TooltipContent({
         <motion.div layout={layout}>{children}</motion.div>
       </motion.div>
       <TooltipArrowPrimitive
-        className="size-3 fill-neutral-900 dark:fill-neutral-800 data-[side='bottom']:translate-y-[1px] data-[side='right']:translate-x-[1px] data-[side='left']:translate-x-[-1px] data-[side='top']:translate-y-[-1px]"
+        className="size-3 fill-neutral-900 dark:fill-neutral-800 data-[side='bottom']:translate-y-px data-[side='right']:translate-x-px data-[side='left']:-translate-x-px data-[side='top']:-translate-y-px"
         tipRadius={2}
       />
     </TooltipContentPrimitive>

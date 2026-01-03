@@ -1,36 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useMarketplaceListings,
   usePrefetchMarketplaceListing,
   useStarredListings,
   useToggleLike,
 } from "@/hooks/useMarketplace";
-import { useDebounce } from "@/hooks/useDebounce";
 import {
+  FunnelIcon,
   HeartIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
+import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
 import type { MarketplaceListing } from "@/service/marketplaceService";
 import AgentMarketplaceDetail from "./AgentMarketplaceDetail";
 import AgentMarketplaceManage from "./AgentMarketplaceManage";
-import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
 
 type AgentMarketplaceTab = "all" | "starred" | "my-listings";
 type ViewMode = "list" | "detail" | "manage";
 type SortOption = "likes" | "forks" | "views" | "recent" | "oldest";
 
 // Filter options
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: "recent", label: "Most Recent" },
-  { value: "likes", label: "Most Liked" },
-  { value: "forks", label: "Most Forked" },
-  { value: "views", label: "Most Viewed" },
-  { value: "oldest", label: "Oldest" },
+const SORT_OPTIONS: SortOption[] = [
+  "recent",
+  "likes",
+  "forks",
+  "views",
+  "oldest",
 ];
 
 /**
@@ -39,6 +40,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
  * Main marketplace page for discovering and browsing community agents.
  */
 export default function AgentMarketplace() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AgentMarketplaceTab>("all");
   const [selectedMarketplaceId, setSelectedMarketplaceId] = useState<
     string | null
@@ -130,7 +132,7 @@ export default function AgentMarketplace() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                Agent Marketplace
+                {t("marketplace.title")}
               </h1>
 
               {/* Tab Navigation */}
@@ -143,7 +145,7 @@ export default function AgentMarketplace() {
                       : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
-                  All Agents
+                  {t("marketplace.tabs.all")}
                 </button>
                 <button
                   onClick={() => setActiveTab("starred")}
@@ -153,7 +155,7 @@ export default function AgentMarketplace() {
                       : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
-                  Starred
+                  {t("marketplace.tabs.starred")}
                 </button>
                 <button
                   onClick={() => setActiveTab("my-listings")}
@@ -163,7 +165,7 @@ export default function AgentMarketplace() {
                       : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
-                  My Agents
+                  {t("marketplace.tabs.my")}
                 </button>
               </div>
             </div>
@@ -175,7 +177,7 @@ export default function AgentMarketplace() {
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                   <input
                     type="text"
-                    placeholder="Search agents..."
+                    placeholder={t("marketplace.search.placeholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-9 pr-4 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
@@ -190,8 +192,8 @@ export default function AgentMarketplace() {
                     className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
                   >
                     {SORT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                      <option key={option} value={option}>
+                        {t(`marketplace.sort.${option}`)}
                       </option>
                     ))}
                   </select>
@@ -204,7 +206,7 @@ export default function AgentMarketplace() {
           {selectedTag && activeTab === "all" && (
             <div className="mt-3 flex items-center gap-2">
               <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                Filtered by:
+                {t("marketplace.filters.filteredBy")}
               </span>
               <button
                 onClick={() => setSelectedTag(null)}
@@ -231,16 +233,16 @@ export default function AgentMarketplace() {
                 </div>
               ) : error ? (
                 <div className="flex h-64 items-center justify-center text-red-500">
-                  Failed to load listings. Please try again.
+                  {t("marketplace.loadError")}
                   <button onClick={() => refetch()} className="ml-2 underline">
-                    Retry
+                    {t("marketplace.retry")}
                   </button>
                 </div>
               ) : !listings || listings.length === 0 ? (
-                <div className="flex min-h-[400px] flex-col items-center justify-center py-12 text-center">
+                <div className="flex min-h-100 flex-col items-center justify-center py-12 text-center">
                   <div className="relative mb-8">
-                    <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 opacity-20 blur-2xl"></div>
-                    <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
+                    <div className="absolute inset-0 animate-pulse rounded-full bg-linear-to-r from-purple-400 via-pink-400 to-indigo-400 opacity-20 blur-2xl"></div>
+                    <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-linear-to-br from-purple-500 to-pink-500">
                       {activeTab === "starred" ? (
                         <HeartSolidIcon className="h-16 w-16 text-white" />
                       ) : (
@@ -262,24 +264,24 @@ export default function AgentMarketplace() {
                   </div>
                   <h3 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-neutral-100">
                     {activeTab === "starred"
-                      ? "No Starred Agents"
-                      : "No Agents Yet"}
+                      ? t("marketplace.empty.starred.title")
+                      : t("marketplace.empty.all.title")}
                   </h3>
                   <p className="mb-6 max-w-md text-center text-neutral-600 dark:text-neutral-400">
                     {activeTab === "starred"
-                      ? "You haven't starred any agents yet. Browse the marketplace and click the heart icon to save your favorites!"
+                      ? t("marketplace.empty.starred.body")
                       : searchQuery
-                        ? "No agents match your search. Try different keywords or clear filters."
-                        : "Be the first to share your amazing agent with the community!"}
+                        ? t("marketplace.empty.search.body")
+                        : t("marketplace.empty.all.body")}
                   </p>
 
                   {/* Show "Browse Agents" button for Starred tab */}
                   {activeTab === "starred" && (
                     <button
                       onClick={() => setActiveTab("all")}
-                      className="rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02]"
+                      className="rounded-lg bg-linear-to-r from-purple-600 to-pink-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02]"
                     >
-                      Browse Agents
+                      {t("marketplace.empty.starred.browse")}
                     </button>
                   )}
 
@@ -287,37 +289,32 @@ export default function AgentMarketplace() {
                   {activeTab === "all" && !searchQuery && (
                     <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                       <h4 className="mb-3 font-semibold text-neutral-900 dark:text-neutral-100">
-                        How to publish your agent:
+                        {t("marketplace.empty.publish.title")}
                       </h4>
                       <ol className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
                         <li className="flex items-start gap-2">
-                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
                             1
                           </span>
-                          <span>
-                            Go to the Chat panel and create or edit an agent
-                          </span>
+                          <span>{t("marketplace.empty.publish.steps.1")}</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
                             2
                           </span>
-                          <span>
-                            Make sure your agent has a name, description, and
-                            prompt
-                          </span>
+                          <span>{t("marketplace.empty.publish.steps.2")}</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
                             3
                           </span>
-                          <span>Click "Publish to Marketplace" button</span>
+                          <span>{t("marketplace.empty.publish.steps.3")}</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400">
                             4
                           </span>
-                          <span>Share your agent with the community!</span>
+                          <span>{t("marketplace.empty.publish.steps.4")}</span>
                         </li>
                       </ol>
                     </div>
@@ -328,7 +325,7 @@ export default function AgentMarketplace() {
                       onClick={clearFilters}
                       className="mt-2 text-sm text-indigo-600 hover:underline dark:text-indigo-400"
                     >
-                      Clear filters
+                      {t("marketplace.filters.clear")}
                     </button>
                   )}
                 </div>
@@ -372,6 +369,7 @@ function AgentListingCard({
   onClick,
   onTagClick,
 }: AgentListingCardProps) {
+  const { t } = useTranslation();
   const toggleLike = useToggleLike();
 
   const handleLikeClick = (e: React.MouseEvent) => {
@@ -398,7 +396,7 @@ function AgentListingCard({
       onClick={handleCardClick}
     >
       {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-indigo-500/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+      <div className="absolute inset-0 bg-linear-to-br from-purple-500/5 via-pink-500/5 to-indigo-500/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
 
       <div className="relative flex flex-col space-y-1.5 p-6 pb-4">
         <div className="flex items-start justify-between">
@@ -410,7 +408,7 @@ function AgentListingCard({
                 className="h-14 w-14 rounded-xl object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
               />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
                 {listing.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -419,13 +417,15 @@ function AgentListingCard({
                 {listing.name}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                by {listing.user_id.split("@")[0] || listing.user_id}
+                {t("marketplace.card.by", {
+                  author: listing.user_id.split("@")[0] || listing.user_id,
+                })}
               </p>
             </div>
           </div>
           <button
             onClick={handleLikeClick}
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
           >
             {listing.has_liked ? (
               <HeartSolidIcon className="h-5 w-5 text-red-500" />
@@ -436,7 +436,7 @@ function AgentListingCard({
         </div>
 
         <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-          {listing.description || "No description provided"}
+          {listing.description || t("marketplace.card.noDescription")}
         </p>
       </div>
 
@@ -455,7 +455,9 @@ function AgentListingCard({
             ))}
             {listing.tags.length > 3 && (
               <span className="inline-flex items-center rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
-                +{listing.tags.length - 3} more
+                {t("marketplace.card.tagsMore", {
+                  count: listing.tags.length - 3,
+                })}
               </span>
             )}
           </div>
@@ -509,7 +511,7 @@ function AgentListingCard({
       </div>
 
       {/* Hover indicator */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-linear-to-r from-purple-500 via-pink-500 to-indigo-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
     </div>
   );
 }

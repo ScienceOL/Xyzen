@@ -8,8 +8,10 @@ import {
   MoonIcon,
   SunIcon,
 } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 
 export function ThemeSettings() {
+  const { t } = useTranslation();
   const { theme: currentTheme } = useXyzen();
   const { setTheme } = useTheme();
 
@@ -21,20 +23,20 @@ export function ThemeSettings() {
   }> = [
     {
       value: "light",
-      label: "Light",
-      description: "Bright and clear interface",
+      label: t("settings.theme.options.light.label"),
+      description: t("settings.theme.options.light.description"),
       icon: SunIcon,
     },
     {
       value: "dark",
-      label: "Dark",
-      description: "Easy on the eyes in low light",
+      label: t("settings.theme.options.dark.label"),
+      description: t("settings.theme.options.dark.description"),
       icon: MoonIcon,
     },
     {
       value: "system",
-      label: "System",
-      description: "Automatically match system preference",
+      label: t("settings.theme.options.system.label"),
+      description: t("settings.theme.options.system.description"),
       icon: ComputerDesktopIcon,
     },
   ];
@@ -43,10 +45,10 @@ export function ThemeSettings() {
     <div className="flex h-full flex-col">
       <div className="border-b border-neutral-200 p-6 dark:border-neutral-800">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-          Theme Settings
+          {t("settings.theme.title")}
         </h2>
         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          Choose how Xyzen looks to you
+          {t("settings.theme.subtitle")}
         </p>
       </div>
 
@@ -110,12 +112,10 @@ export function ThemeSettings() {
 
         <div className="mt-6 rounded-sm border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <h3 className="text-sm font-medium text-neutral-900 dark:text-white">
-            About Theme
+            {t("settings.theme.about.title")}
           </h3>
           <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
-            The theme setting controls the color scheme of the entire
-            application. System theme will automatically switch between light
-            and dark based on your operating system preferences.
+            {t("settings.theme.about.body")}
           </p>
         </div>
       </div>

@@ -52,89 +52,97 @@ type CopyButtonProps = Omit<ButtonPrimitiveProps, "children"> &
     delay?: number;
   };
 
-function CopyButton({
-  className,
-  content,
-  copied,
-  onCopiedChange,
-  onClick,
-  variant,
-  size,
-  delay = 3000,
-  ...props
-}: CopyButtonProps) {
-  const [isCopied, setIsCopied] = useControlledState({
-    value: copied,
-    onChange: onCopiedChange,
-  });
-
-  const handleCopy = React.useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      onClick?.(e);
-      if (copied) return;
-      if (content) {
-        const tryCopy = async () => {
-          try {
-            await navigator.clipboard.writeText(content);
-            return true;
-          } catch {
-            try {
-              const textarea = document.createElement("textarea");
-              textarea.value = content;
-              textarea.setAttribute("readonly", "");
-              textarea.style.position = "fixed";
-              textarea.style.left = "-9999px";
-              document.body.appendChild(textarea);
-              textarea.select();
-              const ok = document.execCommand("copy");
-              document.body.removeChild(textarea);
-              return ok;
-            } catch {
-              return false;
-            }
-          }
-        };
-
-        void tryCopy().then((ok) => {
-          if (!ok) {
-            console.error("Error copying content");
-            return;
-          }
-          setIsCopied(true);
-          onCopiedChange?.(true, content);
-          setTimeout(() => {
-            setIsCopied(false);
-            onCopiedChange?.(false);
-          }, delay);
-        });
-      }
+const CopyButton = React.forwardRef<HTMLButtonElement, CopyButtonProps>(
+  (
+    {
+      className,
+      content,
+      copied,
+      onCopiedChange,
+      onClick,
+      variant,
+      size,
+      delay = 3000,
+      ...props
     },
-    [onClick, copied, content, setIsCopied, onCopiedChange, delay],
-  );
+    ref,
+  ) => {
+    const [isCopied, setIsCopied] = useControlledState({
+      value: copied,
+      onChange: onCopiedChange,
+    });
 
-  const Icon = isCopied ? CheckIcon : CopyIcon;
+    const handleCopy = React.useCallback(
+      (e: React.MouseEvent<HTMLButtonElement>) => {
+        onClick?.(e);
+        if (copied) return;
+        if (content) {
+          const tryCopy = async () => {
+            try {
+              await navigator.clipboard.writeText(content);
+              return true;
+            } catch {
+              try {
+                const textarea = document.createElement("textarea");
+                textarea.value = content;
+                textarea.setAttribute("readonly", "");
+                textarea.style.position = "fixed";
+                textarea.style.left = "-9999px";
+                document.body.appendChild(textarea);
+                textarea.select();
+                const ok = document.execCommand("copy");
+                document.body.removeChild(textarea);
+                return ok;
+              } catch {
+                return false;
+              }
+            }
+          };
 
-  return (
-    <ButtonPrimitive
-      data-slot="copy-button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      onClick={handleCopy}
-      {...props}
-    >
-      <AnimatePresence mode="popLayout">
-        <motion.span
-          key={isCopied ? "check" : "copy"}
-          data-slot="copy-button-icon"
-          initial={{ scale: 0, opacity: 0.4, filter: "blur(4px)" }}
-          animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
-          exit={{ scale: 0, opacity: 0.4, filter: "blur(4px)" }}
-          transition={{ duration: 0.25 }}
-        >
-          <Icon />
-        </motion.span>
-      </AnimatePresence>
-    </ButtonPrimitive>
-  );
-}
+          void tryCopy().then((ok) => {
+            if (!ok) {
+              console.error("Error copying content");
+              return;
+            }
+            setIsCopied(true);
+            onCopiedChange?.(true, content);
+            setTimeout(() => {
+              setIsCopied(false);
+              onCopiedChange?.(false);
+            }, delay);
+          });
+        }
+      },
+      [onClick, copied, content, setIsCopied, onCopiedChange, delay],
+    );
+
+    const Icon = isCopied ? CheckIcon : CopyIcon;
+
+    return (
+      <ButtonPrimitive
+        data-slot="copy-button"
+        ref={ref}
+        className={cn(buttonVariants({ variant, size, className }))}
+        onClick={handleCopy}
+        {...props}
+      >
+        <AnimatePresence mode="popLayout">
+          <motion.span
+            key={isCopied ? "check" : "copy"}
+            data-slot="copy-button-icon"
+            initial={{ scale: 0, opacity: 0.4, filter: "blur(4px)" }}
+            animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+            exit={{ scale: 0, opacity: 0.4, filter: "blur(4px)" }}
+            transition={{ duration: 0.25 }}
+          >
+            <Icon />
+          </motion.span>
+        </AnimatePresence>
+      </ButtonPrimitive>
+    );
+  },
+);
+
+CopyButton.displayName = "CopyButton";
 
 export { buttonVariants, CopyButton, type CopyButtonProps };

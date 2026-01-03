@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { StorageStats } from "./types";
 
 interface StatusBarProps {
@@ -14,6 +15,7 @@ const formatSize = (bytes: number) => {
 };
 
 export const StatusBar = ({ itemCount, stats }: StatusBarProps) => {
+  const { t } = useTranslation();
   const available =
     stats.availableBytes ?? Math.max(0, stats.total - stats.used);
   const usagePercentage =
@@ -36,17 +38,24 @@ export const StatusBar = ({ itemCount, stats }: StatusBarProps) => {
   return (
     <div className="flex h-8 select-none items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 text-xs font-medium text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-4">
-        <span>{itemCount} items</span>
+        <span>{t("knowledge.status.items", { count: itemCount })}</span>
         <span className="text-neutral-300 dark:text-neutral-700">|</span>
         <span className={getUsageColor()}>
-          {formatSize(stats.used)} of {formatSize(stats.total)} used
+          {t("knowledge.status.usedOfTotal", {
+            used: formatSize(stats.used),
+            total: formatSize(stats.total),
+          })}
         </span>
         <span className="text-neutral-300 dark:text-neutral-700">|</span>
-        <span>{formatSize(available)} available</span>
+        <span className=" hidden sm:inline">
+          {t("knowledge.status.available", {
+            available: formatSize(available),
+          })}
+        </span>
       </div>
       <div className="flex items-center gap-3">
         {/* Progress bar */}
-        <div className="w-32 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+        <div className="w-24 sm:w-32 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-300 ${getProgressBarColor()}`}
             style={{ width: `${Math.min(usagePercentage, 100)}%` }}

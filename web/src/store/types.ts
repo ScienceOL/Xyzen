@@ -109,7 +109,7 @@ export interface User {
 
 export type Theme = "light" | "dark" | "system";
 
-export type UiSettingType = "theme" | "style";
+export type UiSettingType = "theme" | "style" | "language";
 
 // Add types for API response
 export interface TopicResponse {

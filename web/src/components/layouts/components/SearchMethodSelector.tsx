@@ -99,19 +99,21 @@ export function SearchMethodSelector({
         <div className={`h-1.5 w-1.5 rounded-full ${getStatusColor()}`} />
       </motion.button>
 
-      {/* Dropdown Menu */}
-      {showDropdown && (
+      {/* Tooltip and Dropdown Menu */}
+      {(showTooltip || showDropdown) && (
         <>
           {/* Backdrop to close dropdown */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowDropdown(false)}
-          />
+          {showDropdown && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowDropdown(false)}
+            />
+          )}
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            className="absolute bottom-full left-0 mb-2 z-50 w-56 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden"
+            className="absolute bottom-full left-0 z-50 w-56 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden"
           >
             {/* Off option */}
             <button
@@ -142,11 +144,11 @@ export function SearchMethodSelector({
             {/* Built-in Search option */}
             <button
               onClick={() => handleMethodSelect("builtin")}
-              disabled={!supportsBuiltinSearch}
+              disabled={!supportsBuiltinSearch || mcpEnabled}
               className={`w-full px-3 py-2.5 text-left flex items-center gap-2 transition-colors ${
                 method === "builtin"
                   ? "bg-blue-50 dark:bg-blue-900/20"
-                  : !supportsBuiltinSearch
+                  : !supportsBuiltinSearch || mcpEnabled
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
               }`}
@@ -160,7 +162,7 @@ export function SearchMethodSelector({
                   {!supportsBuiltinSearch
                     ? "当前模型不支持"
                     : mcpEnabled
-                      ? "⚠️ 切换后将断开 MCP 工具"
+                      ? "与 MCP 工具冲突，不可使用"
                       : "使用模型原生搜索能力"}
                 </div>
               </div>
@@ -193,33 +195,6 @@ export function SearchMethodSelector({
             </button>
           </motion.div>
         </>
-      )}
-
-      {/* Tooltip (only show when not dropdown) */}
-      {showTooltip && !showDropdown && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.2 }}
-          className="absolute bottom-full left-0 mb-2 z-50 w-64 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-3"
-        >
-          <div className="flex items-start gap-2">
-            {getMethodIcon()}
-            <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                搜索方式
-              </div>
-              <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                {method === "none" && "点击选择搜索方式"}
-                {method === "builtin" && "已启用模型内置搜索"}
-                {method === "searxng" && "已启用通用搜索"}
-              </div>
-            </div>
-          </div>
-          {/* Arrow */}
-          <div className="absolute top-full left-6 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-neutral-900" />
-        </motion.div>
       )}
     </div>
   );

@@ -3,8 +3,10 @@ import type { InputPosition, LayoutStyle } from "@/store/slices/uiSlice/types";
 
 import { Field, Label, Radio, RadioGroup } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 
 export function StyleSettings() {
+  const { t } = useTranslation();
   const { layoutStyle, setLayoutStyle, inputPosition, setInputPosition } =
     useXyzen();
 
@@ -17,24 +19,24 @@ export function StyleSettings() {
   }> = [
     {
       value: "sidebar",
-      label: "Sidebar",
-      description: "Classic right-side panel layout",
+      label: t("settings.style.layout.sidebar.label"),
+      description: t("settings.style.layout.sidebar.description"),
       features: [
-        "Resizable panel (280-600px)",
-        "Floating button when closed",
-        "Overlays on top of content",
+        t("settings.style.layout.sidebar.features.resizable"),
+        t("settings.style.layout.sidebar.features.floatingButton"),
+        t("settings.style.layout.sidebar.features.overlay"),
       ],
       preview: "M21 3L21 21L10 21L10 3L21 3Z",
     },
     {
       value: "fullscreen",
-      label: "Fullscreen",
-      description: "Immersive 3-column workspace",
+      label: t("settings.style.layout.fullscreen.label"),
+      description: t("settings.style.layout.fullscreen.description"),
       features: [
-        "Agent list on the left",
-        "Chat in the center",
-        "Topics on the right",
-        "Full width layout",
+        t("settings.style.layout.fullscreen.features.agentsLeft"),
+        t("settings.style.layout.fullscreen.features.chatCenter"),
+        t("settings.style.layout.fullscreen.features.topicsRight"),
+        t("settings.style.layout.fullscreen.features.fullWidth"),
       ],
       preview:
         "M2 3L2 21L8 21L8 3L2 3ZM10 3L10 21L16 21L16 3L10 3ZM18 3L18 21L22 21L22 3L18 3Z",
@@ -49,39 +51,39 @@ export function StyleSettings() {
   }> = [
     {
       value: "top-left",
-      label: "Top Left",
-      description: "Top-left corner",
+      label: t("settings.style.inputPositions.topLeft.label"),
+      description: t("settings.style.inputPositions.topLeft.description"),
     },
     {
       value: "top",
-      label: "Top",
-      description: "Top center edge",
+      label: t("settings.style.inputPositions.top.label"),
+      description: t("settings.style.inputPositions.top.description"),
     },
     {
       value: "top-right",
-      label: "Top Right",
-      description: "Top-right corner",
+      label: t("settings.style.inputPositions.topRight.label"),
+      description: t("settings.style.inputPositions.topRight.description"),
     },
     {
       value: "center",
-      label: "Center",
-      description: "Spotlight style (Middle of screen)",
+      label: t("settings.style.inputPositions.center.label"),
+      description: t("settings.style.inputPositions.center.description"),
       colSpan: "md:col-span-3",
     },
     {
       value: "bottom-left",
-      label: "Bottom Left",
-      description: "Bottom-left corner",
+      label: t("settings.style.inputPositions.bottomLeft.label"),
+      description: t("settings.style.inputPositions.bottomLeft.description"),
     },
     {
       value: "bottom",
-      label: "Bottom",
-      description: "Bottom center edge",
+      label: t("settings.style.inputPositions.bottom.label"),
+      description: t("settings.style.inputPositions.bottom.description"),
     },
     {
       value: "bottom-right",
-      label: "Bottom Right",
-      description: "Bottom-right corner",
+      label: t("settings.style.inputPositions.bottomRight.label"),
+      description: t("settings.style.inputPositions.bottomRight.description"),
     },
   ];
 
@@ -89,18 +91,18 @@ export function StyleSettings() {
     <div className="flex h-full flex-col">
       <div className="border-b border-neutral-200 p-6 dark:border-neutral-800">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-          Interface Settings
+          {t("settings.style.title")}
         </h2>
         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          Customize the appearance and behavior of Xyzen
+          {t("settings.style.subtitle")}
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto space-y-8 p-6">
         {/* Layout Style Section */}
         <section>
           <h3 className="mb-4 text-sm font-medium text-neutral-900 dark:text-white">
-            Layout Style
+            {t("settings.style.sections.layout")}
           </h3>
           <RadioGroup value={layoutStyle} onChange={setLayoutStyle}>
             <div className="space-y-4">
@@ -120,7 +122,7 @@ export function StyleSettings() {
                       <div className="flex w-full gap-4">
                         {/* Preview Icon */}
                         <div
-                          className={`flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-sm border-2 ${
+                          className={`flex h-16 w-24 shrink-0 items-center justify-center rounded-sm border-2 ${
                             checked
                               ? "border-indigo-300 bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900/50"
                               : "border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800"
@@ -156,7 +158,7 @@ export function StyleSettings() {
                               </p>
                             </div>
                             {checked && (
-                              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500">
+                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500">
                                 <CheckIcon className="h-4 w-4" />
                               </div>
                             )}
@@ -193,7 +195,7 @@ export function StyleSettings() {
         {/* Input Position Section */}
         <section>
           <h3 className="mb-4 text-sm font-medium text-neutral-900 dark:text-white">
-            Quick Input Position
+            {t("settings.style.sections.inputPosition")}
           </h3>
           <RadioGroup value={inputPosition} onChange={setInputPosition}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -222,7 +224,7 @@ export function StyleSettings() {
                             {pos.label}
                           </Label>
                           {checked && (
-                            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500">
+                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500">
                               <CheckIcon className="h-3 w-3" />
                             </div>
                           )}
@@ -241,12 +243,10 @@ export function StyleSettings() {
 
         <div className="rounded-sm border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
           <h3 className="text-sm font-medium text-amber-900 dark:text-amber-300">
-            💡 Pro Tip
+            {t("settings.style.tip.title")}
           </h3>
           <p className="mt-2 text-xs text-amber-800 dark:text-amber-400">
-            Fullscreen layout is perfect for larger displays where you want to
-            see everything at once. Sidebar layout is ideal for focused work and
-            smaller screens.
+            {t("settings.style.tip.body")}
           </p>
         </div>
       </div>

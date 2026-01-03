@@ -306,7 +306,7 @@ function SessionHistory({
                 </div>
                 <div className="ml-3 flex items-center gap-1">
                   <button
-                    className={`invisible rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-red-700 group-hover:visible dark:hover:bg-neutral-800 dark:hover:text-red-400 ${
+                    className={`rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-red-700 md:invisible md:group-hover:visible dark:hover:bg-neutral-800 dark:hover:text-red-400 ${
                       sortedHistory.length <= 1
                         ? "opacity-50 cursor-not-allowed"
                         : ""
@@ -322,7 +322,7 @@ function SessionHistory({
                     <TrashIcon className={`h-3.5 w-3.5`} />
                   </button>
                   <button
-                    className="invisible rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700 group-hover:visible dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+                    className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700 md:invisible md:group-hover:visible dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
                     title={chat.isPinned ? "取消置顶" : "置顶会话"}
                     onClick={(e) => handleTogglePin(e, chat.id)}
                   >

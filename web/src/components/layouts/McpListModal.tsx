@@ -4,33 +4,34 @@ import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
 import { EditMcpServerModal } from "@/components/modals/EditMcpServerModal";
 import { ToolTestModal } from "@/components/modals/ToolTestModal";
-import { websocketService } from "@/service/websocketService";
-import { useXyzen } from "@/store";
-import type { McpServer } from "@/types/mcp";
-import type {
-  ExplorableMcpServer,
-  BuiltinMcpData,
-  BohriumMcpData,
-  SmitheryMcpData,
-} from "@/types/mcp";
-import { isBuiltinMcp, isBohriumMcp, isSmitheryMcp } from "@/types/mcp";
-import UnifiedMcpMarketList from "@/marketplace/components/UnifiedMcpMarketList";
 import McpServerDetail from "@/marketplace/components/McpServerDetail";
 import SmitheryServerDetail from "@/marketplace/components/SmitheryServerDetail";
+import UnifiedMcpMarketList from "@/marketplace/components/UnifiedMcpMarketList";
+import { websocketService } from "@/service/websocketService";
+import { useXyzen } from "@/store";
+import type {
+  BohriumMcpData,
+  BuiltinMcpData,
+  ExplorableMcpServer,
+  McpServer,
+  SmitheryMcpData,
+} from "@/types/mcp";
+import { isBohriumMcp, isBuiltinMcp, isSmitheryMcp } from "@/types/mcp";
 import {
   ArrowPathIcon,
   ChevronRightIcon,
   CommandLineIcon,
   GlobeAltIcon,
+  ListBulletIcon,
   PencilIcon,
   PlayIcon,
   PlusIcon,
   ServerStackIcon,
   TrashIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../animate-ui/primitives/buttons/button";
 
 interface ServerStatusIndicatorProps {
@@ -40,22 +41,29 @@ interface ServerStatusIndicatorProps {
 const ServerStatusIndicator: React.FC<ServerStatusIndicatorProps> = ({
   status,
 }) => {
+  const { t } = useTranslation();
   const isOnline = status === "online";
   return (
-    <div className="flex items-center">
+    <div
+      className={`flex items-center px-1.5 py-0.5 rounded-full border flex-shrink-0 ${
+        isOnline
+          ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-900"
+          : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900"
+      }`}
+    >
       <span
-        className={`h-2.5 w-2.5 rounded-full ${
+        className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
           isOnline ? "bg-green-500" : "bg-red-500"
         }`}
       />
       <span
-        className={`ml-2 text-xs font-medium transition-colors duration-200 ${
+        className={`ml-1 text-[10px] font-medium whitespace-nowrap ${
           isOnline
             ? "text-green-700 dark:text-green-300"
             : "text-red-700 dark:text-red-300"
         }`}
       >
-        {isOnline ? "Online" : "Offline"}
+        {isOnline ? t("mcp.added.online") : t("mcp.added.offline")}
       </span>
     </div>
   );
@@ -78,6 +86,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
   onEdit,
   onTestTool,
 }) => {
+  const { t } = useTranslation();
   const toolCount = server.tools?.length || 0;
   const [isRemoving, setIsRemoving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -108,51 +117,49 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
       className="group relative overflow-hidden rounded-sm border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:border-indigo-200 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-indigo-800"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
-        <div className="flex flex-1 items-center space-x-3">
-          <div className="rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600 p-2">
-            <ServerStackIcon className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-white truncate">
+      <div className="flex items-start p-3 gap-3">
+        <div className="flex-shrink-0 rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600 p-2 mt-0.5">
+          <ServerStackIcon className="h-5 w-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">
               {server.name}
             </h3>
-            <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 truncate">
-              {(() => {
-                const description = server.description || "No description";
-                // Detect if text contains Chinese/Japanese/Korean characters
-                const hasCJK =
-                  /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(
-                    description,
-                  );
-                const maxLength = hasCJK ? 15 : 30; // Shorter limit for CJK characters
-                return description.length > maxLength
-                  ? description.substring(0, maxLength) + "..."
-                  : description;
-              })()}
-            </p>
+            <ServerStatusIndicator status={server.status} />
           </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <ServerStatusIndicator status={server.status} />
+          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 truncate">
+            {(() => {
+              const description =
+                server.description || t("mcp.added.noDescription");
+              // Detect if text contains Chinese/Japanese/Korean characters
+              const hasCJK =
+                /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(
+                  description,
+                );
+              const maxLength = hasCJK ? 18 : 35; // Shorter limit for CJK characters
+              return description.length > maxLength
+                ? description.substring(0, maxLength) + "..."
+                : description;
+            })()}
+          </p>
         </div>
       </div>
 
       {/* Info Row */}
       <div className="flex items-center justify-between border-t border-neutral-100 bg-neutral-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
-        <div className="flex items-center space-x-4 text-xs">
-          <div className="flex items-center space-x-1.5 text-neutral-600 dark:text-neutral-400">
-            <GlobeAltIcon className="h-4 w-4" />
-            <span className="truncate max-w-[200px]">{server.url}</span>
+        <div className="flex items-center gap-2 text-xs flex-1 min-w-0 mr-2">
+          <div className="flex items-center space-x-1.5 text-neutral-600 dark:text-neutral-400 flex-1 min-w-0">
+            <GlobeAltIcon className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{server.url}</span>
           </div>
           <button
             onClick={handleToggleExpand}
             disabled={toolCount === 0}
-            className="flex items-center space-x-1.5 text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-indigo-400 dark:hover:text-indigo-300 flex-shrink-0"
           >
             <CommandLineIcon className="h-4 w-4" />
-            <span>{toolCount} tools</span>
+            <span>{toolCount}</span>
             {toolCount > 0 && (
               <motion.div
                 animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -164,13 +171,13 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 flex-shrink-0">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onEdit(server)}
             className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-200 hover:text-indigo-600 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-indigo-400"
-            title="Edit server"
+            title={t("mcp.added.edit")}
           >
             <PencilIcon className="h-4 w-4" />
           </motion.button>
@@ -180,7 +187,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
             onClick={handleRemove}
             disabled={isRemoving}
             className="rounded-sm p-1.5 text-neutral-500 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-neutral-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-            title="Remove server"
+            title={t("mcp.added.remove")}
           >
             {isRemoving ? (
               <motion.div
@@ -233,7 +240,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
                       onTestTool(server, tool.name, tool.description)
                     }
                     className="ml-2 flex-shrink-0 rounded-sm p-1 text-neutral-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-neutral-400 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400"
-                    title="Test tool"
+                    title={t("mcp.added.test")}
                   >
                     <PlayIcon className="h-4 w-4" />
                   </button>
@@ -268,9 +275,11 @@ export function McpListModal() {
     quickAddBuiltinServer,
   } = useXyzen();
 
+  const { t } = useTranslation();
   const mcpServersLoading = getLoading("mcpServers");
   const [selectedMarketServer, setSelectedMarketServer] =
     useState<ExplorableMcpServer | null>(null);
+  const [showAddedServersMobile, setShowAddedServersMobile] = useState(false);
 
   const isMarketDetailOpen = useMemo(
     () => !!selectedMarketServer,
@@ -349,54 +358,64 @@ export function McpListModal() {
           transition={{ duration: 0.5 }}
           className="mx-auto relative"
         >
-          <button
-            onClick={closeMcpListModal}
-            className="absolute -top-6 -right-2 p-1 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 z-10"
-            aria-label="Close"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-
           {/* Header Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-6"
+            className="mb-4 sm:mb-6"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="rounded-sm bg-gradient-to-r from-indigo-500 to-purple-500 p-2.5 shadow-lg">
-                  <ServerStackIcon className="h-6 w-6 text-white" />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center space-x-3 overflow-hidden">
+                <div className="rounded-sm bg-gradient-to-r from-indigo-500 to-purple-500 p-2 shadow-lg flex-shrink-0">
+                  <ServerStackIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-                    My Servers
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 truncate">
+                    {t("mcp.title")}
                   </h1>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    Browse marketplace and manage your servers
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate hidden sm:block">
+                    {t("mcp.subtitle")}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-shrink-0">
+                {/* Mobile Toggle Button */}
+                <Button
+                  onClick={() =>
+                    setShowAddedServersMobile(!showAddedServersMobile)
+                  }
+                  className="lg:hidden bg-neutral-100 text-neutral-900 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 text-sm font-medium px-2.5 py-2 h-9 sm:h-10 flex items-center rounded-sm"
+                >
+                  {showAddedServersMobile ? (
+                    <GlobeAltIcon className="h-5 w-5" />
+                  ) : (
+                    <ListBulletIcon className="h-5 w-5" />
+                  )}
+                </Button>
+
                 <LiquidButton
                   onClick={handleRefresh}
                   disabled={mcpServersLoading}
-                  className="text-sm flex items-center cursor-pointer rounded-sm font-medium px-4 py-2 h-10 overflow-hidden [--liquid-button-color:var(--primary)] [--liquid-button-background-color:var(--accent)] text-primary hover:text-primary-foreground"
+                  className="text-sm flex items-center cursor-pointer rounded-sm font-medium px-2.5 sm:px-4 py-2 h-9 sm:h-10 overflow-hidden [--liquid-button-color:var(--primary)] [--liquid-button-background-color:var(--accent)] text-primary hover:text-primary-foreground"
                 >
                   <ArrowPathIcon
-                    className={`h-4 w-4 mr-2 ${mcpServersLoading ? "animate-spin" : ""}`}
+                    className={`h-4 w-4 sm:mr-2 ${mcpServersLoading ? "animate-spin" : ""}`}
                   />
-                  <span className="whitespace-nowrap">Refresh</span>
+                  <span className="whitespace-nowrap hidden sm:inline">
+                    {t("mcp.refresh")}
+                  </span>
                 </LiquidButton>
 
                 <Button
                   onClick={openAddMcpServerModal}
-                  className="bg-primary text-primary-foreground text-sm font-medium px-4 py-2 h-10 flex items-center rounded-sm"
+                  className="bg-primary text-primary-foreground text-sm font-medium px-2.5 sm:px-4 py-2 h-9 sm:h-10 flex items-center rounded-sm"
                 >
-                  <PlusIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="whitespace-nowrap">Add Custom</span>
+                  <PlusIcon className="h-4 w-4 sm:mr-2 flex-shrink-0" />
+                  <span className="whitespace-nowrap hidden sm:inline">
+                    {t("mcp.addCustom")}
+                  </span>
                 </Button>
               </div>
             </div>
@@ -407,14 +426,16 @@ export function McpListModal() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="grid grid-cols-1 lg:grid-cols-10 gap-6"
+            className="flex flex-col lg:flex-row gap-6 h-full"
           >
             {/* LEFT: MCP Market */}
-            <div className="col-span-7">
+            <div
+              className={`flex-1 min-w-0 ${showAddedServersMobile ? "hidden lg:block" : "block"}`}
+            >
               <div className="mb-4 flex items-center space-x-2">
                 <GlobeAltIcon className="h-5 w-5 text-purple-500" />
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                  MCP Market
+                  {t("mcp.market.title")}
                 </h2>
               </div>
 
@@ -427,18 +448,20 @@ export function McpListModal() {
             </div>
 
             {/* RIGHT: Added Servers */}
-            <div className="col-span-3">
+            <div
+              className={`w-full lg:w-[350px] flex-shrink-0 ${showAddedServersMobile ? "block" : "hidden lg:block"}`}
+            >
               <div className="mb-4 flex items-center space-x-2">
                 <ServerStackIcon className="h-5 w-5 text-indigo-500" />
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                  Added Servers
+                  {t("mcp.added.title")}
                 </h2>
                 <span className="text-sm text-neutral-500 dark:text-neutral-400">
                   ({mcpServers.length})
                 </span>
               </div>
 
-              <div className="flex-1 min-h-[70vh] max-h-[70vh] overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 custom-scrollbar dark:border-neutral-700 dark:bg-neutral-900/50">
+              <div className="flex-1 min-h-[70vh] max-h-[70vh] overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 custom-scrollbar dark:border-neutral-700 dark:bg-neutral-900/50">
                 <AnimatePresence mode="wait">
                   {mcpServersLoading ? (
                     <motion.div
@@ -451,7 +474,7 @@ export function McpListModal() {
                       <div className="text-center">
                         <LoadingSpinner size="md" centered />
                         <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
-                          Loading MCP servers...
+                          {t("mcp.added.loading")}
                         </p>
                       </div>
                     </motion.div>
@@ -461,7 +484,7 @@ export function McpListModal() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="space-y-4"
+                      className="space-y-3"
                     >
                       <AnimatePresence>
                         {mcpServers.map((server, index) => (
@@ -495,11 +518,10 @@ export function McpListModal() {
                     >
                       <ServerStackIcon className="h-16 w-16 text-neutral-300 dark:text-neutral-700 mb-4" />
                       <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                        No Servers Added Yet
+                        {t("mcp.added.empty.title")}
                       </h3>
                       <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-400">
-                        Browse the marketplace on the left to add servers, or
-                        create a custom connection.
+                        {t("mcp.added.empty.description")}
                       </p>
                       <Button
                         onClick={openAddMcpServerModal}
@@ -507,7 +529,7 @@ export function McpListModal() {
                       >
                         <PlusIcon className="h-5 w-5" />
                         <span className="whitespace-nowrap">
-                          Add Custom Server
+                          {t("mcp.added.empty.button")}
                         </span>
                       </Button>
                     </motion.div>
@@ -569,14 +591,14 @@ export function McpListModal() {
                     className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                     onClick={handleCloseMarketDetail}
                   >
-                    Close
+                    {t("mcp.market.close")}
                   </button>
                   {isBuiltinMcp(selectedMarketServer) && (
                     <button
                       className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                       onClick={handleQuickAddFromMarket}
                     >
-                      Quick Add
+                      {t("mcp.market.quickAdd")}
                     </button>
                   )}
                 </div>

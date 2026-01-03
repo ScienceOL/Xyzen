@@ -11,6 +11,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { KnowledgeTab } from "./types";
 
 interface SidebarProps {
@@ -28,6 +29,7 @@ const SidebarComp = ({
   refreshTrigger,
   onCreateKnowledgeSet,
 }: SidebarProps) => {
+  const { t } = useTranslation();
   const [knowledgeSets, setKnowledgeSets] = useState<
     KnowledgeSetWithFileCount[]
   >([]);
@@ -46,17 +48,33 @@ const SidebarComp = ({
 
   const navGroups = [
     {
-      title: "Favorites",
+      title: t("knowledge.sidebar.groups.favorites"),
       items: [
-        { id: "home", label: "Recents", icon: ClockIcon },
-        { id: "all", label: "All Files", icon: DocumentIcon },
+        {
+          id: "home",
+          label: t("knowledge.titles.recents"),
+          icon: ClockIcon,
+        },
+        {
+          id: "all",
+          label: t("knowledge.titles.allFiles"),
+          icon: DocumentIcon,
+        },
       ],
     },
     {
-      title: "Media",
+      title: t("knowledge.sidebar.groups.media"),
       items: [
-        { id: "images", label: "Images", icon: PhotoIcon },
-        { id: "documents", label: "Documents", icon: DocumentIcon },
+        {
+          id: "images",
+          label: t("knowledge.sidebar.items.images"),
+          icon: PhotoIcon,
+        },
+        {
+          id: "documents",
+          label: t("knowledge.sidebar.items.documents"),
+          icon: DocumentIcon,
+        },
       ],
     },
   ];
@@ -101,7 +119,7 @@ const SidebarComp = ({
         <div>
           <div className="mb-1 flex items-center justify-between px-2 pr-1">
             <h3 className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">
-              Knowledge Base
+              {t("knowledge.titles.knowledgeBase")}
             </h3>
             <button
               onClick={(e) => {
@@ -109,7 +127,7 @@ const SidebarComp = ({
                 onCreateKnowledgeSet();
               }}
               className="rounded p-0.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-              title="New Knowledge Set"
+              title={t("knowledge.sidebar.newKnowledgeSet")}
             >
               <PlusIcon className="h-3.5 w-3.5" />
             </button>
@@ -145,7 +163,7 @@ const SidebarComp = ({
             })}
             {knowledgeSets.length === 0 && (
               <div className="px-2 py-1 text-xs text-neutral-400 italic">
-                No knowledge sets
+                {t("knowledge.sidebar.noKnowledgeSets")}
               </div>
             )}
           </div>
@@ -154,7 +172,7 @@ const SidebarComp = ({
         {/* Locations */}
         <div>
           <h3 className="mb-1 px-2 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">
-            Locations
+            {t("knowledge.sidebar.groups.locations")}
           </h3>
           <div className="space-y-0.5">
             <button
@@ -168,7 +186,7 @@ const SidebarComp = ({
               <TrashIcon
                 className={`h-4 w-4 ${activeTab === "trash" ? "text-red-500" : "text-neutral-500 dark:text-neutral-400"}`}
               />
-              Trash
+              {t("knowledge.titles.trash")}
             </button>
           </div>
         </div>

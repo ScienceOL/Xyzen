@@ -1,23 +1,34 @@
 import { useXyzen } from "@/store";
-import { PaintBrushIcon, ViewColumnsIcon } from "@heroicons/react/24/outline";
+import type { UiSettingType } from "@/store/types";
+import {
+  GlobeAltIcon,
+  PaintBrushIcon,
+  ViewColumnsIcon,
+} from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 
-export type UiSettingType = "theme" | "style";
-
-export function UiSettings() {
+export function UiSettings({ onSelect }: { onSelect?: () => void }) {
+  const { t } = useTranslation();
   const { activeUiSetting, setActiveUiSetting } = useXyzen();
 
   const uiOptions = [
     {
       id: "theme" as UiSettingType,
-      label: "Theme",
-      description: "Customize the appearance",
+      label: t("settings.ui.options.theme.label"),
+      description: t("settings.ui.options.theme.description"),
       icon: PaintBrushIcon,
     },
     {
       id: "style" as UiSettingType,
-      label: "Layout Style",
-      description: "Choose your layout preference",
+      label: t("settings.ui.options.style.label"),
+      description: t("settings.ui.options.style.description"),
       icon: ViewColumnsIcon,
+    },
+    {
+      id: "language" as UiSettingType,
+      label: t("settings.ui.options.language.label"),
+      description: t("settings.ui.options.language.description"),
+      icon: GlobeAltIcon,
     },
   ];
 
@@ -25,10 +36,10 @@ export function UiSettings() {
     <div className="flex h-full flex-col">
       <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-          UI Settings
+          {t("settings.ui.title")}
         </h2>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Customize your interface
+          {t("settings.ui.subtitle")}
         </p>
       </div>
 
@@ -40,7 +51,10 @@ export function UiSettings() {
           return (
             <button
               key={option.id}
-              onClick={() => setActiveUiSetting(option.id)}
+              onClick={() => {
+                setActiveUiSetting(option.id);
+                onSelect?.();
+              }}
               className={`mb-2 w-full rounded-sm border p-3 text-left transition-all ${
                 isActive
                   ? "border-indigo-500 bg-indigo-50 dark:border-indigo-600 dark:bg-indigo-950/30"
@@ -67,7 +81,7 @@ export function UiSettings() {
                   >
                     {option.label}
                   </div>
-                  <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  <div className="mt-0.5 truncate line-clamp-1 w-36 max-w-full text-xs text-neutral-500 dark:text-neutral-400">
                     {option.description}
                   </div>
                 </div>

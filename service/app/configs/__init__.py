@@ -19,6 +19,7 @@ class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="XYZEN_",
         env_nested_delimiter="_",
+        # env_parse_delimiter=",",
         case_sensitive=False,
         env_file=".env",
         env_file_encoding="utf-8",

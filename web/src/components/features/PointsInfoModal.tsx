@@ -19,7 +19,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
       title="积分与充值说明"
       maxWidth="max-w-lg"
     >
-      <div className="relative space-y-6 text-sm text-neutral-700 dark:text-neutral-200">
+      <div className="relative space-y-6 text-sm text-neutral-700 dark:text-neutral-200 mx-3 my-2">
         {/* 装饰性背景光晕 - 仅深色模式 */}
         <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-500/20" />
         <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl dark:bg-purple-500/20" />
@@ -156,7 +156,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-indigo-600/80 dark:text-indigo-400/80">
                   <span className="inline-block h-1 w-1 rounded-full bg-indigo-400" />
-                  进入后请选择“三天体验”
+                  请在新页面登陆并选择“三天体验”
                 </div>
               </div>
               {/* 装饰性箭头 */}
@@ -233,7 +233,13 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
           whileTap={{ scale: 0.95 }}
           type="button"
           onClick={onClose}
-          className="rounded-lg bg-neutral-900 px-6 py-2 text-sm font-medium text-white shadow-lg shadow-neutral-500/20 transition-colors hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 dark:bg-indigo-600 dark:text-white dark:shadow-indigo-500/30 dark:hover:bg-indigo-500"
+          className="rounded-lg
+           bg-neutral-900 px-6 py-2 text-sm
+           font-medium text-white shadow-lg s
+           hadow-neutral-500/20 transition-colors
+           hover:bg-neutral-800 focus:outline-none
+           dark:bg-indigo-600 dark:text-white
+           dark:shadow-indigo-500/30 dark:hover:bg-indigo-500"
         >
           知道了
         </motion.button>

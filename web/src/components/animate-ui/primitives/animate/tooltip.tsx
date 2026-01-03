@@ -1,30 +1,31 @@
 "use client";
 
-import * as React from "react";
 import {
-  motion,
-  AnimatePresence,
-  LayoutGroup,
-  type Transition,
-  type HTMLMotionProps,
-} from "motion/react";
-import {
-  useFloating,
   autoUpdate,
-  offset as floatingOffset,
   flip,
-  shift,
   arrow as floatingArrow,
-  FloatingPortal,
   FloatingArrow,
+  offset as floatingOffset,
+  FloatingPortal,
+  shift,
+  useFloating,
   type UseFloatingReturn,
 } from "@floating-ui/react";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  type HTMLMotionProps,
+  type Transition,
+} from "motion/react";
+import * as React from "react";
 
-import { getStrictContext } from "@/lib/get-strict-context";
 import {
   Slot,
   type WithAsChild,
 } from "@/components/animate-ui/primitives/animate/slot";
+import { zIndex } from "@/constants/zIndex";
+import { getStrictContext } from "@/lib/get-strict-context";
 
 type Side = "top" | "bottom" | "left" | "right";
 type Align = "start" | "center" | "end";
@@ -297,7 +298,7 @@ function TooltipOverlay() {
               position: strategy,
               top: 0,
               left: 0,
-              zIndex: 50,
+              zIndex: zIndex.tooltip,
               transform: `translate3d(${x!}px, ${y!}px, 0)`,
             }}
           >
@@ -557,19 +558,19 @@ function TooltipTrigger({
 }
 
 export {
-  TooltipProvider,
   Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   TooltipArrow,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
   useGlobalTooltip,
   useTooltip,
-  type TooltipProviderProps,
-  type TooltipProps,
-  type TooltipContentProps,
-  type TooltipTriggerProps,
-  type TooltipArrowProps,
-  type TooltipPosition,
   type GlobalTooltipContextType,
+  type TooltipArrowProps,
+  type TooltipContentProps,
   type TooltipContextType,
+  type TooltipPosition,
+  type TooltipProps,
+  type TooltipProviderProps,
+  type TooltipTriggerProps,
 };

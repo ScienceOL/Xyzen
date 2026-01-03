@@ -2,6 +2,7 @@ import { folderService, type Folder } from "@/service/folderService";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { FolderIcon as FolderSolidIcon } from "@heroicons/react/24/solid";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface MoveToModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const MoveToModal = ({
   itemId,
   itemType,
 }: MoveToModalProps) => {
+  const { t } = useTranslation();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentPathId, setCurrentPathId] = useState<string | null>(null); // Current folder ID in navigation
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
@@ -90,7 +92,7 @@ export const MoveToModal = ({
             onClick={() => handleNavigate(null)}
             className={`hover:text-indigo-600 ${!currentPathId ? "font-bold text-neutral-900 dark:text-white" : ""}`}
           >
-            Home
+            {t("knowledge.moveModal.home")}
           </button>
           {breadcrumbs.map((b) => (
             <div key={b.id} className="flex items-center gap-1">
@@ -109,11 +111,11 @@ export const MoveToModal = ({
         <div className="mb-4 h-60 overflow-y-auto rounded-md border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
           {isLoading ? (
             <div className="flex h-full items-center justify-center text-xs text-neutral-400">
-              Loading...
+              {t("common.loading")}
             </div>
           ) : folders.length === 0 ? (
             <div className="flex h-full items-center justify-center text-xs text-neutral-400">
-              No subfolders
+              {t("knowledge.moveModal.noSubfolders")}
             </div>
           ) : (
             <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -130,9 +132,7 @@ export const MoveToModal = ({
                 >
                   <div className="flex items-center gap-2">
                     <FolderSolidIcon className="h-4 w-4 text-yellow-500" />
-                    <span className="truncate max-w-[180px]">
-                      {folder.name}
-                    </span>
+                    <span className="truncate max-w-45">{folder.name}</span>
                   </div>
                   {/* Drill down button */}
                   <button
@@ -155,13 +155,13 @@ export const MoveToModal = ({
             onClick={onClose}
             className="rounded-md px-3 py-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleConfirm}
             className="rounded-md bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-500"
           >
-            Move Here
+            {t("knowledge.moveModal.moveHere")}
           </button>
         </div>
       </div>

@@ -26,13 +26,17 @@ import type {
   SmitheryMcpData,
 } from "@/types/mcp";
 import { isBohriumMcp } from "@/types/mcp";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowsUpDownIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useBohriumInfiniteAppList } from "../hooks/useBohriumMcp";
 import { useSmitheryInfiniteServers } from "../hooks/useSmitheryMcp";
 import { getStarredAppIds } from "../utils/starredApps";
-import McpServerCard from "./McpServerCard";
+import McpServerCard, { McpServerListItem } from "./McpServerCard";
 
 interface UnifiedMcpMarketListProps {
   builtinServers: ExplorableMcpServer[];
@@ -285,23 +289,24 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
   return (
     <div className="w-full space-y-4 p-4 overflow-x-hidden">
       {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-        <form onSubmit={handleSearch} className="relative flex-1">
+      <div className="flex flex-row gap-2 items-center">
+        <form onSubmit={handleSearch} className="relative flex-1 min-w-0">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
-            placeholder="搜索 MCP 服务..."
+            placeholder="搜索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-neutral-200 bg-white py-2.5 pl-9 pr-4 text-sm text-neutral-900 placeholder-neutral-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-white dark:placeholder-neutral-500"
+            className="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-9 pr-4 text-sm text-neutral-900 placeholder-neutral-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-white dark:placeholder-neutral-500"
           />
         </form>
         <div className="flex gap-2 flex-shrink-0">
           {/* Source Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
-                <span>来源</span>
+              <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 sm:px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                <FunnelIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">来源</span>
                 {sourceFilter === "bohrium" && (
                   <img
                     src="https://storage.sciol.ac.cn/library/browser-fav.png"
@@ -380,8 +385,9 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
           {/* Sort Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
-                <span>排序</span>
+              <button className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 sm:px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                <ArrowsUpDownIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">排序</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={8} className="min-w-[160px]">
@@ -450,8 +456,29 @@ const UnifiedMcpMarketList: React.FC<UnifiedMcpMarketListProps> = ({
       {/* Server Grid */}
       {!loading && allServers.length > 0 && (
         <>
+          {/* Mobile List View */}
+          <div className="block md:hidden space-y-3">
+            {allServers
+              .slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE)
+              .map((server, index) => (
+                <motion.div
+                  key={server.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                >
+                  <McpServerListItem
+                    server={server}
+                    isStarred={isStarred(server.id)}
+                    onClick={() => onSelectServer?.(server)}
+                  />
+                </motion.div>
+              ))}
+          </div>
+
+          {/* Desktop Grid View */}
           <div
-            className="w-full grid gap-4 overflow-hidden"
+            className="hidden md:grid w-full gap-4 overflow-hidden"
             style={{
               gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
             }}

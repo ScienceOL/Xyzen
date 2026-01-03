@@ -1,10 +1,17 @@
+import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { useXyzen } from "@/store";
-import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  AdjustmentsHorizontalIcon,
+  ArrowLeftIcon,
+  CloudIcon,
+  GiftIcon,
+} from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import { zIndexClasses } from "@/constants/zIndex";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
+  LanguageSettings,
   ProviderConfigForm,
   ProviderList,
   RedemptionSettings,
@@ -14,111 +21,205 @@ import {
 } from "./settings";
 
 export function SettingsModal() {
+  const { t } = useTranslation();
   const {
     isSettingsModalOpen,
     closeSettingsModal,
     activeSettingsCategory,
     setActiveSettingsCategory,
     activeUiSetting,
+    selectedProviderId,
+    setSelectedProvider,
   } = useXyzen();
 
+  // Mobile navigation state: 'categories' | 'content'
+  const [mobileView, setMobileView] = useState<"categories" | "content">(
+    "categories",
+  );
+  const [showUiDetail, setShowUiDetail] = useState(false);
+
   const categories = [
-    { id: "provider", label: "Provider" },
-    { id: "ui", label: "UI" },
-    { id: "redemption", label: "Redemption" },
-    // Future categories can be added here
-    // { id: "account", label: "Account" },
+    {
+      id: "ui",
+      label: t("settings.categories.ui"),
+      icon: AdjustmentsHorizontalIcon,
+    },
+    {
+      id: "provider",
+      label: t("settings.categories.provider"),
+      icon: CloudIcon,
+    },
+
+    {
+      id: "redemption",
+      label: t("settings.categories.redemption"),
+      icon: GiftIcon,
+    },
   ];
 
+  const handleCategoryClick = (categoryId: string) => {
+    setActiveSettingsCategory(categoryId);
+    setMobileView("content");
+  };
+
+  const handleBackToCategories = () => {
+    setMobileView("categories");
+  };
+
   return (
-    <AnimatePresence>
-      {isSettingsModalOpen && (
-        <Dialog
-          static
-          open={isSettingsModalOpen}
-          onClose={closeSettingsModal}
-          className={`relative ${zIndexClasses.modal}`}
-        >
-          {/* Backdrop */}
+    <Modal
+      isOpen={isSettingsModalOpen}
+      onClose={closeSettingsModal}
+      title={t("settings.modal.title")}
+      maxWidth="max-w-[90vw]"
+      maxHeight="h-[85vh]"
+      minHeight="min-h-[600px]"
+    >
+      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 md:flex-row">
+        {/* Sidebar (Categories) */}
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm"
-            aria-hidden="true"
-          />
+            className={`flex w-full flex-col border-r border-neutral-200 bg-neutral-50/80 dark:border-neutral-800 dark:bg-neutral-900/80 md:w-64 ${
+              mobileView === "content" ? "hidden md:flex" : "flex"
+            }`}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <nav className="flex-1 space-y-1 p-4">
+              {categories.map((category) => {
+                const Icon = category.icon;
+                const isActive = activeSettingsCategory === category.id;
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category.id)}
+                    className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
+                      isActive
+                        ? "bg-white text-indigo-600 shadow-sm ring-1 ring-neutral-200 dark:bg-neutral-800 dark:text-indigo-400 dark:ring-neutral-700"
+                        : "text-neutral-600 hover:bg-neutral-200/50 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    {category.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </motion.div>
+        </AnimatePresence>
 
-          {/* Full screen container */}
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="w-full max-w-7xl h-[85vh]"
-            >
-              <DialogPanel className="flex flex-col md:flex-row h-full overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-neutral-950">
-                {/* Column 1: Category Sidebar */}
-                <div className=" w-full md:w-48 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
-                  <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
-                    <DialogTitle className="text-lg font-semibold text-neutral-900 dark:text-white whitespace-nowrap">
-                      设置
-                    </DialogTitle>
-                    <button
-                      onClick={closeSettingsModal}
-                      className="rounded-sm p-1 text-neutral-500 hover:bg-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-800 flex-shrink-0"
-                    >
-                      <XMarkIcon className="h-5 w-5" />
-                    </button>
+        {/* Content Area */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSettingsCategory}
+            className={`flex flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-950 ${
+              mobileView === "categories" ? "hidden md:flex" : "flex"
+            }`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Mobile Header for Content View */}
+            <div className="flex items-center border-b border-neutral-200 px-4 py-3 md:hidden dark:border-neutral-800">
+              <button
+                onClick={handleBackToCategories}
+                className="mr-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+              >
+                ← {t("settings.modal.back")}
+              </button>
+              <span className="font-medium text-neutral-900 dark:text-white">
+                {categories.find((c) => c.id === activeSettingsCategory)?.label}
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-0 md:p-0">
+              {activeSettingsCategory === "provider" && (
+                <div className="flex h-full flex-col md:flex-row">
+                  {/* Provider List Column */}
+                  <div
+                    className={`w-full border-b border-neutral-200 bg-neutral-50/80 md:w-72 md:border-b-0 md:border-r dark:border-neutral-800 dark:bg-neutral-900/80 ${
+                      selectedProviderId ? "hidden md:block" : "block"
+                    }`}
+                  >
+                    <ProviderList />
                   </div>
-
-                  <nav className="p-2 flex md:flex-col gap-2">
-                    {categories.map((category) => (
+                  {/* Provider Config Column */}
+                  <div
+                    className={`flex-1 overflow-y-auto bg-neutral-50/30 p-4 md:p-6 dark:bg-neutral-900/30 ${
+                      selectedProviderId ? "block" : "hidden md:block"
+                    }`}
+                  >
+                    {/* Mobile Back Button */}
+                    <div className="mb-4 flex items-center md:hidden">
                       <button
-                        key={category.id}
-                        onClick={() => setActiveSettingsCategory(category.id)}
-                        className={`flex-1 md:flex-none rounded-sm px-3 py-2 text-left text-sm font-medium transition-colors whitespace-nowrap ${
-                          activeSettingsCategory === category.id
-                            ? "bg-white text-indigo-600 shadow-sm dark:bg-neutral-800 dark:text-indigo-400"
-                            : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                        }`}
+                        onClick={() => setSelectedProvider(null)}
+                        className="mr-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
                       >
-                        {category.label}
+                        <ArrowLeftIcon className="h-5 w-5" />
                       </button>
-                    ))}
-                  </nav>
-                </div>
+                      <span className="font-medium text-neutral-900 dark:text-white">
+                        {t("settings.categories.provider")}
+                      </span>
+                    </div>
 
-                {/* Column 2: Content Based on Category */}
-                <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-                  <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-y-auto">
-                    {activeSettingsCategory === "provider" && <ProviderList />}
-                    {activeSettingsCategory === "ui" && <UiSettings />}
-                    {activeSettingsCategory === "redemption" && null}
+                    {selectedProviderId ? (
+                      <ProviderConfigForm />
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center text-center text-neutral-500 dark:text-neutral-400">
+                        <CloudIcon className="mb-4 h-12 w-12 opacity-20" />
+                        <p>{t("settings.provider.emptyHint")}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
+              )}
 
-                {/* Column 3: Detail View */}
-                <div className="flex-1 bg-white dark:bg-neutral-950 overflow-y-auto">
-                  {activeSettingsCategory === "provider" && (
-                    <ProviderConfigForm />
-                  )}
-                  {activeSettingsCategory === "ui" && (
-                    <>
-                      {activeUiSetting === "theme" && <ThemeSettings />}
-                      {activeUiSetting === "style" && <StyleSettings />}
-                    </>
-                  )}
-                  {activeSettingsCategory === "redemption" && (
-                    <RedemptionSettings />
-                  )}
+              {activeSettingsCategory === "ui" && (
+                <div className="flex h-full flex-col md:flex-row">
+                  <div
+                    className={`w-full border-b border-neutral-200 md:w-64 md:border-b-0 md:border-r dark:border-neutral-800 ${
+                      showUiDetail ? "hidden md:block" : "block"
+                    }`}
+                  >
+                    <UiSettings onSelect={() => setShowUiDetail(true)} />
+                  </div>
+                  <div
+                    className={`flex-1 overflow-y-auto p-4 md:p-6 ${
+                      showUiDetail ? "block" : "hidden md:block"
+                    }`}
+                  >
+                    {/* Mobile Back Button */}
+                    <div className="mb-4 flex items-center md:hidden">
+                      <button
+                        onClick={() => setShowUiDetail(false)}
+                        className="mr-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                      >
+                        <ArrowLeftIcon className="h-5 w-5" />
+                      </button>
+                      <span className="font-medium text-neutral-900 dark:text-white">
+                        {t("settings.categories.ui")}
+                      </span>
+                    </div>
+
+                    {activeUiSetting === "theme" && <ThemeSettings />}
+                    {activeUiSetting === "style" && <StyleSettings />}
+                    {activeUiSetting === "language" && <LanguageSettings />}
+                  </div>
                 </div>
-              </DialogPanel>
-            </motion.div>
-          </div>
-        </Dialog>
-      )}
-    </AnimatePresence>
+              )}
+
+              {activeSettingsCategory === "redemption" && (
+                <div className="h-full overflow-y-auto p-4 md:p-6">
+                  <RedemptionSettings />
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </Modal>
   );
 }

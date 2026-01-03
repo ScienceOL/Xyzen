@@ -1,10 +1,10 @@
 "use client";
 import McpIcon from "@/assets/McpIcon";
 import { Badge } from "@/components/base/Badge";
+import { useAuth } from "@/hooks/useAuth";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -129,6 +129,37 @@ const AgentCard: React.FC<AgentCardProps> = ({
     x: number;
     y: number;
   } | null>(null);
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPress = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    isLongPress.current = false;
+    const touch = e.touches[0];
+    const { clientX, clientY } = touch;
+
+    longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      setContextMenu({ x: clientX, y: clientY });
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   // const [knowledgeSetName, setKnowledgeSetName] = useState<string | null>(null);
 
   // Check if it's a default agent based on tags
@@ -163,8 +194,14 @@ const AgentCard: React.FC<AgentCardProps> = ({
         variants={itemVariants}
         whileHover={{ scale: 1.03, transition: { duration: 0.2 } }}
         whileTap={{ scale: 0.98 }}
-        onClick={() => onClick?.(agent)}
+        onClick={() => {
+          if (isLongPress.current) return;
+          onClick?.(agent);
+        }}
         onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
         className={`
         group relative flex cursor-pointer items-start gap-4 rounded-sm border p-3
         border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60

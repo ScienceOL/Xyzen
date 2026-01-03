@@ -26,6 +26,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { ContextMenu, type ContextMenuType } from "./ContextMenu";
 import { FileIcon } from "./FileIcon";
 import { MoveToModal } from "./MoveToModal";
@@ -69,6 +70,7 @@ export const FileList = React.memo(
       },
       ref,
     ) => {
+      const { t } = useTranslation();
       const [files, setFiles] = useState<FileUploadResponse[]>([]);
       const [folders, setFolders] = useState<Folder[]>([]);
       const [isLoading, setIsLoading] = useState(false);
@@ -135,9 +137,11 @@ export const FileList = React.memo(
 
             setConfirmation({
               isOpen: true,
-              title: "Empty Trash",
-              message: `Are you sure you want to permanently delete ${count} items? This cannot be undone.`,
-              confirmLabel: "Empty Trash",
+              title: t("knowledge.fileList.emptyTrash.title"),
+              message: t("knowledge.fileList.emptyTrash.message", {
+                count,
+              }),
+              confirmLabel: t("knowledge.fileList.emptyTrash.confirm"),
               destructive: true,
               onConfirm: async () => {
                 try {
@@ -157,9 +161,7 @@ export const FileList = React.memo(
                   if (onRefresh) onRefresh();
                 } catch (error) {
                   console.error("Failed to empty trash", error);
-                  alert(
-                    "Failed to empty trash completely. Some items may remain.",
-                  );
+                  alert(t("knowledge.fileList.emptyTrash.failed"));
                 } finally {
                   setIsLoading(false);
                 }
@@ -167,7 +169,7 @@ export const FileList = React.memo(
             });
           },
         }),
-        [files, folders, onFileCountChange, onRefresh],
+        [files, folders, onFileCountChange, onRefresh, t],
       );
 
       // Load knowledge sets for the modal
@@ -309,7 +311,7 @@ export const FileList = React.memo(
           if (onRefresh) onRefresh();
         } catch (e) {
           console.error("Rename failed", e);
-          alert("Rename failed");
+          alert(t("knowledge.fileList.rename.failed"));
         }
       };
 
@@ -332,7 +334,7 @@ export const FileList = React.memo(
           setMoveModal(null);
         } catch (e) {
           console.error("Move failed", e);
-          alert("Move failed");
+          alert(t("knowledge.fileList.move.failed"));
         }
       };
 
@@ -340,11 +342,20 @@ export const FileList = React.memo(
         item: Folder | FileUploadResponse,
         type: ContextMenuType,
       ) => {
+        const itemTypeLabel =
+          type === "folder"
+            ? t("knowledge.fileList.itemTypes.folder")
+            : t("knowledge.fileList.itemTypes.file");
+
         setConfirmation({
           isOpen: true,
-          title: `Delete ${type === "folder" ? "Folder" : "File"}`,
-          message: `Are you sure you want to delete this ${type}?`,
-          confirmLabel: "Delete",
+          title: t("knowledge.fileList.deleteItem.title", {
+            itemType: itemTypeLabel,
+          }),
+          message: t("knowledge.fileList.deleteItem.message", {
+            itemType: itemTypeLabel,
+          }),
+          confirmLabel: t("knowledge.fileList.actions.delete"),
           destructive: true,
           onConfirm: async () => {
             try {
@@ -358,7 +369,7 @@ export const FileList = React.memo(
               if (onRefresh) onRefresh();
             } catch (e) {
               console.error("Delete failed", e);
-              alert("Delete failed");
+              alert(t("knowledge.fileList.actions.deleteFailed"));
             }
           },
         });
@@ -368,14 +379,18 @@ export const FileList = React.memo(
         // If in trash, perform hard delete
         const isHardDelete = filter === "trash";
         const confirmMsg = isHardDelete
-          ? "Are you sure you want to permanently delete this file? This cannot be undone."
-          : "Are you sure you want to move this file to Trash?";
+          ? t("knowledge.fileList.deleteForever.message")
+          : t("knowledge.fileList.moveToTrash.message");
 
         setConfirmation({
           isOpen: true,
-          title: isHardDelete ? "Delete Forever" : "Move to Trash",
+          title: isHardDelete
+            ? t("knowledge.fileList.actions.deleteForever")
+            : t("knowledge.fileList.actions.moveToTrash"),
           message: confirmMsg,
-          confirmLabel: isHardDelete ? "Delete Forever" : "Move to Trash",
+          confirmLabel: isHardDelete
+            ? t("knowledge.fileList.actions.deleteForever")
+            : t("knowledge.fileList.actions.moveToTrash"),
           destructive: true,
           onConfirm: async () => {
             try {
@@ -415,7 +430,7 @@ export const FileList = React.memo(
           if (onRefresh) onRefresh();
         } catch (error) {
           console.error("Restore failed", error);
-          alert("Restore failed");
+          alert(t("knowledge.fileList.actions.restoreFailed"));
         }
       };
 
@@ -445,7 +460,7 @@ export const FileList = React.memo(
           URL.revokeObjectURL(objectUrl);
         } catch (error) {
           console.error("Download failed", error);
-          alert("Download failed");
+          alert(t("knowledge.fileList.actions.downloadFailed"));
         }
       };
 
@@ -474,9 +489,11 @@ export const FileList = React.memo(
 
         setConfirmation({
           isOpen: true,
-          title: "Remove from Knowledge Set",
-          message: `Remove "${file.original_filename}" from this knowledge set?`,
-          confirmLabel: "Remove",
+          title: t("knowledge.fileList.knowledgeSet.remove.title"),
+          message: t("knowledge.fileList.knowledgeSet.remove.message", {
+            name: file.original_filename,
+          }),
+          confirmLabel: t("knowledge.fileList.knowledgeSet.remove.confirm"),
           destructive: true,
           onConfirm: async () => {
             try {
@@ -489,7 +506,7 @@ export const FileList = React.memo(
               if (onRefresh) onRefresh();
             } catch (error) {
               console.error("Failed to remove file from knowledge set", error);
-              alert("Failed to remove file from knowledge set");
+              alert(t("knowledge.fileList.knowledgeSet.remove.failed"));
             }
           },
         });
@@ -507,8 +524,8 @@ export const FileList = React.memo(
           if (onRefresh) onRefresh();
           setNotification({
             isOpen: true,
-            title: "Success",
-            message: "File added to knowledge set successfully",
+            title: t("knowledge.fileList.notifications.successTitle"),
+            message: t("knowledge.fileList.knowledgeSet.added"),
             type: "success",
           });
         } catch (error: unknown) {
@@ -520,15 +537,15 @@ export const FileList = React.memo(
           ) {
             setNotification({
               isOpen: true,
-              title: "Notice",
-              message: "This file is already in the knowledge set.",
+              title: t("knowledge.fileList.notifications.noticeTitle"),
+              message: t("knowledge.fileList.knowledgeSet.alreadyInSet"),
               type: "warning",
             });
           } else {
             setNotification({
               isOpen: true,
-              title: "Error",
-              message: "Failed to add file to knowledge set",
+              title: t("knowledge.fileList.notifications.errorTitle"),
+              message: t("knowledge.fileList.knowledgeSet.addFailed"),
               type: "error",
             });
           }
@@ -538,7 +555,7 @@ export const FileList = React.memo(
       if (isLoading) {
         return (
           <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-            Loading...
+            {t("common.loading")}
           </div>
         );
       }
@@ -547,7 +564,11 @@ export const FileList = React.memo(
         return (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
             <DocumentIcon className="h-8 w-8 opacity-50" />
-            <span>{filter === "trash" ? "Trash is empty" : "No items"}</span>
+            <span>
+              {filter === "trash"
+                ? t("knowledge.fileList.empty.trash")
+                : t("knowledge.fileList.empty.noItems")}
+            </span>
           </div>
         );
       }
@@ -558,10 +579,14 @@ export const FileList = React.memo(
             <div className="min-w-full inline-block align-middle">
               <div className="border-b border-neutral-200 dark:border-neutral-800">
                 <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium uppercase text-neutral-500 dark:text-neutral-400">
-                  <div className="col-span-8 md:col-span-6">Name</div>
-                  <div className="hidden md:block md:col-span-2">Size</div>
+                  <div className="col-span-8 md:col-span-6">
+                    {t("knowledge.fileList.columns.name")}
+                  </div>
+                  <div className="hidden md:block md:col-span-2">
+                    {t("knowledge.fileList.columns.size")}
+                  </div>
                   <div className="hidden md:block md:col-span-3">
-                    Date Modified
+                    {t("knowledge.fileList.columns.dateModified")}
                   </div>
                   <div className="col-span-4 md:col-span-1"></div>
                 </div>
@@ -585,7 +610,7 @@ export const FileList = React.memo(
                     }`}
                   >
                     <div className="col-span-8 md:col-span-6 flex items-center gap-3 overflow-hidden">
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <FolderIcon className="h-5 w-5 text-yellow-500" />
                       </div>
                       <span className="truncate font-medium">
@@ -609,7 +634,7 @@ export const FileList = React.memo(
                               e.stopPropagation();
                               handleRestore(folder.id, "folder");
                             }}
-                            title="Restore"
+                            title={t("knowledge.fileList.actions.restore")}
                           >
                             <ArrowPathRoundedSquareIcon
                               className={`h-4 w-4 ${selectedId === folder.id ? "hover:text-white" : "hover:text-green-600"}`}
@@ -623,7 +648,11 @@ export const FileList = React.memo(
                             handleDeleteItem(folder, "folder");
                           }}
                           title={
-                            filter === "trash" ? "Delete Immediately" : "Delete"
+                            filter === "trash"
+                              ? t(
+                                  "knowledge.fileList.actions.deleteImmediately",
+                                )
+                              : t("knowledge.fileList.actions.delete")
                           }
                         >
                           <TrashIcon
@@ -653,7 +682,7 @@ export const FileList = React.memo(
                       }`}
                     >
                       <div className="col-span-8 md:col-span-6 flex items-center gap-3 overflow-hidden">
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           <FileIcon
                             filename={file.original_filename}
                             mimeType={file.content_type}
@@ -684,7 +713,7 @@ export const FileList = React.memo(
                               e.stopPropagation();
                               handlePreview(file);
                             }}
-                            title="Preview"
+                            title={t("knowledge.fileList.actions.preview")}
                           >
                             <EyeIcon
                               className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-indigo-600"}`}
@@ -697,7 +726,7 @@ export const FileList = React.memo(
                                 e.stopPropagation();
                                 handleRestore(file.id, "file");
                               }}
-                              title="Restore"
+                              title={t("knowledge.fileList.actions.restore")}
                             >
                               <ArrowPathRoundedSquareIcon
                                 className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-green-600"}`}
@@ -709,7 +738,7 @@ export const FileList = React.memo(
                                 e.stopPropagation();
                                 handleDownload(file.id, file.original_filename);
                               }}
-                              title="Download"
+                              title={t("knowledge.fileList.actions.download")}
                             >
                               <ArrowDownTrayIcon
                                 className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-indigo-600"}`}
@@ -724,8 +753,10 @@ export const FileList = React.memo(
                             }}
                             title={
                               filter === "trash"
-                                ? "Delete Immediately"
-                                : "Move to Trash"
+                                ? t(
+                                    "knowledge.fileList.actions.deleteImmediately",
+                                  )
+                                : t("knowledge.fileList.actions.moveToTrash")
                             }
                           >
                             <TrashIcon
@@ -842,7 +873,12 @@ export const FileList = React.memo(
               isOpen={moveModal.isOpen}
               onClose={() => setMoveModal(null)}
               onMove={handleMove}
-              title={`Move "${moveModal.type === "folder" ? (moveModal.item as Folder).name : (moveModal.item as FileUploadResponse).original_filename}"`}
+              title={t("knowledge.moveModal.title", {
+                name:
+                  moveModal.type === "folder"
+                    ? (moveModal.item as Folder).name
+                    : (moveModal.item as FileUploadResponse).original_filename,
+              })}
               currentFolderId={currentFolderId || null}
               itemId={moveModal.item.id}
               itemType={moveModal.type}
@@ -860,16 +896,17 @@ export const FileList = React.memo(
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
               <div className="w-full max-w-md rounded-lg border border-neutral-200 bg-white p-6 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
                 <h3 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">
-                  Add to Knowledge Set
+                  {t("knowledge.fileList.knowledgeSet.add.title")}
                 </h3>
                 <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
-                  Select a knowledge set to add "
-                  {knowledgeSetModal.file.original_filename}"
+                  {t("knowledge.fileList.knowledgeSet.add.subtitle", {
+                    name: knowledgeSetModal.file.original_filename,
+                  })}
                 </p>
                 <div className="mb-4 max-h-64 space-y-2 overflow-y-auto">
                   {knowledgeSets.length === 0 ? (
                     <p className="text-sm text-neutral-400 italic">
-                      No knowledge sets available. Create one first.
+                      {t("knowledge.fileList.knowledgeSet.none")}
                     </p>
                   ) : (
                     knowledgeSets.map((ks) => (
@@ -889,7 +926,9 @@ export const FileList = React.memo(
                           )}
                         </div>
                         <div className="text-xs text-neutral-400">
-                          {ks.file_count} files
+                          {t("knowledge.fileList.knowledgeSet.fileCount", {
+                            count: ks.file_count,
+                          })}
                         </div>
                       </button>
                     ))
@@ -899,7 +938,7 @@ export const FileList = React.memo(
                   onClick={() => setKnowledgeSetModal(null)}
                   className="w-full rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>
@@ -922,14 +961,18 @@ export const FileList = React.memo(
               isOpen={renameModal.isOpen}
               onClose={() => setRenameModal(null)}
               onConfirm={handleRenameConfirm}
-              title={`Rename ${renameModal.type === "folder" ? "Folder" : "File"}`}
+              title={
+                renameModal.type === "folder"
+                  ? t("knowledge.fileList.rename.titleFolder")
+                  : t("knowledge.fileList.rename.titleFile")
+              }
               initialValue={
                 renameModal.type === "folder"
                   ? (renameModal.item as Folder).name
                   : (renameModal.item as FileUploadResponse).original_filename
               }
-              placeholder="Enter new name"
-              confirmLabel="Rename"
+              placeholder={t("knowledge.fileList.rename.placeholder")}
+              confirmLabel={t("knowledge.fileList.rename.confirm")}
             />
           )}
 

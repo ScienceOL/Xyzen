@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { type Folder } from "@/service/folderService";
 import { type FileUploadResponse } from "@/service/fileService";
+import { type Folder } from "@/service/folderService";
 import {
-  PencilIcon,
-  TrashIcon,
   ArrowDownTrayIcon,
-  ArrowsRightLeftIcon, // Move icon
-  PlusIcon,
+  ArrowsRightLeftIcon,
   MinusIcon,
+  PencilIcon, // Move icon
+  PlusIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export type ContextMenuType = "file" | "folder";
 
@@ -39,6 +40,7 @@ export const ContextMenu = ({
   onRemoveFromKnowledgeSet,
   isInKnowledgeSetView = false,
 }: ContextMenuProps) => {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
 
@@ -74,7 +76,7 @@ export const ContextMenu = ({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[160px] rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+      className="fixed z-50 min-w-40 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
       style={{ top: adjustedPosition.y, left: adjustedPosition.x }}
     >
       <div className="flex flex-col gap-0.5">
@@ -87,7 +89,7 @@ export const ContextMenu = ({
             className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
           >
             <ArrowDownTrayIcon className="h-4 w-4" />
-            Download
+            {t("knowledge.contextMenu.download")}
           </button>
         )}
 
@@ -99,7 +101,7 @@ export const ContextMenu = ({
           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
         >
           <PencilIcon className="h-4 w-4" />
-          Rename
+          {t("knowledge.contextMenu.rename")}
         </button>
 
         <button
@@ -110,7 +112,7 @@ export const ContextMenu = ({
           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
         >
           <ArrowsRightLeftIcon className="h-4 w-4" />
-          Move to...
+          {t("knowledge.contextMenu.moveTo")}
         </button>
 
         {type === "file" && onAddToKnowledgeSet && !isInKnowledgeSetView && (
@@ -122,7 +124,7 @@ export const ContextMenu = ({
             className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
           >
             <PlusIcon className="h-4 w-4" />
-            Add to Knowledge Set
+            {t("knowledge.contextMenu.addToKnowledgeSet")}
           </button>
         )}
 
@@ -137,7 +139,7 @@ export const ContextMenu = ({
               className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               <MinusIcon className="h-4 w-4" />
-              Remove from Knowledge Set
+              {t("knowledge.contextMenu.removeFromKnowledgeSet")}
             </button>
           )}
 
@@ -151,7 +153,7 @@ export const ContextMenu = ({
           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
         >
           <TrashIcon className="h-4 w-4" />
-          Delete
+          {t("knowledge.contextMenu.delete")}
         </button>
       </div>
     </div>

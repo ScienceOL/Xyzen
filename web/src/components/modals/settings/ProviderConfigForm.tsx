@@ -5,6 +5,7 @@ import type { LlmProviderCreate, LlmProviderUpdate } from "@/types/llmProvider";
 import { ProviderScope } from "@/types/llmProvider";
 import { Button, Field, Label, Switch } from "@headlessui/react";
 import { useEffect, useState, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 // Azure OpenAI configuration type
 interface AzureConfig {
@@ -48,6 +49,7 @@ const getDefaultApiEndpoint = (providerType: string): string => {
 };
 
 export const ProviderConfigForm = () => {
+  const { t } = useTranslation();
   const {
     selectedProviderId,
     providerTemplates,
@@ -106,7 +108,9 @@ export const ProviderConfigForm = () => {
       const template = providerTemplates.find((t) => t.type === templateType);
       if (template) {
         setFormData({
-          name: `My ${template.display_name}`,
+          name: t("settings.providers.form.defaults.name", {
+            name: template.display_name,
+          }),
           provider_type: template.type,
           api: getDefaultApiEndpoint(template.type),
           key: "",
@@ -133,7 +137,7 @@ export const ProviderConfigForm = () => {
       if (provider) {
         // Check if it's a system provider
         if (provider.is_system) {
-          setError("System provider is read-only and cannot be edited.");
+          setError(t("settings.providers.form.errors.systemReadOnlyEdit"));
           setFormData({
             name: provider.name,
             provider_type: provider.provider_type,
@@ -185,7 +189,7 @@ export const ProviderConfigForm = () => {
         setIsEditing(true);
       }
     }
-  }, [selectedProviderId, providerTemplates, llmProviders]);
+  }, [selectedProviderId, providerTemplates, llmProviders, t]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -211,7 +215,7 @@ export const ProviderConfigForm = () => {
     try {
       // Validation
       if (!formData.name || !formData.api || !formData.key) {
-        setError("Name, API, and Key are required");
+        setError(t("settings.providers.form.errors.required"));
         setLoading(false);
         return;
       }
@@ -236,7 +240,7 @@ export const ProviderConfigForm = () => {
         }
 
         await updateProvider(selectedProviderId, updateData);
-        setSuccess("Provider updated successfully!");
+        setSuccess(t("settings.providers.form.success.updated"));
       } else {
         // Create new provider
         const createData: LlmProviderCreate = {
@@ -256,10 +260,14 @@ export const ProviderConfigForm = () => {
         }
 
         await addProvider(createData);
-        setSuccess("Provider created successfully!");
+        setSuccess(t("settings.providers.form.success.created"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save provider");
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("settings.providers.form.errors.saveFailed"),
+      );
     } finally {
       setLoading(false);
     }
@@ -271,13 +279,11 @@ export const ProviderConfigForm = () => {
     // Check if it's a system provider
     const provider = llmProviders.find((p) => p.id === selectedProviderId);
     if (provider?.is_system) {
-      setError(
-        "Cannot delete system provider. System providers are read-only.",
-      );
+      setError(t("settings.providers.form.errors.systemReadOnlyDelete"));
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this provider?")) return;
+    if (!confirm(t("settings.providers.form.confirm.delete"))) return;
 
     setError(null);
     setSuccess(null);
@@ -285,10 +291,12 @@ export const ProviderConfigForm = () => {
 
     try {
       await removeProvider(selectedProviderId);
-      setSuccess("Provider deleted successfully!");
+      setSuccess(t("settings.providers.form.success.deleted"));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete provider",
+        err instanceof Error
+          ? err.message
+          : t("settings.providers.form.errors.deleteFailed"),
       );
     } finally {
       setLoading(false);
@@ -301,9 +309,7 @@ export const ProviderConfigForm = () => {
     // Check if it's a system provider
     const provider = llmProviders.find((p) => p.id === selectedProviderId);
     if (provider?.is_system) {
-      setError(
-        "Cannot set system provider as default. System provider is automatic fallback.",
-      );
+      setError(t("settings.providers.form.errors.systemReadOnlyDefault"));
       return;
     }
 
@@ -313,10 +319,12 @@ export const ProviderConfigForm = () => {
 
     try {
       setUserDefaultProvider(selectedProviderId);
-      setSuccess("Provider set as default!");
+      setSuccess(t("settings.providers.form.success.defaultSet"));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to set default provider",
+        err instanceof Error
+          ? err.message
+          : t("settings.providers.form.errors.defaultFailed"),
       );
     } finally {
       setLoading(false);
@@ -327,8 +335,10 @@ export const ProviderConfigForm = () => {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="text-center text-neutral-400">
-          <p className="text-lg">选择一个provider模板或已有的provider</p>
-          <p className="mt-2 text-sm">在列表中点击开始配置</p>
+          <p className="text-lg">{t("settings.providers.form.empty.title")}</p>
+          <p className="mt-2 text-sm">
+            {t("settings.providers.form.empty.subtitle")}
+          </p>
         </div>
       </div>
     );
@@ -348,10 +358,12 @@ export const ProviderConfigForm = () => {
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto p-6">
         <h2 className="mb-6 text-xl font-semibold text-neutral-900 dark:text-white">
-          {isEditing ? "编辑 Provider" : "新建 Provider"}
+          {isEditing
+            ? t("settings.providers.form.title.edit")
+            : t("settings.providers.form.title.create")}
           {isSystemProvider && (
             <span className="ml-3 text-sm px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
-              系统提供商 (只读)
+              {t("settings.providers.form.systemBadge")}
             </span>
           )}
         </h2>
@@ -373,14 +385,15 @@ export const ProviderConfigForm = () => {
           {template && (
             <div className="rounded-sm bg-neutral-50 p-3 dark:bg-neutral-900">
               <div className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                Provider Type
+                {t("settings.providers.form.providerType.title")}
               </div>
               <div className="mt-1 text-lg font-semibold text-neutral-900 dark:text-white">
                 {template.display_name}
               </div>
               <div className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                {template.models.length} model
-                {template.models.length !== 1 ? "s" : ""} available
+                {t("settings.providers.form.providerType.availableModels", {
+                  count: template.models.length,
+                })}
               </div>
             </div>
           )}
@@ -388,14 +401,14 @@ export const ProviderConfigForm = () => {
           {/* Name */}
           <Field>
             <Label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Name *
+              {t("settings.providers.form.fields.name.label")}
             </Label>
             <Input
               type="text"
               name="name"
               value={formData.name || ""}
               onChange={handleInputChange}
-              placeholder="e.g., My Gemini Provider"
+              placeholder={t("settings.providers.form.fields.name.placeholder")}
               className="mt-1"
               disabled={isSystemProvider}
             />
@@ -404,34 +417,34 @@ export const ProviderConfigForm = () => {
           {/* API Endpoint */}
           <Field>
             <Label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              API Endpoint {!isSystemProvider && "*"}
+              {t("settings.providers.form.fields.api.label")}{" "}
+              {!isSystemProvider && "*"}
             </Label>
             <Input
               type="text"
               name="api"
               value={formData.api || ""}
               onChange={handleInputChange}
-              placeholder="e.g., https://api.openai.com/v1"
+              placeholder={t("settings.providers.form.fields.api.placeholder")}
               className="mt-1"
               disabled={isSystemProvider}
             />
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Default endpoint is pre-filled. Modify if using a custom endpoint
-              or proxy.
+              {t("settings.providers.form.fields.api.help")}
             </p>
           </Field>
 
           {/* API Key */}
           <Field>
             <Label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              API Key *
+              {t("settings.providers.form.fields.key.label")}
             </Label>
             <Input
               type="password"
               name="key"
               value={formData.key || ""}
               onChange={handleInputChange}
-              placeholder="Your API key"
+              placeholder={t("settings.providers.form.fields.key.placeholder")}
               className="mt-1"
               disabled={isSystemProvider}
             />
@@ -441,19 +454,21 @@ export const ProviderConfigForm = () => {
           {formData.provider_type === "azure_openai" && (
             <Field>
               <Label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                API Version *
+                {t("settings.providers.form.fields.azureVersion.label")}
               </Label>
               <Input
                 type="text"
                 name="azure_version"
                 value={azureConfig.azure_version || ""}
                 onChange={handleAzureConfigChange}
-                placeholder="e.g., 2024-02-15-preview"
+                placeholder={t(
+                  "settings.providers.form.fields.azureVersion.placeholder",
+                )}
                 className="mt-1"
                 disabled={isSystemProvider}
               />
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                Azure OpenAI API version (e.g., 2024-02-15-preview, 2023-05-15)
+                {t("settings.providers.form.fields.azureVersion.help")}
               </p>
             </Field>
           )}
@@ -462,7 +477,7 @@ export const ProviderConfigForm = () => {
           {isEditing && !isSystemProvider && (
             <Field className="flex items-center justify-between">
               <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                Default Provider
+                {t("settings.providers.form.fields.default.label")}
               </Label>
               <Switch
                 checked={userDefaultProviderId === selectedProviderId}
@@ -496,7 +511,7 @@ export const ProviderConfigForm = () => {
                 disabled={loading}
                 className="rounded-sm bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
               >
-                Delete
+                {t("settings.providers.form.actions.delete")}
               </Button>
             )}
           </div>
@@ -508,7 +523,9 @@ export const ProviderConfigForm = () => {
                 className="flex items-center gap-2 rounded-sm bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-700 dark:hover:bg-indigo-800"
               >
                 {loading && <LoadingSpinner size="sm" />}
-                {isEditing ? "Save Changes" : "Create Provider"}
+                {isEditing
+                  ? t("settings.providers.form.actions.save")
+                  : t("settings.providers.form.actions.create")}
               </Button>
             )}
           </div>

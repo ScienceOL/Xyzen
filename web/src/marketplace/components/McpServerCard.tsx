@@ -21,58 +21,95 @@ interface McpServerCardProps {
   onClick?: () => void;
 }
 
+// Helper functions
+const getCoverImage = (server: ExplorableMcpServer) => {
+  if (server.cover) return server.cover;
+
+  switch (server.source) {
+    case "official":
+      return "https://storage.sciol.ac.cn/library/origin.png";
+    case "bohrium":
+      return "https://storage.sciol.ac.cn/library/browser-fav.png";
+    case "smithery":
+      return server.cover || "https://storage.sciol.ac.cn/library/smithery.png";
+    default:
+      return undefined;
+  }
+};
+
+const getSourceBadge = (server: ExplorableMcpServer) => {
+  switch (server.source) {
+    case "official":
+      return <CheckBadgeIcon className="h-5 w-5 text-blue-500" />;
+    case "bohrium":
+      return (
+        <img
+          src="https://storage.sciol.ac.cn/library/browser-fav.png"
+          alt="Bohrium"
+          className="h-5 w-5 rounded-sm"
+        />
+      );
+    case "smithery":
+      return (
+        <img
+          src="https://storage.sciol.ac.cn/library/smithery.png"
+          alt="Smithery"
+          className="h-5 w-5 rounded-sm"
+        />
+      );
+    default:
+      return (
+        <Badge variant="gray" className="text-xs">
+          {server.source}
+        </Badge>
+      );
+  }
+};
+
+export const McpServerListItem: React.FC<McpServerCardProps> = ({
+  server,
+  isStarred = false,
+  onClick,
+}) => {
+  return (
+    <div
+      onClick={onClick}
+      className="flex items-start p-3 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors gap-3"
+    >
+      <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800 mt-0.5">
+        <img
+          src={getCoverImage(server)}
+          alt={server.name}
+          className="h-full w-full object-cover"
+        />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <h4 className="font-semibold text-sm text-neutral-900 dark:text-neutral-100 truncate">
+            {server.name}
+          </h4>
+          <div className="flex-shrink-0 scale-75 origin-left">
+            {getSourceBadge(server)}
+          </div>
+        </div>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 leading-relaxed">
+          {server.description}
+        </p>
+      </div>
+
+      {isStarred && (
+        <StarIconSolid className="h-4 w-4 text-yellow-400 flex-shrink-0 mt-1" />
+      )}
+    </div>
+  );
+};
+
 const McpServerCard: React.FC<McpServerCardProps> = ({
   server,
   isStarred = false,
   onClick,
 }) => {
-  // 根据来源设置默认封面图
-  const getCoverImage = () => {
-    if (server.cover) return server.cover;
-
-    switch (server.source) {
-      case "official":
-        return "https://storage.sciol.ac.cn/library/origin.png";
-      case "bohrium":
-        return "https://storage.sciol.ac.cn/library/browser-fav.png";
-      case "smithery":
-        return (
-          server.cover || "https://storage.sciol.ac.cn/library/smithery.png"
-        );
-      default:
-        return undefined;
-    }
-  };
-
-  const getSourceBadge = () => {
-    switch (server.source) {
-      case "official":
-        return <CheckBadgeIcon className="h-5 w-5 text-blue-500" />;
-      case "bohrium":
-        return (
-          <img
-            src="https://storage.sciol.ac.cn/library/browser-fav.png"
-            alt="Bohrium"
-            className="h-5 w-5 rounded-sm"
-          />
-        );
-      case "smithery":
-        return (
-          <img
-            src="https://storage.sciol.ac.cn/library/smithery.png"
-            alt="Smithery"
-            className="h-5 w-5 rounded-sm"
-          />
-        );
-      default:
-        return (
-          <Badge variant="gray" className="text-xs">
-            {server.source}
-          </Badge>
-        );
-    }
-  };
-
   return (
     <PinContainer
       title={server.name}
@@ -86,7 +123,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
         {/* Cover Image - 4:1 长宽比 */}
         <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-lg mb-3">
           <img
-            src={getCoverImage()}
+            src={getCoverImage(server)}
             alt={server.name}
             className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110"
           />
@@ -104,7 +141,7 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
             <h3 className="flex-1 text-sm sm:text-base font-bold text-white line-clamp-2 sm:line-clamp-1 break-words">
               {server.name}
             </h3>
-            <div className="flex-shrink-0">{getSourceBadge()}</div>
+            <div className="flex-shrink-0">{getSourceBadge(server)}</div>
           </div>
 
           {/* Description - 限制为2行 */}

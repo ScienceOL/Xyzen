@@ -169,6 +169,21 @@ class ModelFilter:
         return filter_fn
 
     @staticmethod
+    def no_expensive_azure_filter() -> Callable[[str], bool]:
+        """
+        Create a filter that excludes expensive Azure models like "azure/gpt-5.2-pro" or "azure/gpt-5-pro".
+
+        Returns:
+            Filter function that returns True if not an expensive Azure model
+        """
+
+        def filter_fn(model_name: str) -> bool:
+            lower = model_name.lower()
+            return "gpt-5.2-pro" not in lower and "gpt-5-pro" not in lower
+
+        return filter_fn
+
+    @staticmethod
     def combined_filter(*filters: Callable[[str], bool]) -> Callable[[str], bool]:
         """
         Combine multiple filter functions with AND logic.
@@ -269,6 +284,7 @@ class LiteLLMService:
                 ModelFilter.substring_filter("gpt"),
                 ModelFilter.version_filter(min_version=5, max_version=6),
                 ModelFilter.azure_path_filter(),
+                ModelFilter.no_expensive_azure_filter(),
             ),
             "google": ModelFilter.combined_filter(
                 ModelFilter.no_date_suffix_filter(),

@@ -52,8 +52,10 @@ jobs:
       - name: Rolling update deployments
         run: |
           kubectl rollout restart deployment xyzen -n bohrium
+          kubectl rollout restart deployment xyzen-celery -n bohrium
           kubectl rollout restart deployment xyzen -n sciol
           kubectl rollout restart deployment xyzen-web -n sciol
+
 
       - name: Calculate build duration
         if: always()
