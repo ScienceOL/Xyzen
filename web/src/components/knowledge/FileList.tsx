@@ -601,7 +601,7 @@ export const FileList = React.memo(
                     <div className="col-span-4 md:col-span-1 flex justify-end">
                       {/* Folder Actions */}
                       <div
-                        className={`flex gap-2 ${selectedId === folder.id ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}
+                        className={`flex gap-2 ${selectedId === folder.id ? "text-white" : "text-neutral-400 md:opacity-0 md:group-hover:opacity-100"}`}
                       >
                         {filter === "trash" && (
                           <button
@@ -677,7 +677,7 @@ export const FileList = React.memo(
                       <div className="col-span-4 md:col-span-1 flex justify-end">
                         {/* Context Menu or Hover Actions */}
                         <div
-                          className={`flex gap-2 ${isSelected ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}
+                          className={`flex gap-2 ${isSelected ? "text-white" : "text-neutral-400 md:opacity-0 md:group-hover:opacity-100"}`}
                         >
                           <button
                             onClick={(e) => {

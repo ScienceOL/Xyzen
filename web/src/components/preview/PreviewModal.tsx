@@ -110,22 +110,37 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
   }, [isOpen, file, backendUrl, token, getFullUrl]);
 
   const renderContent = () => {
+    console.log("[PreviewModal] renderContent 被调用");
+    console.log("[PreviewModal] loading:", loading);
+    console.log("[PreviewModal] error:", error);
+    console.log("[PreviewModal] file:", file);
+    console.log("[PreviewModal] blobUrl:", !!blobUrl);
+
     if (loading) return <div className="text-white">Loading preview...</div>;
     if (error) return <div className="text-red-400">{error}</div>;
-    if (!file || !blobUrl) return null;
+    if (!file || !blobUrl) {
+      console.log("[PreviewModal] 无法渲染: 缺少file或blobUrl");
+      return null;
+    }
 
     const type = file.type.toLowerCase();
+    console.log("[PreviewModal] 文件类型:", type);
+    console.log("[PreviewModal] 文件名:", file.name);
 
     if (type.startsWith("image/")) {
+      console.log("[PreviewModal] 渲染为图片");
       return <ImageRenderer file={file} url={blobUrl} />;
     }
     if (type.startsWith("video/")) {
+      console.log("[PreviewModal] 渲染为视频");
       return <VideoRenderer file={file} url={blobUrl} />;
     }
     if (type.startsWith("audio/")) {
+      console.log("[PreviewModal] 渲染为音频");
       return <AudioRenderer file={file} url={blobUrl} />;
     }
     if (type === "application/pdf") {
+      console.log("[PreviewModal] 渲染为PDF");
       return <PdfRenderer file={file} url={blobUrl} />;
     }
     if (
@@ -138,6 +153,7 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
       file.name.endsWith(".pptx") ||
       file.name.endsWith(".odp")
     ) {
+      console.log("[PreviewModal] 渲染为PowerPoint");
       return <PowerPointRenderer file={file} url={blobUrl} />;
     }
     if (
@@ -146,6 +162,7 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
       file.name.endsWith(".md") ||
       file.name.endsWith(".txt")
     ) {
+      console.log("[PreviewModal] 渲染为Markdown");
       return <MarkdownRenderer file={file} url={blobUrl} />;
     }
 
@@ -158,6 +175,7 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
       file.name.endsWith(".doc") ||
       file.name.endsWith(".docx")
     ) {
+      console.log("[PreviewModal] 渲染为Word");
       return <WordRenderer file={file} url={blobUrl} />;
     }
 
@@ -214,15 +232,15 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-5xl transform overflow-hidden rounded-2xl bg-neutral-900 p-6 text-left align-middle shadow-xl transition-all h-[80vh] flex flex-col border border-neutral-700">
-                <div className="flex items-center justify-between border-b border-neutral-700 pb-4 mb-4">
+              <Dialog.Panel className="w-full md:max-w-5xl transform overflow-hidden rounded-2xl bg-neutral-900 text-left align-middle shadow-xl transition-all h-[90vh] md:h-[80vh] flex flex-col border border-neutral-700 md:p-6 p-4">
+                <div className="flex items-center justify-between border-b border-neutral-700 pb-3 md:pb-4 mb-3 md:mb-4 flex-shrink-0">
                   <Dialog.Title
                     as="h3"
-                    className="text-lg font-medium leading-6 text-white truncate pr-4"
+                    className="text-base md:text-lg font-medium leading-6 text-white truncate pr-4"
                   >
                     {file?.name}
                   </Dialog.Title>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {blobUrl && (
                       <a
                         href={blobUrl}
@@ -230,7 +248,7 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
                         className="rounded-full p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors"
                         title="Download"
                       >
-                        <ArrowDownTrayIcon className="h-6 w-6" />
+                        <ArrowDownTrayIcon className="h-5 w-5 md:h-6 md:w-6" />
                       </a>
                     )}
                     <button
@@ -238,7 +256,7 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
                       className="rounded-full p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors"
                       title="Close"
                     >
-                      <XMarkIcon className="h-6 w-6" />
+                      <XMarkIcon className="h-5 w-5 md:h-6 md:w-6" />
                     </button>
                   </div>
                 </div>

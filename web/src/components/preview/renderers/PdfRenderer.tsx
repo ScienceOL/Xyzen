@@ -86,13 +86,16 @@ export const PdfRenderer = ({ url, className }: RendererProps) => {
   return (
     <div
       ref={containerRef}
-      className={`pdf-viewer-container h-full w-full overflow-auto ${className}`}
+      className={`pdf-viewer-container h-full w-full overflow-auto bg-neutral-950 ${className}`}
     >
       <iframe
         ref={iframeRef}
         className="h-full w-full border-0"
         title="PDF Preview"
-        scrolling="no"
+        scrolling="yes"
+        style={{
+          display: "block",
+        }}
       />
     </div>
   );

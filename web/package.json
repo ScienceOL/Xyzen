@@ -145,7 +145,6 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.4.449",
     "platejs": "^52.0.15",
-    "pptx-preview": "^1.0.7",
     "radix-ui": "^1.4.3",
     "react-day-picker": "^9.13.0",
     "react-dnd": "^16.0.1",

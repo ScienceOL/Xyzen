@@ -222,3 +222,37 @@
   /* 2. 光条移动到右侧，形成扫光动画 */
   transform: skewX(-45deg) translateX(400%);
 }
+
+/* LobeChat 风格的流式消息浮现效果 */
+.streaming-content {
+  /* 启用 GPU 加速以获得更流畅的动画 */
+  will-change: opacity, mask-image;
+  transform: translateZ(0);
+}
+
+/* 流式内容的渐变淡入动画 */
+@keyframes streamingFadeIn {
+  from {
+    opacity: 0.1;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* 尾部浮现效果的辅助类 */
+.streaming-tail-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 75%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 75%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
