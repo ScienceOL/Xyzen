@@ -96,17 +96,35 @@ class TestSessionRepository:
         success = await session_repo.delete_session(uuid4())
         assert success is False
 
-    async def test_get_sessions_ordered_by_activity(self, session_repo: SessionRepository):
+    async def test_get_sessions_ordered_by_activity(self, session_repo: SessionRepository, db_session: AsyncSession):
         """Test fetching sessions ordered by recent topic activity."""
-        user_id = "test-user-session-ordered"
+        import asyncio
 
-        # Create sessions
+        from app.repos.topic import TopicRepository
+        from tests.factories.topic import TopicCreateFactory
+
+        user_id = "test-user-session-ordered"
+        topic_repo = TopicRepository(db_session)
+
+        # Create 3 sessions
         session1 = await session_repo.create_session(SessionCreateFactory.build(name="Session 1"), user_id)
         session2 = await session_repo.create_session(SessionCreateFactory.build(name="Session 2"), user_id)
+        session3 = await session_repo.create_session(SessionCreateFactory.build(name="Session 3"), user_id)
+
+        topic1 = await topic_repo.create_topic(TopicCreateFactory.build(session_id=session1.id, name="Topic 1"))
+        await asyncio.sleep(0.01)
+
+        _topic2 = await topic_repo.create_topic(TopicCreateFactory.build(session_id=session2.id, name="Topic 2"))
+        await asyncio.sleep(0.01)
+
+        _topic3 = await topic_repo.create_topic(TopicCreateFactory.build(session_id=session3.id, name="Topic 3"))
+
+        await asyncio.sleep(0.01)
+        await topic_repo.update_topic_timestamp(topic1.id)
 
         sessions = await session_repo.get_sessions_by_user_ordered_by_activity(user_id)
-        assert len(sessions) == 2
-        # Both sessions exist (order depends on topic activity which we haven't created)
-        session_ids = [s.id for s in sessions]
-        assert session1.id in session_ids
-        assert session2.id in session_ids
+
+        assert len(sessions) == 3
+        assert sessions[0].id == session1.id
+        assert sessions[1].id == session3.id
+        assert sessions[2].id == session2.id
