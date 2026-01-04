@@ -26,6 +26,7 @@ from .stream_handlers import (
     GeneratedFileHandler,
     StreamContext,
     StreamingEventHandler,
+    ThinkingEventHandler,
     TokenStreamProcessor,
     ToolEventHandler,
 )
@@ -301,7 +302,7 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
 
 
 async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
-    """Handle 'messages' mode events (token streaming)."""
+    """Handle 'messages' mode events (token streaming and thinking content)."""
     if not isinstance(data, tuple):
         return
 
@@ -331,7 +332,27 @@ async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator
         if node and node not in ("model", "agent"):
             return
 
-    # Extract and emit token
+    # Check for thinking content first (from reasoning models like Claude, DeepSeek R1, Gemini 3)
+    thinking_content = ThinkingEventHandler.extract_thinking_content(message_chunk)
+
+    if thinking_content:
+        # Start thinking if not already
+        if not ctx.is_thinking:
+            logger.debug("Emitting thinking_start for stream_id=%s", ctx.stream_id)
+            ctx.is_thinking = True
+            yield ThinkingEventHandler.create_thinking_start(ctx.stream_id)
+
+        ctx.thinking_buffer.append(thinking_content)
+        yield ThinkingEventHandler.create_thinking_chunk(ctx.stream_id, thinking_content)
+        return
+
+    # If we were thinking but now have regular content, end thinking first
+    if ctx.is_thinking:
+        logger.debug("Emitting thinking_end for stream_id=%s", ctx.stream_id)
+        ctx.is_thinking = False
+        yield ThinkingEventHandler.create_thinking_end(ctx.stream_id)
+
+    # Extract and emit token for regular streaming
     token_text = TokenStreamProcessor.extract_token_text(message_chunk)
     if not token_text:
         return
@@ -347,6 +368,12 @@ async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator
 
 async def _finalize_streaming(ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
     """Finalize the streaming session."""
+    # If still thinking when finalizing, emit thinking_end
+    if ctx.is_thinking:
+        logger.debug("Emitting thinking_end (in finalize) for stream_id=%s", ctx.stream_id)
+        ctx.is_thinking = False
+        yield ThinkingEventHandler.create_thinking_end(ctx.stream_id)
+
     if ctx.is_streaming:
         logger.debug(
             "Emitting streaming_end for stream_id=%s (total tokens: %d)",

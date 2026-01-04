@@ -67,6 +67,9 @@ export interface Message {
   attachments?: MessageAttachment[];
   // Search citations from built-in search
   citations?: SearchCitation[];
+  // Thinking/reasoning content from models like Claude, DeepSeek R1, OpenAI o1
+  isThinking?: boolean;
+  thinkingContent?: string;
 }
 
 export interface KnowledgeContext {

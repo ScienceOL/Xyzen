@@ -47,6 +47,11 @@ class ChatEventType(StrEnum):
     # Balance/billing events
     INSUFFICIENT_BALANCE = "insufficient_balance"
 
+    # Thinking/reasoning content (for models like Claude, DeepSeek R1, OpenAI o1)
+    THINKING_START = "thinking_start"
+    THINKING_CHUNK = "thinking_chunk"
+    THINKING_END = "thinking_end"
+
 
 class ChatClientEventType(StrEnum):
     """Client -> Server event types (messages coming from the frontend)."""

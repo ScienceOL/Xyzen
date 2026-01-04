@@ -8,7 +8,12 @@
     "chat": {
       "assistantsTitle": "Assistants",
       "chooseAgentHint": "Choose an agent to start",
-      "chatLabel": "Chat"
+      "chatLabel": "Chat",
+      "thinking": {
+        "label": "Thinking...",
+        "showThinking": "Show thinking",
+        "hideThinking": "Hide thinking"
+      }
     }
   },
   "common": {

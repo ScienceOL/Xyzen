@@ -8,7 +8,12 @@
     "chat": {
       "assistantsTitle": "助手",
       "chooseAgentHint": "选择一个助手开始",
-      "chatLabel": "聊天"
+      "chatLabel": "聊天",
+      "thinking": {
+        "label": "思考中...",
+        "showThinking": "显示思考过程",
+        "hideThinking": "隐藏思考过程"
+      }
     }
   },
   "common": {

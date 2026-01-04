@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef } from "react";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
+import ThinkingBubble from "./ThinkingBubble";
 import ToolCallCard from "./ToolCallCard";
 
 interface ChatBubbleProps {
@@ -30,6 +31,8 @@ function ChatBubble({ message }: ChatBubbleProps) {
     toolCalls,
     attachments,
     citations,
+    isThinking,
+    thinkingContent,
   } = message;
 
   // 流式消息打字效果
@@ -204,6 +207,14 @@ function ChatBubble({ message }: ChatBubbleProps) {
                   : "text-sm text-neutral-700 dark:text-neutral-300"
               }`}
             >
+              {/* Thinking content - shown before main response for assistant messages */}
+              {!isUserMessage && thinkingContent && (
+                <ThinkingBubble
+                  content={thinkingContent}
+                  isThinking={isThinking ?? false}
+                />
+              )}
+
               {isLoading ? (
                 <LoadingMessage size="medium" className="text-sm" />
               ) : (
