@@ -552,7 +552,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
               <div className="space-y-4 flex-1 flex flex-col">
                 {checkInRecord && (
                   <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-xl border border-indigo-200/60 bg-linear-to-br from-indigo-50/90 to-purple-50/90 p-5 shadow-sm transition-all hover:shadow-md dark:border-indigo-700/60 dark:from-indigo-950/50 dark:to-purple-950/50 shrink-0">
-                    <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-gradient-to-b from-indigo-500 to-purple-600 shadow-sm transition-all group-hover:w-1.5" />
+                    <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-linear-to-b from-indigo-500 to-purple-600 shadow-sm transition-all group-hover:w-1.5" />
                     <div className="pl-4">
                       <div className="flex items-center gap-2">
                         <SparklesIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
@@ -577,7 +577,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
                 {consumption && (
                   <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-xl border border-neutral-200/60 bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
-                    <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-gradient-to-b from-neutral-400 to-neutral-500 shadow-sm transition-all group-hover:w-1.5 dark:from-neutral-600 dark:to-neutral-700" />
+                    <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-linear-to-b from-neutral-400 to-neutral-500 shadow-sm transition-all group-hover:w-1.5 dark:from-neutral-600 dark:to-neutral-700" />
                     <div className="pl-4">
                       <div className="font-bold text-neutral-900 dark:text-neutral-100">
                         使用统计
