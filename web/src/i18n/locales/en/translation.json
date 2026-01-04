@@ -284,6 +284,63 @@
       "by": "by {{author}}",
       "noDescription": "No description provided",
       "tagsMore": "+{{count}} more"
+    },
+    "detail": {
+      "loading": "Loading agent details...",
+      "error": "Failed to load agent details. Please try again.",
+      "back": "Back to Marketplace",
+      "publishedBy": "Published by",
+      "noDescription": "No description provided",
+      "stats": {
+        "likes": "Likes",
+        "forks": "Forks",
+        "views": "Views"
+      },
+      "tabs": {
+        "readme": "README",
+        "config": "Configuration",
+        "requirements": "Requirements"
+      },
+      "readme": {
+        "empty": "No README provided for this agent.",
+        "manage": "Manage to add a README"
+      },
+      "config": {
+        "model": "Model",
+        "systemPrompt": "System Prompt",
+        "mcpServers": "MCP Servers ({{count}})",
+        "empty": "No configuration available."
+      },
+      "requirements": {
+        "provider": {
+          "title": "LLM Provider Required:",
+          "description": "You'll need to configure an AI provider (OpenAI, Anthropic, etc.) to use this agent."
+        },
+        "mcpServers": "MCP Servers ({{count}})",
+        "autoConfigured": "Auto-configured",
+        "knowledgeBase": {
+          "title": "Knowledge Base:",
+          "description": "The original agent uses {{count}} files. These files will be copied to your workspace when you fork this agent."
+        },
+        "none": "No special requirements! This agent is ready to use after forking.",
+        "loading": "Loading requirements..."
+      },
+      "actions": {
+        "title": "Actions",
+        "fork": "Fork This Agent",
+        "liked": "Liked",
+        "like": "Like This Agent",
+        "manage": "Manage Agent"
+      },
+      "meta": {
+        "publishedBy": "Published By",
+        "firstPublished": "First Published:",
+        "lastUpdated": "Last Updated:"
+      },
+      "aboutForking": {
+        "title": "About Forking",
+        "description": "Forking creates your own independent copy. Changes won't affect the original agent."
+      }
     }
   },
   "knowledge": {

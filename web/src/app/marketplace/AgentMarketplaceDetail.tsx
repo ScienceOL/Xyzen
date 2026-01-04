@@ -6,6 +6,7 @@ import {
   useMarketplaceRequirements,
   useToggleLike,
 } from "@/hooks/useMarketplace";
+import Markdown from "@/lib/Markdown";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
 import {
   ArrowLeftIcon,
@@ -20,8 +21,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useTranslation } from "react-i18next";
 
 interface AgentMarketplaceDetailProps {
   marketplaceId: string;
@@ -39,6 +39,7 @@ export default function AgentMarketplaceDetail({
   onBack,
   onManage,
 }: AgentMarketplaceDetailProps) {
+  const { t } = useTranslation();
   const [showForkModal, setShowForkModal] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "readme" | "config" | "requirements"
@@ -89,7 +90,7 @@ export default function AgentMarketplaceDetail({
           {/* Loading Icon */}
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-            Loading agent details...
+            {t("marketplace.detail.loading")}
           </p>
         </div>
       </div>
@@ -103,9 +104,7 @@ export default function AgentMarketplaceDetail({
         <div className="max-w-md relative w-full rounded-lg border border-red-500/50 bg-red-50 p-4 text-red-900 dark:bg-red-950/50 dark:text-red-400">
           <div className="flex gap-2">
             <InformationCircleIcon className="h-4 w-4 shrink-0" />
-            <div className="text-sm">
-              Failed to load agent details. Please try again.
-            </div>
+            <div className="text-sm">{t("marketplace.detail.error")}</div>
           </div>
         </div>
       </div>
@@ -113,7 +112,7 @@ export default function AgentMarketplaceDetail({
   }
 
   return (
-    <div className="h-full w-full overflow-auto bg-gradient-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-black">
+    <div className="h-full w-full overflow-auto bg-linear-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-black">
       <div className="mx-auto max-w-6xl px-4 py-8">
         {/* Header with back button */}
         <div className="mb-8">
@@ -122,14 +121,14 @@ export default function AgentMarketplaceDetail({
             className="group mb-4 flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition-all hover:border-neutral-300 hover:shadow dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-700"
           >
             <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            <span>Back to Marketplace</span>
+            <span>{t("marketplace.detail.back")}</span>
           </button>
         </div>
 
         {/* Main Content */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left Column - Agent Info */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 min-w-0 space-y-6">
             {/* Agent Header */}
             <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-950">
               {/* Gradient background */}
@@ -153,13 +152,14 @@ export default function AgentMarketplaceDetail({
                       {listing.name}
                     </h1>
                     <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                      Published by{" "}
+                      {t("marketplace.detail.publishedBy")}{" "}
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
                         {listing.user_id.split("@")[0] || listing.user_id}
                       </span>
                     </p>
                     <p className="mt-3 text-base leading-relaxed text-neutral-700 dark:text-neutral-300">
-                      {listing.description || "No description provided"}
+                      {listing.description ||
+                        t("marketplace.detail.noDescription")}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {listing.tags.map((tag, index) => (
@@ -185,7 +185,9 @@ export default function AgentMarketplaceDetail({
                       <div className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
                         {listing.likes_count}
                       </div>
-                      <div className="text-xs">Likes</div>
+                      <div className="text-xs">
+                        {t("marketplace.detail.stats.likes")}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
@@ -208,7 +210,9 @@ export default function AgentMarketplaceDetail({
                       <div className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
                         {listing.forks_count}
                       </div>
-                      <div className="text-xs">Forks</div>
+                      <div className="text-xs">
+                        {t("marketplace.detail.stats.forks")}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
@@ -219,7 +223,9 @@ export default function AgentMarketplaceDetail({
                       <div className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
                         {listing.views_count}
                       </div>
-                      <div className="text-xs">Views</div>
+                      <div className="text-xs">
+                        {t("marketplace.detail.stats.views")}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -229,39 +235,39 @@ export default function AgentMarketplaceDetail({
             {/* Tabbed Content Section */}
             <div className="rounded-2xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-950">
               {/* Tab Bar */}
-              <div className="flex border-b border-neutral-200 dark:border-neutral-800">
+              <div className="flex overflow-x-auto border-b border-neutral-200 dark:border-neutral-800">
                 <button
                   onClick={() => setActiveTab("readme")}
-                  className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-medium transition-colors ${
+                  className={`flex whitespace-nowrap items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-6 ${
                     activeTab === "readme"
                       ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                       : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
                   <DocumentTextIcon className="h-4 w-4" />
-                  README
+                  {t("marketplace.detail.tabs.readme")}
                 </button>
                 <button
                   onClick={() => setActiveTab("config")}
-                  className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-medium transition-colors ${
+                  className={`flex whitespace-nowrap items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-6 ${
                     activeTab === "config"
                       ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                       : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
                   <Cog6ToothIcon className="h-4 w-4" />
-                  Configuration
+                  {t("marketplace.detail.tabs.config")}
                 </button>
                 <button
                   onClick={() => setActiveTab("requirements")}
-                  className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-medium transition-colors ${
+                  className={`flex whitespace-nowrap items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-6 ${
                     activeTab === "requirements"
                       ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                       : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
                   <CubeIcon className="h-4 w-4" />
-                  Requirements
+                  {t("marketplace.detail.tabs.requirements")}
                 </button>
               </div>
 
@@ -269,21 +275,22 @@ export default function AgentMarketplaceDetail({
               <div className="p-6">
                 {/* README Tab */}
                 {activeTab === "readme" && (
-                  <div className="prose prose-neutral max-w-none dark:prose-invert">
+                  <div className="w-full min-w-0">
                     {listing.readme ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {listing.readme}
-                      </ReactMarkdown>
+                      <Markdown
+                        content={listing.readme}
+                        className="prose-neutral dark:prose-invert"
+                      />
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
                         <DocumentTextIcon className="mb-3 h-12 w-12 opacity-20" />
-                        <p>No README provided for this agent.</p>
+                        <p>{t("marketplace.detail.readme.empty")}</p>
                         {isOwner && onManage && (
                           <button
                             onClick={onManage}
                             className="mt-2 text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
                           >
-                            Manage to add a README
+                            {t("marketplace.detail.readme.manage")}
                           </button>
                         )}
                       </div>
@@ -309,7 +316,7 @@ export default function AgentMarketplaceDetail({
                         {listing.snapshot.configuration.model && (
                           <div>
                             <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                              Model
+                              {t("marketplace.detail.config.model")}
                             </h3>
                             <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                               {listing.snapshot.configuration.model}
@@ -321,7 +328,7 @@ export default function AgentMarketplaceDetail({
                         {listing.snapshot.configuration.prompt && (
                           <div>
                             <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                              System Prompt
+                              {t("marketplace.detail.config.systemPrompt")}
                             </h3>
                             <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
                               <pre className="whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
@@ -336,8 +343,10 @@ export default function AgentMarketplaceDetail({
                           listing.snapshot.mcp_server_configs.length > 0 && (
                             <div>
                               <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                MCP Servers (
-                                {listing.snapshot.mcp_server_configs.length})
+                                {t("marketplace.detail.config.mcpServers", {
+                                  count:
+                                    listing.snapshot.mcp_server_configs.length,
+                                })}
                               </h3>
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {listing.snapshot.mcp_server_configs.map(
@@ -357,7 +366,7 @@ export default function AgentMarketplaceDetail({
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
                         <Cog6ToothIcon className="mb-3 h-12 w-12 opacity-20" />
-                        <p>No configuration available.</p>
+                        <p>{t("marketplace.detail.config.empty")}</p>
                       </div>
                     )}
                   </div>
@@ -374,9 +383,14 @@ export default function AgentMarketplaceDetail({
                             <div className="flex gap-2">
                               <InformationCircleIcon className="h-4 w-4 shrink-0" />
                               <div className="text-sm">
-                                <strong>LLM Provider Required:</strong> You'll
-                                need to configure an AI provider (OpenAI,
-                                Anthropic, etc.) to use this agent.
+                                <strong>
+                                  {t(
+                                    "marketplace.detail.requirements.provider.title",
+                                  )}
+                                </strong>{" "}
+                                {t(
+                                  "marketplace.detail.requirements.provider.description",
+                                )}
                               </div>
                             </div>
                           </div>
@@ -386,7 +400,9 @@ export default function AgentMarketplaceDetail({
                         {requirements.mcp_servers.length > 0 && (
                           <div>
                             <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                              MCP Servers ({requirements.mcp_servers.length})
+                              {t("marketplace.detail.requirements.mcpServers", {
+                                count: requirements.mcp_servers.length,
+                              })}
                             </h3>
                             <div className="mt-2 space-y-2">
                               {requirements.mcp_servers.map((mcp, index) => (
@@ -400,7 +416,10 @@ export default function AgentMarketplaceDetail({
                                         {mcp.name}
                                       </span>
                                       <span className="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                        ✅ Auto-configured
+                                        ✅{" "}
+                                        {t(
+                                          "marketplace.detail.requirements.autoConfigured",
+                                        )}
                                       </span>
                                     </div>
                                     {mcp.description && (
@@ -421,11 +440,18 @@ export default function AgentMarketplaceDetail({
                             <div className="flex gap-2">
                               <InformationCircleIcon className="h-4 w-4 shrink-0" />
                               <div className="text-sm">
-                                <strong>Knowledge Base:</strong> The original
-                                agent uses{" "}
-                                {requirements.knowledge_base.file_count} files.
-                                These files will be copied to your workspace
-                                when you fork this agent.
+                                <strong>
+                                  {t(
+                                    "marketplace.detail.requirements.knowledgeBase.title",
+                                  )}
+                                </strong>{" "}
+                                {t(
+                                  "marketplace.detail.requirements.knowledgeBase.description",
+                                  {
+                                    count:
+                                      requirements.knowledge_base.file_count,
+                                  },
+                                )}
                               </div>
                             </div>
                           </div>
@@ -439,8 +465,7 @@ export default function AgentMarketplaceDetail({
                               <div className="flex gap-2">
                                 <CheckCircleIcon className="h-4 w-4 shrink-0 text-green-600" />
                                 <div className="text-sm">
-                                  No special requirements! This agent is ready
-                                  to use after forking.
+                                  {t("marketplace.detail.requirements.none")}
                                 </div>
                               </div>
                             </div>
@@ -449,7 +474,7 @@ export default function AgentMarketplaceDetail({
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
                         <CubeIcon className="mb-3 h-12 w-12 opacity-20" />
-                        <p>Loading requirements...</p>
+                        <p>{t("marketplace.detail.requirements.loading")}</p>
                       </div>
                     )}
                   </div>
@@ -459,12 +484,12 @@ export default function AgentMarketplaceDetail({
           </div>
 
           {/* Right Column - Actions */}
-          <div className="space-y-6">
+          <div className="sticky top-4 h-fit space-y-6">
             {/* Action Card */}
-            <div className="sticky top-4 rounded-2xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="rounded-2xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
               <div className="p-6">
                 <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                  Actions
+                  {t("marketplace.detail.actions.title")}
                 </h3>
                 <div className="space-y-3">
                   <button
@@ -486,7 +511,7 @@ export default function AgentMarketplaceDetail({
                           d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
                         />
                       </svg>
-                      Fork This Agent
+                      {t("marketplace.detail.actions.fork")}
                     </div>
                   </button>
                   <button
@@ -505,7 +530,9 @@ export default function AgentMarketplaceDetail({
                         <HeartIcon className="h-5 w-5" />
                       )}
                       <span>
-                        {listing.has_liked ? "Liked" : "Like This Agent"}
+                        {listing.has_liked
+                          ? t("marketplace.detail.actions.liked")
+                          : t("marketplace.detail.actions.like")}
                       </span>
                     </div>
                   </button>
@@ -518,7 +545,7 @@ export default function AgentMarketplaceDetail({
                     >
                       <div className="flex items-center justify-center gap-2">
                         <PencilIcon className="h-5 w-5" />
-                        <span>Manage Agent</span>
+                        <span>{t("marketplace.detail.actions.manage")}</span>
                       </div>
                     </button>
                   )}
@@ -529,7 +556,7 @@ export default function AgentMarketplaceDetail({
                 {/* Author Info */}
                 <div>
                   <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Published By
+                    {t("marketplace.detail.meta.publishedBy")}
                   </h3>
                   <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                     {listing.user_id}
@@ -543,14 +570,18 @@ export default function AgentMarketplaceDetail({
                 <div className="space-y-2 text-xs text-neutral-500 dark:text-neutral-400">
                   {listing.first_published_at && (
                     <div>
-                      <span className="font-medium">First Published:</span>{" "}
+                      <span className="font-medium">
+                        {t("marketplace.detail.meta.firstPublished")}
+                      </span>{" "}
                       {new Date(
                         listing.first_published_at,
                       ).toLocaleDateString()}
                     </div>
                   )}
                   <div>
-                    <span className="font-medium">Last Updated:</span>{" "}
+                    <span className="font-medium">
+                      {t("marketplace.detail.meta.lastUpdated")}
+                    </span>{" "}
                     {new Date(listing.updated_at).toLocaleDateString()}
                   </div>
                 </div>
@@ -565,11 +596,10 @@ export default function AgentMarketplaceDetail({
                 </div>
                 <div>
                   <h4 className="mb-1 font-semibold text-blue-900 dark:text-blue-100">
-                    About Forking
+                    {t("marketplace.detail.aboutForking.title")}
                   </h4>
                   <p className="text-sm leading-relaxed text-blue-800 dark:text-blue-200">
-                    Forking creates your own independent copy. Changes won't
-                    affect the original agent.
+                    {t("marketplace.detail.aboutForking.description")}
                   </p>
                 </div>
               </div>

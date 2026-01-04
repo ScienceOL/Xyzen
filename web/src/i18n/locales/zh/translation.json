@@ -263,205 +263,63 @@
       "by": "来自 {{author}}",
       "noDescription": "暂无描述",
       "tagsMore": "+{{count}} 更多"
-    }
-  },
-  "knowledge": {
-    "titles": {
-      "recents": "最近",
-      "allFiles": "全部文件",
-      "myKnowledge": "我的知识库",
-      "knowledgeBase": "知识库",
-      "trash": "回收站"
     },
-    "a11y": {
-      "navTitle": "导航菜单",
-      "navDescription": "在你的知识库中进行导航"
-    },
-    "prompts": {
-      "folderName": "请输入文件夹名称：",
-      "knowledgeSetName": "请输入知识集名称：",
-      "knowledgeSetDescription": "请输入描述（可选）："
-    },
-    "errors": {
-      "createFolderFailed": "创建文件夹失败",
-      "createKnowledgeSetFailed": "创建知识集失败"
-    },
-    "upload": {
-      "errors": {
-        "fileTooLarge": "文件“{{name}}”（{{fileSizeMB}}MB）超过最大大小限制 {{maxSizeMB}}MB",
-        "notEnoughStorage": "存储空间不足。文件大小：{{fileSizeMB}}MB，可用：{{availableMB}}MB。请先删除一些文件。",
-        "uploadFailed": "上传失败"
-      }
-    },
-    "toolbar": {
-      "home": "主页",
-      "searchFilesPlaceholder": "搜索文件...",
-      "searchPlaceholder": "搜索",
-      "listView": "列表视图",
-      "gridView": "网格视图",
-      "newFolder": "新建文件夹",
-      "emptyTrash": "清空回收站",
-      "empty": "清空",
-      "uploadFile": "上传文件",
-      "upload": "上传",
-      "refresh": "刷新"
-    },
-    "sidebar": {
-      "groups": {
-        "favorites": "常用",
-        "media": "媒体",
-        "locations": "位置"
-      },
-      "items": {
-        "images": "图片",
-        "documents": "文档"
-      },
-      "newKnowledgeSet": "新建知识集",
-      "noKnowledgeSets": "暂无知识集"
-    },
-    "status": {
-      "items": "{{count}} 项",
-      "usedOfTotal": "已用 {{used}} / {{total}}",
-      "available": "可用 {{available}}"
-    },
-    "contextMenu": {
-      "download": "下载",
-      "rename": "重命名",
-      "moveTo": "移动到...",
-      "addToKnowledgeSet": "添加到知识集",
-      "removeFromKnowledgeSet": "从知识集中移除",
-      "delete": "删除"
-    },
-    "moveModal": {
-      "title": "移动 \"{{name}}\"",
-      "home": "主页",
-      "noSubfolders": "没有子文件夹",
-      "moveHere": "移动到这里"
-    },
-    "fileList": {
-      "itemTypes": {
-        "file": "文件",
-        "folder": "文件夹"
-      },
-      "columns": {
-        "name": "名称",
-        "size": "大小",
-        "dateModified": "修改时间"
-      },
-      "empty": {
-        "trash": "回收站为空",
-        "noItems": "暂无内容"
-      },
-      "actions": {
-        "preview": "预览",
-        "download": "下载",
-        "restore": "还原",
-        "delete": "删除",
-        "deleteForever": "永久删除",
-        "moveToTrash": "移到回收站",
-        "deleteImmediately": "立即删除",
-        "deleteFailed": "删除失败",
-        "restoreFailed": "还原失败",
-        "downloadFailed": "下载失败"
-      },
-      "deleteItem": {
-        "title": "删除{{itemType}}",
-        "message": "确定要删除这个{{itemType}}吗？"
-      },
-      "moveToTrash": {
-        "message": "确定要将此文件移到回收站吗？"
-      },
-      "deleteForever": {
-        "message": "确定要永久删除此文件吗？此操作无法撤销。"
-      },
-      "emptyTrash": {
-        "title": "清空回收站",
-        "message": "确定要永久删除 {{count}} 个项目吗？此操作无法撤销。",
-        "confirm": "清空回收站",
-        "failed": "清空回收站失败，可能仍有部分项目未删除。"
-      },
-      "rename": {
-        "titleFile": "重命名文件",
-        "titleFolder": "重命名文件夹",
-        "placeholder": "输入新名称",
-        "confirm": "重命名",
-        "failed": "重命名失败"
-      },
-      "move": {
-        "failed": "移动失败"
-      },
-      "knowledgeSet": {
-        "add": {
-          "title": "添加到知识集",
-          "subtitle": "选择一个知识集来添加 \"{{name}}\""
-        },
-        "none": "暂无可用知识集，请先创建一个。",
-        "fileCount": "{{count}} 个文件",
-        "added": "已成功添加到知识集",
-        "alreadyInSet": "该文件已在此知识集中。",
-        "addFailed": "添加到知识集失败",
-        "remove": {
-          "title": "从知识集中移除",
-          "message": "确定要将 \"{{name}}\" 从此知识集中移除吗？",
-          "confirm": "移除",
-          "failed": "从知识集中移除失败"
-        }
-      },
-      "notifications": {
-        "successTitle": "成功",
-        "noticeTitle": "提示",
-        "errorTitle": "错误"
-      }
-    },
-    "createKnowledgeSetModal": {
-      "title": "创建知识集",
-      "fields": {
-        "name": {
-          "label": "名称",
-          "placeholder": "请输入名称"
-        },
-        "description": {
-          "label": "描述（可选）",
-          "placeholder": "添加简短描述"
-        }
-      },
-      "actions": {
-        "create": "创建",
-        "creating": "创建中..."
-      },
-      "validation": {
-        "nameRequired": "名称不能为空"
-      },
-      "errors": {
-        "createFailed": "创建知识集失败"
-      }
-    }
-  },
-  "mcp": {
-    "title": "我的服务",
-    "subtitle": "浏览市场并管理你的服务",
-    "refresh": "刷新",
-    "addCustom": "添加自定义",
-    "market": {
-      "title": "MCP 市场",
-      "quickAdd": "快速添加",
-      "close": "关闭"
-    },
-    "added": {
-      "title": "已添加服务",
-      "online": "在线",
-      "offline": "离线",
-      "tools": "工具",
+    "detail": {
+      "loading": "正在加载助手详情...",
+      "error": "加载助手详情失败，请重试。",
+      "back": "返回市场",
+      "publishedBy": "发布者",
       "noDescription": "暂无描述",
-      "edit": "编辑服务",
-      "remove": "移除服务",
-      "test": "测试工具",
-      "empty": {
-        "title": "暂无已添加服务",
-        "description": "在左侧浏览市场添加服务，或创建自定义连接。",
-        "button": "添加自定义服务"
+      "stats": {
+        "likes": "点赞",
+        "forks": "复刻",
+        "views": "浏览"
       },
-      "loading": "加载 MCP 服务中..."
+      "tabs": {
+        "readme": "说明文档",
+        "config": "配置信息",
+        "requirements": "运行要求"
+      },
+      "readme": {
+        "empty": "该助手暂无说明文档。",
+        "manage": "去添加说明文档"
+      },
+      "config": {
+        "model": "模型",
+        "systemPrompt": "系统提示词",
+        "mcpServers": "MCP 服务 ({{count}})",
+        "empty": "暂无配置信息。"
+      },
+      "requirements": {
+        "provider": {
+          "title": "需要 LLM 服务商：",
+          "description": "你需要配置 AI 服务商（OpenAI, Anthropic 等）才能使用此助手。"
+        },
+        "mcpServers": "MCP 服务 ({{count}})",
+        "autoConfigured": "自动配置",
+        "knowledgeBase": {
+          "title": "知识库：",
+          "description": "原助手使用了 {{count}} 个文件。复刻此助手时，这些文件将被复制到你的工作区。"
+        },
+        "none": "无特殊要求！复刻后即可直接使用。",
+        "loading": "正在加载运行要求..."
+      },
+      "actions": {
+        "title": "操作",
+        "fork": "复刻此助手",
+        "liked": "已点赞",
+        "like": "点赞",
+        "manage": "管理助手"
+      },
+      "meta": {
+        "publishedBy": "发布者",
+        "firstPublished": "首次发布：",
+        "lastUpdated": "最后更新："
+      },
+      "aboutForking": {
+        "title": "关于复刻",
+        "description": "复刻会创建一个独立的副本。你的修改不会影响原始助手。"
+      }
     }
   }
 }
