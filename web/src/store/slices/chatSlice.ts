@@ -35,14 +35,22 @@ function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
     arguments: { ...(toolCall.arguments || {}) },
   });
 
-  const cloneMessage = (message: Message): Message => ({
-    ...message,
-    toolCalls: message.toolCalls
-      ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
-      : undefined,
-    attachments: message.attachments ? [...message.attachments] : undefined,
-    citations: message.citations ? [...message.citations] : undefined,
-  });
+  const cloneMessage = (message: Message): Message => {
+    const backendThinkingContent = (
+      message as Message & { thinking_content?: string }
+    ).thinking_content;
+
+    return {
+      ...message,
+      toolCalls: message.toolCalls
+        ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
+        : undefined,
+      attachments: message.attachments ? [...message.attachments] : undefined,
+      citations: message.citations ? [...message.citations] : undefined,
+      // Map thinking_content from backend to thinkingContent for frontend
+      thinkingContent: backendThinkingContent ?? message.thinkingContent,
+    };
+  };
 
   for (const msg of messages) {
     if (msg.role !== "tool") {
@@ -581,12 +589,14 @@ export const createChatSlice: StateCreator<
               }
 
               case "streaming_start": {
-                // Convert loading message to streaming message
+                // Convert loading or thinking message to streaming message
                 channel.responding = true;
+                const eventData = event.data as { id: string };
+
+                // First check for loading message
                 const loadingIndex = channel.messages.findIndex(
                   (m) => m.isLoading,
                 );
-                const eventData = event.data as { id: string };
                 if (loadingIndex !== -1) {
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
                   const { isLoading: _, ...messageWithoutLoading } =
@@ -597,18 +607,33 @@ export const createChatSlice: StateCreator<
                     isStreaming: true,
                     content: "",
                   };
-                } else {
-                  // No loading present (backend may skip sending "loading"). Create a streaming message now.
-                  channel.messages.push({
-                    id: eventData.id,
-                    clientId: generateClientId(),
-                    role: "assistant" as const,
-                    content: "",
-                    isNewMessage: true,
-                    created_at: new Date().toISOString(),
-                    isStreaming: true,
-                  });
+                  break;
                 }
+
+                // Check for existing message with same ID (e.g., after thinking_end set isThinking=false)
+                const existingIndex = channel.messages.findIndex(
+                  (m) => m.id === eventData.id,
+                );
+                if (existingIndex !== -1) {
+                  // Convert existing message to streaming - keep thinking content if present
+                  channel.messages[existingIndex] = {
+                    ...channel.messages[existingIndex],
+                    isThinking: false,
+                    isStreaming: true,
+                  };
+                  break;
+                }
+
+                // No loading or existing message found, create a streaming message now
+                channel.messages.push({
+                  id: eventData.id,
+                  clientId: generateClientId(),
+                  role: "assistant" as const,
+                  content: "",
+                  isNewMessage: true,
+                  created_at: new Date().toISOString(),
+                  isStreaming: true,
+                });
                 break;
               }
 
@@ -978,6 +1003,68 @@ export const createChatSlice: StateCreator<
                     );
                   },
                 };
+                break;
+              }
+
+              case "thinking_start": {
+                // Start thinking mode - find or create the assistant message
+                channel.responding = true;
+                const eventData = event.data as { id: string };
+                const loadingIndex = channel.messages.findIndex(
+                  (m) => m.isLoading,
+                );
+                if (loadingIndex !== -1) {
+                  // Convert loading message to thinking message
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { isLoading: _, ...messageWithoutLoading } =
+                    channel.messages[loadingIndex];
+                  channel.messages[loadingIndex] = {
+                    ...messageWithoutLoading,
+                    id: eventData.id,
+                    isThinking: true,
+                    thinkingContent: "",
+                    content: "",
+                  };
+                } else {
+                  // No loading present, create a thinking message
+                  channel.messages.push({
+                    id: eventData.id,
+                    clientId: `thinking-${Date.now()}`,
+                    role: "assistant" as const,
+                    content: "",
+                    isNewMessage: true,
+                    created_at: new Date().toISOString(),
+                    isThinking: true,
+                    thinkingContent: "",
+                  });
+                }
+                break;
+              }
+
+              case "thinking_chunk": {
+                // Append to thinking content
+                const eventData = event.data as { id: string; content: string };
+                const thinkingIndex = channel.messages.findIndex(
+                  (m) => m.id === eventData.id,
+                );
+                if (thinkingIndex !== -1) {
+                  const currentThinking =
+                    channel.messages[thinkingIndex].thinkingContent ?? "";
+                  channel.messages[thinkingIndex].thinkingContent =
+                    currentThinking + eventData.content;
+                }
+                break;
+              }
+
+              case "thinking_end": {
+                // End thinking mode
+                const eventData = event.data as { id: string };
+                const endThinkingIndex = channel.messages.findIndex(
+                  (m) => m.id === eventData.id,
+                );
+                if (endThinkingIndex !== -1) {
+                  channel.messages[endThinkingIndex].isThinking = false;
+                }
                 break;
               }
 

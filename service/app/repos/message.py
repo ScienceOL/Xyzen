@@ -395,6 +395,7 @@ class MessageRepository:
                 created_at=message.created_at,
                 attachments=file_reads_with_urls,
                 citations=citations,
+                thinking_content=message.thinking_content,
             )
             messages_with_files_and_citations.append(message_with_files_and_citations)
 

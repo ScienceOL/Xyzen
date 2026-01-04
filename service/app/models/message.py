@@ -16,6 +16,8 @@ class MessageBase(SQLModel):
     role: str
     content: str
     topic_id: UUID = Field(index=True)
+    # Thinking/reasoning content from models like Claude, DeepSeek R1, Gemini 3
+    thinking_content: str | None = None
 
 
 class Message(MessageBase, table=True):
@@ -63,3 +65,4 @@ class MessageReadWithFilesAndCitations(MessageBase):
 class MessageUpdate(SQLModel):
     role: str | None = None
     content: str | None = None
+    thinking_content: str | None = None

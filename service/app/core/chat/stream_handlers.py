@@ -25,6 +25,9 @@ from app.schemas.chat_event_types import (
     StreamingEndData,
     StreamingEvent,
     StreamingStartData,
+    ThinkingChunkData,
+    ThinkingEndData,
+    ThinkingStartData,
     TokenUsageData,
     ToolCallRequestData,
     ToolCallResponseData,
@@ -55,6 +58,9 @@ class StreamContext:
     total_input_tokens: int = 0
     total_output_tokens: int = 0
     total_tokens: int = 0
+    # Thinking/reasoning content state
+    is_thinking: bool = False
+    thinking_buffer: list[str] = field(default_factory=list)
 
 
 class ToolEventHandler:
@@ -79,7 +85,7 @@ class ToolEventHandler:
             "status": ToolCallStatus.EXECUTING,
             "timestamp": asyncio.get_event_loop().time(),
         }
-        return {"type": ChatEventType.TOOL_CALL_REQUEST, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.TOOL_CALL_REQUEST, "data": data}
 
     @staticmethod
     def create_tool_response_event(
@@ -101,7 +107,7 @@ class ToolEventHandler:
             "status": status,
             "result": result,
         }
-        return {"type": ChatEventType.TOOL_CALL_RESPONSE, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.TOOL_CALL_RESPONSE, "data": data}
 
 
 class StreamingEventHandler:
@@ -111,13 +117,13 @@ class StreamingEventHandler:
     def create_streaming_start(stream_id: str) -> StreamingEvent:
         """Create streaming start event."""
         data: StreamingStartData = {"id": stream_id}
-        return {"type": ChatEventType.STREAMING_START, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.STREAMING_START, "data": data}
 
     @staticmethod
     def create_streaming_chunk(stream_id: str, content: str) -> StreamingEvent:
         """Create streaming chunk event."""
         data: StreamingChunkData = {"id": stream_id, "content": content}
-        return {"type": ChatEventType.STREAMING_CHUNK, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.STREAMING_CHUNK, "data": data}
 
     @staticmethod
     def create_streaming_end(stream_id: str) -> StreamingEvent:
@@ -126,7 +132,7 @@ class StreamingEventHandler:
             "id": stream_id,
             "created_at": asyncio.get_event_loop().time(),
         }
-        return {"type": ChatEventType.STREAMING_END, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.STREAMING_END, "data": data}
 
     @staticmethod
     def create_token_usage_event(input_tokens: int, output_tokens: int, total_tokens: int) -> StreamingEvent:
@@ -136,17 +142,102 @@ class StreamingEventHandler:
             "output_tokens": output_tokens,
             "total_tokens": total_tokens,
         }
-        return {"type": ChatEventType.TOKEN_USAGE, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.TOKEN_USAGE, "data": data}
 
     @staticmethod
     def create_processing_event(status: str = ProcessingStatus.PREPARING_REQUEST) -> StreamingEvent:
         """Create processing status event."""
-        return {"type": ChatEventType.PROCESSING, "data": {"status": status}}  # type: ignore[return-value]
+        return {"type": ChatEventType.PROCESSING, "data": {"status": status}}
 
     @staticmethod
     def create_error_event(error: str) -> StreamingEvent:
         """Create error event."""
-        return {"type": ChatEventType.ERROR, "data": {"error": error}}  # type: ignore[return-value]
+        return {"type": ChatEventType.ERROR, "data": {"error": error}}
+
+
+class ThinkingEventHandler:
+    """Handle thinking/reasoning content streaming events."""
+
+    @staticmethod
+    def create_thinking_start(stream_id: str) -> StreamingEvent:
+        """Create thinking start event."""
+        data: ThinkingStartData = {"id": stream_id}
+        return {"type": ChatEventType.THINKING_START, "data": data}
+
+    @staticmethod
+    def create_thinking_chunk(stream_id: str, content: str) -> StreamingEvent:
+        """Create thinking chunk event."""
+        data: ThinkingChunkData = {"id": stream_id, "content": content}
+        return {"type": ChatEventType.THINKING_CHUNK, "data": data}
+
+    @staticmethod
+    def create_thinking_end(stream_id: str) -> StreamingEvent:
+        """Create thinking end event."""
+        data: ThinkingEndData = {"id": stream_id}
+        return {"type": ChatEventType.THINKING_END, "data": data}
+
+    @staticmethod
+    def extract_thinking_content(message_chunk: Any) -> str | None:
+        """
+        Extract thinking/reasoning content from message chunk.
+
+        Checks various provider-specific locations:
+        - Anthropic Claude: content blocks with type="thinking"
+        - DeepSeek R1: additional_kwargs.reasoning_content
+        - Gemini 3: content blocks with type="thought" or response_metadata.reasoning
+        - Generic: response_metadata.reasoning_content or thinking
+
+        Args:
+            message_chunk: Message chunk from LLM streaming
+
+        Returns:
+            Extracted thinking content or None
+        """
+        # Check for DeepSeek/OpenAI style reasoning_content in additional_kwargs
+        if hasattr(message_chunk, "additional_kwargs"):
+            additional_kwargs = message_chunk.additional_kwargs
+            if isinstance(additional_kwargs, dict):
+                reasoning = additional_kwargs.get("reasoning_content")
+                if reasoning:
+                    logger.debug("Found thinking in additional_kwargs.reasoning_content")
+                    return reasoning
+
+        # Check for thinking/thought blocks in content (Anthropic, Gemini 3)
+        if hasattr(message_chunk, "content"):
+            content = message_chunk.content
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        block_type = block.get("type", "")
+                        # Anthropic Claude uses "thinking" type
+                        if block_type == "thinking":
+                            thinking_text = block.get("thinking", "")
+                            if thinking_text:
+                                logger.debug("Found thinking in content block type='thinking'")
+                                return thinking_text
+                        # Gemini 3 uses "thought" type
+                        elif block_type == "thought":
+                            thought_text = block.get("thought", "") or block.get("text", "")
+                            if thought_text:
+                                logger.debug("Found thinking in content block type='thought'")
+                                return thought_text
+
+        # Check response_metadata for thinking content
+        if hasattr(message_chunk, "response_metadata"):
+            metadata = message_chunk.response_metadata
+            if isinstance(metadata, dict):
+                # Gemini 3 uses "reasoning" key
+                thinking = (
+                    metadata.get("thinking")
+                    or metadata.get("reasoning_content")
+                    or metadata.get("reasoning")
+                    or metadata.get("thoughts")
+                )
+                if thinking:
+                    logger.debug("Found thinking in response_metadata: %s", list(metadata.keys()))
+                    return thinking
+
+        return None
 
 
 class CitationExtractor:
@@ -264,7 +355,7 @@ class CitationExtractor:
     def create_citations_event(citations: list[CitationData]) -> StreamingEvent:
         """Create search citations event."""
         data: SearchCitationsData = {"citations": citations}
-        return {"type": ChatEventType.SEARCH_CITATIONS, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.SEARCH_CITATIONS, "data": data}
 
 
 class GeneratedFileHandler:
@@ -397,7 +488,7 @@ class GeneratedFileHandler:
     def create_generated_files_event(files: list[GeneratedFileInfo]) -> StreamingEvent:
         """Create generated files event."""
         data: GeneratedFilesData = {"files": files}
-        return {"type": ChatEventType.GENERATED_FILES, "data": data}  # type: ignore[return-value]
+        return {"type": ChatEventType.GENERATED_FILES, "data": data}
 
 
 class TokenStreamProcessor:

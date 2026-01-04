@@ -104,7 +104,6 @@ class ChatModelFactory:
         # Extract google_search_enabled from runtime_kwargs
         google_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
 
-        # Create the base model
         llm = ChatGoogleGenerativeAI(
             model=model,
             google_api_key=credentials["api_key"],

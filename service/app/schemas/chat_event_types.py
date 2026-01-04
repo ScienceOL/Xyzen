@@ -150,6 +150,25 @@ class InsufficientBalanceData(TypedDict):
     action_required: str
 
 
+class ThinkingStartData(TypedDict):
+    """Data payload for THINKING_START event."""
+
+    id: str
+
+
+class ThinkingChunkData(TypedDict):
+    """Data payload for THINKING_CHUNK event."""
+
+    id: str
+    content: str
+
+
+class ThinkingEndData(TypedDict):
+    """Data payload for THINKING_END event."""
+
+    id: str
+
+
 # =============================================================================
 # Full Event Structures (type + data)
 # =============================================================================
@@ -253,6 +272,27 @@ class InsufficientBalanceEvent(TypedDict):
     data: InsufficientBalanceData
 
 
+class ThinkingStartEvent(TypedDict):
+    """Full event structure for thinking start."""
+
+    type: Literal[ChatEventType.THINKING_START]
+    data: ThinkingStartData
+
+
+class ThinkingChunkEvent(TypedDict):
+    """Full event structure for thinking chunk."""
+
+    type: Literal[ChatEventType.THINKING_CHUNK]
+    data: ThinkingChunkData
+
+
+class ThinkingEndEvent(TypedDict):
+    """Full event structure for thinking end."""
+
+    type: Literal[ChatEventType.THINKING_END]
+    data: ThinkingEndData
+
+
 # =============================================================================
 # Union type for generic event handling
 # =============================================================================
@@ -273,6 +313,9 @@ StreamingEvent = (
     | MessageSavedEvent
     | MessageEvent
     | InsufficientBalanceEvent
+    | ThinkingStartEvent
+    | ThinkingChunkEvent
+    | ThinkingEndEvent
 )
 
 
@@ -294,6 +337,9 @@ __all__ = [
     "MessageSavedData",
     "MessageData",
     "InsufficientBalanceData",
+    "ThinkingStartData",
+    "ThinkingChunkData",
+    "ThinkingEndData",
     # Event types
     "StreamingStartEvent",
     "StreamingChunkEvent",
@@ -309,6 +355,9 @@ __all__ = [
     "MessageSavedEvent",
     "MessageEvent",
     "InsufficientBalanceEvent",
+    "ThinkingStartEvent",
+    "ThinkingChunkEvent",
+    "ThinkingEndEvent",
     # Union
     "StreamingEvent",
 ]

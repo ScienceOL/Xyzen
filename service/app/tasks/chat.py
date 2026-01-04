@@ -145,6 +145,7 @@ async def _process_chat_message_async(
             ai_message_id = None
             ai_message_obj: Message | None = None
             full_content = ""
+            full_thinking_content = ""  # Track thinking content for persistence
             citations_data: List[CitationData] = []
             generated_files_count = 0
 
@@ -286,6 +287,23 @@ async def _process_chat_message_async(
                 elif stream_event["type"] == ChatEventType.ERROR:
                     await publisher.publish(json.dumps(stream_event))
                     break
+
+                # Handle thinking events
+                elif stream_event["type"] == ChatEventType.THINKING_START:
+                    # Create message object if not exists
+                    if not ai_message_obj:
+                        ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
+                        ai_message_obj = await message_repo.create_message(ai_message_create)
+                    await publisher.publish(json.dumps(stream_event))
+
+                elif stream_event["type"] == ChatEventType.THINKING_CHUNK:
+                    chunk_content = stream_event["data"].get("content", "")
+                    full_thinking_content += chunk_content
+                    await publisher.publish(json.dumps(stream_event))
+
+                elif stream_event["type"] == ChatEventType.THINKING_END:
+                    await publisher.publish(json.dumps(stream_event))
+
                 else:
                     await publisher.publish(json.dumps(stream_event))
 
@@ -294,6 +312,11 @@ async def _process_chat_message_async(
                 # Update content
                 if full_content and ai_message_obj.content != full_content:
                     ai_message_obj.content = full_content
+                    db.add(ai_message_obj)
+
+                # Update thinking content
+                if full_thinking_content:
+                    ai_message_obj.thinking_content = full_thinking_content
                     db.add(ai_message_obj)
 
                 # Save citations

@@ -19,7 +19,10 @@ interface MessageEvent {
     | "tool_call_response"
     | "insufficient_balance"
     | "error"
-    | "topic_updated";
+    | "topic_updated"
+    | "thinking_start"
+    | "thinking_chunk"
+    | "thinking_end";
   data:
     | Message
     | {
