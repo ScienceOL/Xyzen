@@ -1,9 +1,9 @@
 "use client";
 
 import { providerCore } from "@/core/provider";
-import { getProviderDisplayName } from "@/utils/providerDisplayNames";
 import type { Agent } from "@/types/agents";
 import type { LlmProviderResponse, ModelInfo } from "@/types/llmProvider";
+import { getProviderDisplayName } from "@/utils/providerDisplayNames";
 import {
   ChevronDownIcon,
   CpuChipIcon,
@@ -334,7 +334,7 @@ export function ModelSelector({
                 </div>
                 <div
                   className="space-y-1 overflow-y-auto custom-scrollbar"
-                  style={{ maxHeight: "min(400px, 60vh)" }}
+                  style={{ maxHeight: "min(320px, 50vh)" }}
                 >
                   {providersWithCounts.map(
                     ({ provider, modelCount }, index) => (
@@ -407,7 +407,7 @@ export function ModelSelector({
                     {/* Model List Items */}
                     <div
                       className="space-y-1 overflow-y-auto custom-scrollbar"
-                      style={{ maxHeight: "min(400px, 60vh)" }}
+                      style={{ maxHeight: "min(320px, 50vh)" }}
                     >
                       {hoveredProviderModels.map((model, index) => (
                         <motion.button
@@ -449,7 +449,7 @@ export function ModelSelector({
             >
               <div
                 className="space-y-3 overflow-y-auto custom-scrollbar"
-                style={{ maxHeight: "60vh" }}
+                style={{ maxHeight: "min(320px, 40vh)" }}
               >
                 {providersWithCounts.map(({ provider, modelCount }) => {
                   const models = availableModels[provider.id] || [];
