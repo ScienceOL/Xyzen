@@ -1,6 +1,6 @@
 services:
   service:
-    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
+    image: registry.sciol.ac.cn/sciol/xyzen-service:test
     env_file:
       - .env.dev
     build:
@@ -16,6 +16,7 @@ services:
     command: sh -c "uv sync && uv run python -m app.main"
 
   celery:
+    image: registry.sciol.ac.cn/sciol/xyzen-service:test
     env_file:
       - .env.dev
     volumes:
@@ -24,7 +25,7 @@ services:
     command: sh -c "uv sync && uv run celery -A app.worker worker --loglevel=info"
 
   web:
-    image: registry.sciol.ac.cn/sciol/xyzen-web:latest
+    image: registry.sciol.ac.cn/sciol/xyzen-web:test
     env_file:
       - .env.dev
     build:
