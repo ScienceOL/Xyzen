@@ -17,6 +17,7 @@ class ProviderType(StrEnum):
     AZURE_OPENAI = "azure_openai"
     GOOGLE = "google"
     GOOGLE_VERTEX = "google_vertex"
+    GPUGEEK = "gpugeek"
 
 
 class LLMCredentials(TypedDict):

@@ -44,6 +44,9 @@ class ChatModelFactory:
             case ProviderType.GOOGLE_VERTEX:
                 logger.info(f"Creating Google Vertex model {model}")
                 llm = self._create_google_vertex(model, credentials, runtime_kwargs)
+            case ProviderType.GPUGEEK:
+                logger.info(f"Creating GPUGeek model {model}")
+                llm = self._create_gpugeek(model, credentials, runtime_kwargs)
 
         return ModelInstance(llm=llm, config=config)
 
@@ -158,5 +161,23 @@ class ChatModelFactory:
         if google_search_enabled:
             logger.info(f"Enabling built-in web search for Vertex AI model {model}")
             llm = cast(BaseChatModel, llm.bind_tools([{"google_search": {}}]))
+
+        return llm
+
+    def _create_gpugeek(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
+        """
+        Create GPUGeek model instance using OpenAI-compatible API.
+
+        GPUGeek provides an OpenAI-compatible endpoint that supports multiple model vendors.
+        """
+        # Get base_url from credentials, default to GPUGeek endpoint
+        base_url = credentials.get("api_endpoint", "https://api.gpugeek.com/v1")
+
+        llm = ChatOpenAI(
+            model=model,
+            api_key=credentials["api_key"],
+            base_url=base_url,
+            **runtime_kwargs,
+        )
 
         return llm

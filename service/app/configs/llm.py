@@ -80,6 +80,7 @@ class LLMConfig(BaseModel):
     openai: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="OpenAI config")
     google: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="Google GenAI config")
     googlevertex: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="Google Vertex config")
+    gpugeek: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="GPUGeek config")
 
     # Legacy single-provider fields
     provider: ProviderType | None = Field(default=None, description="(Legacy) Provider type")
@@ -111,6 +112,8 @@ class LLMConfig(BaseModel):
                 return ProviderType.AZURE_OPENAI.value
             if s == "googlevertex":
                 return ProviderType.GOOGLE_VERTEX.value
+            if s == "gpugeek":
+                return ProviderType.GPUGEEK.value
             return s
 
         return [ProviderType(normalize(item)) for item in items]
@@ -140,6 +143,8 @@ class LLMConfig(BaseModel):
                 return self.google
             case ProviderType.GOOGLE_VERTEX:
                 return self.googlevertex
+            case ProviderType.GPUGEEK:
+                return self.gpugeek
 
     def iter_enabled(self) -> list[tuple[ProviderType, LLMProviderConfig]]:
         """Return enabled provider configs.
