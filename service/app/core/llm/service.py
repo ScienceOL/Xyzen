@@ -10,6 +10,88 @@ from app.common.code.error_code import ErrCode
 
 logger = logging.getLogger(__name__)
 
+# Manually configured model list for GPUGeek provider
+# Add models in the format "Vendor/Model-Name" (e.g., "Vendor2/Gemini-2.5-Flash")
+GPUGEEK_MODELS: list[str] = [
+    # Add your GPUGeek models here
+    # Example: "Vendor2/Gemini-2.5-Flash",
+    # "Vendor2/Gemini-2.5-Pro",
+    # "Vendor2/Gemini-2.5-Flash",
+    # "Vendor2/Gemini-2.5-Flash-Image",
+    # "Vendor2/Gemini-3-Pro",
+    # "Vendor2/Gemini-3-Flash",
+    # "Vendor2/Gemini-3-Pro-Image",
+    "Vendor2/Claude-3.7-Sonnet",
+    "Vendor2/Claude-4-Sonnet",
+    "Vendor2/Claude-4.5-Opus",
+    "Vendor2/Claude-4.5-Sonnet",
+    # "Vendor2/GPT-5.2",
+    # "Vendor2/GPT-5.1",
+    # "Vendor2/GPT-5",
+    # "OpenAI/Azure-GPT-5.1",
+    # "OpenAI/Azure-GPT-5.2",
+    # "OpenAI/Azure-GPT-5",
+    "DeepSeek/DeepSeek-V3-0324",
+    "DeepSeek/DeepSeek-V3.1-0821",
+    "DeepSeek/DeepSeek-R1-671B",
+]
+
+
+def _map_gpugeek_to_base_model(gpugeek_model: str) -> str | None:
+    """
+    Map GPUGeek vendor-prefixed model names to their base model names for pricing lookup.
+
+    Most model names can be used directly after normalization, except for DeepSeek models
+    which require special mapping based on version patterns.
+
+    Args:
+        gpugeek_model: GPUGeek model name (e.g., "Vendor2/Gemini-2.5-Flash")
+
+    Returns:
+        Base model name for LiteLLM lookup, or None if no mapping exists
+
+    Examples:
+        "Vendor2/Gemini-2.5-Flash" -> "gemini-2.5-flash"
+        "Vendor2/Claude-4.5-Sonnet" -> "claude-4.5-sonnet"
+        "Vendor2/GPT-5.2" -> "gpt-5.2"
+        "DeepSeek/DeepSeek-V3-0324" -> "deepseek-chat"
+        "DeepSeek/DeepSeek-R1-671B" -> "deepseek-reasoner"
+    """
+    # Extract the model part after the vendor prefix
+    if "/" not in gpugeek_model:
+        return None
+
+    _, model_part = gpugeek_model.split("/", 1)
+    model_lower = model_part.lower()
+
+    # Special handling for DeepSeek models
+    if "deepseek" in model_lower:
+        if "v" in model_lower and any(c.isdigit() for c in model_lower.split("v")[1][:3]):
+            return "deepseek-chat"
+        if "r" in model_lower and any(c.isdigit() for c in model_lower.split("r")[1][:3]):
+            return "deepseek-reasoner"
+        return "deepseek-chat"
+
+    # Special handling for Azure models
+    # if "azure-" in model_lower:
+    #     model_lower = model_lower.replace("azure-", "")
+
+    # Special handling for Anthropic models
+    if "gemini-3-flash" in model_lower:
+        return "gemini-3-flash-preview"
+    if "gemini-3-pro" in model_lower:
+        return "gemini-3-pro-preview"
+    if "claude-3.7-sonnet" in model_lower:
+        return "anthropic.claude-3-7-sonnet-20250219-v1:0"
+    if "claude-4-sonnet" in model_lower:
+        return "anthropic.claude-sonnet-4-20250514-v1:0"
+    if "claude-4.5-sonnet" in model_lower:
+        return "anthropic.claude-sonnet-4-5-20250929-v1:0"
+    if "claude-4.5-opus" in model_lower:
+        return "anthropic.claude-opus-4-5-20251101-v1:0"
+
+    return model_lower
+
 
 class ModelFilter:
     """
@@ -235,6 +317,12 @@ class LiteLLMService:
         Returns:
             Dictionary containing model metadata (max_tokens, input_cost_per_token, etc.)
         """
+        if "qwen" in model_name:
+            converted_model_name = "dashscope/" + model_name
+        else:
+            converted_model_name = _map_gpugeek_to_base_model(model_name)
+        if converted_model_name:
+            model_name = converted_model_name
         try:
             info = litellm.get_model_info(model_name)
             return info
@@ -300,6 +388,11 @@ class LiteLLMService:
                 ModelFilter.version_filter(min_version=2.5),
                 ModelFilter.no_slash_filter(),
             ),
+            "qwen": ModelFilter.combined_filter(
+                ModelFilter.no_date_suffix_filter(),
+                ModelFilter.substring_filter("qwen"),
+                # ModelFilter.no_slash_filter(),
+            ),
         }
 
         # Return the filter or a default that accepts all
@@ -311,7 +404,7 @@ class LiteLLMService:
         Get all models for a specific provider type with their metadata.
 
         Args:
-            provider_type: The provider type (e.g., 'openai', 'azure_openai', 'google')
+            provider_type: The provider type (e.g., 'openai', 'azure_openai', 'google', 'gpugeek')
 
         Returns:
             List of ModelInfo objects with model metadata
@@ -319,11 +412,53 @@ class LiteLLMService:
         models: list[ModelInfo] = []
         logger.debug(f"Provider type: {provider_type}")
 
+        # Handle GPUGeek provider with manual model list
+        if provider_type == "gpugeek":
+            for model_name in GPUGEEK_MODELS:
+                # Try to get pricing from base model
+                base_model = _map_gpugeek_to_base_model(model_name)
+
+                # Default model info
+                model_data: dict[str, Any] = {
+                    "key": model_name,
+                    "max_tokens": 4096,
+                    "max_input_tokens": 128000,
+                    "max_output_tokens": 4096,
+                    "input_cost_per_token": 0.0,
+                    "output_cost_per_token": 0.0,
+                    "litellm_provider": "openai",
+                    "mode": "chat",
+                    "supports_function_calling": True,
+                    "supports_parallel_function_calling": True,
+                    "supports_vision": "image" in model_name.lower(),
+                    "supported_openai_params": None,
+                }
+
+                # Try to get real pricing from LiteLLM if we have a base model mapping
+                if base_model:
+                    try:
+                        base_info = litellm.model_cost.get(base_model)
+                        if base_info:
+                            # Update with real pricing data
+                            model_data["input_cost_per_token"] = base_info.get("input_cost_per_token", 0.0)
+                            model_data["output_cost_per_token"] = base_info.get("output_cost_per_token", 0.0)
+                            model_data["max_tokens"] = base_info.get("max_tokens", 4096)
+                            model_data["max_input_tokens"] = base_info.get("max_input_tokens", 128000)
+                            model_data["max_output_tokens"] = base_info.get("max_output_tokens", 4096)
+                            logger.debug(f"Mapped {model_name} -> {base_model} for pricing")
+                    except Exception as e:
+                        logger.warning(f"Failed to get pricing for {model_name} (base: {base_model}): {e}")
+
+                models.append(cast(ModelInfo, model_data))
+            logger.debug(f"Returning {len(models)} manually configured models for GPUGeek")
+            return models
+
         provider_type_mapping = {
             "openai": "openai",
             "azure_openai": "azure",
             "google": "google",
             "google_vertex": "vertex_ai",
+            "qwen": "dashscope",
         }
 
         litellm_provider_type = provider_type_mapping.get(provider_type)
@@ -344,6 +479,24 @@ class LiteLLMService:
                 # Add supported_openai_params if missing (required by ModelInfo)
                 if "supported_openai_params" not in model_data:
                     model_data["supported_openai_params"] = None
+
+                # Handle tiered pricing - extract the first tier as default pricing
+                if "tiered_pricing" in model_data and isinstance(model_data.get("tiered_pricing"), list):
+                    tiered = model_data["tiered_pricing"]
+                    if tiered and len(tiered) > 0:
+                        first_tier = tiered[0]
+                        # Add flat pricing fields from first tier if not present
+                        if "input_cost_per_token" not in model_data:
+                            model_data["input_cost_per_token"] = first_tier.get("input_cost_per_token", 0.0)
+                        if "output_cost_per_token" not in model_data:
+                            model_data["output_cost_per_token"] = first_tier.get("output_cost_per_token", 0.0)
+
+                # Ensure required pricing fields exist (fallback to 0.0 if not present)
+                if "input_cost_per_token" not in model_data:
+                    model_data["input_cost_per_token"] = 0.0
+                if "output_cost_per_token" not in model_data:
+                    model_data["output_cost_per_token"] = 0.0
+
                 # Add supports_web_search for models that support built-in web search
                 if provider_type in ["google", "google_vertex"] and "gemini" in model_name.lower():
                     # Gemini 2.0 and later support built-in web search
@@ -364,7 +517,7 @@ class LiteLLMService:
         Returns:
             Dictionary mapping provider type to list of ModelInfo
         """
-        provider_types = ["openai", "azure_openai", "google", "google_vertex"]
+        provider_types = ["openai", "azure_openai", "google", "google_vertex", "gpugeek", "qwen"]
         result: dict[str, list[ModelInfo]] = {}
 
         for provider_type in provider_types:

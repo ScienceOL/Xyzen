@@ -4,6 +4,7 @@ import {
   GoogleIcon,
   OpenAIIcon,
 } from "@/assets/icons";
+import { getProviderDisplayName } from "@/utils/providerDisplayNames";
 import {
   Tabs,
   TabsHighlight,
@@ -53,6 +54,14 @@ export const ProviderList = () => {
         return <AzureIcon className={iconClass} />;
       case "anthropic":
         return <AnthropicIcon className={iconClass} />;
+      case "gpugeek":
+        return (
+          <div className="font-bold text-amber-600 dark:text-amber-400">X</div>
+        );
+      case "qwen":
+        return (
+          <div className="font-bold text-cyan-600 dark:text-cyan-400">Q</div>
+        );
       default:
         return <OpenAIIcon className={iconClass} />;
     }
@@ -120,7 +129,12 @@ export const ProviderList = () => {
                             {getProviderIcon(provider.provider_type)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate">{provider.name}</div>
+                            <div className="truncate">
+                              {/*{provider.is_system
+                                ? getProviderDisplayName(provider.provider_type)
+                                : provider.name}*/}
+                              {getProviderDisplayName(provider.provider_type)}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -181,7 +195,7 @@ export const ProviderList = () => {
                     <div className="flex-1 overflow-hidden">
                       <div className="flex items-center justify-between">
                         <span className="truncate text-sm font-medium text-neutral-900 dark:text-white">
-                          {template.display_name}
+                          {getProviderDisplayName(template.type)}
                         </span>
                         <PlusCircleIcon className="h-5 w-5 text-neutral-400" />
                       </div>
