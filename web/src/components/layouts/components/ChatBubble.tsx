@@ -4,8 +4,9 @@ import ProfileIcon from "@/assets/ProfileIcon";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
+import { CheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { useDeferredValue, useMemo } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
@@ -17,6 +18,7 @@ interface ChatBubbleProps {
 }
 
 function ChatBubble({ message }: ChatBubbleProps) {
+  const [isCopied, setIsCopied] = useState(false);
   const confirmToolCall = useXyzen((state) => state.confirmToolCall);
   const cancelToolCall = useXyzen((state) => state.cancelToolCall);
   const activeChatChannel = useXyzen((state) => state.activeChatChannel);
@@ -46,7 +48,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
   //   }
   // }, [isNewMessage]);
 
-  // 仅在消息首次是新消息且为 Assistant 消息时才启用打字效果
+  // 仅在消息首次是新消息且为 Assistant 消消息时才启用打字效果
   // 一旦消息完成流式传输（isNewMessage 变为 false），就禁用打字效果
   // const shouldEnableTypewriter =
   //   TYPEWRITER_CONFIG.enabled &&
@@ -126,6 +128,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
         <span className="text-xs font-medium">{initial}</span>
       </div>
     );
+  };
+
+  const handleCopy = () => {
+    if (content) {
+      navigator.clipboard.writeText(content).then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+      });
+    }
   };
 
   // If this is a tool message from history, render as ToolCallCard
@@ -227,6 +238,22 @@ function ChatBubble({ message }: ChatBubbleProps) {
             {!isUserMessage && citations && citations.length > 0 && (
               <div className="mt-3">
                 <SearchCitations citations={citations} />
+              </div>
+            )}
+
+            {/* Copy button - shown for assistant messages */}
+            {!isUserMessage && !isLoading && (
+              <div className="absolute bottom-2 left-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <button
+                  onClick={handleCopy}
+                  className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                >
+                  {isCopied ? (
+                    <CheckIcon className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <ClipboardDocumentIcon className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             )}
           </div>
