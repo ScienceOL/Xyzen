@@ -173,6 +173,23 @@ class ModelFilter:
         return filter_fn
 
     @staticmethod
+    def no_substring_filter(substring: str) -> Callable[[str], bool]:
+        """
+        Create a filter that excludes model names containing a specific substring.
+
+        Args:
+            substring: The substring to exclude
+
+        Returns:
+            Filter function that returns True if substring is NOT in model name
+        """
+
+        def filter_fn(model_name: str) -> bool:
+            return substring not in model_name
+
+        return filter_fn
+
+    @staticmethod
     def no_slash_filter() -> Callable[[str], bool]:
         """
         Create a filter that excludes model names containing "/".
@@ -391,6 +408,7 @@ class LiteLLMService:
             "qwen": ModelFilter.combined_filter(
                 ModelFilter.no_date_suffix_filter(),
                 ModelFilter.substring_filter("qwen"),
+                ModelFilter.no_substring_filter("qwen-coder"),
                 # ModelFilter.no_slash_filter(),
             ),
         }
