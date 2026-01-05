@@ -1,6 +1,7 @@
 "use client";
 
 import { providerCore } from "@/core/provider";
+import { getProviderDisplayName } from "@/utils/providerDisplayNames";
 import type { Agent } from "@/types/agents";
 import type { LlmProviderResponse, ModelInfo } from "@/types/llmProvider";
 import {
@@ -212,6 +213,10 @@ export function ModelSelector({
       case "google":
       case "google_vertex":
         return "bg-indigo-500/10 dark:bg-indigo-500/20";
+      case "gpugeek":
+        return "bg-purple-500/10 dark:bg-purple-500/20";
+      case "qwen":
+        return "bg-cyan-500/10 dark:bg-cyan-500/20";
       default:
         return "bg-purple-500/10 dark:bg-purple-500/20";
     }
@@ -228,6 +233,10 @@ export function ModelSelector({
       case "google":
       case "google_vertex":
         return "text-indigo-700 dark:text-indigo-400";
+      case "gpugeek":
+        return "text-purple-700 dark:text-purple-400";
+      case "qwen":
+        return "text-cyan-700 dark:text-cyan-400";
       default:
         return "text-purple-700 dark:text-purple-400";
     }
@@ -244,6 +253,10 @@ export function ModelSelector({
       case "google":
       case "google_vertex":
         return "bg-indigo-500";
+      case "gpugeek":
+        return "bg-purple-500";
+      case "qwen":
+        return "bg-cyan-500";
       default:
         return "bg-purple-500";
     }
@@ -294,7 +307,7 @@ export function ModelSelector({
         onClick={() => setIsOpen(!isOpen)}
       >
         <CpuChipIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="max-w-[200px] truncate">
+        <span className="max-w-50 truncate">
           {currentSelection.model || "选择模型"}
         </span>
         <ChevronDownIcon
@@ -314,7 +327,7 @@ export function ModelSelector({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
                 transition={{ duration: 0.2 }}
-                className="w-[280px] rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-2"
+                className="w-70 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-2"
               >
                 <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                   选择提供商
@@ -344,9 +357,10 @@ export function ModelSelector({
                             className={`h-2 w-2 shrink-0 rounded-full ${getProviderDotColor(provider.provider_type)}`}
                           />
                           <span className="font-medium">
-                            {provider.name === "system"
-                              ? "系统默认"
-                              : provider.name}
+                            {/*{provider.is_system
+                              ? getProviderDisplayName(provider.provider_type)
+                              : provider.name}*/}
+                            {getProviderDisplayName(provider.provider_type)}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -380,7 +394,11 @@ export function ModelSelector({
                             className={`h-2 w-2 rounded-full ${getProviderDotColor(hoveredProvider.provider_type)}`}
                           />
                           <span className="text-neutral-700 dark:text-neutral-300">
-                            {hoveredProvider.name}
+                            {hoveredProvider.is_system
+                              ? getProviderDisplayName(
+                                  hoveredProvider.provider_type,
+                                )
+                              : hoveredProvider.name}
                           </span>
                         </div>
                       )}
@@ -447,8 +465,8 @@ export function ModelSelector({
                               className={`h-2 w-2 shrink-0 rounded-full ${getProviderDotColor(provider.provider_type)}`}
                             />
                             <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                              {provider.name === "system"
-                                ? "系统默认"
+                              {provider.is_system
+                                ? getProviderDisplayName(provider.provider_type)
                                 : provider.name}
                             </span>
                           </div>

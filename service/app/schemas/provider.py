@@ -18,6 +18,7 @@ class ProviderType(StrEnum):
     GOOGLE = "google"
     GOOGLE_VERTEX = "google_vertex"
     GPUGEEK = "gpugeek"
+    QWEN = "qwen"
 
 
 class LLMCredentials(TypedDict):

@@ -29,6 +29,10 @@ def _select_title_generation_model(
         return "gemini-2.5-flash"
     if provider_type == ProviderType.AZURE_OPENAI:
         return "gpt-5-mini"
+    if provider_type == ProviderType.GPUGEEK:
+        return "Vendor2/Gemini-2.5-Flash"
+    if provider_type == ProviderType.QWEN:
+        return "qwen3-0.6b"
     return session_model or default_model
 
 

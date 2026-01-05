@@ -33,6 +33,7 @@ class SystemProviderManager:
                     "openai": "OpenAI",
                     "google": "Google",
                     "gpugeek": "GPUGeek",
+                    "qwen": "Qwen",
                 }.get(provider_type.value, provider_type.value)
                 existing = await self.repo.get_system_provider_by_type(provider_type)
 
