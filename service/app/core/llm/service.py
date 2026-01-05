@@ -387,6 +387,8 @@ class LiteLLMService:
                 ModelFilter.no_date_suffix_filter(),
                 ModelFilter.no_tts_filter(),
                 ModelFilter.substring_filter("gpt"),
+                ModelFilter.no_substring_filter("gpt-5-chat-latest"),
+                ModelFilter.no_substring_filter("gpt-5.1-chat"),
                 ModelFilter.version_filter(min_version=5, max_version=6),
                 ModelFilter.azure_path_filter(),
                 ModelFilter.no_expensive_azure_filter(),
