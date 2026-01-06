@@ -1,6 +1,13 @@
 import { Input } from "@/components/base/Input";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import { useXyzen } from "@/store";
+import {
+  useMyProviders,
+  useProviderTemplates,
+  useCreateProvider,
+  useUpdateProvider,
+  useDeleteProvider,
+} from "@/hooks/queries";
 import type { LlmProviderCreate, LlmProviderUpdate } from "@/types/llmProvider";
 import { ProviderScope } from "@/types/llmProvider";
 import { Button, Field, Label, Switch } from "@headlessui/react";
@@ -50,16 +57,15 @@ const getDefaultApiEndpoint = (providerType: string): string => {
 
 export const ProviderConfigForm = () => {
   const { t } = useTranslation();
-  const {
-    selectedProviderId,
-    providerTemplates,
-    llmProviders,
-    addProvider,
-    updateProvider,
-    removeProvider,
-    setUserDefaultProvider,
-    userDefaultProviderId,
-  } = useXyzen();
+  const { selectedProviderId, setUserDefaultProvider, userDefaultProviderId } =
+    useXyzen();
+
+  // Use TanStack Query hooks for provider data
+  const { data: llmProviders = [] } = useMyProviders();
+  const { data: providerTemplates = [] } = useProviderTemplates();
+  const createProviderMutation = useCreateProvider();
+  const updateProviderMutation = useUpdateProvider();
+  const deleteProviderMutation = useDeleteProvider();
 
   const [formData, setFormData] = useState<Partial<LlmProviderCreate>>({
     name: "",
@@ -239,7 +245,10 @@ export const ProviderConfigForm = () => {
           };
         }
 
-        await updateProvider(selectedProviderId, updateData);
+        await updateProviderMutation.mutateAsync({
+          id: selectedProviderId,
+          provider: updateData,
+        });
         setSuccess(t("settings.providers.form.success.updated"));
       } else {
         // Create new provider
@@ -259,7 +268,7 @@ export const ProviderConfigForm = () => {
           };
         }
 
-        await addProvider(createData);
+        await createProviderMutation.mutateAsync(createData);
         setSuccess(t("settings.providers.form.success.created"));
       }
     } catch (err) {
@@ -290,7 +299,7 @@ export const ProviderConfigForm = () => {
     setLoading(true);
 
     try {
-      await removeProvider(selectedProviderId);
+      await deleteProviderMutation.mutateAsync(selectedProviderId);
       setSuccess(t("settings.providers.form.success.deleted"));
     } catch (err) {
       setError(

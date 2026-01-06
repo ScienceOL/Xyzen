@@ -185,6 +185,7 @@ export const createFileUploadSlice: StateCreator<
         "private",
         uploadedFile.category,
         null, // folderId
+        null, // knowledgeSetId
         (progress) => {
           set((state) => ({
             uploadedFiles: state.uploadedFiles.map((f) =>

@@ -15,31 +15,27 @@ import {
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import { useXyzen } from "@/store";
 import {
+  useMyProviders,
+  useProviderTemplates,
+  useDeleteProvider,
+} from "@/hooks/queries";
+import {
   CheckCircleIcon,
   PlusCircleIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 export const ProviderList = () => {
   const { t } = useTranslation();
-  const {
-    providerTemplates,
-    templatesLoading,
-    llmProviders,
-    llmProvidersLoading,
-    fetchProviderTemplates,
-    fetchMyProviders,
-    setSelectedProvider,
-    selectedProviderId,
-    removeProvider,
-  } = useXyzen();
+  const { setSelectedProvider, selectedProviderId } = useXyzen();
 
-  useEffect(() => {
-    fetchProviderTemplates();
-    fetchMyProviders();
-  }, [fetchProviderTemplates, fetchMyProviders]);
+  // Use TanStack Query hooks for provider data
+  const { data: llmProviders = [], isLoading: llmProvidersLoading } =
+    useMyProviders();
+  const { data: providerTemplates = [], isLoading: templatesLoading } =
+    useProviderTemplates();
+  const deleteProviderMutation = useDeleteProvider();
 
   const getProviderIcon = (type: string) => {
     const iconClass = "h-5 w-5";
@@ -156,7 +152,7 @@ export const ProviderList = () => {
                               }),
                             )
                           ) {
-                            removeProvider(provider.id);
+                            deleteProviderMutation.mutate(provider.id);
                           }
                         }}
                         className="rounded-lg p-2 text-neutral-400 opacity-0 transition-opacity hover:bg-red-100 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-900/30 dark:hover:text-red-400"

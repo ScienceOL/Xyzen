@@ -24,6 +24,7 @@ from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.models.file import FileCreate, FileRead, FileReadWithUrl, FileUpdate
 from app.repos.file import FileRepository
+from app.repos.knowledge_set import KnowledgeSetRepository
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ async def upload_file(
     scope: str = Form(FileScope.PRIVATE),
     category: str | None = Form(None),
     folder_id: UUID | None = Form(None),
+    knowledge_set_id: UUID | None = Form(None),
     user_id: str = Depends(get_current_user),
     storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
@@ -133,6 +135,17 @@ async def upload_file(
         )
 
         file_record = await file_repo.create_file(file_create)
+
+        # Link to knowledge set if provided
+        if knowledge_set_id:
+            try:
+                ks_repo = KnowledgeSetRepository(db)
+                await ks_repo.validate_access(user_id, knowledge_set_id)
+                await ks_repo.link_file_to_knowledge_set(file_record.id, knowledge_set_id)
+            except ValueError as e:
+                logger.warning(f"Failed to link file to knowledge set during upload: {e}")
+                # Don't fail the whole upload if linking fails due to access/existence
+
         await db.commit()
         await db.refresh(file_record)
 
