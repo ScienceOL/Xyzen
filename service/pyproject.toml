@@ -22,7 +22,6 @@ dependencies = [
     "langchain-openai>=1.0.1",
     "langgraph>=1.0.1",
     "langgraph-checkpoint-postgres>=3.0.0",
-    "litellm>=1.80.9",
     "llm-sandbox[docker,k8s]>=0.3.20",
     "loguru>=0.7.3",
     "mcp>=1.11.0",

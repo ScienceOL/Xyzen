@@ -6,7 +6,7 @@ from pydantic import SecretStr
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
-from app.core.llm.service import LiteLLMService
+from app.core.model_registry import ModelsDevService
 from app.models.provider import ProviderScope
 from app.schemas.provider import LLMCredentials, ProviderType, RuntimeProviderConfig
 
@@ -70,7 +70,7 @@ class ProviderManager:
         del self._provider_configs[name]
         logger.info(f"Removed provider '{name}'")
 
-    def create_langchain_model(
+    async def create_langchain_model(
         self, provider_id: str | None = None, model: str | None = None, **override_kwargs: Any
     ) -> BaseChatModel:
         """
@@ -91,23 +91,23 @@ class ProviderManager:
         if not model:
             raise ErrCode.MODEL_NOT_SPECIFIED.with_messages("Model must be specified")
 
-        def infer_provider_preference(model_name: str) -> list[ProviderType]:
+        async def infer_provider_preference(model_name: str) -> list[ProviderType]:
             """Infer likely provider type(s) for a model.
 
             Used only for system fallback routing when provider_id is missing.
             """
             try:
-                info = LiteLLMService.get_model_info(model_name)
-                litellm_provider = str(info.get("litellm_provider") or "").lower()
+                info = await ModelsDevService.get_model_info_for_key(model_name)
+                litellm_provider = str(info.litellm_provider or "").lower() if info else ""
             except Exception:
                 litellm_provider = ""
 
-            # LiteLLM providers mapping (best-effort)
+            # Provider mapping (best-effort)
             if litellm_provider in {"azure", "azure_ai", "azure_openai"}:
                 return [ProviderType.AZURE_OPENAI, ProviderType.OPENAI]
             if litellm_provider in {"openai"}:
                 return [ProviderType.OPENAI, ProviderType.AZURE_OPENAI]
-            if litellm_provider in {"vertex_ai", "vertex"}:
+            if litellm_provider in {"vertex_ai", "vertex", "google_vertex", "google-vertex"}:
                 return [ProviderType.GOOGLE_VERTEX, ProviderType.GOOGLE]
             if litellm_provider in {"google"}:
                 return [ProviderType.GOOGLE, ProviderType.GOOGLE_VERTEX]
@@ -122,7 +122,7 @@ class ProviderManager:
 
         # If no provider specified, try to route by model to an appropriate system provider.
         if not provider_id:
-            for preferred in infer_provider_preference(model):
+            for preferred in await infer_provider_preference(model):
                 alias = f"{SYSTEM_PROVIDER_NAME}:{preferred.value}"
                 if alias in self._provider_configs:
                     provider_id = alias
@@ -139,7 +139,7 @@ class ProviderManager:
         if not config:
             logger.warning(f"Provider '{provider_id}' not found, falling back to system provider")
             # Try route-by-model system alias first
-            for preferred in infer_provider_preference(model):
+            for preferred in await infer_provider_preference(model):
                 alias = f"{SYSTEM_PROVIDER_NAME}:{preferred.value}"
                 if alias in self._provider_configs:
                     config = self._provider_configs.get(alias)
@@ -154,7 +154,7 @@ class ProviderManager:
         runtime_kwargs = (config.extra_config or {}).copy()
         runtime_kwargs.update(override_kwargs)
 
-        model_instance = self._factory.create(
+        model_instance = await self._factory.create(
             model=model,
             provider=config.provider_type,
             credentials=credentials,

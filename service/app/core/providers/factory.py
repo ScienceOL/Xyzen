@@ -7,7 +7,7 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from langchain_qwq import ChatQwen
 
 from app.common.code import ErrCode
-from app.core.llm.service import LiteLLMService
+from app.core.model_registry import ModelInfo, ModelsDevService
 from app.schemas.provider import LLMCredentials, ProviderType
 
 from .config import ModelInstance
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ChatModelFactory:
-    def create(
+    async def create(
         self, model: str, provider: ProviderType | None, credentials: LLMCredentials, **runtime_kwargs: dict[str, Any]
     ) -> ModelInstance:
         """
@@ -26,8 +26,12 @@ class ChatModelFactory:
         :param credentials: 用户的 API Key
         :param runtime_kwargs: 运行时参数 (如 temperature, streaming, callbacks)
         """
-        # Use LiteLLM to get model info
-        config = LiteLLMService.get_model_info(model)
+        # Use ModelsDevService to get model info
+        config = await ModelsDevService.get_model_info_for_key(model)
+
+        # If not found, create a basic config
+        if not config:
+            config = ModelInfo(key=model)
 
         if not provider:
             raise ErrCode.MODEL_NOT_SUPPORTED.with_messages("Provider must be specified")

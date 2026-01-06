@@ -99,7 +99,7 @@ async def generate_and_update_topic_title(
                 f"{message_text}"
             )
 
-            llm = user_provider_manager.create_langchain_model(provider_id, model_name)
+            llm = await user_provider_manager.create_langchain_model(provider_id, model_name)
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             logger.debug(f"LLM response: {response}")
 
