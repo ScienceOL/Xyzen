@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.models.file import File
 from app.models.file_knowledge_set_link import FileKnowledgeSetLink
 from app.models.knowledge_set import KnowledgeSet, KnowledgeSetCreate, KnowledgeSetUpdate
 
@@ -242,10 +243,16 @@ class KnowledgeSetRepository:
 
     async def get_file_count_in_knowledge_set(self, knowledge_set_id: UUID) -> int:
         """
-        Gets the count of files linked to a knowledge set.
+        Gets the count of non-deleted files linked to a knowledge set.
+        Excludes files that have been soft-deleted (moved to trash).
         """
         logger.debug(f"Counting files in knowledge set {knowledge_set_id}")
-        statement = select(FileKnowledgeSetLink).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+        statement = (
+            select(FileKnowledgeSetLink)
+            .join(File, col(FileKnowledgeSetLink.file_id) == File.id)
+            .where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+            .where(col(File.is_deleted).is_(False))
+        )
         result = await self.db.exec(statement)
         return len(list(result.all()))
 
