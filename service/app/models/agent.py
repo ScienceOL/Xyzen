@@ -16,6 +16,13 @@ class AgentScope(StrEnum):
     USER = "user"
 
 
+class AgentType(StrEnum):
+    """Type of agent determining execution strategy."""
+
+    GRAPH = "graph"  # JSON-configured graph agent (user-customizable)
+    SYSTEM = "system"  # Python-coded system agent (e.g., react, deep_research)
+
+
 class AgentBase(SQLModel):
     scope: AgentScope = Field(
         sa_column=sa.Column(

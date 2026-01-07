@@ -15,6 +15,7 @@ Example:
 """
 
 from typing import Any, TypedDict
+
 from typing_extensions import Literal, NotRequired
 
 from app.schemas.chat_events import ChatEventType
@@ -169,6 +170,61 @@ class ThinkingEndData(TypedDict):
     id: str
 
 
+class AgentContextData(TypedDict):
+    """Common context shared by agent and node events."""
+
+    agent_id: str
+    agent_name: str
+    agent_type: str
+    execution_id: str
+    depth: int
+    execution_path: list[str]
+    started_at: int
+    current_node: NotRequired[str]
+
+
+class AgentStartData(TypedDict):
+    """Data payload for AGENT_START event."""
+
+    context: AgentContextData
+
+
+class AgentEndData(TypedDict):
+    """Data payload for AGENT_END event."""
+
+    context: AgentContextData
+    status: str
+    duration_ms: int
+
+
+class NodeStartData(TypedDict):
+    """Data payload for NODE_START event."""
+
+    node_id: str
+    node_name: str
+    node_type: str
+    context: AgentContextData
+
+
+class NodeEndData(TypedDict):
+    """Data payload for NODE_END event."""
+
+    node_id: str
+    node_name: str
+    node_type: str
+    status: str
+    duration_ms: int
+    context: AgentContextData
+
+
+class ProgressUpdateData(TypedDict):
+    """Data payload for PROGRESS_UPDATE event."""
+
+    progress_percent: int
+    message: str
+    context: AgentContextData
+
+
 # =============================================================================
 # Full Event Structures (type + data)
 # =============================================================================
@@ -293,6 +349,41 @@ class ThinkingEndEvent(TypedDict):
     data: ThinkingEndData
 
 
+class AgentStartEvent(TypedDict):
+    """Full event structure for agent start."""
+
+    type: Literal[ChatEventType.AGENT_START]
+    data: AgentStartData
+
+
+class AgentEndEvent(TypedDict):
+    """Full event structure for agent end."""
+
+    type: Literal[ChatEventType.AGENT_END]
+    data: AgentEndData
+
+
+class NodeStartEvent(TypedDict):
+    """Full event structure for node start."""
+
+    type: Literal[ChatEventType.NODE_START]
+    data: NodeStartData
+
+
+class NodeEndEvent(TypedDict):
+    """Full event structure for node end."""
+
+    type: Literal[ChatEventType.NODE_END]
+    data: NodeEndData
+
+
+class ProgressUpdateEvent(TypedDict):
+    """Full event structure for progress updates."""
+
+    type: Literal[ChatEventType.PROGRESS_UPDATE]
+    data: ProgressUpdateData
+
+
 # =============================================================================
 # Union type for generic event handling
 # =============================================================================
@@ -316,6 +407,11 @@ StreamingEvent = (
     | ThinkingStartEvent
     | ThinkingChunkEvent
     | ThinkingEndEvent
+    | AgentStartEvent
+    | AgentEndEvent
+    | NodeStartEvent
+    | NodeEndEvent
+    | ProgressUpdateEvent
 )
 
 
@@ -358,6 +454,17 @@ __all__ = [
     "ThinkingStartEvent",
     "ThinkingChunkEvent",
     "ThinkingEndEvent",
+    "AgentContextData",
+    "AgentStartData",
+    "AgentEndData",
+    "NodeStartData",
+    "NodeEndData",
+    "ProgressUpdateData",
+    "AgentStartEvent",
+    "AgentEndEvent",
+    "NodeStartEvent",
+    "NodeEndEvent",
+    "ProgressUpdateEvent",
     # Union
     "StreamingEvent",
 ]
