@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
@@ -14,13 +14,6 @@ if TYPE_CHECKING:
 class AgentScope(StrEnum):
     SYSTEM = "system"
     USER = "user"
-
-
-class AgentType(StrEnum):
-    """Type of agent determining execution strategy."""
-
-    GRAPH = "graph"  # JSON-configured graph agent (user-customizable)
-    SYSTEM = "system"  # Python-coded system agent (e.g., react, deep_research)
 
 
 class AgentBase(SQLModel):
@@ -51,6 +44,10 @@ class AgentBase(SQLModel):
         default=None,
         description="Version of the marketplace listing this agent was forked from",
     )
+    # JSON configuration for graph-based agents
+    # If None or empty, fallback to the default react system agent
+    # Can include metadata.system_agent_key to use a specific system agent as base
+    graph_config: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
 
 
 class Agent(AgentBase, table=True):
@@ -78,6 +75,7 @@ class AgentCreate(SQLModel):
     provider_id: UUID | None = Field(default=None, index=True)
     knowledge_set_id: UUID | None = Field(default=None)
     mcp_server_ids: list[UUID] = []
+    graph_config: dict[str, Any] | None = None
 
 
 class AgentRead(AgentBase):
@@ -86,7 +84,7 @@ class AgentRead(AgentBase):
 
 
 class AgentReadWithDetails(AgentRead):
-    mcp_servers: List["McpServer"] = []
+    mcp_servers: list["McpServer"] = []
 
 
 class AgentUpdate(SQLModel):
@@ -101,3 +99,4 @@ class AgentUpdate(SQLModel):
     provider_id: UUID | None = None
     knowledge_set_id: UUID | None = None
     mcp_server_ids: list[UUID] | None = None
+    graph_config: dict[str, Any] | None = None

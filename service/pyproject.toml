@@ -40,12 +40,15 @@ dependencies = [
     "websockets>=13.0,<14.0",
     "reportlab>=4.4.7",
     "langchain-qwq>=0.3.1",
+    "jinja2>=3.1.6",
 ]
 
 [dependency-groups]
 dev = [
     "types-pyjwt>=1.7.1",
     "types-requests>=2.32.4.20250611",
+    "types-aioboto3>=15.5.0",
+    "types-openpyxl>=3.1.5.20250919",
     "pyright>=1.1.390",
     "pre-commit>=4.2.0",
     "ruff>=0.14.3",
@@ -100,10 +103,10 @@ venv = ".venv"
 # strictSetInference = true            # 严格推断集合类型
 # strictParameterNoneValue = true      # 严格检查参数默认值 None 的类型匹配
 
-# ============================================================================
-# 报告配置 - 错误级别 (error)
-# ============================================================================
-# 这些问题会导致类型检查失败，必须修复
+# reportMissingTypeStubs = false
+# reportUnknownMemberType = "warning"
+# reportUnknownArgumentType = "warning"
+# reportUnknownVariableType = "warning"
 
 reportMissingImports = "error"                 # 缺失的导入（模块不存在）
 reportDuplicateImport = "error"                # 重复导入同一模块
@@ -140,7 +143,7 @@ reportUnnecessaryContains = "warning"               # 不必要的 in 检查
 reportUnnecessaryTypeIgnoreComment = "warning"      # 不必要的 type: ignore 注释（强制审查每个 type: ignore 的必要性）
 reportTypeCommentUsage = "warning"                   # 使用类型注释而非类型注解
 reportUnknownParameterType = "warning"               # TODO: 参数类型未知，未来升级为 error，严格禁止
-reportUnknownArgumentType = "warning"                # TODO: 参数类型未知，未来升级为 error，严格禁止
+reportUnknownArgumentType = "warning"                # Disabled: LangChain/LangGraph stubs have incomplete types
 
 # ============================================================================
 # 报告配置 - 禁用项 (none)

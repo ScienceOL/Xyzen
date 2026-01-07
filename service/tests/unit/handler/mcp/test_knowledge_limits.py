@@ -104,7 +104,7 @@ async def test_read_file_text_mode(mock_deps: tuple[MagicMock, MagicMock], mocke
     mock_get_handler.return_value = mock_handler
 
     # Test call
-    result: dict[str, Any] = await read_file.fn("ks123", "doc.txt", mode="text")  # type: ignore
+    result: dict[str, Any] = await read_file.fn("ks123", "doc.txt", mode="text")
 
     # Verify
     assert isinstance(result, dict)

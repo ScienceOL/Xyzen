@@ -1,8 +1,8 @@
 """Integration tests for the Xyzen service."""
 
 import pytest
-from httpx import AsyncClient
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
