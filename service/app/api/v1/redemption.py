@@ -578,7 +578,7 @@ async def get_top_users_by_consumption(
     admin_secret: str = Header(..., alias="X-Admin-Secret"),
     limit: int = 20,
     db: AsyncSession = Depends(get_db_session),
-):
+) -> list[UserConsumptionResponse]:
     """
     Get top users by consumption amount (admin only).
 
@@ -657,6 +657,14 @@ class ConsumeRecordResponse(BaseModel):
     created_at: datetime
 
 
+class DailyUserActivityResponse(BaseModel):
+    """Response model for daily user activity statistics."""
+
+    date: str
+    active_users: int
+    new_users: int
+
+
 @router.get("/admin/stats/consume-records", response_model=list[ConsumeRecordResponse])
 async def get_consume_records(
     admin_secret: str = Header(..., alias="X-Admin-Secret"),
@@ -724,6 +732,60 @@ async def get_consume_records(
         )
     except Exception as e:
         logger.error(f"Error fetching consume records: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/admin/stats/user-activity", response_model=list[DailyUserActivityResponse])
+async def get_user_activity_stats(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    tz: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get daily user activity statistics (admin only).
+    Returns new users and active users per day.
+
+    Requires X-Admin-Secret header for authentication.
+
+    Args:
+        admin_secret: Admin secret key from header
+        start_date: Start date in YYYY-MM-DD format (optional, defaults to 30 days ago)
+        end_date: End date in YYYY-MM-DD format (optional, defaults to today)
+        tz: Timezone name (IANA), used to interpret start_date/end_date (optional, defaults to UTC)
+        db: Database session
+
+    Returns:
+        List of daily user activity statistics
+    """
+    logger.info(f"Admin fetching user activity stats from {start_date} to {end_date}, tz: {tz}")
+
+    # Verify admin secret
+    if admin_secret != configs.Admin.secret:
+        logger.warning("Invalid admin secret key provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin secret key",
+        )
+
+    try:
+        consume_repo = ConsumeRepository(db)
+        stats = await consume_repo.get_daily_user_activity_stats(start_date, end_date, tz)
+
+        return [DailyUserActivityResponse(**stat) for stat in stats]
+
+    except ValueError as e:
+        logger.error(f"Invalid date format: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Use YYYY-MM-DD",
+        )
+    except Exception as e:
+        logger.error(f"Error fetching user activity stats: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),

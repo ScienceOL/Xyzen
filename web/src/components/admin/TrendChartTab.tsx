@@ -2,8 +2,8 @@ import { DEFAULT_TIMEZONE } from "@/configs/common";
 import type { ConsumeRecordResponse } from "@/service/redemptionService";
 import { redemptionService } from "@/service/redemptionService";
 import { ArrowTrendingUpIcon, CalendarIcon } from "@heroicons/react/24/outline";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { subDays } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface TrendChartTabProps {
@@ -22,19 +22,24 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
   const [records, setRecords] = useState<ConsumeRecordResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [daysToShow, setDaysToShow] = useState(30);
+  const [daysToShow, setDaysToShow] = useState(7);
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log(
-        "Fetching consume records for trend chart with adminSecret:",
-        adminSecret ? "***" : "missing",
+      const end = new Date();
+      const start = subDays(end, Math.max(daysToShow - 1, 0));
+      const startDate = formatInTimeZone(start, DEFAULT_TIMEZONE, "yyyy-MM-dd");
+      const endDate = formatInTimeZone(end, DEFAULT_TIMEZONE, "yyyy-MM-dd");
+
+      const data = await redemptionService.getConsumeRecords(
+        adminSecret,
+        startDate,
+        endDate,
+        DEFAULT_TIMEZONE,
       );
-      const data = await redemptionService.getConsumeRecords(adminSecret);
-      console.log("Fetched consume records for trend:", data.length, "records");
       setRecords(data);
     } catch (err) {
       console.error("Error fetching consume records for trend:", err);
@@ -44,7 +49,7 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [adminSecret]);
+  }, [adminSecret, daysToShow]);
 
   useEffect(() => {
     fetchRecords();
@@ -55,10 +60,12 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
     const dataMap = new Map<string, DailyData>();
 
     records.forEach((record) => {
-      const date = format(
-        toZonedTime(new Date(record.created_at), DEFAULT_TIMEZONE),
+      const date = formatInTimeZone(
+        new Date(record.created_at),
+        DEFAULT_TIMEZONE,
         "yyyy-MM-dd",
       );
+
       const existing = dataMap.get(date) || {
         date,
         amount: 0,
