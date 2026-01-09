@@ -1,3 +1,4 @@
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import {
   knowledgeSetService,
   type KnowledgeSetWithFileCount,
@@ -33,6 +34,10 @@ const SidebarComp = ({
   const [knowledgeSets, setKnowledgeSets] = useState<
     KnowledgeSetWithFileCount[]
   >([]);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    knowledgeSet: KnowledgeSetWithFileCount | null;
+  }>({ isOpen: false, knowledgeSet: null });
 
   useEffect(() => {
     const fetchKnowledgeSets = async () => {
@@ -45,6 +50,30 @@ const SidebarComp = ({
     };
     fetchKnowledgeSets();
   }, [refreshTrigger]);
+
+  const handleDeleteClick = (
+    e: React.MouseEvent,
+    knowledgeSet: KnowledgeSetWithFileCount,
+  ) => {
+    e.stopPropagation();
+    setDeleteConfirmation({ isOpen: true, knowledgeSet });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmation.knowledgeSet) return;
+
+    const knowledgeSetId = deleteConfirmation.knowledgeSet.id;
+    try {
+      await knowledgeSetService.deleteKnowledgeSet(knowledgeSetId, false);
+      const sets = await knowledgeSetService.listKnowledgeSets(false);
+      setKnowledgeSets(sets);
+      if (currentKnowledgeSetId === knowledgeSetId) {
+        onTabChange("home");
+      }
+    } catch (error) {
+      console.error("Failed to delete knowledge set", error);
+    }
+  };
 
   const navGroups = [
     {
@@ -150,13 +179,20 @@ const SidebarComp = ({
                   }`}
                 >
                   <FolderIcon
-                    className={`h-4 w-4 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-400 group-hover:text-neutral-500"}`}
+                    className={`h-4 w-4 shrink-0 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-400 group-hover:text-neutral-500"}`}
                   />
                   <span className="truncate flex-1 text-left">
                     {knowledgeSet.name}
                   </span>
-                  <span className="text-xs text-neutral-400">
+                  <span className="text-xs text-neutral-400 shrink-0 group-hover:hidden">
                     {knowledgeSet.file_count}
+                  </span>
+                  <span
+                    onClick={(e) => handleDeleteClick(e, knowledgeSet)}
+                    className="hidden group-hover:flex shrink-0 p-0.5 rounded hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-400 hover:text-red-500"
+                    title={t("knowledge.sidebar.deleteKnowledgeSet")}
+                  >
+                    <TrashIcon className="h-3.5 w-3.5" />
                   </span>
                 </button>
               );
@@ -191,6 +227,21 @@ const SidebarComp = ({
           </div>
         </div>
       </nav>
+
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() =>
+          setDeleteConfirmation({ isOpen: false, knowledgeSet: null })
+        }
+        onConfirm={handleDeleteConfirm}
+        title={t("knowledge.sidebar.deleteTitle")}
+        message={t("knowledge.sidebar.deleteConfirm", {
+          name: deleteConfirmation.knowledgeSet?.name ?? "",
+        })}
+        confirmLabel={t("knowledge.sidebar.deleteConfirmButton")}
+        cancelLabel={t("common.cancel")}
+        destructive
+      />
     </div>
   );
 };

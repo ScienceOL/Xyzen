@@ -400,6 +400,10 @@
         "documents": "Documents"
       },
       "newKnowledgeSet": "New Knowledge Set",
+      "deleteKnowledgeSet": "Delete Knowledge Set",
+      "deleteTitle": "Delete Knowledge Set",
+      "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? The files will not be deleted, only the knowledge set.",
+      "deleteConfirmButton": "Delete",
       "noKnowledgeSets": "No knowledge sets"
     },
     "status": {

@@ -1,41 +1,77 @@
-import { llmProviderService } from "@/service/llmProviderService";
-import type {
-  LlmProviderCreate,
-  LlmProviderResponse,
-  LlmProviderUpdate,
-  ProviderTemplate,
-  ModelInfo,
-} from "@/types/llmProvider";
+/**
+ * Provider Slice - UI State Only
+ *
+ * This slice now only manages UI-related state for providers.
+ * Server state (providers list, templates, available models) has been
+ * migrated to TanStack Query hooks in @/hooks/queries/useProvidersQuery.ts
+ *
+ * BREAKING CHANGES:
+ * - llmProviders -> useMyProviders().data
+ * - llmProvidersLoading -> useMyProviders().isLoading
+ * - providerTemplates -> useProviderTemplates().data
+ * - templatesLoading -> useProviderTemplates().isLoading
+ * - availableModels -> useAvailableModels().data
+ * - availableModelsLoading -> useAvailableModels().isLoading
+ * - fetchProviderTemplates -> auto-fetched by hook
+ * - fetchMyProviders -> auto-fetched by hook
+ * - fetchAvailableModels -> auto-fetched by hook
+ * - addProvider -> useCreateProvider().mutateAsync
+ * - updateProvider -> useUpdateProvider().mutateAsync
+ * - removeProvider -> useDeleteProvider().mutateAsync
+ */
+
 import {
   ProviderPreferencesManager,
   resolveProviderForAgent,
 } from "@/utils/providerPreferences";
+import type { LlmProviderResponse } from "@/types/llmProvider";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
 
+/**
+ * Provider slice interface - UI state only
+ */
 export interface ProviderSlice {
-  llmProviders: LlmProviderResponse[];
-  llmProvidersLoading: boolean;
-  providerTemplates: ProviderTemplate[];
-  templatesLoading: boolean;
-  availableModels: Record<string, ModelInfo[]>;
-  availableModelsLoading: boolean;
+  // UI State
   userDefaultProviderId: string | null;
 
-  fetchProviderTemplates: () => Promise<void>;
-  fetchMyProviders: () => Promise<void>;
-  fetchAvailableModels: () => Promise<void>;
-  addProvider: (provider: LlmProviderCreate) => Promise<void>;
-  updateProvider: (id: string, provider: LlmProviderUpdate) => Promise<void>;
-  removeProvider: (id: string) => Promise<void>;
-
-  // New local default management methods
+  // UI State Methods
   initializeProviderPreferences: () => void;
   setUserDefaultProvider: (providerId: string | null) => void;
-  getUserDefaultProvider: () => LlmProviderResponse | null;
+  getUserDefaultProvider: (
+    providers: LlmProviderResponse[],
+  ) => LlmProviderResponse | null;
   resolveProviderForAgent: (
     agent: { id: string; provider_id?: string | null } | null,
+    providers: LlmProviderResponse[],
   ) => LlmProviderResponse | null;
+
+  // ========== DEPRECATED - Use TanStack Query hooks instead ==========
+  // These are kept temporarily for backward compatibility during migration
+  /** @deprecated Use useMyProviders().data instead */
+  llmProviders: LlmProviderResponse[];
+  /** @deprecated Use useMyProviders().isLoading instead */
+  llmProvidersLoading: boolean;
+  /** @deprecated Use useProviderTemplates().data instead */
+  providerTemplates: never[];
+  /** @deprecated Use useProviderTemplates().isLoading instead */
+  templatesLoading: boolean;
+  /** @deprecated Use useAvailableModels().data instead */
+  availableModels: Record<string, never[]>;
+  /** @deprecated Use useAvailableModels().isLoading instead */
+  availableModelsLoading: boolean;
+  /** @deprecated Use useMyProviders() - data is auto-fetched */
+  fetchMyProviders: () => Promise<void>;
+  /** @deprecated Use useProviderTemplates() - data is auto-fetched */
+  fetchProviderTemplates: () => Promise<void>;
+  /** @deprecated Use useAvailableModels() - data is auto-fetched */
+  fetchAvailableModels: () => Promise<void>;
+  /** @deprecated Use useCreateProvider().mutateAsync instead */
+  addProvider: (provider: unknown) => Promise<void>;
+  /** @deprecated Use useUpdateProvider().mutateAsync instead */
+  updateProvider: (id: string, provider: unknown) => Promise<void>;
+  /** @deprecated Use useDeleteProvider().mutateAsync instead */
+  removeProvider: (id: string) => Promise<void>;
 }
 
 export const createProviderSlice: StateCreator<
@@ -44,54 +80,10 @@ export const createProviderSlice: StateCreator<
   [],
   ProviderSlice
 > = (set, get) => ({
-  llmProviders: [],
-  llmProvidersLoading: false,
-  providerTemplates: [],
-  templatesLoading: false,
-  availableModels: {},
-  availableModelsLoading: false,
+  // UI State
   userDefaultProviderId: null,
 
-  fetchProviderTemplates: async () => {
-    set({ templatesLoading: true });
-    try {
-      const templates = await llmProviderService.getProviderTemplates();
-      set({ providerTemplates: templates, templatesLoading: false });
-    } catch (error) {
-      console.error("Failed to fetch provider templates:", error);
-      set({ templatesLoading: false });
-    }
-  },
-
-  fetchMyProviders: async () => {
-    set({ llmProvidersLoading: true });
-    try {
-      const providers = await llmProviderService.getMyProviders();
-      set({ llmProviders: providers, llmProvidersLoading: false });
-
-      // Initialize preferences on first load and handle migration
-      get().initializeProviderPreferences();
-      ProviderPreferencesManager.migrateFromDatabaseDefault(providers);
-
-      // Also fetch available models for these providers
-      get().fetchAvailableModels();
-    } catch (error) {
-      console.error("Failed to fetch your providers:", error);
-      set({ llmProvidersLoading: false });
-    }
-  },
-
-  fetchAvailableModels: async () => {
-    set({ availableModelsLoading: true });
-    try {
-      const models = await llmProviderService.getAvailableModels();
-      set({ availableModels: models, availableModelsLoading: false });
-    } catch (error) {
-      console.error("Failed to fetch available models:", error);
-      set({ availableModelsLoading: false });
-    }
-  },
-
+  // UI State Methods
   initializeProviderPreferences: () => {
     const defaultProviderId = ProviderPreferencesManager.getDefaultProviderId();
     set({ userDefaultProviderId: defaultProviderId });
@@ -102,78 +94,71 @@ export const createProviderSlice: StateCreator<
     set({ userDefaultProviderId: providerId });
   },
 
-  getUserDefaultProvider: () => {
-    const { llmProviders, userDefaultProviderId } = get();
+  getUserDefaultProvider: (providers) => {
+    const { userDefaultProviderId } = get();
     if (!userDefaultProviderId) return null;
-    return llmProviders.find((p) => p.id === userDefaultProviderId) || null;
+    return providers.find((p) => p.id === userDefaultProviderId) || null;
   },
 
-  resolveProviderForAgent: (agent) => {
-    const { llmProviders } = get();
-    return resolveProviderForAgent(agent, llmProviders);
+  resolveProviderForAgent: (agent, providers) => {
+    return resolveProviderForAgent(agent, providers);
   },
 
-  addProvider: async (provider) => {
-    try {
-      const newProvider = await llmProviderService.createProvider(provider);
-      set((state: ProviderSlice) => {
-        state.llmProviders.push(newProvider);
-      });
+  // ========== DEPRECATED - Backward compatibility stubs ==========
 
-      // Auto-set as default if it's the first user provider and no default is set
-      const { llmProviders, userDefaultProviderId } = get();
-      const userProviders = llmProviders.filter((p) => !p.is_system);
-      if (userProviders.length === 1 && !userDefaultProviderId) {
-        get().setUserDefaultProvider(newProvider.id);
-      }
+  // Empty state - components should migrate to TanStack Query
+  llmProviders: [],
+  llmProvidersLoading: false,
+  providerTemplates: [],
+  templatesLoading: false,
+  availableModels: {},
+  availableModelsLoading: false,
 
-      get().closeAddLlmProviderModal();
-      get().closeSettingsModal();
-
-      // Refresh available models
-      get().fetchAvailableModels();
-    } catch (error) {
-      console.error("Failed to add provider:", error);
-      throw error;
-    }
+  // No-op functions - components should migrate to TanStack Query
+  fetchProviderTemplates: async () => {
+    console.warn(
+      "[DEPRECATED] fetchProviderTemplates is deprecated. Use useProviderTemplates() hook instead.",
+    );
   },
 
-  updateProvider: async (id, provider) => {
-    try {
-      const updatedProvider = await llmProviderService.updateProvider(
-        id,
-        provider,
-      );
-      set((state: ProviderSlice) => {
-        const index = state.llmProviders.findIndex((p) => p.id === id);
-        if (index !== -1) {
-          state.llmProviders[index] = updatedProvider;
-        }
-      });
-    } catch (error) {
-      console.error("Failed to update provider:", error);
-      throw error;
-    }
+  fetchMyProviders: async () => {
+    console.warn(
+      "[DEPRECATED] fetchMyProviders is deprecated. Use useMyProviders() hook instead.",
+    );
+    // Still call initializeProviderPreferences for backward compatibility
+    get().initializeProviderPreferences();
   },
 
-  removeProvider: async (id) => {
-    try {
-      await llmProviderService.deleteProvider(id);
-      set((state: ProviderSlice) => {
-        state.llmProviders = state.llmProviders.filter((p) => p.id !== id);
-      });
+  fetchAvailableModels: async () => {
+    console.warn(
+      "[DEPRECATED] fetchAvailableModels is deprecated. Use useAvailableModels() hook instead.",
+    );
+  },
 
-      // Clear default if we deleted the default provider
-      const { userDefaultProviderId } = get();
-      if (userDefaultProviderId === id) {
-        get().setUserDefaultProvider(null);
-      }
+  addProvider: async () => {
+    console.warn(
+      "[DEPRECATED] addProvider is deprecated. Use useCreateProvider().mutateAsync instead.",
+    );
+    throw new Error(
+      "addProvider is deprecated. Use useCreateProvider().mutateAsync instead.",
+    );
+  },
 
-      // Refresh available models
-      get().fetchAvailableModels();
-    } catch (error) {
-      console.error("Failed to remove provider:", error);
-      throw error;
-    }
+  updateProvider: async () => {
+    console.warn(
+      "[DEPRECATED] updateProvider is deprecated. Use useUpdateProvider().mutateAsync instead.",
+    );
+    throw new Error(
+      "updateProvider is deprecated. Use useUpdateProvider().mutateAsync instead.",
+    );
+  },
+
+  removeProvider: async () => {
+    console.warn(
+      "[DEPRECATED] removeProvider is deprecated. Use useDeleteProvider().mutateAsync instead.",
+    );
+    throw new Error(
+      "removeProvider is deprecated. Use useDeleteProvider().mutateAsync instead.",
+    );
   },
 });

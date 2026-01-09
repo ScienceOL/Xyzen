@@ -132,8 +132,9 @@ export const KnowledgeLayout = () => {
     if (e.target.files && e.target.files.length > 0) {
       try {
         const files = Array.from(e.target.files);
-        // Determine folder ID: only pass if in folders tab
         const folderId = activeTab === "folders" ? currentFolderId : null;
+        const knowledgeSetId =
+          activeTab === "knowledge" ? currentKnowledgeSetId : null;
 
         // Validate files before upload
         for (const file of files) {
@@ -169,7 +170,13 @@ export const KnowledgeLayout = () => {
             continue;
           }
 
-          await fileService.uploadFile(file, "private", undefined, folderId);
+          await fileService.uploadFile(
+            file,
+            "private",
+            undefined,
+            folderId,
+            knowledgeSetId,
+          );
         }
         // Trigger refresh
         setRefreshKey((prev) => prev + 1);

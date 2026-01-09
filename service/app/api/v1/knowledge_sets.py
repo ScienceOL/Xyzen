@@ -12,6 +12,7 @@ from app.models.knowledge_set import (
     KnowledgeSetRead,
     KnowledgeSetUpdate,
     KnowledgeSetWithFileCount,
+    BulkLinkFilesRequest,
 )
 from app.repos.file import FileRepository
 from app.repos.knowledge_set import KnowledgeSetRepository
@@ -333,7 +334,7 @@ async def get_files_in_knowledge_set(
 @router.post("/{knowledge_set_id}/files/bulk-link")
 async def bulk_link_files_to_knowledge_set(
     knowledge_set_id: UUID,
-    file_ids: list[UUID],
+    request: BulkLinkFilesRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -352,7 +353,7 @@ async def bulk_link_files_to_knowledge_set(
             raise ErrCode.KNOWLEDGE_SET_ACCESS_DENIED.with_messages("Access denied")
 
         # Verify all files exist and user has access
-        for file_id in file_ids:
+        for file_id in request.file_ids:
             file = await file_repo.get_file_by_id(file_id)
             if not file:
                 raise ErrCode.FILE_NOT_FOUND.with_messages(f"File {file_id} not found")
@@ -360,7 +361,9 @@ async def bulk_link_files_to_knowledge_set(
                 raise ErrCode.FILE_ACCESS_DENIED.with_messages(f"File {file_id} access denied")
 
         # Bulk link
-        successful, skipped = await knowledge_set_repo.bulk_link_files_to_knowledge_set(file_ids, knowledge_set_id)
+        successful, skipped = await knowledge_set_repo.bulk_link_files_to_knowledge_set(
+            request.file_ids, knowledge_set_id
+        )
         await db.commit()
 
         return {
@@ -382,7 +385,7 @@ async def bulk_link_files_to_knowledge_set(
 @router.post("/{knowledge_set_id}/files/bulk-unlink")
 async def bulk_unlink_files_from_knowledge_set(
     knowledge_set_id: UUID,
-    file_ids: list[UUID],
+    request: BulkLinkFilesRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -400,7 +403,7 @@ async def bulk_unlink_files_from_knowledge_set(
             raise ErrCode.KNOWLEDGE_SET_ACCESS_DENIED.with_messages("Access denied")
 
         # Bulk unlink
-        count = await knowledge_set_repo.bulk_unlink_files_from_knowledge_set(file_ids, knowledge_set_id)
+        count = await knowledge_set_repo.bulk_unlink_files_from_knowledge_set(request.file_ids, knowledge_set_id)
         await db.commit()
 
         return {

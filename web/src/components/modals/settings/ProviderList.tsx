@@ -4,6 +4,7 @@ import {
   GoogleIcon,
   OpenAIIcon,
 } from "@/assets/icons";
+import { getProviderDisplayName } from "@/utils/providerDisplayNames";
 import {
   Tabs,
   TabsHighlight,
@@ -14,31 +15,27 @@ import {
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import { useXyzen } from "@/store";
 import {
+  useMyProviders,
+  useProviderTemplates,
+  useDeleteProvider,
+} from "@/hooks/queries";
+import {
   CheckCircleIcon,
   PlusCircleIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 export const ProviderList = () => {
   const { t } = useTranslation();
-  const {
-    providerTemplates,
-    templatesLoading,
-    llmProviders,
-    llmProvidersLoading,
-    fetchProviderTemplates,
-    fetchMyProviders,
-    setSelectedProvider,
-    selectedProviderId,
-    removeProvider,
-  } = useXyzen();
+  const { setSelectedProvider, selectedProviderId } = useXyzen();
 
-  useEffect(() => {
-    fetchProviderTemplates();
-    fetchMyProviders();
-  }, [fetchProviderTemplates, fetchMyProviders]);
+  // Use TanStack Query hooks for provider data
+  const { data: llmProviders = [], isLoading: llmProvidersLoading } =
+    useMyProviders();
+  const { data: providerTemplates = [], isLoading: templatesLoading } =
+    useProviderTemplates();
+  const deleteProviderMutation = useDeleteProvider();
 
   const getProviderIcon = (type: string) => {
     const iconClass = "h-5 w-5";
@@ -53,6 +50,14 @@ export const ProviderList = () => {
         return <AzureIcon className={iconClass} />;
       case "anthropic":
         return <AnthropicIcon className={iconClass} />;
+      case "gpugeek":
+        return (
+          <div className="font-bold text-amber-600 dark:text-amber-400">X</div>
+        );
+      case "qwen":
+        return (
+          <div className="font-bold text-cyan-600 dark:text-cyan-400">Q</div>
+        );
       default:
         return <OpenAIIcon className={iconClass} />;
     }
@@ -120,7 +125,12 @@ export const ProviderList = () => {
                             {getProviderIcon(provider.provider_type)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate">{provider.name}</div>
+                            <div className="truncate">
+                              {/*{provider.is_system
+                                ? getProviderDisplayName(provider.provider_type)
+                                : provider.name}*/}
+                              {getProviderDisplayName(provider.provider_type)}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -142,7 +152,7 @@ export const ProviderList = () => {
                               }),
                             )
                           ) {
-                            removeProvider(provider.id);
+                            deleteProviderMutation.mutate(provider.id);
                           }
                         }}
                         className="rounded-lg p-2 text-neutral-400 opacity-0 transition-opacity hover:bg-red-100 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-900/30 dark:hover:text-red-400"
@@ -181,7 +191,7 @@ export const ProviderList = () => {
                     <div className="flex-1 overflow-hidden">
                       <div className="flex items-center justify-between">
                         <span className="truncate text-sm font-medium text-neutral-900 dark:text-white">
-                          {template.display_name}
+                          {getProviderDisplayName(template.type)}
                         </span>
                         <PlusCircleIcon className="h-5 w-5 text-neutral-400" />
                       </div>

@@ -377,12 +377,7 @@ class GeneratedFileHandler:
         Raises:
             ValueError: If image_data format is invalid
         """
-        from app.core.storage import (
-            FileCategory,
-            FileScope,
-            generate_storage_key,
-            get_storage_service,
-        )
+        from app.core.storage import FileCategory, FileScope, generate_storage_key, get_storage_service
         from app.models.file import FileCreate
         from app.repos.file import FileRepository
 
@@ -481,6 +476,11 @@ class GeneratedFileHandler:
 
             except Exception as e:
                 logger.error(f"Failed to process generated image: {e}")
+
+        # Ensure generated file records are visible to subsequent HTTP requests
+        # (e.g., browser immediately fetching /files/{id}/download) before we emit events.
+        if generated_files:
+            await db.commit()
 
         return generated_files, files_data
 

@@ -1,154 +1,19 @@
 import { authService } from "@/service/authService";
 import xyzenService from "@/service/xyzenService";
 import { sessionService } from "@/service/sessionService";
-import { parseToolMessage } from "@/utils/toolMessageParser";
 import { providerCore } from "@/core/provider";
+import { generateClientId, groupToolMessagesWithAssistant } from "@/core/chat";
 import type { StateCreator } from "zustand";
 import type {
   ChatChannel,
   ChatHistoryItem,
-  Message,
   SessionResponse,
-  ToolCall,
   TopicResponse,
   XyzenState,
 } from "../types";
 
-/**
- * Group consecutive tool messages with their preceding assistant message
- * This makes history look identical to live chat experience
- * Tool messages that can't be grouped are kept as standalone
- */
-const generateClientId = () =>
-  `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
-  const result: Message[] = [];
-
-  const toolCallLookup = new Map<
-    string,
-    { toolCall: ToolCall; message: Message }
-  >();
-
-  const cloneToolCall = (toolCall: ToolCall): ToolCall => ({
-    ...toolCall,
-    arguments: { ...(toolCall.arguments || {}) },
-  });
-
-  const cloneMessage = (message: Message): Message => {
-    const backendThinkingContent = (
-      message as Message & { thinking_content?: string }
-    ).thinking_content;
-
-    return {
-      ...message,
-      toolCalls: message.toolCalls
-        ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
-        : undefined,
-      attachments: message.attachments ? [...message.attachments] : undefined,
-      citations: message.citations ? [...message.citations] : undefined,
-      // Map thinking_content from backend to thinkingContent for frontend
-      thinkingContent: backendThinkingContent ?? message.thinkingContent,
-    };
-  };
-
-  for (const msg of messages) {
-    if (msg.role !== "tool") {
-      const cloned = cloneMessage(msg);
-      result.push(cloned);
-
-      if (cloned.toolCalls) {
-        cloned.toolCalls.forEach((toolCall) => {
-          toolCallLookup.set(toolCall.id, { toolCall, message: cloned });
-        });
-      }
-      continue;
-    }
-
-    const parsed = parseToolMessage(msg.content);
-    if (!parsed) {
-      result.push(cloneMessage(msg));
-      continue;
-    }
-
-    if (parsed.event === "tool_call_request") {
-      const toolCallId =
-        parsed.id || parsed.toolCallId || msg.id || crypto.randomUUID();
-      const toolCall: ToolCall = {
-        id: toolCallId,
-        name: parsed.name || "Unknown Tool",
-        description: parsed.description,
-        arguments: { ...(parsed.arguments || {}) },
-        status: (parsed.status as ToolCall["status"]) || "waiting_confirmation",
-        timestamp: parsed.timestamp
-          ? new Date(parsed.timestamp).toISOString()
-          : msg.created_at,
-      };
-
-      const toolMessage: Message = {
-        id: msg.id || `tool-call-${toolCallId}`,
-        clientId: msg.clientId,
-        role: "assistant",
-        content: "",
-        created_at: msg.created_at,
-        toolCalls: [toolCall],
-      };
-
-      result.push(toolMessage);
-      toolCallLookup.set(toolCallId, { toolCall, message: toolMessage });
-      continue;
-    }
-
-    const toolCallId = parsed.toolCallId || parsed.id || msg.id || "";
-    if (!toolCallId) {
-      continue;
-    }
-
-    let existingEntry = toolCallLookup.get(toolCallId);
-    if (!existingEntry) {
-      const toolCall: ToolCall = {
-        id: toolCallId,
-        name: "工具调用",
-        arguments: {},
-        status: (parsed.status as ToolCall["status"]) || "completed",
-        timestamp: msg.created_at,
-      };
-
-      const toolMessage: Message = {
-        id: msg.id || `tool-response-${toolCallId}`,
-        clientId: msg.clientId,
-        role: "assistant",
-        content: "工具调用更新",
-        created_at: msg.created_at,
-        toolCalls: [toolCall],
-      };
-
-      result.push(toolMessage);
-      existingEntry = { toolCall, message: toolMessage };
-      toolCallLookup.set(toolCallId, existingEntry);
-    }
-
-    const { toolCall } = existingEntry;
-
-    if (parsed.status) {
-      toolCall.status = parsed.status as ToolCall["status"];
-    }
-
-    if (parsed.result !== undefined) {
-      toolCall.result =
-        typeof parsed.result === "string"
-          ? parsed.result
-          : JSON.stringify(parsed.result);
-    }
-
-    if (parsed.error) {
-      toolCall.error = parsed.error;
-      toolCall.status = "failed";
-    }
-  }
-
-  return result;
-}
+// NOTE: groupToolMessagesWithAssistant and generateClientId have been moved to
+// @/core/chat/messageProcessor.ts as part of the frontend refactor.
 
 export interface ChatSlice {
   // Chat panel state

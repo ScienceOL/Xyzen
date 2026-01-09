@@ -16,6 +16,8 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
 
+import { useXyzen } from "@/store";
+
 // Lazy load MermaidRenderer to avoid SSR issues with mermaid library
 const MermaidRenderer = React.lazy(() =>
   import("@/components/preview/renderers/MermaidRenderer").then((m) => ({
@@ -435,6 +437,124 @@ interface MarkdownProps {
   className?: string; // optional extra classes for the markdown root
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const isXyzenDownloadUrl = (src: string) =>
+  src.includes("/xyzen/api/v1/files/") && src.includes("/download");
+
+const MarkdownImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
+  props,
+) => {
+  const { src, alt, ...rest } = props;
+  const backendUrl = useXyzen((state) => state.backendUrl);
+  const token = useXyzen((state) => state.token);
+  const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
+  const [failed, setFailed] = React.useState(false);
+
+  const fullSrc = React.useMemo(() => {
+    if (!src) return "";
+    if (src.startsWith("data:") || src.startsWith("blob:")) return src;
+    if (src.startsWith("http://") || src.startsWith("https://")) return src;
+    const base =
+      backendUrl ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    return `${base}${src.startsWith("/") ? src : `/${src}`}`;
+  }, [src, backendUrl]);
+
+  // Only intercept our authenticated download endpoint.
+  const shouldAuthFetch =
+    !!fullSrc &&
+    !!token &&
+    (fullSrc.startsWith("/") || fullSrc.startsWith(backendUrl || "")) &&
+    isXyzenDownloadUrl(fullSrc);
+
+  React.useEffect(() => {
+    if (!shouldAuthFetch) {
+      setFailed(false);
+      setBlobUrl(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    const run = async () => {
+      setFailed(false);
+
+      // Retry briefly to cover the "created but not yet committed" window.
+      const delays = [250, 750, 1500];
+
+      for (let attempt = 0; attempt < delays.length + 1; attempt++) {
+        try {
+          const res = await fetch(fullSrc, {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal,
+          });
+
+          if (res.ok) {
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            if (!active) {
+              URL.revokeObjectURL(url);
+              return;
+            }
+            setBlobUrl(url);
+            return;
+          }
+
+          // Retry only on transient statuses.
+          if (![404, 500, 502, 503].includes(res.status)) {
+            break;
+          }
+        } catch (e) {
+          if ((e as Error)?.name === "AbortError") return;
+        }
+
+        if (attempt < delays.length) {
+          await sleep(delays[attempt]);
+        }
+      }
+
+      if (active) setFailed(true);
+    };
+
+    run();
+
+    return () => {
+      active = false;
+      controller.abort();
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [shouldAuthFetch, fullSrc, token]);
+
+  if (!src) return null;
+
+  if (!shouldAuthFetch) {
+    return <img src={fullSrc} alt={alt} {...rest} />;
+  }
+
+  if (blobUrl) {
+    return <img src={blobUrl} alt={alt} {...rest} />;
+  }
+
+  if (failed) {
+    return (
+      <span className="text-xs text-neutral-500 dark:text-neutral-400">
+        Image failed to load
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-xs text-neutral-500 dark:text-neutral-400">
+      Loading image...
+    </span>
+  );
+};
+
 const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
   const { content = "", className } = props;
 
@@ -538,6 +658,9 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
             {children}
           </code>
         );
+      },
+      img(props: React.ComponentPropsWithoutRef<"img">) {
+        return <MarkdownImage {...props} />;
       },
     }),
     [isDark],

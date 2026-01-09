@@ -104,3 +104,9 @@ class KnowledgeSetWithFileCount(KnowledgeSetRead):
         default=0,
         description="Number of files linked to this knowledge set",
     )
+
+
+class BulkLinkFilesRequest(SQLModel):
+    """Model for bulk linking files to a knowledge set"""
+
+    file_ids: list[UUID]

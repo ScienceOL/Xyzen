@@ -1,14 +1,13 @@
-from typing import Any, NotRequired, cast
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from litellm.types.utils import ModelInfo
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCodeError, handle_auth_error
 from app.configs import configs
 from app.core.auth import AuthorizationService, get_auth_service
-from app.core.llm.service import LiteLLMService
+from app.core.model_registry import ModelInfo, ModelsDevService
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.models.provider import ProviderCreate, ProviderRead, ProviderUpdate
@@ -28,8 +27,10 @@ def _sanitize_provider_read(provider: Any) -> ProviderRead:
     return ProviderRead(**provider_dict)
 
 
-class DefaultModelInfo(ModelInfo, total=False):
-    provider_type: NotRequired[str]
+class DefaultModelInfo(ModelInfo):
+    """Extended ModelInfo with provider_type for default model endpoint."""
+
+    provider_type: str | None = None
 
 
 @router.get("/default-model", response_model=DefaultModelInfo)
@@ -52,22 +53,40 @@ async def get_default_model_config() -> DefaultModelInfo:
     model = default_cfg.model
     provider_type = default_provider.value
 
-    model_info = LiteLLMService.get_model_info(model)
+    model_info = await ModelsDevService.get_model_info_for_key(model)
 
     if not model_info:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get model info for default model: {model}",
+        # Return a basic ModelInfo if not found in models.dev
+        return DefaultModelInfo(
+            key=model,
+            provider_type=provider_type,
         )
 
-    # Add key and provider_type to ModelInfo
-    result: dict[str, Any] = dict(model_info)
-    result["key"] = model
-    result["provider_type"] = provider_type
-    # Add supported_openai_params if missing (required by ModelInfo)
-    if "supported_openai_params" not in result:
-        result["supported_openai_params"] = None
-    return cast(DefaultModelInfo, result)
+    # Create DefaultModelInfo with provider_type
+    return DefaultModelInfo(
+        key=model,
+        name=model_info.name,
+        max_tokens=model_info.max_tokens,
+        max_input_tokens=model_info.max_input_tokens,
+        max_output_tokens=model_info.max_output_tokens,
+        input_cost_per_token=model_info.input_cost_per_token,
+        output_cost_per_token=model_info.output_cost_per_token,
+        litellm_provider=model_info.litellm_provider,
+        mode=model_info.mode,
+        supports_function_calling=model_info.supports_function_calling,
+        supports_parallel_function_calling=model_info.supports_parallel_function_calling,
+        supports_vision=model_info.supports_vision,
+        supports_audio_input=model_info.supports_audio_input,
+        supports_audio_output=model_info.supports_audio_output,
+        supports_reasoning=model_info.supports_reasoning,
+        supports_structured_output=model_info.supports_structured_output,
+        supports_web_search=model_info.supports_web_search,
+        model_family=model_info.model_family,
+        knowledge_cutoff=model_info.knowledge_cutoff,
+        release_date=model_info.release_date,
+        open_weights=model_info.open_weights,
+        provider_type=provider_type,
+    )
 
 
 @router.get("/templates", response_model=dict[str, list[ModelInfo]])
@@ -75,17 +94,17 @@ async def get_provider_templates() -> dict[str, list[ModelInfo]]:
     """
     Get available provider templates with metadata for the UI.
     Returns configuration templates for all supported LLM providers.
-    Dynamically fetches models from LiteLLM instead of using hardcoded config.
+    Dynamically fetches models from models.dev.
     """
-    return LiteLLMService.get_all_providers_with_models()
+    return await ModelsDevService.get_all_providers_with_models()
 
 
 @router.get("/models", response_model=list[str])
 async def get_supported_models() -> list[str]:
     """
-    Get a list of all models supported by the system (via LiteLLM).
+    Get a list of all models supported by the system (via models.dev).
     """
-    return LiteLLMService.list_supported_models()
+    return await ModelsDevService.list_all_models()
 
 
 @router.get("/available-models", response_model=dict[str, list[ModelInfo]])
@@ -112,7 +131,7 @@ async def get_available_models_for_user(
     result: dict[str, list[ModelInfo]] = {}
 
     for provider in providers:
-        models = LiteLLMService.get_models_by_provider(provider.provider_type)
+        models = await ModelsDevService.get_models_by_provider_type(provider.provider_type)
         if models:
             result[str(provider.id)] = models
 
@@ -144,7 +163,7 @@ async def get_provider_available_models(
     except ErrCodeError as e:
         raise handle_auth_error(e)
 
-    models = LiteLLMService.get_models_by_provider(str(provider.provider_type))
+    models = await ModelsDevService.get_models_by_provider_type(str(provider.provider_type))
     return models
 
 

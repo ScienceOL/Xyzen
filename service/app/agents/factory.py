@@ -73,7 +73,7 @@ async def create_chat_agent(
 
     # Create LangChain model WITH provider-side web search binding.
     # This ensures OpenAI gets `web_search_preview` and Gemini/Vertex gets `google_search`.
-    llm: BaseChatModel = user_provider_manager.create_langchain_model(
+    llm: BaseChatModel = await user_provider_manager.create_langchain_model(
         provider_id,
         model=model_name,
         google_search_enabled=google_search_enabled,

@@ -326,5 +326,13 @@
         "description": "复刻会创建一个独立的副本。你的修改不会影响原始助手。"
       }
     }
+  },
+  "knowledge": {
+    "sidebar": {
+      "deleteKnowledgeSet": "删除知识库",
+      "deleteTitle": "删除知识库",
+      "deleteConfirm": "确定要删除「{{name}}」吗？文件不会被删除，仅删除知识库。",
+      "deleteConfirmButton": "删除"
+    }
   }
 }

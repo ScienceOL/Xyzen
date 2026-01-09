@@ -29,6 +29,10 @@ def _select_title_generation_model(
         return "gemini-2.5-flash"
     if provider_type == ProviderType.AZURE_OPENAI:
         return "gpt-5-mini"
+    if provider_type == ProviderType.GPUGEEK:
+        return "Vendor2/Gemini-2.5-Flash"
+    if provider_type == ProviderType.QWEN:
+        return "qwen-flash"
     return session_model or default_model
 
 
@@ -95,7 +99,7 @@ async def generate_and_update_topic_title(
                 f"{message_text}"
             )
 
-            llm = user_provider_manager.create_langchain_model(provider_id, model_name)
+            llm = await user_provider_manager.create_langchain_model(provider_id, model_name)
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             logger.debug(f"LLM response: {response}")
 

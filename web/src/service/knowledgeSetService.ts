@@ -252,7 +252,7 @@ class KnowledgeSetService {
           "Content-Type": "application/json",
           ...getAuthHeaders(),
         },
-        body: JSON.stringify(fileIds),
+        body: JSON.stringify({ file_ids: fileIds }),
       },
     );
 
@@ -281,7 +281,7 @@ class KnowledgeSetService {
           "Content-Type": "application/json",
           ...getAuthHeaders(),
         },
-        body: JSON.stringify(fileIds),
+        body: JSON.stringify({ file_ids: fileIds }),
       },
     );
 

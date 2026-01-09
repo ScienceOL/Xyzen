@@ -4,9 +4,10 @@ from typing import Any, cast
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_qwq import ChatQwen
 
 from app.common.code import ErrCode
-from app.core.llm.service import LiteLLMService
+from app.core.model_registry import ModelInfo, ModelsDevService
 from app.schemas.provider import LLMCredentials, ProviderType
 
 from .config import ModelInstance
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ChatModelFactory:
-    def create(
+    async def create(
         self, model: str, provider: ProviderType | None, credentials: LLMCredentials, **runtime_kwargs: dict[str, Any]
     ) -> ModelInstance:
         """
@@ -25,8 +26,12 @@ class ChatModelFactory:
         :param credentials: 用户的 API Key
         :param runtime_kwargs: 运行时参数 (如 temperature, streaming, callbacks)
         """
-        # Use LiteLLM to get model info
-        config = LiteLLMService.get_model_info(model)
+        # Use ModelsDevService to get model info
+        config = await ModelsDevService.get_model_info_for_key(model)
+
+        # If not found, create a basic config
+        if not config:
+            config = ModelInfo(key=model)
 
         if not provider:
             raise ErrCode.MODEL_NOT_SUPPORTED.with_messages("Provider must be specified")
@@ -44,6 +49,12 @@ class ChatModelFactory:
             case ProviderType.GOOGLE_VERTEX:
                 logger.info(f"Creating Google Vertex model {model}")
                 llm = self._create_google_vertex(model, credentials, runtime_kwargs)
+            case ProviderType.GPUGEEK:
+                logger.info(f"Creating GPUGeek model {model}")
+                llm = self._create_gpugeek(model, credentials, runtime_kwargs)
+            case ProviderType.QWEN:
+                logger.info(f"Creating Qwen model {model}")
+                llm = self._create_qwen(model, credentials, runtime_kwargs)
 
         return ModelInstance(llm=llm, config=config)
 
@@ -158,5 +169,67 @@ class ChatModelFactory:
         if google_search_enabled:
             logger.info(f"Enabling built-in web search for Vertex AI model {model}")
             llm = cast(BaseChatModel, llm.bind_tools([{"google_search": {}}]))
+
+        return llm
+
+    def _create_gpugeek(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
+        """
+        Create GPUGeek model instance using OpenAI-compatible API.
+
+        GPUGeek provides an OpenAI-compatible endpoint that supports multiple model vendors.
+        """
+        # Get base_url from credentials, default to GPUGeek endpoint
+        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
+        base_url = credentials.get("api_endpoint", "https://api.gpugeek.com/v1")
+        if "image" in model.lower():
+            base_url = "https://api.gpugeek.com/v1/predictions"
+
+        if "deepseek-r1" in model.lower():
+            llm = ChatOpenAI(
+                model=model,
+                api_key=credentials["api_key"],
+                base_url=base_url,
+                extra_body={"thinking": {"type": "enabled"}},
+                **runtime_kwargs,
+            )
+        else:
+            llm = ChatOpenAI(
+                model=model,
+                api_key=credentials["api_key"],
+                base_url=base_url,
+                **runtime_kwargs,
+            )
+
+        if web_search_enabled:
+            logger.info(f"Enabling native web search for OpenAI model {model}")
+            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
+
+        return llm
+
+    def _create_qwen(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
+        """
+        Create Qwen model instance.
+
+        Qwen provides OpenAI-compatible API through DashScope.
+        For vision models, we use langchain-qwq's ChatQwen integration.
+        """
+        if "dashscope" in model:
+            model = model.replace("dashscope/", "")
+        # Extract generic search flag
+        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
+
+        # Get base_url from credentials, default to DashScope endpoint
+        base_url = credentials.get("api_endpoint", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+
+        llm = ChatQwen(
+            model=model,
+            api_key=credentials["api_key"],
+            base_url=base_url,
+            **runtime_kwargs,
+        )
+
+        if web_search_enabled:
+            logger.info(f"Enabling native web search for Qwen model {model}")
+            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
 
         return llm

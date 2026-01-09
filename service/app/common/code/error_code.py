@@ -244,6 +244,19 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
     """Convert ErrCodeError to HTTP exception"""
     # Map error codes to HTTP status codes
     status_map = {
+        # 401 errors
+        ErrCode.AUTHENTICATION_REQUIRED: 401,
+        ErrCode.INVALID_TOKEN: 401,
+        ErrCode.TOKEN_EXPIRED: 401,
+        ErrCode.TOKEN_REVOKED: 401,
+        ErrCode.AUTHENTICATION_FAILED: 401,
+        # 400 errors
+        ErrCode.INVALID_REQUEST: 400,
+        ErrCode.MISSING_REQUIRED_FIELD: 400,
+        ErrCode.INVALID_FIELD_VALUE: 400,
+        ErrCode.INVALID_UUID_FORMAT: 400,
+        ErrCode.PAYLOAD_TOO_LARGE: 413,
+        ErrCode.UNSUPPORTED_CONTENT_TYPE: 415,
         # 404 errors
         ErrCode.PROVIDER_NOT_FOUND: 404,
         ErrCode.AGENT_NOT_FOUND: 404,
@@ -251,6 +264,7 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.SESSION_NOT_FOUND: 404,
         ErrCode.GRAPH_AGENT_NOT_FOUND: 404,
         ErrCode.FOLDER_NOT_FOUND: 404,
+        ErrCode.FILE_NOT_FOUND: 404,
         # 403 errors
         ErrCode.PROVIDER_ACCESS_DENIED: 403,
         ErrCode.PROVIDER_NOT_OWNED: 403,
@@ -262,6 +276,7 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.GRAPH_AGENT_ACCESS_DENIED: 403,
         ErrCode.GRAPH_AGENT_NOT_OWNED: 403,
         ErrCode.FOLDER_ACCESS_DENIED: 403,
+        ErrCode.FILE_ACCESS_DENIED: 403,
         # 402 errors
         ErrCode.INSUFFICIENT_BALANCE: 402,
         # 404 errors (redemption)

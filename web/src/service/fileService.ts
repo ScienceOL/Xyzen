@@ -84,6 +84,7 @@ class FileService {
     scope: string = "private",
     category?: string,
     folderId?: string | null,
+    knowledgeSetId?: string | null,
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<FileUploadResponse> {
     const formData = new FormData();
@@ -94,6 +95,9 @@ class FileService {
     }
     if (folderId) {
       formData.append("folder_id", folderId);
+    }
+    if (knowledgeSetId) {
+      formData.append("knowledge_set_id", knowledgeSetId);
     }
 
     const xhr = new XMLHttpRequest();

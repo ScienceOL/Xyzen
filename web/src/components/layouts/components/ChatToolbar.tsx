@@ -1,22 +1,10 @@
 "use client";
 
-import McpIcon from "@/assets/McpIcon";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/animate-ui/components/animate/tooltip";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/animate-ui/components/radix/sheet";
-import { FileUploadButton, FileUploadPreview } from "@/components/features";
+import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
+import { FileUploadPreview } from "@/components/features";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
+import { useMyProviders, useAvailableModels } from "@/hooks/queries";
 import type { ModelInfo } from "@/types/llmProvider";
 import {
   type DragEndEvent,
@@ -27,14 +15,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  ArrowPathIcon,
-  ClockIcon,
-  EllipsisHorizontalIcon,
-  PlusIcon,
-} from "@heroicons/react/24/outline";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { AnimatePresence, motion } from "motion/react";
+import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KnowledgeSelector } from "./KnowledgeSelector";
 import { ModelSelector } from "./ModelSelector";
@@ -42,7 +23,13 @@ import {
   SearchMethodSelector,
   type SearchMethod,
 } from "./SearchMethodSelector";
-import SessionHistory from "./SessionHistory";
+// Extracted components from ./ChatToolbar/ directory
+import {
+  McpToolsButton,
+  ToolbarActions,
+  MobileMoreMenu,
+  HistorySheetButton,
+} from "./ChatToolbar/index";
 
 interface ChatToolbarProps {
   onShowHistory: () => void;
@@ -82,8 +69,6 @@ export default function ChatToolbar({
     channels,
     agents,
     mcpServers,
-    llmProviders,
-    availableModels,
     updateSessionProviderAndModel,
     updateSessionConfig,
     uploadedFiles,
@@ -93,6 +78,10 @@ export default function ChatToolbar({
     quickAddBuiltinServer,
     updateAgent,
   } = useXyzen();
+
+  // Use TanStack Query hooks for provider data
+  const { data: llmProviders = [] } = useMyProviders();
+  const { data: availableModels = {} } = useAvailableModels();
 
   // All user agents for lookup
   const allAgents = useMemo(() => {
@@ -549,111 +538,32 @@ export default function ChatToolbar({
         {uploadedFiles.length > 0 && (
           <FileUploadPreview className="border-b border-neutral-200 dark:border-neutral-800" />
         )}
-
-        <AnimatePresence>
-          {showMoreMenu && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="absolute bottom-full left-0 right-0 mx-2 mb-2 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-1.5"
-            >
-              <div className="flex flex-col gap-1">
-                {/* Search Method Selector */}
-                {activeChatChannel && (
-                  <div className="w-full">
-                    <SearchMethodSelector
-                      method={searchMethod}
-                      onMethodChange={(method) => {
-                        handleSearchMethodChange(method);
-                        setShowMoreMenu(false);
-                      }}
-                      supportsBuiltinSearch={supportsWebSearch}
-                      mcpEnabled={!!currentMcpInfo?.servers.length}
-                      onMcpConflict={handleMcpConflict}
-                    />
-                  </div>
-                )}
-
-                {/* Knowledge Selector */}
-                {activeChatChannel && (
-                  <div className="w-full">
-                    <KnowledgeSelector
-                      isConnected={!!isKnowledgeMcpConnected}
-                      onConnect={() => {
-                        handleConnectKnowledge();
-                        setShowMoreMenu(false);
-                      }}
-                      onDisconnect={() => {
-                        handleDisconnectKnowledge();
-                        setShowMoreMenu(false);
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* MCP Tool Info */}
-                {currentMcpInfo && (
-                  <div className="w-full px-2.5 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
-                    <div className="flex items-center justify-between text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                      <div className="flex items-center gap-1.5">
-                        <McpIcon className="h-3.5 w-3.5" />
-                        <span>MCP 工具</span>
-                      </div>
-                      {currentMcpInfo.servers.length > 0 && (
-                        <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                          {currentMcpInfo.servers.reduce(
-                            (total, server) =>
-                              total + (server.tools?.length || 0),
-                            0,
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Mobile More Menu */}
+        {activeChatChannel && (
+          <MobileMoreMenu
+            isOpen={showMoreMenu}
+            searchMethod={searchMethod}
+            onSearchMethodChange={handleSearchMethodChange}
+            supportsWebSearch={supportsWebSearch}
+            mcpEnabled={!!currentMcpInfo?.servers.length}
+            onMcpConflict={handleMcpConflict}
+            isKnowledgeConnected={!!isKnowledgeMcpConnected}
+            onConnectKnowledge={handleConnectKnowledge}
+            onDisconnectKnowledge={handleDisconnectKnowledge}
+            mcpInfo={currentMcpInfo}
+            onClose={() => setShowMoreMenu(false)}
+          />
+        )}
 
         <TooltipProvider>
           <div className="flex flex-wrap items-center justify-between bg-white px-2 py-1.5 dark:bg-black dark:border-t dark:border-neutral-800 gap-2">
             <div className="flex flex-wrap items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleNewChat}
-                    disabled={isCreatingNewChat}
-                    className={toolbarButtonClass}
-                  >
-                    {isCreatingNewChat ? (
-                      <ArrowPathIcon className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <PlusIcon className="h-5 w-5" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isCreatingNewChat ? "创建中..." : "新对话"}</p>
-                </TooltipContent>
-              </Tooltip>
-
-              {/* File Upload Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-flex">
-                    <FileUploadButton
-                      disabled={isUploading}
-                      className={toolbarButtonClass}
-                    />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>上传文件</p>
-                </TooltipContent>
-              </Tooltip>
+              <ToolbarActions
+                onNewChat={handleNewChat}
+                isCreatingNewChat={isCreatingNewChat}
+                isUploading={isUploading}
+                buttonClassName={toolbarButtonClass}
+              />
 
               {/* Tool Call Confirmation Toggle */}
               {/* {activeChatChannel && (
@@ -710,98 +620,13 @@ export default function ChatToolbar({
 
                 {/* MCP Tool Button */}
                 {currentMcpInfo && (
-                  <div className="relative group/mcp w-fit">
-                    <button
-                      className={cn(toolbarButtonClass, "w-auto px-2 gap-1.5")}
-                      title="当前连接的MCP工具"
-                    >
-                      <McpIcon className="h-4 w-4" />
-                      {currentMcpInfo.servers.length > 0 && (
-                        <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                          {currentMcpInfo.servers.reduce(
-                            (total, server) =>
-                              total + (server.tools?.length || 0),
-                            0,
-                          )}
-                        </span>
-                      )}
-                    </button>
-
-                    {/* MCP Tooltip */}
-                    <div
-                      className=" transition-opacity
-                  overflow-hidden hidden w-80
-                  group-hover/mcp:block absolute bottom-full
-                  left-0 mb-2 rounded-sm border
-                 border-neutral-200 bg-white p-3 shadow-lg
-                  dark:border-neutral-700 dark:bg-neutral-800 z-50"
-                    >
-                      <div className="mb-2">
-                        <div className="flex items-center space-x-2">
-                          <McpIcon className="h-4 w-4 text-indigo-500" />
-                          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                            MCP 工具连接
-                          </span>
-                        </div>
-                        <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                          助手: {currentMcpInfo.agent.name}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {currentMcpInfo.servers.map((server) => (
-                          <div
-                            key={server.id}
-                            className="rounded-sm bg-neutral-50 p-2
-                         dark:bg-neutral-700/50"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <div
-                                  className={`h-2 w-2 rounded-full ${
-                                    server.status === "online"
-                                      ? "bg-green-500"
-                                      : "bg-red-500"
-                                  }`}
-                                />
-                                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                                  {server.name}
-                                </span>
-                              </div>
-                              <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                                {server.tools?.length || 0} 工具
-                              </span>
-                            </div>
-
-                            {server.tools && server.tools.length > 0 && (
-                              <div className="mt-2">
-                                <div className="flex flex-wrap gap-1">
-                                  {server.tools
-                                    .slice(0, 5)
-                                    .map((tool, index) => (
-                                      <span
-                                        key={index}
-                                        className="inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                      >
-                                        {tool.name}
-                                      </span>
-                                    ))}
-                                  {server.tools.length > 5 && (
-                                    <span className="inline-block rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-600 dark:text-neutral-300">
-                                      +{server.tools.length - 5}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Arrow */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-neutral-800"></div>
-                    </div>
-                  </div>
+                  <McpToolsButton
+                    mcpInfo={currentMcpInfo}
+                    buttonClassName={cn(
+                      toolbarButtonClass,
+                      "w-auto px-2 gap-1.5",
+                    )}
+                  />
                 )}
               </div>
 
@@ -820,8 +645,8 @@ export default function ChatToolbar({
               </div>
             </div>
             <div className="flex items-center space-x-1">
-              <Sheet
-                open={showHistory}
+              <HistorySheetButton
+                isOpen={showHistory}
                 onOpenChange={(open) => {
                   if (open) {
                     onShowHistory();
@@ -829,35 +654,10 @@ export default function ChatToolbar({
                     handleCloseHistory();
                   }
                 }}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SheetTrigger asChild>
-                      <button className={toolbarButtonClass}>
-                        <ClockIcon className="h-5 w-5" />
-                      </button>
-                    </SheetTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>历史记录</p>
-                  </TooltipContent>
-                </Tooltip>
-                <SheetContent
-                  showCloseButton={false}
-                  side="right"
-                  className="w-11/12 max-w-md p-0 h-full"
-                >
-                  <VisuallyHidden>
-                    <SheetTitle>会话历史</SheetTitle>
-                    <SheetDescription>当前会话的对话主题</SheetDescription>
-                  </VisuallyHidden>
-                  <SessionHistory
-                    isOpen={showHistory}
-                    onClose={handleCloseHistory}
-                    onSelectTopic={handleSelectTopic}
-                  />
-                </SheetContent>
-              </Sheet>
+                onClose={handleCloseHistory}
+                onSelectTopic={handleSelectTopic}
+                buttonClassName={toolbarButtonClass}
+              />
             </div>
           </div>
         </TooltipProvider>
