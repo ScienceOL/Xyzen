@@ -11,7 +11,6 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from .base_graph_agent import BaseBuiltinGraphAgent
@@ -34,7 +33,14 @@ class BuiltinGraphAgentRegistry:
     def _discover_agents(self) -> None:
         """Automatically discover all builtin graph agents in the current directory."""
         current_dir = Path(__file__).parent
-        python_files = [f for f in current_dir.glob("*.py") if f.name not in ["__init__.py", "base_graph_agent.py"]]
+        excluded_files = {
+            "__init__.py",
+            "base_graph_agent.py",
+            "factory.py",
+            "graph_builder.py",
+            "state.pytypes.py",
+        }
+        python_files = [f for f in current_dir.glob("*.py") if f.name not in excluded_files]
 
         for file_path in python_files:
             module_name = file_path.stem
@@ -234,83 +240,23 @@ class BuiltinGraphAgentRegistry:
 
     async def seed_to_database(self, db: AsyncSession) -> dict[str, Any]:
         """
-        Seed all builtin graph agents to the database with is_official=True.
+        Seed all builtin graph agents to the database.
 
-        This method creates or updates GraphAgent records in the database for all
-        registered builtin agents. It ensures that builtin agents are accessible
-        through the standard agent API alongside user-created agents.
+        NOTE: This method is deprecated. Builtin agents are now registered
+        through the system agent registry and don't need database seeding.
+        The method is kept for backwards compatibility but returns empty stats.
 
         Args:
-            db: Async database session
+            db: Async database session (unused)
 
         Returns:
-            dict: Statistics about the seeding operation
-                - created: Number of new agents created
-                - updated: Number of existing agents updated
-                - failed: Number of agents that failed to sync
-                - total: Total number of agents processed
+            dict: Empty statistics (method is a no-op)
         """
-        from app.models.graph import GraphAgent, GraphAgentCreate
-        from app.repos.graph import GraphRepository
-
-        repo = GraphRepository(db)
-        stats = {"created": 0, "updated": 0, "failed": 0, "total": len(self.agents)}
-
-        for agent_name, agent_config in self.agents.items():
-            try:
-                agent_instance = agent_config["agent"]
-                metadata = agent_config["metadata"]
-
-                # Check if agent already exists by name and is_official=True
-                existing_query = select(GraphAgent).where(
-                    GraphAgent.name == metadata.get("name", agent_name),
-                    GraphAgent.is_official == True,  # noqa: E712
-                )
-                result = await db.exec(existing_query)
-                existing_agent = result.first()
-
-                # Prepare agent data
-                agent_data = {
-                    "name": metadata.get("name", agent_name),
-                    "description": metadata.get("description", ""),
-                    "state_schema": agent_instance.get_state_schema(),
-                    "is_active": True,
-                    "is_published": True,  # Official agents are published by default
-                    "is_official": True,
-                    "parent_agent_id": None,
-                }
-
-                if existing_agent:
-                    # Update existing agent
-                    for key, value in agent_data.items():
-                        if key not in ["name"]:  # Don't update name
-                            setattr(existing_agent, key, value)
-                    db.add(existing_agent)
-                    await db.flush()
-                    await db.refresh(existing_agent)
-                    stats["updated"] += 1
-                    logger.info(f"Updated official graph agent in database: {agent_name}")
-                else:
-                    # Create new agent with system user_id
-                    agent_create = GraphAgentCreate(**agent_data)
-                    new_agent = await repo.create_graph_agent(agent_create, user_id="system")
-                    await db.flush()
-                    await db.refresh(new_agent)
-                    stats["created"] += 1
-                    logger.info(f"Created official graph agent in database: {agent_name}")
-
-            except Exception as e:
-                stats["failed"] += 1
-                logger.error(f"Failed to seed builtin agent '{agent_name}' to database: {e}")
-                # Continue with other agents even if one fails
-
         logger.info(
-            f"Builtin agent database seeding completed: "
-            f"{stats['created']} created, {stats['updated']} updated, "
-            f"{stats['failed']} failed out of {stats['total']} total"
+            "seed_to_database is deprecated. Builtin agents are registered "
+            "through the system agent registry. No database seeding required."
         )
-
-        return stats
+        return {"created": 0, "updated": 0, "failed": 0, "total": 0}
 
 
 # Create global registry instance

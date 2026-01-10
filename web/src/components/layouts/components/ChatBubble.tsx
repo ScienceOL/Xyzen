@@ -7,6 +7,7 @@ import type { Message } from "@/store/types";
 import { CheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useDeferredValue, useMemo, useState } from "react";
+import AgentExecutionTimeline from "./AgentExecutionTimeline";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
@@ -35,6 +36,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     citations,
     isThinking,
     thinkingContent,
+    agentExecution,
   } = message;
 
   // 流式消息打字效果
@@ -205,6 +207,17 @@ function ChatBubble({ message }: ChatBubbleProps) {
                   : "text-sm text-neutral-700 dark:text-neutral-300"
               }`}
             >
+              {/* Agent execution timeline - only show for multi-phase agent types */}
+              {/* Skip timeline for react/simple agents - they just show content directly */}
+              {!isUserMessage &&
+                agentExecution &&
+                agentExecution.agentType !== "react" && (
+                  <AgentExecutionTimeline
+                    execution={agentExecution}
+                    isExecuting={agentExecution.status === "running"}
+                  />
+                )}
+
               {/* Thinking content - shown before main response for assistant messages */}
               {!isUserMessage && thinkingContent && (
                 <ThinkingBubble
@@ -216,8 +229,34 @@ function ChatBubble({ message }: ChatBubbleProps) {
               {isLoading ? (
                 <LoadingMessage size="medium" className="text-sm" />
               ) : (
+                // Show markdownContent when:
+                // 1. No agentExecution (regular chat)
+                // 2. agentExecution is react type (simple agent without timeline)
+                // For multi-phase agents, content is shown in timeline phases
+                (!agentExecution || agentExecution.agentType === "react") &&
                 markdownContent
               )}
+
+              {/* For multi-phase agents, show final report below timeline when completed */}
+              {!isUserMessage &&
+                !isStreaming &&
+                agentExecution &&
+                agentExecution.agentType !== "react" &&
+                agentExecution.status !== "running" &&
+                agentExecution.phases.length > 0 &&
+                (() => {
+                  const finalPhase =
+                    agentExecution.phases[agentExecution.phases.length - 1];
+                  if (finalPhase?.streamedContent) {
+                    return (
+                      <div className="mt-4">
+                        <Markdown content={finalPhase.streamedContent} />
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
               {isStreaming && !isLoading && (
                 <motion.span
                   animate={{ opacity: [0.3, 1, 0.3] }}

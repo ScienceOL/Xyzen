@@ -17,8 +17,8 @@ from app.infra.database import ASYNC_DATABASE_URL
 from app.models.citation import CitationCreate
 from app.models.message import Message, MessageCreate
 from app.repos import CitationRepository, FileRepository, MessageRepository, TopicRepository
-from app.schemas.chat_event_types import CitationData
-from app.schemas.chat_events import ChatEventType
+from app.schemas.chat_event_payloads import CitationData
+from app.schemas.chat_event_types import ChatEventType
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +213,29 @@ async def _process_chat_message_async(
 
                 elif stream_event["type"] == ChatEventType.STREAMING_END:
                     full_content = stream_event["data"].get("content", full_content)
+                    # Extract agent_state for persistence to message agent_metadata
+                    agent_state_data = stream_event["data"].get("agent_state")
+
+                    # For graph-based agents, use final node output as message content
+                    # instead of concatenated content from all nodes
+                    if agent_state_data and "node_outputs" in agent_state_data:
+                        node_outputs = agent_state_data["node_outputs"]
+                        # Priority: final_report_generation > agent > model > fallback to streamed
+                        final_content = (
+                            node_outputs.get("final_report_generation")
+                            or node_outputs.get("agent")
+                            or node_outputs.get("model")
+                        )
+                        if final_content:
+                            if isinstance(final_content, str):
+                                full_content = final_content
+                            elif isinstance(final_content, dict):
+                                # Handle structured output - extract text content
+                                full_content = final_content.get("content", str(final_content))
+
+                    if agent_state_data and ai_message_obj:
+                        ai_message_obj.agent_metadata = agent_state_data
+                        db.add(ai_message_obj)
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.TOKEN_USAGE:

@@ -396,6 +396,7 @@ class MessageRepository:
                 attachments=file_reads_with_urls,
                 citations=citations,
                 thinking_content=message.thinking_content,
+                agent_metadata=message.agent_metadata,
             )
             messages_with_files_and_citations.append(message_with_files_and_citations)
 

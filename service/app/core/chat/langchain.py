@@ -18,10 +18,12 @@ from app.agents.factory import create_chat_agent
 from app.core.prompts import build_system_prompt
 from app.core.providers import get_user_provider_manager
 from app.models.topic import Topic as TopicModel
-from app.schemas.chat_event_types import StreamingEvent
+from app.schemas.chat_event_payloads import StreamingEvent
 
+from .agent_event_handler import AgentEventContext
 from .history import load_conversation_history
 from .stream_handlers import (
+    AgentEventStreamHandler,
     CitationExtractor,
     GeneratedFileHandler,
     StreamContext,
@@ -94,7 +96,7 @@ async def get_ai_response_stream_langchain_legacy(
 
     try:
         # Create LangChain agent
-        langchain_agent = await _create_langchain_agent(
+        langchain_agent, event_ctx = await _create_langchain_agent(
             db=db,
             agent=agent,
             topic=topic,
@@ -109,6 +111,7 @@ async def get_ai_response_stream_langchain_legacy(
             stream_id=f"stream_{int(asyncio.get_event_loop().time() * 1000)}",
             db=db,
             user_id=user_id,
+            event_ctx=event_ctx,
         )
 
         # Load conversation history
@@ -179,9 +182,9 @@ async def _create_langchain_agent(
     provider_id: str | None,
     model_name: str | None,
     system_prompt: str,
-) -> CompiledStateGraph:
+) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """Create and configure the LangChain agent using the agent factory."""
-    return await create_chat_agent(
+    graph, event_ctx = await create_chat_agent(
         db=db,
         agent_config=agent,
         topic=topic,
@@ -190,18 +193,30 @@ async def _create_langchain_agent(
         model_name=model_name,
         system_prompt=system_prompt,
     )
+    return graph, event_ctx
 
 
 async def _process_agent_stream(
-    agent: CompiledStateGraph,
+    agent: CompiledStateGraph[Any, None, Any, Any],
     history_messages: list[Any],
     ctx: StreamContext,
 ) -> AsyncGenerator[StreamingEvent, None]:
     """Process the agent stream and yield events."""
     logger.info("Starting agent.astream with stream_mode=['updates','messages']")
     logger.info(f"Length of history: {len(history_messages)}")
+    logger.info(f"[AgentEvent] event_ctx present: {ctx.event_ctx is not None}")
+    if ctx.event_ctx:
+        logger.info(f"[AgentEvent] agent_name={ctx.event_ctx.agent_name}, agent_type={ctx.event_ctx.agent_type}")
+
+    # Emit agent_start event
+    if ctx.event_ctx:
+        agent_start_event = AgentEventStreamHandler.create_agent_start_event(ctx)
+        if agent_start_event:
+            logger.info(f"[AgentEvent] Emitting agent_start for {ctx.event_ctx.agent_name}")
+            yield agent_start_event
 
     chunk_count = 0
+
     async for chunk in agent.astream({"messages": history_messages}, stream_mode=["updates", "messages"]):
         chunk_count += 1
         try:
@@ -215,6 +230,9 @@ async def _process_agent_stream(
             if isinstance(data, dict):
                 logger.info(f"[Updates] step_names={list(data.keys())}")
                 # Log content of each step for debugging
+                # NOTE: Node events are primarily emitted from messages mode for accurate timing
+                # Updates mode handles non-streaming nodes (structured output nodes)
+                # that were already handled in _handle_updates_mode
                 for step_name, step_data in data.items():
                     messages = step_data.get("messages", []) if isinstance(step_data, dict) else []
                     logger.info(f"[Updates/{step_name}] messages_count={len(messages)}")
@@ -241,9 +259,23 @@ async def _process_agent_stream(
 
     logger.info(f"Stream finished after {chunk_count} chunks, is_streaming={ctx.is_streaming}")
 
+    # Emit node_end for the last node
+    if ctx.current_node:
+        node_end_event = AgentEventStreamHandler.create_node_end_event(ctx, ctx.current_node)
+        if node_end_event:
+            logger.info(f"[AgentEvent] Emitting final node_end for {ctx.current_node}")
+            yield node_end_event
+
     # Finalize streaming
     async for event in _finalize_streaming(ctx):
         yield event
+
+    # Emit agent_end event
+    if ctx.event_ctx and ctx.agent_started:
+        agent_end_event = AgentEventStreamHandler.create_agent_end_event(ctx, "completed")
+        if agent_end_event:
+            logger.info(f"[AgentEvent] Emitting agent_end for {ctx.event_ctx.agent_name}")
+            yield agent_end_event
 
 
 async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
@@ -254,11 +286,39 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
     for step_name, step_data in data.items():
         logger.debug("Update step: %s", step_name)
 
+        # Skip if step_data is None or not a dict
+        if not step_data or not isinstance(step_data, dict):
+            continue
+
         messages = step_data.get("messages", [])
         if not messages:
             continue
 
         last_message = messages[-1]
+
+        # Extract agent_state from AIMessage additional_kwargs (for persistence)
+        if hasattr(last_message, "additional_kwargs") and last_message.additional_kwargs:
+            msg_agent_state = last_message.additional_kwargs.get("agent_state")
+            if msg_agent_state:
+                logger.debug("Extracted agent_state from step '%s': %s", step_name, list(msg_agent_state.keys()))
+                # Accumulate node outputs across all nodes
+                if ctx.agent_state is None:
+                    ctx.agent_state = {"node_outputs": {}}
+                # Merge node outputs
+                if "node_outputs" in msg_agent_state:
+                    ctx.agent_state.setdefault("node_outputs", {}).update(msg_agent_state["node_outputs"])
+                # Track current node
+                if "current_node" in msg_agent_state:
+                    ctx.agent_state["current_node"] = msg_agent_state["current_node"]
+
+            # Also extract node_metadata for logging
+            node_metadata = last_message.additional_kwargs.get("node_metadata")
+            if node_metadata:
+                logger.info(
+                    "Node completed: %s (is_intermediate=%s)",
+                    node_metadata.get("node_name"),
+                    node_metadata.get("is_intermediate"),
+                )
 
         # Tool call request
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
@@ -278,6 +338,33 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
             formatted_result = format_tool_result(last_message.content, tool_name)
             logger.debug("Tool finished in step '%s' id=%s", step_name, tool_call_id)
             yield ToolEventHandler.create_tool_response_event(tool_call_id, formatted_result)
+
+        # Structured output nodes (clarify_with_user, write_research_brief, etc.)
+        # These nodes use with_structured_output and don't stream normally
+        # They return clean content in messages, so we emit it as if streamed
+        elif hasattr(last_message, "content") and step_name in {
+            "clarify_with_user",
+            "write_research_brief",
+        }:
+            content = last_message.content
+            if isinstance(content, str) and content:
+                logger.debug("Structured output from '%s': %s", step_name, content[:100])
+
+                # Emit node_start if not already current node
+                if step_name != ctx.current_node:
+                    if ctx.current_node:
+                        node_end_event = AgentEventStreamHandler.create_node_end_event(ctx, ctx.current_node)
+                        if node_end_event:
+                            yield node_end_event
+                    node_start_event = AgentEventStreamHandler.create_node_start_event(ctx, step_name)
+                    if node_start_event:
+                        yield node_start_event
+
+                # Emit the content as if it was streamed (single chunk for the whole message)
+                if not ctx.is_streaming:
+                    ctx.is_streaming = True
+                    yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
+                yield StreamingEventHandler.create_streaming_chunk(ctx.stream_id, content)
 
         # Final model response (from 'model' or 'agent' step)
         elif (
@@ -325,12 +412,34 @@ async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator
             ctx.token_count,
         )
 
-    # Only stream from LLM-related nodes ('model' or 'agent')
-    # Note: 'model' is used by older LangGraph, 'agent' is used by create_react_agent
+    # Only skip streaming from tool execution nodes and structured output nodes
+    # - 'tools' node: where tool calls are executed, not LLM responses
+    # - 'clarify_with_user': uses structured output (JSON), we only want the final extracted message
+    # - 'write_research_brief': uses structured output, handled in updates mode
+    # All other LLM nodes should stream their output normally
+    SKIP_STREAMING_NODES = {"tools", "clarify_with_user", "write_research_brief"}
+
+    node: str | None = None
     if isinstance(metadata, dict):
         node = metadata.get("langgraph_node") or metadata.get("node")
-        if node and node not in ("model", "agent"):
+        if node in SKIP_STREAMING_NODES:
             return
+
+    # Emit node events based on streaming metadata (more accurate timing than updates mode)
+    # This ensures node_start is emitted BEFORE streaming chunks for that node
+    if node and node != ctx.current_node:
+        # Emit node_end for previous node
+        if ctx.current_node:
+            node_end_event = AgentEventStreamHandler.create_node_end_event(ctx, ctx.current_node)
+            if node_end_event:
+                logger.info(f"[AgentEvent/Messages] Emitting node_end for {ctx.current_node}")
+                yield node_end_event
+
+        # Emit node_start for new node
+        node_start_event = AgentEventStreamHandler.create_node_start_event(ctx, node)
+        if node_start_event:
+            logger.info(f"[AgentEvent/Messages] Emitting node_start for {node}")
+            yield node_start_event
 
     # Check for thinking content first (from reasoning models like Claude, DeepSeek R1, Gemini 3)
     thinking_content = ThinkingEventHandler.extract_thinking_content(message_chunk)
@@ -376,11 +485,12 @@ async def _finalize_streaming(ctx: StreamContext) -> AsyncGenerator[StreamingEve
 
     if ctx.is_streaming:
         logger.debug(
-            "Emitting streaming_end for stream_id=%s (total tokens: %d)",
+            "Emitting streaming_end for stream_id=%s (total tokens: %d, has_agent_state=%s)",
             ctx.stream_id,
             ctx.token_count,
+            ctx.agent_state is not None,
         )
-        yield StreamingEventHandler.create_streaming_end(ctx.stream_id)
+        yield StreamingEventHandler.create_streaming_end(ctx.stream_id, ctx.agent_state)
 
         # Emit token usage
         if ctx.total_tokens > 0 or ctx.total_input_tokens > 0 or ctx.total_output_tokens > 0:

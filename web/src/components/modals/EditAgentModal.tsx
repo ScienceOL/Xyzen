@@ -2,8 +2,19 @@ import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
-import { Button, Field, Label } from "@headlessui/react";
-import { PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import {
+  Button,
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+  Field,
+  Label,
+} from "@headlessui/react";
+import {
+  ChevronDownIcon,
+  PlusIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { McpServerItem } from "./McpServerItem";
 import PublishAgentModal from "@/components/features/PublishAgentModal";
@@ -25,11 +36,19 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [graphConfigJson, setGraphConfigJson] = useState<string>("");
+  const [graphConfigError, setGraphConfigError] = useState<string | null>(null);
 
   useEffect(() => {
     setAgent(agentToEdit);
     if (agentToEdit) {
       setMcpServerIds(agentToEdit.mcp_servers?.map((s) => s.id) || []);
+      setGraphConfigJson(
+        agentToEdit.graph_config
+          ? JSON.stringify(agentToEdit.graph_config, null, 2)
+          : "",
+      );
+      setGraphConfigError(null);
     }
     if (isOpen) {
       fetchMcpServers();
@@ -52,13 +71,47 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     );
   };
 
+  const handleGraphConfigChange = (value: string) => {
+    setGraphConfigJson(value);
+    if (!value.trim()) {
+      setGraphConfigError(null);
+      return;
+    }
+    try {
+      JSON.parse(value);
+      setGraphConfigError(null);
+    } catch {
+      setGraphConfigError("Invalid JSON format");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agent) return;
     if (isSaving) return;
+    if (graphConfigError) {
+      alert("Please fix the JSON configuration errors before saving.");
+      return;
+    }
+
+    // Parse graph_config if provided
+    let parsedGraphConfig: Record<string, unknown> | null = null;
+    if (graphConfigJson.trim()) {
+      try {
+        parsedGraphConfig = JSON.parse(graphConfigJson);
+      } catch {
+        alert("Invalid JSON in graph configuration.");
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
-      await updateAgent({ ...agent, mcp_server_ids: mcpServerIds });
+      await updateAgent({
+        ...agent,
+        mcp_server_ids: mcpServerIds,
+        graph_config: parsedGraphConfig,
+      });
       onClose();
     } catch (error) {
       console.error("Failed to update agent:", error);
@@ -113,6 +166,37 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
             className="w-full rounded-sm border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
           />
         </Field>
+        <Disclosure
+          as="div"
+          className="rounded-sm border border-neutral-200 dark:border-neutral-700"
+        >
+          <DisclosureButton className="group flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800">
+            <span>Advanced Configuration (JSON)</span>
+            <ChevronDownIcon className="h-4 w-4 text-neutral-500 transition-transform duration-200 group-data-[open]:rotate-180" />
+          </DisclosureButton>
+          <DisclosurePanel className="px-3 pb-3">
+            <p className="mb-2 text-xs text-neutral-500 dark:text-neutral-400">
+              Configure advanced agent behavior using JSON. Leave empty to use
+              defaults.
+            </p>
+            <textarea
+              value={graphConfigJson}
+              onChange={(e) => handleGraphConfigChange(e.target.value)}
+              placeholder='{"key": "value"}'
+              rows={6}
+              className={`w-full font-mono text-xs rounded-sm border px-3 py-2 text-neutral-900 placeholder-neutral-400 focus:ring-1 dark:text-neutral-100 dark:placeholder-neutral-500 ${
+                graphConfigError
+                  ? "border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-500 dark:bg-red-900/20"
+                  : "border-neutral-300 bg-neutral-100 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800"
+              }`}
+            />
+            {graphConfigError && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {graphConfigError}
+              </p>
+            )}
+          </DisclosurePanel>
+        </Disclosure>
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             Connected MCP Servers

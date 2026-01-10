@@ -12,10 +12,10 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_core.messages.tool import ToolMessage
+from langchain_core.messages.tool import ToolCall, ToolMessage
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.schemas.chat_events import ChatEventType
+from app.schemas.chat_event_types import ChatEventType
 
 if TYPE_CHECKING:
     from app.models.topic import Topic as TopicModel
@@ -112,6 +112,11 @@ async def _build_assistant_message(db: AsyncSession, message: Any, content: str)
     """Build an AIMessage with optional multimodal content (e.g., generated images)."""
     from app.core.chat.multimodal import process_message_files
 
+    # Extract agent_metadata if present
+    additional_kwargs: dict[str, Any] = {}
+    if hasattr(message, "agent_metadata") and message.agent_metadata:
+        additional_kwargs["agent_state"] = message.agent_metadata
+
     try:
         file_contents = await process_message_files(db, message.id)
         if file_contents:
@@ -121,13 +126,13 @@ async def _build_assistant_message(db: AsyncSession, message: Any, content: str)
             if content:
                 multimodal_content.append({"type": "text", "text": content})
             multimodal_content.extend(file_contents)
-            return AIMessage(content=multimodal_content)  # pyright: ignore
+            return AIMessage(content=multimodal_content, additional_kwargs=additional_kwargs)  # pyright: ignore
 
-        return AIMessage(content=content)
+        return AIMessage(content=content, additional_kwargs=additional_kwargs)
 
     except Exception as e:
         logger.error(f"Failed to process files for assistant message {message.id}: {e}", exc_info=True)
-        return AIMessage(content=content)
+        return AIMessage(content=content, additional_kwargs=additional_kwargs)
 
 
 def _build_tool_messages(
@@ -151,7 +156,7 @@ def _build_tool_messages(
         formatted_content = json.loads(content)
 
         if formatted_content.get("event") == ChatEventType.TOOL_CALL_REQUEST:
-            tool_call = {
+            tool_call: ToolCall = {
                 "name": formatted_content["name"],
                 "args": formatted_content["arguments"],
                 "id": formatted_content["id"],
@@ -159,12 +164,12 @@ def _build_tool_messages(
 
             if num_tool_calls == 0:
                 # First tool call - create new AIMessage
-                message = AIMessage(content=[], tool_calls=[tool_call])  # type: ignore[arg-type]
+                message = AIMessage(content=[], tool_calls=[tool_call])
                 return message, num_tool_calls + 1
             else:
                 # Subsequent tool call - append to existing AIMessage
                 if history and isinstance(history[-1], AIMessage) and hasattr(history[-1], "tool_calls"):
-                    history[-1].tool_calls.append(tool_call)  # type: ignore[arg-type]
+                    history[-1].tool_calls.append(tool_call)
                 return None, num_tool_calls + 1
 
         elif formatted_content.get("event") == ChatEventType.TOOL_CALL_RESPONSE:

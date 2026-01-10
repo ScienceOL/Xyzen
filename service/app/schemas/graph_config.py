@@ -81,6 +81,26 @@ class GraphStateSchema(BaseModel):
 # --- Node Configuration Definitions ---
 
 
+class StructuredOutputField(BaseModel):
+    """Definition of a field in structured output schema."""
+
+    type: str = Field(description="Field type: 'string', 'bool', 'int', 'float', 'list', 'dict'")
+    description: str = Field(default="", description="Field description for LLM guidance")
+    default: Any = Field(default=None, description="Default value if not provided")
+    required: bool = Field(default=True, description="Whether the field is required")
+
+
+class StructuredOutputSchema(BaseModel):
+    """JSON-based schema for structured LLM output.
+
+    This allows defining output structure directly in JSON config,
+    which is then converted to a Pydantic model at runtime.
+    """
+
+    fields: dict[str, StructuredOutputField] = Field(description="Field definitions for the structured output")
+    description: str = Field(default="", description="Description of what this output represents")
+
+
 class LLMNodeConfig(BaseModel):
     """Configuration for LLM reasoning nodes."""
 
@@ -93,6 +113,24 @@ class LLMNodeConfig(BaseModel):
     tool_filter: list[str] | None = Field(default=None, description="Specific tool names to enable (None = all)")
     max_iterations: int = Field(default=10, ge=1, description="Maximum iterations for ReAct-style tool loops")
     stop_sequences: list[str] | None = Field(default=None, description="Stop sequences for generation")
+
+    # Structured output configuration
+    structured_output: StructuredOutputSchema | None = Field(
+        default=None,
+        description="Schema for structured JSON output. When set, LLM response is parsed into fields.",
+    )
+    message_key: str | None = Field(
+        default=None,
+        description="Field from structured output to use as user-facing message (prevents raw JSON display).",
+    )
+    message_key_condition: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            "Conditional message field selection. Format: {'condition_field': 'bool_field', "
+            "'true_key': 'field_if_true', 'false_key': 'field_if_false'}. "
+            "Example: {'condition_field': 'need_clarification', 'true_key': 'question', 'false_key': 'verification'}"
+        ),
+    )
 
 
 class ToolNodeConfig(BaseModel):

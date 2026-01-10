@@ -10,13 +10,14 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import time
 from dataclasses import dataclass, field
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Mapping, Sequence, cast
 
 from langchain_core.messages import AIMessage
 
-from app.schemas.chat_event_types import (
+from app.schemas.chat_event_payloads import (
     CitationData,
     GeneratedFileInfo,
     GeneratedFilesData,
@@ -32,11 +33,12 @@ from app.schemas.chat_event_types import (
     ToolCallRequestData,
     ToolCallResponseData,
 )
-from app.schemas.chat_events import ChatEventType, ProcessingStatus, ToolCallStatus
+from app.schemas.chat_event_types import ChatEventType, ProcessingStatus, ToolCallStatus
 
 if TYPE_CHECKING:
     from sqlmodel.ext.asyncio.session import AsyncSession
 
+    from app.core.chat.agent_event_handler import AgentEventContext
     from app.models.file import File
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,7 @@ class StreamContext:
     stream_id: str
     db: "AsyncSession"
     user_id: str
+    event_ctx: "AgentEventContext | None" = None
     is_streaming: bool = False
     assistant_buffer: list[str] = field(default_factory=list)
     token_count: int = 0
@@ -61,6 +64,13 @@ class StreamContext:
     # Thinking/reasoning content state
     is_thinking: bool = False
     thinking_buffer: list[str] = field(default_factory=list)
+    # Agent execution state
+    agent_started: bool = False
+    current_node: str | None = None
+    agent_start_time: float = 0.0
+    node_start_time: float = 0.0
+    # Agent state metadata (for persistence)
+    agent_state: dict[str, Any] | None = None
 
 
 class ToolEventHandler:
@@ -126,12 +136,14 @@ class StreamingEventHandler:
         return {"type": ChatEventType.STREAMING_CHUNK, "data": data}
 
     @staticmethod
-    def create_streaming_end(stream_id: str) -> StreamingEvent:
+    def create_streaming_end(stream_id: str, agent_state: dict[str, Any] | None = None) -> StreamingEvent:
         """Create streaming end event."""
         data: StreamingEndData = {
             "id": stream_id,
             "created_at": asyncio.get_event_loop().time(),
         }
+        if agent_state:
+            data["agent_state"] = agent_state
         return {"type": ChatEventType.STREAMING_END, "data": data}
 
     @staticmethod
@@ -224,9 +236,9 @@ class ThinkingEventHandler:
 
         # Check response_metadata for thinking content
         if hasattr(message_chunk, "response_metadata"):
-            metadata = message_chunk.response_metadata
-            if isinstance(metadata, dict):
-                # Gemini 3 uses "reasoning" key
+            metadata_raw = message_chunk.response_metadata
+            if isinstance(metadata_raw, dict):
+                metadata: dict[str, Any] = metadata_raw
                 thinking = (
                     metadata.get("thinking")
                     or metadata.get("reasoning_content")
@@ -234,7 +246,8 @@ class ThinkingEventHandler:
                     or metadata.get("thoughts")
                 )
                 if thinking:
-                    logger.debug("Found thinking in response_metadata: %s", list(metadata.keys()))
+                    keys_str = ", ".join(map(str, metadata.keys()))
+                    logger.debug("Found thinking in response_metadata keys: %s", keys_str)
                     return thinking
 
         return None
@@ -244,7 +257,7 @@ class CitationExtractor:
     """Extract citations from LLM response metadata."""
 
     @staticmethod
-    def extract_citations(response_metadata: dict[str, Any]) -> list[CitationData]:
+    def extract_citations(response_metadata: Mapping[str, Any] | None) -> list[CitationData]:
         """
         Extract citations from response metadata.
 
@@ -258,7 +271,7 @@ class CitationExtractor:
         """
         citations: list[CitationData] = []
 
-        if not isinstance(response_metadata, dict):
+        if not response_metadata:
             return citations
 
         # 1. Handle Google Grounding Metadata
@@ -275,7 +288,7 @@ class CitationExtractor:
         return CitationExtractor._deduplicate_citations(citations)
 
     @staticmethod
-    def _extract_google_grounding(grounding_metadata: dict[str, Any]) -> list[CitationData]:
+    def _extract_google_grounding(grounding_metadata: Mapping[str, Any]) -> list[CitationData]:
         """Extract citations from Google Grounding Metadata."""
         citations: list[CitationData] = []
 
@@ -320,7 +333,7 @@ class CitationExtractor:
         return citations
 
     @staticmethod
-    def _extract_openai_annotations(annotations: list[Any]) -> list[CitationData]:
+    def _extract_openai_annotations(annotations: Sequence[Any]) -> list[CitationData]:
         """Extract citations from OpenAI annotations."""
         citations: list[CitationData] = []
 
@@ -429,7 +442,7 @@ class GeneratedFileHandler:
 
     @staticmethod
     async def process_generated_content(
-        content: list[Any], user_id: str, db: "AsyncSession"
+        content: Sequence[Any], user_id: str, db: "AsyncSession"
     ) -> tuple[list["File"], list[GeneratedFileInfo]]:
         """
         Process multimodal content and save any generated images.
@@ -570,15 +583,171 @@ class UpdatesStreamProcessor:
 
         # Handle multimodal content (e.g., generated images)
         if isinstance(content, list):
-            generated_files, files_data = await GeneratedFileHandler.process_generated_content(
-                content, ctx.user_id, ctx.db
+            typed_content = cast(Sequence[Any], content)
+            _generated_files, files_data = await GeneratedFileHandler.process_generated_content(
+                typed_content, ctx.user_id, ctx.db
             )
             if files_data:
                 yield GeneratedFileHandler.create_generated_files_event(files_data)
 
         # Extract and emit citations
-        if hasattr(message, "response_metadata"):
-            citations = CitationExtractor.extract_citations(message.response_metadata)
+        metadata = cast(Mapping[str, Any] | None, getattr(message, "response_metadata", None))
+        if metadata:
+            citations = CitationExtractor.extract_citations(metadata)
             if citations:
                 logger.info(f"Emitting {len(citations)} unique search citations")
                 yield CitationExtractor.create_citations_event(citations)
+
+
+class AgentEventStreamHandler:
+    """
+    Handle agent execution events for streaming to frontend.
+
+    Automatically emits agent_start, node_start/end, and agent_end events
+    based on LangGraph execution metadata.
+    """
+
+    @staticmethod
+    def create_agent_start_event(ctx: StreamContext) -> StreamingEvent | None:
+        """Create agent_start event from context."""
+        if not ctx.event_ctx:
+            return None
+
+        ctx.agent_started = True
+        ctx.agent_start_time = time.time()
+
+        return {
+            "type": ChatEventType.AGENT_START,
+            "data": {
+                "context": {
+                    "agent_id": ctx.event_ctx.agent_id,
+                    "agent_name": ctx.event_ctx.agent_name,
+                    "agent_type": ctx.event_ctx.agent_type,
+                    "execution_id": ctx.event_ctx.execution_id,
+                    "depth": 0,
+                    "execution_path": [ctx.event_ctx.agent_name],
+                    "started_at": int(ctx.agent_start_time * 1000),
+                },
+            },
+        }
+
+    @staticmethod
+    def create_agent_end_event(ctx: StreamContext, status: str = "completed") -> StreamingEvent | None:
+        """Create agent_end event from context."""
+        if not ctx.event_ctx or not ctx.agent_started:
+            return None
+
+        duration_ms = int((time.time() - ctx.agent_start_time) * 1000)
+
+        return {
+            "type": ChatEventType.AGENT_END,
+            "data": {
+                "context": {
+                    "agent_id": ctx.event_ctx.agent_id,
+                    "agent_name": ctx.event_ctx.agent_name,
+                    "agent_type": ctx.event_ctx.agent_type,
+                    "execution_id": ctx.event_ctx.execution_id,
+                    "depth": 0,
+                    "execution_path": [ctx.event_ctx.agent_name],
+                    "started_at": int(ctx.agent_start_time * 1000),
+                },
+                "status": status,
+                "duration_ms": duration_ms,
+            },
+        }
+
+    @staticmethod
+    def create_node_start_event(ctx: StreamContext, node_name: str) -> StreamingEvent | None:
+        """Create node_start event."""
+        if not ctx.event_ctx:
+            return None
+
+        ctx.current_node = node_name
+        ctx.node_start_time = time.time()
+
+        # Map common node names to more descriptive types
+        node_type = "llm"
+        if node_name == "tools":
+            node_type = "tool"
+        elif node_name in ("router", "route", "conditional"):
+            node_type = "router"
+
+        return {
+            "type": ChatEventType.NODE_START,
+            "data": {
+                # Use raw node_name as node_id for frontend compatibility
+                # (frontend uses node_id for display name lookup)
+                "node_id": node_name,
+                "node_name": node_name,
+                "node_type": node_type,
+                "context": {
+                    "agent_id": ctx.event_ctx.agent_id,
+                    "agent_name": ctx.event_ctx.agent_name,
+                    "agent_type": ctx.event_ctx.agent_type,
+                    "execution_id": ctx.event_ctx.execution_id,
+                    "depth": 0,
+                    "execution_path": [ctx.event_ctx.agent_name],
+                    "current_node": node_name,
+                    "started_at": int(ctx.agent_start_time * 1000),
+                },
+            },
+        }
+
+    @staticmethod
+    def create_node_end_event(ctx: StreamContext, node_name: str, status: str = "completed") -> StreamingEvent | None:
+        """Create node_end event."""
+        if not ctx.event_ctx:
+            return None
+
+        duration_ms = int((time.time() - ctx.node_start_time) * 1000) if ctx.node_start_time else 0
+
+        node_type = "llm"
+        if node_name == "tools":
+            node_type = "tool"
+        elif node_name in ("router", "route", "conditional"):
+            node_type = "router"
+
+        return {
+            "type": ChatEventType.NODE_END,
+            "data": {
+                # Use raw node_name as node_id for frontend compatibility
+                "node_id": node_name,
+                "node_name": node_name,
+                "node_type": node_type,
+                "status": status,
+                "duration_ms": duration_ms,
+                "context": {
+                    "agent_id": ctx.event_ctx.agent_id,
+                    "agent_name": ctx.event_ctx.agent_name,
+                    "agent_type": ctx.event_ctx.agent_type,
+                    "execution_id": ctx.event_ctx.execution_id,
+                    "depth": 0,
+                    "execution_path": [ctx.event_ctx.agent_name],
+                    "current_node": node_name,
+                    "started_at": int(ctx.agent_start_time * 1000),
+                },
+            },
+        }
+
+    @staticmethod
+    def create_progress_event(ctx: StreamContext, percent: int, message: str) -> StreamingEvent | None:
+        """Create progress_update event."""
+        if not ctx.event_ctx:
+            return None
+
+        return {
+            "type": ChatEventType.PROGRESS_UPDATE,
+            "data": {
+                "progress_percent": percent,
+                "message": message,
+                "context": {
+                    "agent_id": ctx.event_ctx.agent_id,
+                    "agent_name": ctx.event_ctx.agent_name,
+                    "agent_type": ctx.event_ctx.agent_type,
+                    "execution_id": ctx.event_ctx.execution_id,
+                    "depth": 0,
+                    "execution_path": [ctx.event_ctx.agent_name],
+                    "started_at": int(ctx.agent_start_time * 1000),
+                },
+            },
+        }

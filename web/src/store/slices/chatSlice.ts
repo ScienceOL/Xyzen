@@ -11,6 +11,22 @@ import type {
   TopicResponse,
   XyzenState,
 } from "../types";
+import type {
+  AgentStartData,
+  AgentEndData,
+  AgentErrorData,
+  PhaseStartData,
+  PhaseEndData,
+  NodeStartData,
+  NodeEndData,
+  SubagentStartData,
+  SubagentEndData,
+  ProgressUpdateData,
+  IterationStartData,
+  IterationEndData,
+  AgentExecutionState,
+  PhaseExecution,
+} from "@/types/agentEvents";
 
 // NOTE: groupToolMessagesWithAssistant and generateClientId have been moved to
 // @/core/chat/messageProcessor.ts as part of the frontend refactor.
@@ -93,6 +109,17 @@ export const createChatSlice: StateCreator<
     const agent = state.agents.find((a) => a.id === agentId);
 
     return agent?.name || "通用助理";
+  };
+
+  // Helper function to get user-friendly display name for a node ID
+  const getNodeDisplayName = (nodeId: string): string => {
+    const names: Record<string, string> = {
+      clarify_with_user: "Clarification",
+      write_research_brief: "Research Brief",
+      research_supervisor: "Research",
+      final_report_generation: "Final Report",
+    };
+    return names[nodeId] || nodeId;
   };
 
   return {
@@ -489,7 +516,23 @@ export const createChatSlice: StateCreator<
                   break;
                 }
 
-                // No loading or existing message found, create a streaming message now
+                // Check for agent execution message (streaming goes into phases, not a new message)
+                // Use findLastIndex to get the MOST RECENT running agent execution
+                // to avoid routing to old completed messages from previous conversations
+                const agentMsgIndex = channel.messages.findLastIndex(
+                  (m) => m.agentExecution?.status === "running",
+                );
+                if (agentMsgIndex !== -1) {
+                  // Agent execution exists, mark it as streaming but don't create a new message
+                  // Content will be routed to phase.streamedContent in streaming_chunk
+                  channel.messages[agentMsgIndex] = {
+                    ...channel.messages[agentMsgIndex],
+                    isStreaming: true,
+                  };
+                  break;
+                }
+
+                // No loading, existing, or agent message found, create a streaming message now
                 channel.messages.push({
                   id: eventData.id,
                   clientId: generateClientId(),
@@ -505,9 +548,65 @@ export const createChatSlice: StateCreator<
               case "streaming_chunk": {
                 // Update streaming message content
                 const eventData = event.data as { id: string; content: string };
+
+                // Check for RUNNING agent execution message (most recent)
+                // Use findLastIndex to avoid routing to old completed messages
+                const agentMsgIndex = channel.messages.findLastIndex(
+                  (m) => m.agentExecution?.status === "running",
+                );
+
+                if (agentMsgIndex !== -1) {
+                  const execution =
+                    channel.messages[agentMsgIndex].agentExecution;
+                  if (execution && execution.phases.length > 0) {
+                    // Use currentNode to find the correct phase (more reliable than status)
+                    let targetPhase = execution.currentNode
+                      ? execution.phases.find(
+                          (p) => p.id === execution.currentNode,
+                        )
+                      : null;
+
+                    // Fallback to running phase if currentNode doesn't match
+                    if (!targetPhase) {
+                      targetPhase = execution.phases.find(
+                        (p) => p.status === "running",
+                      );
+                    }
+
+                    // Final fallback: last phase (for late chunks after agent_end)
+                    if (!targetPhase) {
+                      targetPhase =
+                        execution.phases[execution.phases.length - 1];
+                    }
+
+                    // Fix: Detect and handle duplicate full-content chunks
+                    // The backend sometimes sends the complete content as a final chunk
+                    // after already streaming it incrementally. Detect this by checking
+                    // if the chunk starts with the same content as existing streamedContent.
+                    const existingContent = targetPhase.streamedContent || "";
+                    if (
+                      existingContent.length > 0 &&
+                      eventData.content.length > 100 && // Only check substantial chunks
+                      existingContent.startsWith(
+                        eventData.content.slice(0, 100),
+                      )
+                    ) {
+                      // This chunk contains content from the beginning - it's a full-content chunk
+                      // Replace instead of append to avoid duplication
+                      targetPhase.streamedContent = eventData.content;
+                    } else {
+                      targetPhase.streamedContent =
+                        existingContent + eventData.content;
+                    }
+                    break; // Don't fall through to other handling
+                  }
+                }
+
+                // Fallback: try to find message by ID (for non-agent messages only)
                 const streamingIndex = channel.messages.findIndex(
                   (m) => m.id === eventData.id,
                 );
+
                 if (streamingIndex === -1) {
                   // If we somehow missed streaming_start, create the message on first chunk
                   channel.messages.push({
@@ -519,8 +618,15 @@ export const createChatSlice: StateCreator<
                     isStreaming: true,
                   });
                 } else {
-                  const currentContent =
-                    channel.messages[streamingIndex].content;
+                  const msg = channel.messages[streamingIndex];
+
+                  // Skip agent messages here - they're handled above
+                  if (msg.agentExecution) {
+                    break;
+                  }
+
+                  // Append to message.content (for non-agent messages only)
+                  const currentContent = msg.content;
                   channel.messages[streamingIndex].content =
                     currentContent + eventData.content;
                 }
@@ -534,9 +640,19 @@ export const createChatSlice: StateCreator<
                   id: string;
                   created_at?: string;
                 };
-                const endingIndex = channel.messages.findIndex(
+
+                // First try to find by ID
+                let endingIndex = channel.messages.findIndex(
                   (m) => m.id === eventData.id,
                 );
+
+                // If not found, check for agent execution message that's streaming
+                if (endingIndex === -1) {
+                  endingIndex = channel.messages.findIndex(
+                    (m) => m.agentExecution && m.isStreaming,
+                  );
+                }
+
                 if (endingIndex !== -1) {
                   const messageFinal = {
                     ...channel.messages[endingIndex],
@@ -947,6 +1063,385 @@ export const createChatSlice: StateCreator<
                   historyItem.title = eventData.name;
                   historyItem.updatedAt = eventData.updated_at;
                 }
+                break;
+              }
+
+              // === Agent Execution Events ===
+
+              case "agent_start": {
+                channel.responding = true;
+                const data = event.data as AgentStartData;
+                const { context } = data;
+
+                // Find or create a message for this agent execution
+                // First check for existing loading message
+                const loadingIndex = channel.messages.findIndex(
+                  (m) => m.isLoading,
+                );
+
+                const executionState: AgentExecutionState = {
+                  agentId: context.agent_id,
+                  agentName: context.agent_name,
+                  agentType: context.agent_type,
+                  executionId: context.execution_id,
+                  status: "running",
+                  startedAt: context.started_at,
+                  phases: [],
+                  subagents: [],
+                };
+
+                if (loadingIndex !== -1) {
+                  // Convert loading message to agent execution message
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { isLoading: _, ...messageWithoutLoading } =
+                    channel.messages[loadingIndex];
+                  channel.messages[loadingIndex] = {
+                    ...messageWithoutLoading,
+                    id: `agent-${context.execution_id}`,
+                    agentExecution: executionState,
+                  };
+                } else {
+                  // Create a new message with agent execution
+                  channel.messages.push({
+                    id: `agent-${context.execution_id}`,
+                    clientId: generateClientId(),
+                    role: "assistant" as const,
+                    content: "",
+                    created_at: new Date().toISOString(),
+                    isNewMessage: true,
+                    agentExecution: executionState,
+                  });
+                }
+                break;
+              }
+
+              case "agent_end": {
+                channel.responding = false;
+                const data = event.data as AgentEndData;
+                const { context } = data;
+
+                // Find the message with this agent execution
+                const msgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    execution.status =
+                      data.status === "completed"
+                        ? "completed"
+                        : data.status === "cancelled"
+                          ? "cancelled"
+                          : "failed";
+                    execution.endedAt = Date.now();
+                    execution.durationMs = data.duration_ms;
+                  }
+                }
+                break;
+              }
+
+              case "agent_error": {
+                channel.responding = false;
+                const data = event.data as AgentErrorData;
+                const { context } = data;
+
+                // Find the message with this agent execution
+                const msgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    execution.status = "failed";
+                    execution.endedAt = Date.now();
+                    execution.error = {
+                      type: data.error_type,
+                      message: data.error_message,
+                      recoverable: data.recoverable,
+                      nodeId: data.node_id,
+                    };
+                  }
+                }
+                break;
+              }
+
+              case "phase_start": {
+                const data = event.data as PhaseStartData;
+                const { context } = data;
+
+                // Find the message with this agent execution
+                const msgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    execution.currentPhase = data.phase_name;
+
+                    // Add phase to phases array
+                    const newPhase: PhaseExecution = {
+                      id: data.phase_id,
+                      name: data.phase_name,
+                      description: data.description,
+                      status: "running",
+                      startedAt: Date.now(),
+                      nodes: [],
+                    };
+                    execution.phases.push(newPhase);
+                  }
+                }
+                break;
+              }
+
+              case "phase_end": {
+                const data = event.data as PhaseEndData;
+                const { context } = data;
+
+                // Find the message with this agent execution
+                const msgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    // Find and update the phase
+                    const phase = execution.phases.find(
+                      (p) => p.id === data.phase_id,
+                    );
+                    if (phase) {
+                      phase.status =
+                        data.status === "completed"
+                          ? "completed"
+                          : data.status === "skipped"
+                            ? "skipped"
+                            : "failed";
+                      phase.endedAt = Date.now();
+                      phase.durationMs = data.duration_ms;
+                      phase.outputSummary = data.output_summary;
+                    }
+                  }
+                }
+                break;
+              }
+
+              case "node_start": {
+                const data = event.data as NodeStartData;
+                const { context } = data;
+
+                // Find the main agent execution message
+                const agentMsgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (agentMsgIndex !== -1) {
+                  const execution =
+                    channel.messages[agentMsgIndex].agentExecution;
+                  if (execution) {
+                    // Mark any currently running phase as completed
+                    const runningPhase = execution.phases.find(
+                      (p) => p.status === "running",
+                    );
+                    if (runningPhase) {
+                      runningPhase.status = "completed";
+                      runningPhase.endedAt = Date.now();
+                      if (runningPhase.startedAt) {
+                        runningPhase.durationMs =
+                          Date.now() - runningPhase.startedAt;
+                      }
+                    }
+
+                    // Get display name for this node
+                    const displayName = getNodeDisplayName(data.node_id);
+
+                    // Check if phase already exists (from phase_start event)
+                    const existingPhase = execution.phases.find(
+                      (p) => p.id === data.node_id,
+                    );
+                    if (existingPhase) {
+                      existingPhase.status = "running";
+                      existingPhase.name = displayName; // Update name in case it was set differently
+                      existingPhase.startedAt = Date.now();
+                      existingPhase.streamedContent = "";
+                    } else {
+                      // Add new phase for this node
+                      execution.phases.push({
+                        id: data.node_id,
+                        name: displayName,
+                        status: "running",
+                        startedAt: Date.now(),
+                        nodes: [],
+                        streamedContent: "",
+                      });
+                    }
+
+                    execution.currentPhase = displayName;
+                    execution.currentNode = data.node_id;
+                  }
+                }
+                break;
+              }
+
+              case "node_end": {
+                const data = event.data as NodeEndData;
+                const { context } = data;
+
+                // Find the main agent execution message
+                const agentMsgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (agentMsgIndex !== -1) {
+                  const execution =
+                    channel.messages[agentMsgIndex].agentExecution;
+                  if (execution) {
+                    // Find and update the phase
+                    const phase = execution.phases.find(
+                      (p) => p.id === data.node_id,
+                    );
+                    if (phase) {
+                      phase.status =
+                        data.status === "completed"
+                          ? "completed"
+                          : data.status === "skipped"
+                            ? "skipped"
+                            : "failed";
+                      phase.endedAt = Date.now();
+                      phase.durationMs = data.duration_ms;
+                      phase.outputSummary = data.output_summary;
+                    }
+                  }
+                }
+                break;
+              }
+
+              case "subagent_start": {
+                const data = event.data as SubagentStartData;
+                const { context } = data;
+
+                // Find the root agent execution (parent)
+                const msgIndex = channel.messages.findIndex(
+                  (m) =>
+                    m.agentExecution &&
+                    (m.agentExecution.executionId ===
+                      context.parent_execution_id ||
+                      m.agentExecution.executionId === context.execution_id),
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    execution.subagents.push({
+                      id: data.subagent_id,
+                      name: data.subagent_name,
+                      type: data.subagent_type,
+                      status: "running",
+                      depth: context.depth,
+                      executionPath: context.execution_path,
+                      startedAt: context.started_at,
+                    });
+                  }
+                }
+                break;
+              }
+
+              case "subagent_end": {
+                const data = event.data as SubagentEndData;
+
+                // Find the message containing this subagent
+                const msgIndex = channel.messages.findIndex((m) =>
+                  m.agentExecution?.subagents?.some(
+                    (s) => s.id === data.subagent_id,
+                  ),
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    const subagent = execution.subagents.find(
+                      (s) => s.id === data.subagent_id,
+                    );
+                    if (subagent) {
+                      subagent.status =
+                        data.status === "completed" ? "completed" : "failed";
+                      subagent.endedAt = Date.now();
+                      subagent.durationMs = data.duration_ms;
+                      subagent.outputSummary = data.output_summary;
+                    }
+                  }
+                }
+                break;
+              }
+
+              case "progress_update": {
+                const data = event.data as ProgressUpdateData;
+                const { context } = data;
+
+                // Find the message with this agent execution
+                const msgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    execution.progressPercent = data.progress_percent;
+                    execution.progressMessage = data.message;
+                  }
+                }
+                break;
+              }
+
+              case "iteration_start": {
+                const data = event.data as IterationStartData;
+                const { context } = data;
+
+                // Find the message with this agent execution
+                const msgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution) {
+                    execution.iteration = {
+                      current: data.iteration_number,
+                      max: data.max_iterations,
+                      reason: data.reason,
+                    };
+                  }
+                }
+                break;
+              }
+
+              case "iteration_end": {
+                const data = event.data as IterationEndData;
+                const { context } = data;
+
+                // Find the message with this agent execution
+                const msgIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.executionId === context.execution_id,
+                );
+
+                if (msgIndex !== -1) {
+                  const execution = channel.messages[msgIndex].agentExecution;
+                  if (execution && execution.iteration) {
+                    execution.iteration.current = data.iteration_number;
+                    if (!data.will_continue) {
+                      // Iteration complete, clear the reason
+                      execution.iteration.reason = data.reason;
+                    }
+                  }
+                }
+                break;
+              }
+
+              case "state_update": {
+                // State updates are informational, we don't need to store them
+                // but we could add them to a debug log if needed
                 break;
               }
             }

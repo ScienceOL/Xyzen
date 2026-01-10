@@ -14,7 +14,7 @@ from app.infra.database import AsyncSessionLocal
 from app.middleware.auth import AuthContext, get_auth_context_websocket
 from app.models.message import MessageCreate
 from app.repos import FileRepository, MessageRepository, SessionRepository, TopicRepository
-from app.schemas.chat_events import ChatClientEventType, ChatEventType
+from app.schemas.chat_event_types import ChatClientEventType, ChatEventType
 
 # from app.core.celery_app import celery_app # Not needed directly if we import the task
 from app.tasks.chat import process_chat_message

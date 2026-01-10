@@ -9,10 +9,13 @@ graph agents that are automatically discovered and loaded by the system.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import Any, TypeVar
 
-if TYPE_CHECKING:
-    from langgraph.graph.state import CompiledStateGraph
+from langgraph.graph.state import CompiledStateGraph
+from pydantic import BaseModel
+
+# TypeVar for state types in subclasses
+StateT = TypeVar("StateT", bound=BaseModel)
 
 
 class AgentMetadata:
@@ -107,7 +110,7 @@ class BaseBuiltinGraphAgent(ABC):
         self.license_ = license_
 
     @abstractmethod
-    def build_graph(self) -> "CompiledStateGraph":
+    def build_graph(self) -> CompiledStateGraph[Any, None, Any, Any]:
         """
         Build and return the LangGraph StateGraph for this agent.
 
