@@ -7,6 +7,7 @@
 import McpIcon from "@/assets/McpIcon";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/types/agents";
+import { useTranslation } from "react-i18next";
 
 interface McpServer {
   id: string;
@@ -29,6 +30,7 @@ export function McpToolsButton({
   mcpInfo,
   buttonClassName,
 }: McpToolsButtonProps) {
+  const { t } = useTranslation();
   const totalTools = mcpInfo.servers.reduce(
     (total, server) => total + (server.tools?.length || 0),
     0,
@@ -38,7 +40,7 @@ export function McpToolsButton({
     <div className="relative group/mcp w-fit">
       <button
         className={cn(buttonClassName, "w-auto px-2 gap-1.5")}
-        title="当前连接的MCP工具"
+        title={t("app.toolbar.mcpTools")}
       >
         <McpIcon className="h-4 w-4" />
         {mcpInfo.servers.length > 0 && (
@@ -62,17 +64,19 @@ export function McpToolsButton({
  * MCP Tooltip content component
  */
 function McpTooltipContent({ mcpInfo }: { mcpInfo: McpInfo }) {
+  const { t } = useTranslation();
+
   return (
     <>
       <div className="mb-2">
         <div className="flex items-center space-x-2">
           <McpIcon className="h-4 w-4 text-indigo-500" />
           <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-            MCP 工具连接
+            {t("app.toolbar.mcpTools")}
           </span>
         </div>
         <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-          助手: {mcpInfo.agent.name}
+          {t("app.chat.assistantsTitle")}: {mcpInfo.agent.name}
         </div>
       </div>
 

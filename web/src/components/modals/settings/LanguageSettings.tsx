@@ -4,7 +4,13 @@ import { useTranslation } from "react-i18next";
 
 export function LanguageSettings() {
   const { i18n, t } = useTranslation();
-  const currentLang = i18n.resolvedLanguage?.startsWith("zh") ? "zh" : "en";
+  const getCurrentLang = () => {
+    const lang = i18n.resolvedLanguage;
+    if (lang?.startsWith("zh")) return "zh";
+    if (lang?.startsWith("ja")) return "ja";
+    return "en";
+  };
+  const currentLang = getCurrentLang();
 
   const languages = [
     {
@@ -16,6 +22,11 @@ export function LanguageSettings() {
       code: "zh",
       nativeName: "简体中文",
       description: t("settings.language.zh.description"),
+    },
+    {
+      code: "ja",
+      nativeName: "日本語",
+      description: t("settings.language.ja.description"),
     },
   ];
 

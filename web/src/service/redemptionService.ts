@@ -60,6 +60,12 @@ export interface ConsumeRecordResponse {
   created_at: string;
 }
 
+export interface DailyUserActivityResponse {
+  date: string;
+  active_users: number;
+  new_users: number;
+}
+
 class RedemptionService {
   private getBackendUrl(): string {
     const { backendUrl } = useXyzen.getState();
@@ -254,6 +260,48 @@ class RedemptionService {
       const error = await response.json();
       throw new Error(
         error.detail?.msg || error.detail || "Failed to get consume records",
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get user activity statistics (admin only)
+   */
+  async getUserActivityStats(
+    adminSecret: string,
+    startDate?: string,
+    endDate?: string,
+    tz?: string,
+  ): Promise<DailyUserActivityResponse[]> {
+    const url = new URL(
+      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/user-activity`,
+    );
+    if (startDate) {
+      url.searchParams.append("start_date", startDate);
+    }
+    if (endDate) {
+      url.searchParams.append("end_date", endDate);
+    }
+    if (tz) {
+      url.searchParams.append("tz", tz);
+    }
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Secret": adminSecret,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.detail?.msg ||
+          error.detail ||
+          "Failed to get user activity stats",
       );
     }
 

@@ -14,6 +14,51 @@
         "showThinking": "Show thinking",
         "hideThinking": "Hide thinking"
       }
+    },
+    "activityBar": {
+      "chat": "Chat",
+      "knowledge": "Knowledge",
+      "community": "Community",
+      "comingSoon": "Coming Soon"
+    },
+    "toolbar": {
+      "newChat": "New Chat",
+      "newChatCreating": "Creating...",
+      "uploadFile": "Upload File",
+      "resizeHint": "Drag to adjust input height",
+      "history": "History",
+      "search": "Search",
+      "searchBuiltin": "Built-in Search",
+      "searchSearxng": "Universal Search",
+      "knowledge": "Knowledge",
+      "knowledgeConnect": "Connect Knowledge Base",
+      "knowledgeDisconnect": "Disconnect",
+      "mcpTools": "MCP Tools Connected",
+      "searchOff": "Off",
+      "searchOffDesc": "Do not use search",
+      "searchBuiltinDesc": "Use model's native search capability",
+      "searchBuiltinNotSupported": "Current model does not support",
+      "searchBuiltinConflict": "Conflicts with MCP tools, cannot be used",
+      "searchSearxngDesc": "Use universal search engine",
+      "knowledgeSelect": "Select Knowledge Base",
+      "knowledgeEmpty": "No knowledge bases",
+      "knowledgeEmptyDesc": "Please create one in Knowledge panel first"
+    },
+    "input": {
+      "placeholder": "Send a message...",
+      "send": "Send",
+      "enterToSend": "Send",
+      "shiftEnterForNewline": "New line"
+    },
+    "modelCapabilities": {
+      "vision": "Vision Support",
+      "audioInput": "Audio Input",
+      "videoInput": "Video Input",
+      "webSearch": "Web Search"
+    },
+    "modelSelector": {
+      "noProvider": "Please add an LLM provider first",
+      "notConfigured": "Not Configured"
     }
   },
   "common": {
@@ -60,6 +105,9 @@
       },
       "zh": {
         "description": "Use Chinese as the interface language"
+      },
+      "ja": {
+        "description": "Use Japanese as the interface language"
       }
     },
     "theme": {
@@ -549,6 +597,57 @@
         "button": "Add Custom Server"
       },
       "loading": "Loading MCP servers..."
+    }
+  },
+  "agents": {
+    "add": "Add Agent",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editAgent": "Edit Agent",
+    "deleteAgent": "Delete Agent",
+    "addButton": "+ Add Agent",
+    "createTitle": "Create Agent",
+    "editTitle": "Edit {{name}}",
+    "deleteTitle": "Delete Agent",
+    "deleteConfirm": "Are you sure you want to permanently delete agent \"{{name}}\"? This action cannot be undone.",
+    "deleteConfirmWithListing": "⚠️ This agent has been published to the marketplace. Deleting it will also remove the published version.\n\nAre you sure you want to permanently delete agent \"{{name}}\"? This action cannot be undone.",
+    "createDescription": "Create a new AI agent with custom prompts and tools.",
+    "updateDescription": "Update the details for your agent.",
+    "fields": {
+      "name": {
+        "label": "Agent Name",
+        "placeholder": "e.g., My Research Assistant",
+        "required": "Agent Name *"
+      },
+      "description": {
+        "label": "Description",
+        "placeholder": "A brief description of the agent's purpose"
+      },
+      "prompt": {
+        "label": "System Prompt",
+        "placeholder": "Define the agent's behavior and knowledge scope"
+      },
+      "mcpServers": {
+        "label": "MCP Tool Servers",
+        "connected": "Connected MCP Servers",
+        "empty": "No MCP servers available.",
+        "emptyDescription": "No MCP servers available yet",
+        "createButton": "Create MCP Server"
+      }
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "create": "Create Agent",
+      "creating": "Creating...",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "publish": "Publish to Marketplace",
+      "publishTooltip": "Add a prompt before publishing"
+    },
+    "errors": {
+      "nameRequired": "Agent name cannot be empty",
+      "createFailed": "Failed to create agent, please check the console for more information.",
+      "updateFailed": "Failed to save, please try again later."
     }
   }
 }

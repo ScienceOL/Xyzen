@@ -476,3 +476,101 @@ class ConsumeRepository:
 
         logger.debug(f"Found {len(records)} consume records")
         return records
+
+    async def get_daily_user_activity_stats(
+        self,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        tz: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Get daily user activity statistics (daily active users and new users).
+
+        Args:
+            start_date: Start date in YYYY-MM-DD format (optional)
+            end_date: End date in YYYY-MM-DD format (optional)
+            tz: Timezone name (IANA), used to interpret start_date/end_date (optional, defaults to UTC)
+
+        Returns:
+            List of dictionaries containing date, active_users, new_users for each day.
+        """
+        from datetime import date as date_type
+        from datetime import datetime, timedelta, timezone
+
+        logger.debug(f"Getting daily user activity stats from {start_date} to {end_date}, tz: {tz}")
+
+        zone = ZoneInfo("UTC")
+        if tz:
+            try:
+                zone = ZoneInfo(tz)
+            except ZoneInfoNotFoundError as e:
+                raise ValueError(f"Invalid timezone: {tz}") from e
+
+        # Default to last 30 days if no dates provided
+        if not start_date:
+            start_local = datetime.now(zone).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30)
+        else:
+            start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
+
+        if not end_date:
+            end_local = datetime.now(zone).replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
+            )
+
+        start_utc = start_local.astimezone(timezone.utc)
+        end_utc = end_local.astimezone(timezone.utc)
+
+        tz_name = tz or "UTC"
+
+        start_day: date_type = start_local.date()
+        end_day: date_type = end_local.date()
+        days: list[str] = []
+        cursor = start_day
+        while cursor <= end_day:
+            days.append(cursor.strftime("%Y-%m-%d"))
+            cursor += timedelta(days=1)
+
+        daily: dict[str, dict[str, Any]] = {d: {"date": d, "active_users": 0, "new_users": 0} for d in days}
+
+        # Aggregate daily active users
+        active_date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
+        active_stmt = (
+            select(
+                active_date_expr.label("date"),
+                func.count(func.distinct(ConsumeRecord.user_id)).label("active_users"),
+            )
+            .where(ConsumeRecord.created_at >= start_utc, ConsumeRecord.created_at <= end_utc)
+            .group_by(active_date_expr)
+            .order_by(active_date_expr)
+        )
+        active_rows = (await self.db.exec(active_stmt)).all()
+        for date_val, active_users in active_rows:
+            date_str = str(date_val)
+            if date_str in daily:
+                daily[date_str]["active_users"] = int(active_users)
+            else:
+                daily[date_str] = {"date": date_str, "active_users": int(active_users), "new_users": 0}
+
+        # Aggregate daily new users (wallet created)
+        from app.models.redemption import UserWallet
+
+        new_date_expr = func.to_char(func.timezone(tz_name, UserWallet.created_at), "YYYY-MM-DD")
+        new_stmt = (
+            select(new_date_expr.label("date"), func.count().label("new_users"))
+            .where(UserWallet.created_at >= start_utc, UserWallet.created_at <= end_utc)
+            .group_by(new_date_expr)
+            .order_by(new_date_expr)
+        )
+        new_rows = (await self.db.exec(new_stmt)).all()
+        for date_val, new_users in new_rows:
+            date_str = str(date_val)
+            if date_str in daily:
+                daily[date_str]["new_users"] = int(new_users)
+            else:
+                daily[date_str] = {"date": date_str, "active_users": 0, "new_users": int(new_users)}
+
+        result_list = [daily[d] for d in sorted(daily.keys())]
+        logger.debug(f"Found activity stats for {len(result_list)} days")
+        return result_list

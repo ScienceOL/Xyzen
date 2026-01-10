@@ -2,18 +2,18 @@
 
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { FileUploadPreview } from "@/components/features";
+import { useAvailableModels, useMyProviders } from "@/hooks/queries";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
-import { useMyProviders, useAvailableModels } from "@/hooks/queries";
 import type { ModelInfo } from "@/types/llmProvider";
 import {
-  type DragEndEvent,
-  type DragMoveEvent,
   DndContext,
   PointerSensor,
   useDraggable,
   useSensor,
   useSensors,
+  type DragEndEvent,
+  type DragMoveEvent,
 } from "@dnd-kit/core";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,11 +24,12 @@ import {
   type SearchMethod,
 } from "./SearchMethodSelector";
 // Extracted components from ./ChatToolbar/ directory
+import { useTranslation } from "react-i18next";
 import {
-  McpToolsButton,
-  ToolbarActions,
-  MobileMoreMenu,
   HistorySheetButton,
+  McpToolsButton,
+  MobileMoreMenu,
+  ToolbarActions,
 } from "./ChatToolbar/index";
 
 interface ChatToolbarProps {
@@ -41,6 +42,7 @@ interface ChatToolbarProps {
 
 // Draggable resize handle component
 const ResizeHandle = () => {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: "resize-handle",
   });
@@ -51,7 +53,7 @@ const ResizeHandle = () => {
       {...listeners}
       {...attributes}
       className="absolute -top-1 left-0 right-0 h-1 cursor-ns-resize transition-colors hover:bg-indigo-600"
-      title="拖动调整输入框高度"
+      title={t("app.toolbar.resizeHint")}
     />
   );
 };

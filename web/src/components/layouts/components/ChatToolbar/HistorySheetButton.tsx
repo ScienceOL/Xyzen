@@ -16,9 +16,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/animate-ui/components/radix/sheet";
-import SessionHistory from "../SessionHistory";
 import { ClockIcon } from "@heroicons/react/24/outline";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useTranslation } from "react-i18next";
+import SessionHistory from "../SessionHistory";
 
 interface HistorySheetButtonProps {
   isOpen: boolean;
@@ -35,6 +36,8 @@ export function HistorySheetButton({
   onSelectTopic,
   buttonClassName,
 }: HistorySheetButtonProps) {
+  const { t } = useTranslation();
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <Tooltip>
@@ -46,7 +49,7 @@ export function HistorySheetButton({
           </SheetTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>历史记录</p>
+          <p>{t("app.toolbar.history")}</p>
         </TooltipContent>
       </Tooltip>
       <SheetContent

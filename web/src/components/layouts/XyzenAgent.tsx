@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -56,6 +57,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onClose,
   isDefaultAgent = false,
 }) => {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,30 +92,28 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       className="fixed z-50 w-48 rounded-sm border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
       style={{ left: x, top: y }}
     >
-      <>
-        <button
-          onClick={() => {
-            onEdit();
-            onClose();
-          }}
-          className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700 ${
-            isDefaultAgent ? "rounded-lg" : "rounded-t-lg"
-          }`}
-        >
-          <PencilIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-          编辑助手
-        </button>
-        <button
-          onClick={() => {
-            onDelete();
-            onClose();
-          }}
-          className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
-        >
-          <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-          删除助手
-        </button>
-      </>
+      <button
+        onClick={() => {
+          onEdit();
+          onClose();
+        }}
+        className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700 ${
+          isDefaultAgent ? "rounded-lg" : "rounded-t-lg"
+        }`}
+      >
+        <PencilIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+        {t("agents.editAgent")}
+      </button>
+      <button
+        onClick={() => {
+          onDelete();
+          onClose();
+        }}
+        className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
+      >
+        <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+        {t("agents.deleteAgent")}
+      </button>
     </motion.div>
   );
 };
@@ -301,6 +301,7 @@ interface XyzenAgentProps {
 export default function XyzenAgent({
   systemAgentType = "all",
 }: XyzenAgentProps) {
+  const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -444,7 +445,7 @@ export default function XyzenAgent({
         className="w-full rounded-sm border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
         onClick={() => setAddModalOpen(true)}
       >
-        + 添加助手
+        {t("agents.addButton")}
       </button>
       <AddAgentModal
         isOpen={isAddModalOpen}
@@ -464,15 +465,17 @@ export default function XyzenAgent({
             setConfirmModalOpen(false);
             setAgentToDelete(null);
           }}
-          title="删除助手"
+          title={t("agents.deleteTitle")}
           message={(() => {
             const hasListing = myListings?.some(
               (l) => l.agent_id === agentToDelete.id,
             );
             if (hasListing) {
-              return `⚠️ 此助手已发布到市场。删除后，市场中的发布版本也将被移除。\n\n确定要永久删除助手"${agentToDelete.name}"吗？此操作无法撤销。`;
+              return t("agents.deleteConfirmWithListing", {
+                name: agentToDelete.name,
+              });
             }
-            return `确定要永久删除助手"${agentToDelete.name}"吗？此操作无法撤销。`;
+            return t("agents.deleteConfirm", { name: agentToDelete.name });
           })()}
         />
       )}

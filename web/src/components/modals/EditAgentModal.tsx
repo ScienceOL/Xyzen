@@ -1,5 +1,6 @@
 import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
+import PublishAgentModal from "@/components/features/PublishAgentModal";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import {
@@ -16,8 +17,8 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { McpServerItem } from "./McpServerItem";
-import PublishAgentModal from "@/components/features/PublishAgentModal";
 
 interface EditAgentModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   onClose,
   agent: agentToEdit,
 }) => {
+  const { t } = useTranslation();
   const { updateAgent, mcpServers, fetchMcpServers, openAddMcpServerModal } =
     useXyzen();
   const [agent, setAgent] = useState<Agent | null>(agentToEdit);
@@ -115,7 +117,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
       onClose();
     } catch (error) {
       console.error("Failed to update agent:", error);
-      alert("保存失败，请稍后重试。");
+      alert(t("agents.errors.updateFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -124,44 +126,48 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   if (!agent) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Edit ${agent.name}`}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t("agents.editTitle", { name: agent.name })}
+    >
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        Update the details for your agent.
+        {t("agents.updateDescription")}
       </p>
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            Name
+            {t("agents.fields.name.label")}
           </Label>
           <Input
             name="name"
             value={agent.name}
             onChange={handleChange}
-            placeholder="e.g., Research Assistant"
+            placeholder={t("agents.fields.name.placeholder")}
             required
           />
         </Field>
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            Description
+            {t("agents.fields.description.label")}
           </Label>
           <textarea
             name="description"
             value={agent.description}
             onChange={handleChange}
-            placeholder="A brief description of the agent's purpose"
+            placeholder={t("agents.fields.description.placeholder")}
             className="w-full rounded-sm border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
           />
         </Field>
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            System Prompt
+            {t("agents.fields.prompt.label")}
           </Label>
           <textarea
             name="prompt"
             value={agent.prompt}
             onChange={handleChange}
-            placeholder="Define the agent's behavior and personality"
+            placeholder={t("agents.fields.prompt.placeholder")}
             rows={4}
             className="w-full rounded-sm border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
           />
@@ -199,7 +205,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
         </Disclosure>
         <Field>
           <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            Connected MCP Servers
+            {t("agents.fields.mcpServers.connected")}
           </Label>
           <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-sm border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
             {mcpServers.length > 0 ? (
@@ -214,7 +220,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
             ) : (
               <div className="flex flex-col items-center justify-center p-4 text-center">
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  No MCP servers available.
+                  {t("agents.fields.mcpServers.empty")}
                 </p>
                 <Button
                   type="button"
@@ -222,10 +228,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
                     onClose(); // Close current modal
                     openAddMcpServerModal(); // Open add server modal
                   }}
-                  className="mt-2 inline-flex items-center gap-2 rounded-sm bg-indigo-100 py-1.5 px-3 text-sm/6 font-semibold text-indigo-600 focus:outline-none data-[hover]:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:data-[hover]:bg-indigo-900"
+                  className="mt-2 inline-flex items-center gap-2 rounded-sm bg-indigo-100 py-1.5 px-3 text-sm/6 font-semibold text-indigo-600 focus:outline-none data-hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:data-hover:bg-indigo-900"
                 >
                   <PlusIcon className="h-4 w-4" />
-                  Create MCP Server
+                  {t("agents.fields.mcpServers.createButton")}
                 </Button>
               </div>
             )}
@@ -239,20 +245,20 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
             className="inline-flex items-center gap-2 rounded-sm bg-purple-100 py-1.5 px-3 text-sm/6 font-semibold text-purple-700 shadow-sm focus:outline-none data-[hover]:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-purple-900/30 dark:text-purple-300 dark:data-[hover]:bg-purple-900/50"
             title={
               !agent.prompt
-                ? "Add a prompt before publishing"
-                : "Publish to Marketplace"
+                ? t("agents.actions.publishTooltip")
+                : t("agents.actions.publish")
             }
           >
             <SparklesIcon className="h-4 w-4" />
-            Publish to Marketplace
+            {t("agents.actions.publish")}
           </Button>
           <div className="flex gap-3">
             <Button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-[hover]:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
+              className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-hover:bg-neutral-700"
             >
-              Cancel
+              {t("agents.actions.cancel")}
             </Button>
             <Button
               type="submit"
@@ -260,10 +266,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
               className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
                 isSaving
                   ? "bg-indigo-400 text-white cursor-not-allowed dark:bg-indigo-700"
-                  : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
+                  : "bg-indigo-600 text-white data-hover:bg-indigo-500 data-open:bg-indigo-700 data-focus:outline-1 data-focus:outline-white dark:bg-indigo-500 dark:data-hover:bg-indigo-400"
               }`}
             >
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? t("agents.actions.saving") : t("agents.actions.save")}
             </Button>
           </div>
         </div>

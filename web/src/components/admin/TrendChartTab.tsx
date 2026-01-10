@@ -2,8 +2,8 @@ import { DEFAULT_TIMEZONE } from "@/configs/common";
 import type { ConsumeRecordResponse } from "@/service/redemptionService";
 import { redemptionService } from "@/service/redemptionService";
 import { ArrowTrendingUpIcon, CalendarIcon } from "@heroicons/react/24/outline";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { addDays, format, subDays } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface TrendChartTabProps {
@@ -22,19 +22,24 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
   const [records, setRecords] = useState<ConsumeRecordResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [daysToShow, setDaysToShow] = useState(30);
+  const [daysToShow, setDaysToShow] = useState(7);
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log(
-        "Fetching consume records for trend chart with adminSecret:",
-        adminSecret ? "***" : "missing",
+      const end = new Date();
+      const start = subDays(end, Math.max(daysToShow - 1, 0));
+      const startDate = formatInTimeZone(start, DEFAULT_TIMEZONE, "yyyy-MM-dd");
+      const endDate = formatInTimeZone(end, DEFAULT_TIMEZONE, "yyyy-MM-dd");
+
+      const data = await redemptionService.getConsumeRecords(
+        adminSecret,
+        startDate,
+        endDate,
+        DEFAULT_TIMEZONE,
       );
-      const data = await redemptionService.getConsumeRecords(adminSecret);
-      console.log("Fetched consume records for trend:", data.length, "records");
       setRecords(data);
     } catch (err) {
       console.error("Error fetching consume records for trend:", err);
@@ -44,42 +49,57 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [adminSecret]);
+  }, [adminSecret, daysToShow]);
 
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
 
-  // Aggregate data by day
+  // Aggregate data by day with complete date range
   const dailyData = useMemo(() => {
-    const dataMap = new Map<string, DailyData>();
+    // Step 1: Generate complete date range
+    const end = new Date();
+    const start = subDays(end, daysToShow - 1);
+    const dateRange: string[] = [];
 
-    records.forEach((record) => {
-      const date = format(
-        toZonedTime(new Date(record.created_at), DEFAULT_TIMEZONE),
-        "yyyy-MM-dd",
-      );
-      const existing = dataMap.get(date) || {
+    for (let i = 0; i < daysToShow; i++) {
+      const date = addDays(start, i);
+      dateRange.push(format(date, "yyyy-MM-dd"));
+    }
+
+    // Step 2: Initialize all dates with zero values
+    const dataMap = new Map<string, DailyData>();
+    dateRange.forEach((date) => {
+      dataMap.set(date, {
         date,
         amount: 0,
         tokens: 0,
         count: 0,
-      };
-
-      dataMap.set(date, {
-        date,
-        amount: existing.amount + record.amount,
-        tokens: existing.tokens + (record.total_tokens || 0),
-        count: existing.count + 1,
       });
     });
 
-    // Sort by date and get last N days
-    const sorted = Array.from(dataMap.values())
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-daysToShow);
+    // Step 3: Aggregate records into the map
+    records.forEach((record) => {
+      const date = formatInTimeZone(
+        new Date(record.created_at),
+        DEFAULT_TIMEZONE,
+        "yyyy-MM-dd",
+      );
 
-    return sorted;
+      // Only process if the date is in our range
+      if (dataMap.has(date)) {
+        const existing = dataMap.get(date)!;
+        dataMap.set(date, {
+          date,
+          amount: existing.amount + record.amount,
+          tokens: existing.tokens + (record.total_tokens || 0),
+          count: existing.count + 1,
+        });
+      }
+    });
+
+    // Step 4: Return sorted array (already in order from dateRange)
+    return dateRange.map((date) => dataMap.get(date)!);
   }, [records, daysToShow]);
 
   const maxAmount = useMemo(

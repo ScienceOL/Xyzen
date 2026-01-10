@@ -14,6 +14,51 @@
         "showThinking": "显示思考过程",
         "hideThinking": "隐藏思考过程"
       }
+    },
+    "activityBar": {
+      "chat": "聊天",
+      "knowledge": "知识库",
+      "community": "社区",
+      "comingSoon": "敬请期待"
+    },
+    "toolbar": {
+      "newChat": "新对话",
+      "newChatCreating": "创建中...",
+      "uploadFile": "上传文件",
+      "resizeHint": "拖动调整输入框高度",
+      "history": "历史记录",
+      "search": "搜索",
+      "searchBuiltin": "内置搜索",
+      "searchSearxng": "通用搜索",
+      "knowledge": "知识库",
+      "knowledgeConnect": "连接知识库",
+      "knowledgeDisconnect": "断开连接",
+      "mcpTools": "MCP 工具已连接",
+      "searchOff": "关闭",
+      "searchOffDesc": "不使用搜索功能",
+      "searchBuiltinDesc": "使用模型原生搜索能力",
+      "searchBuiltinNotSupported": "当前模型不支持",
+      "searchBuiltinConflict": "与 MCP 工具冲突，不可使用",
+      "searchSearxngDesc": "使用通用搜索引擎进行搜索",
+      "knowledgeSelect": "选择知识库",
+      "knowledgeEmpty": "暂无知识库",
+      "knowledgeEmptyDesc": "请先在知识库面板创建"
+    },
+    "input": {
+      "placeholder": "输入消息...",
+      "send": "发送",
+      "enterToSend": "发送",
+      "shiftEnterForNewline": "换行"
+    },
+    "modelCapabilities": {
+      "vision": "视觉支持",
+      "audioInput": "音频输入",
+      "videoInput": "视频输入",
+      "webSearch": "网络搜索"
+    },
+    "modelSelector": {
+      "noProvider": "请先添加LLM提供商",
+      "notConfigured": "未设置"
     }
   },
   "common": {
@@ -60,6 +105,9 @@
       },
       "zh": {
         "description": "使用中文作为界面语言"
+      },
+      "ja": {
+        "description": "使用日文作为界面语言"
       }
     },
     "theme": {
@@ -333,6 +381,57 @@
       "deleteTitle": "删除知识库",
       "deleteConfirm": "确定要删除「{{name}}」吗？文件不会被删除，仅删除知识库。",
       "deleteConfirmButton": "删除"
+    }
+  },
+  "agents": {
+    "add": "添加助手",
+    "edit": "编辑",
+    "delete": "删除",
+    "editAgent": "编辑助手",
+    "deleteAgent": "删除助手",
+    "addButton": "+ 添加助手",
+    "createTitle": "创建助手",
+    "editTitle": "编辑 {{name}}",
+    "deleteTitle": "删除助手",
+    "deleteConfirm": "确定要永久删除助手 \"{{name}}\" 吗？此操作无法撤销。",
+    "deleteConfirmWithListing": "⚠️ 此助手已发布到市场。删除后，市场中的发布版本也将被移除。\n\n确定要永久删除助手 \"{{name}}\" 吗？此操作无法撤销。",
+    "createDescription": "创建一个新的 AI 助手，可以配置专属提示词和工具。",
+    "updateDescription": "更新助手的详细信息。",
+    "fields": {
+      "name": {
+        "label": "助手名称",
+        "placeholder": "例如：我的研究助手",
+        "required": "助手名称 *"
+      },
+      "description": {
+        "label": "描述",
+        "placeholder": "简短描述助手的用途"
+      },
+      "prompt": {
+        "label": "系统提示词",
+        "placeholder": "定义助手的行为和知识范围"
+      },
+      "mcpServers": {
+        "label": "MCP 工具服务器",
+        "connected": "已连接的 MCP 服务器",
+        "empty": "暂无可用的 MCP 服务器。",
+        "emptyDescription": "暂无可用的 MCP 服务器",
+        "createButton": "创建 MCP 服务器"
+      }
+    },
+    "actions": {
+      "cancel": "取消",
+      "create": "创建助手",
+      "creating": "创建中...",
+      "save": "保存修改",
+      "saving": "保存中...",
+      "publish": "发布到市场",
+      "publishTooltip": "发布前请先添加提示词"
+    },
+    "errors": {
+      "nameRequired": "助手名称不能为空",
+      "createFailed": "创建助手失败，请查看控制台了解更多信息。",
+      "updateFailed": "保存失败，请稍后重试。"
     }
   }
 }

@@ -14,6 +14,7 @@ import { CodesList } from "./CodesList";
 import { DailyStatsTab } from "./DailyStatsTab";
 import { TopUsersTab } from "./TopUsersTab";
 import { TrendChartTab } from "./TrendChartTab";
+import { UserActivityTab } from "./UserActivityTab";
 import { UserRankingsTab } from "./UserRankingsTab";
 
 interface GeneratedCode {
@@ -135,6 +136,7 @@ export function SecretCodePage() {
           <div className="overflow-x-auto scrollbar-hidden pb-2 -mx-2 px-2">
             <TabsList className="min-w-max">
               <TabsTrigger value="daily-stats">📊 Daily Stats</TabsTrigger>
+              <TabsTrigger value="user-activity">👤 User Activity</TabsTrigger>
               <TabsTrigger value="top-users">👥 Top Users</TabsTrigger>
               <TabsTrigger value="trend">📈 Trend Chart</TabsTrigger>
               <TabsTrigger value="rankings">🏆 Rankings</TabsTrigger>
@@ -146,6 +148,15 @@ export function SecretCodePage() {
             <TabsContent value="daily-stats">
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <DailyStatsTab
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="user-activity">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
+                <UserActivityTab
                   adminSecret={adminSecret!}
                   backendUrl={getBackendUrl()}
                 />

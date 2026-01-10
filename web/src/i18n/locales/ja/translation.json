@@ -1,0 +1,652 @@
+{
+  "app": {
+    "title": "Xyzen",
+    "pwa": {
+      "installTitle": "アプリをインストール",
+      "installDescription": "より良い体験のために、アドレスバーのインストールアイコンをクリックしてください。"
+    },
+    "chat": {
+      "assistantsTitle": "アシスタント",
+      "chooseAgentHint": "エージェントを選択して開始",
+      "chatLabel": "チャット",
+      "thinking": {
+        "label": "思考中...",
+        "showThinking": "思考過程を表示",
+        "hideThinking": "思考過程を非表示"
+      }
+    },
+    "activityBar": {
+      "chat": "チャット",
+      "knowledge": "ナレッジベース",
+      "community": "コミュニティ",
+      "comingSoon": "近日公開予定"
+    },
+    "toolbar": {
+      "newChat": "新しい会話",
+      "newChatCreating": "作成中...",
+      "uploadFile": "ファイルをアップロード",
+      "resizeHint": "ドラッグして入力フレームの高さを調整",
+      "history": "履歴",
+      "search": "検索",
+      "searchBuiltin": "ビルトイン検索",
+      "searchSearxng": "ユニバーサル検索",
+      "knowledge": "ナレッジベース",
+      "knowledgeConnect": "ナレッジベースに接続",
+      "knowledgeDisconnect": "切断",
+      "mcpTools": "MCPツールが接続されました",
+      "searchOff": "オフ",
+      "searchOffDesc": "検索機能を使用しない",
+      "searchBuiltinDesc": "モデルのネイティブ検索機能を使用",
+      "searchBuiltinNotSupported": "現在のモデルはサポートしていません",
+      "searchBuiltinConflict": "MCPツールと競合するため使用できません",
+      "searchSearxngDesc": "ユニバーサル検索エンジンを使用",
+      "knowledgeSelect": "ナレッジベースを選択",
+      "knowledgeEmpty": "ナレッジベースがありません",
+      "knowledgeEmptyDesc": "まずナレッジパネルで作成してください"
+    },
+    "input": {
+      "placeholder": "メッセージを送信...",
+      "send": "送信",
+      "enterToSend": "送信",
+      "shiftEnterForNewline": "新しい行"
+    },
+    "modelCapabilities": {
+      "vision": "ビジョンサポート",
+      "audioInput": "オーディオ入力",
+      "videoInput": "ビデオ入力",
+      "webSearch": "ウェブ検索"
+    },
+    "modelSelector": {
+      "noProvider": "まずLLMプロバイダーを追加してください",
+      "notConfigured": "未設定"
+    }
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "キャンセル",
+    "loading": "読み込み中..."
+  },
+  "settings": {
+    "modal": {
+      "title": "設定",
+      "back": "戻る"
+    },
+    "categories": {
+      "provider": "モデルプロバイダー",
+      "ui": "UI設定",
+      "redemption": "引き換え"
+    },
+    "provider": {
+      "emptyHint": "モデルプロバイダーを選択または追加してください"
+    },
+    "ui": {
+      "title": "UI設定",
+      "subtitle": "インターフェースをカスタマイズ",
+      "options": {
+        "theme": {
+          "label": "テーマ",
+          "description": "外観をカスタマイズ"
+        },
+        "style": {
+          "label": "レイアウトスタイル",
+          "description": "サイドバーまたはフルスクリーン表示を切り替え"
+        },
+        "language": {
+          "label": "言語",
+          "description": "アプリの言語を切り替え"
+        }
+      }
+    },
+    "language": {
+      "title": "言語設定",
+      "subtitle": "お好みの言語を選択",
+      "en": {
+        "description": "英語をインターフェース言語として使用"
+      },
+      "zh": {
+        "description": "中国語をインターフェース言語として使用"
+      },
+      "ja": {
+        "description": "日本語をインターフェース言語として使用"
+      }
+    },
+    "theme": {
+      "title": "テーマ設定",
+      "subtitle": "Xyzenの見た目を選択",
+      "options": {
+        "light": {
+          "label": "ライト",
+          "description": "明るくクリアなインターフェース"
+        },
+        "dark": {
+          "label": "ダーク",
+          "description": "暗い環境でも目に優しい"
+        },
+        "system": {
+          "label": "システム",
+          "description": "システム設定に自動的に合わせる"
+        }
+      },
+      "about": {
+        "title": "テーマについて",
+        "body": "テーマ設定はアプリケーション全体の配色を制御します。システムテーマを選択すると、OSの設定に基づいてライトモードとダークモードが自動的に切り替わります。"
+      }
+    },
+    "style": {
+      "title": "インターフェース設定",
+      "subtitle": "Xyzenの外観と動作をカスタマイズ",
+      "sections": {
+        "layout": "レイアウトスタイル",
+        "inputPosition": "クイック入力位置"
+      },
+      "layout": {
+        "sidebar": {
+          "label": "サイドバー",
+          "description": "クラシックな右側パネルレイアウト",
+          "features": {
+            "resizable": "サイズ変更可能なパネル（280-600px）",
+            "floatingButton": "閉じた時にフローティングボタン表示",
+            "overlay": "コンテンツの上にオーバーレイ"
+          }
+        },
+        "fullscreen": {
+          "label": "フルスクリーン",
+          "description": "没入型3カラムワークスペース",
+          "features": {
+            "agentsLeft": "左側にエージェントリスト",
+            "chatCenter": "中央にチャット",
+            "topicsRight": "右側にトピック",
+            "fullWidth": "全幅レイアウト"
+          }
+        }
+      },
+      "inputPositions": {
+        "topLeft": {
+          "label": "左上",
+          "description": "左上隅"
+        },
+        "top": {
+          "label": "上",
+          "description": "上部中央"
+        },
+        "topRight": {
+          "label": "右上",
+          "description": "右上隅"
+        },
+        "center": {
+          "label": "中央",
+          "description": "スポットライトスタイル（画面中央）"
+        },
+        "bottomLeft": {
+          "label": "左下",
+          "description": "左下隅"
+        },
+        "bottom": {
+          "label": "下",
+          "description": "下部中央"
+        },
+        "bottomRight": {
+          "label": "右下",
+          "description": "右下隅"
+        }
+      },
+      "tip": {
+        "title": "💡 プロのヒント",
+        "body": "フルスクリーンレイアウトは大きなディスプレイに最適で、すべてを一度に表示できます。サイドバーレイアウトは集中作業や小さな画面に理想的です。"
+      }
+    },
+    "providers": {
+      "my": {
+        "title": "設定済み"
+      },
+      "templates": {
+        "title": "新規追加",
+        "supports": "{{count}}個のモデルをサポート"
+      },
+      "deleteConfirm": "{{name}}を削除してもよろしいですか？",
+      "deleteAria": "プロバイダー{{name}}を削除",
+      "form": {
+        "defaults": {
+          "name": "マイ{{name}}"
+        },
+        "empty": {
+          "title": "テンプレートまたは既存のプロバイダーを選択",
+          "subtitle": "リストのアイテムをクリックして設定を開始"
+        },
+        "title": {
+          "edit": "プロバイダーを編集",
+          "create": "プロバイダーを作成"
+        },
+        "systemBadge": "システムプロバイダー（読み取り専用）",
+        "providerType": {
+          "title": "プロバイダータイプ",
+          "availableModels": "{{count}}個のモデルが利用可能"
+        },
+        "fields": {
+          "name": {
+            "label": "名前 *",
+            "placeholder": "例：マイGeminiプロバイダー"
+          },
+          "api": {
+            "label": "APIエンドポイント",
+            "placeholder": "例：https://api.openai.com/v1",
+            "help": "デフォルトエンドポイントが事前入力されています。カスタムエンドポイントまたはプロキシを使用する場合は変更してください。"
+          },
+          "key": {
+            "label": "APIキー *",
+            "placeholder": "あなたのAPIキー"
+          },
+          "azureVersion": {
+            "label": "APIバージョン *",
+            "placeholder": "例：2024-02-15-preview",
+            "help": "Azure OpenAI APIバージョン（例：2024-02-15-preview、2023-05-15）"
+          },
+          "default": {
+            "label": "デフォルトプロバイダー"
+          }
+        },
+        "confirm": {
+          "delete": "このプロバイダーを削除してもよろしいですか？"
+        },
+        "actions": {
+          "delete": "削除",
+          "save": "変更を保存",
+          "create": "プロバイダーを作成"
+        },
+        "success": {
+          "updated": "プロバイダーを更新しました！",
+          "created": "プロバイダーを作成しました！",
+          "deleted": "プロバイダーを削除しました！",
+          "defaultSet": "デフォルトプロバイダーに設定しました！"
+        },
+        "errors": {
+          "systemReadOnlyEdit": "システムプロバイダーは読み取り専用のため編集できません。",
+          "systemReadOnlyDelete": "システムプロバイダーは削除できません。システムプロバイダーは読み取り専用です。",
+          "systemReadOnlyDefault": "システムプロバイダーをデフォルトに設定できません。システムプロバイダーは自動フォールバックです。",
+          "required": "名前、API、キーは必須です",
+          "saveFailed": "プロバイダーの保存に失敗しました",
+          "deleteFailed": "プロバイダーの削除に失敗しました",
+          "defaultFailed": "デフォルトプロバイダーの設定に失敗しました"
+        }
+      }
+    },
+    "redemption": {
+      "title": "引き換えコード",
+      "subtitle": "コードを引き換えて消費用の仮想残高を取得",
+      "card": {
+        "title": "コードを引き換え"
+      },
+      "form": {
+        "label": "引き換えコードを入力",
+        "placeholder": "コードを入力してください",
+        "redeem": "引き換え",
+        "redeeming": "引き換え中..."
+      },
+      "errors": {
+        "empty": "引き換えコードを入力してください"
+      }
+    }
+  },
+  "marketplace": {
+    "title": "エージェントマーケットプレイス",
+    "tabs": {
+      "all": "すべてのエージェント",
+      "starred": "お気に入り",
+      "my": "マイエージェント"
+    },
+    "search": {
+      "placeholder": "エージェントを検索..."
+    },
+    "sort": {
+      "recent": "最新",
+      "likes": "いいね数",
+      "forks": "フォーク数",
+      "views": "閲覧数",
+      "oldest": "古い順"
+    },
+    "filters": {
+      "filteredBy": "フィルター条件：",
+      "clear": "フィルターをクリア"
+    },
+    "loadError": "リストの読み込みに失敗しました。もう一度お試しください。",
+    "retry": "再試行",
+    "empty": {
+      "starred": {
+        "title": "お気に入りのエージェントはありません",
+        "body": "まだエージェントをお気に入りに追加していません。マーケットプレイスを閲覧してハートアイコンをクリックしてお気に入りを保存しましょう！",
+        "browse": "エージェントを閲覧"
+      },
+      "all": {
+        "title": "まだエージェントがありません",
+        "body": "コミュニティと素晴らしいエージェントを共有する最初の人になりましょう！"
+      },
+      "search": {
+        "body": "検索条件に一致するエージェントがありません。別のキーワードを試すか、フィルターをクリアしてください。"
+      },
+      "publish": {
+        "title": "エージェントを公開する方法：",
+        "steps": {
+          "1": "チャットパネルに移動してエージェントを作成または編集",
+          "2": "エージェントに名前、説明、プロンプトがあることを確認",
+          "3": "「マーケットプレイスに公開」ボタンをクリック",
+          "4": "エージェントをコミュニティと共有！"
+        }
+      }
+    },
+    "card": {
+      "by": "作成者：{{author}}",
+      "noDescription": "説明はありません",
+      "tagsMore": "他{{count}}件"
+    },
+    "detail": {
+      "loading": "エージェント詳細を読み込み中...",
+      "error": "エージェント詳細の読み込みに失敗しました。もう一度お試しください。",
+      "back": "マーケットプレイスに戻る",
+      "publishedBy": "公開者",
+      "noDescription": "説明はありません",
+      "stats": {
+        "likes": "いいね",
+        "forks": "フォーク",
+        "views": "閲覧"
+      },
+      "tabs": {
+        "readme": "README",
+        "config": "設定",
+        "requirements": "要件"
+      },
+      "readme": {
+        "empty": "このエージェントのREADMEはありません。",
+        "manage": "READMEを追加する管理"
+      },
+      "config": {
+        "model": "モデル",
+        "systemPrompt": "システムプロンプト",
+        "mcpServers": "MCPサーバー（{{count}}）",
+        "empty": "設定情報はありません。"
+      },
+      "requirements": {
+        "provider": {
+          "title": "LLMプロバイダーが必要：",
+          "description": "このエージェントを使用するには、AIプロバイダー（OpenAI、Anthropicなど）を設定する必要があります。"
+        },
+        "mcpServers": "MCPサーバー（{{count}}）",
+        "autoConfigured": "自動設定",
+        "knowledgeBase": {
+          "title": "ナレッジベース：",
+          "description": "元のエージェントは{{count}}個のファイルを使用しています。このエージェントをフォークすると、これらのファイルがあなたのワークスペースにコピーされます。"
+        },
+        "none": "特別な要件はありません！フォーク後すぐに使用できます。",
+        "loading": "要件を読み込み中..."
+      },
+      "actions": {
+        "title": "アクション",
+        "fork": "このエージェントをフォーク",
+        "liked": "いいね済み",
+        "like": "このエージェントにいいね",
+        "manage": "エージェントを管理"
+      },
+      "meta": {
+        "publishedBy": "公開者",
+        "firstPublished": "初回公開：",
+        "lastUpdated": "最終更新："
+      },
+      "aboutForking": {
+        "title": "フォークについて",
+        "description": "フォークすると独立したコピーが作成されます。変更は元のエージェントに影響しません。"
+      }
+    }
+  },
+  "knowledge": {
+    "titles": {
+      "recents": "最近",
+      "allFiles": "すべてのファイル",
+      "myKnowledge": "マイナレッジ",
+      "knowledgeBase": "ナレッジベース",
+      "trash": "ゴミ箱"
+    },
+    "a11y": {
+      "navTitle": "ナビゲーションメニュー",
+      "navDescription": "ナレッジベースをナビゲート"
+    },
+    "prompts": {
+      "folderName": "フォルダ名を入力：",
+      "knowledgeSetName": "ナレッジセット名を入力：",
+      "knowledgeSetDescription": "説明を入力（オプション）："
+    },
+    "errors": {
+      "createFolderFailed": "フォルダの作成に失敗しました",
+      "createKnowledgeSetFailed": "ナレッジセットの作成に失敗しました"
+    },
+    "upload": {
+      "errors": {
+        "fileTooLarge": "ファイル「{{name}}」（{{fileSizeMB}}MB）が最大ファイルサイズ制限の{{maxSizeMB}}MBを超えています",
+        "notEnoughStorage": "ストレージ容量が不足しています。ファイルサイズ：{{fileSizeMB}}MB、利用可能：{{availableMB}}MB。まずいくつかのファイルを削除してください。",
+        "uploadFailed": "アップロードに失敗しました"
+      }
+    },
+    "toolbar": {
+      "home": "ホーム",
+      "searchFilesPlaceholder": "ファイルを検索...",
+      "searchPlaceholder": "検索",
+      "listView": "リスト表示",
+      "gridView": "グリッド表示",
+      "newFolder": "新しいフォルダ",
+      "emptyTrash": "ゴミ箱を空にする",
+      "empty": "空",
+      "uploadFile": "ファイルをアップロード",
+      "upload": "アップロード",
+      "refresh": "更新"
+    },
+    "sidebar": {
+      "groups": {
+        "favorites": "お気に入り",
+        "media": "メディア",
+        "locations": "場所"
+      },
+      "items": {
+        "images": "画像",
+        "documents": "ドキュメント"
+      },
+      "newKnowledgeSet": "新しいナレッジセット",
+      "deleteKnowledgeSet": "ナレッジセットを削除",
+      "deleteTitle": "ナレッジセットを削除",
+      "deleteConfirm": "「{{name}}」を削除してもよろしいですか？ファイルは削除されず、ナレッジセットのみが削除されます。",
+      "deleteConfirmButton": "削除",
+      "noKnowledgeSets": "ナレッジセットがありません"
+    },
+    "status": {
+      "items": "{{count}}個のアイテム",
+      "usedOfTotal": "{{used}} / {{total}}使用中",
+      "available": "{{available}}利用可能"
+    },
+    "contextMenu": {
+      "download": "ダウンロード",
+      "rename": "名前を変更",
+      "moveTo": "移動先...",
+      "addToKnowledgeSet": "ナレッジセットに追加",
+      "removeFromKnowledgeSet": "ナレッジセットから削除",
+      "delete": "削除"
+    },
+    "moveModal": {
+      "title": "「{{name}}」を移動",
+      "home": "ホーム",
+      "noSubfolders": "サブフォルダーがありません",
+      "moveHere": "ここに移動"
+    },
+    "fileList": {
+      "itemTypes": {
+        "file": "ファイル",
+        "folder": "フォルダー"
+      },
+      "columns": {
+        "name": "名前",
+        "size": "サイズ",
+        "dateModified": "更新日時"
+      },
+      "empty": {
+        "trash": "ゴミ箱は空です",
+        "noItems": "アイテムがありません"
+      },
+      "actions": {
+        "preview": "プレビュー",
+        "download": "ダウンロード",
+        "restore": "復元",
+        "delete": "削除",
+        "deleteForever": "完全に削除",
+        "moveToTrash": "ゴミ箱に移動",
+        "deleteImmediately": "すぐに削除",
+        "deleteFailed": "削除に失敗しました",
+        "restoreFailed": "復元に失敗しました",
+        "downloadFailed": "ダウンロードに失敗しました"
+      },
+      "deleteItem": {
+        "title": "{{itemType}}を削除",
+        "message": "この{{itemType}}を削除してもよろしいですか？"
+      },
+      "moveToTrash": {
+        "message": "このファイルをゴミ箱に移動してもよろしいですか？"
+      },
+      "deleteForever": {
+        "message": "このファイルを完全に削除してもよろしいですか？この操作は元に戻せません。"
+      },
+      "emptyTrash": {
+        "title": "ゴミ箱を空にする",
+        "message": "{{count}}個のアイテムを完全に削除してもよろしいですか？この操作は元に戻せません。",
+        "confirm": "ゴミ箱を空にする",
+        "failed": "ゴミ箱を完全に空にできませんでした。一部のアイテムが残っている可能性があります。"
+      },
+      "rename": {
+        "titleFile": "ファイル名を変更",
+        "titleFolder": "フォルダー名を変更",
+        "placeholder": "新しい名前を入力",
+        "confirm": "名前を変更",
+        "failed": "名前の変更に失敗しました"
+      },
+      "move": {
+        "failed": "移動に失敗しました"
+      },
+      "knowledgeSet": {
+        "add": {
+          "title": "ナレッジセットに追加",
+          "subtitle": "「{{name}}」を追加するナレッジセットを選択"
+        },
+        "none": "利用可能なナレッジセットがありません。まず作成してください。",
+        "fileCount": "{{count}}個のファイル",
+        "added": "ファイルをナレッジセットに追加しました",
+        "alreadyInSet": "このファイルは既にナレッジセットに含まれています。",
+        "addFailed": "ナレッジセットへのファイル追加に失敗しました",
+        "remove": {
+          "title": "ナレッジセットから削除",
+          "message": "「{{name}}」をこのナレッジセットから削除しますか？",
+          "confirm": "削除",
+          "failed": "ナレッジセットからのファイル削除に失敗しました"
+        }
+      },
+      "notifications": {
+        "successTitle": "成功",
+        "noticeTitle": "お知らせ",
+        "errorTitle": "エラー"
+      }
+    },
+    "createKnowledgeSetModal": {
+      "title": "ナレッジセットを作成",
+      "fields": {
+        "name": {
+          "label": "名前",
+          "placeholder": "名前を入力"
+        },
+        "description": {
+          "label": "説明（オプション）",
+          "placeholder": "短い説明を追加"
+        }
+      },
+      "actions": {
+        "create": "作成",
+        "creating": "作成中..."
+      },
+      "validation": {
+        "nameRequired": "名前は必須です"
+      },
+      "errors": {
+        "createFailed": "ナレッジセットの作成に失敗しました"
+      }
+    }
+  },
+  "mcp": {
+    "title": "マイサーバー",
+    "subtitle": "マーケットプレイスを閲覧してサーバーを管理",
+    "refresh": "更新",
+    "addCustom": "カスタム追加",
+    "market": {
+      "title": "MCPマーケット",
+      "quickAdd": "クイック追加",
+      "close": "閉じる"
+    },
+    "added": {
+      "title": "追加済みサーバー",
+      "online": "オンライン",
+      "offline": "オフライン",
+      "tools": "ツール",
+      "noDescription": "説明なし",
+      "edit": "サーバーを編集",
+      "remove": "サーバーを削除",
+      "test": "ツールをテスト",
+      "empty": {
+        "title": "まだサーバーが追加されていません",
+        "description": "左側のマーケットプレイスを閲覧してサーバーを追加するか、カスタム接続を作成してください。",
+        "button": "カスタムサーバーを追加"
+      }
+    }
+  },
+  "agents": {
+    "add": "エージェントを追加",
+    "edit": "編集",
+    "delete": "削除",
+    "editAgent": "エージェントを編集",
+    "deleteAgent": "エージェントを削除",
+    "addButton": "+ エージェントを追加",
+    "createTitle": "エージェントを作成",
+    "editTitle": "{{name}}を編集",
+    "deleteTitle": "エージェントを削除",
+    "deleteConfirm": "エージェント\"{{name}}\"を完全に削除してもよろしいですか？この操作は元に戻せません。",
+    "deleteConfirmWithListing": "⚠️ このエージェントはマーケットプレイスに公開されています。削除すると、公開版も削除されます。\n\nエージェント\"{{name}}\"を完全に削除してもよろしいですか？この操作は元に戻せません。",
+    "createDescription": "カスタムプロンプトとツールを使用して新しいAIエージェントを作成します。",
+    "updateDescription": "エージェントの詳細を更新します。",
+    "fields": {
+      "name": {
+        "label": "エージェント名",
+        "placeholder": "例：マイリサーチアシスタント",
+        "required": "エージェント名 *"
+      },
+      "description": {
+        "label": "説明",
+        "placeholder": "エージェントの目的の簡単な説明"
+      },
+      "prompt": {
+        "label": "システムプロンプト",
+        "placeholder": "エージェントの動作と知識範囲を定義"
+      },
+      "mcpServers": {
+        "label": "MCPツールサーバー",
+        "connected": "接続済みMCPサーバー",
+        "empty": "利用可能なMCPサーバーがありません。",
+        "emptyDescription": "利用可能なMCPサーバーがありません",
+        "createButton": "MCPサーバーを作成"
+      }
+    },
+    "actions": {
+      "cancel": "キャンセル",
+      "create": "エージェントを作成",
+      "creating": "作成中...",
+      "save": "変更を保存",
+      "saving": "保存中...",
+      "publish": "マーケットプレイスに公開",
+      "publishTooltip": "公開する前にプロンプトを追加してください"
+    },
+    "errors": {
+      "nameRequired": "エージェント名を入力してください",
+      "createFailed": "エージェントの作成に失敗しました。コンソールで詳細を確認してください。",
+      "updateFailed": "保存に失敗しました。後でもう一度お試しください。"
+    }
+  }
+}
