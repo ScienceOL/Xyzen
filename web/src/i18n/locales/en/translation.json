@@ -613,6 +613,12 @@
     "deleteConfirmWithListing": "⚠️ This agent has been published to the marketplace. Deleting it will also remove the published version.\n\nAre you sure you want to permanently delete agent \"{{name}}\"? This action cannot be undone.",
     "createDescription": "Create a new AI agent with custom prompts and tools.",
     "updateDescription": "Update the details for your agent.",
+    "systemDescription": "Select a pre-configured system agent with special execution capabilities.",
+    "noSystemAgents": "No system agents available",
+    "tabs": {
+      "custom": "Custom Agent",
+      "system": "System Agent"
+    },
     "fields": {
       "name": {
         "label": "Agent Name",
@@ -633,7 +639,9 @@
         "empty": "No MCP servers available.",
         "emptyDescription": "No MCP servers available yet",
         "createButton": "Create MCP Server"
-      }
+      },
+      "selectSystemAgent": "Select System Agent *",
+      "customName": "Custom Name (optional)"
     },
     "actions": {
       "cancel": "Cancel",
@@ -646,6 +654,7 @@
     },
     "errors": {
       "nameRequired": "Agent name cannot be empty",
+      "templateRequired": "Please select a system agent",
       "createFailed": "Failed to create agent, please check the console for more information.",
       "updateFailed": "Failed to save, please try again later."
     }

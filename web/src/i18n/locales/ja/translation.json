@@ -612,6 +612,12 @@
     "deleteConfirmWithListing": "⚠️ このエージェントはマーケットプレイスに公開されています。削除すると、公開版も削除されます。\n\nエージェント\"{{name}}\"を完全に削除してもよろしいですか？この操作は元に戻せません。",
     "createDescription": "カスタムプロンプトとツールを使用して新しいAIエージェントを作成します。",
     "updateDescription": "エージェントの詳細を更新します。",
+    "systemDescription": "特殊な実行機能を持つ事前設定されたシステムエージェントを選択します。",
+    "noSystemAgents": "利用可能なシステムエージェントがありません",
+    "tabs": {
+      "custom": "カスタムエージェント",
+      "system": "システムエージェント"
+    },
     "fields": {
       "name": {
         "label": "エージェント名",
@@ -632,7 +638,9 @@
         "empty": "利用可能なMCPサーバーがありません。",
         "emptyDescription": "利用可能なMCPサーバーがありません",
         "createButton": "MCPサーバーを作成"
-      }
+      },
+      "selectSystemAgent": "システムエージェントを選択 *",
+      "customName": "カスタム名（オプション）"
     },
     "actions": {
       "cancel": "キャンセル",
@@ -645,6 +653,7 @@
     },
     "errors": {
       "nameRequired": "エージェント名を入力してください",
+      "templateRequired": "システムエージェントを選択してください",
       "createFailed": "エージェントの作成に失敗しました。コンソールで詳細を確認してください。",
       "updateFailed": "保存に失敗しました。後でもう一度お試しください。"
     }
