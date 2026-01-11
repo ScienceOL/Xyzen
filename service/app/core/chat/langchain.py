@@ -467,6 +467,14 @@ async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator
         return
 
     if not ctx.is_streaming:
+        # Emit synthetic node_start if no node was detected
+        # This handles prebuilt agents (like ReAct) that don't include langgraph_node metadata
+        if ctx.event_ctx and not ctx.current_node:
+            node_start_event = AgentEventStreamHandler.create_node_start_event(ctx, "agent")
+            if node_start_event:
+                logger.info("[AgentEvent/Messages] Emitting synthetic node_start for 'agent'")
+                yield node_start_event
+
         logger.debug("Emitting streaming_start for stream_id=%s", ctx.stream_id)
         ctx.is_streaming = True
         yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
