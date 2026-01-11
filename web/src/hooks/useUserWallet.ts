@@ -7,5 +7,6 @@ export function useUserWallet(token: string | null, enabled: boolean) {
     queryFn: async () => redemptionService.getUserWallet(),
     enabled: enabled && !!token,
     staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 }

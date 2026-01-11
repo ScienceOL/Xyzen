@@ -52,9 +52,17 @@ const ResizeHandle = () => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className="absolute -top-1 left-0 right-0 h-1 cursor-ns-resize transition-colors hover:bg-indigo-600"
+      className="absolute -top-3 left-0 right-0 h-6 cursor-ns-resize flex items-center justify-center group z-20"
       title={t("app.toolbar.resizeHint")}
-    />
+    >
+      {/* Visual Drag Handle Area - Highlighted on hover */}
+      <div className="w-full h-full absolute top-0 left-0 hover:bg-indigo-500/5 dark:hover:bg-indigo-400/5 transition-colors" />
+
+      {/* Visual Indicator: Centered Pill */}
+      <div className="relative flex items-center justify-center w-full">
+        <div className="w-16 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 group-hover:bg-indigo-500/80 group-active:bg-indigo-600 transition-all shadow-sm border border-white/50 dark:border-black/50" />
+      </div>
+    </div>
   );
 };
 
