@@ -522,7 +522,25 @@ export const createChatSlice: StateCreator<
                 const agentMsgIndex = channel.messages.findLastIndex(
                   (m) => m.agentExecution?.status === "running",
                 );
+
                 if (agentMsgIndex !== -1) {
+                  const execution =
+                    channel.messages[agentMsgIndex].agentExecution;
+
+                  // Create default "Response" phase if no phases exist
+                  // This handles prebuilt agents (like ReAct) that don't emit node_start events
+                  if (execution && execution.phases.length === 0) {
+                    execution.phases.push({
+                      id: "response",
+                      name: "Response",
+                      status: "running",
+                      startedAt: Date.now(),
+                      nodes: [],
+                      streamedContent: "",
+                    });
+                    execution.currentNode = "response";
+                  }
+
                   // Agent execution exists, mark it as streaming but don't create a new message
                   // Content will be routed to phase.streamedContent in streaming_chunk
                   channel.messages[agentMsgIndex] = {

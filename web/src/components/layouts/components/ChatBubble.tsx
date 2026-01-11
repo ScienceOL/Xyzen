@@ -229,12 +229,39 @@ function ChatBubble({ message }: ChatBubbleProps) {
               {isLoading ? (
                 <LoadingMessage size="medium" className="text-sm" />
               ) : (
-                // Show markdownContent when:
-                // 1. No agentExecution (regular chat)
-                // 2. agentExecution is react type (simple agent without timeline)
-                // For multi-phase agents, content is shown in timeline phases
-                (!agentExecution || agentExecution.agentType === "react") &&
-                markdownContent
+                // Show content based on agent type:
+                // 1. No agentExecution: show message.content
+                // 2. React/simple agents with phases: show phase.streamedContent
+                // 3. React agents without phases: show message.content (fallback)
+                // 4. Multi-phase agents: content is shown in timeline phases
+                (() => {
+                  // No agent execution - regular chat
+                  if (!agentExecution) {
+                    return markdownContent;
+                  }
+
+                  // React/simple agents - show streaming content from phase or message.content
+                  if (agentExecution.agentType === "react") {
+                    // If we have phases with streamedContent, show that
+                    if (agentExecution.phases.length > 0) {
+                      const activePhase = agentExecution.phases.find(
+                        (p) => p.status === "running",
+                      );
+                      const phaseContent =
+                        activePhase?.streamedContent ||
+                        agentExecution.phases[agentExecution.phases.length - 1]
+                          ?.streamedContent;
+                      if (phaseContent) {
+                        return <Markdown content={phaseContent} />;
+                      }
+                    }
+                    // Fallback to message.content
+                    return markdownContent;
+                  }
+
+                  // Multi-phase agents - content is shown in timeline, don't show here
+                  return null;
+                })()
               )}
 
               {/* For multi-phase agents, show final report below timeline when completed */}
