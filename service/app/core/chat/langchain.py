@@ -301,12 +301,25 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
             msg_agent_state = last_message.additional_kwargs.get("agent_state")
             if msg_agent_state:
                 logger.debug("Extracted agent_state from step '%s': %s", step_name, list(msg_agent_state.keys()))
-                # Accumulate node outputs across all nodes
+                # Initialize agent_state with context info for persistence
                 if ctx.agent_state is None:
-                    ctx.agent_state = {"node_outputs": {}}
-                # Merge node outputs
+                    ctx.agent_state = {"node_outputs": {}, "node_order": [], "node_names": {}}
+                    # Include agent identification for persistence (from event context)
+                    if ctx.event_ctx:
+                        ctx.agent_state["agent_id"] = ctx.event_ctx.agent_id
+                        ctx.agent_state["agent_name"] = ctx.event_ctx.agent_name
+                        ctx.agent_state["agent_type"] = ctx.event_ctx.agent_type
+                        ctx.agent_state["execution_id"] = ctx.event_ctx.execution_id
+                # Merge node outputs and track execution order
                 if "node_outputs" in msg_agent_state:
-                    ctx.agent_state.setdefault("node_outputs", {}).update(msg_agent_state["node_outputs"])
+                    for node_id in msg_agent_state["node_outputs"]:
+                        # Track order of node execution
+                        if node_id not in ctx.agent_state.get("node_order", []):
+                            ctx.agent_state.setdefault("node_order", []).append(node_id)
+                        ctx.agent_state["node_outputs"][node_id] = msg_agent_state["node_outputs"][node_id]
+                # Merge node display names
+                if "node_names" in msg_agent_state:
+                    ctx.agent_state.setdefault("node_names", {}).update(msg_agent_state["node_names"])
                 # Track current node
                 if "current_node" in msg_agent_state:
                     ctx.agent_state["current_node"] = msg_agent_state["current_node"]

@@ -252,15 +252,18 @@ export function finalizeStreamingMessage(
 
 /**
  * Get user-friendly display name for a node ID
+ * Uses node_names from metadata if available, otherwise humanizes the node ID
  */
-function getNodeDisplayName(nodeId: string): string {
-  const names: Record<string, string> = {
-    clarify_with_user: "Clarification",
-    write_research_brief: "Research Brief",
-    research_supervisor: "Research",
-    final_report_generation: "Final Report",
-  };
-  return names[nodeId] || nodeId;
+function getNodeDisplayName(
+  nodeId: string,
+  nodeNames?: Record<string, string>,
+): string {
+  // Try to get from node_names mapping (from persisted metadata)
+  if (nodeNames?.[nodeId]) {
+    return nodeNames[nodeId];
+  }
+  // Fallback: humanize the node ID (e.g., "clarify_with_user" -> "Clarify With User")
+  return nodeId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**
@@ -329,14 +332,15 @@ export function reconstructAgentExecutionFromMetadata(
 
   const phases: PhaseExecution[] = [];
 
-  // Known node order for deep research agent
-  // This order matches the graph execution flow
-  const nodeOrder = [
-    "clarify_with_user",
-    "write_research_brief",
-    "research_supervisor",
-    "final_report_generation",
-  ];
+  // Get node display names from metadata (if available)
+  const nodeNames = agent_metadata.node_names as
+    | Record<string, string>
+    | undefined;
+
+  // Use preserved execution order from metadata, or fallback to object keys order
+  const nodeOrder =
+    (agent_metadata.node_order as string[] | undefined) ||
+    Object.keys(nodeOutputs);
 
   for (const nodeId of nodeOrder) {
     if (nodeId in nodeOutputs) {
@@ -345,7 +349,7 @@ export function reconstructAgentExecutionFromMetadata(
 
       phases.push({
         id: nodeId,
-        name: getNodeDisplayName(nodeId),
+        name: getNodeDisplayName(nodeId, nodeNames),
         status: "completed",
         nodes: [],
         outputSummary: content ? truncate(content, 200) : undefined,
@@ -355,7 +359,7 @@ export function reconstructAgentExecutionFromMetadata(
     }
   }
 
-  // Also handle any nodes not in the known order (for extensibility)
+  // Handle any nodes in nodeOutputs that weren't in nodeOrder (for backwards compatibility)
   for (const nodeId of Object.keys(nodeOutputs)) {
     if (!nodeOrder.includes(nodeId)) {
       const output = nodeOutputs[nodeId];
@@ -363,7 +367,7 @@ export function reconstructAgentExecutionFromMetadata(
 
       phases.push({
         id: nodeId,
-        name: getNodeDisplayName(nodeId),
+        name: getNodeDisplayName(nodeId, nodeNames),
         status: "completed",
         nodes: [],
         outputSummary: content ? truncate(content, 200) : undefined,
@@ -376,7 +380,7 @@ export function reconstructAgentExecutionFromMetadata(
 
   return {
     agentId: (agent_metadata.agent_id as string) || "unknown",
-    agentName: (agent_metadata.agent_name as string) || "Deep Research",
+    agentName: (agent_metadata.agent_name as string) || "Agent",
     agentType: (agent_metadata.agent_type as string) || "graph",
     executionId: (agent_metadata.execution_id as string) || "unknown",
     status: "completed",

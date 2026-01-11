@@ -12,7 +12,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Hashable
 
 from jinja2 import Template
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -423,6 +423,7 @@ class GraphBuilder:
                 agent_state = {
                     "current_node": config.id,
                     "node_outputs": {config.id: response_dict},
+                    "node_names": {config.id: config.name or config.id},  # Map node ID to display name
                 }
 
                 # Return all fields from structured output + message for chat
@@ -445,7 +446,11 @@ class GraphBuilder:
             # Handle regular text response
             content_str = _extract_content_str(getattr(response, "content", response))
 
-            logger.info(f"[LLM Node: {config.id}] Text output completed")
+            # Check for tool calls in the response
+            tool_calls = getattr(response, "tool_calls", None) or []
+            has_tool_calls = len(tool_calls) > 0
+
+            logger.info(f"[LLM Node: {config.id}] Text output completed, tool_calls: {len(tool_calls)}")
 
             # Build node metadata for regular text output
             node_metadata = {
@@ -463,19 +468,23 @@ class GraphBuilder:
             agent_state = {
                 "current_node": config.id,
                 "node_outputs": {config.id: output_for_state},
+                "node_names": {config.id: config.name or config.id},  # Map node ID to display name
             }
+
+            # Build the AIMessage, preserving tool_calls if present
+            ai_message = AIMessage(
+                content=content_str,
+                tool_calls=tool_calls,
+                additional_kwargs={
+                    "node_metadata": node_metadata,
+                    "agent_state": agent_state,
+                },
+            )
 
             return {
                 llm_config.output_key: content_str,
-                "messages": [
-                    AIMessage(
-                        content=content_str,
-                        additional_kwargs={
-                            "node_metadata": node_metadata,
-                            "agent_state": agent_state,
-                        },
-                    )
-                ],
+                "messages": [ai_message],
+                "has_tool_calls": has_tool_calls,
             }
 
         return llm_node
@@ -514,7 +523,13 @@ class GraphBuilder:
         )
 
     def _build_tool_node(self, config: GraphNodeConfig) -> NodeFunction:
-        """Build a tool execution node."""
+        """Build a tool execution node.
+
+        Supports two modes:
+        1. Specific tool: Executes a named tool with template-based arguments
+        2. __all__ mode: Executes all pending tool calls from the last AIMessage
+           (used in ReAct pattern where LLM decides what tools to call)
+        """
         tool_config = config.tool_config
         if not tool_config:
             raise ValueError(f"Tool node '{config.id}' missing tool_config")
@@ -522,7 +537,11 @@ class GraphBuilder:
         async def tool_node(state: StateDict) -> StateDict:
             logger.debug(f"Executing Tool node: {config.id} (tool: {tool_config.tool_name})")
 
-            # Get tool
+            # Special case: __all__ means execute pending tool calls from last AIMessage
+            if tool_config.tool_name == "__all__":
+                return await self._execute_pending_tool_calls(config, state)
+
+            # Normal case: execute a specific named tool
             tool = self.tool_registry.get(tool_config.tool_name)
             if not tool:
                 raise ValueError(f"Tool not found: {tool_config.tool_name}")
@@ -546,6 +565,105 @@ class GraphBuilder:
             return {tool_config.output_key: result}
 
         return tool_node
+
+    async def _execute_pending_tool_calls(self, config: GraphNodeConfig, state: StateDict) -> StateDict:
+        """Execute all pending tool calls from the last AIMessage.
+
+        This implements the ReAct pattern where:
+        1. LLM generates a response with tool_calls
+        2. This function executes each tool call
+        3. Results are returned as ToolMessages for the LLM to process
+        """
+        state_dict = self._state_to_dict(state)
+        messages: list[BaseMessage] = state_dict.get("messages", [])
+
+        # Find the last AIMessage with tool_calls
+        last_ai_message: AIMessage | None = None
+        for msg in reversed(messages):
+            if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
+                last_ai_message = msg
+                break
+
+        if not last_ai_message or not last_ai_message.tool_calls:
+            logger.warning(f"Tool node {config.id}: No pending tool calls found")
+            return {"messages": [], "has_tool_calls": False}
+
+        tool_calls = last_ai_message.tool_calls
+        logger.info(f"Tool node {config.id}: Executing {len(tool_calls)} tool calls")
+
+        # Execute each tool call
+        tool_messages: list[ToolMessage] = []
+        for tool_call in tool_calls:
+            tool_name = tool_call.get("name", "")
+            tool_id = tool_call.get("id", "")
+            tool_args = tool_call.get("args", {})
+
+            tool = self.tool_registry.get(tool_name)
+            if not tool:
+                logger.error(f"Tool not found: {tool_name}")
+                tool_messages.append(
+                    ToolMessage(
+                        content=f"Error: Tool '{tool_name}' not found",
+                        tool_call_id=tool_id,
+                        name=tool_name,
+                    )
+                )
+                continue
+
+            try:
+                # Execute the tool
+                timeout = config.tool_config.timeout_seconds if config.tool_config else 30
+                result = await asyncio.wait_for(
+                    tool.ainvoke(tool_args),
+                    timeout=timeout,
+                )
+
+                # Convert result to string if needed
+                if isinstance(result, dict):
+                    import json
+
+                    result_str = json.dumps(result)
+                else:
+                    result_str = str(result)
+
+                logger.debug(f"Tool {tool_name} completed successfully")
+                tool_messages.append(
+                    ToolMessage(
+                        content=result_str,
+                        tool_call_id=tool_id,
+                        name=tool_name,
+                    )
+                )
+
+            except asyncio.TimeoutError:
+                logger.error(f"Tool {tool_name} timed out")
+                tool_messages.append(
+                    ToolMessage(
+                        content="Error: Tool execution timed out",
+                        tool_call_id=tool_id,
+                        name=tool_name,
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Tool {tool_name} failed: {e}")
+                tool_messages.append(
+                    ToolMessage(
+                        content=f"Error: {str(e)}",
+                        tool_call_id=tool_id,
+                        name=tool_name,
+                    )
+                )
+
+        logger.info(f"Tool node {config.id}: Completed {len(tool_messages)} tool executions")
+
+        # Return tool messages and reset has_tool_calls
+        return {
+            "messages": tool_messages,
+            "has_tool_calls": False,
+            config.tool_config.output_key if config.tool_config else "tool_results": [
+                {"name": tm.name, "result": tm.content} for tm in tool_messages
+            ],
+        }
 
     def _build_router_node(self, config: GraphNodeConfig) -> NodeFunction:
         """Build a routing/branching node."""

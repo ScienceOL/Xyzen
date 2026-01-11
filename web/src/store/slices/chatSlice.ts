@@ -112,14 +112,9 @@ export const createChatSlice: StateCreator<
   };
 
   // Helper function to get user-friendly display name for a node ID
+  // Humanizes the node ID (e.g., "clarify_with_user" -> "Clarify With User")
   const getNodeDisplayName = (nodeId: string): string => {
-    const names: Record<string, string> = {
-      clarify_with_user: "Clarification",
-      write_research_brief: "Research Brief",
-      research_supervisor: "Research",
-      final_report_generation: "Final Report",
-    };
-    return names[nodeId] || nodeId;
+    return nodeId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
   return {

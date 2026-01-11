@@ -22,6 +22,8 @@ from langgraph.graph.state import CompiledStateGraph
 from app.agents.components import BaseComponent
 from app.agents.system.base import BaseSystemAgent
 from app.schemas.graph_config import (
+    ConditionOperator,
+    EdgeCondition,
     GraphConfig,
     GraphEdgeConfig,
     GraphNodeConfig,
@@ -29,7 +31,9 @@ from app.schemas.graph_config import (
     LLMNodeConfig,
     NodeType,
     ReducerType,
+    RouterNodeConfig,
     StateFieldSchema,
+    ToolNodeConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -133,9 +137,10 @@ class ReActAgent(BaseSystemAgent):
         """
         Export the ReAct agent's workflow as a JSON GraphConfig.
 
-        Note: The actual ReAct implementation uses LangGraph's prebuilt
-        create_agent, so this export is a simplified representation
-        that captures the essential structure.
+        The ReAct pattern consists of:
+        1. Agent node (LLM) - Reasons and decides whether to use tools
+        2. Tool node - Executes any requested tool calls
+        3. Conditional routing - Loops back to agent if tools were called
 
         Returns:
             GraphConfig representing this agent's workflow
@@ -145,35 +150,101 @@ class ReActAgent(BaseSystemAgent):
             state_schema=GraphStateSchema(
                 fields={
                     "messages": StateFieldSchema(
-                        type="list",
-                        description="Conversation messages",
-                        reducer=ReducerType.APPEND,
+                        type="messages",
+                        description="Conversation messages including tool calls and results",
+                        reducer=ReducerType.MESSAGES,
+                    ),
+                    "has_tool_calls": StateFieldSchema(
+                        type="bool",
+                        description="Whether the last LLM response contained tool calls",
+                        default=False,
                     ),
                 }
             ),
             nodes=[
+                # Agent node - LLM reasoning with tool binding
                 GraphNodeConfig(
                     id="agent",
                     name="ReAct Agent",
                     type=NodeType.LLM,
-                    description="Process messages and decide on tool use or response",
+                    description="Reasons about the task and decides whether to use tools or respond",
                     llm_config=LLMNodeConfig(
                         prompt_template=self.system_prompt or "You are a helpful assistant.",
                         output_key="response",
                         tools_enabled=True,
                     ),
+                    position={"x": 250, "y": 100},
+                ),
+                # Tool execution node
+                GraphNodeConfig(
+                    id="tools",
+                    name="Execute Tools",
+                    type=NodeType.TOOL,
+                    description="Executes tool calls from the agent",
+                    tool_config=ToolNodeConfig(
+                        tool_name="__all__",  # Special marker: execute all pending tool calls
+                        output_key="tool_results",
+                    ),
+                    position={"x": 450, "y": 250},
+                ),
+                # Router node - checks if there are tool calls
+                GraphNodeConfig(
+                    id="should_continue",
+                    name="Check Tool Calls",
+                    type=NodeType.ROUTER,
+                    description="Routes based on whether tool calls were made",
+                    router_config=RouterNodeConfig(
+                        strategy="condition",
+                        conditions=[
+                            EdgeCondition(
+                                state_key="has_tool_calls",
+                                operator=ConditionOperator.EQUALS,
+                                value=True,
+                                target="tools",
+                            ),
+                        ],
+                        default_route="end",
+                        routes=["tools", "end"],
+                    ),
+                    position={"x": 250, "y": 250},
                 ),
             ],
             edges=[
+                # START -> agent
                 GraphEdgeConfig(from_node="START", to_node="agent"),
-                GraphEdgeConfig(from_node="agent", to_node="END"),
+                # agent -> should_continue (router)
+                GraphEdgeConfig(from_node="agent", to_node="should_continue"),
+                # should_continue -> tools (if has_tool_calls)
+                GraphEdgeConfig(
+                    from_node="should_continue",
+                    to_node="tools",
+                    condition=EdgeCondition(
+                        state_key="has_tool_calls",
+                        operator=ConditionOperator.EQUALS,
+                        value=True,
+                        target="tools",
+                    ),
+                ),
+                # should_continue -> END (if no tool calls)
+                GraphEdgeConfig(
+                    from_node="should_continue",
+                    to_node="END",
+                    condition=EdgeCondition(
+                        state_key="has_tool_calls",
+                        operator=ConditionOperator.EQUALS,
+                        value=False,
+                        target="end",
+                    ),
+                ),
+                # tools -> agent (loop back)
+                GraphEdgeConfig(from_node="tools", to_node="agent"),
             ],
             entry_point="agent",
             metadata={
                 "author": "Xyzen",
                 "version": "1.0.0",
-                "description": "Default ReAct agent for tool-calling conversations",
-                "note": "This is a simplified representation. The actual implementation uses LangGraph's prebuilt create_agent.",
+                "description": "ReAct agent with tool-calling loop",
+                "pattern": "react",
             },
         )
 
