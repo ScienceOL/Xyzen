@@ -30,7 +30,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
     created_at,
     isLoading,
     isStreaming,
-    // isNewMessage,
     toolCalls,
     attachments,
     citations,
@@ -39,42 +38,12 @@ function ChatBubble({ message }: ChatBubbleProps) {
     agentExecution,
   } = message;
 
-  // 流式消息打字效果
-  // 记录消息是否首次是新消息，确保打字效果只在首次时启用
-  // const wasNewMessageRef = useRef(isNewMessage ?? false);
-
-  // useEffect(() => {
-  //   // 一旦 isNewMessage 变成 false，就不再启用打字效果
-  //   if (!isNewMessage && wasNewMessageRef.current) {
-  //     wasNewMessageRef.current = false;
-  //   }
-  // }, [isNewMessage]);
-
-  // 仅在消息首次是新消息且为 Assistant 消消息时才启用打字效果
-  // 一旦消息完成流式传输（isNewMessage 变为 false），就禁用打字效果
-  // const shouldEnableTypewriter =
-  //   TYPEWRITER_CONFIG.enabled &&
-  //   role === "assistant" &&
-  //   wasNewMessageRef.current;
-
-  // const { opacity } = useStreamingTypewriter(
-  //   content,
-  //   (isStreaming ?? false) || (isLoading ?? false),
-  //   {
-  //     enabled: shouldEnableTypewriter,
-  //     fadeDuration: TYPEWRITER_CONFIG.fadeDuration || 300,
-  //   },
-  // );
-
-  // Use deferred value and memoization to optimize rendering performance
   // 创建带有渐变效果的 Markdown 内容
   const deferredContent = useDeferredValue(content);
   const markdownContent = useMemo(
     () => <Markdown content={deferredContent} />,
     [deferredContent],
   );
-  // 仅当正在接收流式数据且启用了打字效果时才显示打字状态
-  // const isTyping = shouldEnableTypewriter && (isStreaming ?? false);
 
   const isUserMessage = role === "user";
   const isToolMessage = toolCalls && toolCalls.length > 0;
@@ -142,9 +111,9 @@ function ChatBubble({ message }: ChatBubbleProps) {
       textArea.style.position = "fixed"; // Prevent scrolling to bottom
       textArea.style.opacity = "0";
       document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
       try {
+        textArea.focus();
+        textArea.select();
         const successful = document.execCommand("copy");
         if (successful) {
           setIsCopied(true);
@@ -154,8 +123,13 @@ function ChatBubble({ message }: ChatBubbleProps) {
         }
       } catch (err) {
         console.error("Fallback: Oops, unable to copy", err);
+      } finally {
+        try {
+          document.body.removeChild(textArea);
+        } catch (err) {
+          console.error("Fallback: Failed to remove textarea from DOM", err);
+        }
       }
-      document.body.removeChild(textArea);
     };
 
     // Use modern Clipboard API if available and in a secure context
