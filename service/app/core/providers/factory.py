@@ -4,7 +4,6 @@ from typing import Any, cast
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
-from langchain_qwq import ChatQwen
 
 from app.common.code import ErrCode
 from app.core.model_registry import ModelInfo, ModelsDevService
@@ -211,7 +210,7 @@ class ChatModelFactory:
         Create Qwen model instance.
 
         Qwen provides OpenAI-compatible API through DashScope.
-        For vision models, we use langchain-qwq's ChatQwen integration.
+        We use ChatOpenAI with Qwen's base_url for compatibility.
         """
         if "dashscope" in model:
             model = model.replace("dashscope/", "")
@@ -221,7 +220,7 @@ class ChatModelFactory:
         # Get base_url from credentials, default to DashScope endpoint
         base_url = credentials.get("api_endpoint", "https://dashscope.aliyuncs.com/compatible-mode/v1")
 
-        llm = ChatQwen(
+        llm = ChatOpenAI(
             model=model,
             api_key=credentials["api_key"],
             base_url=base_url,

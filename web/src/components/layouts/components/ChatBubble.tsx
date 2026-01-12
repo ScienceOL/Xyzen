@@ -38,7 +38,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     agentExecution,
   } = message;
 
-  // 创建带有渐变效果的 Markdown 内容
+  // Use deferred value and memoization to optimize rendering performance
   const deferredContent = useDeferredValue(content);
   const markdownContent = useMemo(
     () => <Markdown content={deferredContent} />,
