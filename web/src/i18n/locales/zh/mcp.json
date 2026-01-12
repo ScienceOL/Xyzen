@@ -1,0 +1,129 @@
+{
+  "title": "我的服务器",
+  "subtitle": "浏览市场并管理您的服务器",
+  "refresh": "刷新",
+  "addCustom": "添加自定义服务",
+  "market": {
+    "title": "MCP 市场",
+    "quickAdd": "快速添加",
+    "close": "关闭"
+  },
+  "added": {
+    "title": "已添加服务",
+    "online": "在线",
+    "offline": "离线",
+    "tools": "工具",
+    "noDescription": "暂无描述",
+    "edit": "编辑服务",
+    "remove": "移除服务",
+    "test": "测试工具",
+    "empty": {
+      "title": "暂未添加服务",
+      "description": "请在左侧浏览市场并添加，或手动创建自定义连接。",
+      "button": "添加自定义服务"
+    },
+    "loading": "正在加载 MCP 服务..."
+  },
+  "detail": {
+    "back": "返回",
+    "loading": "加载中...",
+    "notFound": "未找到应用",
+    "error": "发生错误",
+    "subscribeNum": "订阅数",
+    "accessNum": "访问次数",
+    "machineType": "机器类型",
+    "author": "作者信息",
+    "history": "版本历史",
+    "star": "收藏",
+    "starred": "已收藏",
+    "activate": "激活 MCP",
+    "activating": "激活中...",
+    "added": "已添加",
+    "connections": "连接信息",
+    "configSchema": "配置 Schema",
+    "inputSchema": "输入 Schema",
+    "tools": "可用工具",
+    "activateSmithery": "激活此 Smithery MCP",
+    "activateSmitheryDesc": "服务器将自动为您激活。",
+    "qualifiedName": "全名",
+    "deploymentUrl": "部署 URL",
+    "remote": "远程",
+    "local": "本地",
+    "security": {
+      "passed": "通过",
+      "failed": "未通过",
+      "scan": "安全扫描"
+    },
+    "expand": "展开",
+    "collapse": "收起",
+    "activationFailed": "激活失败",
+    "oneClickActivate": "一键激活",
+    "smithery": {
+      "alreadyAdded": "该 Smithery MCP 已添加至您的服务器列表",
+      "registering": "正在注册 Smithery MCP...",
+      "successMessage": "已成功添加，自定义参数可在 MCP 设置中补充",
+      "configRequired": "激活前需要为以下连接配置必填字段："
+    },
+    "progress": {
+      "retryCount": "重试次数: {{count}} / 15",
+      "retry": "重试",
+      "done": "完成",
+      "cancel": "取消",
+      "tip": "💡 提示",
+      "bohriumHint": "Bohrium 沙盒正在启动，这可能需要 30-60 秒。请耐心等待，不要关闭此窗口。"
+    }
+  },
+  "addModal": {
+    "title": "添加自定义 MCP 服务器",
+    "success": {
+      "title": "服务器添加成功！",
+      "message": "您的自定义 MCP 服务器现在可以使用了。"
+    },
+    "header": {
+      "title": "自定义服务器配置",
+      "subtitle": "连接到您自己的 Model Context Protocol 服务器"
+    },
+    "fields": {
+      "name": {
+        "label": "服务器名称",
+        "placeholder": "我的自定义服务器"
+      },
+      "description": {
+        "label": "描述",
+        "placeholder": "服务器的简短描述"
+      },
+      "url": {
+        "label": "服务器 URL",
+        "placeholder": "http://localhost:8000 或 https://api.example.com"
+      },
+      "auth": {
+        "label": "身份验证",
+        "enabled": "已启用验证",
+        "enable": "启用验证",
+        "disable": "禁用验证",
+        "enableNow": "立即启用",
+        "current": {
+          "label": "使用当前会话 Token",
+          "desc": "自动使用您的登录凭据"
+        },
+        "custom": {
+          "label": "自定义 Token",
+          "desc": "提供自定义验证 Token"
+        },
+        "token": {
+          "label": "验证 Token",
+          "placeholder": "输入您的验证 Token"
+        }
+      }
+    },
+    "errors": {
+      "required": "名称和 URL 都是必填项。",
+      "failed": "添加服务器失败。请检查详情并重试。"
+    },
+    "actions": {
+      "cancel": "取消",
+      "add": "添加服务器",
+      "adding": "添加中..."
+    }
+  }
+}

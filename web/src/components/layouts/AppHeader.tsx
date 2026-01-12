@@ -1,5 +1,4 @@
-import McpIcon from "@/assets/McpIcon";
-import { AuthStatus, SettingsButton } from "@/components/features";
+import { AuthStatus } from "@/components/features";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +7,6 @@ import { useXyzen } from "@/store";
 import {
   CalendarDaysIcon,
   ChevronLeftIcon,
-  CogIcon,
   InformationCircleIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
@@ -33,7 +31,6 @@ export function AppHeader({
   className = "",
   variant = "fullscreen",
   isMobile = false,
-  showLlmProvider = false,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -41,7 +38,7 @@ export function AppHeader({
   onBackClick,
   backButtonLabel = "Chat",
 }: AppHeaderProps) {
-  const { openMcpListModal, openSettingsModal, closeXyzen } = useXyzen();
+  const { closeXyzen } = useXyzen();
   const auth = useAuth();
   const [showPointsInfo, setShowPointsInfo] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -148,24 +145,6 @@ export function AppHeader({
             </>
           )}
 
-          <SettingsButton />
-          <button
-            className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            title="MCP Management"
-            onClick={openMcpListModal}
-          >
-            <McpIcon className="h-5 w-5" />
-          </button>
-          {showLlmProvider && (
-            <button
-              className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-              title="LLM Providers"
-              onClick={() => openSettingsModal("provider")}
-            >
-              <CogIcon className="h-5 w-5" />
-            </button>
-          )}
-          <div className="mx-2 h-6 w-px bg-neutral-200 dark:bg-neutral-700"></div>
           <AuthStatus className="ml-2" />
           {isSide && !isMobile && (
             <button

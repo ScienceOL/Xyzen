@@ -1,0 +1,62 @@
+{
+  "title": "Xyzen",
+  "pwa": {
+    "installTitle": "アプリをインストール",
+    "installDescription": "より良い体験のために、アドレスバーのインストールアイコンをクリックしてください。"
+  },
+  "chat": {
+    "assistantsTitle": "アシスタント",
+    "chooseAgentHint": "エージェントを選択して開始",
+    "chatLabel": "チャット",
+    "thinking": {
+      "label": "思考中...",
+      "showThinking": "思考過程を表示",
+      "hideThinking": "思考過程を非表示"
+    }
+  },
+  "activityBar": {
+    "chat": "チャット",
+    "knowledge": "ナレッジベース",
+    "community": "コミュニティ",
+    "comingSoon": "近日公開予定"
+  },
+  "toolbar": {
+    "newChat": "新しい会話",
+    "newChatCreating": "作成中...",
+    "uploadFile": "ファイルをアップロード",
+    "resizeHint": "ドラッグして入力フレームの高さを調整",
+    "history": "履歴",
+    "search": "検索",
+    "searchBuiltin": "ビルトイン検索",
+    "searchSearxng": "ユニバーサル検索",
+    "knowledge": "ナレッジベース",
+    "knowledgeConnect": "ナレッジベースに接続",
+    "knowledgeDisconnect": "切断",
+    "mcpTools": "MCPツールが接続されました",
+    "searchOff": "オフ",
+    "searchOffDesc": "検索機能を使用しない",
+    "searchBuiltinDesc": "モデルのネイティブ検索機能を使用",
+    "searchBuiltinNotSupported": "現在のモデルはサポートしていません",
+    "searchBuiltinConflict": "MCPツールと競合するため使用できません",
+    "searchSearxngDesc": "ユニバーサル検索エンジンを使用",
+    "knowledgeSelect": "ナレッジベースを選択",
+    "knowledgeEmpty": "ナレッジベースがありません",
+    "knowledgeEmptyDesc": "まずナレッジパネルで作成してください"
+  },
+  "input": {
+    "placeholder": "メッセージを送信...",
+    "send": "送信",
+    "enterToSend": "送信",
+    "shiftEnterForNewline": "新しい行"
+  },
+  "modelCapabilities": {
+    "vision": "ビジョンサポート",
+    "audioInput": "オーディオ入力",
+    "videoInput": "ビデオ入力",
+    "webSearch": "ウェブ検索"
+  },
+  "modelSelector": {
+    "noProvider": "まずLLMプロバイダーを追加してください",
+    "notConfigured": "未設定"
+  }
+}

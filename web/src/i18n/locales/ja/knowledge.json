@@ -1,0 +1,176 @@
+{
+  "titles": {
+    "recents": "最近",
+    "allFiles": "すべてのファイル",
+    "myKnowledge": "マイナレッジ",
+    "knowledgeBase": "ナレッジベース",
+    "trash": "ゴミ箱"
+  },
+  "a11y": {
+    "navTitle": "ナビゲーションメニュー",
+    "navDescription": "ナレッジベースをナビゲート"
+  },
+  "prompts": {
+    "folderName": "フォルダ名を入力：",
+    "knowledgeSetName": "ナレッジセット名を入力：",
+    "knowledgeSetDescription": "説明を入力（オプション）："
+  },
+  "errors": {
+    "createFolderFailed": "フォルダの作成に失敗しました",
+    "createKnowledgeSetFailed": "ナレッジセットの作成に失敗しました"
+  },
+  "upload": {
+    "errors": {
+      "fileTooLarge": "ファイル「{{name}}」（{{fileSizeMB}}MB）が最大ファイルサイズ制限の{{maxSizeMB}}MBを超えています",
+      "notEnoughStorage": "ストレージ容量が不足しています。ファイルサイズ：{{fileSizeMB}}MB、利用可能：{{availableMB}}MB。まずいくつかのファイルを削除してください。",
+      "uploadFailed": "アップロードに失敗しました"
+    }
+  },
+  "toolbar": {
+    "home": "ホーム",
+    "searchFilesPlaceholder": "ファイルを検索...",
+    "searchPlaceholder": "検索",
+    "listView": "リスト表示",
+    "gridView": "グリッド表示",
+    "newFolder": "新しいフォルダ",
+    "emptyTrash": "ゴミ箱を空にする",
+    "empty": "空",
+    "uploadFile": "ファイルをアップロード",
+    "upload": "アップロード",
+    "refresh": "更新"
+  },
+  "sidebar": {
+    "groups": {
+      "favorites": "お気に入り",
+      "media": "メディア",
+      "locations": "場所"
+    },
+    "items": {
+      "images": "画像",
+      "documents": "ドキュメント"
+    },
+    "newKnowledgeSet": "新しいナレッジセット",
+    "deleteKnowledgeSet": "ナレッジセットを削除",
+    "deleteTitle": "ナレッジセットを削除",
+    "deleteConfirm": "「{{name}}」を削除してもよろしいですか？ファイルは削除されず、ナレッジセットのみが削除されます。",
+    "deleteConfirmButton": "削除",
+    "noKnowledgeSets": "ナレッジセットがありません"
+  },
+  "status": {
+    "items": "{{count}}個のアイテム",
+    "usedOfTotal": "{{used}} / {{total}}使用中",
+    "available": "{{available}}利用可能"
+  },
+  "contextMenu": {
+    "download": "ダウンロード",
+    "rename": "名前を変更",
+    "moveTo": "移動先...",
+    "addToKnowledgeSet": "ナレッジセットに追加",
+    "removeFromKnowledgeSet": "ナレッジセットから削除",
+    "delete": "削除"
+  },
+  "moveModal": {
+    "title": "「{{name}}」を移動",
+    "home": "ホーム",
+    "noSubfolders": "サブフォルダーがありません",
+    "moveHere": "ここに移動"
+  },
+  "fileList": {
+    "itemTypes": {
+      "file": "ファイル",
+      "folder": "フォルダー"
+    },
+    "columns": {
+      "name": "名前",
+      "size": "サイズ",
+      "dateModified": "更新日時"
+    },
+    "empty": {
+      "trash": "ゴミ箱は空です",
+      "noItems": "アイテムがありません"
+    },
+    "actions": {
+      "preview": "プレビュー",
+      "download": "ダウンロード",
+      "restore": "復元",
+      "delete": "削除",
+      "deleteForever": "完全に削除",
+      "moveToTrash": "ゴミ箱に移動",
+      "deleteImmediately": "すぐに削除",
+      "deleteFailed": "削除に失敗しました",
+      "restoreFailed": "復元に失敗しました",
+      "downloadFailed": "ダウンロードに失敗しました"
+    },
+    "deleteItem": {
+      "title": "{{itemType}}を削除",
+      "message": "この{{itemType}}を削除してもよろしいですか？"
+    },
+    "moveToTrash": {
+      "message": "このファイルをゴミ箱に移動してもよろしいですか？"
+    },
+    "deleteForever": {
+      "message": "このファイルを完全に削除してもよろしいですか？この操作は元に戻せません。"
+    },
+    "emptyTrash": {
+      "title": "ゴミ箱を空にする",
+      "message": "{{count}}個のアイテムを完全に削除してもよろしいですか？この操作は元に戻せません。",
+      "confirm": "ゴミ箱を空にする",
+      "failed": "ゴミ箱を完全に空にできませんでした。一部のアイテムが残っている可能性があります。"
+    },
+    "rename": {
+      "titleFile": "ファイル名を変更",
+      "titleFolder": "フォルダー名を変更",
+      "placeholder": "新しい名前を入力",
+      "confirm": "名前を変更",
+      "failed": "名前の変更に失敗しました"
+    },
+    "move": {
+      "failed": "移動に失敗しました"
+    },
+    "knowledgeSet": {
+      "add": {
+        "title": "ナレッジセットに追加",
+        "subtitle": "「{{name}}」を追加するナレッジセットを選択"
+      },
+      "none": "利用可能なナレッジセットがありません。まず作成してください。",
+      "fileCount": "{{count}}個のファイル",
+      "added": "ファイルをナレッジセットに追加しました",
+      "alreadyInSet": "このファイルは既にナレッジセットに含まれています。",
+      "addFailed": "ナレッジセットへのファイル追加に失敗しました",
+      "remove": {
+        "title": "ナレッジセットから削除",
+        "message": "「{{name}}」をこのナレッジセットから削除しますか？",
+        "confirm": "削除",
+        "failed": "ナレッジセットからのファイル削除に失敗しました"
+      }
+    },
+    "notifications": {
+      "successTitle": "成功",
+      "noticeTitle": "お知らせ",
+      "errorTitle": "エラー"
+    }
+  },
+  "createKnowledgeSetModal": {
+    "title": "ナレッジセットを作成",
+    "fields": {
+      "name": {
+        "label": "名前",
+        "placeholder": "名前を入力"
+      },
+      "description": {
+        "label": "説明（オプション）",
+        "placeholder": "短い説明を追加"
+      }
+    },
+    "actions": {
+      "create": "作成",
+      "creating": "作成中..."
+    },
+    "validation": {
+      "nameRequired": "名前は必須です"
+    },
+    "errors": {
+      "createFailed": "ナレッジセットの作成に失敗しました"
+    }
+  }
+}

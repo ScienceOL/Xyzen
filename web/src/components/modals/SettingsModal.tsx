@@ -5,6 +5,7 @@ import {
   ArrowLeftIcon,
   CloudIcon,
   GiftIcon,
+  ServerStackIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -19,6 +20,7 @@ import {
   ThemeSettings,
   UiSettings,
 } from "./settings";
+import { McpSettings } from "./settings/McpSettings";
 
 export function SettingsModal() {
   const { t } = useTranslation();
@@ -49,7 +51,11 @@ export function SettingsModal() {
       label: t("settings.categories.provider"),
       icon: CloudIcon,
     },
-
+    {
+      id: "mcp",
+      label: t("settings.categories.mcp"),
+      icon: ServerStackIcon,
+    },
     {
       id: "redemption",
       label: t("settings.categories.redemption"),
@@ -136,6 +142,8 @@ export function SettingsModal() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-0 md:p-0">
+              {activeSettingsCategory === "mcp" && <McpSettings />}
+
               {activeSettingsCategory === "provider" && (
                 <div className="flex h-full flex-col md:flex-row">
                   {/* Provider List Column */}

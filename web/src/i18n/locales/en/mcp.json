@@ -1,0 +1,129 @@
+{
+  "title": "My Servers",
+  "subtitle": "Browse marketplace and manage your servers",
+  "refresh": "Refresh",
+  "addCustom": "Add Custom",
+  "market": {
+    "title": "MCP Market",
+    "quickAdd": "Quick Add",
+    "close": "Close"
+  },
+  "added": {
+    "title": "Added Servers",
+    "online": "Online",
+    "offline": "Offline",
+    "tools": "tools",
+    "noDescription": "No description",
+    "edit": "Edit server",
+    "remove": "Remove server",
+    "test": "Test tool",
+    "empty": {
+      "title": "No Servers Added Yet",
+      "description": "Browse the marketplace on the left to add servers, or create a custom connection.",
+      "button": "Add Custom Server"
+    },
+    "loading": "Loading MCP servers..."
+  },
+  "detail": {
+    "back": "Back",
+    "loading": "Loading...",
+    "notFound": "App not found",
+    "error": "Error occurred",
+    "subscribeNum": "Subscribers",
+    "accessNum": "Access Count",
+    "machineType": "Machine Type",
+    "author": "Author Info",
+    "history": "Version History",
+    "star": "Star",
+    "starred": "Starred",
+    "activate": "Activate MCP",
+    "activating": "Activating...",
+    "added": "Added",
+    "connections": "Connections",
+    "configSchema": "Config Schema",
+    "inputSchema": "Input Schema",
+    "tools": "Available Tools",
+    "activateSmithery": "Activate this Smithery MCP",
+    "activateSmitheryDesc": "Server will handle activation automatically.",
+    "qualifiedName": "Qualified Name",
+    "deploymentUrl": "Deployment URL",
+    "remote": "Remote",
+    "local": "Local",
+    "security": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "scan": "Security Scan"
+    },
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "activationFailed": "Activation failed",
+    "oneClickActivate": "One-click Activate",
+    "smithery": {
+      "alreadyAdded": "This Smithery MCP is already added to your server list",
+      "registering": "Registering Smithery MCP...",
+      "successMessage": "Successfully added. Custom parameters can be configured in MCP settings.",
+      "configRequired": "Required fields configuration needed for the following connections before activation:"
+    },
+    "progress": {
+      "retryCount": "Retry count: {{count}} / 15",
+      "retry": "Retry",
+      "done": "Done",
+      "cancel": "Cancel",
+      "tip": "💡 Tip",
+      "bohriumHint": "Bohrium sandbox is starting, this may take 30-60 seconds. Please wait patiently and do not close this window."
+    }
+  },
+  "addModal": {
+    "title": "Add Custom MCP Server",
+    "success": {
+      "title": "Server Added Successfully!",
+      "message": "Your custom MCP server is now ready to use."
+    },
+    "header": {
+      "title": "Custom Server Configuration",
+      "subtitle": "Connect to your own Model Context Protocol server"
+    },
+    "fields": {
+      "name": {
+        "label": "Server Name",
+        "placeholder": "My Custom Server"
+      },
+      "description": {
+        "label": "Description",
+        "placeholder": "A brief description of the server"
+      },
+      "url": {
+        "label": "Server URL",
+        "placeholder": "http://localhost:8000 or https://api.example.com"
+      },
+      "auth": {
+        "label": "Authentication",
+        "enabled": "Authentication Enabled",
+        "enable": "Enable Authentication",
+        "disable": "Disable Auth",
+        "enableNow": "Enable Now",
+        "current": {
+          "label": "Use Current Session Token",
+          "desc": "Automatically use your logged-in credentials"
+        },
+        "custom": {
+          "label": "Custom Token",
+          "desc": "Provide a custom authentication token"
+        },
+        "token": {
+          "label": "Authentication Token",
+          "placeholder": "Enter your authentication token"
+        }
+      }
+    },
+    "errors": {
+      "required": "Name and URL are required.",
+      "failed": "Failed to add server. Please check the details and try again."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "add": "Add Server",
+      "adding": "Adding..."
+    }
+  }
+}

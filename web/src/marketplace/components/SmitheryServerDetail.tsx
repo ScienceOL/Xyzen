@@ -6,6 +6,7 @@ import {
   GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSmitheryServerDetail } from "../hooks/useSmitheryMcp";
 import {
   McpActivationStatus,
@@ -28,6 +29,7 @@ const CollapsibleJson: React.FC<{ title: string; data: unknown }> = ({
   title,
   data,
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <div className="border border-neutral-200 dark:border-neutral-800 rounded-lg">
@@ -36,7 +38,9 @@ const CollapsibleJson: React.FC<{ title: string; data: unknown }> = ({
         className="w-full flex items-center justify-between px-3 py-2 text-left text-sm"
       >
         <span>{title}</span>
-        <span className="text-neutral-500">{open ? "收起" : "展开"}</span>
+        <span className="text-neutral-500">
+          {open ? t("mcp.detail.collapse") : t("mcp.detail.expand")}
+        </span>
       </button>
       {open && (
         <div className="border-t border-neutral-200 dark:border-neutral-800 p-3 overflow-auto">
@@ -48,6 +52,7 @@ const CollapsibleJson: React.FC<{ title: string; data: unknown }> = ({
 };
 
 const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
+  const { t } = useTranslation();
   const { detail, loading, error } = useSmitheryServerDetail(id);
 
   // Primary connection URL not needed on UI since activation is server-side
@@ -58,7 +63,7 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent" />
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
-            加载中...
+            {t("mcp.detail.loading")}
           </p>
         </div>
       </div>
@@ -76,7 +81,7 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
   if (!detail) {
     return (
       <div className="py-8 text-center text-neutral-500 dark:text-neutral-400">
-        未找到服务
+        {t("mcp.detail.notFound")}
       </div>
     );
   }
@@ -91,7 +96,7 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
             className="flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
           >
             <ArrowLeftIcon className="h-4 w-4" />
-            返回
+            {t("mcp.detail.back")}
           </button>
         )}
       </div>
@@ -116,14 +121,19 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
               <div className="mt-1 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
                 <span className="inline-flex items-center gap-1">
                   <GlobeAltIcon className="h-4 w-4" />{" "}
-                  {detail.remote ? "远程" : "本地"}
+                  {detail.remote
+                    ? t("mcp.detail.remote")
+                    : t("mcp.detail.local")}
                 </span>
                 {detail.security && (
                   <span className="inline-flex items-center gap-1">
                     <CheckCircleIcon
                       className={`h-4 w-4 ${detail.security.scanPassed ? "text-green-500" : "text-yellow-500"}`}
                     />
-                    安全扫描 {detail.security.scanPassed ? "通过" : "未通过"}
+                    {t("mcp.detail.security.scan")}{" "}
+                    {detail.security.scanPassed
+                      ? t("mcp.detail.security.passed")
+                      : t("mcp.detail.security.failed")}
                   </span>
                 )}
               </div>
@@ -141,7 +151,7 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
           {detail.connections && detail.connections.length > 0 && (
             <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
               <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
-                连接信息
+                {t("mcp.detail.connections")}
               </h2>
               <div className="space-y-3">
                 {detail.connections.map((c, idx) => (
@@ -162,7 +172,7 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
                     {c.configSchema && (
                       <div className="mt-2">
                         <CollapsibleJson
-                          title="配置 Schema"
+                          title={t("mcp.detail.configSchema")}
                           data={c.configSchema}
                         />
                       </div>
@@ -177,31 +187,31 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
           {detail.tools && detail.tools.length > 0 && (
             <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
               <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
-                可用工具
+                {t("mcp.detail.tools")}
               </h2>
               <div className="space-y-4">
-                {detail.tools.map((t) => (
+                {detail.tools.map((tool) => (
                   <div
-                    key={t.name}
+                    key={tool.name}
                     className="border-b border-neutral-100 pb-4 last:border-0 dark:border-neutral-800"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-medium text-neutral-900 dark:text-white">
-                          {t.name}
+                          {tool.name}
                         </p>
-                        {t.description && (
+                        {tool.description && (
                           <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                            {t.description}
+                            {tool.description}
                           </p>
                         )}
                       </div>
                     </div>
-                    {t.inputSchema && (
-                      <div className="mt-2">
+                    {tool.inputSchema && (
+                      <div className="mt-3">
                         <CollapsibleJson
-                          title="输入 Schema"
-                          data={t.inputSchema}
+                          title={t("mcp.detail.inputSchema")}
+                          data={tool.inputSchema}
                         />
                       </div>
                     )}
@@ -212,15 +222,14 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
           )}
         </div>
 
-        {/* Right column */}
+        {/* Right Sidebar - Activation */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Activation */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
-            <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
-              激活此 Smithery MCP
+          <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 sticky top-4">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">
+              {t("mcp.detail.activateSmithery")}
             </h2>
-            <p className="mb-4 text-xs text-neutral-500 dark:text-neutral-400">
-              服务器将自动为您激活。
+            <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
+              {t("mcp.detail.activateSmitheryDesc")}
             </p>
             <ActivateSmitherySection detail={detail} />
           </div>
@@ -230,7 +239,7 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
             <div className="space-y-2">
               <div>
                 <span className="text-neutral-500 dark:text-neutral-400">
-                  Qualified Name:{" "}
+                  {t("mcp.detail.qualifiedName")}:{" "}
                 </span>
                 <span className="text-neutral-900 dark:text-white break-all">
                   {detail.qualifiedName}
@@ -239,7 +248,7 @@ const SmitheryServerDetail: React.FC<Props> = ({ id, onBack }) => {
               {detail.deploymentUrl && (
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400">
-                    Deployment URL:{" "}
+                    {t("mcp.detail.deploymentUrl")}:{" "}
                   </span>
                   <a
                     href={detail.deploymentUrl}
@@ -264,6 +273,7 @@ export default SmitheryServerDetail;
 const ActivateSmitherySection: React.FC<{
   detail: import("../types/smithery").SmitheryServerDetail;
 }> = ({ detail }) => {
+  const { t } = useTranslation();
   const { activateSmitheryServer, getLoading, mcpServers } = useXyzen();
   const isLoading = getLoading(LoadingKeys.MCP_SERVER_CREATE);
   const [progress, setProgress] = useState<McpActivationProgressState>({
@@ -282,11 +292,12 @@ const ActivateSmitherySection: React.FC<{
         const fields = Array.isArray(req)
           ? req.filter((field): field is string => typeof field === "string")
           : [];
-        const label = connection.type || `连接 ${index + 1}`;
+        const label =
+          connection.type || `${t("mcp.detail.connections")} ${index + 1}`;
         return { label, fields };
       })
       .filter((item) => item.fields.length > 0);
-  }, [detail.connections]);
+  }, [detail.connections, t]);
 
   const qualifiedDisplayName = detail.displayName || detail.qualifiedName;
   const isAlreadyAdded = useMemo(
@@ -298,30 +309,30 @@ const ActivateSmitherySection: React.FC<{
     if (isAlreadyAdded) {
       setProgress({
         status: McpActivationStatus.SUCCESS,
-        message: "该 Smithery MCP 已添加至您的服务器列表",
+        message: t("mcp.detail.smithery.alreadyAdded"),
         progress: 100,
       });
     }
-  }, [isAlreadyAdded]);
+  }, [isAlreadyAdded, t]);
 
   const handleActivate = async () => {
     setProgress({
       status: McpActivationStatus.ACTIVATING,
-      message: "正在注册 Smithery MCP...",
+      message: t("mcp.detail.smithery.registering"),
       progress: 60,
     });
     try {
       await activateSmitheryServer(detail.qualifiedName, "mental-worm-gq5uk2");
       setProgress({
         status: McpActivationStatus.SUCCESS,
-        message: "已成功添加，自定义参数可在 MCP 设置中补充",
+        message: t("mcp.detail.smithery.successMessage"),
         progress: 100,
       });
     } catch (e: unknown) {
       const message =
         typeof e === "object" && e && "message" in e
           ? String((e as { message?: unknown }).message)
-          : "激活失败";
+          : t("mcp.detail.activationFailed");
       setProgress({
         status: McpActivationStatus.ERROR,
         message,
@@ -335,7 +346,9 @@ const ActivateSmitherySection: React.FC<{
     <div className="space-y-3">
       {connectionRequirements.length > 0 && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-300">
-          <p className="font-medium">激活前需要为以下连接配置必填字段：</p>
+          <p className="font-medium">
+            {t("mcp.detail.smithery.configRequired")}
+          </p>
           <div className="mt-2 space-y-2">
             {connectionRequirements.map(({ label, fields }) => (
               <div key={label}>
@@ -357,7 +370,11 @@ const ActivateSmitherySection: React.FC<{
         onClick={handleActivate}
         className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
       >
-        {isAlreadyAdded ? "已添加" : isLoading ? "激活中..." : "一键激活"}
+        {isAlreadyAdded
+          ? t("mcp.detail.added")
+          : isLoading
+            ? t("mcp.detail.activating")
+            : t("mcp.detail.oneClickActivate")}
       </button>
       <McpActivationProgress
         progress={progress}

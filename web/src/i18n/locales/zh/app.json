@@ -1,0 +1,62 @@
+{
+  "title": "Xyzen",
+  "pwa": {
+    "installTitle": "安装应用",
+    "installDescription": "点击地址栏的安装图标，获得更好的使用体验。"
+  },
+  "chat": {
+    "assistantsTitle": "助手",
+    "chooseAgentHint": "选择一个助手开始",
+    "chatLabel": "聊天",
+    "thinking": {
+      "label": "思考中...",
+      "showThinking": "显示思考过程",
+      "hideThinking": "隐藏思考过程"
+    }
+  },
+  "activityBar": {
+    "chat": "聊天",
+    "knowledge": "知识库",
+    "community": "社区",
+    "comingSoon": "敬请期待"
+  },
+  "toolbar": {
+    "newChat": "新对话",
+    "newChatCreating": "创建中...",
+    "uploadFile": "上传文件",
+    "resizeHint": "拖动调整输入框高度",
+    "history": "历史记录",
+    "search": "搜索",
+    "searchBuiltin": "内置搜索",
+    "searchSearxng": "通用搜索",
+    "knowledge": "知识库",
+    "knowledgeConnect": "连接知识库",
+    "knowledgeDisconnect": "断开连接",
+    "mcpTools": "MCP 工具已连接",
+    "searchOff": "关闭",
+    "searchOffDesc": "不使用搜索功能",
+    "searchBuiltinDesc": "使用模型原生搜索能力",
+    "searchBuiltinNotSupported": "当前模型不支持",
+    "searchBuiltinConflict": "与 MCP 工具冲突，不可使用",
+    "searchSearxngDesc": "使用通用搜索引擎进行搜索",
+    "knowledgeSelect": "选择知识库",
+    "knowledgeEmpty": "暂无知识库",
+    "knowledgeEmptyDesc": "请先在知识库面板创建"
+  },
+  "input": {
+    "placeholder": "输入消息...",
+    "send": "发送",
+    "enterToSend": "发送",
+    "shiftEnterForNewline": "换行"
+  },
+  "modelCapabilities": {
+    "vision": "视觉支持",
+    "audioInput": "音频输入",
+    "videoInput": "视频输入",
+    "webSearch": "网络搜索"
+  },
+  "modelSelector": {
+    "noProvider": "请先添加LLM提供商",
+    "notConfigured": "未设置"
+  }
+}

@@ -95,6 +95,7 @@ class SessionRepository:
             agent_id=agent_id,
             provider_id=session_data.provider_id,
             model=session_data.model,
+            google_search_enabled=session_data.google_search_enabled,
         )
         self.db.add(session)
         await self.db.flush()

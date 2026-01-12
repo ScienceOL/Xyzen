@@ -1,0 +1,60 @@
+{
+  "add": "添加助手",
+  "edit": "编辑",
+  "delete": "删除",
+  "editAgent": "编辑助手",
+  "deleteAgent": "删除助手",
+  "addButton": "+ 添加助手",
+  "createTitle": "创建助手",
+  "editTitle": "编辑 {{name}}",
+  "deleteTitle": "删除助手",
+  "deleteConfirm": "确定要永久删除助手 \"{{name}}\" 吗？此操作无法撤销。",
+  "deleteConfirmWithListing": "⚠️ 此助手已发布到市场。删除后，市场中的发布版本也将被移除。\n\n确定要永久删除助手 \"{{name}}\" 吗？此操作无法撤销。",
+  "createDescription": "创建一个新的 AI 助手，可以配置专属提示词和工具。",
+  "updateDescription": "更新助手的详细信息。",
+  "systemDescription": "选择一个预配置的系统助手，这些助手具有特殊的执行能力。",
+  "noSystemAgents": "暂无可用的系统助手",
+  "tabs": {
+    "custom": "自定义助手",
+    "system": "系统助手"
+  },
+  "fields": {
+    "name": {
+      "label": "助手名称",
+      "placeholder": "例如：我的研究助手",
+      "required": "助手名称 *"
+    },
+    "description": {
+      "label": "描述",
+      "placeholder": "简短描述助手的用途"
+    },
+    "prompt": {
+      "label": "系统提示词",
+      "placeholder": "定义助手的行为和知识范围"
+    },
+    "mcpServers": {
+      "label": "MCP 工具服务器",
+      "connected": "已连接的 MCP 服务器",
+      "empty": "暂无可用的 MCP 服务器。",
+      "emptyDescription": "暂无可用的 MCP 服务器",
+      "createButton": "创建 MCP 服务器"
+    },
+    "selectSystemAgent": "选择系统助手 *",
+    "customName": "自定义名称（可选）"
+  },
+  "actions": {
+    "cancel": "取消",
+    "create": "创建助手",
+    "creating": "创建中...",
+    "save": "保存修改",
+    "saving": "保存中...",
+    "publish": "发布到市场",
+    "publishTooltip": "发布前请先添加提示词"
+  },
+  "errors": {
+    "nameRequired": "助手名称不能为空",
+    "templateRequired": "请选择一个系统助手",
+    "createFailed": "创建助手失败，请查看控制台了解更多信息。",
+    "updateFailed": "保存失败，请稍后重试。"
+  }
+}

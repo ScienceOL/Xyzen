@@ -1,0 +1,128 @@
+{
+  "title": "マイサーバー",
+  "subtitle": "マーケットプレイスを閲覧してサーバーを管理",
+  "refresh": "更新",
+  "addCustom": "カスタム追加",
+  "market": {
+    "title": "MCPマーケット",
+    "quickAdd": "クイック追加",
+    "close": "閉じる"
+  },
+  "added": {
+    "title": "追加されたサーバー",
+    "online": "オンライン",
+    "offline": "オフライン",
+    "tools": "ツール",
+    "noDescription": "説明なし",
+    "edit": "サーバーを編集",
+    "remove": "サーバーを削除",
+    "test": "ツールをテスト",
+    "empty": {
+      "title": "サーバーはまだ追加されていません",
+      "description": "左側のマーケットプレイスを閲覧してサーバーを追加するか、カスタム接続を作成してください。",
+      "button": "カスタムサーバーを追加"
+    }
+  },
+  "detail": {
+    "back": "戻る",
+    "loading": "読み込み中...",
+    "notFound": "アプリが見つかりません",
+    "error": "エラーが発生しました",
+    "subscribeNum": "購読者数",
+    "accessNum": "アクセス数",
+    "machineType": "マシンタイプ",
+    "author": "作者情報",
+    "history": "バージョン履歴",
+    "star": "スター",
+    "starred": "スター済み",
+    "activate": "MCPを有効化",
+    "activating": "有効化中...",
+    "added": "追加済み",
+    "connections": "接続",
+    "configSchema": "設定スキーマ",
+    "inputSchema": "入力スキーマ",
+    "tools": "利用可能なツール",
+    "activateSmithery": "このSmithery MCPを有効化",
+    "activateSmitheryDesc": "サーバーが自動的に有効化を処理します。",
+    "qualifiedName": "完全修飾名",
+    "deploymentUrl": "デプロイURL",
+    "remote": "リモート",
+    "local": "ローカル",
+    "security": {
+      "passed": "合格",
+      "failed": "不合格",
+      "scan": "セキュリティスキャン"
+    },
+    "expand": "展開",
+    "collapse": "折りたたむ",
+    "activationFailed": "有効化に失敗しました",
+    "oneClickActivate": "ワンクリック有効化",
+    "smithery": {
+      "alreadyAdded": "このSmithery MCPはすでにサーバーリストに追加されています",
+      "registering": "Smithery MCPを登録中...",
+      "successMessage": "正常に追加されました。カスタムパラメータはMCP設定で構成できます。",
+      "configRequired": "有効化する前に、以下の接続の必須フィールド設定が必要です："
+    },
+    "progress": {
+      "retryCount": "再試行回数: {{count}} / 15",
+      "retry": "再試行",
+      "done": "完了",
+      "cancel": "キャンセル",
+      "tip": "💡 ヒント",
+      "bohriumHint": "Bohriumサンドボックスを起動しています。これには30〜60秒かかる場合があります。このウィンドウを閉じずにお待ちください。"
+    }
+  },
+  "addModal": {
+    "title": "カスタムMCPサーバーを追加",
+    "success": {
+      "title": "サーバーが正常に追加されました！",
+      "message": "カスタムMCPサーバーの使用準備が整いました。"
+    },
+    "header": {
+      "title": "カスタムサーバー設定",
+      "subtitle": "独自のModel Context Protocolサーバーに接続"
+    },
+    "fields": {
+      "name": {
+        "label": "サーバー名",
+        "placeholder": "マイカスタムサーバー"
+      },
+      "description": {
+        "label": "説明",
+        "placeholder": "サーバーの簡単な説明"
+      },
+      "url": {
+        "label": "サーバーURL",
+        "placeholder": "http://localhost:8000 または https://api.example.com"
+      },
+      "auth": {
+        "label": "認証",
+        "enabled": "認証有効",
+        "enable": "認証を有効化",
+        "disable": "認証を無効化",
+        "enableNow": "今すぐ有効化",
+        "current": {
+          "label": "現在のセッショントークンを使用",
+          "desc": "ログイン資格情報を自動的に使用"
+        },
+        "custom": {
+          "label": "カスタムトークン",
+          "desc": "カスタム認証トークンを提供"
+        },
+        "token": {
+          "label": "認証トークン",
+          "placeholder": "認証トークンを入力"
+        }
+      }
+    },
+    "errors": {
+      "required": "名前とURLは必須です。",
+      "failed": "サーバーの追加に失敗しました。詳細を確認して再試行してください。"
+    },
+    "actions": {
+      "cancel": "キャンセル",
+      "add": "サーバーを追加",
+      "adding": "追加中..."
+    }
+  }
+}

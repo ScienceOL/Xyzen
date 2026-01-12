@@ -102,10 +102,14 @@ class SessionCreate(SQLModel):
 
 class SessionRead(SessionBase):
     id: UUID
+    created_at: datetime
+    updated_at: datetime
 
 
 class SessionReadWithTopics(SessionBase):
     id: UUID
+    created_at: datetime
+    updated_at: datetime
     topics: list["TopicRead"] = []
 
 

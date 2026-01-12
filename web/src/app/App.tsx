@@ -35,7 +35,6 @@ export interface XyzenProps {
 
 export function Xyzen({
   backendUrl = DEFAULT_BACKEND_URL,
-  showLlmProvider = false,
   centeredInputPosition,
 }: XyzenProps) {
   const {
@@ -235,7 +234,6 @@ export function Xyzen({
     // 小于阈值：强制 Sidebar，全宽且不可拖拽
     <AppSide
       backendUrl={backendUrl}
-      showLlmProvider={showLlmProvider}
       isMobile
       showAuthError={authFailed}
       onRetryAuth={handleRetry}
@@ -244,13 +242,12 @@ export function Xyzen({
     // 大于等于阈值：尊重设置为 Sidebar，桌面可拖拽
     <AppSide
       backendUrl={backendUrl}
-      showLlmProvider={showLlmProvider}
       showAuthError={authFailed && isXyzenOpen}
       onRetryAuth={handleRetry}
     />
   ) : (
     // 大于等于阈值：默认/设置为 fullscreen
-    <AppFullscreen backendUrl={backendUrl} showLlmProvider={showLlmProvider} />
+    <AppFullscreen backendUrl={backendUrl} />
   );
 
   const gatedContent = isAuthenticating ? (
