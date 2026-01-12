@@ -64,17 +64,18 @@ const ResizeHandle = ({
   }, [currentHeight]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
     touchStartYRef.current = e.touches[0].clientY;
     // Use the current height passed as prop, not localStorage
     initialHeightRef.current = currentHeight;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
     const currentY = e.touches[0].clientY;
     const delta = touchStartYRef.current - currentY;
     const newHeight = Math.max(60, initialHeightRef.current + delta);
 
-    localStorage.setItem("chatInputHeight", newHeight.toString());
     onHeightChange?.(newHeight);
   };
 
