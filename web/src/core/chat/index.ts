@@ -12,6 +12,7 @@ export {
   createLoadingMessage,
   convertToStreamingMessage,
   finalizeStreamingMessage,
+  reconstructAgentExecutionFromMetadata,
 } from "./messageProcessor";
 
 // WebSocket management

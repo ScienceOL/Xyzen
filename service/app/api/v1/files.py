@@ -933,7 +933,7 @@ async def bulk_delete_files(
         )
 
 
-def render_pptx_table(table: "pptx.table.Table | None", slide_width_pt: float) -> BytesIO:  # type: ignore  # noqa: F821
+def render_pptx_table(table: Any | None, slide_width_pt: float) -> BytesIO:
     """
     Render a PowerPoint table to PNG image with proper formatting.
 
@@ -948,8 +948,8 @@ def render_pptx_table(table: "pptx.table.Table | None", slide_width_pt: float) -
         return BytesIO()
 
     # Table parameters
-    rows = table.rows  # type: ignore
-    cols = table.columns  # type: ignore
+    rows = table.rows
+    cols = table.columns
     num_rows = len(rows)
     num_cols = len(cols)
 
@@ -1308,15 +1308,6 @@ def convert_docx_to_pdf_bytes(docx_data: bytes) -> BytesIO:
     import io
 
     try:
-        import fitz  # pymupdf
-    except ImportError:
-        try:
-            import pymupdf as fitz  # noqa: F401
-        except ImportError:
-            logger.error("pymupdf not installed, cannot convert DOCX to PDF")
-            raise ImportError("pymupdf is required for DOCX to PDF conversion")
-
-    try:
         # Try using libreoffice via command line if available
         import subprocess
         import tempfile
@@ -1501,15 +1492,6 @@ def convert_xlsx_to_pdf_bytes(xlsx_data: bytes) -> BytesIO:
         use_landscape = True
 
     try:
-        import fitz  # pymupdf
-    except ImportError:
-        try:
-            import pymupdf as fitz  # noqa: F401
-        except ImportError:
-            logger.error("pymupdf not installed, cannot convert XLSX to PDF")
-            raise ImportError("pymupdf is required for XLSX to PDF conversion")
-
-    try:
         # Try using libreoffice via command line if available
         import subprocess
         import tempfile
@@ -1600,7 +1582,7 @@ def convert_xlsx_to_pdf_bytes(xlsx_data: bytes) -> BytesIO:
             data = []
             col_widths = {}
 
-            for row_idx, row in enumerate(ws.iter_rows(values_only=True)):
+            for row in ws.iter_rows(values_only=True):
                 row_data = []
                 for col_idx, cell_value in enumerate(row):
                     # Convert value to string

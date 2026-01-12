@@ -22,31 +22,23 @@ interface MessageEvent {
     | "topic_updated"
     | "thinking_start"
     | "thinking_chunk"
-    | "thinking_end";
-  data:
-    | Message
-    | {
-        id: string;
-        content?: string;
-        error?: string;
-        stream_id?: string;
-        db_id?: string;
-        created_at?: string;
-        // Tool call fields
-        name?: string;
-        description?: string;
-        arguments?: Record<string, unknown>;
-        status?: string;
-        timestamp?: number;
-        toolCallId?: string;
-        confirmed?: boolean;
-        // Insufficient balance fields
-        error_code?: string;
-        message?: string;
-        message_cn?: string;
-        details?: Record<string, unknown>;
-        action_required?: string;
-      };
+    | "thinking_end"
+    // Agent execution events
+    | "agent_start"
+    | "agent_end"
+    | "agent_error"
+    | "phase_start"
+    | "phase_end"
+    | "node_start"
+    | "node_end"
+    | "subagent_start"
+    | "subagent_end"
+    | "progress_update"
+    | "iteration_start"
+    | "iteration_end"
+    | "state_update";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Message | Record<string, any>;
 }
 
 type ServiceCallback<T> = (payload: T) => void;

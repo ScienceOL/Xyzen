@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 import redis.asyncio as redis
@@ -17,8 +17,8 @@ from app.infra.database import ASYNC_DATABASE_URL
 from app.models.citation import CitationCreate
 from app.models.message import Message, MessageCreate
 from app.repos import CitationRepository, FileRepository, MessageRepository, TopicRepository
-from app.schemas.chat_event_types import CitationData
-from app.schemas.chat_events import ChatEventType
+from app.schemas.chat_event_payloads import CitationData
+from app.schemas.chat_event_types import ChatEventType
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +55,10 @@ def extract_content_text(content: Any) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        text_parts: List[str] = []
+        text_parts: list[str] = []
         for item in content:
             if isinstance(item, dict) and item.get("type") == "text":
-                text_parts.append(str(item.get("text", "")))  # pyright: ignore
+                text_parts.append(str(item.get("text", "")))  # pyright: ignore[reportUnknownArgumentType]
         return "".join(text_parts)
     return str(content)
 
@@ -70,7 +70,7 @@ def process_chat_message(
     user_id_str: str,
     auth_provider: str,
     message_text: str,
-    context: Dict[str, Any] | None,
+    context: dict[str, Any] | None,
     pre_deducted_amount: float,
     access_token: str | None = None,
 ) -> None:
@@ -123,7 +123,7 @@ async def _process_chat_message_async(
     user_id_str: str,
     auth_provider: str,
     message_text: str,
-    context: Dict[str, Any] | None,
+    context: dict[str, Any] | None,
     pre_deducted_amount: float,
     access_token: str | None,
 ) -> None:
@@ -166,7 +166,7 @@ async def _process_chat_message_async(
             ai_message_obj: Message | None = None
             full_content = ""
             full_thinking_content = ""  # Track thinking content for persistence
-            citations_data: List[CitationData] = []
+            citations_data: list[CitationData] = []
             generated_files_count = 0
 
             input_tokens: int = 0
@@ -213,6 +213,29 @@ async def _process_chat_message_async(
 
                 elif stream_event["type"] == ChatEventType.STREAMING_END:
                     full_content = stream_event["data"].get("content", full_content)
+                    # Extract agent_state for persistence to message agent_metadata
+                    agent_state_data = stream_event["data"].get("agent_state")
+
+                    # For graph-based agents, use final node output as message content
+                    # instead of concatenated content from all nodes
+                    if agent_state_data and "node_outputs" in agent_state_data:
+                        node_outputs = agent_state_data["node_outputs"]
+                        # Priority: final_report_generation > agent > model > fallback to streamed
+                        final_content = (
+                            node_outputs.get("final_report_generation")
+                            or node_outputs.get("agent")
+                            or node_outputs.get("model")
+                        )
+                        if final_content:
+                            if isinstance(final_content, str):
+                                full_content = final_content
+                            elif isinstance(final_content, dict):
+                                # Handle structured output - extract text content
+                                full_content = final_content.get("content", str(final_content))
+
+                    if agent_state_data and ai_message_obj:
+                        ai_message_obj.agent_metadata = agent_state_data
+                        db.add(ai_message_obj)
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.TOKEN_USAGE:
@@ -282,7 +305,7 @@ async def _process_chat_message_async(
                 elif event_type == ChatEventType.SEARCH_CITATIONS:
                     citations = stream_event["data"].get("citations", [])
                     if citations:
-                        citations_data.extend(citations)  # type: ignore
+                        citations_data.extend(citations)
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.GENERATED_FILES:
@@ -343,7 +366,7 @@ async def _process_chat_message_async(
                 if citations_data:
                     try:
                         citation_repo = CitationRepository(db)
-                        citation_creates: List[CitationCreate] = []
+                        citation_creates: list[CitationCreate] = []
                         for citation in citations_data:
                             citation_create = CitationCreate(
                                 message_id=ai_message_obj.id,

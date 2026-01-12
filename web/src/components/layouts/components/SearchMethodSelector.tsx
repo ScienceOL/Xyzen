@@ -3,6 +3,7 @@
 import { GlobeAltIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export type SearchMethod = "none" | "builtin" | "searxng";
 
@@ -21,6 +22,7 @@ export function SearchMethodSelector({
   mcpEnabled,
   onMcpConflict,
 }: SearchMethodSelectorProps) {
+  const { t } = useTranslation();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -37,12 +39,12 @@ export function SearchMethodSelector({
   const getMethodLabel = () => {
     switch (method) {
       case "builtin":
-        return "内置搜索";
+        return t("app.toolbar.searchBuiltin");
       case "searxng":
-        return "通用搜索";
+        return t("app.toolbar.searchSearxng");
       case "none":
       default:
-        return "搜索";
+        return t("app.toolbar.search");
     }
   };
 
@@ -127,10 +129,10 @@ export function SearchMethodSelector({
               <MagnifyingGlassIcon className="h-4 w-4 text-neutral-400" />
               <div className="flex-1">
                 <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  关闭
+                  {t("app.toolbar.searchOff")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  不使用搜索功能
+                  {t("app.toolbar.searchOffDesc")}
                 </div>
               </div>
               {method === "none" && (
@@ -156,14 +158,14 @@ export function SearchMethodSelector({
               <GlobeAltIcon className="h-4 w-4 text-blue-500" />
               <div className="flex-1">
                 <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  内置搜索
+                  {t("app.toolbar.searchBuiltin")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
                   {!supportsBuiltinSearch
-                    ? "当前模型不支持"
+                    ? t("app.toolbar.searchBuiltinNotSupported")
                     : mcpEnabled
-                      ? "与 MCP 工具冲突，不可使用"
-                      : "使用模型原生搜索能力"}
+                      ? t("app.toolbar.searchBuiltinConflict")
+                      : t("app.toolbar.searchBuiltinDesc")}
                 </div>
               </div>
               {method === "builtin" && (
@@ -183,10 +185,10 @@ export function SearchMethodSelector({
               <MagnifyingGlassIcon className="h-4 w-4 text-emerald-500" />
               <div className="flex-1">
                 <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  通用搜索
+                  {t("app.toolbar.searchSearxng")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  使用通用搜索引擎进行搜索
+                  {t("app.toolbar.searchSearxngDesc")}
                 </div>
               </div>
               {method === "searxng" && (

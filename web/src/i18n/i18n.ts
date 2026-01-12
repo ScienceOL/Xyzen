@@ -3,9 +3,10 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
 import enTranslation from "./locales/en/translation.json";
+import jaTranslation from "./locales/ja/translation.json";
 import zhTranslation from "./locales/zh/translation.json";
 
-export const SUPPORTED_LANGUAGES = ["en", "zh"] as const;
+export const SUPPORTED_LANGUAGES = ["en", "zh", "ja"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 let initialized = false;
@@ -26,6 +27,7 @@ export function initI18n() {
       resources: {
         en: { translation: enTranslation },
         zh: { translation: zhTranslation },
+        ja: { translation: jaTranslation },
       },
       detection: {
         order: ["localStorage", "navigator", "htmlTag"],

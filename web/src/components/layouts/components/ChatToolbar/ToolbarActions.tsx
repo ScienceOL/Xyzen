@@ -11,6 +11,7 @@ import {
 } from "@/components/animate-ui/components/animate/tooltip";
 import { FileUploadButton } from "@/components/features";
 import { ArrowPathIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 
 interface ToolbarActionsProps {
   onNewChat: () => void;
@@ -25,6 +26,8 @@ export function ToolbarActions({
   isUploading,
   buttonClassName,
 }: ToolbarActionsProps) {
+  const { t } = useTranslation();
+
   return (
     <>
       {/* New Chat Button */}
@@ -43,7 +46,11 @@ export function ToolbarActions({
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{isCreatingNewChat ? "创建中..." : "新对话"}</p>
+          <p>
+            {isCreatingNewChat
+              ? t("app.toolbar.newChatCreating")
+              : t("app.toolbar.newChat")}
+          </p>
         </TooltipContent>
       </Tooltip>
 
@@ -58,7 +65,7 @@ export function ToolbarActions({
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          <p>上传文件</p>
+          <p>{t("app.toolbar.uploadFile")}</p>
         </TooltipContent>
       </Tooltip>
     </>

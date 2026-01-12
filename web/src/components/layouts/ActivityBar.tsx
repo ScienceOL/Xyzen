@@ -4,6 +4,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 export type ActivityPanel = "chat" | "knowledge" | "marketplace";
 
@@ -33,6 +34,7 @@ const ActivityButton: React.FC<ActivityButtonProps> = ({
   isMobile = false,
 }) => {
   const isHorizontal = isMobile;
+  const { t } = useTranslation();
 
   return (
     <motion.button
@@ -49,7 +51,9 @@ const ActivityButton: React.FC<ActivityButtonProps> = ({
               ? "text-neutral-300 cursor-not-allowed dark:text-neutral-600"
               : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-neutral-300"
         }`}
-      title={isDisabled ? `${label} (Coming Soon)` : label}
+      title={
+        isDisabled ? `${label} (${t("app.activityBar.comingSoon")})` : label
+      }
     >
       <Icon className={isHorizontal ? "h-5 w-5" : "h-6 w-6"} />
 
@@ -91,23 +95,25 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   className = "",
   isMobile = false,
 }) => {
+  const { t } = useTranslation();
+
   const activities = [
     {
       panel: "chat" as ActivityPanel,
       icon: ChatBubbleLeftRightIcon,
-      label: "Chat",
+      label: t("app.activityBar.chat"),
       disabled: false,
     },
     {
       panel: "knowledge" as ActivityPanel,
       icon: FolderIcon, // Using FolderIcon for Knowledge Base
-      label: "Knowledge",
+      label: t("app.activityBar.knowledge"),
       disabled: false,
     },
     {
       panel: "marketplace" as ActivityPanel,
       icon: SparklesIcon,
-      label: "Community",
+      label: t("app.activityBar.community"),
       disabled: false,
     },
   ];

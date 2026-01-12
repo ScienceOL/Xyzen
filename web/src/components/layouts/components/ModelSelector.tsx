@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ModelSelectorProps {
   currentAgent: Agent;
@@ -29,6 +30,7 @@ interface CapabilityIconProps {
 }
 
 function CapabilityIcons({ model }: CapabilityIconProps) {
+  const { t } = useTranslation();
   const icons = [];
 
   if (model.supports_vision) {
@@ -36,7 +38,7 @@ function CapabilityIcons({ model }: CapabilityIconProps) {
       <EyeIcon
         key="vision"
         className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400"
-        title="Vision Support"
+        title={t("app.modelCapabilities.vision")}
       />,
     );
   }
@@ -46,7 +48,7 @@ function CapabilityIcons({ model }: CapabilityIconProps) {
       <MicrophoneIcon
         key="audio-in"
         className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400"
-        title="Audio Input"
+        title={t("app.modelCapabilities.audioInput")}
       />,
     );
   }
@@ -56,7 +58,7 @@ function CapabilityIcons({ model }: CapabilityIconProps) {
       <VideoCameraIcon
         key="video"
         className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
-        title="Video Input"
+        title={t("app.modelCapabilities.videoInput")}
       />,
     );
   }
@@ -66,7 +68,7 @@ function CapabilityIcons({ model }: CapabilityIconProps) {
       <GlobeAltIcon
         key="web-search"
         className="h-3.5 w-3.5 text-green-600 dark:text-green-400"
-        title="Web Search"
+        title={t("app.modelCapabilities.webSearch")}
       />,
     );
   }
@@ -84,6 +86,7 @@ export function ModelSelector({
   availableModels,
   onModelChange,
 }: ModelSelectorProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredProviderId, setHoveredProviderId] = useState<string | null>(
     null,
@@ -272,10 +275,10 @@ export function ModelSelector({
     return (
       <button
         className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-        title="请先添加LLM提供商"
+        title={t("app.modelSelector.noProvider")}
       >
         <CpuChipIcon className="h-3.5 w-3.5" />
-        <span>未设置</span>
+        <span>{t("app.modelSelector.notConfigured")}</span>
       </button>
     );
   }

@@ -21,6 +21,7 @@ from app.core.auth import AuthorizationService, get_auth_service
 from app.core.system_agent import SystemAgentManager
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
+from app.agents.types import SystemAgentInfo
 from app.models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
 from app.repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
 from app.repos.agent_marketplace import AgentMarketplaceRepository
@@ -132,6 +133,79 @@ async def get_agents(
     return agents_with_details
 
 
+@router.get("/templates/system", response_model=list[SystemAgentInfo])
+async def get_system_agent_templates(
+    user: str = Depends(get_current_user),
+) -> list[SystemAgentInfo]:
+    """
+    Get all available system agent templates that users can add.
+
+    Returns a list of system agents (like ReAct, Deep Research) that users
+    can create instances of. Each template includes metadata about the agent's
+    capabilities and purpose.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+
+    Returns:
+        list[SystemAgentInfo]: List of available system agent templates
+    """
+    # Lazy import to avoid circular dependency
+    from app.agents.factory import list_available_system_agents
+
+    return list_available_system_agents()
+
+
+@router.post("/from-template/{system_key}", response_model=AgentRead)
+async def create_agent_from_template(
+    system_key: str,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentRead:
+    """
+    Create a new agent from a system agent template.
+
+    This creates a user agent with the system agent's graph_config pre-populated,
+    allowing users to use or customize system agents like Deep Research.
+
+    Args:
+        system_key: Key of the system agent template (e.g., "react", "deep_research")
+        user_id: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        AgentRead: The newly created agent with graph_config from the template
+
+    Raises:
+        HTTPException: 404 if system agent template not found
+    """
+    from app.agents.system import system_agent_registry
+
+    # Get the system agent class
+    agent_class = system_agent_registry.get_class(system_key)
+    if not agent_class:
+        raise HTTPException(status_code=404, detail=f"System agent template '{system_key}' not found")
+
+    # Create an instance and get the forkable config (includes graph_config)
+    system_agent = agent_class()
+    forkable_config = system_agent.get_forkable_config()
+
+    # Create the agent with the exported graph_config
+    agent_data = AgentCreate(
+        scope=AgentScope.USER,
+        name=forkable_config.get("name", system_agent.name),
+        description=forkable_config.get("description", system_agent.description),
+        tags=forkable_config.get("tags", []),
+        graph_config=forkable_config.get("graph_config"),
+    )
+
+    agent_repo = AgentRepository(db)
+    created_agent = await agent_repo.create_agent(agent_data, user_id)
+
+    await db.commit()
+    return AgentRead(**created_agent.model_dump())
+
+
 @router.get("/{agent_id}", response_model=AgentReadWithDetails)
 async def get_agent(
     agent_id: UUID,
@@ -212,8 +286,8 @@ async def update_agent(
             if provider.user_id != agent.user_id and not provider.is_system:
                 raise HTTPException(status_code=403, detail="Provider access denied")
 
-        # Validate knowledge_set_id if being updated
-        if agent_data.knowledge_set_id is not None:
+        # Validate knowledge_set_id only if it's being changed to a different value
+        if agent_data.knowledge_set_id is not None and agent_data.knowledge_set_id != agent.knowledge_set_id:
             knowledge_set_repo = KnowledgeSetRepository(db)
             knowledge_set = await knowledge_set_repo.get_knowledge_set_by_id(agent_data.knowledge_set_id)
             if not knowledge_set or knowledge_set.user_id != user_id or knowledge_set.is_deleted:

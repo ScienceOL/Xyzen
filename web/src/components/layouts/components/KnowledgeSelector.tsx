@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface KnowledgeSelectorProps {
   isConnected: boolean;
@@ -26,6 +27,7 @@ export function KnowledgeSelector({
   onConnect,
   onDisconnect,
 }: KnowledgeSelectorProps) {
+  const { t } = useTranslation();
   const {
     activeChatChannel,
     setKnowledgeContext,
@@ -118,12 +120,12 @@ export function KnowledgeSelector({
       <motion.button
         onClick={onConnect}
         className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-        title="连接知识库"
+        title={t("app.toolbar.knowledgeConnect")}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
         <PlusIcon className="h-3.5 w-3.5" />
-        <span className="flex-1 text-left">知识库</span>
+        <span className="flex-1 text-left">{t("app.toolbar.knowledge")}</span>
       </motion.button>
     );
   }
@@ -157,7 +159,7 @@ export function KnowledgeSelector({
           role="button"
           onClick={handleDisconnectClick}
           className="ml-0.5 rounded-full p-0.5 hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors cursor-pointer text-indigo-600 dark:text-indigo-400"
-          title="断开连接"
+          title={t("app.toolbar.knowledgeDisconnect")}
         >
           <XMarkIcon className="h-3 w-3" />
         </div>
@@ -174,15 +176,17 @@ export function KnowledgeSelector({
           >
             <div className="px-2 py-1.5 border-b border-neutral-100 dark:border-neutral-800 mb-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                选择知识库
+                {t("app.toolbar.knowledgeSelect")}
               </span>
             </div>
 
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-0.5">
               {knowledgeSets.length === 0 ? (
                 <div className="px-2 py-4 text-xs text-neutral-400 text-center">
-                  <p className="mb-1">暂无知识库</p>
-                  <p className="text-[10px]">请先在知识库面板创建</p>
+                  <p className="mb-1">{t("app.toolbar.knowledgeEmpty")}</p>
+                  <p className="text-[10px]">
+                    {t("app.toolbar.knowledgeEmptyDesc")}
+                  </p>
                 </div>
               ) : (
                 knowledgeSets.map((ks, index) => (

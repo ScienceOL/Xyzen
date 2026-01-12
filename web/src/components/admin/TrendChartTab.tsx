@@ -2,7 +2,7 @@ import { DEFAULT_TIMEZONE } from "@/configs/common";
 import type { ConsumeRecordResponse } from "@/service/redemptionService";
 import { redemptionService } from "@/service/redemptionService";
 import { ArrowTrendingUpIcon, CalendarIcon } from "@heroicons/react/24/outline";
-import { subDays } from "date-fns";
+import { addDays, format, subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -55,10 +55,30 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
     fetchRecords();
   }, [fetchRecords]);
 
-  // Aggregate data by day
+  // Aggregate data by day with complete date range
   const dailyData = useMemo(() => {
-    const dataMap = new Map<string, DailyData>();
+    // Step 1: Generate complete date range
+    const end = new Date();
+    const start = subDays(end, daysToShow - 1);
+    const dateRange: string[] = [];
 
+    for (let i = 0; i < daysToShow; i++) {
+      const date = addDays(start, i);
+      dateRange.push(format(date, "yyyy-MM-dd"));
+    }
+
+    // Step 2: Initialize all dates with zero values
+    const dataMap = new Map<string, DailyData>();
+    dateRange.forEach((date) => {
+      dataMap.set(date, {
+        date,
+        amount: 0,
+        tokens: 0,
+        count: 0,
+      });
+    });
+
+    // Step 3: Aggregate records into the map
     records.forEach((record) => {
       const date = formatInTimeZone(
         new Date(record.created_at),
@@ -66,27 +86,20 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
         "yyyy-MM-dd",
       );
 
-      const existing = dataMap.get(date) || {
-        date,
-        amount: 0,
-        tokens: 0,
-        count: 0,
-      };
-
-      dataMap.set(date, {
-        date,
-        amount: existing.amount + record.amount,
-        tokens: existing.tokens + (record.total_tokens || 0),
-        count: existing.count + 1,
-      });
+      // Only process if the date is in our range
+      if (dataMap.has(date)) {
+        const existing = dataMap.get(date)!;
+        dataMap.set(date, {
+          date,
+          amount: existing.amount + record.amount,
+          tokens: existing.tokens + (record.total_tokens || 0),
+          count: existing.count + 1,
+        });
+      }
     });
 
-    // Sort by date and get last N days
-    const sorted = Array.from(dataMap.values())
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-daysToShow);
-
-    return sorted;
+    // Step 4: Return sorted array (already in order from dateRange)
+    return dateRange.map((date) => dataMap.get(date)!);
   }, [records, daysToShow]);
 
   const maxAmount = useMemo(

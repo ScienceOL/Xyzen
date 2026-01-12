@@ -1,363 +1,156 @@
 """
-Typed data structures for chat streaming events.
+Centralized chat event constants.
 
-This module provides TypedDict classes that define the exact shape of data
-payloads for each chat event type. Use these instead of dict[str, Any] for
-better type safety and IDE autocompletion.
+Use StrEnum so enum values behave like strings in JSON payloads while
+providing type safety and autocompletion across the codebase.
 
 Example:
-    from app.schemas.chat_event_types import StreamingChunkEvent, StreamingChunkData
-
-    event: StreamingChunkEvent = {
-        "type": ChatEventType.STREAMING_CHUNK,
-        "data": {"id": "stream_123", "content": "Hello"}
-    }
+    from app.schemas.chat_event_types import ChatEventType
+    if event_type == ChatEventType.STREAMING_START:
+        ...
 """
 
-from typing import Any, TypedDict
-from typing_extensions import Literal, NotRequired
+from enum import StrEnum
+from typing import FrozenSet
 
-from app.schemas.chat_events import ChatEventType
 
-# =============================================================================
-# Data Payloads (the "data" field of each event)
-# =============================================================================
+class ChatEventType(StrEnum):
+    """Server -> Client event types used across chat flows."""
 
+    # Generic
+    MESSAGE = "message"
+    LOADING = "loading"
+    ERROR = "error"
+    PROCESSING = "processing"
 
-class StreamingStartData(TypedDict):
-    """Data payload for STREAMING_START event."""
+    # Streaming lifecycle
+    STREAMING_START = "streaming_start"
+    STREAMING_CHUNK = "streaming_chunk"
+    STREAMING_END = "streaming_end"
 
-    id: str
+    # Tool invocation
+    TOOL_CALL_REQUEST = "tool_call_request"
+    TOOL_CALL_RESPONSE = "tool_call_response"
 
+    # Post-processing/ack
+    MESSAGE_SAVED = "message_saved"
 
-class StreamingChunkData(TypedDict):
-    """Data payload for STREAMING_CHUNK event."""
+    # Token usage tracking
+    TOKEN_USAGE = "token_usage"
 
-    id: str
-    content: str
+    # Built-in search citations
+    SEARCH_CITATIONS = "search_citations"
 
+    # Generated content
+    GENERATED_FILES = "generated_files"
 
-class StreamingEndData(TypedDict):
-    """Data payload for STREAMING_END event."""
+    # Balance/billing events
+    INSUFFICIENT_BALANCE = "insufficient_balance"
 
-    id: str
-    created_at: float
-    content: NotRequired[str]  # Optional content for final streaming result
+    # Thinking/reasoning content (for models like Claude, DeepSeek R1, OpenAI o1)
+    THINKING_START = "thinking_start"
+    THINKING_CHUNK = "thinking_chunk"
+    THINKING_END = "thinking_end"
 
+    # === Agent Execution Events (for complex graph-based agents) ===
 
-class ProcessingData(TypedDict):
-    """Data payload for PROCESSING event."""
+    # Agent lifecycle
+    AGENT_START = "agent_start"
+    AGENT_END = "agent_end"
+    AGENT_ERROR = "agent_error"
 
-    status: str
+    # Phase/workflow stage execution
+    PHASE_START = "phase_start"
+    PHASE_END = "phase_end"
 
+    # Individual node execution
+    NODE_START = "node_start"
+    NODE_END = "node_end"
 
-class LoadingData(TypedDict):
-    """Data payload for LOADING event."""
+    # Subagent execution (nested agents)
+    SUBAGENT_START = "subagent_start"
+    SUBAGENT_END = "subagent_end"
 
-    message: str
+    # Progress updates
+    PROGRESS_UPDATE = "progress_update"
 
+    # State changes (non-sensitive updates)
+    STATE_UPDATE = "state_update"
 
-class ErrorData(TypedDict):
-    """Data payload for ERROR event."""
+    # Iteration events (for loops in graph execution)
+    ITERATION_START = "iteration_start"
+    ITERATION_END = "iteration_end"
 
-    error: str
+    # Human-in-the-loop events
+    HUMAN_INPUT_REQUIRED = "human_input_required"
+    HUMAN_INPUT_RECEIVED = "human_input_received"
 
 
-class ToolCallRequestData(TypedDict):
-    """Data payload for TOOL_CALL_REQUEST event."""
+class ChatClientEventType(StrEnum):
+    """Client -> Server event types (messages coming from the frontend)."""
 
-    id: str
-    name: str
-    description: str
-    arguments: dict[str, Any]
-    status: str
-    timestamp: float
+    # Regular chat message (default when no explicit type provided)
+    MESSAGE = "message"
 
+    # Tool confirmation workflow
+    TOOL_CALL_CONFIRM = "tool_call_confirm"
+    TOOL_CALL_CANCEL = "tool_call_cancel"
 
-class ToolCallResponseData(TypedDict):
-    """Data payload for TOOL_CALL_RESPONSE event."""
 
-    toolCallId: str
-    status: str
-    result: str
-    error: NotRequired[str]
+class ToolCallStatus(StrEnum):
+    """Status values for tool call lifecycle."""
 
+    EXECUTING = "executing"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
-class TokenUsageData(TypedDict):
-    """Data payload for TOKEN_USAGE event."""
 
-    input_tokens: int
-    output_tokens: int
-    total_tokens: int
+class ProcessingStatus(StrEnum):
+    """Status values used with the PROCESSING event."""
 
-
-class CitationData(TypedDict):
-    """Single citation entry within SearchCitationsData."""
-
-    url: str
-    title: str | None
-    cited_text: str | None
-    start_index: int | None
-    end_index: int | None
-    search_queries: NotRequired[list[str]]
-
-
-class SearchCitationsData(TypedDict):
-    """Data payload for SEARCH_CITATIONS event."""
-
-    citations: list[CitationData]
-
-
-class GeneratedFileInfo(TypedDict):
-    """Single file entry within GeneratedFilesData."""
-
-    id: str
-    name: str
-    type: str
-    size: int
-    category: str
-    download_url: str
-
-
-class GeneratedFilesData(TypedDict):
-    """Data payload for GENERATED_FILES event."""
-
-    files: list[GeneratedFileInfo]
-
-
-class MessageSavedData(TypedDict):
-    """Data payload for MESSAGE_SAVED event."""
-
-    stream_id: str
-    db_id: str
-    created_at: str | None
-
-
-class MessageData(TypedDict):
-    """Data payload for MESSAGE event (non-streaming response)."""
-
-    id: str
-    content: str
-
-
-class InsufficientBalanceData(TypedDict):
-    """Data payload for insufficient_balance event."""
-
-    error_code: str
-    message: str
-    message_cn: NotRequired[str]
-    details: NotRequired[dict[str, Any]]
-    action_required: str
-
-
-class ThinkingStartData(TypedDict):
-    """Data payload for THINKING_START event."""
-
-    id: str
-
-
-class ThinkingChunkData(TypedDict):
-    """Data payload for THINKING_CHUNK event."""
-
-    id: str
-    content: str
-
-
-class ThinkingEndData(TypedDict):
-    """Data payload for THINKING_END event."""
-
-    id: str
-
-
-# =============================================================================
-# Full Event Structures (type + data)
-# =============================================================================
-
-
-class StreamingStartEvent(TypedDict):
-    """Full event structure for streaming start."""
-
-    type: Literal[ChatEventType.STREAMING_START]
-    data: StreamingStartData
-
-
-class StreamingChunkEvent(TypedDict):
-    """Full event structure for streaming chunk."""
-
-    type: Literal[ChatEventType.STREAMING_CHUNK]
-    data: StreamingChunkData
-
-
-class StreamingEndEvent(TypedDict):
-    """Full event structure for streaming end."""
-
-    type: Literal[ChatEventType.STREAMING_END]
-    data: StreamingEndData
-
-
-class ProcessingEvent(TypedDict):
-    """Full event structure for processing status."""
-
-    type: Literal[ChatEventType.PROCESSING]
-    data: ProcessingData
-
-
-class LoadingEvent(TypedDict):
-    """Full event structure for loading status."""
-
-    type: Literal[ChatEventType.LOADING]
-    data: LoadingData
-
-
-class ErrorEvent(TypedDict):
-    """Full event structure for errors."""
-
-    type: Literal[ChatEventType.ERROR]
-    data: ErrorData
-
-
-class ToolCallRequestEvent(TypedDict):
-    """Full event structure for tool call request."""
-
-    type: Literal[ChatEventType.TOOL_CALL_REQUEST]
-    data: ToolCallRequestData
-
-
-class ToolCallResponseEvent(TypedDict):
-    """Full event structure for tool call response."""
-
-    type: Literal[ChatEventType.TOOL_CALL_RESPONSE]
-    data: ToolCallResponseData
-
-
-class TokenUsageEvent(TypedDict):
-    """Full event structure for token usage."""
-
-    type: Literal[ChatEventType.TOKEN_USAGE]
-    data: TokenUsageData
-
-
-class SearchCitationsEvent(TypedDict):
-    """Full event structure for search citations."""
-
-    type: Literal[ChatEventType.SEARCH_CITATIONS]
-    data: SearchCitationsData
-
-
-class GeneratedFilesEvent(TypedDict):
-    """Full event structure for generated files."""
-
-    type: Literal[ChatEventType.GENERATED_FILES]
-    data: GeneratedFilesData
-
-
-class MessageSavedEvent(TypedDict):
-    """Full event structure for message saved confirmation."""
-
-    type: Literal[ChatEventType.MESSAGE_SAVED]
-    data: MessageSavedData
-
-
-class MessageEvent(TypedDict):
-    """Full event structure for non-streaming message."""
-
-    type: Literal[ChatEventType.MESSAGE]
-    data: MessageData
-
-
-class InsufficientBalanceEvent(TypedDict):
-    """Full event structure for insufficient balance error."""
-
-    type: Literal[ChatEventType.INSUFFICIENT_BALANCE]
-    data: InsufficientBalanceData
-
-
-class ThinkingStartEvent(TypedDict):
-    """Full event structure for thinking start."""
-
-    type: Literal[ChatEventType.THINKING_START]
-    data: ThinkingStartData
-
-
-class ThinkingChunkEvent(TypedDict):
-    """Full event structure for thinking chunk."""
-
-    type: Literal[ChatEventType.THINKING_CHUNK]
-    data: ThinkingChunkData
-
-
-class ThinkingEndEvent(TypedDict):
-    """Full event structure for thinking end."""
-
-    type: Literal[ChatEventType.THINKING_END]
-    data: ThinkingEndData
-
-
-# =============================================================================
-# Union type for generic event handling
-# =============================================================================
-
-# Type alias for any streaming event
-StreamingEvent = (
-    StreamingStartEvent
-    | StreamingChunkEvent
-    | StreamingEndEvent
-    | ProcessingEvent
-    | LoadingEvent
-    | ErrorEvent
-    | ToolCallRequestEvent
-    | ToolCallResponseEvent
-    | TokenUsageEvent
-    | SearchCitationsEvent
-    | GeneratedFilesEvent
-    | MessageSavedEvent
-    | MessageEvent
-    | InsufficientBalanceEvent
-    | ThinkingStartEvent
-    | ThinkingChunkEvent
-    | ThinkingEndEvent
+    PREPARING_REQUEST = "preparing_request"
+    PREPARING_GRAPH_EXECUTION = "preparing_graph_execution"
+    EXECUTING_GRAPH = "executing_graph"
+    PROCESSING_GRAPH_RESULT = "processing_graph_result"
+
+
+# Helpful groupings for conditional logic
+SERVER_STREAMING_EVENTS: FrozenSet[ChatEventType] = frozenset(
+    {
+        ChatEventType.STREAMING_START,
+        ChatEventType.STREAMING_CHUNK,
+        ChatEventType.STREAMING_END,
+    }
 )
 
+SERVER_TOOL_EVENTS: FrozenSet[ChatEventType] = frozenset(
+    {ChatEventType.TOOL_CALL_REQUEST, ChatEventType.TOOL_CALL_RESPONSE}
+)
+
+SERVER_AGENT_EVENTS: FrozenSet[ChatEventType] = frozenset(
+    {
+        ChatEventType.AGENT_START,
+        ChatEventType.AGENT_END,
+        ChatEventType.AGENT_ERROR,
+        ChatEventType.PHASE_START,
+        ChatEventType.PHASE_END,
+        ChatEventType.NODE_START,
+        ChatEventType.NODE_END,
+        ChatEventType.SUBAGENT_START,
+        ChatEventType.SUBAGENT_END,
+        ChatEventType.PROGRESS_UPDATE,
+        ChatEventType.STATE_UPDATE,
+        ChatEventType.ITERATION_START,
+        ChatEventType.ITERATION_END,
+    }
+)
 
 __all__ = [
-    # Data types
-    "StreamingStartData",
-    "StreamingChunkData",
-    "StreamingEndData",
-    "ProcessingData",
-    "LoadingData",
-    "ErrorData",
-    "ToolCallRequestData",
-    "ToolCallResponseData",
-    "TokenUsageData",
-    "CitationData",
-    "SearchCitationsData",
-    "GeneratedFileInfo",
-    "GeneratedFilesData",
-    "MessageSavedData",
-    "MessageData",
-    "InsufficientBalanceData",
-    "ThinkingStartData",
-    "ThinkingChunkData",
-    "ThinkingEndData",
-    # Event types
-    "StreamingStartEvent",
-    "StreamingChunkEvent",
-    "StreamingEndEvent",
-    "ProcessingEvent",
-    "LoadingEvent",
-    "ErrorEvent",
-    "ToolCallRequestEvent",
-    "ToolCallResponseEvent",
-    "TokenUsageEvent",
-    "SearchCitationsEvent",
-    "GeneratedFilesEvent",
-    "MessageSavedEvent",
-    "MessageEvent",
-    "InsufficientBalanceEvent",
-    "ThinkingStartEvent",
-    "ThinkingChunkEvent",
-    "ThinkingEndEvent",
-    # Union
-    "StreamingEvent",
+    "ChatEventType",
+    "ChatClientEventType",
+    "ToolCallStatus",
+    "ProcessingStatus",
+    "SERVER_STREAMING_EVENTS",
+    "SERVER_TOOL_EVENTS",
+    "SERVER_AGENT_EVENTS",
 ]

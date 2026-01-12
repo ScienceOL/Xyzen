@@ -9,6 +9,7 @@ import type {
   ProviderSlice,
   UiSlice,
 } from "./slices";
+import type { AgentExecutionState } from "@/types/agentEvents";
 
 // 定义应用中的核心类型
 export interface ToolCall {
@@ -70,6 +71,77 @@ export interface Message {
   // Thinking/reasoning content from models like Claude, DeepSeek R1, OpenAI o1
   isThinking?: boolean;
   thinkingContent?: string;
+  // Agent execution state for graph-based agents (legacy - will be migrated to agent_metadata)
+  agentExecution?: AgentExecutionState;
+  // Scalable agent metadata structure for node/phase/subagent execution
+  agent_metadata?: AgentMetadata;
+}
+
+/**
+ * Scalable agent execution metadata structure
+ * Stored in database and used to recreate UI state on refresh
+ */
+export interface AgentMetadata {
+  // Execution identification
+  execution_id?: string;
+  agent_id?: string;
+  agent_name?: string;
+  agent_type?: string; // "react", "graph", "system"
+
+  // Node/Phase execution (for individual message cards)
+  node?: {
+    id: string;
+    name: string;
+    type: string; // "llm", "tool", "router", etc.
+    status: "pending" | "running" | "completed" | "failed" | "skipped";
+    started_at: number; // Unix timestamp
+    ended_at?: number;
+    duration_ms?: number;
+    input_summary?: string;
+    output_summary?: string;
+    streamedContent?: string; // For real-time streaming
+  };
+
+  // Phase execution (for workflow phases)
+  phase?: {
+    id: string;
+    name: string;
+    description?: string;
+    status: "pending" | "running" | "completed" | "failed" | "skipped";
+    started_at: number;
+    ended_at?: number;
+    duration_ms?: number;
+    output_summary?: string;
+  };
+
+  // Hierarchical tracking
+  parent_execution_id?: string;
+  depth?: number; // 0 for root, 1+ for subagents
+  execution_path?: string[]; // ["root", "deep_research", "web_search"]
+
+  // Iteration tracking
+  iteration?: {
+    current: number;
+    max: number;
+    reason?: string;
+  };
+
+  // Progress tracking
+  progress?: {
+    percent?: number; // 0-100
+    message?: string;
+  };
+
+  // Error information
+  error?: {
+    type: string;
+    message: string;
+    recoverable: boolean;
+    node_id?: string;
+  };
+
+  // Extension fields for future use
+  [key: string]: unknown;
 }
 
 export interface KnowledgeContext {

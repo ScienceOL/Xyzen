@@ -6,7 +6,8 @@
  */
 
 import { parseToolMessage } from "@/utils/toolMessageParser";
-import type { Message, ToolCall } from "@/store/types";
+import type { Message, ToolCall, AgentMetadata } from "@/store/types";
+import type { AgentExecutionState, PhaseExecution } from "@/types/agentEvents";
 
 /**
  * Generate a unique client-side message ID
@@ -29,6 +30,7 @@ function cloneToolCall(toolCall: ToolCall): ToolCall {
 /**
  * Deep clone a Message object, handling all nested properties
  * Also maps backend `thinking_content` to frontend `thinkingContent`
+ * And reconstructs agentExecution from agent_metadata if available
  */
 function cloneMessage(message: Message): Message {
   // Handle backend field name difference
@@ -36,7 +38,7 @@ function cloneMessage(message: Message): Message {
     message as Message & { thinking_content?: string }
   ).thinking_content;
 
-  return {
+  const cloned: Message = {
     ...message,
     toolCalls: message.toolCalls
       ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
@@ -46,6 +48,19 @@ function cloneMessage(message: Message): Message {
     // Map thinking_content from backend to thinkingContent for frontend
     thinkingContent: backendThinkingContent ?? message.thinkingContent,
   };
+
+  // Reconstruct agentExecution from agent_metadata if available
+  // This enables timeline display for historical messages after page refresh
+  if (message.agent_metadata && !message.agentExecution) {
+    const reconstructed = reconstructAgentExecutionFromMetadata(
+      message.agent_metadata,
+    );
+    if (reconstructed) {
+      cloned.agentExecution = reconstructed;
+    }
+  }
+
+  return cloned;
 }
 
 /**
@@ -233,4 +248,144 @@ export function finalizeStreamingMessage(
     ...finalMessage,
     created_at: createdAt || new Date().toISOString(),
   } as Message;
+}
+
+/**
+ * Get user-friendly display name for a node ID
+ * Uses node_names from metadata if available, otherwise humanizes the node ID
+ */
+function getNodeDisplayName(
+  nodeId: string,
+  nodeNames?: Record<string, string>,
+): string {
+  // Try to get from node_names mapping (from persisted metadata)
+  if (nodeNames?.[nodeId]) {
+    return nodeNames[nodeId];
+  }
+  // Fallback: humanize the node ID (e.g., "clarify_with_user" -> "Clarify With User")
+  return nodeId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Truncate a string to a maximum length
+ */
+function truncate(str: string | unknown, maxLength: number): string {
+  if (typeof str !== "string") {
+    if (typeof str === "object" && str !== null) {
+      return truncate(JSON.stringify(str), maxLength);
+    }
+    return "";
+  }
+  if (str.length <= maxLength) return str;
+  return str.slice(0, maxLength) + "...";
+}
+
+/**
+ * Extract meaningful content from node output
+ * Handles both string outputs and structured objects
+ */
+function extractNodeContent(output: unknown): string {
+  if (typeof output === "string") {
+    return output;
+  }
+
+  if (typeof output === "object" && output !== null) {
+    const obj = output as Record<string, unknown>;
+
+    // For clarify_with_user, extract verification message
+    if ("verification" in obj && typeof obj.verification === "string") {
+      return obj.verification;
+    }
+
+    // For other objects, try to find meaningful content fields
+    const contentFields = ["content", "result", "output", "message", "text"];
+    for (const field of contentFields) {
+      if (field in obj && typeof obj[field] === "string" && obj[field]) {
+        return obj[field] as string;
+      }
+    }
+
+    // Fallback to JSON representation
+    return JSON.stringify(output, null, 2);
+  }
+
+  return "";
+}
+
+/**
+ * Reconstruct AgentExecutionState from agent_metadata stored in database
+ *
+ * After page refresh, messages lose their ephemeral agentExecution state.
+ * This function reconstructs it from the persisted agent_metadata.node_outputs
+ * so the timeline UI can be displayed for historical agent executions.
+ */
+export function reconstructAgentExecutionFromMetadata(
+  agent_metadata: AgentMetadata | undefined,
+): AgentExecutionState | undefined {
+  if (!agent_metadata) return undefined;
+
+  // Check for node_outputs in the metadata (stored by graph agents)
+  const nodeOutputs = agent_metadata.node_outputs as
+    | Record<string, unknown>
+    | undefined;
+  if (!nodeOutputs || typeof nodeOutputs !== "object") return undefined;
+
+  const phases: PhaseExecution[] = [];
+
+  // Get node display names from metadata (if available)
+  const nodeNames = agent_metadata.node_names as
+    | Record<string, string>
+    | undefined;
+
+  // Use preserved execution order from metadata, or fallback to object keys order
+  const nodeOrder =
+    (agent_metadata.node_order as string[] | undefined) ||
+    Object.keys(nodeOutputs);
+
+  for (const nodeId of nodeOrder) {
+    if (nodeId in nodeOutputs) {
+      const output = nodeOutputs[nodeId];
+      const content = extractNodeContent(output);
+
+      phases.push({
+        id: nodeId,
+        name: getNodeDisplayName(nodeId, nodeNames),
+        status: "completed",
+        nodes: [],
+        outputSummary: content ? truncate(content, 200) : undefined,
+        // Store full content for expandable view (empty string if no content)
+        streamedContent: content || "",
+      });
+    }
+  }
+
+  // Handle any nodes in nodeOutputs that weren't in nodeOrder (for backwards compatibility)
+  for (const nodeId of Object.keys(nodeOutputs)) {
+    if (!nodeOrder.includes(nodeId)) {
+      const output = nodeOutputs[nodeId];
+      const content = extractNodeContent(output);
+
+      phases.push({
+        id: nodeId,
+        name: getNodeDisplayName(nodeId, nodeNames),
+        status: "completed",
+        nodes: [],
+        outputSummary: content ? truncate(content, 200) : undefined,
+        streamedContent: content || "",
+      });
+    }
+  }
+
+  if (phases.length === 0) return undefined;
+
+  return {
+    agentId: (agent_metadata.agent_id as string) || "unknown",
+    agentName: (agent_metadata.agent_name as string) || "Agent",
+    agentType: (agent_metadata.agent_type as string) || "graph",
+    executionId: (agent_metadata.execution_id as string) || "unknown",
+    status: "completed",
+    startedAt: Date.now(),
+    phases,
+    subagents: [],
+  };
 }

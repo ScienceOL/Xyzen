@@ -3,6 +3,7 @@ import { useFileDragDrop } from "@/hooks/useFileDragDrop";
 import { useXyzen } from "@/store";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => boolean | void;
@@ -15,15 +16,19 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled = false,
-  placeholder = "输入消息...",
+  placeholder,
   height = 100, // Default height if not provided
   initialValue = "",
 }) => {
+  const { t } = useTranslation();
   const [inputMessage, setInputMessage] = useState(initialValue);
   // 添加一个状态来跟踪输入法的组合状态
   const [isComposing, setIsComposing] = useState(false);
 
   const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen();
+
+  // Use translated placeholder if not provided
+  const finalPlaceholder = placeholder || t("app.input.placeholder");
 
   // Drag and drop functionality
   const { isDragging, dragProps } = useFileDragDrop({
@@ -148,7 +153,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onPaste={handlePaste}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
-          placeholder={placeholder}
+          placeholder={finalPlaceholder}
           wrap="soft"
           className="w-full flex-1 resize-none bg-transparent text-base font-normal focus:font-medium text-neutral-900 placeholder-neutral-400 focus:outline-none dark:text-white dark:placeholder-neutral-500 overflow-y-auto overflow-x-hidden caret-orange-600 selection:bg-orange-100 selection:text-orange-900 dark:caret-orange-400 dark:selection:bg-orange-900/90 dark:selection:text-white"
           style={{
@@ -166,7 +171,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
                 Enter
               </kbd>
-              <span>发送</span>
+              <span>{t("app.input.enterToSend")}</span>
             </span>
             <span className="text-neutral-300/50 dark:text-neutral-700/50">
               ·
@@ -175,7 +180,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
                 Shift + Enter
               </kbd>
-              <span>换行</span>
+              <span>{t("app.input.shiftEnterForNewline")}</span>
             </span>
           </div>
 
@@ -184,7 +189,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             onClick={handleSendMessage}
             disabled={disabled || !inputMessage.trim()}
             className="rounded-full p-1.5 text-neutral-400 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed dark:text-neutral-500 dark:hover:bg-orange-900/20 dark:hover:text-orange-400"
-            aria-label="发送消息"
+            aria-label={t("app.input.send")}
           >
             <PaperAirplaneIcon className="h-5 w-5" />
           </button>

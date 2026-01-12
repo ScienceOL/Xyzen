@@ -5,8 +5,10 @@ Tests the ThinkingEventHandler class and thinking content extraction
 from various provider formats (Anthropic, DeepSeek, etc.).
 """
 
+from typing import Any
+
 from app.core.chat.stream_handlers import ThinkingEventHandler
-from app.schemas.chat_events import ChatEventType
+from app.schemas.chat_event_types import ChatEventType
 
 
 class MockMessageChunk:
@@ -14,9 +16,9 @@ class MockMessageChunk:
 
     def __init__(
         self,
-        content: str | list = "",
-        additional_kwargs: dict | None = None,
-        response_metadata: dict | None = None,
+        content: str | list[dict[str, Any]] = "",
+        additional_kwargs: dict[str, Any] | None = None,
+        response_metadata: dict[str, Any] | None = None,
     ):
         self.content = content
         self.additional_kwargs = additional_kwargs or {}
