@@ -413,7 +413,7 @@ export default function ChatToolbar({
   // Check if current model supports web search (always from standard tier for now)
   const supportsWebSearch = useMemo(() => {
     // For tier-based selection, web search is enabled for standard and prod tiers
-    return currentSessionTier === "standard" || currentSessionTier === "prod";
+    return currentSessionTier === "standard" || currentSessionTier === "pro";
   }, [currentSessionTier]);
 
   // Setup dnd sensors

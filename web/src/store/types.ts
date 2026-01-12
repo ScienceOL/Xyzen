@@ -157,7 +157,7 @@ export interface ChatChannel {
   agentId?: string;
   provider_id?: string;
   model?: string;
-  model_tier?: "deep" | "prod" | "standard" | "fast";
+  model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
   knowledgeContext?: KnowledgeContext;
   connected: boolean;
@@ -201,7 +201,7 @@ export interface SessionResponse {
   agent_id?: string;
   provider_id?: string;
   model?: string;
-  model_tier?: "deep" | "prod" | "standard" | "fast";
+  model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
   topics: TopicResponse[];
 }

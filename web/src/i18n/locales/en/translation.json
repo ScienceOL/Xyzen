@@ -63,21 +63,21 @@
     "tierSelector": {
       "title": "Model Tier",
       "tiers": {
-        "deep": {
-          "name": "Deep",
-          "description": "Ultimate reasoning for complex tasks"
+        "ultra": {
+          "name": "Xyzen Ultra",
+          "description": "Ultimate performance. Research, enterprise, complex reasoning"
         },
-        "prod": {
-          "name": "Advanced",
-          "description": "Production-grade performance"
+        "pro": {
+          "name": "Xyzen Pro",
+          "description": "Balanced productivity. Development, creation, analysis"
         },
         "standard": {
-          "name": "Standard",
-          "description": "Balanced speed and quality"
+          "name": "Xyzen Standard",
+          "description": "Best value for daily use. Chat, information retrieval"
         },
-        "fast": {
-          "name": "Fast",
-          "description": "Quick responses for simple tasks"
+        "lite": {
+          "name": "Xyzen Lite",
+          "description": "Ultra-low cost. Real-time, large-scale API"
         }
       }
     }

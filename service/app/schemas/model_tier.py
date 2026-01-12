@@ -10,19 +10,19 @@ from enum import Enum
 class ModelTier(str, Enum):
     """User-facing model tiers for simplified selection."""
 
-    DEEP = "deep"  # Complex reasoning, research tasks
-    PROD = "prod"  # Production workloads
+    ULTRA = "ultra"  # Complex reasoning, research tasks
+    PRO = "pro"  # Production workloads
     STANDARD = "standard"  # General purpose, balanced
-    FAST = "fast"  # Quick responses, simple tasks
+    LITE = "lite"  # Quick responses, simple tasks
 
 
 # MVP: Simple tier-to-model mapping
 # Can be extended to config file or DB later for more flexibility
 TIER_MODEL_MAP: dict[ModelTier, str] = {
-    ModelTier.DEEP: "gemini-2.5-pro-preview-05-06",
-    ModelTier.PROD: "gpt-4o",
-    ModelTier.STANDARD: "gemini-2.0-flash",
-    ModelTier.FAST: "gemini-2.0-flash-lite",
+    ModelTier.ULTRA: "gemini-3-pro-preview",
+    ModelTier.PRO: "gemini-3-flash-preview",
+    ModelTier.STANDARD: "gemini-2.5-flash-preview",
+    ModelTier.LITE: "gemini-2.5-flash-lite",
 }
 
 

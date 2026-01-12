@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export type ModelTier = "deep" | "prod" | "standard" | "fast";
+export type ModelTier = "ultra" | "pro" | "standard" | "lite";
 
 interface TierSelectorProps {
   currentTier: ModelTier | null | undefined;
@@ -15,7 +15,6 @@ interface TierSelectorProps {
 
 interface TierConfig {
   key: ModelTier;
-  icon: string;
   bgColor: string;
   textColor: string;
   dotColor: string;
@@ -23,29 +22,25 @@ interface TierConfig {
 
 const TIER_CONFIGS: TierConfig[] = [
   {
-    key: "deep",
-    icon: "🧠",
+    key: "ultra",
     bgColor: "bg-purple-500/10 dark:bg-purple-500/20",
     textColor: "text-purple-700 dark:text-purple-400",
     dotColor: "bg-purple-500",
   },
   {
-    key: "prod",
-    icon: "⚡",
+    key: "pro",
     bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
     textColor: "text-blue-700 dark:text-blue-400",
     dotColor: "bg-blue-500",
   },
   {
     key: "standard",
-    icon: "⚖️",
     bgColor: "bg-green-500/10 dark:bg-green-500/20",
     textColor: "text-green-700 dark:text-green-400",
     dotColor: "bg-green-500",
   },
   {
-    key: "fast",
-    icon: "🚀",
+    key: "lite",
     bgColor: "bg-orange-500/10 dark:bg-orange-500/20",
     textColor: "text-orange-700 dark:text-orange-400",
     dotColor: "bg-orange-500",
@@ -101,7 +96,7 @@ export function TierSelector({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-full left-0 mb-1 z-50 w-56 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-2"
+            className="absolute bottom-full left-0 mb-1 z-50 w-80 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-2"
           >
             <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               {t("app.tierSelector.title")}
@@ -124,13 +119,10 @@ export function TierSelector({
                     className={`h-2 w-2 shrink-0 rounded-full ${config.dotColor}`}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm">{config.icon}</span>
-                      <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
-                        {t(`app.tierSelector.tiers.${config.key}.name`)}
-                      </span>
+                    <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                      {t(`app.tierSelector.tiers.${config.key}.name`)}
                     </div>
-                    <div className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {t(`app.tierSelector.tiers.${config.key}.description`)}
                     </div>
                   </div>

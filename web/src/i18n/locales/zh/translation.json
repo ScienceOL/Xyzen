@@ -63,10 +63,22 @@
     "tierSelector": {
       "title": "模型等级",
       "tiers": {
-        "deep": { "name": "深度", "description": "极致推理，适合复杂任务" },
-        "prod": { "name": "高级", "description": "生产级性能" },
-        "standard": { "name": "标准", "description": "速度与质量均衡" },
-        "fast": { "name": "快速", "description": "简单任务的快速响应" }
+        "ultra": {
+          "name": "Xyzen Ultra",
+          "description": "极致性能，顶级配置。科研、企业核心、复杂推理"
+        },
+        "pro": {
+          "name": "Xyzen Pro",
+          "description": "主力生产力，性能平衡。开发、创作、分析"
+        },
+        "standard": {
+          "name": "Xyzen Standard",
+          "description": "性价比之选，日常使用。对话、信息检索"
+        },
+        "lite": {
+          "name": "Xyzen Lite",
+          "description": "极致低成本/特定推理。实时、大规模API"
+        }
       }
     }
   },
