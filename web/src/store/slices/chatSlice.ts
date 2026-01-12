@@ -65,6 +65,7 @@ export interface ChatSlice {
     config: {
       provider_id?: string;
       model?: string;
+      model_tier?: "deep" | "prod" | "standard" | "fast";
       google_search_enabled?: boolean;
     },
   ) => Promise<void>;

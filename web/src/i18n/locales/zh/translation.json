@@ -59,6 +59,15 @@
     "modelSelector": {
       "noProvider": "请先添加LLM提供商",
       "notConfigured": "未设置"
+    },
+    "tierSelector": {
+      "title": "模型等级",
+      "tiers": {
+        "deep": { "name": "深度", "description": "极致推理，适合复杂任务" },
+        "prod": { "name": "高级", "description": "生产级性能" },
+        "standard": { "name": "标准", "description": "速度与质量均衡" },
+        "fast": { "name": "快速", "description": "简单任务的快速响应" }
+      }
     }
   },
   "common": {

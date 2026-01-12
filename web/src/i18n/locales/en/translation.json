@@ -59,6 +59,27 @@
     "modelSelector": {
       "noProvider": "Please add an LLM provider first",
       "notConfigured": "Not Configured"
+    },
+    "tierSelector": {
+      "title": "Model Tier",
+      "tiers": {
+        "deep": {
+          "name": "Deep",
+          "description": "Ultimate reasoning for complex tasks"
+        },
+        "prod": {
+          "name": "Advanced",
+          "description": "Production-grade performance"
+        },
+        "standard": {
+          "name": "Standard",
+          "description": "Balanced speed and quality"
+        },
+        "fast": {
+          "name": "Fast",
+          "description": "Quick responses for simple tasks"
+        }
+      }
     }
   },
   "common": {

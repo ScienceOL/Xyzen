@@ -149,9 +149,10 @@ async def _resolve_provider_and_model(
     """
     Determine provider and model to use.
 
-    Priority: Session Override > Agent Default > System Default
+    Priority: Session Tier > Session Model Override > Agent Default > System Default
     """
     from app.repos.session import SessionRepository
+    from app.schemas.model_tier import resolve_model_for_tier
 
     session_repo = SessionRepository(db)
     session = await session_repo.get_session_by_id(topic.session_id)
@@ -162,7 +163,10 @@ async def _resolve_provider_and_model(
     if session:
         if session.provider_id:
             provider_id = str(session.provider_id)
-        if session.model:
+        # Model tier takes priority over explicit model
+        if session.model_tier:
+            model_name = resolve_model_for_tier(session.model_tier)
+        elif session.model:
             model_name = session.model
 
     if not provider_id and agent and agent.provider_id:
