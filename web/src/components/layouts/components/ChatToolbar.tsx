@@ -38,18 +38,51 @@ interface ChatToolbarProps {
   showHistory: boolean;
   handleCloseHistory: () => void;
   handleSelectTopic: (topic: string) => void;
+  inputHeight: number; // Add inputHeight as prop
 }
 
 // Draggable resize handle component
-const ResizeHandle = () => {
+const ResizeHandle = ({
+  onHeightChange,
+  currentHeight,
+}: {
+  onHeightChange?: (height: number) => void;
+  currentHeight: number;
+}) => {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: "resize-handle",
   });
 
+  // Store initial values for touch
+  const touchStartYRef = useRef(0);
+  const initialHeightRef = useRef(currentHeight);
+
+  // Update initialHeightRef whenever currentHeight changes
+  useEffect(() => {
+    initialHeightRef.current = currentHeight;
+  }, [currentHeight]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
+    // Use the current height passed as prop, not localStorage
+    initialHeightRef.current = currentHeight;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const currentY = e.touches[0].clientY;
+    const delta = touchStartYRef.current - currentY;
+    const newHeight = Math.max(60, initialHeightRef.current + delta);
+
+    localStorage.setItem("chatInputHeight", newHeight.toString());
+    onHeightChange?.(newHeight);
+  };
+
   return (
     <div
       ref={setNodeRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       {...listeners}
       {...attributes}
       className="absolute -top-1 left-0 right-0 h-1 cursor-ns-resize transition-colors hover:bg-indigo-600"
@@ -64,6 +97,7 @@ export default function ChatToolbar({
   showHistory,
   handleCloseHistory,
   handleSelectTopic,
+  inputHeight,
 }: ChatToolbarProps) {
   const {
     createDefaultChannel,
@@ -89,12 +123,6 @@ export default function ChatToolbar({
   const allAgents = useMemo(() => {
     return agents;
   }, [agents]);
-
-  // State for managing input height
-  const [inputHeight, setInputHeight] = useState(() => {
-    const savedHeight = localStorage.getItem("chatInputHeight");
-    return savedHeight ? parseInt(savedHeight, 10) : 80;
-  });
 
   // Get current channel and associated MCP tools
   const currentMcpInfo = useMemo(() => {
@@ -498,9 +526,8 @@ export default function ChatToolbar({
     const { delta } = event;
     dragDeltaRef.current = delta.y;
     const newHeight = Math.max(60, initialHeightRef.current - delta.y);
-    setInputHeight(newHeight);
 
-    // Save height and notify parent
+    // Real-time update for smooth dragging experience
     localStorage.setItem("chatInputHeight", newHeight.toString());
     onHeightChange?.(newHeight);
   };
@@ -511,7 +538,6 @@ export default function ChatToolbar({
       60,
       initialHeightRef.current - dragDeltaRef.current,
     );
-    setInputHeight(finalHeight);
     localStorage.setItem("chatInputHeight", finalHeight.toString());
     onHeightChange?.(finalHeight);
     dragDeltaRef.current = 0;
@@ -534,7 +560,10 @@ export default function ChatToolbar({
     >
       <div className="relative">
         {/* Drag handle positioned above the toolbar */}
-        <ResizeHandle />
+        <ResizeHandle
+          onHeightChange={onHeightChange}
+          currentHeight={inputHeight}
+        />
 
         {/* File Upload Preview - Show above toolbar when files are present */}
         {uploadedFiles.length > 0 && (

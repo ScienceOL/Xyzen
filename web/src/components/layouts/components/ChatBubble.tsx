@@ -104,49 +104,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const handleCopy = () => {
     if (!content) return;
 
-    // Fallback function for older browsers or restricted environments
-    const fallbackCopy = () => {
-      const textArea = document.createElement("textarea");
-      textArea.value = content;
-      textArea.style.position = "fixed"; // Prevent scrolling to bottom
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      try {
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand("copy");
-        if (successful) {
-          setIsCopied(true);
-          setTimeout(() => setIsCopied(false), 2000);
-        } else {
-          console.error("Fallback: Copying text command was unsuccessful");
-        }
-      } catch (err) {
-        console.error("Fallback: Oops, unable to copy", err);
-      } finally {
-        try {
-          document.body.removeChild(textArea);
-        } catch (err) {
-          console.error("Fallback: Failed to remove textarea from DOM", err);
-        }
-      }
-    };
-
-    // Use modern Clipboard API if available and in a secure context
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(content).then(
-        () => {
-          setIsCopied(true);
-          setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
-        },
-        (err) => {
-          console.error("Could not copy text using navigator: ", err);
-          fallbackCopy();
-        },
-      );
-    } else {
-      fallbackCopy();
-    }
+    navigator.clipboard.writeText(content).then(
+      () => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+      },
+      (err) => {
+        console.error("Could not copy text: ", err);
+      },
+    );
   };
 
   // If this is a tool message from history, render as ToolCallCard
