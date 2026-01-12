@@ -350,7 +350,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
             {/* Copy button - shown for assistant messages */}
             {!isUserMessage && !isLoading && (
-              <div className="absolute bottom-2 left-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <div className="absolute bottom-2 left-0 z-10 opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100">
                 <button
                   onClick={handleCopy}
                   className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
