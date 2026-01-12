@@ -125,6 +125,22 @@ class LlmProviderService {
   }
 
   /**
+   * Get system providers only (no user-defined providers)
+   */
+  async getSystemProviders(): Promise<LlmProviderResponse[]> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/providers/system`,
+      {
+        headers: this.createAuthHeaders(),
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch system providers");
+    }
+    return response.json();
+  }
+
+  /**
    * Create a new provider
    */
   async createProvider(

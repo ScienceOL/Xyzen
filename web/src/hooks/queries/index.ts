@@ -11,6 +11,7 @@ export { queryKeys } from "./queryKeys";
 // Provider queries
 export {
   useMyProviders,
+  useSystemProviders,
   useProviderTemplates,
   useAvailableModels,
   useDefaultModelConfig,

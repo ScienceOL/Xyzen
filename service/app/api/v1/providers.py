@@ -126,7 +126,8 @@ async def get_available_models_for_user(
         Dict[str, List[ModelInfo]]: Dictionary mapping provider ID (as string) to list of ModelInfo
     """
     provider_repo = ProviderRepository(db)
-    providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
+    # Only return models for system providers (user-defined providers are disabled)
+    providers = await provider_repo.get_all_system_providers()
 
     result: dict[str, list[ModelInfo]] = {}
 
@@ -173,9 +174,9 @@ async def get_system_providers(
     db: AsyncSession = Depends(get_session),
 ) -> list[ProviderRead]:
     """
-    Get all providers accessible to the current authenticated user.
+    Get all system providers.
 
-    Includes both user's own providers and system providers. System provider
+    Returns all system providers configured via environment variables.
     API keys and endpoints are masked for security reasons.
 
     Args:
@@ -183,17 +184,17 @@ async def get_system_providers(
         db: Database session (injected by dependency)
 
     Returns:
-        List[ProviderRead]: List of providers accessible to the user
+        List[ProviderRead]: List of system providers
 
     Raises:
-        HTTPException: None - this endpoint always succeeds, returning empty list if no providers
+        HTTPException: 404 if no system providers found
     """
     provider_repo = ProviderRepository(db)
-    provider = await provider_repo.get_system_provider()
-    if not provider:
-        raise HTTPException(status_code=404, detail="System provider not found")
+    providers = await provider_repo.get_all_system_providers()
+    if not providers:
+        raise HTTPException(status_code=404, detail="No system providers found")
 
-    return [_sanitize_provider_read(provider)]
+    return [_sanitize_provider_read(p) for p in providers]
 
 
 @router.get("/me", response_model=list[ProviderRead])
@@ -202,20 +203,24 @@ async def get_my_providers(
     db: AsyncSession = Depends(get_session),
 ) -> list[ProviderRead]:
     """
-    Get all user-scoped providers owned by the current authenticated user.
+    Get all providers accessible to the current authenticated user.
+
+    Note: User-defined providers are disabled. This endpoint now returns
+    only system providers.
 
     Args:
-        user: Authenticated user ID (injected by dependency)
+        user_id: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
     Returns:
-        List[ProviderRead]: List of providers accessible to the user
+        List[ProviderRead]: List of system providers accessible to the user
 
     Raises:
         HTTPException: None - this endpoint always succeeds, returning empty list if no providers
     """
     provider_repo = ProviderRepository(db)
-    providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
+    # Only return system providers (user-defined providers are disabled)
+    providers = await provider_repo.get_all_system_providers()
     return [_sanitize_provider_read(p) for p in providers]
 
 
@@ -228,20 +233,27 @@ async def create_provider(
     """
     Create a new provider for the current authenticated user.
 
-    The user_id is automatically set from the authenticated user context.
-    If this is the user's first provider, it will automatically be set as default.
+    NOTE: User-defined provider creation is disabled. Only system providers
+    configured via environment variables are supported.
 
     Args:
         provider_data: Provider creation data
-        user: Authenticated user ID (injected by dependency)
+        user_id: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
     Returns:
         ProviderRead: The newly created provider
 
     Raises:
-        HTTPException: 400 if invalid provider_type, 500 if creation fails
+        HTTPException: 403 - User provider creation is disabled
     """
+    # User-defined providers are disabled - only system providers are allowed
+    raise HTTPException(
+        status_code=403,
+        detail="User-defined provider creation is disabled. Only system providers are available.",
+    )
+
+    # Original code below is unreachable but kept for reference
     # Validate provider_type
     try:
         ProviderType(provider_data.provider_type)

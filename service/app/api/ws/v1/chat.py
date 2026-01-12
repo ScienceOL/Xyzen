@@ -150,12 +150,8 @@ async def chat_websocket(
                     )
                     await db.flush()
 
-                # 3. Echo user message (via Redis for consistency? No, echo immediately usually better UI)
-                # But to keep consistent order, maybe better to just let frontend handle optimistic update?
-                # Original code sent it back. We will send it back via WS directly or relying on frontend?
-                # Original: sent back "user_message_with_files".
+                # 3. Echo user message
                 user_message_with_files = await message_repo.get_message_with_files(user_message.id)
-                # We can send this directly via WS since we are in the loop
                 if user_message_with_files:
                     await websocket.send_text(user_message_with_files.model_dump_json())
                 else:

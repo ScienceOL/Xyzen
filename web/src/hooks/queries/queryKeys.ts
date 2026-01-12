@@ -34,6 +34,7 @@ export const queryKeys = {
   providers: {
     all: ["providers"] as const,
     my: () => [...queryKeys.providers.all, "my"] as const,
+    system: () => [...queryKeys.providers.all, "system"] as const,
     templates: () => [...queryKeys.providers.all, "templates"] as const,
     models: () => [...queryKeys.providers.all, "models"] as const,
     defaultConfig: () => [...queryKeys.providers.all, "defaultConfig"] as const,

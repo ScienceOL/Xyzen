@@ -67,6 +67,20 @@ class ProviderRepository:
             logger.debug(f"Found system provider: {provider.name}")
         return provider
 
+    async def get_all_system_providers(self) -> list[Provider]:
+        """
+        Fetches all system providers.
+
+        Returns:
+            List of all system Provider instances.
+        """
+        logger.debug("Fetching all system providers")
+        statement = select(Provider).where(Provider.scope == ProviderScope.SYSTEM)
+        result = await self.db.exec(statement)
+        providers = list(result.all())
+        logger.debug(f"Found {len(providers)} system providers")
+        return providers
+
     async def get_system_provider_by_type(self, provider_type: ProviderType) -> Provider | None:
         """Fetch a system provider for a specific ProviderType."""
         logger.debug(f"Fetching system provider for type: {provider_type}")

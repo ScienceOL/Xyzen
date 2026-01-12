@@ -28,6 +28,22 @@ export function useMyProviders() {
 }
 
 /**
+ * Fetch system providers only (no user-defined providers)
+ *
+ * @example
+ * ```tsx
+ * const { data: providers, isLoading, error } = useSystemProviders();
+ * ```
+ */
+export function useSystemProviders() {
+  return useQuery({
+    queryKey: queryKeys.providers.system(),
+    queryFn: () => llmProviderService.getSystemProviders(),
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+  });
+}
+
+/**
  * Fetch provider templates for creating new providers
  */
 export function useProviderTemplates() {

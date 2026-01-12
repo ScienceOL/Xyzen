@@ -2,7 +2,7 @@
 
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { FileUploadPreview } from "@/components/features";
-import { useAvailableModels, useMyProviders } from "@/hooks/queries";
+import { useAvailableModels, useSystemProviders } from "@/hooks/queries";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import type { ModelInfo } from "@/types/llmProvider";
@@ -82,7 +82,7 @@ export default function ChatToolbar({
   } = useXyzen();
 
   // Use TanStack Query hooks for provider data
-  const { data: llmProviders = [] } = useMyProviders();
+  const { data: llmProviders = [] } = useSystemProviders();
   const { data: availableModels = {} } = useAvailableModels();
 
   // All user agents for lookup

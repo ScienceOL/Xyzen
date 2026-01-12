@@ -169,7 +169,10 @@ user_provider_managers: dict[str, ProviderManager] = {}
 
 async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderManager:
     """
-    Create a provider manager with all providers for a specific user.
+    Create a provider manager with system providers.
+
+    Note: User-defined providers are disabled. This function now only loads
+    system providers configured via environment variables.
     """
     if user_id in user_provider_managers:
         return user_provider_managers[user_id]
@@ -177,9 +180,10 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
     from app.repos.provider import ProviderRepository
 
     provider_repo = ProviderRepository(db)
-    all_providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
+    # Only load system providers - user-defined providers are disabled
+    all_providers = await provider_repo.get_all_system_providers()
     if not all_providers:
-        raise ErrCode.PROVIDER_NOT_FOUND.with_messages("No providers found for user")
+        raise ErrCode.PROVIDER_NOT_FOUND.with_messages("No system providers configured")
 
     from app.configs import configs
 

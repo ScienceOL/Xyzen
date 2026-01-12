@@ -160,7 +160,7 @@ export function AppHeader({
             <button
               className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
               title="LLM Providers"
-              onClick={() => openSettingsModal("provider")}
+              onClick={() => openSettingsModal("ui")}
             >
               <CogIcon className="h-5 w-5" />
             </button>

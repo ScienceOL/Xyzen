@@ -3,7 +3,6 @@ import { useXyzen } from "@/store";
 import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
-  CloudIcon,
   GiftIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,8 +11,6 @@ import { useTranslation } from "react-i18next";
 
 import {
   LanguageSettings,
-  ProviderConfigForm,
-  ProviderList,
   RedemptionSettings,
   StyleSettings,
   ThemeSettings,
@@ -28,8 +25,6 @@ export function SettingsModal() {
     activeSettingsCategory,
     setActiveSettingsCategory,
     activeUiSetting,
-    selectedProviderId,
-    setSelectedProvider,
   } = useXyzen();
 
   // Mobile navigation state: 'categories' | 'content'
@@ -44,12 +39,6 @@ export function SettingsModal() {
       label: t("settings.categories.ui"),
       icon: AdjustmentsHorizontalIcon,
     },
-    {
-      id: "provider",
-      label: t("settings.categories.provider"),
-      icon: CloudIcon,
-    },
-
     {
       id: "redemption",
       label: t("settings.categories.redemption"),
@@ -136,47 +125,6 @@ export function SettingsModal() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-0 md:p-0">
-              {activeSettingsCategory === "provider" && (
-                <div className="flex h-full flex-col md:flex-row">
-                  {/* Provider List Column */}
-                  <div
-                    className={`w-full border-b border-neutral-200 bg-neutral-50/80 md:w-72 md:border-b-0 md:border-r dark:border-neutral-800 dark:bg-neutral-900/80 ${
-                      selectedProviderId ? "hidden md:block" : "block"
-                    }`}
-                  >
-                    <ProviderList />
-                  </div>
-                  {/* Provider Config Column */}
-                  <div
-                    className={`flex-1 overflow-y-auto bg-neutral-50/30 p-4 md:p-6 dark:bg-neutral-900/30 ${
-                      selectedProviderId ? "block" : "hidden md:block"
-                    }`}
-                  >
-                    {/* Mobile Back Button */}
-                    <div className="mb-4 flex items-center md:hidden">
-                      <button
-                        onClick={() => setSelectedProvider(null)}
-                        className="mr-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
-                      >
-                        <ArrowLeftIcon className="h-5 w-5" />
-                      </button>
-                      <span className="font-medium text-neutral-900 dark:text-white">
-                        {t("settings.categories.provider")}
-                      </span>
-                    </div>
-
-                    {selectedProviderId ? (
-                      <ProviderConfigForm />
-                    ) : (
-                      <div className="flex h-full flex-col items-center justify-center text-center text-neutral-500 dark:text-neutral-400">
-                        <CloudIcon className="mb-4 h-12 w-12 opacity-20" />
-                        <p>{t("settings.provider.emptyHint")}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {activeSettingsCategory === "ui" && (
                 <div className="flex h-full flex-col md:flex-row">
                   <div
