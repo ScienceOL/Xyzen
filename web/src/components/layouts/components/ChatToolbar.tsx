@@ -57,6 +57,7 @@ const ResizeHandle = ({
   // Store initial values for touch
   const touchStartYRef = useRef(0);
   const initialHeightRef = useRef(currentHeight);
+  const isDraggingRef = useRef(false);
 
   // Update initialHeightRef whenever currentHeight changes
   useEffect(() => {
@@ -65,25 +66,46 @@ const ResizeHandle = ({
 
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    isDraggingRef.current = true;
     touchStartYRef.current = e.touches[0].clientY;
     // Use the current height passed as prop, not localStorage
     initialHeightRef.current = currentHeight;
-  };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const currentY = e.touches[0].clientY;
-    const delta = touchStartYRef.current - currentY;
-    const newHeight = Math.max(60, initialHeightRef.current + delta);
+    // Add document-level listeners for smooth dragging
+    const handleDocumentTouchMove = (docE: TouchEvent) => {
+      if (!isDraggingRef.current) return;
+      docE.preventDefault();
 
-    onHeightChange?.(newHeight);
+      const currentY = docE.touches[0].clientY;
+      const delta = touchStartYRef.current - currentY;
+      // Limit height: min 60px, max 65% of viewport to keep chat history visible
+      const maxHeight = Math.floor(window.innerHeight * 0.65);
+      const newHeight = Math.max(
+        60,
+        Math.min(initialHeightRef.current + delta, maxHeight),
+      );
+
+      onHeightChange?.(newHeight);
+    };
+
+    const handleDocumentTouchEnd = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener("touchmove", handleDocumentTouchMove);
+      document.removeEventListener("touchend", handleDocumentTouchEnd);
+      document.removeEventListener("touchcancel", handleDocumentTouchEnd);
+    };
+
+    document.addEventListener("touchmove", handleDocumentTouchMove, {
+      passive: false,
+    });
+    document.addEventListener("touchend", handleDocumentTouchEnd);
+    document.addEventListener("touchcancel", handleDocumentTouchEnd);
   };
 
   return (
     <div
       ref={setNodeRef}
       onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
       {...listeners}
       {...attributes}
       className="absolute -top-1 left-0 right-0 h-1 cursor-ns-resize transition-colors hover:bg-indigo-600"
