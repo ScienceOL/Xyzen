@@ -46,7 +46,7 @@ interface ChatToolbarProps {
 // Draggable resize handle component
 const ResizeHandle = () => {
   const { t } = useTranslation();
-  const { attributes, listeners, setNodeRef } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: "resize-handle",
   });
 
@@ -55,10 +55,23 @@ const ResizeHandle = () => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className="absolute -top-3 left-0 right-0 h-6 cursor-ns-resize"
+      className={cn(
+        "absolute -top-3 left-0 right-0 h-6 cursor-ns-resize",
+        "flex items-center justify-center",
+        "transition-colors",
+      )}
       style={{ touchAction: "none" }}
       title={t("app.toolbar.resizeHint")}
-    />
+    >
+      <div
+        className={cn(
+          "w-full h-1 transition-colors",
+          isDragging
+            ? "bg-indigo-600 dark:bg-indigo-500"
+            : "bg-transparent hover:bg-indigo-600/40 dark:hover:bg-indigo-500/40",
+        )}
+      />
+    </div>
   );
 };
 
