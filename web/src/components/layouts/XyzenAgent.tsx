@@ -452,6 +452,7 @@ export default function XyzenAgent({
         onClose={() => setAddModalOpen(false)}
       />
       <EditAgentModal
+        key={editingAgent?.id || "new"}
         isOpen={isEditModalOpen}
         onClose={() => setEditModalOpen(false)}
         agent={editingAgent}
