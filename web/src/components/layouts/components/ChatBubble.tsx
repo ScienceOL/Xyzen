@@ -104,15 +104,49 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const handleCopy = () => {
     if (!content) return;
 
-    navigator.clipboard.writeText(content).then(
-      () => {
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
-      },
-      (err) => {
-        console.error("Could not copy text: ", err);
-      },
-    );
+    // Fallback function for older browsers or restricted environments
+    const fallbackCopy = () => {
+      const textArea = document.createElement("textarea");
+      textArea.value = content;
+      textArea.style.position = "fixed"; // Prevent scrolling to bottom
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      try {
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand("copy");
+        if (successful) {
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 2000);
+        } else {
+          console.error("Fallback: Copying text command was unsuccessful");
+        }
+      } catch (err) {
+        console.error("Fallback: Oops, unable to copy", err);
+      } finally {
+        try {
+          document.body.removeChild(textArea);
+        } catch (err) {
+          console.error("Fallback: Failed to remove textarea from DOM", err);
+        }
+      }
+    };
+
+    // Use modern Clipboard API if available and in a secure context
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(content).then(
+        () => {
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+        },
+        (err) => {
+          console.error("Could not copy text using navigator: ", err);
+          fallbackCopy();
+        },
+      );
+    } else {
+      fallbackCopy();
+    }
   };
 
   // If this is a tool message from history, render as ToolCallCard
@@ -164,7 +198,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
         {/* Message content */}
         <div
-          className={`w-full min-w-0 rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
+          className={`relative w-full min-w-0 rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
         >
           <div className="px-4 py-3 min-w-0">
             {/* File Attachments - shown before text for user messages */}
@@ -287,24 +321,24 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 <SearchCitations citations={citations} />
               </div>
             )}
-
-            {/* Copy button - shown for assistant messages */}
-            {!isUserMessage && !isLoading && (
-              <div className="absolute bottom-2 left-0 z-10 opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100">
-                <button
-                  onClick={handleCopy}
-                  className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                >
-                  {isCopied ? (
-                    <CheckIcon className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <ClipboardDocumentIcon className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Copy button - shown for assistant messages */}
+        {!isUserMessage && !isLoading && (
+          <div className="absolute bottom-2 left-0 z-10 opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100">
+            <button
+              onClick={handleCopy}
+              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+            >
+              {isCopied ? (
+                <CheckIcon className="h-4 w-4 text-green-500" />
+              ) : (
+                <ClipboardDocumentIcon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        )}
       </motion.div>
     );
   }

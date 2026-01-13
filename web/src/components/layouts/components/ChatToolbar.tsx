@@ -3,12 +3,14 @@
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { FileUploadPreview } from "@/components/features";
 import { useAvailableModels, useMyProviders } from "@/hooks/queries";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import type { ModelInfo } from "@/types/llmProvider";
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   useDraggable,
   useSensor,
   useSensors,
@@ -42,51 +44,19 @@ interface ChatToolbarProps {
 }
 
 // Draggable resize handle component
-const ResizeHandle = ({
-  onHeightChange,
-  currentHeight,
-}: {
-  onHeightChange?: (height: number) => void;
-  currentHeight: number;
-}) => {
+const ResizeHandle = () => {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: "resize-handle",
   });
 
-  // Store initial values for touch
-  const touchStartYRef = useRef(0);
-  const initialHeightRef = useRef(currentHeight);
-
-  // Update initialHeightRef whenever currentHeight changes
-  useEffect(() => {
-    initialHeightRef.current = currentHeight;
-  }, [currentHeight]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    touchStartYRef.current = e.touches[0].clientY;
-    // Use the current height passed as prop, not localStorage
-    initialHeightRef.current = currentHeight;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const currentY = e.touches[0].clientY;
-    const delta = touchStartYRef.current - currentY;
-    const newHeight = Math.max(60, initialHeightRef.current + delta);
-
-    onHeightChange?.(newHeight);
-  };
-
   return (
     <div
       ref={setNodeRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
       {...listeners}
       {...attributes}
-      className="absolute -top-1 left-0 right-0 h-1 cursor-ns-resize transition-colors hover:bg-indigo-600"
+      className="absolute -top-3 left-0 right-0 h-6 cursor-ns-resize"
+      style={{ touchAction: "none" }}
       title={t("app.toolbar.resizeHint")}
     />
   );
@@ -337,16 +307,8 @@ export default function ChatToolbar({
       setSearchMethod("builtin");
     } else {
       // Check if Search MCP is connected
-      // We need to check the agent's MCP servers, which we can access via currentAgent
-      // But currentAgent is derived from activeChatChannel, so it should be available/consistent
-      // We need to look at currentAgent (from useMemo) instead of just mcpServers (which updates separately?)
-      // Actually currentAgent is stable enough.
-      // Let's us allAgents or currentAgent to be safe.
-
       const agent = agents.find((a) => a.id === channel.agentId);
       const hasSearchMcp = agent?.mcp_servers?.some((s) => {
-        // We need to find the name of the server by ID, because mcp_servers on agent only has ID/name snapshot
-        // The snapshot name might be enough.
         return s.name?.includes("Web Search");
       });
 
@@ -469,11 +431,21 @@ export default function ChatToolbar({
     return modelInfo?.supports_web_search || false;
   }, [currentSessionModel, currentSessionProvider, availableModels]);
 
-  // Setup dnd sensors
+  // Detect if we're on mobile (viewport width < 768px, same as Tailwind md breakpoint)
+  // Using useSyncExternalStore for better performance (no useEffect)
+  const isMobile = useIsMobile();
+
+  // Setup dnd sensors - use TouchSensor for mobile, PointerSensor for desktop
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 0,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 0,
+        tolerance: 0,
       },
     }),
   );
@@ -522,27 +494,72 @@ export default function ChatToolbar({
     dragDeltaRef.current = 0;
   };
 
-  // Handle drag move
-  const handleDragMove = (event: DragMoveEvent) => {
-    const { delta } = event;
-    dragDeltaRef.current = delta.y;
-    const newHeight = Math.max(60, initialHeightRef.current - delta.y);
+  // Handle drag move - desktop version (no height limit)
+  const handleDragMoveDesktop = useCallback(
+    (event: DragMoveEvent) => {
+      const { delta } = event;
+      dragDeltaRef.current = delta.y;
+      // Desktop: no height limit, allow unlimited dragging
+      const newHeight = Math.max(60, initialHeightRef.current - delta.y);
 
-    // Real-time update for smooth dragging experience
-    localStorage.setItem("chatInputHeight", newHeight.toString());
-    onHeightChange?.(newHeight);
-  };
+      // Real-time update for smooth dragging experience
+      onHeightChange?.(newHeight);
+    },
+    [onHeightChange],
+  );
 
-  // Handle drag end
-  const handleDragEnd = (_: DragEndEvent) => {
-    const finalHeight = Math.max(
-      60,
-      initialHeightRef.current - dragDeltaRef.current,
-    );
-    localStorage.setItem("chatInputHeight", finalHeight.toString());
-    onHeightChange?.(finalHeight);
-    dragDeltaRef.current = 0;
-  };
+  // Handle drag move - mobile version (with 65% viewport height limit)
+  const handleDragMoveMobile = useCallback(
+    (event: DragMoveEvent) => {
+      const { delta } = event;
+      dragDeltaRef.current = delta.y;
+      // Mobile: limit height to 65% of viewport to keep chat history visible
+      const maxHeight = Math.floor(window.innerHeight * 0.65);
+      const newHeight = Math.max(
+        60,
+        Math.min(initialHeightRef.current - delta.y, maxHeight),
+      );
+
+      // Real-time update for smooth dragging experience
+      onHeightChange?.(newHeight);
+    },
+    [onHeightChange],
+  );
+
+  // Use appropriate drag move handler based on device
+  const handleDragMove = isMobile
+    ? handleDragMoveMobile
+    : handleDragMoveDesktop;
+
+  // Handle drag end - desktop version (no height limit)
+  const handleDragEndDesktop = useCallback(
+    (_: DragEndEvent) => {
+      const finalHeight = Math.max(
+        60,
+        initialHeightRef.current - dragDeltaRef.current,
+      );
+      onHeightChange?.(finalHeight);
+      dragDeltaRef.current = 0;
+    },
+    [onHeightChange],
+  );
+
+  // Handle drag end - mobile version (with 65% viewport height limit)
+  const handleDragEndMobile = useCallback(
+    (_: DragEndEvent) => {
+      const maxHeight = Math.floor(window.innerHeight * 0.65);
+      const finalHeight = Math.max(
+        60,
+        Math.min(initialHeightRef.current - dragDeltaRef.current, maxHeight),
+      );
+      onHeightChange?.(finalHeight);
+      dragDeltaRef.current = 0;
+    },
+    [onHeightChange],
+  );
+
+  // Use appropriate drag end handler based on device
+  const handleDragEnd = isMobile ? handleDragEndMobile : handleDragEndDesktop;
 
   const toolbarButtonClass = cn(
     "flex h-8 w-8 items-center justify-center rounded-md transition-all duration-200",
@@ -561,10 +578,7 @@ export default function ChatToolbar({
     >
       <div className="relative">
         {/* Drag handle positioned above the toolbar */}
-        <ResizeHandle
-          onHeightChange={onHeightChange}
-          currentHeight={inputHeight}
-        />
+        <ResizeHandle />
 
         {/* File Upload Preview - Show above toolbar when files are present */}
         {uploadedFiles.length > 0 && (
