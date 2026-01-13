@@ -125,6 +125,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             showHistory={showHistory}
             handleCloseHistory={handleCloseHistory}
             handleSelectTopic={handleSelectTopic}
+            inputHeight={inputHeight}
           />
         </div>
       </div>
@@ -303,6 +304,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             showHistory={showHistory}
             handleCloseHistory={handleCloseHistory}
             handleSelectTopic={handleSelectTopic}
+            inputHeight={inputHeight}
           />
           {sendBlocked && (
             <div className="mx-4 mb-1 rounded-sm bg-amber-50 px-3 py-1.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/40">
