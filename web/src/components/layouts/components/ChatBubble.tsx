@@ -30,7 +30,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
     created_at,
     isLoading,
     isStreaming,
-    // isNewMessage,
     toolCalls,
     attachments,
     citations,
@@ -39,42 +38,12 @@ function ChatBubble({ message }: ChatBubbleProps) {
     agentExecution,
   } = message;
 
-  // 流式消息打字效果
-  // 记录消息是否首次是新消息，确保打字效果只在首次时启用
-  // const wasNewMessageRef = useRef(isNewMessage ?? false);
-
-  // useEffect(() => {
-  //   // 一旦 isNewMessage 变成 false，就不再启用打字效果
-  //   if (!isNewMessage && wasNewMessageRef.current) {
-  //     wasNewMessageRef.current = false;
-  //   }
-  // }, [isNewMessage]);
-
-  // 仅在消息首次是新消息且为 Assistant 消消息时才启用打字效果
-  // 一旦消息完成流式传输（isNewMessage 变为 false），就禁用打字效果
-  // const shouldEnableTypewriter =
-  //   TYPEWRITER_CONFIG.enabled &&
-  //   role === "assistant" &&
-  //   wasNewMessageRef.current;
-
-  // const { opacity } = useStreamingTypewriter(
-  //   content,
-  //   (isStreaming ?? false) || (isLoading ?? false),
-  //   {
-  //     enabled: shouldEnableTypewriter,
-  //     fadeDuration: TYPEWRITER_CONFIG.fadeDuration || 300,
-  //   },
-  // );
-
   // Use deferred value and memoization to optimize rendering performance
-  // 创建带有渐变效果的 Markdown 内容
   const deferredContent = useDeferredValue(content);
   const markdownContent = useMemo(
     () => <Markdown content={deferredContent} />,
     [deferredContent],
   );
-  // 仅当正在接收流式数据且启用了打字效果时才显示打字状态
-  // const isTyping = shouldEnableTypewriter && (isStreaming ?? false);
 
   const isUserMessage = role === "user";
   const isToolMessage = toolCalls && toolCalls.length > 0;
@@ -133,11 +102,50 @@ function ChatBubble({ message }: ChatBubbleProps) {
   };
 
   const handleCopy = () => {
-    if (content) {
-      navigator.clipboard.writeText(content).then(() => {
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
-      });
+    if (!content) return;
+
+    // Fallback function for older browsers or restricted environments
+    const fallbackCopy = () => {
+      const textArea = document.createElement("textarea");
+      textArea.value = content;
+      textArea.style.position = "fixed"; // Prevent scrolling to bottom
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      try {
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand("copy");
+        if (successful) {
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 2000);
+        } else {
+          console.error("Fallback: Copying text command was unsuccessful");
+        }
+      } catch (err) {
+        console.error("Fallback: Oops, unable to copy", err);
+      } finally {
+        try {
+          document.body.removeChild(textArea);
+        } catch (err) {
+          console.error("Fallback: Failed to remove textarea from DOM", err);
+        }
+      }
+    };
+
+    // Use modern Clipboard API if available and in a secure context
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(content).then(
+        () => {
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+        },
+        (err) => {
+          console.error("Could not copy text using navigator: ", err);
+          fallbackCopy();
+        },
+      );
+    } else {
+      fallbackCopy();
     }
   };
 
@@ -190,7 +198,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
         {/* Message content */}
         <div
-          className={`w-full min-w-0 rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
+          className={`relative w-full min-w-0 rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
         >
           <div className="px-4 py-3 min-w-0">
             {/* File Attachments - shown before text for user messages */}
@@ -313,24 +321,24 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 <SearchCitations citations={citations} />
               </div>
             )}
-
-            {/* Copy button - shown for assistant messages */}
-            {!isUserMessage && !isLoading && (
-              <div className="absolute bottom-2 left-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                <button
-                  onClick={handleCopy}
-                  className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                >
-                  {isCopied ? (
-                    <CheckIcon className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <ClipboardDocumentIcon className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Copy button - shown for assistant messages */}
+        {!isUserMessage && !isLoading && (
+          <div className="absolute bottom-2 left-0 z-10 opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100">
+            <button
+              onClick={handleCopy}
+              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+            >
+              {isCopied ? (
+                <CheckIcon className="h-4 w-4 text-green-500" />
+              ) : (
+                <ClipboardDocumentIcon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        )}
       </motion.div>
     );
   }
