@@ -50,7 +50,7 @@ export function graphConfigToFlow(config: GraphConfig | null): {
   nodes: AgentNode[];
   edges: AgentEdge[];
 } {
-  if (!config) {
+  if (!config || !config.nodes || !config.edges) {
     return { nodes: createDefaultNodes(), edges: [] };
   }
 
