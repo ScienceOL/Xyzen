@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { useState } from "react";
 
 export interface TokenInputModalProps {

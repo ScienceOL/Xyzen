@@ -429,6 +429,7 @@ class ConsumeRepository:
         end_date: str | None = None,
         tz: str | None = None,
         limit: int = 10000,
+        offset: int = 0,
     ) -> list[ConsumeRecord]:
         """
         Get all consumption records with optional date filtering.
@@ -444,7 +445,7 @@ class ConsumeRepository:
         """
         from datetime import datetime, timezone
 
-        logger.debug(f"Fetching consume records from {start_date} to {end_date}, limit: {limit}")
+        logger.debug(f"Fetching consume records from {start_date} to {end_date}, limit: {limit}, offset: {offset}")
 
         query = select(ConsumeRecord)
 
@@ -469,7 +470,7 @@ class ConsumeRepository:
             query = query.where(ConsumeRecord.created_at <= end_dt)
 
         # Order by creation time ascending for chronological trend analysis
-        query = query.order_by(ConsumeRecord.created_at.asc()).limit(limit)  # type: ignore
+        query = query.order_by(ConsumeRecord.created_at.asc()).offset(offset).limit(limit)  # type: ignore
 
         result = await self.db.exec(query)
         records = list(result.all())

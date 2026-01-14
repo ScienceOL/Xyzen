@@ -2,6 +2,9 @@
   "add": "Add Agent",
   "edit": "Edit",
   "delete": "Delete",
+  "badges": {
+    "marketplace": "Published to Marketplace"
+  },
   "editAgent": "Edit Agent",
   "deleteAgent": "Delete Agent",
   "addButton": "+ Add Agent",
@@ -10,6 +13,8 @@
   "deleteTitle": "Delete Agent",
   "deleteConfirm": "Are you sure you want to permanently delete agent \"{{name}}\"? This action cannot be undone.",
   "deleteConfirmWithListing": "⚠️ This agent has been published to the marketplace. Deleting it will also remove the published version.\n\nAre you sure you want to permanently delete agent \"{{name}}\"? This action cannot be undone.",
+  "deleteBlockedTitle": "Can't delete agent",
+  "deleteBlockedMessage": "This agent is published to Agent Market. Please unpublish it first, then delete it.",
   "createDescription": "Create a new AI agent with custom prompts and tools.",
   "updateDescription": "Update the details for your agent.",
   "systemDescription": "Select a pre-configured system agent with special execution capabilities.",

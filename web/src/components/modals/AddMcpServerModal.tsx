@@ -1,9 +1,9 @@
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import {
   FlipButton,
   FlipButtonBack,
   FlipButtonFront,
 } from "@/components/animate-ui/components/buttons/flip";
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
 import type { McpServerCreate } from "@/types/mcp";

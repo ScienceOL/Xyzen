@@ -16,6 +16,7 @@ jobs:
         id: build_setup
         run: |
           echo "build_start=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "beta_tag=BETA.$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_OUTPUT
           echo "commit_author=$(git log -1 --pretty=format:'%an')" >> $GITHUB_OUTPUT
           echo "commit_email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
           echo "commit_message=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
@@ -35,11 +36,17 @@ jobs:
 
       - name: Build and push Service Docker image
         run: |
-          docker build service -t registry.sciol.ac.cn/sciol/xyzen-service:test --push
+          docker buildx build service \
+            -t registry.sciol.ac.cn/sciol/xyzen-service:test \
+            -t registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.beta_tag }} \
+            --push
 
       - name: Build and push Web Docker image
         run: |
-          docker build web -t registry.sciol.ac.cn/sciol/xyzen-web:test --push
+          docker buildx build web \
+            -t registry.sciol.ac.cn/sciol/xyzen-web:test \
+            -t registry.sciol.ac.cn/sciol/xyzen-web:${{ steps.build_setup.outputs.beta_tag }} \
+            --push
 
       - name: Download Let's Encrypt CA
         run: curl -o ca.crt https://letsencrypt.org/certs/isrgrootx1.pem
@@ -50,19 +57,19 @@ jobs:
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            rollout restart deployment xyzen -n bohrium
+            set image deployment/xyzen -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.beta_tag }}
 
           kubectl \
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            rollout restart deployment xyzen-web -n bohrium
+            set image deployment/xyzen-web -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-web:${{ steps.build_setup.outputs.beta_tag }}
 
           kubectl \
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            rollout restart deployment xyzen-celery -n bohrium
+            set image deployment/xyzen-celery -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.beta_tag }}
 
       - name: Calculate build duration
         if: always()
@@ -122,5 +129,5 @@ jobs:
           commit_sha: ${{ steps.build_setup.outputs.commit_sha }}
           commit_sha_short: ${{ steps.build_setup.outputs.commit_sha_short }}
           commit_date: ${{ steps.build_setup.outputs.commit_date }}
-          service_image: 'registry.sciol.ac.cn/sciol/xyzen-service:test'
-          web_image: 'registry.sciol.ac.cn/sciol/xyzen-web:test'
+          service_image: 'registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.beta_tag }}'
+          web_image: 'registry.sciol.ac.cn/sciol/xyzen-web:${{ steps.build_setup.outputs.beta_tag }}'

@@ -1,15 +1,15 @@
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { Input } from "@/components/base/Input";
-import PublishAgentModal from "@/components/features/PublishAgentModal";
 import { AgentGraphEditor } from "@/components/editors/AgentGraphEditor";
 import { JsonEditor } from "@/components/editors/JsonEditor";
+import PublishAgentModal from "@/components/features/PublishAgentModal";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import type { GraphConfig } from "@/types/graphConfig";
 import {
   extractSimpleConfig,
-  mergeSimpleConfigToGraphConfig,
   isStandardReactPattern,
+  mergeSimpleConfigToGraphConfig,
   type SimpleAgentConfig,
 } from "@/utils/agentConfigMapper";
 import {
@@ -23,12 +23,12 @@ import {
   TabPanels,
 } from "@headlessui/react";
 import {
+  CodeBracketIcon,
+  CubeTransparentIcon,
   PlusIcon,
   SparklesIcon,
-  CubeTransparentIcon,
-  CodeBracketIcon,
 } from "@heroicons/react/24/outline";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { McpServerItem } from "./McpServerItem";
 

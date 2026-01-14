@@ -2,6 +2,9 @@
   "add": "添加助手",
   "edit": "编辑",
   "delete": "删除",
+  "badges": {
+    "marketplace": "已发布到市场"
+  },
   "editAgent": "编辑助手",
   "deleteAgent": "删除助手",
   "addButton": "+ 添加助手",
@@ -10,6 +13,8 @@
   "deleteTitle": "删除助手",
   "deleteConfirm": "确定要永久删除助手 \"{{name}}\" 吗？此操作无法撤销。",
   "deleteConfirmWithListing": "⚠️ 此助手已发布到市场。删除后，市场中的发布版本也将被移除。\n\n确定要永久删除助手 \"{{name}}\" 吗？此操作无法撤销。",
+  "deleteBlockedTitle": "无法删除助手",
+  "deleteBlockedMessage": "该助手已发布到 Agent Market。请先到 Market 下架后再删除。",
   "createDescription": "创建一个新的 AI 助手，可以配置专属提示词和工具。",
   "updateDescription": "更新助手的详细信息。",
   "systemDescription": "选择一个预配置的系统助手，这些助手具有特殊的执行能力。",

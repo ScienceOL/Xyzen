@@ -1,10 +1,19 @@
 "use client";
-import McpIcon from "@/assets/McpIcon";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/animate-ui/components/animate/tooltip";
 import { Badge } from "@/components/base/Badge";
 import { useAuth } from "@/hooks/useAuth";
-import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  PencilIcon,
+  ShoppingBagIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
@@ -19,6 +28,7 @@ import type { Agent } from "@/types/agents";
 
 interface AgentCardProps {
   agent: Agent;
+  isMarketplacePublished?: boolean;
   onClick?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
@@ -46,6 +56,7 @@ interface ContextMenuProps {
   onDelete: () => void;
   onClose: () => void;
   isDefaultAgent?: boolean;
+  isMarketplacePublished?: boolean;
   agent?: Agent;
 }
 
@@ -56,6 +67,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onDelete,
   onClose,
   isDefaultAgent = false,
+  isMarketplacePublished = false,
 }) => {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -104,16 +116,42 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
         <PencilIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
         {t("agents.editAgent")}
       </button>
-      <button
-        onClick={() => {
-          onDelete();
-          onClose();
-        }}
-        className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
-      >
-        <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-        {t("agents.deleteAgent")}
-      </button>
+      {isMarketplacePublished ? (
+        <Tooltip side="right">
+          <TooltipTrigger asChild>
+            <span className="block w-full">
+              <button
+                disabled
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className="flex w-full cursor-not-allowed items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 opacity-50 transition-colors dark:text-neutral-300"
+              >
+                <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+                {t("agents.deleteAgent")}
+              </button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {t("agents.deleteBlockedMessage", {
+              defaultValue:
+                "This agent is published to Agent Market. Please unpublish it first, then delete it.",
+            })}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <button
+          onClick={() => {
+            onDelete();
+            onClose();
+          }}
+          className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-red-50 dark:text-neutral-300 dark:hover:bg-neutral-700"
+        >
+          <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+          {t("agents.deleteAgent")}
+        </button>
+      )}
     </motion.div>
   );
 };
@@ -121,10 +159,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 // 详细版本-包括名字，描述，头像，标签以及GPT模型
 const AgentCard: React.FC<AgentCardProps> = ({
   agent,
+  isMarketplacePublished = false,
   onClick,
   onEdit,
   onDelete,
 }) => {
+  const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -139,7 +179,6 @@ const AgentCard: React.FC<AgentCardProps> = ({
     const { clientX, clientY } = touch;
 
     longPressTimer.current = setTimeout(() => {
-      isLongPress.current = true;
       setContextMenu({ x: clientX, y: clientY });
       // Haptic feedback (best-effort)
       try {
@@ -237,15 +276,33 @@ const AgentCard: React.FC<AgentCardProps> = ({
               {agent.name}
             </h3>
 
-            {/* MCP servers badge */}
-            {agent.mcp_servers && agent.mcp_servers.length > 0 && (
-              <Badge
-                variant="blue"
-                className="flex items-center gap-1 shrink-0"
-              >
-                <McpIcon className="h-3 w-3" />
-                {agent.mcp_servers.length}
-              </Badge>
+            {/* Marketplace published badge */}
+            {isMarketplacePublished && (
+              <Tooltip side="right">
+                <TooltipTrigger asChild>
+                  <span className="shrink-0">
+                    <Badge
+                      variant="yellow"
+                      className="flex items-center justify-center px-1.5!"
+                    >
+                      <motion.div
+                        whileHover={{
+                          rotate: [0, -15, 15, -15, 15, 0],
+                          scale: 1.2,
+                          transition: { duration: 0.5, ease: "easeInOut" },
+                        }}
+                      >
+                        <ShoppingBagIcon className="h-3.5 w-3.5" />
+                      </motion.div>
+                    </Badge>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("agents.badges.marketplace", {
+                    defaultValue: "Published to Marketplace",
+                  })}
+                </TooltipContent>
+              </Tooltip>
             )}
 
             {/* Knowledge set badge */}
@@ -276,6 +333,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
           onDelete={() => onDelete?.(agent)}
           onClose={() => setContextMenu(null)}
           isDefaultAgent={isDefaultAgent}
+          isMarketplacePublished={isMarketplacePublished}
           agent={agent}
         />
       )}
@@ -328,6 +386,14 @@ export default function XyzenAgent({
 
   // Fetch marketplace listings to check if deleted agent has a published version
   const { data: myListings } = useMyMarketplaceListings();
+
+  const publishedAgentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const listing of myListings ?? []) {
+      if (listing.is_published) ids.add(listing.agent_id);
+    }
+    return ids;
+  }, [myListings]);
 
   useEffect(() => {
     fetchAgents();
@@ -424,62 +490,75 @@ export default function XyzenAgent({
   const allAgents = [...filteredSystemAgents, ...regularAgents];
 
   // Clean sidebar with auto-loaded MCPs for system agents
-
   return (
-    <motion.div
-      className="space-y-2 px-4 custom-scrollbar overflow-y-auto h-full"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {allAgents.map((agent) => (
-        <AgentCard
-          key={agent.id}
-          agent={agent}
-          onClick={handleAgentClick}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-        />
-      ))}
-      <button
-        className="w-full rounded-sm border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
-        onClick={() => setAddModalOpen(true)}
+    <TooltipProvider>
+      <motion.div
+        className="space-y-2 px-4 custom-scrollbar overflow-y-auto h-full"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
       >
-        {t("agents.addButton")}
-      </button>
-      <AddAgentModal
-        isOpen={isAddModalOpen}
-        onClose={() => setAddModalOpen(false)}
-      />
-      <EditAgentModal
-        key={editingAgent?.id || "new"}
-        isOpen={isEditModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        agent={editingAgent}
-      />
-      {agentToDelete && (
-        <ConfirmationModal
-          isOpen={isConfirmModalOpen}
-          onClose={() => setConfirmModalOpen(false)}
-          onConfirm={() => {
-            deleteAgent(agentToDelete.id);
-            setConfirmModalOpen(false);
-            setAgentToDelete(null);
-          }}
-          title={t("agents.deleteTitle")}
-          message={(() => {
-            const hasListing = myListings?.some(
-              (l) => l.agent_id === agentToDelete.id,
-            );
-            if (hasListing) {
-              return t("agents.deleteConfirmWithListing", {
-                name: agentToDelete.name,
-              });
-            }
-            return t("agents.deleteConfirm", { name: agentToDelete.name });
-          })()}
+        {allAgents.map((agent) => (
+          <AgentCard
+            key={agent.id}
+            agent={agent}
+            isMarketplacePublished={publishedAgentIds.has(agent.id)}
+            onClick={handleAgentClick}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
+          />
+        ))}
+        <button
+          className="w-full rounded-sm border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
+          onClick={() => setAddModalOpen(true)}
+        >
+          {t("agents.addButton")}
+        </button>
+        <AddAgentModal
+          isOpen={isAddModalOpen}
+          onClose={() => setAddModalOpen(false)}
         />
-      )}
-    </motion.div>
+        <EditAgentModal
+          key={editingAgent?.id || "new"}
+          isOpen={isEditModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          agent={editingAgent}
+        />
+        {agentToDelete && (
+          <ConfirmationModal
+            isOpen={isConfirmModalOpen}
+            onClose={() => setConfirmModalOpen(false)}
+            onConfirm={() => {
+              if (publishedAgentIds.has(agentToDelete.id)) return;
+              deleteAgent(agentToDelete.id);
+              setConfirmModalOpen(false);
+              setAgentToDelete(null);
+            }}
+            title={
+              publishedAgentIds.has(agentToDelete.id)
+                ? t("agents.deleteBlockedTitle", {
+                    defaultValue: "Can't delete agent",
+                  })
+                : t("agents.deleteTitle")
+            }
+            message={
+              publishedAgentIds.has(agentToDelete.id)
+                ? t("agents.deleteBlockedMessage", {
+                    defaultValue:
+                      "This agent is published to Agent Market. Please unpublish it first, then delete it.",
+                  })
+                : t("agents.deleteConfirm", { name: agentToDelete.name })
+            }
+            confirmLabel={
+              publishedAgentIds.has(agentToDelete.id)
+                ? t("common.ok")
+                : t("agents.deleteAgent")
+            }
+            cancelLabel={t("common.cancel")}
+            destructive={!publishedAgentIds.has(agentToDelete.id)}
+          />
+        )}
+      </motion.div>
+    </TooltipProvider>
   );
 }

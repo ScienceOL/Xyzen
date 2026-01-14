@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 

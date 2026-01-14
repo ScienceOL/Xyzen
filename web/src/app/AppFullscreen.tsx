@@ -5,6 +5,7 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { SpatialWorkspace } from "@/app/chat/SpatialWorkspace";
 import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import { AppHeader } from "@/components/layouts/AppHeader";
@@ -118,6 +119,12 @@ export function AppFullscreen({
               {activePanel === "marketplace" && (
                 <div className="h-full w-full">
                   <AgentMarketplace />
+                </div>
+              )}
+
+              {activePanel === "workspace-test" && (
+                <div className="h-full w-full">
+                  <SpatialWorkspace />
                 </div>
               )}
             </div>

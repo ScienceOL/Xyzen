@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import { useXyzen } from "@/store";
 import type { McpServer } from "@/types/mcp";

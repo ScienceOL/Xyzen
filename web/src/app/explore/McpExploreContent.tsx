@@ -1,5 +1,5 @@
 "use client";
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import McpServerDetail from "@/marketplace/components/McpServerDetail";
 import SmitheryServerDetail from "@/marketplace/components/SmitheryServerDetail";
 import UnifiedMcpMarketList from "@/marketplace/components/UnifiedMcpMarketList";

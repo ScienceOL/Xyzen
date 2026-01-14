@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
 import type { Agent, SystemAgentTemplate } from "@/types/agents";
@@ -13,8 +13,8 @@ import {
   TabPanels,
 } from "@headlessui/react";
 import {
-  PlusIcon,
   BeakerIcon,
+  PlusIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
