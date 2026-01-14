@@ -11,6 +11,7 @@ export interface SessionCreate {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
+  avatar?: string;
   spatial_layout?: AgentSpatialLayout;
 }
 
@@ -22,6 +23,7 @@ export interface SessionUpdate {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
+  avatar?: string;
   spatial_layout?: AgentSpatialLayout;
 }
 
@@ -36,6 +38,7 @@ export interface SessionRead {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
+  avatar?: string;
   spatial_layout?: AgentSpatialLayout;
   created_at: string;
   updated_at: string;

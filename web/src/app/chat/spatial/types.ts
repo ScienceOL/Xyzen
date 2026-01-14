@@ -1,3 +1,4 @@
+import type { AgentSpatialLayout } from "@/types/agents";
 import type { Node, NodeProps } from "@xyflow/react";
 
 export type XYPosition = { x: number; y: number };
@@ -15,12 +16,32 @@ export interface AgentStatsDisplay {
 }
 
 /**
+ * Daily message count for activity chart.
+ */
+export interface DailyActivityData {
+  date: string;
+  count: number;
+}
+
+/**
+ * Yesterday's summary data for agent.
+ */
+export interface YesterdaySummaryData {
+  messageCount: number;
+  lastMessagePreview?: string | null;
+}
+
+/**
  * Persistable agent widget data (no functions).
  *
  * Note: XYFlow stores position on the Node itself, but we also keep a copy here
  * so it can be persisted/serialized without the full Node shape.
  */
 export interface AgentData {
+  /** Agent ID (used for API calls) */
+  agentId: string;
+  /** Session ID (used for Session API calls) */
+  sessionId?: string;
   name: string;
   role: string;
   desc: string;
@@ -31,11 +52,18 @@ export interface AgentData {
   position: XYPosition;
   /** Stats for display visualization */
   stats?: AgentStatsDisplay;
+  /** Daily activity for chart (last 7 days) */
+  dailyActivity?: DailyActivityData[];
+  /** Yesterday's summary */
+  yesterdaySummary?: YesterdaySummaryData;
 }
 
 /** Runtime-only fields injected by the workspace. */
 export interface AgentNodeRuntimeData {
   onFocus: (id: string) => void;
+  onLayoutChange?: (id: string, layout: AgentSpatialLayout) => void;
+  onAvatarChange?: (id: string, avatarUrl: string) => void;
+  onOpenAgentSettings?: (agentId: string) => void;
   isFocused?: boolean;
 }
 

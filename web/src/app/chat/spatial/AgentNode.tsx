@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import SessionSettingsModal from "@/components/modals/SessionSettingsModal";
 import { cn } from "@/lib/utils";
 import {
   ChatBubbleLeftRightIcon,
@@ -8,7 +8,12 @@ import {
 import { useReactFlow } from "@xyflow/react";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import type { AgentFlowNodeProps, AgentStatsDisplay } from "./types";
+import type {
+  AgentFlowNodeProps,
+  AgentStatsDisplay,
+  DailyActivityData,
+  YesterdaySummaryData,
+} from "./types";
 
 // Helper to calc size
 // Base unit: 1x1 = 200x160. Gap = 16.
@@ -37,69 +42,201 @@ const formatTokenCount = (count: number): string => {
   return count.toString();
 };
 
+// Mini activity chart component for 7-day visualization
+function ActivityChart({
+  data,
+  className,
+}: {
+  data: DailyActivityData[];
+  className?: string;
+}) {
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+
+  return (
+    <div className={cn("flex gap-1 items-end h-10", className)}>
+      {data.map((day, i) => {
+        const heightPercent = (day.count / maxCount) * 100;
+        const isToday = i === data.length - 1;
+        return (
+          <div
+            key={day.date}
+            className={cn(
+              "flex-1 rounded-t transition-all",
+              isToday
+                ? "bg-indigo-500 dark:bg-indigo-400"
+                : "bg-indigo-300/60 dark:bg-indigo-600/50",
+            )}
+            style={{ height: `${Math.max(heightPercent, 8)}%` }}
+            title={`${day.date}: ${day.count} messages`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// Yesterday summary bubble
+function YesterdayBubble({
+  summary,
+  className,
+}: {
+  summary?: YesterdaySummaryData;
+  className?: string;
+}) {
+  if (!summary) return null;
+
+  const hasActivity = summary.messageCount > 0;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl px-3 py-2 text-xs",
+        hasActivity
+          ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+          : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300",
+        className,
+      )}
+    >
+      {hasActivity ? (
+        <>
+          <span className="font-medium">
+            昨日聊了 {summary.messageCount} 条
+          </span>
+          {summary.lastMessagePreview && (
+            <p className="mt-1 text-[10px] opacity-80 line-clamp-2">
+              "{summary.lastMessagePreview}"
+            </p>
+          )}
+        </>
+      ) : (
+        <span className="font-medium">你昨天没有和我聊天哟 😢</span>
+      )}
+    </div>
+  );
+}
+
 // Stats display component with responsive layout
 function StatsDisplay({
   stats,
   gridW,
   gridH,
+  dailyActivity,
+  yesterdaySummary,
 }: {
   stats?: AgentStatsDisplay;
   gridW: number;
   gridH: number;
+  dailyActivity?: DailyActivityData[];
+  yesterdaySummary?: YesterdaySummaryData;
 }) {
   if (!stats) return null;
 
   const totalTokens = stats.inputTokens + stats.outputTokens;
-  const hasActivity = stats.messageCount > 0 || stats.topicCount > 0;
   const area = gridW * gridH;
 
-  // Compact 1x1: Only show message count as badge
+  // 1x1: Compact stats with all key metrics
   if (area === 1) {
-    if (!hasActivity) return null;
     return (
-      <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 dark:bg-black/60 px-2 py-1 rounded-full text-[10px] font-medium text-neutral-600 dark:text-neutral-300 shadow-sm">
-        <ChatBubbleLeftRightIcon className="w-3 h-3" />
-        {stats.messageCount}
-      </div>
-    );
-  }
-
-  // 2x1 horizontal: Compact inline stats
-  if (gridW >= 2 && gridH === 1) {
-    return (
-      <div className="flex items-center gap-3 px-3 py-2 text-[11px]">
-        <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
-          <ChatBubbleLeftRightIcon className="w-3.5 h-3.5" />
-          <span className="font-medium">{stats.messageCount}</span>
+      <div className="h-full flex flex-col justify-center px-3 py-2">
+        {/* Main stats row */}
+        <div className="flex items-center justify-between gap-2 text-[11px]">
+          <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
+            <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+            <span className="font-semibold">{stats.messageCount}</span>
+          </div>
+          <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
+            <DocumentTextIcon className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+            <span className="font-semibold">{stats.topicCount}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
-          <DocumentTextIcon className="w-3.5 h-3.5" />
-          <span className="font-medium">{stats.topicCount}</span>
-        </div>
+        {/* Token mini bar */}
         {totalTokens > 0 && (
-          <div className="ml-auto text-neutral-500 dark:text-neutral-500 font-mono">
-            {formatTokenCount(totalTokens)} tokens
+          <div className="mt-2">
+            <div className="h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden flex">
+              <div
+                className="h-full bg-blue-500/70 dark:bg-blue-400/70"
+                style={{ width: `${(stats.inputTokens / totalTokens) * 100}%` }}
+              />
+              <div
+                className="h-full bg-purple-500/70 dark:bg-purple-400/70"
+                style={{
+                  width: `${(stats.outputTokens / totalTokens) * 100}%`,
+                }}
+              />
+            </div>
+            <div className="text-center text-[9px] text-neutral-500 mt-1 font-mono">
+              {formatTokenCount(totalTokens)}
+            </div>
           </div>
         )}
       </div>
     );
   }
 
-  // 1x2 vertical: Stacked stats
-  if (gridW === 1 && gridH >= 2) {
+  // 2x1 horizontal or 1x2 vertical: Full stats with token bar (same layout as 2x2 but compact)
+  if (area === 2) {
+    const isHorizontal = gridW >= 2;
     return (
-      <div className="flex flex-col gap-2 p-3 text-[11px]">
-        <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-          <ChatBubbleLeftRightIcon className="w-4 h-4" />
-          <span className="font-medium">{stats.messageCount} messages</span>
+      <div
+        className={cn(
+          "h-full flex p-2.5",
+          isHorizontal
+            ? "flex-row items-center gap-4"
+            : "flex-col justify-center gap-2",
+        )}
+      >
+        {/* Stats */}
+        <div
+          className={cn(
+            "flex gap-3",
+            isHorizontal ? "items-center" : "items-center justify-between",
+          )}
+        >
+          <div className="flex items-center gap-1.5">
+            <ChatBubbleLeftRightIcon className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+            <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+              {stats.messageCount}
+            </span>
+            <span className="text-[10px] text-neutral-500">msgs</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <DocumentTextIcon className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+            <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+              {stats.topicCount}
+            </span>
+            <span className="text-[10px] text-neutral-500">topics</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-          <DocumentTextIcon className="w-4 h-4" />
-          <span className="font-medium">{stats.topicCount} topics</span>
-        </div>
+        {/* Token bar */}
         {totalTokens > 0 && (
-          <div className="text-neutral-500 dark:text-neutral-500 font-mono mt-1 text-[10px]">
-            {formatTokenCount(totalTokens)} tokens
+          <div className={cn(isHorizontal ? "flex-1 min-w-0" : "w-full")}>
+            <div className="h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden flex">
+              <div
+                className="h-full bg-blue-500 dark:bg-blue-400"
+                style={{ width: `${(stats.inputTokens / totalTokens) * 100}%` }}
+              />
+              <div
+                className="h-full bg-purple-500 dark:bg-purple-400"
+                style={{
+                  width: `${(stats.outputTokens / totalTokens) * 100}%`,
+                }}
+              />
+            </div>
+            <div
+              className={cn(
+                "text-[9px] text-neutral-500 mt-0.5",
+                isHorizontal ? "text-right font-mono" : "flex justify-between",
+              )}
+            >
+              {isHorizontal ? (
+                formatTokenCount(totalTokens)
+              ) : (
+                <>
+                  <span>↓{formatTokenCount(stats.inputTokens)}</span>
+                  <span>↑{formatTokenCount(stats.outputTokens)}</span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -110,7 +247,7 @@ function StatsDisplay({
   return (
     <div className="p-3 h-full flex flex-col">
       {/* Stats row */}
-      <div className="flex items-center justify-between gap-4 mb-3">
+      <div className="flex items-center justify-between gap-4 mb-2">
         <div className="flex items-center gap-1.5">
           <ChatBubbleLeftRightIcon className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
           <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
@@ -126,6 +263,21 @@ function StatsDisplay({
           <span className="text-[10px] text-neutral-500">topics</span>
         </div>
       </div>
+
+      {/* Yesterday summary bubble (for 2x2+) */}
+      {area >= 4 && (
+        <YesterdayBubble summary={yesterdaySummary} className="mb-2" />
+      )}
+
+      {/* Daily activity chart (for 2x2+) */}
+      {area >= 4 && dailyActivity && dailyActivity.length > 0 && (
+        <div className="mb-2">
+          <div className="text-[10px] text-neutral-500 mb-1">
+            7 Day Activity
+          </div>
+          <ActivityChart data={dailyActivity} />
+        </div>
+      )}
 
       {/* Token usage bar */}
       {totalTokens > 0 && (
@@ -156,78 +308,6 @@ function StatsDisplay({
           </div>
         </div>
       )}
-
-      {/* Activity visualization for larger sizes */}
-      {area >= 6 && hasActivity && (
-        <div className="mt-3 flex gap-1.5 items-end h-12 justify-around opacity-70">
-          {Array.from({ length: Math.min(stats.topicCount + 2, 8) }).map(
-            (_, i) => (
-              <div
-                key={i}
-                className="w-4 bg-indigo-400/60 dark:bg-indigo-500/50 rounded-t-sm"
-                style={{
-                  height: `${Math.min(30 + Math.random() * 70, 100)}%`,
-                  opacity: 0.4 + i * 0.08,
-                }}
-              />
-            ),
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function GridResizer({
-  currentW = 1,
-  currentH = 1,
-  onResize,
-}: {
-  currentW?: number;
-  currentH?: number;
-  onResize: (w: number, h: number) => void;
-}) {
-  const [hover, setHover] = useState<{ w: number; h: number } | null>(null);
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="text-sm text-neutral-600 dark:text-neutral-400">
-        Adjust the grid size of this agent widget.
-      </div>
-      <div className="flex justify-center">
-        <div
-          className="grid grid-cols-3 gap-2"
-          onMouseLeave={() => setHover(null)}
-        >
-          {Array.from({ length: 9 }).map((_, i) => {
-            const x = (i % 3) + 1;
-            const y = Math.floor(i / 3) + 1;
-            const isHovered = hover && x <= hover.w && y <= hover.h;
-            const isSelected = !hover && x <= currentW && y <= currentH;
-
-            return (
-              <div
-                key={i}
-                className={cn(
-                  "h-12 w-12 cursor-pointer rounded-md border-2 transition-all duration-200",
-                  isHovered || isSelected
-                    ? "border-indigo-500 bg-indigo-500/20 dark:border-indigo-400 dark:bg-indigo-400/20"
-                    : "border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800",
-                )}
-                onMouseEnter={() => setHover({ w: x, h: y })}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onResize(x, y);
-                }}
-              />
-            );
-          })}
-        </div>
-      </div>
-      <div className="text-center text-sm font-medium text-neutral-900 dark:text-neutral-100 h-5">
-        {hover ? `${hover.w} x ${hover.h}` : `${currentW} x ${currentH}`}
-      </div>
     </div>
   );
 }
@@ -241,27 +321,62 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
 
   const style = getSizeStyle(data.gridSize?.w, data.gridSize?.h, data.size);
 
+  const handleResize = (w: number, h: number) => {
+    const newSize = w * h > 3 ? "large" : w * h > 1 ? "medium" : "small";
+
+    // Update ReactFlow node data
+    updateNodeData(id, {
+      gridSize: { w, h },
+      size: newSize,
+    });
+
+    // Notify parent to persist the layout change
+    if (data.onLayoutChange) {
+      data.onLayoutChange(id, {
+        position: data.position,
+        gridSize: { w, h },
+        size: newSize,
+      });
+    }
+  };
+
+  const handleAvatarChange = (avatarUrl: string) => {
+    console.log("[AgentNode] handleAvatarChange called:", { id, avatarUrl });
+    // Update local node data
+    updateNodeData(id, { avatar: avatarUrl });
+
+    // Notify parent to persist avatar change
+    if (data.onAvatarChange) {
+      console.log("[AgentNode] Calling data.onAvatarChange");
+      data.onAvatarChange(id, avatarUrl);
+    } else {
+      console.warn("[AgentNode] data.onAvatarChange is not defined!");
+    }
+  };
+
+  const handleOpenAgentSettings = () => {
+    setIsSettingsOpen(false);
+    if (data.onOpenAgentSettings && data.agentId) {
+      data.onOpenAgentSettings(data.agentId);
+    }
+  };
+
   return (
     <>
-      <Modal
+      <SessionSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        title="Widget Settings"
-        maxWidth="max-w-xs"
-      >
-        <GridResizer
-          currentW={currentW}
-          currentH={currentH}
-          onResize={(w, h) => {
-            updateNodeData(id, {
-              gridSize: { w, h },
-              size: w * h > 3 ? "large" : w * h > 1 ? "medium" : "small",
-            });
-            // Optional: Close modal after selection if desired, or keep open
-            // setIsSettingsOpen(false);
-          }}
-        />
-      </Modal>
+        sessionId={data.sessionId || id}
+        agentId={data.agentId || id}
+        agentName={data.name}
+        currentAvatar={data.avatar}
+        currentGridSize={data.gridSize || { w: currentW, h: currentH }}
+        onAvatarChange={handleAvatarChange}
+        onGridSizeChange={handleResize}
+        onOpenAgentSettings={
+          data.onOpenAgentSettings ? handleOpenAgentSettings : undefined
+        }
+      />
 
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
@@ -321,7 +436,7 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
               draggable={false}
             />
             <div className="min-w-0">
-              <div className="font-bold text-lg leading-tight text-neutral-800 dark:text-neutral-100 truncate">
+              <div className="font-bold text-base leading-tight text-neutral-800 dark:text-neutral-100 truncate">
                 {data.name}
               </div>
               <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium truncate">
@@ -345,6 +460,8 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
               stats={data.stats}
               gridW={currentW}
               gridH={currentH}
+              dailyActivity={data.dailyActivity}
+              yesterdaySummary={data.yesterdaySummary}
             />
           </div>
         </div>

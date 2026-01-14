@@ -10,6 +10,7 @@ import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
+import EditAgentModal from "@/components/modals/EditAgentModal";
 import { useXyzen } from "@/store";
 import type {
   AgentSpatialLayout,
@@ -39,6 +40,7 @@ import type {
 const agentToFlowNode = (
   agent: AgentWithLayout,
   stats?: AgentStatsAggregated,
+  sessionId?: string,
 ): AgentFlowNode => {
   const statsDisplay: AgentStatsDisplay | undefined = stats
     ? {
@@ -54,6 +56,8 @@ const agentToFlowNode = (
     type: "agent",
     position: agent.spatial_layout.position,
     data: {
+      agentId: agent.id,
+      sessionId: sessionId,
       name: agent.name,
       role: (agent.description?.split("\n")[0] || "Agent") as string,
       desc: agent.description || "",
@@ -71,13 +75,21 @@ const agentToFlowNode = (
 };
 
 function InnerWorkspace() {
-  const { agents, fetchAgents, updateAgentLayout, agentStats } = useXyzen();
+  const {
+    agents,
+    fetchAgents,
+    updateAgentLayout,
+    updateAgentAvatar,
+    agentStats,
+    sessionIdByAgentId,
+  } = useXyzen();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AgentFlowNode>([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
   const [focusedAgentId, setFocusedAgentId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [prevViewport, setPrevViewport] = useState<{
     x: number;
@@ -158,11 +170,12 @@ function InnerWorkspace() {
     if (agents.length > 0) {
       const flowNodes = agents.map((agent) => {
         const stats = agentStats[agent.id];
-        return agentToFlowNode(agent, stats);
+        const sessionId = sessionIdByAgentId[agent.id];
+        return agentToFlowNode(agent, stats, sessionId);
       });
       setNodes(flowNodes);
     }
-  }, [agents, agentStats, setNodes]);
+  }, [agents, agentStats, sessionIdByAgentId, setNodes]);
 
   useEffect(() => {
     if (didInitialFitViewRef.current) return;
@@ -252,6 +265,29 @@ function InnerWorkspace() {
     setPrevViewport(null);
   }, [prevViewport, setViewport]);
 
+  // Handle layout changes from AgentNode (e.g., resize)
+  const handleLayoutChange = useCallback(
+    (id: string, layout: AgentSpatialLayout) => {
+      scheduleSave(id, layout);
+    },
+    [scheduleSave],
+  );
+
+  // Handle avatar changes from AgentNode
+  const handleAvatarChange = useCallback(
+    (id: string, avatarUrl: string) => {
+      updateAgentAvatar(id, avatarUrl).catch((err) =>
+        console.error("Failed to update avatar:", err),
+      );
+    },
+    [updateAgentAvatar],
+  );
+
+  // Handle opening agent settings (EditAgentModal)
+  const handleOpenAgentSettings = useCallback((agentId: string) => {
+    setEditingAgentId(agentId);
+  }, []);
+
   // Inject handleFocus into node data
   const nodeTypes = useMemo(
     () => ({
@@ -267,10 +303,20 @@ function InnerWorkspace() {
       data: {
         ...n.data,
         onFocus: handleFocus,
+        onLayoutChange: handleLayoutChange,
+        onAvatarChange: handleAvatarChange,
+        onOpenAgentSettings: handleOpenAgentSettings,
         isFocused: n.id === focusedAgentId,
       },
     }));
-  }, [nodes, handleFocus, focusedAgentId]);
+  }, [
+    nodes,
+    handleFocus,
+    handleLayoutChange,
+    handleAvatarChange,
+    handleOpenAgentSettings,
+    focusedAgentId,
+  ]);
 
   const handleNodeDragStop = useCallback(
     (_: unknown, draggedNode: AgentFlowNode) => {
@@ -425,6 +471,17 @@ function InnerWorkspace() {
       <AddAgentModal
         isOpen={isAddModalOpen}
         onClose={() => setAddModalOpen(false)}
+      />
+
+      {/* Edit Agent Modal */}
+      <EditAgentModal
+        isOpen={!!editingAgentId}
+        onClose={() => setEditingAgentId(null)}
+        agent={
+          editingAgentId
+            ? (agents.find((a) => a.id === editingAgentId) ?? null)
+            : null
+        }
       />
     </div>
   );

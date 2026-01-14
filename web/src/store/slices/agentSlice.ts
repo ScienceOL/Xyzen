@@ -42,6 +42,7 @@ export interface AgentSlice {
     agentId: string,
     layout: AgentSpatialLayout,
   ) => Promise<void>;
+  updateAgentAvatar: (agentId: string, avatarUrl: string) => Promise<void>;
   updateAgentProvider: (
     agentId: string,
     providerId: string | null,
@@ -135,10 +136,11 @@ export const createAgentSlice: StateCreator<
 
       const rawAgents: Agent[] = await response.json();
 
-      // Fetch sessions for each agent to get spatial_layout
-      // Build session mapping and extract layouts
+      // Fetch sessions for each agent to get spatial_layout and avatar
+      // Build session mapping and extract layouts/avatars
       const sessionMap: Record<string, string> = {};
       const layoutMap: Record<string, AgentSpatialLayout> = {};
+      const avatarMap: Record<string, string> = {};
 
       await Promise.all(
         rawAgents.map(async (agent) => {
@@ -148,6 +150,9 @@ export const createAgentSlice: StateCreator<
             if (session.spatial_layout) {
               layoutMap[agent.id] = session.spatial_layout;
             }
+            if (session.avatar) {
+              avatarMap[agent.id] = session.avatar;
+            }
           } catch {
             // Session doesn't exist yet - will be created when user starts chat
             console.debug(`No session found for agent ${agent.id}`);
@@ -155,11 +160,12 @@ export const createAgentSlice: StateCreator<
         }),
       );
 
-      // Enrich agents with layout from session or default
+      // Enrich agents with layout and avatar from session or default
       const agents: AgentWithLayout[] = rawAgents.map((agent, index) => ({
         ...agent,
         spatial_layout:
           layoutMap[agent.id] ?? defaultSpatialLayoutForIndex(index),
+        avatar: avatarMap[agent.id] ?? agent.avatar,
       }));
 
       set({
@@ -370,6 +376,81 @@ export const createAgentSlice: StateCreator<
       });
     } catch (error) {
       console.error("Failed to update agent layout:", error);
+      throw error;
+    }
+  },
+
+  updateAgentAvatar: async (agentId, avatarUrl) => {
+    console.log("[agentSlice] updateAgentAvatar called:", {
+      agentId,
+      avatarUrl,
+    });
+    try {
+      // Get the session ID for this agent
+      let sessionId = get().sessionIdByAgentId[agentId];
+      console.log(
+        "[agentSlice] Current sessionIdByAgentId:",
+        get().sessionIdByAgentId,
+      );
+      console.log("[agentSlice] Found sessionId:", sessionId);
+
+      if (!sessionId) {
+        // Try to fetch the session if not cached
+        try {
+          console.log("[agentSlice] Fetching session for agent:", agentId);
+          const session = await sessionService.getSessionByAgent(agentId);
+          sessionId = session.id;
+          console.log("[agentSlice] Got session from API:", session.id);
+          // Cache it
+          set((state) => {
+            state.sessionIdByAgentId[agentId] = sessionId;
+          });
+        } catch (fetchError) {
+          // Session doesn't exist - create one first
+          console.warn(
+            `[agentSlice] No session found for agent ${agentId}, creating one...`,
+            fetchError,
+          );
+          const agent = get().agents.find((a) => a.id === agentId);
+          const newSession = await sessionService.createSession({
+            name: agent?.name ?? "Agent Session",
+            agent_id: agentId,
+            avatar: avatarUrl,
+          });
+          console.log("[agentSlice] Created new session:", newSession.id);
+          sessionId = newSession.id;
+          set((state) => {
+            state.sessionIdByAgentId[agentId] = sessionId;
+          });
+
+          // Update local state
+          set((state) => {
+            const agentData = state.agents.find((a) => a.id === agentId);
+            if (agentData) {
+              agentData.avatar = avatarUrl;
+            }
+          });
+          return;
+        }
+      }
+
+      // Update the session's avatar via Session API
+      console.log("[agentSlice] Updating session avatar:", {
+        sessionId,
+        avatarUrl,
+      });
+      await sessionService.updateSession(sessionId, { avatar: avatarUrl });
+      console.log("[agentSlice] Session avatar updated successfully");
+
+      // Update local state optimistically
+      set((state) => {
+        const agent = state.agents.find((a) => a.id === agentId);
+        if (agent) {
+          agent.avatar = avatarUrl;
+        }
+      });
+    } catch (error) {
+      console.error("[agentSlice] Failed to update agent avatar:", error);
       throw error;
     }
   },

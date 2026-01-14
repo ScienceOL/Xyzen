@@ -11,6 +11,7 @@ fully support all aggregation patterns, but runtime behavior is correct.
 """
 
 import logging
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import and_, func
@@ -19,7 +20,13 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.consume import ConsumeRecord
 from app.models.message import Message
-from app.models.session_stats import AgentStatsAggregated, SessionStatsRead
+from app.models.session_stats import (
+    AgentStatsAggregated,
+    DailyMessageCount,
+    DailyStatsResponse,
+    SessionStatsRead,
+    YesterdaySummary,
+)
 from app.models.sessions import Session
 from app.models.topic import Topic
 
@@ -215,3 +222,124 @@ class SessionStatsRepository:
                 )
 
         return result
+
+    async def get_daily_stats_for_agent(self, agent_id: UUID, user_id: str, days: int = 7) -> DailyStatsResponse:
+        """
+        Get daily message counts for an agent's sessions over the last N days.
+
+        Returns a list of (date, message_count) for activity visualization.
+        """
+        # Calculate date range
+        today = datetime.now(timezone.utc).date()
+        start_date = today - timedelta(days=days - 1)
+        start_datetime = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+
+        # Query messages grouped by date
+        daily_stmt = (
+            select(
+                func.date(Message.created_at).label("day"),
+                func.count(Message.id).label("message_count"),  # type: ignore[arg-type]
+            )
+            .select_from(Message)
+            .join(Topic, col(Message.topic_id) == col(Topic.id))
+            .join(Session, col(Topic.session_id) == col(Session.id))
+            .where(
+                and_(
+                    col(Session.agent_id) == agent_id,
+                    col(Session.user_id) == user_id,
+                    col(Message.created_at) >= start_datetime,
+                )
+            )
+            .group_by(func.date(Message.created_at))
+            .order_by(func.date(Message.created_at))
+        )
+        daily_result = await self.db.exec(daily_stmt)
+        daily_rows = list(daily_result.all())
+
+        # Build a map of date -> count
+        count_by_date: dict[date, int] = {}
+        for row in daily_rows:
+            day = row[0]  # type: ignore
+            count = int(row[1])  # type: ignore
+            if isinstance(day, str):
+                day = datetime.strptime(day, "%Y-%m-%d").date()
+            count_by_date[day] = count
+
+        # Fill in all days (including zeros)
+        daily_counts: list[DailyMessageCount] = []
+        for i in range(days):
+            day = start_date + timedelta(days=i)
+            daily_counts.append(
+                DailyMessageCount(
+                    date=day,
+                    message_count=count_by_date.get(day, 0),
+                )
+            )
+
+        return DailyStatsResponse(
+            agent_id=agent_id,
+            daily_counts=daily_counts,
+        )
+
+    async def get_yesterday_summary_for_agent(self, agent_id: UUID, user_id: str) -> YesterdaySummary:
+        """
+        Get yesterday's activity summary for an agent's sessions.
+
+        Returns the message count and optionally the last message content.
+        """
+        # Calculate yesterday's date range
+        today = datetime.now(timezone.utc).date()
+        yesterday = today - timedelta(days=1)
+        yesterday_start = datetime.combine(yesterday, datetime.min.time()).replace(tzinfo=timezone.utc)
+        yesterday_end = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+
+        # Count messages from yesterday
+        count_stmt = (
+            select(func.count(Message.id))  # type: ignore[arg-type]
+            .select_from(Message)
+            .join(Topic, col(Message.topic_id) == col(Topic.id))
+            .join(Session, col(Topic.session_id) == col(Session.id))
+            .where(
+                and_(
+                    col(Session.agent_id) == agent_id,
+                    col(Session.user_id) == user_id,
+                    col(Message.created_at) >= yesterday_start,
+                    col(Message.created_at) < yesterday_end,
+                )
+            )
+        )
+        count_result = await self.db.exec(count_stmt)
+        message_count = count_result.one_or_none() or 0
+
+        # Get the last assistant message from yesterday (if any)
+        last_message_stmt = (
+            select(Message.content)
+            .select_from(Message)
+            .join(Topic, col(Message.topic_id) == col(Topic.id))
+            .join(Session, col(Topic.session_id) == col(Session.id))
+            .where(
+                and_(
+                    col(Session.agent_id) == agent_id,
+                    col(Session.user_id) == user_id,
+                    col(Message.created_at) >= yesterday_start,
+                    col(Message.created_at) < yesterday_end,
+                    col(Message.role) == "assistant",
+                )
+            )
+            .order_by(col(Message.created_at).desc())
+            .limit(1)
+        )
+        last_result = await self.db.exec(last_message_stmt)
+        last_message = last_result.one_or_none()
+
+        # Truncate long messages for preview
+        last_content = None
+        if last_message:
+            content = str(last_message)
+            last_content = content[:200] + "..." if len(content) > 200 else content
+
+        return YesterdaySummary(
+            agent_id=agent_id,
+            message_count=int(message_count),
+            last_message_content=last_content,
+        )

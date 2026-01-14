@@ -25,6 +25,32 @@ export interface AgentStatsAggregated {
 }
 
 /**
+ * Daily message count for activity visualization.
+ */
+export interface DailyMessageCount {
+  date: string; // ISO date string (YYYY-MM-DD)
+  message_count: number;
+}
+
+/**
+ * Daily activity stats for an agent (last N days).
+ */
+export interface DailyStatsResponse {
+  agent_id: string;
+  daily_counts: DailyMessageCount[];
+}
+
+/**
+ * Yesterday's activity summary for a session/agent.
+ */
+export interface YesterdaySummary {
+  agent_id: string;
+  message_count: number;
+  last_message_content?: string | null;
+  summary?: string | null;
+}
+
+/**
  * Calculate the visual scale multiplier based on message count.
  * Uses a logarithmic curve for diminishing returns:
  * - Each message adds 1/1000 growth initially

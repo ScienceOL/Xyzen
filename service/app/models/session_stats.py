@@ -9,6 +9,7 @@ This is NOT a database table - stats are computed by aggregating data from:
 The schemas here are used for API responses only.
 """
 
+from datetime import date
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -46,3 +47,26 @@ class UserStatsAggregated(BaseModel):
     message_count: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+
+
+class DailyMessageCount(BaseModel):
+    """Message count for a specific day."""
+
+    date: date
+    message_count: int
+
+
+class DailyStatsResponse(BaseModel):
+    """Daily activity stats for a session/agent (last N days)."""
+
+    agent_id: UUID
+    daily_counts: list[DailyMessageCount]
+
+
+class YesterdaySummary(BaseModel):
+    """Summary of yesterday's activity for a session."""
+
+    agent_id: UUID
+    message_count: int
+    last_message_content: str | None = None
+    summary: str | None = None  # Optional AI-generated summary

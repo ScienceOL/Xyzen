@@ -25,7 +25,7 @@ from app.core.system_agent import SystemAgentManager
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
-from app.models.session_stats import AgentStatsAggregated
+from app.models.session_stats import AgentStatsAggregated, DailyStatsResponse, YesterdaySummary
 from app.repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
 from app.repos.agent_marketplace import AgentMarketplaceRepository
 from app.repos.session import SessionRepository
@@ -230,6 +230,78 @@ async def get_all_agent_stats(
     """
     stats_repo = SessionStatsRepository(db)
     return await stats_repo.get_all_agent_stats_for_user(user)
+
+
+@router.get("/stats/{agent_id}/daily", response_model=DailyStatsResponse)
+async def get_agent_daily_stats(
+    agent_id: str,
+    days: int = 7,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> DailyStatsResponse:
+    """
+    Get daily message counts for an agent's sessions over the last N days.
+
+    Useful for activity visualization charts. Returns counts for each day,
+    including days with zero activity.
+
+    Args:
+        agent_id: Agent identifier (UUID string or builtin agent ID)
+        days: Number of days to include (default: 7)
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        DailyStatsResponse: Daily message counts for the agent
+    """
+    from app.models.sessions import builtin_agent_id_to_uuid
+
+    # Resolve agent ID to UUID
+    if agent_id.startswith("builtin_"):
+        agent_uuid = builtin_agent_id_to_uuid(agent_id)
+    else:
+        try:
+            agent_uuid = UUID(agent_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid agent ID format: '{agent_id}'")
+
+    stats_repo = SessionStatsRepository(db)
+    return await stats_repo.get_daily_stats_for_agent(agent_uuid, user, days)
+
+
+@router.get("/stats/{agent_id}/yesterday", response_model=YesterdaySummary)
+async def get_agent_yesterday_summary(
+    agent_id: str,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> YesterdaySummary:
+    """
+    Get yesterday's activity summary for an agent's sessions.
+
+    Returns the message count and optionally a preview of the last message.
+    Useful for displaying "You had X conversations yesterday" type summaries.
+
+    Args:
+        agent_id: Agent identifier (UUID string or builtin agent ID)
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        YesterdaySummary: Yesterday's activity summary
+    """
+    from app.models.sessions import builtin_agent_id_to_uuid
+
+    # Resolve agent ID to UUID
+    if agent_id.startswith("builtin_"):
+        agent_uuid = builtin_agent_id_to_uuid(agent_id)
+    else:
+        try:
+            agent_uuid = UUID(agent_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid agent ID format: '{agent_id}'")
+
+    stats_repo = SessionStatsRepository(db)
+    return await stats_repo.get_yesterday_summary_for_agent(agent_uuid, user)
 
 
 @router.get("/system/chat", response_model=AgentReadWithDetails)

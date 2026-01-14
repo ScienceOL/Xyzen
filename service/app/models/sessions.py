@@ -79,6 +79,11 @@ class SessionBase(SQLModel):
     google_search_enabled: bool = Field(
         default=False, description="Enable built-in web search for supported models (e.g., Gemini)"
     )
+    avatar: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Session-specific avatar URL or DiceBear seed (e.g., 'dicebear:adventurer:seed123' or full URL)",
+    )
     spatial_layout: dict[str, Any] | None = Field(
         default=None,
         sa_column=Column(JSON, nullable=True),
@@ -107,6 +112,7 @@ class SessionCreate(SQLModel):
     model: str | None = None
     model_tier: ModelTier | None = None
     google_search_enabled: bool = False
+    avatar: str | None = None
     spatial_layout: dict[str, Any] | None = None
 
 
@@ -131,4 +137,5 @@ class SessionUpdate(SQLModel):
     model: str | None = None
     model_tier: ModelTier | None = None
     google_search_enabled: bool | None = None
+    avatar: str | None = None
     spatial_layout: dict[str, Any] | None = None
