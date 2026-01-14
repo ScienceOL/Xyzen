@@ -1,6 +1,5 @@
 import {
   Background,
-  Node,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
@@ -10,83 +9,75 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import AddAgentModal from "@/components/modals/AddAgentModal";
+import { useXyzen } from "@/store";
+import type {
+  AgentSpatialLayout,
+  AgentStatsAggregated,
+  AgentWithLayout,
+} from "@/types/agents";
 import { AnimatePresence } from "framer-motion";
+import { AddAgentButton } from "./spatial/AddAgentButton";
 import { AgentNode } from "./spatial/AgentNode";
 import { FocusedView } from "./spatial/FocusedView";
-import type { AgentData, FlowAgentNodeData } from "./spatial/types";
+import {
+  SaveStatusIndicator,
+  type SaveStatus,
+} from "./spatial/SaveStatusIndicator";
+import type {
+  AgentData,
+  AgentFlowNode,
+  AgentStatsDisplay,
+  FlowAgentNodeData,
+} from "./spatial/types";
 
-type AgentFlowNode = Node<FlowAgentNodeData, "agent">;
+/**
+ * Convert AgentWithLayout to AgentFlowNode for ReactFlow rendering.
+ * Role defaults to first line of description for UI display.
+ * stats is derived from agentStats for visualization.
+ */
+const agentToFlowNode = (
+  agent: AgentWithLayout,
+  stats?: AgentStatsAggregated,
+): AgentFlowNode => {
+  const statsDisplay: AgentStatsDisplay | undefined = stats
+    ? {
+        messageCount: stats.message_count,
+        topicCount: stats.topic_count,
+        inputTokens: stats.input_tokens,
+        outputTokens: stats.output_tokens,
+      }
+    : undefined;
 
-// --- Mock Data ---
-const INITIAL_AGENTS: AgentData[] = [
-  {
-    name: "Market Analyst Pro",
-    role: "Market Analyst",
-    desc: "Expert in trend forecasting",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Market",
-    status: "busy",
-    size: "large",
-  },
-  {
-    name: "Creative Writer",
-    role: "Copywriter",
-    desc: "Marketing copy & storytelling",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Creative",
-    status: "idle",
-    size: "medium",
-  },
-  {
-    name: "Global Search",
-    role: "Researcher",
-    desc: "Real-time info retrieval",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Search",
-    status: "idle",
-    size: "small",
-  },
-  {
-    name: "Code Auditor",
-    role: "Security",
-    desc: "Python/JS security checks",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Code",
-    status: "idle",
-    size: "medium",
-  },
-];
-
-const noopFocus: FlowAgentNodeData["onFocus"] = () => {};
-
-const INITIAL_NODES: AgentFlowNode[] = [
-  {
-    id: "1",
+  return {
+    id: agent.id,
     type: "agent",
-    position: { x: 0, y: 0 },
-    data: { ...INITIAL_AGENTS[0], onFocus: noopFocus },
-  },
-  {
-    id: "2",
-    type: "agent",
-    position: { x: 600, y: -200 },
-    data: { ...INITIAL_AGENTS[1], onFocus: noopFocus },
-  },
-  {
-    id: "3",
-    type: "agent",
-    position: { x: -300, y: 400 },
-    data: { ...INITIAL_AGENTS[2], onFocus: noopFocus },
-  },
-  {
-    id: "4",
-    type: "agent",
-    position: { x: 700, y: 500 },
-    data: { ...INITIAL_AGENTS[3], onFocus: noopFocus },
-  },
-];
+    position: agent.spatial_layout.position,
+    data: {
+      name: agent.name,
+      role: (agent.description?.split("\n")[0] || "Agent") as string,
+      desc: agent.description || "",
+      avatar:
+        agent.avatar ||
+        "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+      status: "idle",
+      size: agent.spatial_layout.size || "medium",
+      gridSize: agent.spatial_layout.gridSize,
+      position: agent.spatial_layout.position,
+      stats: statsDisplay,
+      onFocus: () => {},
+    } as FlowAgentNodeData,
+  };
+};
 
 function InnerWorkspace() {
-  const [nodes, setNodes, onNodesChange] =
-    useNodesState<AgentFlowNode>(INITIAL_NODES);
+  const { agents, fetchAgents, updateAgentLayout, agentStats } = useXyzen();
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<AgentFlowNode>([]);
   const [edges, , onEdgesChange] = useEdgesState([]);
   const [focusedAgentId, setFocusedAgentId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [isAddModalOpen, setAddModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [prevViewport, setPrevViewport] = useState<{
     x: number;
@@ -98,9 +89,85 @@ function InnerWorkspace() {
   const cancelInitialFitRef = useRef(false);
   const initialFitAttemptsRef = useRef(0);
 
+  // Debounce save timers
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSavesRef = useRef<Map<string, AgentSpatialLayout>>(new Map());
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch agents on mount
+  useEffect(() => {
+    fetchAgents().catch((err) => console.error("Failed to fetch agents:", err));
+  }, [fetchAgents]);
+
+  // Debounced save function
+  const scheduleSave = useCallback(
+    (agentId: string, layout: AgentSpatialLayout) => {
+      pendingSavesRef.current.set(agentId, layout);
+
+      // Clear existing timer
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+
+      // Set saving status
+      setSaveStatus("saving");
+
+      // Debounce: save after 800ms of no changes
+      saveTimerRef.current = setTimeout(async () => {
+        const saves = Array.from(pendingSavesRef.current.entries());
+        pendingSavesRef.current.clear();
+
+        try {
+          // Save all pending layouts
+          await Promise.all(
+            saves.map(([id, layout]) => updateAgentLayout(id, layout)),
+          );
+
+          setSaveStatus("saved");
+
+          // Clear saved status after 2 seconds
+          if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+          savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+        } catch (error) {
+          console.error("Failed to save layouts:", error);
+          setSaveStatus("failed");
+        }
+      }, 800);
+    },
+    [updateAgentLayout],
+  );
+
+  // Retry failed saves
+  const handleRetrySave = useCallback(() => {
+    const saves = Array.from(pendingSavesRef.current.entries());
+    if (saves.length > 0) {
+      setSaveStatus("saving");
+      Promise.all(saves.map(([id, layout]) => updateAgentLayout(id, layout)))
+        .then(() => {
+          pendingSavesRef.current.clear();
+          setSaveStatus("saved");
+          if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+          savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+        })
+        .catch(() => setSaveStatus("failed"));
+    }
+  }, [updateAgentLayout]);
+
+  // Update nodes whenever agents or stats change
+  useEffect(() => {
+    if (agents.length > 0) {
+      const flowNodes = agents.map((agent) => {
+        const stats = agentStats[agent.id];
+        return agentToFlowNode(agent, stats);
+      });
+      setNodes(flowNodes);
+    }
+  }, [agents, agentStats, setNodes]);
+
   useEffect(() => {
     if (didInitialFitViewRef.current) return;
     if (cancelInitialFitRef.current) return;
+    if (nodes.length === 0) return; // Don't fit empty viewport
 
     let cancelled = false;
     initialFitAttemptsRef.current = 0;
@@ -231,7 +298,11 @@ function InnerWorkspace() {
       };
 
       setNodes((prev) => {
-        const next = prev.map((n) => ({ ...n }));
+        const next = prev.map((n) => ({
+          ...n,
+          position: { ...n.position },
+          data: { ...(n.data as FlowAgentNodeData) },
+        }));
         const moving = next.find((n) => n.id === draggedNode.id);
         if (!moving) return prev;
 
@@ -287,10 +358,21 @@ function InnerWorkspace() {
           if (!movedThisIter) break;
         }
 
+        // Keep persistable position in sync for future storage.
+        moving.data.position = { ...moving.position };
+
+        // Schedule auto-save for this agent
+        const agentData = moving.data as FlowAgentNodeData;
+        scheduleSave(moving.id, {
+          position: moving.position,
+          gridSize: agentData.gridSize,
+          size: agentData.size,
+        });
+
         return next;
       });
     },
-    [getNode, setNodes],
+    [getNode, setNodes, scheduleSave],
   );
 
   const focusedAgent = useMemo(() => {
@@ -322,6 +404,12 @@ function InnerWorkspace() {
         <Background gap={40} size={1} color="#ccc" />
       </ReactFlow>
 
+      {/* Save Status Indicator */}
+      <SaveStatusIndicator status={saveStatus} onRetry={handleRetrySave} />
+
+      {/* Add Agent Button */}
+      <AddAgentButton onClick={() => setAddModalOpen(true)} />
+
       <AnimatePresence>
         {focusedAgent && (
           <FocusedView
@@ -332,6 +420,12 @@ function InnerWorkspace() {
           />
         )}
       </AnimatePresence>
+
+      {/* Add Agent Modal */}
+      <AddAgentModal
+        isOpen={isAddModalOpen}
+        onClose={() => setAddModalOpen(false)}
+      />
     </div>
   );
 }

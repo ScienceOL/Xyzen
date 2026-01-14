@@ -34,6 +34,7 @@ from .message import (
 )
 from .provider import Provider
 from .redemption import RedemptionCode, RedemptionHistory, UserWallet
+from .session_stats import AgentStatsAggregated, SessionStatsRead, UserStatsAggregated
 from .sessions import Session, SessionReadWithTopics
 from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
@@ -87,6 +88,9 @@ __all__ = [
     "MessageReadWithFilesAndCitations",
     "Provider",
     "Session",
+    "AgentStatsAggregated",
+    "SessionStatsRead",
+    "UserStatsAggregated",
     "SessionReadWithTopics",
     "Tool",
     "ToolVersion",

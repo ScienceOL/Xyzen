@@ -9,6 +9,8 @@ This module provides the following endpoints for agent management:
 - DELETE /{agent_id}: Delete an agent.
 - GET /system/chat: Get the user's default chat agent.
 - GET /system/all: Get all user default agents.
+- GET /stats: Get aggregated stats for all agents (from sessions/messages).
+- GET /{agent_id}/stats: Get aggregated stats for a specific agent.
 """
 
 from uuid import UUID
@@ -16,16 +18,18 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.agents.types import SystemAgentInfo
 from app.common.code import ErrCodeError, handle_auth_error
 from app.core.auth import AuthorizationService, get_auth_service
 from app.core.system_agent import SystemAgentManager
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
-from app.agents.types import SystemAgentInfo
 from app.models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
+from app.models.session_stats import AgentStatsAggregated
 from app.repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
 from app.repos.agent_marketplace import AgentMarketplaceRepository
 from app.repos.session import SessionRepository
+from app.repos.session_stats import SessionStatsRepository
 
 router = APIRouter(tags=["agents"])
 
@@ -206,6 +210,116 @@ async def create_agent_from_template(
     return AgentRead(**created_agent.model_dump())
 
 
+@router.get("/stats", response_model=dict[str, AgentStatsAggregated])
+async def get_all_agent_stats(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, AgentStatsAggregated]:
+    """
+    Get aggregated stats for all agents the user has interacted with.
+
+    Stats are computed by aggregating data from sessions, topics, and messages.
+    Returns a dictionary mapping agent_id to aggregated stats.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        dict[str, AgentStatsAggregated]: Dictionary of agent_id -> aggregated stats
+    """
+    stats_repo = SessionStatsRepository(db)
+    return await stats_repo.get_all_agent_stats_for_user(user)
+
+
+@router.get("/system/chat", response_model=AgentReadWithDetails)
+async def get_system_chat_agent(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AgentReadWithDetails:
+    """
+    Get the user's default chat agent.
+
+    Returns the user's personal copy of the "随便聊聊" agent with MCP server details.
+    If it doesn't exist, it will be initialized.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        AgentReadWithDetails: The user's chat agent with MCP server details
+
+    Raises:
+        HTTPException: 404 if chat agent not found
+    """
+    agent_repo = AgentRepository(db)
+    agents = await agent_repo.get_agents_by_user(user)
+
+    chat_agent = next((a for a in agents if a.tags and "default_chat" in a.tags), None)
+
+    if not chat_agent:
+        system_manager = SystemAgentManager(db)
+        new_agents = await system_manager.ensure_user_default_agents(user)
+        await db.commit()
+        chat_agent = next((a for a in new_agents if a.tags and "default_chat" in a.tags), None)
+
+    if not chat_agent:
+        raise HTTPException(status_code=404, detail="Chat agent not found")
+
+    # Get MCP servers for the agent
+    mcp_servers = await agent_repo.get_agent_mcp_servers(chat_agent.id)
+
+    # Create agent dict with MCP servers
+    agent_dict = chat_agent.model_dump()
+    agent_dict["mcp_servers"] = mcp_servers
+    return AgentReadWithDetails(**agent_dict)
+
+
+@router.get("/system/all", response_model=list[AgentReadWithDetails])
+async def get_all_system_agents(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> list[AgentReadWithDetails]:
+    """
+    Get all default agents for the user.
+
+    Returns the user's personal copies of system agents with MCP server details.
+    These are the agents tagged with 'default_'.
+
+    Args:
+        user: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        list[AgentReadWithDetails]: list of all user default agents with MCP server details
+    """
+    agent_repo = AgentRepository(db)
+    agents = await agent_repo.get_agents_by_user(user)
+
+    # Filter for default agents
+    default_agents = [a for a in agents if a.tags and any(t.startswith("default_") for t in a.tags)]
+
+    if not default_agents:
+        system_manager = SystemAgentManager(db)
+        default_agents = await system_manager.ensure_user_default_agents(user)
+        await db.commit()
+
+    # Load MCP servers for each system agent
+    agents_with_details = []
+
+    for agent in default_agents:
+        # Get MCP servers for this agent
+        mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
+
+        # Create agent dict with MCP servers
+        agent_dict = agent.model_dump()
+        agent_dict["mcp_servers"] = mcp_servers
+        agents_with_details.append(AgentReadWithDetails(**agent_dict))
+
+    return agents_with_details
+
+
 @router.get("/{agent_id}", response_model=AgentReadWithDetails)
 async def get_agent(
     agent_id: UUID,
@@ -360,89 +474,34 @@ async def delete_agent(
         raise handle_auth_error(e)
 
 
-@router.get("/system/chat", response_model=AgentReadWithDetails)
-async def get_system_chat_agent(
+@router.get("/{agent_id}/stats", response_model=AgentStatsAggregated)
+async def get_agent_stats(
+    agent_id: UUID,
     user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> AgentReadWithDetails:
+) -> AgentStatsAggregated:
     """
-    Get the user's default chat agent.
+    Get aggregated stats for a specific agent.
 
-    Returns the user's personal copy of the "随便聊聊" agent with MCP server details.
-    If it doesn't exist, it will be initialized.
+    Stats are computed by aggregating data from sessions, topics, and messages
+    across all sessions the user has with this agent.
 
     Args:
+        agent_id: The UUID of the agent
         user: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
     Returns:
-        AgentReadWithDetails: The user's chat agent with MCP server details
+        AgentStatsAggregated: The agent's aggregated usage statistics
 
     Raises:
-        HTTPException: 404 if chat agent not found
+        HTTPException: 404 if agent not found or not owned by user
     """
     agent_repo = AgentRepository(db)
-    agents = await agent_repo.get_agents_by_user(user)
+    agent = await agent_repo.get_agent_by_id(agent_id)
 
-    chat_agent = next((a for a in agents if a.tags and "default_chat" in a.tags), None)
+    if not agent or agent.user_id != user:
+        raise HTTPException(status_code=404, detail="Agent not found")
 
-    if not chat_agent:
-        system_manager = SystemAgentManager(db)
-        new_agents = await system_manager.ensure_user_default_agents(user)
-        await db.commit()
-        chat_agent = next((a for a in new_agents if a.tags and "default_chat" in a.tags), None)
-
-    if not chat_agent:
-        raise HTTPException(status_code=404, detail="Chat agent not found")
-
-    # Get MCP servers for the agent
-    mcp_servers = await agent_repo.get_agent_mcp_servers(chat_agent.id)
-
-    # Create agent dict with MCP servers
-    agent_dict = chat_agent.model_dump()
-    agent_dict["mcp_servers"] = mcp_servers
-    return AgentReadWithDetails(**agent_dict)
-
-
-@router.get("/system/all", response_model=list[AgentReadWithDetails])
-async def get_all_system_agents(
-    user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-) -> list[AgentReadWithDetails]:
-    """
-    Get all default agents for the user.
-
-    Returns the user's personal copies of system agents with MCP server details.
-    These are the agents tagged with 'default_'.
-
-    Args:
-        user: Authenticated user ID (injected by dependency)
-        db: Database session (injected by dependency)
-
-    Returns:
-        list[AgentReadWithDetails]: list of all user default agents with MCP server details
-    """
-    agent_repo = AgentRepository(db)
-    agents = await agent_repo.get_agents_by_user(user)
-
-    # Filter for default agents
-    default_agents = [a for a in agents if a.tags and any(t.startswith("default_") for t in a.tags)]
-
-    if not default_agents:
-        system_manager = SystemAgentManager(db)
-        default_agents = await system_manager.ensure_user_default_agents(user)
-        await db.commit()
-
-    # Load MCP servers for each system agent
-    agents_with_details = []
-
-    for agent in default_agents:
-        # Get MCP servers for this agent
-        mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
-
-        # Create agent dict with MCP servers
-        agent_dict = agent.model_dump()
-        agent_dict["mcp_servers"] = mcp_servers
-        agents_with_details.append(AgentReadWithDetails(**agent_dict))
-
-    return agents_with_details
+    stats_repo = SessionStatsRepository(db)
+    return await stats_repo.get_agent_stats(agent_id, user)

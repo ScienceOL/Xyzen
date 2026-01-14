@@ -33,6 +33,7 @@ class SessionService:
             agent_id=agent_uuid,
             provider_id=session_data.provider_id,
             model=session_data.model,
+            spatial_layout=session_data.spatial_layout,
             google_search_enabled=session_data.google_search_enabled,
         )
 

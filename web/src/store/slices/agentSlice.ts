@@ -1,11 +1,26 @@
 import { authService } from "@/service/authService";
-import type { Agent, SystemAgentTemplate } from "@/types/agents";
+import { sessionService } from "@/service/sessionService";
+import type {
+  Agent,
+  AgentSpatialLayout,
+  AgentStatsAggregated,
+  AgentWithLayout,
+  SystemAgentTemplate,
+} from "@/types/agents";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
 
 export interface AgentSlice {
-  agents: Agent[];
+  agents: AgentWithLayout[];
   agentsLoading: boolean;
+
+  // Map from agentId -> sessionId for layout persistence
+  // Layout is stored in Session, not Agent
+  sessionIdByAgentId: Record<string, string>;
+
+  // Agent stats for growth visualization (aggregated from sessions/messages)
+  agentStats: Record<string, AgentStatsAggregated>;
+  agentStatsLoading: boolean;
 
   // System agent templates
   systemAgentTemplates: SystemAgentTemplate[];
@@ -13,6 +28,8 @@ export interface AgentSlice {
   fetchSystemAgentTemplates: () => Promise<void>;
 
   fetchAgents: () => Promise<void>;
+  fetchAgentStats: () => Promise<void>;
+  incrementLocalAgentMessageCount: (agentId: string) => void;
 
   isCreatingAgent: boolean;
   createAgent: (agent: Omit<Agent, "id">) => Promise<void>;
@@ -20,13 +37,31 @@ export interface AgentSlice {
     systemKey: string,
     customName?: string,
   ) => Promise<void>;
-  updateAgent: (agent: Agent) => Promise<void>;
+  updateAgent: (agent: Agent | AgentWithLayout) => Promise<void>;
+  updateAgentLayout: (
+    agentId: string,
+    layout: AgentSpatialLayout,
+  ) => Promise<void>;
   updateAgentProvider: (
     agentId: string,
     providerId: string | null,
   ) => Promise<void>;
   deleteAgent: (id: string) => Promise<void>;
 }
+
+const defaultSpatialLayoutForIndex = (
+  index: number,
+): AgentWithLayout["spatial_layout"] => {
+  // Simple deterministic grid so the spatial UI has stable starting positions.
+  // Default to 2x1 grid size for compact horizontal layout
+  const col = index % 3;
+  const row = Math.floor(index / 3);
+  return {
+    position: { x: col * 360, y: row * 220 },
+    size: "medium",
+    gridSize: { w: 2, h: 1 },
+  };
+};
 
 // 创建带认证头的请求选项
 const createAuthHeaders = (): HeadersInit => {
@@ -50,6 +85,13 @@ export const createAgentSlice: StateCreator<
 > = (set, get) => ({
   agents: [],
   agentsLoading: false,
+
+  // Map from agentId -> sessionId
+  sessionIdByAgentId: {},
+
+  // Agent stats state
+  agentStats: {},
+  agentStatsLoading: false,
 
   // System agent templates state
   systemAgentTemplates: [],
@@ -91,13 +133,98 @@ export const createAgentSlice: StateCreator<
         throw new Error("Failed to fetch agents");
       }
 
-      const agents: Agent[] = await response.json();
-      set({ agents, agentsLoading: false });
+      const rawAgents: Agent[] = await response.json();
+
+      // Fetch sessions for each agent to get spatial_layout
+      // Build session mapping and extract layouts
+      const sessionMap: Record<string, string> = {};
+      const layoutMap: Record<string, AgentSpatialLayout> = {};
+
+      await Promise.all(
+        rawAgents.map(async (agent) => {
+          try {
+            const session = await sessionService.getSessionByAgent(agent.id);
+            sessionMap[agent.id] = session.id;
+            if (session.spatial_layout) {
+              layoutMap[agent.id] = session.spatial_layout;
+            }
+          } catch {
+            // Session doesn't exist yet - will be created when user starts chat
+            console.debug(`No session found for agent ${agent.id}`);
+          }
+        }),
+      );
+
+      // Enrich agents with layout from session or default
+      const agents: AgentWithLayout[] = rawAgents.map((agent, index) => ({
+        ...agent,
+        spatial_layout:
+          layoutMap[agent.id] ?? defaultSpatialLayoutForIndex(index),
+      }));
+
+      set({
+        agents,
+        agentsLoading: false,
+        sessionIdByAgentId: sessionMap,
+      });
+
+      // Also fetch stats for growth visualization
+      get().fetchAgentStats();
     } catch (error) {
       console.error("Failed to fetch agents:", error);
       set({ agentsLoading: false });
       throw error;
     }
+  },
+
+  fetchAgentStats: async () => {
+    set({ agentStatsLoading: true });
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/stats`,
+        {
+          headers: createAuthHeaders(),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch agent stats");
+      }
+
+      const stats: Record<string, AgentStatsAggregated> = await response.json();
+      set({ agentStats: stats, agentStatsLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch agent stats:", error);
+      set({ agentStatsLoading: false });
+      // Don't throw - stats are optional enhancement
+    }
+  },
+
+  /**
+   * Optimistically increment the local message count for an agent.
+   * Used for immediate UI feedback when a message is sent.
+   * Actual stats will sync from backend on next fetchAgentStats().
+   */
+  incrementLocalAgentMessageCount: (agentId) => {
+    set((state) => {
+      const existingStats = state.agentStats[agentId];
+      if (existingStats) {
+        state.agentStats[agentId] = {
+          ...existingStats,
+          message_count: existingStats.message_count + 1,
+        };
+      } else {
+        // Create placeholder stats if not yet fetched
+        state.agentStats[agentId] = {
+          agent_id: agentId,
+          session_count: 0,
+          topic_count: 0,
+          message_count: 1,
+          input_tokens: 0,
+          output_tokens: 0,
+        };
+      }
+    });
   },
 
   createAgent: async (agent) => {
@@ -185,6 +312,64 @@ export const createAgentSlice: StateCreator<
       await get().fetchAgents();
     } catch (error) {
       console.error(error);
+      throw error;
+    }
+  },
+
+  updateAgentLayout: async (agentId, layout) => {
+    try {
+      // Get the session ID for this agent
+      let sessionId = get().sessionIdByAgentId[agentId];
+
+      if (!sessionId) {
+        // Try to fetch the session if not cached
+        try {
+          const session = await sessionService.getSessionByAgent(agentId);
+          sessionId = session.id;
+          // Cache it
+          set((state) => {
+            state.sessionIdByAgentId[agentId] = sessionId;
+          });
+        } catch {
+          // Session doesn't exist - create one first
+          // This happens when user drags an agent that hasn't been used yet
+          console.warn(
+            `No session found for agent ${agentId}, creating one...`,
+          );
+          const agent = get().agents.find((a) => a.id === agentId);
+          const newSession = await sessionService.createSession({
+            name: agent?.name ?? "Agent Session",
+            agent_id: agentId,
+            spatial_layout: layout,
+          });
+          sessionId = newSession.id;
+          set((state) => {
+            state.sessionIdByAgentId[agentId] = sessionId;
+          });
+
+          // Update local state optimistically
+          set((state) => {
+            const agentData = state.agents.find((a) => a.id === agentId);
+            if (agentData) {
+              agentData.spatial_layout = layout;
+            }
+          });
+          return;
+        }
+      }
+
+      // Update the session's spatial_layout via Session API
+      await sessionService.updateSession(sessionId, { spatial_layout: layout });
+
+      // Update local state optimistically
+      set((state) => {
+        const agent = state.agents.find((a) => a.id === agentId);
+        if (agent) {
+          agent.spatial_layout = layout;
+        }
+      });
+    } catch (error) {
+      console.error("Failed to update agent layout:", error);
       throw error;
     }
   },

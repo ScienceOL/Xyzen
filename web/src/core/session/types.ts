@@ -16,6 +16,7 @@ export interface SessionResponse {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
+  spatial_layout?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   topics?: TopicResponse[];

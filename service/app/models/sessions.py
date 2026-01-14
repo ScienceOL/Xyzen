@@ -1,9 +1,9 @@
 import hashlib
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import TIMESTAMP
+from sqlalchemy import JSON, TIMESTAMP
 from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
@@ -79,6 +79,11 @@ class SessionBase(SQLModel):
     google_search_enabled: bool = Field(
         default=False, description="Enable built-in web search for supported models (e.g., Gemini)"
     )
+    spatial_layout: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+        description="Optional JSON blob for spatial UI layout (e.g., agent node positions, widget sizes)",
+    )
 
 
 class Session(SessionBase, table=True):
@@ -102,6 +107,7 @@ class SessionCreate(SQLModel):
     model: str | None = None
     model_tier: ModelTier | None = None
     google_search_enabled: bool = False
+    spatial_layout: dict[str, Any] | None = None
 
 
 class SessionRead(SessionBase):
@@ -125,3 +131,4 @@ class SessionUpdate(SQLModel):
     model: str | None = None
     model_tier: ModelTier | None = None
     google_search_enabled: bool | None = None
+    spatial_layout: dict[str, Any] | None = None

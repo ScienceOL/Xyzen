@@ -1,3 +1,4 @@
+import type { AgentExecutionState } from "@/types/agentEvents";
 import type {
   AgentSlice,
   AuthSlice,
@@ -9,7 +10,6 @@ import type {
   ProviderSlice,
   UiSlice,
 } from "./slices";
-import type { AgentExecutionState } from "@/types/agentEvents";
 
 // 定义应用中的核心类型
 export interface ToolCall {
@@ -203,6 +203,7 @@ export interface SessionResponse {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
+  spatial_layout?: Record<string, unknown> | null;
   topics: TopicResponse[];
 }
 
