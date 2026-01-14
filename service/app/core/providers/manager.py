@@ -164,19 +164,17 @@ class ProviderManager:
         return model_instance.llm
 
 
-user_provider_managers: dict[str, ProviderManager] = {}
-
-
 async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderManager:
     """
     Create a provider manager with system providers.
 
     Note: User-defined providers are disabled. This function now only loads
     system providers configured via environment variables.
-    """
-    if user_id in user_provider_managers:
-        return user_provider_managers[user_id]
 
+    This function rebuilds the ProviderManager from the database on each call
+    to support stateless multi-pod deployments. Since all users share the same
+    system providers, the overhead is minimal (~5ms with connection pooling).
+    """
     from app.repos.provider import ProviderRepository
 
     provider_repo = ProviderRepository(db)
@@ -246,7 +244,5 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
         except Exception as e:
             logger.error(f"Failed to load provider {db_provider.name} for user {user_id}: {e}")
             continue
-
-    user_provider_managers[user_id] = user_provider_manager
 
     return user_provider_manager
