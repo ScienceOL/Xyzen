@@ -138,6 +138,19 @@ export const createAgentSlice: StateCreator<
   fetchAgents: async () => {
     set({ agentsLoading: true });
     try {
+      // Store existing layouts before fetching (to preserve unsaved layouts)
+      const existingAgents = get().agents;
+      const existingLayoutMap: Record<string, AgentSpatialLayout> = {};
+      const existingAvatarMap: Record<string, string> = {};
+      existingAgents.forEach((agent) => {
+        if (agent.spatial_layout) {
+          existingLayoutMap[agent.id] = agent.spatial_layout;
+        }
+        if (agent.avatar) {
+          existingAvatarMap[agent.id] = agent.avatar;
+        }
+      });
+
       const response = await fetch(`${get().backendUrl}/xyzen/api/v1/agents/`, {
         headers: createAuthHeaders(),
       });
@@ -172,12 +185,18 @@ export const createAgentSlice: StateCreator<
         }),
       );
 
-      // Enrich agents with layout and avatar from session or default
+      // Enrich agents with layout and avatar from:
+      // 1. Session (highest priority - persisted)
+      // 2. Existing local state (preserve unsaved changes)
+      // 3. Default values (fallback for new agents)
       const agents: AgentWithLayout[] = rawAgents.map((agent, index) => ({
         ...agent,
         spatial_layout:
-          layoutMap[agent.id] ?? defaultSpatialLayoutForIndex(index),
-        avatar: avatarMap[agent.id] ?? agent.avatar,
+          layoutMap[agent.id] ??
+          existingLayoutMap[agent.id] ??
+          defaultSpatialLayoutForIndex(index),
+        avatar:
+          avatarMap[agent.id] ?? existingAvatarMap[agent.id] ?? agent.avatar,
       }));
 
       set({
@@ -453,7 +472,7 @@ export const createAgentSlice: StateCreator<
         } catch (fetchError) {
           // Session doesn't exist - create one first
           console.warn(
-            `No session found for agent ${agentId}, creating one...`,
+            `${fetchError} No session found for agent ${agentId}, creating one...`,
           );
           const agent = get().agents.find((a) => a.id === agentId);
           const newSession = await sessionService.createSession({

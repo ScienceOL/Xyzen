@@ -265,29 +265,24 @@ function InnerWorkspace() {
       const node = getNode(id);
       if (!node) return;
 
-      const measuredH = node.measured?.height;
-      const gridSize = (node.data as FlowAgentNodeData | undefined)?.gridSize;
-      const fallbackH =
-        gridSize?.w && gridSize?.h
-          ? gridSize.h * 160 + (gridSize.h - 1) * 16
-          : 220;
-
-      const nodeH = measuredH ?? fallbackH;
-      const centerY = node.position.y + nodeH / 2;
-
-      // Focus layout: keep a consistent left padding regardless of node size.
+      // Focus layout: keep a consistent left padding and top padding regardless of node size.
       const targetZoom = 1.35;
       const rect = containerRef.current?.getBoundingClientRect();
       const containerW = rect?.width ?? window.innerWidth;
       const containerH = rect?.height ?? window.innerHeight;
 
+      // Fixed left padding (responsive but clamped)
       const leftPadding = Math.max(24, Math.min(64, containerW * 0.08));
       const screenX = leftPadding;
-      const screenY = containerH * 0.25;
 
-      // Align the node's left edge to screenX.
+      // Fixed top padding: consistent distance from top regardless of node size
+      // Use similar logic to leftPadding for responsive but clamped value
+      const topPadding = Math.max(24, Math.min(80, containerH * 0.06));
+      const screenY = topPadding;
+
+      // Align the node's left edge to screenX and top edge to screenY.
       const x = -node.position.x * targetZoom + screenX;
-      const y = -centerY * targetZoom + screenY;
+      const y = -node.position.y * targetZoom + screenY;
 
       setViewport({ x, y, zoom: targetZoom }, { duration: 900 });
     },
@@ -489,8 +484,10 @@ function InnerWorkspace() {
       {/* Save Status Indicator */}
       <SaveStatusIndicator status={saveStatus} onRetry={handleRetrySave} />
 
-      {/* Add Agent Button */}
-      <AddAgentButton onClick={() => setAddModalOpen(true)} />
+      {/* Add Agent Button - positioned at bottom right, below focus overlay */}
+      <div className="absolute bottom-4 right-4 z-10">
+        <AddAgentButton onClick={() => setAddModalOpen(true)} />
+      </div>
 
       <AnimatePresence>
         {focusedAgent && (

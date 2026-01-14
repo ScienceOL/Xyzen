@@ -242,3 +242,59 @@
   /* 2. 光条移动到右侧，形成扫光动画 */
   transform: skewX(-45deg) translateX(400%);
 }
+
+/* Spatial Chat Frosted Glass Effect */
+.spatial-chat-frosted {
+  /* Make inner XyzenChat backgrounds transparent */
+  & > div {
+    background: transparent !important;
+  }
+
+  /* Header area - frosted glass */
+  & .sm\:border-y,
+  & .border-b {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Messages container - transparent */
+  & .bg-neutral-50 {
+    background: transparent !important;
+  }
+
+  /* Input area - frosted glass */
+  & .bg-white:has(textarea),
+  & .bg-white:has(.tiptap) {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Toolbar area */
+  & .border-t {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+}
+
+/* Dark mode adjustments */
+.dark .spatial-chat-frosted {
+  & .sm\:border-y,
+  & .border-b {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  & .dark\:bg-black {
+    background: transparent !important;
+  }
+
+  & .bg-white:has(textarea),
+  & .bg-white:has(.tiptap),
+  & .dark\:bg-neutral-900 {
+    background: rgba(0, 0, 0, 0.4) !important;
+  }
+
+  & .border-t {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+}

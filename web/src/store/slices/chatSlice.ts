@@ -1,8 +1,24 @@
-import { authService } from "@/service/authService";
-import xyzenService from "@/service/xyzenService";
-import { sessionService } from "@/service/sessionService";
-import { providerCore } from "@/core/provider";
 import { generateClientId, groupToolMessagesWithAssistant } from "@/core/chat";
+import { providerCore } from "@/core/provider";
+import { authService } from "@/service/authService";
+import { sessionService } from "@/service/sessionService";
+import xyzenService from "@/service/xyzenService";
+import type {
+  AgentEndData,
+  AgentErrorData,
+  AgentExecutionState,
+  AgentStartData,
+  IterationEndData,
+  IterationStartData,
+  NodeEndData,
+  NodeStartData,
+  PhaseEndData,
+  PhaseExecution,
+  PhaseStartData,
+  ProgressUpdateData,
+  SubagentEndData,
+  SubagentStartData,
+} from "@/types/agentEvents";
 import type { StateCreator } from "zustand";
 import type {
   ChatChannel,
@@ -11,22 +27,6 @@ import type {
   TopicResponse,
   XyzenState,
 } from "../types";
-import type {
-  AgentStartData,
-  AgentEndData,
-  AgentErrorData,
-  PhaseStartData,
-  PhaseEndData,
-  NodeStartData,
-  NodeEndData,
-  SubagentStartData,
-  SubagentEndData,
-  ProgressUpdateData,
-  IterationStartData,
-  IterationEndData,
-  AgentExecutionState,
-  PhaseExecution,
-} from "@/types/agentEvents";
 
 // NOTE: groupToolMessagesWithAssistant and generateClientId have been moved to
 // @/core/chat/messageProcessor.ts as part of the frontend refactor.
@@ -53,6 +53,7 @@ export interface ChatSlice {
   fetchChatHistory: () => Promise<void>;
   togglePinChat: (chatId: string) => void;
   activateChannel: (topicId: string) => Promise<void>;
+  activateChannelForAgent: (agentId: string) => Promise<void>;
   connectToChannel: (sessionId: string, topicId: string) => void;
   disconnectFromChannel: () => void;
   sendMessage: (message: string) => Promise<void>;
@@ -392,6 +393,127 @@ export const createChatSlice: StateCreator<
           }, 5000);
           checkConnection();
         });
+      }
+    },
+
+    /**
+     * Activate or create a chat channel for a specific agent.
+     * This is used by the spatial workspace to open chat with an agent.
+     * - If a session exists for the agent, activates the most recent topic
+     * - If no session exists, creates one with a default topic
+     */
+    activateChannelForAgent: async (agentId: string) => {
+      const { channels, chatHistory, backendUrl } = get();
+
+      // First, check if we already have a channel for this agent
+      const existingChannel = Object.values(channels).find(
+        (ch) => ch.agentId === agentId,
+      );
+
+      if (existingChannel) {
+        // Already have a channel, activate it
+        await get().activateChannel(existingChannel.id);
+        return;
+      }
+
+      // Check chat history for existing topics with this agent
+      const existingHistory = chatHistory.find((h) => h.sessionId === agentId);
+      if (existingHistory) {
+        await get().activateChannel(existingHistory.id);
+        return;
+      }
+
+      // No existing channel, try to find or create a session for this agent
+      const token = authService.getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      try {
+        // Try to get existing session for this agent
+        const sessionResponse = await fetch(
+          `${backendUrl}/xyzen/api/v1/sessions/by-agent/${agentId}`,
+          { headers },
+        );
+
+        if (sessionResponse.ok) {
+          const session = await sessionResponse.json();
+
+          // Get the most recent topic for this session, or create one
+          if (session.topics && session.topics.length > 0) {
+            // Activate the most recent topic
+            const latestTopic = session.topics[session.topics.length - 1];
+
+            // Create channel if doesn't exist
+            const channel: ChatChannel = {
+              id: latestTopic.id,
+              sessionId: session.id,
+              title: latestTopic.name,
+              messages: [],
+              agentId: session.agent_id,
+              provider_id: session.provider_id,
+              model: session.model,
+              google_search_enabled: session.google_search_enabled,
+              connected: false,
+              error: null,
+            };
+
+            set((state) => {
+              state.channels[latestTopic.id] = channel;
+            });
+
+            await get().activateChannel(latestTopic.id);
+          } else {
+            // Session exists but no topics, create a default topic
+            const topicResponse = await fetch(
+              `${backendUrl}/xyzen/api/v1/topics/`,
+              {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                  name: "新的聊天",
+                  session_id: session.id,
+                }),
+              },
+            );
+
+            if (topicResponse.ok) {
+              const newTopic = await topicResponse.json();
+
+              const channel: ChatChannel = {
+                id: newTopic.id,
+                sessionId: session.id,
+                title: newTopic.name,
+                messages: [],
+                agentId: session.agent_id,
+                provider_id: session.provider_id,
+                model: session.model,
+                google_search_enabled: session.google_search_enabled,
+                connected: false,
+                error: null,
+              };
+
+              set((state) => {
+                state.channels[newTopic.id] = channel;
+              });
+
+              await get().activateChannel(newTopic.id);
+            }
+          }
+        } else {
+          // No session exists, create one via createDefaultChannel
+          await get().createDefaultChannel(agentId);
+        }
+      } catch (error) {
+        console.error("Failed to activate channel for agent:", error);
+        // Fallback to createDefaultChannel
+        await get().createDefaultChannel(agentId);
       }
     },
 

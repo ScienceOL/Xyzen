@@ -23,6 +23,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const confirmToolCall = useXyzen((state) => state.confirmToolCall);
   const cancelToolCall = useXyzen((state) => state.cancelToolCall);
   const activeChatChannel = useXyzen((state) => state.activeChatChannel);
+  const channels = useXyzen((state) => state.channels);
+  const agents = useXyzen((state) => state.agents);
+  const user = useXyzen((state) => state.user);
+
+  // Get current agent avatar from store
+  const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
+  const currentAgent = currentChannel?.agentId
+    ? agents.find((a) => a.id === currentChannel.agentId)
+    : null;
 
   const {
     role,
@@ -70,9 +79,19 @@ function ChatBubble({ message }: ChatBubbleProps) {
     ? "rounded-sm border-green-400 bg-green-50/30 dark:border-green-500 dark:bg-green-900/10"
     : loadingStyles;
 
-  // 渲染头像，使用初始字母作为最后的备用选项
+  // 渲染头像
   const renderAvatar = () => {
     if (isUserMessage) {
+      // User avatar from store or fallback to ProfileIcon
+      if (user?.avatar) {
+        return (
+          <img
+            src={user.avatar}
+            alt={user.username || "User"}
+            className="h-6 w-6 rounded-full object-cover"
+          />
+        );
+      }
       return (
         <ProfileIcon className="h-6 w-6 rounded-full text-neutral-700 dark:text-neutral-300" />
       );
@@ -81,23 +100,34 @@ function ChatBubble({ message }: ChatBubbleProps) {
     if (isToolMessage) {
       // Tool message icon
       return (
-        <div
-          className={`flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white`}
-        >
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white">
           <span className="text-xs">🔧</span>
         </div>
       );
     }
 
-    // AI助手头像显示首字母
-    const initial = role?.charAt(0)?.toUpperCase() || "A";
+    // AI agent avatar from store
+    if (currentAgent?.avatar) {
+      return (
+        <img
+          src={currentAgent.avatar}
+          alt={currentAgent.name}
+          className="h-6 w-6 rounded-full object-cover"
+        />
+      );
+    }
+
+    // Fallback to default agent avatars
+    const defaultAvatar = currentAgent?.tags?.includes("default_chat")
+      ? "/defaults/agents/avatar1.png"
+      : "/defaults/agents/avatar2.png";
 
     return (
-      <div
-        className={`flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-white`}
-      >
-        <span className="text-xs font-medium">{initial}</span>
-      </div>
+      <img
+        src={defaultAvatar}
+        alt="Agent"
+        className="h-6 w-6 rounded-full object-cover"
+      />
     );
   };
 

@@ -1,3 +1,5 @@
+import XyzenChat from "@/components/layouts/XyzenChat";
+import { useXyzen } from "@/store";
 import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { AgentData } from "./types";
@@ -18,6 +20,17 @@ export function FocusedView({
   const switcherRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
 
+  const { activateChannelForAgent } = useXyzen();
+
+  // Activate the channel for the selected agent
+  useEffect(() => {
+    if (agent.agentId) {
+      activateChannelForAgent(agent.agentId).catch((error) => {
+        console.error("Failed to activate channel for agent:", error);
+      });
+    }
+  }, [agent.agentId, activateChannelForAgent]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -33,6 +46,15 @@ export function FocusedView({
       // Clicking inside UI panels should not close.
       if (chatRef.current?.contains(target)) return;
       if (switcherRef.current?.contains(target)) return;
+
+      // Clicking inside Radix portals (Sheet, Dialog, etc.) should not close.
+      // These are rendered outside our ref tree via Portal.
+      if (
+        target.closest(
+          "[data-radix-portal], [data-slot='sheet-overlay'], [data-slot='sheet-content']",
+        )
+      )
+        return;
 
       // Prevent XYFlow from starting a pan/drag on the same click,
       // which can override the restore viewport animation.
@@ -89,16 +111,16 @@ export function FocusedView({
                   />
                   {a.status === "busy" && (
                     <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500"></span>
                     </span>
                   )}
                 </div>
-                <div className="text-left flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
                     {a.name}
                   </div>
-                  <div className="text-[10px] text-neutral-500 truncate">
+                  <div className="truncate text-[10px] text-neutral-500">
                     {a.role}
                   </div>
                 </div>
@@ -108,68 +130,17 @@ export function FocusedView({
         </motion.div>
       </div>
 
-      {/* 2. Main Chat Area */}
+      {/* 2. Main Chat Area - Frosted Glass Panel */}
       <motion.div
         initial={{ x: 50, opacity: 0, scale: 0.95 }}
         animate={{ x: 0, opacity: 1, scale: 1 }}
         exit={{ x: 50, opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-        className="flex-1 relative z-10 bg-[#fdfcf8] dark:bg-neutral-900/60 dark:backdrop-blur-2xl rounded-[28px] shadow-2xl border border-neutral-200/60 dark:border-white/10 flex flex-col overflow-hidden pointer-events-auto transition-colors"
+        className="spatial-chat-frosted relative z-10 flex flex-1 flex-col overflow-hidden rounded-[28px] border border-white/40 bg-white/60 shadow-2xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
         ref={chatRef}
       >
-        {/* Chat Header */}
-        <header className="h-16 border-b border-neutral-100 dark:border-white/5 flex items-center justify-between px-6 bg-white/50 dark:bg-white/5 backdrop-blur-md">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${agent.status === "busy" ? "bg-amber-500 animate-pulse" : "bg-green-500"}`}
-            />
-            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              Session Active
-            </span>
-          </div>
-          <div>{/* Tools icons or standard window controls */}</div>
-        </header>
-
-        {/* Chat Body Mock */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-6">
-          <div className="flex gap-4">
-            <div
-              className="w-10 h-10 rounded-full bg-cover shrink-0 shadow-sm border border-white/20"
-              style={{ backgroundImage: `url(${agent.avatar})` }}
-            />
-            <div className="bg-white dark:bg-white/10 p-5 rounded-2xl rounded-tl-none shadow-sm border border-neutral-100 dark:border-white/5 max-w-2xl backdrop-blur-sm">
-              <p className="text-neutral-800 dark:text-neutral-200 leading-relaxed">
-                Hello! I'm {agent.name}. I'm ready to assist you with your tasks
-                today. I can access your latest files and context.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Input Area */}
-        <div className="p-6 bg-white dark:bg-white/5 border-t border-neutral-100 dark:border-white/5 backdrop-blur-md">
-          <div className="relative">
-            <input
-              className="w-full bg-[#f4f1ea] dark:bg-black/20 border-0 rounded-2xl py-4 pl-6 pr-16 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 focus:ring-2 focus:ring-[#5a6e8c]/30 dark:focus:ring-white/10 outline-none transition-all shadow-inner"
-              placeholder={`Message ${agent.name}...`}
-            />
-            <button className="absolute right-3 top-3 p-2 bg-[#5a6e8c] text-white rounded-xl shadow-md hover:bg-[#4a5b75] transition-transform active:scale-95">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 12h14M12 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
+        {/* XyzenChat Component - No modifications, just wrapped */}
+        <XyzenChat />
       </motion.div>
     </div>
   );

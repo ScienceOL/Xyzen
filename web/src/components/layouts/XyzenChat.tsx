@@ -55,6 +55,11 @@ const ThemedWelcomeMessage: React.FC<{
               iconType: "chat",
               iconColor: "indigo",
               category: "general",
+              avatar:
+                currentAgent.avatar ||
+                (currentAgent.tags?.includes("default_chat")
+                  ? "/defaults/agents/avatar1.png"
+                  : "/defaults/agents/avatar2.png"),
             }
           : undefined
       }
@@ -233,7 +238,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         )}
 
         {/* Messages Area */}
-        <div className="relative flex-grow overflow-y-auto min-w-0">
+        <div className="relative grow overflow-y-auto min-w-0">
           <div
             ref={messagesContainerRef}
             className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-neutral-50 pt-6 dark:bg-black custom-scrollbar"
