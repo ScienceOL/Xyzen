@@ -158,14 +158,14 @@ async def _resolve_provider_and_model(
     """
     Determine provider and model to use.
 
-    Priority: Session Model > Session Tier (with intelligent selection) > Agent Default > System Default
+    Priority: Session Model > Session Tier (with intelligent selection) > Agent Default > System Default (STANDARD tier)
 
     When model_tier is set but no session.model:
     - Uses intelligent selection to pick the best model for the task
     - Caches the selection in session.model for subsequent messages
     """
     from app.repos.session import SessionRepository
-    from app.schemas.model_tier import get_candidate_for_model, resolve_model_for_tier
+    from app.schemas.model_tier import ModelTier, get_candidate_for_model, resolve_model_for_tier
 
     from .model_selector import select_model_for_tier
 
@@ -219,6 +219,26 @@ async def _resolve_provider_and_model(
 
     if not model_name and agent and agent.model:
         model_name = agent.model
+
+    # Final fallback: if still no model, use STANDARD tier default
+    # This handles cases where session has no model/tier and agent has no default model
+    if not model_name:
+        default_tier = ModelTier.STANDARD
+        if message_text and user_provider_manager:
+            try:
+                model_name = await select_model_for_tier(
+                    tier=default_tier,
+                    first_message=message_text,
+                    user_provider_manager=user_provider_manager,
+                )
+                logger.info(f"Using STANDARD tier selection: {model_name}")
+            except Exception as e:
+                logger.error(f"STANDARD tier selection failed: {e}")
+                model_name = resolve_model_for_tier(default_tier)
+                logger.warning(f"Falling back to STANDARD tier default: {model_name}")
+        else:
+            model_name = resolve_model_for_tier(default_tier)
+            logger.info(f"Using STANDARD tier fallback: {model_name}")
 
     # Ensure we have the correct provider for the selected model.
     # The model's required provider takes precedence over session.provider_id.

@@ -26,20 +26,19 @@ logger = logging.getLogger(__name__)
 
 
 # Editable prompt template for model selection
-MODEL_SELECTION_PROMPT = """You are a model router. Given the user's task and available models, select the best model.
+MODEL_SELECTION_PROMPT = """You are a model router. Select the best model for the user's task.
 
-Available models for this tier:
+Available models:
 {available_models}
 
 User's task:
 {user_message}
 
-Select the best model ID from the list above. Consider:
-- Task complexity and requirements
-- Model capabilities and strengths
-- Response quality expectations
-
-Return ONLY the model ID, nothing else."""
+Instructions:
+- Pick the model that best matches the task requirements
+- If the task needs image generation, pick an image-capable model
+- You MUST select one model from the list above
+- Return ONLY the exact model ID (e.g., "gemini-3-pro-preview"), nothing else"""
 
 
 def _get_available_provider_types(user_provider_manager: "ProviderManager") -> set[ProviderType]:
@@ -53,7 +52,7 @@ def _get_available_provider_types(user_provider_manager: "ProviderManager") -> s
     """
     providers = user_provider_manager.list_providers()
     available_types = {cfg.provider_type for cfg in providers}
-    logger.debug(f"Available provider types: {available_types}")
+    logger.info(f"Available provider types: {[t.value for t in available_types]}")
     return available_types
 
 
@@ -75,6 +74,10 @@ def _filter_candidates_by_availability(
     fallback: TierModelCandidate | None = None
 
     for candidate in candidates:
+        logger.debug(
+            f"Checking candidate {candidate.model}: provider={candidate.provider_type.value}, "
+            f"in_available={candidate.provider_type in available_types}, is_fallback={candidate.is_fallback}"
+        )
         if candidate.provider_type in available_types:
             if candidate.is_fallback:
                 fallback = candidate
@@ -89,7 +92,7 @@ def _filter_candidates_by_availability(
         f"fallback={'available' if fallback else 'not available'}"
     )
     for c in available_candidates:
-        logger.debug(f"  - {c.model} (priority={c.priority}, provider={c.provider_type.value})")
+        logger.info(f"  - {c.model} (priority={c.priority}, provider={c.provider_type.value})")
 
     return available_candidates, fallback
 
@@ -209,6 +212,7 @@ async def _llm_select_model(
     """
     # Format prompt
     available_models_str = _format_available_models_for_prompt(candidates)
+    logger.info(f"Available models: {available_models_str}")
     prompt = MODEL_SELECTION_PROMPT.format(
         available_models=available_models_str,
         user_message=first_message[:2000],  # Truncate long messages
@@ -218,7 +222,7 @@ async def _llm_select_model(
 
     # Create LLM and call
     llm = await user_provider_manager.create_langchain_model(
-        provider_id=None,  # Will use system provider
+        provider_id=MODEL_SELECTOR_PROVIDER,
         model=MODEL_SELECTOR_MODEL,
     )
 

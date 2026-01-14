@@ -42,12 +42,12 @@ class TierModelCandidate:
 
 
 # Model for intelligent selection (Gemini 2.5 Flash)
-MODEL_SELECTOR_MODEL = "gemini-2.5-flash"
-MODEL_SELECTOR_PROVIDER = ProviderType.GOOGLE_VERTEX
+MODEL_SELECTOR_MODEL = "qwen3-next-80b-a3b-instruct"
+MODEL_SELECTOR_PROVIDER = ProviderType.QWEN
 
 # Model for topic title generation (fast, efficient model)
-TOPIC_RENAME_MODEL = "gemini-2.5-flash"
-TOPIC_RENAME_PROVIDER = ProviderType.GOOGLE_VERTEX
+TOPIC_RENAME_MODEL = "qwen3-next-80b-a3b-instruct"
+TOPIC_RENAME_PROVIDER = ProviderType.QWEN
 
 
 # Tier-to-model candidates mapping
@@ -59,51 +59,50 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             provider_type=ProviderType.GPUGEEK,
             priority=1,
             capabilities=["reasoning", "creative", "coding"],
-            description="Claude 4.5 Opus - Best for complex reasoning and creative tasks",
-        ),
-        TierModelCandidate(
-            model="gpt-5.2-pro",
-            provider_type=ProviderType.AZURE_OPENAI,
-            priority=2,
-            capabilities=["coding", "analysis"],
-            description="GPT-5.2 Pro - Excellent for coding and structured analysis",
+            description="Best for coding and choose this for most tasks if no need to generate images",
         ),
         TierModelCandidate(
             model="gemini-3-pro-image-preview",
             provider_type=ProviderType.GOOGLE_VERTEX,
+            priority=2,
+            description="Must select this if user wants to generate images",
+        ),
+        TierModelCandidate(
+            model="gpt-5.2-pro",
+            provider_type=ProviderType.AZURE_OPENAI,
             is_fallback=True,
             priority=99,
-            description="Gemini 3 Pro Image - Outstanding image generation",
+            capabilities=["coding", "analysis"],
+            description="Only use this for really complex reasoning, never use this for normal tasks",
         ),
     ],
     ModelTier.PRO: [
         TierModelCandidate(
-            model="Vendor2/Claude-4.5-Sonnet",
-            provider_type=ProviderType.GPUGEEK,
+            model="gemini-3-pro-preview",
+            provider_type=ProviderType.GOOGLE_VERTEX,
             priority=1,
-            capabilities=["reasoning", "creative", "coding"],
-            description="Claude 4.5 Sonnet - Balanced performance for professional work",
+            description="Choose this for most tasks if no need to generate images",
+        ),
+        TierModelCandidate(
+            model="gemini-2.5-flash-image",
+            provider_type=ProviderType.GOOGLE_VERTEX,
+            priority=2,
+            description="Must select this if user wants to generate images",
         ),
         TierModelCandidate(
             model="gpt-5.2",
             provider_type=ProviderType.AZURE_OPENAI,
             priority=3,
             capabilities=["coding", "analysis"],
-            description="GPT-5.2 - Reliable for production workloads",
+            description="Choose this model if user faces a task requiring complex reasoning",
         ),
         TierModelCandidate(
-            model="gemini-2.5-flash-image",
-            provider_type=ProviderType.GOOGLE_VERTEX,
+            model="Vendor2/Claude-4.5-Sonnet",
+            provider_type=ProviderType.GPUGEEK,
             is_fallback=True,
             priority=99,
-            description="Gemini 2.5 Flash Image - Excellent image generation",
-        ),
-        TierModelCandidate(
-            model="gemini-3-pro-preview",
-            provider_type=ProviderType.GOOGLE_VERTEX,
-            is_fallback=True,
-            priority=99,
-            description="Gemini 3 Pro - Reliable fallback",
+            capabilities=["reasoning", "creative", "coding"],
+            description="Choose this model if user wants to code and write documents",
         ),
     ],
     ModelTier.STANDARD: [
@@ -112,65 +111,53 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             provider_type=ProviderType.GOOGLE_VERTEX,
             priority=1,
             capabilities=["general", "fast"],
-            description="Gemini 3 Flash - Fast and capable for general tasks",
+            description="Choose this for most tasks",
         ),
         TierModelCandidate(
             model="qwen3-max",
             provider_type=ProviderType.QWEN,
             priority=2,
             capabilities=["coding", "multilingual"],
-            description="Qwen 3 Max - Excellent in Chinese",
+            description="Choose this if user uses Chinese",
         ),
         TierModelCandidate(
             model="gpt-5-mini",
             provider_type=ProviderType.AZURE_OPENAI,
-            priority=3,
-            capabilities=["general"],
-            description="GPT-5 Mini - Compact but capable",
-        ),
-        TierModelCandidate(
-            model="gemini-3-flash-preview",
-            provider_type=ProviderType.GOOGLE_VERTEX,
             is_fallback=True,
             priority=99,
-            description="Gemini 3 Flash - Reliable fallback",
+            capabilities=["general"],
+            description="Choose this if this is just a simple task",
         ),
     ],
     ModelTier.LITE: [
+        TierModelCandidate(
+            model="DeepSeek/DeepSeek-V3.1-0821",
+            provider_type=ProviderType.GPUGEEK,
+            priority=4,
+            capabilities=["coding", "efficient"],
+            description="Choose this for most tasks",
+        ),
         TierModelCandidate(
             model="qwen3-30b-a3b",
             provider_type=ProviderType.QWEN,
             priority=1,
             capabilities=["fast", "efficient"],
-            description="Qwen 3 30B A3B - Efficient for quick tasks",
+            description="Choose this if user needs quick responses",
         ),
         TierModelCandidate(
             model="gemini-2.5-flash-lite",
             provider_type=ProviderType.GOOGLE_VERTEX,
-            priority=2,
+            is_fallback=True,
+            priority=99,
             capabilities=["fast", "efficient"],
-            description="Gemini 2.5 Flash Lite - Ultra-fast responses",
+            description="Choose this if this is just a simple task",
         ),
         TierModelCandidate(
             model="gpt-5-nano",
             provider_type=ProviderType.AZURE_OPENAI,
             priority=3,
             capabilities=["fast", "efficient"],
-            description="GPT-5 Nano - Minimal latency",
-        ),
-        TierModelCandidate(
-            model="DeepSeek/DeepSeek-V3.1-0821",
-            provider_type=ProviderType.GPUGEEK,
-            priority=4,
-            capabilities=["coding", "efficient"],
-            description="DeepSeek V3.1 - Cost-effective for coding",
-        ),
-        TierModelCandidate(
-            model="gemini-2.5-flash-lite",
-            provider_type=ProviderType.GOOGLE_VERTEX,
-            is_fallback=True,
-            priority=99,
-            description="Gemini 2.5 Flash Lite - Reliable fallback",
+            description="Choose this if user needs reasoning",
         ),
     ],
 }

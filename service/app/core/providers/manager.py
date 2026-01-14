@@ -71,13 +71,15 @@ class ProviderManager:
         logger.info(f"Removed provider '{name}'")
 
     async def create_langchain_model(
-        self, provider_id: str | None = None, model: str | None = None, **override_kwargs: Any
+        self, provider_id: str | ProviderType | None = None, model: str | None = None, **override_kwargs: Any
     ) -> BaseChatModel:
         """
         Create a LangChain model using the stored config and the ChatModelFactory.
 
         Args:
-            provider_id: The provider ID (UUID string). If None, uses system provider as fallback.
+            provider_id: The provider ID (UUID string, system alias, or ProviderType enum).
+                         If ProviderType is passed, it will be converted to system:<provider_type> format.
+                         If None, uses system provider as fallback.
             model: The model name to use. Required.
             override_kwargs: Runtime overrides (e.g. temperature, max_tokens)
 
@@ -90,6 +92,10 @@ class ProviderManager:
         """
         if not model:
             raise ErrCode.MODEL_NOT_SPECIFIED.with_messages("Model must be specified")
+
+        # Convert ProviderType enum to system alias format
+        if isinstance(provider_id, ProviderType):
+            provider_id = f"{SYSTEM_PROVIDER_NAME}:{provider_id.value}"
 
         async def infer_provider_preference(model_name: str) -> list[ProviderType]:
             """Infer likely provider type(s) for a model.

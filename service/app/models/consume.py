@@ -25,6 +25,11 @@ class ConsumeRecordBase(SQLModel):
     output_tokens: int | None = Field(default=None, description="Number of output tokens generated")
     total_tokens: int | None = Field(default=None, description="Total tokens (input + output)")
 
+    # Tier-based pricing
+    model_tier: str | None = Field(default=None, description="Model tier used (ultra/pro/standard/lite)")
+    tier_rate: float | None = Field(default=None, description="Tier rate multiplier applied")
+    calculation_breakdown: str | None = Field(default=None, description="JSON breakdown of calculation")
+
     # Billing status
     consume_state: str = Field(default="pending", description="Consumption state: pending/success/failed")
     remote_error: str | None = Field(default=None, description="Remote billing error information")
@@ -81,6 +86,9 @@ class ConsumeRecordUpdate(SQLModel):
     input_tokens: int | None = Field(default=None, description="Number of input tokens used")
     output_tokens: int | None = Field(default=None, description="Number of output tokens generated")
     total_tokens: int | None = Field(default=None, description="Total tokens (input + output)")
+    model_tier: str | None = Field(default=None, description="Model tier used (ultra/pro/standard/lite)")
+    tier_rate: float | None = Field(default=None, description="Tier rate multiplier applied")
+    calculation_breakdown: str | None = Field(default=None, description="JSON breakdown of calculation")
     consume_state: str | None = Field(default=None, description="Consumption state: pending/success/failed")
     remote_error: str | None = Field(default=None, description="Remote billing error information")
     remote_response: str | None = Field(default=None, description="Remote billing response")

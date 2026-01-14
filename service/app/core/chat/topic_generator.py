@@ -2,13 +2,13 @@ import json
 import logging
 from uuid import UUID
 
+from langchain_core.messages import HumanMessage
+
 from app.core.providers import get_user_provider_manager
 from app.infra.database import AsyncSessionLocal
 from app.models.topic import TopicUpdate
 from app.repos.topic import TopicRepository
-from app.schemas.model_tier import TOPIC_RENAME_MODEL
-
-from langchain_core.messages import HumanMessage
+from app.schemas.model_tier import TOPIC_RENAME_MODEL, TOPIC_RENAME_PROVIDER
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ async def generate_and_update_topic_title(
             )
 
             llm = await user_provider_manager.create_langchain_model(
-                provider_id=None,  # Will use system provider
+                provider_id=TOPIC_RENAME_PROVIDER,
                 model=TOPIC_RENAME_MODEL,
             )
             response = await llm.ainvoke([HumanMessage(content=prompt)])
