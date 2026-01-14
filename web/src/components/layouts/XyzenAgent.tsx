@@ -424,7 +424,6 @@ export default function XyzenAgent({
   const allAgents = [...filteredSystemAgents, ...regularAgents];
 
   // Clean sidebar with auto-loaded MCPs for system agents
-
   return (
     <motion.div
       className="space-y-2 px-4 custom-scrollbar overflow-y-auto h-full"

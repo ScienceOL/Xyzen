@@ -672,6 +672,7 @@ async def get_consume_records(
     end_date: Optional[str] = None,
     tz: Optional[str] = None,
     limit: int = 10000,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -690,7 +691,9 @@ async def get_consume_records(
     Returns:
         List of consume records
     """
-    logger.info(f"Admin fetching consume records from {start_date} to {end_date}, tz: {tz}, limit: {limit}")
+    logger.info(
+        f"Admin fetching consume records from {start_date} to {end_date}, tz: {tz}, limit: {limit}, offset: {offset}"
+    )
 
     # Verify admin secret
     if admin_secret != configs.Admin.secret:
@@ -701,12 +704,19 @@ async def get_consume_records(
         )
 
     try:
+        if offset < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="offset must be >= 0",
+            )
+
         consume_repo = ConsumeRepository(db)
         records = await consume_repo.list_all_consume_records(
-            start_date,
-            end_date,
-            tz,
-            limit,
+            start_date=start_date,
+            end_date=end_date,
+            tz=tz,
+            limit=limit,
+            offset=offset,
         )
 
         return [

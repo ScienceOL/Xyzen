@@ -34,7 +34,7 @@ export function TrendChartTab({ adminSecret }: TrendChartTabProps) {
       const startDate = formatInTimeZone(start, DEFAULT_TIMEZONE, "yyyy-MM-dd");
       const endDate = formatInTimeZone(end, DEFAULT_TIMEZONE, "yyyy-MM-dd");
 
-      const data = await redemptionService.getConsumeRecords(
+      const data = await redemptionService.getAllConsumeRecords(
         adminSecret,
         startDate,
         endDate,

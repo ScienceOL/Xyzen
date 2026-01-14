@@ -72,7 +72,7 @@ export function UserRankingsTab({ adminSecret }: UserRankingsTabProps) {
         "Fetching consume records with adminSecret:",
         adminSecret ? "***" : "missing",
       );
-      const data = await redemptionService.getConsumeRecords(
+      const data = await redemptionService.getAllConsumeRecords(
         adminSecret,
         startDate,
         endDate,

@@ -233,6 +233,7 @@ class RedemptionService {
     endDate?: string,
     tz?: string,
     limit = 10000,
+    offset = 0,
   ): Promise<ConsumeRecordResponse[]> {
     const url = new URL(
       `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/consume-records`,
@@ -247,6 +248,7 @@ class RedemptionService {
       url.searchParams.append("tz", tz);
     }
     url.searchParams.append("limit", limit.toString());
+    url.searchParams.append("offset", offset.toString());
 
     const response = await fetch(url.toString(), {
       method: "GET",
@@ -264,6 +266,42 @@ class RedemptionService {
     }
 
     return response.json();
+  }
+
+  /**
+   * Get all consume records by auto-pagination (admin only)
+   *
+   * NOTE: Use with a date range to avoid downloading excessive data.
+   */
+  async getAllConsumeRecords(
+    adminSecret: string,
+    startDate?: string,
+    endDate?: string,
+    tz?: string,
+    pageSize = 10000,
+  ): Promise<ConsumeRecordResponse[]> {
+    const all: ConsumeRecordResponse[] = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.getConsumeRecords(
+        adminSecret,
+        startDate,
+        endDate,
+        tz,
+        pageSize,
+        offset,
+      );
+      all.push(...page);
+
+      if (page.length < pageSize) {
+        break;
+      }
+
+      offset += pageSize;
+    }
+
+    return all;
   }
 
   /**
