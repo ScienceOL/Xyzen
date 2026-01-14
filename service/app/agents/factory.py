@@ -5,11 +5,16 @@ This module provides factory functions to instantiate the appropriate agent
 based on session configuration, agent type, and other parameters.
 
 Supports:
-- graph_config: JSON-configured graph agent
+- graph_config v1: Legacy JSON-configured graph agent (uses GraphBuilder)
+- graph_config v2: Simplified JSON-configured graph agent (uses GraphBuilderV2)
 - No config: Falls back to the built-in react system agent
 - graph_config with metadata.system_agent_key: Uses specified system agent
 
 The default agent is the "react" system agent.
+
+Version detection:
+- v2.x configs use GraphBuilderV2 with LangGraph primitives (ToolNode, tools_condition)
+- v1.x configs use legacy GraphBuilder (will be migrated to v2 on read)
 """
 
 from __future__ import annotations
@@ -67,7 +72,7 @@ async def create_chat_agent(
     Returns:
         Tuple of (CompiledStateGraph, AgentEventContext) for streaming execution
     """
-    from app.core.chat.langchain_tools import prepare_langchain_tools
+    from app.agents.agent_tools import prepare_langchain_tools
     from app.repos.session import SessionRepository
 
     # Get session for configuration
@@ -79,7 +84,7 @@ async def create_chat_agent(
 
     # Prepare tools from MCP servers
     session_id: "UUID | None" = topic.session_id if topic else None
-    tools: list["BaseTool"] = await prepare_langchain_tools(db, agent_config, session_id)
+    tools: list[BaseTool] = await prepare_langchain_tools(db, agent_config, session_id)
 
     # Determine how to execute this agent
     agent_type_str, system_key = _resolve_agent_config(agent_config)
@@ -135,36 +140,59 @@ async def create_chat_agent(
     )
 
 
+def _detect_config_version(config: dict) -> str:
+    """Detect the version of a graph config.
+
+    Returns:
+        Version string (e.g., "1.0", "2.0")
+    """
+    version = config.get("version", "1.0")
+    return version
+
+
 async def _create_graph_agent(
     agent_config: "Agent | None",
     llm_factory: LLMFactory,
     tools: list["BaseTool"],
     event_ctx: AgentEventContext,
 ) -> tuple[DynamicCompiledGraph, AgentEventContext]:
-    """Create a JSON-configured graph agent."""
-    from app.agents.graph_builder import GraphBuilder
-    from app.schemas.graph_config import GraphConfig
+    """Create a JSON-configured graph agent.
 
+    All configs are migrated to v2 and use GraphBuilderV2 with LangGraph primitives.
+    v1 configs are automatically migrated at runtime.
+    """
     if not agent_config or not agent_config.graph_config:
         raise ValueError("Graph agent requires agent_config with graph_config")
 
-    # Parse and validate graph config
-    graph_config = GraphConfig.model_validate(agent_config.graph_config)
+    from app.agents.graph_builder_v2 import GraphBuilderV2
+    from app.schemas.graph_config_v2 import GraphConfig as GraphConfigV2
+    from app.schemas.graph_config_v2 import migrate_graph_config
 
     # Build tool registry
     tool_registry = {t.name: t for t in tools}
 
-    # Create graph builder
-    builder = GraphBuilder(
+    # Detect version and migrate if needed
+    version = _detect_config_version(agent_config.graph_config)
+
+    if version.startswith("2."):
+        # Already v2, just validate
+        graph_config = GraphConfigV2.model_validate(agent_config.graph_config)
+        logger.debug(f"Using v2 config for agent '{agent_config.name}'")
+    else:
+        # Auto-migrate v1 to v2
+        logger.info(f"Migrating v1 config to v2 for agent '{agent_config.name}'")
+        graph_config = migrate_graph_config(agent_config.graph_config)
+        logger.info(f"Migration complete: {len(graph_config.nodes)} nodes, {len(graph_config.edges)} edges")
+
+    # Always use v2 builder
+    builder = GraphBuilderV2(
         config=graph_config,
         llm_factory=llm_factory,
         tool_registry=tool_registry,
     )
-
-    # Build graph
     compiled_graph = builder.build()
-
     logger.info(f"Created graph agent '{agent_config.name}' with {len(graph_config.nodes)} nodes")
+
     return compiled_graph, event_ctx
 
 

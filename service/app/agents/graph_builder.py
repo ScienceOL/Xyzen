@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Hashable
+from typing import TYPE_CHECKING, Annotated, Any, Callable, Hashable
 
 from jinja2 import Template
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import add_messages
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.agents.types import (
@@ -114,7 +115,9 @@ def build_state_class(config: GraphConfig) -> type[BaseModel]:
     fields: dict[str, tuple[Any, Any]] = {}
 
     # Built-in fields (always present)
-    fields["messages"] = (list[BaseMessage], Field(default_factory=list))
+    # Use add_messages reducer for messages to APPEND rather than replace
+    # This is critical for the ReAct pattern where messages accumulate across nodes
+    fields["messages"] = (Annotated[list[BaseMessage], add_messages], Field(default_factory=list))
     fields["execution_context"] = (dict[str, Any], Field(default_factory=dict))
 
     # Type mapping for schema fields

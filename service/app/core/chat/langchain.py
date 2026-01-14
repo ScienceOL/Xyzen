@@ -15,14 +15,10 @@ from langgraph.graph.state import CompiledStateGraph
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.agents.factory import create_chat_agent
-from app.core.prompts import build_system_prompt
-from app.core.providers import get_user_provider_manager
-from app.models.topic import Topic as TopicModel
-from app.schemas.chat_event_payloads import StreamingEvent
-
-from .agent_event_handler import AgentEventContext
-from .history import load_conversation_history
-from .stream_handlers import (
+from app.agents.mcp_tools import format_tool_result
+from app.core.chat.agent_event_handler import AgentEventContext
+from app.core.chat.history import load_conversation_history
+from app.core.chat.stream_handlers import (
     AgentEventStreamHandler,
     CitationExtractor,
     GeneratedFileHandler,
@@ -32,7 +28,10 @@ from .stream_handlers import (
     TokenStreamProcessor,
     ToolEventHandler,
 )
-from .tools import format_tool_result
+from app.core.prompts import build_system_prompt
+from app.core.providers import get_user_provider_manager
+from app.models.topic import Topic as TopicModel
+from app.schemas.chat_event_payloads import StreamingEvent
 
 if TYPE_CHECKING:
     from app.core.chat.interfaces import ChatPublisher

@@ -109,7 +109,6 @@ export function AgentGraphEditor({
     addNode,
     updateNode,
     deleteNode,
-    getConfig,
   } = useGraphConfig(value, onChange);
 
   // Get selected node config
@@ -164,14 +163,8 @@ export function AgentGraphEditor({
     [reactFlowInstance, addNode],
   );
 
-  // Sync changes to parent (note: onChange is intentionally not in deps to avoid loops)
-  useEffect(() => {
-    if (onChange) {
-      const config = getConfig();
-      onChange(config);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, edges]);
+  // Note: Sync to parent is now handled in useGraphConfig hook
+  // This prevents infinite loops and centralizes sync logic
 
   // Handle node update from config panel
   const handleNodeUpdate = useCallback(
@@ -202,7 +195,7 @@ export function AgentGraphEditor({
       {/* Main canvas area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Node palette */}
-        {!readOnly && <NodePanel className="mb-3 flex-shrink-0" />}
+        {!readOnly && <NodePanel className="mb-3 shrink-0" />}
 
         {/* React Flow canvas */}
         <div
@@ -242,17 +235,17 @@ export function AgentGraphEditor({
               variant={BackgroundVariant.Dots}
               gap={20}
               size={1}
-              className="!bg-neutral-50 dark:!bg-neutral-900"
+              className="bg-neutral-50! dark:bg-neutral-900!"
             />
             <Controls
               showZoom
               showFitView
               showInteractive={!readOnly}
-              className="!bg-white dark:!bg-neutral-800 !border-neutral-200 dark:!border-neutral-700 !shadow-md"
+              className="bg-white! dark:bg-neutral-800! border-neutral-200! dark:border-neutral-700! shadow-md!"
             />
             <MiniMap
               nodeStrokeWidth={3}
-              className="!bg-white dark:!bg-neutral-800 !border-neutral-200 dark:!border-neutral-700"
+              className="bg-white! dark:bg-neutral-800! border-neutral-200! dark:border-neutral-700!"
               maskColor="rgba(0, 0, 0, 0.1)"
             />
           </ReactFlow>

@@ -7,6 +7,12 @@ import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import type { GraphConfig } from "@/types/graphConfig";
 import {
+  extractSimpleConfig,
+  mergeSimpleConfigToGraphConfig,
+  isStandardReactPattern,
+  type SimpleAgentConfig,
+} from "@/utils/agentConfigMapper";
+import {
   Button,
   Field,
   Label,
@@ -22,7 +28,7 @@ import {
   CubeTransparentIcon,
   CodeBracketIcon,
 } from "@heroicons/react/24/outline";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { McpServerItem } from "./McpServerItem";
 
@@ -45,11 +51,38 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
 
-  // Graph config state
-  const [graphConfig, setGraphConfig] = useState<GraphConfig | null>(null);
-  const [graphConfigJson, setGraphConfigJson] = useState<string>("");
+  // Graph config state - initialize from prop to avoid null on first render
+  const [graphConfig, setGraphConfig] = useState<GraphConfig | null>(() => {
+    if (agentToEdit?.graph_config) {
+      return agentToEdit.graph_config as unknown as GraphConfig;
+    }
+    return null;
+  });
+  const [graphConfigJson, setGraphConfigJson] = useState<string>(() => {
+    if (agentToEdit?.graph_config) {
+      return JSON.stringify(agentToEdit.graph_config, null, 2);
+    }
+    return "";
+  });
   const [graphConfigError, setGraphConfigError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+
+  // Simple config state (extracted from graph_config for form editing)
+  const [simpleConfig, setSimpleConfig] = useState<SimpleAgentConfig | null>(
+    () => {
+      if (agentToEdit?.graph_config) {
+        const config = agentToEdit.graph_config as unknown as GraphConfig;
+        return extractSimpleConfig(config, agentToEdit.prompt);
+      }
+      return extractSimpleConfig(null, agentToEdit?.prompt);
+    },
+  );
+
+  // Check if the graph uses standard ReAct pattern (safe to edit via simple form)
+  const canUseSimpleForm = useMemo(
+    () => isStandardReactPattern(graphConfig),
+    [graphConfig],
+  );
 
   useEffect(() => {
     setAgent(agentToEdit);
@@ -62,9 +95,13 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
         const config = agentToEdit.graph_config as unknown as GraphConfig;
         setGraphConfig(config);
         setGraphConfigJson(JSON.stringify(config, null, 2));
+        // Extract simple config from graph_config
+        setSimpleConfig(extractSimpleConfig(config, agentToEdit.prompt));
       } else {
         setGraphConfig(null);
         setGraphConfigJson("");
+        // Use agent's prompt field as fallback for simple config
+        setSimpleConfig(extractSimpleConfig(null, agentToEdit.prompt));
       }
       setGraphConfigError(null);
     }
@@ -73,6 +110,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     }
   }, [agentToEdit, isOpen, fetchMcpServers]);
 
+  // Handle simple form field changes (name, description)
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
@@ -80,6 +118,21 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     const { name, value } = e.target;
     setAgent({ ...agent, [name]: value });
   };
+
+  // Handle prompt change - syncs to both agent.prompt and simpleConfig
+  const handlePromptChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      if (!agent || !simpleConfig) return;
+      const newPrompt = e.target.value;
+
+      // Update agent.prompt (for backwards compatibility)
+      setAgent({ ...agent, prompt: newPrompt });
+
+      // Update simple config
+      setSimpleConfig({ ...simpleConfig, prompt: newPrompt });
+    },
+    [agent, simpleConfig],
+  );
 
   const handleMcpServerChange = (serverId: string) => {
     setMcpServerIds((prevIds) =>
@@ -89,29 +142,55 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     );
   };
 
-  // Handle visual editor changes
-  const handleGraphConfigChange = useCallback((config: GraphConfig) => {
-    setGraphConfig(config);
-    setGraphConfigJson(JSON.stringify(config, null, 2));
-    setGraphConfigError(null);
-  }, []);
+  // Handle visual editor changes - sync back to simple config
+  const handleGraphConfigChange = useCallback(
+    (config: GraphConfig) => {
+      setGraphConfig(config);
+      setGraphConfigJson(JSON.stringify(config, null, 2));
+      setGraphConfigError(null);
 
-  // Handle JSON editor changes
-  const handleJsonChange = useCallback((value: string) => {
-    setGraphConfigJson(value);
-    if (!value.trim()) {
-      setGraphConfig(null);
-      setGraphConfigError(null);
-      return;
-    }
-    try {
-      const parsed = JSON.parse(value) as GraphConfig;
-      setGraphConfig(parsed);
-      setGraphConfigError(null);
-    } catch {
-      setGraphConfigError("Invalid JSON format");
-    }
-  }, []);
+      // Sync back to simple config if using standard pattern
+      if (isStandardReactPattern(config)) {
+        const extracted = extractSimpleConfig(config);
+        setSimpleConfig(extracted);
+        // Also update agent.prompt for backwards compatibility
+        if (agent) {
+          setAgent({ ...agent, prompt: extracted.prompt });
+        }
+      }
+    },
+    [agent],
+  );
+
+  // Handle JSON editor changes - sync back to simple config
+  const handleJsonChange = useCallback(
+    (value: string) => {
+      setGraphConfigJson(value);
+      if (!value.trim()) {
+        setGraphConfig(null);
+        setGraphConfigError(null);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(value) as GraphConfig;
+        setGraphConfig(parsed);
+        setGraphConfigError(null);
+
+        // Sync back to simple config if using standard pattern
+        if (isStandardReactPattern(parsed)) {
+          const extracted = extractSimpleConfig(parsed);
+          setSimpleConfig(extracted);
+          // Also update agent.prompt for backwards compatibility
+          if (agent) {
+            setAgent({ ...agent, prompt: extracted.prompt });
+          }
+        }
+      } catch {
+        setGraphConfigError("Invalid JSON format");
+      }
+    },
+    [agent],
+  );
 
   // Handle JSON validation callback
   const handleJsonValidation = useCallback(
@@ -148,11 +227,21 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
       return;
     }
 
-    // Parse graph_config if provided
-    let parsedGraphConfig: Record<string, unknown> | null = null;
-    if (graphConfigJson.trim()) {
+    // Build the final graph_config
+    let finalGraphConfig: Record<string, unknown> | null = null;
+
+    // If we have simple config and are using standard pattern, merge it into graph_config
+    if (simpleConfig && canUseSimpleForm) {
+      // Merge simple config changes into graph_config (creates new if none exists)
+      const mergedConfig = mergeSimpleConfigToGraphConfig(
+        graphConfig,
+        simpleConfig,
+      );
+      finalGraphConfig = mergedConfig as unknown as Record<string, unknown>;
+    } else if (graphConfigJson.trim()) {
+      // Use JSON editor value directly if graph has been customized
       try {
-        parsedGraphConfig = JSON.parse(graphConfigJson);
+        finalGraphConfig = JSON.parse(graphConfigJson);
       } catch {
         alert("Invalid JSON in graph configuration.");
         return;
@@ -164,7 +253,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
       await updateAgent({
         ...agent,
         mcp_server_ids: mcpServerIds,
-        graph_config: parsedGraphConfig,
+        graph_config: finalGraphConfig,
       });
       onClose();
     } catch (error) {
@@ -227,12 +316,18 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
               </Label>
               <textarea
                 name="prompt"
-                value={agent.prompt}
-                onChange={handleChange}
+                value={simpleConfig?.prompt ?? agent.prompt ?? ""}
+                onChange={handlePromptChange}
                 placeholder={t("agents.fields.prompt.placeholder")}
                 rows={6}
                 className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500"
               />
+              {!canUseSimpleForm && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  Note: This agent has a custom workflow. Prompt changes may not
+                  apply to all nodes.
+                </p>
+              )}
             </Field>
 
             {/* MCP Servers */}
