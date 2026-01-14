@@ -21,18 +21,13 @@ from langgraph.graph.state import CompiledStateGraph
 
 from app.agents.components import BaseComponent
 from app.agents.system.base import BaseSystemAgent
-from app.schemas.graph_config import (
-    ConditionOperator,
-    EdgeCondition,
+from app.schemas.graph_config_v2 import (
+    ConditionType,
     GraphConfig,
     GraphEdgeConfig,
     GraphNodeConfig,
-    GraphStateSchema,
     LLMNodeConfig,
     NodeType,
-    ReducerType,
-    RouterNodeConfig,
-    StateFieldSchema,
     ToolNodeConfig,
 )
 
@@ -135,32 +130,21 @@ class ReActAgent(BaseSystemAgent):
 
     def export_graph_config(self) -> GraphConfig:
         """
-        Export the ReAct agent's workflow as a JSON GraphConfig.
+        Export the ReAct agent's workflow as a v2 GraphConfig.
 
         The ReAct pattern consists of:
         1. Agent node (LLM) - Reasons and decides whether to use tools
-        2. Tool node - Executes any requested tool calls
-        3. Conditional routing - Loops back to agent if tools were called
+        2. Tool node - Executes any requested tool calls (uses LangGraph's ToolNode)
+        3. Conditional routing via edges - Uses tools_condition for routing
+
+        Note: v2 schema removes the separate router node - routing is done
+        via conditional edges with ConditionType.HAS_TOOL_CALLS.
 
         Returns:
-            GraphConfig representing this agent's workflow
+            GraphConfig v2 representing this agent's workflow
         """
         return GraphConfig(
-            version="1.0",
-            state_schema=GraphStateSchema(
-                fields={
-                    "messages": StateFieldSchema(
-                        type="messages",
-                        description="Conversation messages including tool calls and results",
-                        reducer=ReducerType.MESSAGES,
-                    ),
-                    "has_tool_calls": StateFieldSchema(
-                        type="bool",
-                        description="Whether the last LLM response contained tool calls",
-                        default=False,
-                    ),
-                }
-            ),
+            version="2.0",
             nodes=[
                 # Agent node - LLM reasoning with tool binding
                 GraphNodeConfig(
@@ -175,66 +159,33 @@ class ReActAgent(BaseSystemAgent):
                     ),
                     position={"x": 250, "y": 100},
                 ),
-                # Tool execution node
+                # Tool execution node - uses LangGraph's ToolNode
                 GraphNodeConfig(
                     id="tools",
                     name="Execute Tools",
                     type=NodeType.TOOL,
                     description="Executes tool calls from the agent",
                     tool_config=ToolNodeConfig(
-                        tool_name="__all__",  # Special marker: execute all pending tool calls
+                        execute_all=True,
                         output_key="tool_results",
                     ),
                     position={"x": 450, "y": 250},
-                ),
-                # Router node - checks if there are tool calls
-                GraphNodeConfig(
-                    id="should_continue",
-                    name="Check Tool Calls",
-                    type=NodeType.ROUTER,
-                    description="Routes based on whether tool calls were made",
-                    router_config=RouterNodeConfig(
-                        strategy="condition",
-                        conditions=[
-                            EdgeCondition(
-                                state_key="has_tool_calls",
-                                operator=ConditionOperator.EQUALS,
-                                value=True,
-                                target="tools",
-                            ),
-                        ],
-                        default_route="end",
-                        routes=["tools", "end"],
-                    ),
-                    position={"x": 250, "y": 250},
                 ),
             ],
             edges=[
                 # START -> agent
                 GraphEdgeConfig(from_node="START", to_node="agent"),
-                # agent -> should_continue (router)
-                GraphEdgeConfig(from_node="agent", to_node="should_continue"),
-                # should_continue -> tools (if has_tool_calls)
+                # agent -> tools (if has tool calls)
                 GraphEdgeConfig(
-                    from_node="should_continue",
+                    from_node="agent",
                     to_node="tools",
-                    condition=EdgeCondition(
-                        state_key="has_tool_calls",
-                        operator=ConditionOperator.EQUALS,
-                        value=True,
-                        target="tools",
-                    ),
+                    condition=ConditionType.HAS_TOOL_CALLS,
                 ),
-                # should_continue -> END (if no tool calls)
+                # agent -> END (if no tool calls)
                 GraphEdgeConfig(
-                    from_node="should_continue",
+                    from_node="agent",
                     to_node="END",
-                    condition=EdgeCondition(
-                        state_key="has_tool_calls",
-                        operator=ConditionOperator.EQUALS,
-                        value=False,
-                        target="end",
-                    ),
+                    condition=ConditionType.NO_TOOL_CALLS,
                 ),
                 # tools -> agent (loop back)
                 GraphEdgeConfig(from_node="tools", to_node="agent"),
@@ -242,9 +193,10 @@ class ReActAgent(BaseSystemAgent):
             entry_point="agent",
             metadata={
                 "author": "Xyzen",
-                "version": "1.0.0",
+                "version": "2.0.0",
                 "description": "ReAct agent with tool-calling loop",
                 "pattern": "react",
+                "system_agent_key": "react",
             },
         )
 

@@ -450,7 +450,7 @@ class AgentMarketplaceService:
         Returns:
             Dictionary with requirements information.
         """
-        requirements = {
+        requirements: dict[str, Any] = {
             "mcp_servers": [],
             "knowledge_base": None,
             "provider_needed": bool(snapshot.configuration.get("model")),

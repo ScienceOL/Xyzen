@@ -40,7 +40,7 @@ async def prepare_langchain_tools(
     Returns:
         List of LangChain BaseTool instances ready for agent use
     """
-    from app.core.chat.tools import prepare_mcp_tools
+    from app.agents.mcp_tools import prepare_mcp_tools
 
     mcp_tools = await prepare_mcp_tools(db, agent, session_id)
     langchain_tools: list[BaseTool] = []
@@ -171,7 +171,7 @@ async def _make_tool_executor(
     Returns:
         Async function that executes the tool
     """
-    from app.core.chat.tools import execute_tool_call
+    from app.agents.mcp_tools import execute_tool_call
 
     async def tool_func(**kwargs: Any) -> Any:
         """Execute the tool with given arguments."""

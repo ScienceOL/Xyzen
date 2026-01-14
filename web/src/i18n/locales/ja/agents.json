@@ -1,0 +1,60 @@
+{
+  "add": "エージェントを追加",
+  "edit": "編集",
+  "delete": "削除",
+  "editAgent": "エージェントを編集",
+  "deleteAgent": "エージェントを削除",
+  "addButton": "+ エージェントを追加",
+  "createTitle": "エージェントを作成",
+  "editTitle": "{{name}}を編集",
+  "deleteTitle": "エージェントを削除",
+  "deleteConfirm": "エージェント\"{{name}}\"を完全に削除してもよろしいですか？この操作は元に戻せません。",
+  "deleteConfirmWithListing": "⚠️ このエージェントはマーケットプレイスに公開されています。削除すると、公開版も削除されます。\n\nエージェント\"{{name}}\"を完全に削除してもよろしいですか？この操作は元に戻せません。",
+  "createDescription": "カスタムプロンプトとツールを使用して新しいAIエージェントを作成します。",
+  "updateDescription": "エージェントの詳細を更新します。",
+  "systemDescription": "特殊な実行機能を持つ事前設定されたシステムエージェントを選択します。",
+  "noSystemAgents": "利用可能なシステムエージェントがありません",
+  "tabs": {
+    "custom": "カスタムエージェント",
+    "system": "システムエージェント"
+  },
+  "fields": {
+    "name": {
+      "label": "エージェント名",
+      "placeholder": "例：マイリサーチアシスタント",
+      "required": "エージェント名 *"
+    },
+    "description": {
+      "label": "説明",
+      "placeholder": "エージェントの目的の簡単な説明"
+    },
+    "prompt": {
+      "label": "システムプロンプト",
+      "placeholder": "エージェントの動作と知識範囲を定義"
+    },
+    "mcpServers": {
+      "label": "MCPツールサーバー",
+      "connected": "接続済みMCPサーバー",
+      "empty": "利用可能なMCPサーバーがありません。",
+      "emptyDescription": "利用可能なMCPサーバーがありません",
+      "createButton": "MCPサーバーを作成"
+    },
+    "selectSystemAgent": "システムエージェントを選択 *",
+    "customName": "カスタム名（オプション）"
+  },
+  "actions": {
+    "cancel": "キャンセル",
+    "create": "エージェントを作成",
+    "creating": "作成中...",
+    "save": "変更を保存",
+    "saving": "保存中...",
+    "publish": "マーケットプレイスに公開",
+    "publishTooltip": "公開する前にプロンプトを追加してください"
+  },
+  "errors": {
+    "nameRequired": "エージェント名を入力してください",
+    "templateRequired": "システムエージェントを選択してください",
+    "createFailed": "エージェントの作成に失敗しました。コンソールで詳細を確認してください。",
+    "updateFailed": "保存に失敗しました。後でもう一度お試しください。"
+  }
+}

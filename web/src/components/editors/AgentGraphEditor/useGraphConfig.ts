@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   type Node,
   type Edge,
@@ -13,12 +13,31 @@ import type {
   GraphNodeConfig,
   GraphEdgeConfig,
   NodeType,
+  EdgeCondition,
 } from "@/types/graphConfig";
 import {
   createDefaultLLMNode,
   createDefaultToolNode,
   createDefaultRouterNode,
 } from "@/types/graphConfig";
+
+/**
+ * Create a stable hash of graph config for comparison.
+ * Only compares structural elements (nodes, edges, entry_point) to avoid
+ * unnecessary re-syncs from metadata changes.
+ */
+function getConfigHash(config: GraphConfig | null): string {
+  if (!config) return "";
+  // Only hash the structural parts that affect the visual representation
+  return JSON.stringify({
+    nodes: config.nodes?.map((n) => ({ id: n.id, type: n.type, name: n.name })),
+    edges: config.edges?.map((e) => ({
+      from: e.from_node,
+      to: e.to_node,
+    })),
+    entry: config.entry_point,
+  });
+}
 
 // React Flow node data structure with index signature for compatibility
 export interface AgentNodeData {
@@ -99,38 +118,60 @@ export function graphConfigToFlow(config: GraphConfig | null): {
   }
 
   // Convert edges
-  const edges: AgentEdge[] = config.edges.map((edgeConfig, index) => ({
-    id: `edge-${index}`,
-    source:
-      edgeConfig.from_node === "START" ? START_NODE_ID : edgeConfig.from_node,
-    target: edgeConfig.to_node === "END" ? END_NODE_ID : edgeConfig.to_node,
-    type: edgeConfig.condition ? "conditionalEdge" : "default",
-    animated: !!edgeConfig.condition,
-    label:
-      edgeConfig.label ||
-      (edgeConfig.condition ? edgeConfig.condition.target : undefined),
-    data: {
-      label: edgeConfig.label || undefined,
-      hasCondition: !!edgeConfig.condition,
-      config: edgeConfig,
-    },
-  }));
+  const edges: AgentEdge[] = config.edges.map((edgeConfig, index) => {
+    // Get label from condition - handle both EdgeCondition objects and ConditionType strings
+    let conditionLabel: string | undefined;
+    if (edgeConfig.condition) {
+      if (typeof edgeConfig.condition === "string") {
+        // ConditionType string (e.g., "has_tool_calls", "no_tool_calls")
+        conditionLabel = edgeConfig.condition;
+      } else {
+        // EdgeCondition object with target property
+        conditionLabel = (edgeConfig.condition as EdgeCondition).target;
+      }
+    }
+
+    return {
+      id: `edge-${index}`,
+      source:
+        edgeConfig.from_node === "START" ? START_NODE_ID : edgeConfig.from_node,
+      target: edgeConfig.to_node === "END" ? END_NODE_ID : edgeConfig.to_node,
+      type: edgeConfig.condition ? "conditionalEdge" : "default",
+      animated: !!edgeConfig.condition,
+      label: edgeConfig.label || conditionLabel,
+      data: {
+        label: edgeConfig.label || undefined,
+        hasCondition: !!edgeConfig.condition,
+        config: edgeConfig,
+      },
+    };
+  });
 
   return { nodes, edges };
 }
 
 /**
  * Convert React Flow nodes and edges back to GraphConfig
+ *
+ * IMPORTANT: If the visual editor hasn't been properly initialized (no user nodes),
+ * but existingConfig has nodes, we preserve the existing config to avoid data loss.
  */
 export function flowToGraphConfig(
   nodes: AgentNode[],
   edges: AgentEdge[],
   existingConfig?: GraphConfig | null,
 ): GraphConfig {
-  // Filter out START and END nodes
+  // Filter out START and END pseudo-nodes to get actual user nodes
   const userNodes = nodes.filter(
     (n) => n.id !== START_NODE_ID && n.id !== END_NODE_ID,
   );
+
+  // SAFETY CHECK: If visual editor has no user nodes but existingConfig has nodes,
+  // the editor hasn't been properly initialized yet. Return existingConfig unchanged
+  // to avoid accidentally wiping out the graph configuration.
+  if (userNodes.length === 0 && existingConfig?.nodes?.length) {
+    return existingConfig;
+  }
 
   // Convert nodes
   const graphNodes: GraphNodeConfig[] = userNodes.map((node) => ({
@@ -141,18 +182,30 @@ export function flowToGraphConfig(
     position: { x: node.position.x, y: node.position.y },
   }));
 
-  // Convert edges
-  const graphEdges: GraphEdgeConfig[] = edges.map((edge) => ({
-    from_node: edge.source === START_NODE_ID ? "START" : edge.source,
-    to_node: edge.target === END_NODE_ID ? "END" : edge.target,
-    condition: edge.data?.config?.condition || null,
-    label: edge.data?.label || null,
-    priority: edge.data?.config?.priority || 0,
-  }));
+  // Convert edges (only if we have user edges, otherwise preserve existing)
+  // Filter out only the direct START→END edge (both conditions must be true)
+  const userEdges = edges.filter(
+    (e) => !(e.source === START_NODE_ID && e.target === END_NODE_ID),
+  );
+  const graphEdges: GraphEdgeConfig[] =
+    userEdges.length > 0 || !existingConfig?.edges?.length
+      ? userEdges.map((edge) => ({
+          from_node: edge.source === START_NODE_ID ? "START" : edge.source,
+          to_node: edge.target === END_NODE_ID ? "END" : edge.target,
+          condition: edge.data?.config?.condition || null,
+          label: edge.data?.label || null,
+          priority: edge.data?.config?.priority || 0,
+        }))
+      : existingConfig.edges;
 
   // Find entry point (first node connected from START)
+  // Preserve existingConfig.entry_point as fallback to avoid losing it during sync
   const startEdge = graphEdges.find((e) => e.from_node === "START");
-  const entryPoint = startEdge?.to_node || (graphNodes[0]?.id ?? "");
+  const entryPoint =
+    startEdge?.to_node ||
+    existingConfig?.entry_point ||
+    graphNodes[0]?.id ||
+    "agent"; // Default to "agent" as last resort (standard ReAct pattern)
 
   return {
     version: existingConfig?.version || "1.0",
@@ -201,11 +254,27 @@ function createDefaultNodes(): AgentNode[] {
 
 /**
  * Hook to manage graph state and sync with GraphConfig JSON
+ *
+ * This hook handles bidirectional sync between:
+ * - External config (from parent/JSON editor)
+ * - Internal React Flow state (nodes/edges)
+ *
+ * It uses a ref-based tracking system to prevent infinite update loops.
  */
 export function useGraphConfig(
   initialConfig: GraphConfig | null,
   onChange?: (config: GraphConfig) => void,
 ) {
+  // Track the last config hash we synced FROM external to prevent loops
+  // When external config changes, we compare hashes to detect genuine changes
+  const lastExternalHashRef = useRef<string>("");
+
+  // Track the last config hash we pushed TO parent to detect our own updates bouncing back
+  const lastPushedHashRef = useRef<string>("");
+
+  // Track if we're currently syncing from external to prevent echo
+  const isSyncingFromExternalRef = useRef(false);
+
   // Convert initial config to React Flow format
   const initialFlow = useMemo(
     () => graphConfigToFlow(initialConfig),
@@ -218,6 +287,74 @@ export function useGraphConfig(
   const [edges, setEdges, onEdgesChange] = useEdgesState<AgentEdge>(
     initialFlow.edges,
   );
+
+  // Sync FROM external config (e.g., JSON editor) TO internal state
+  // Only syncs when external config structurally differs from what we last saw
+  useEffect(() => {
+    const externalHash = getConfigHash(initialConfig);
+
+    // Skip if:
+    // 1. This is the same external config we already processed
+    // 2. This is our own update bouncing back from parent
+    if (
+      externalHash === lastExternalHashRef.current ||
+      externalHash === lastPushedHashRef.current
+    ) {
+      return;
+    }
+
+    // Mark that we're syncing from external
+    isSyncingFromExternalRef.current = true;
+    lastExternalHashRef.current = externalHash;
+
+    // Actually sync the state
+    const flow = graphConfigToFlow(initialConfig);
+    setNodes(flow.nodes);
+    setEdges(flow.edges);
+
+    // Reset the flag after React processes the state updates
+    // Using setTimeout to ensure it happens after the state updates propagate
+    setTimeout(() => {
+      isSyncingFromExternalRef.current = false;
+    }, 0);
+  }, [initialConfig, setNodes, setEdges]);
+
+  // Sync TO parent when internal state changes (but not during external sync)
+  useEffect(() => {
+    // Skip if we're currently syncing from external (prevents echo)
+    if (isSyncingFromExternalRef.current) {
+      return;
+    }
+
+    // Skip if no onChange handler
+    if (!onChange) {
+      return;
+    }
+
+    // Skip if we haven't received a valid external config yet.
+    // This prevents pushing empty/broken config before initialization.
+    if (!initialConfig) {
+      return;
+    }
+
+    // Generate config from current state
+    const config = flowToGraphConfig(nodes, edges, initialConfig);
+    const configHash = getConfigHash(config);
+
+    // Skip if:
+    // 1. This would be the same as what we last pushed
+    // 2. This matches what we received from external (no internal changes)
+    if (
+      configHash === lastPushedHashRef.current ||
+      configHash === lastExternalHashRef.current
+    ) {
+      return;
+    }
+
+    // Track what we're pushing and notify parent
+    lastPushedHashRef.current = configHash;
+    onChange(config);
+  }, [nodes, edges, initialConfig, onChange]);
 
   // Handle new connections
   const onConnect: OnConnect = useCallback(

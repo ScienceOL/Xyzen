@@ -158,6 +158,7 @@ if __name__ == "__main__":
 
     MIGRATIONS_DIR = BASE_DIR / "migrations"
     TESTS_DIR = BASE_DIR / "tests"
+
     uvicorn.run(
         "app.main:app",
         host=configs.Host,

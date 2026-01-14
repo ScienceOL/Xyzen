@@ -16,9 +16,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../animate-ui/primitives/buttons/button";
 
 export function AddMcpServerModal() {
+  const { t } = useTranslation();
   const {
     isAddMcpServerModalOpen,
     closeAddMcpServerModal,
@@ -52,7 +54,7 @@ export function AddMcpServerModal() {
   const handleAddServer = async () => {
     setError(null);
     if (!newServer.name.trim() || !newServer.url.trim()) {
-      setError("Name and URL are required.");
+      setError(t("mcp.addModal.errors.required"));
       return;
     }
 
@@ -75,7 +77,7 @@ export function AddMcpServerModal() {
         setAuthMode(user && token ? "current" : "custom");
       }, 1500);
     } catch (err) {
-      setError("Failed to add server. Please check the details and try again.");
+      setError(t("mcp.addModal.errors.failed"));
       console.error(err);
     }
   };
@@ -95,7 +97,7 @@ export function AddMcpServerModal() {
     <Modal
       isOpen={isAddMcpServerModalOpen}
       onClose={handleClose}
-      title="Add Custom MCP Server"
+      title={t("mcp.addModal.title")}
       maxWidth="max-w-2xl"
     >
       <AnimatePresence mode="wait">
@@ -129,10 +131,10 @@ export function AddMcpServerModal() {
               className="text-center"
             >
               <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                Server Added Successfully!
+                {t("mcp.addModal.success.title")}
               </h3>
               <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                Your custom MCP server is now ready to use.
+                {t("mcp.addModal.success.message")}
               </p>
             </motion.div>
           </motion.div>
@@ -151,10 +153,10 @@ export function AddMcpServerModal() {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
-                  Custom Server Configuration
+                  {t("mcp.addModal.header.title")}
                 </h3>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Connect to your own Model Context Protocol server
+                  {t("mcp.addModal.header.subtitle")}
                 </p>
               </div>
             </div>
@@ -168,13 +170,14 @@ export function AddMcpServerModal() {
               >
                 <Field>
                   <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Server Name <span className="text-indigo-500">*</span>
+                    {t("mcp.addModal.fields.name.label")}{" "}
+                    <span className="text-indigo-500">*</span>
                   </Label>
                   <Input
                     name="name"
                     value={newServer.name}
                     onChange={handleInputChange}
-                    placeholder="My Custom Server"
+                    placeholder={t("mcp.addModal.fields.name.placeholder")}
                     required
                     className="mt-1"
                   />
@@ -188,13 +191,15 @@ export function AddMcpServerModal() {
               >
                 <Field>
                   <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Description
+                    {t("mcp.addModal.fields.description.label")}
                   </Label>
                   <Input
                     name="description"
                     value={newServer.description}
                     onChange={handleInputChange}
-                    placeholder="A brief description of the server"
+                    placeholder={t(
+                      "mcp.addModal.fields.description.placeholder",
+                    )}
                     className="mt-1"
                   />
                 </Field>
@@ -207,13 +212,14 @@ export function AddMcpServerModal() {
               >
                 <Field>
                   <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Server URL <span className="text-indigo-500">*</span>
+                    {t("mcp.addModal.fields.url.label")}{" "}
+                    <span className="text-indigo-500">*</span>
                   </Label>
                   <Input
                     name="url"
                     value={newServer.url}
                     onChange={handleInputChange}
-                    placeholder="http://localhost:8000 or https://api.example.com"
+                    placeholder={t("mcp.addModal.fields.url.placeholder")}
                     required
                     className="mt-1"
                   />
@@ -228,7 +234,7 @@ export function AddMcpServerModal() {
                 <Field>
                   <div className="flex items-center justify-between gap-3">
                     <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                      Authentication
+                      {t("mcp.addModal.fields.auth.label")}
                     </Label>
 
                     <FlipButton
@@ -264,8 +270,8 @@ export function AddMcpServerModal() {
                           />
                           <span className="text-sm">
                             {authEnabled
-                              ? "Authentication Enabled"
-                              : "Enable Authentication"}
+                              ? t("mcp.addModal.fields.auth.enabled")
+                              : t("mcp.addModal.fields.auth.enable")}
                           </span>
                         </span>
                       </FlipButtonFront>
@@ -285,7 +291,9 @@ export function AddMcpServerModal() {
                             } h-2 w-2 rounded-full`}
                           />
                           <span className="text-sm">
-                            {authEnabled ? "Disable Auth" : "Enable Now"}
+                            {authEnabled
+                              ? t("mcp.addModal.fields.auth.disable")
+                              : t("mcp.addModal.fields.auth.enableNow")}
                           </span>
                         </span>
                       </FlipButtonBack>
@@ -332,13 +340,15 @@ export function AddMcpServerModal() {
                                       <div className="flex items-center space-x-2">
                                         <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                                         <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                                          Use Current Session Token
+                                          {t(
+                                            "mcp.addModal.fields.auth.current.label",
+                                          )}
                                         </span>
                                       </div>
                                     </div>
                                   </div>
                                   <p className="ml-8 mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                                    Automatically use your logged-in credentials
+                                    {t("mcp.addModal.fields.auth.current.desc")}
                                   </p>
                                 </div>
                               )}
@@ -370,13 +380,15 @@ export function AddMcpServerModal() {
                                     <div className="flex items-center space-x-2">
                                       <KeyIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                                       <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                                        Custom Token
+                                        {t(
+                                          "mcp.addModal.fields.auth.custom.label",
+                                        )}
                                       </span>
                                     </div>
                                   </div>
                                 </div>
                                 <p className="ml-8 mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                                  Provide a custom authentication token
+                                  {t("mcp.addModal.fields.auth.custom.desc")}
                                 </p>
                               </div>
                             )}
@@ -390,14 +402,16 @@ export function AddMcpServerModal() {
                             transition={{ delay: 0.1 }}
                           >
                             <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                              Authentication Token
+                              {t("mcp.addModal.fields.auth.token.label")}
                             </Label>
                             <Input
                               name="token"
                               type="password"
                               value={newServer.token}
                               onChange={handleInputChange}
-                              placeholder="Enter your authentication token"
+                              placeholder={t(
+                                "mcp.addModal.fields.auth.token.placeholder",
+                              )}
                               className="mt-1"
                             />
                           </motion.div>
@@ -432,7 +446,7 @@ export function AddMcpServerModal() {
                 disabled={isCreating}
                 className="px-6 py-2 rounded-sm border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
               >
-                Cancel
+                {t("mcp.addModal.actions.cancel")}
               </button>
               <Button
                 onClick={handleAddServer}
@@ -453,10 +467,10 @@ export function AddMcpServerModal() {
                     >
                       <ServerStackIcon className="h-4 w-4" />
                     </motion.div>
-                    Adding...
+                    {t("mcp.addModal.actions.adding")}
                   </span>
                 ) : (
-                  "Add Server"
+                  t("mcp.addModal.actions.add")
                 )}
               </Button>
             </div>

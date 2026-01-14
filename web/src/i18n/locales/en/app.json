@@ -1,0 +1,62 @@
+{
+  "title": "Xyzen",
+  "pwa": {
+    "installTitle": "Install App",
+    "installDescription": "Click the install icon in your address bar for a better experience."
+  },
+  "chat": {
+    "assistantsTitle": "Assistants",
+    "chooseAgentHint": "Choose an agent to start",
+    "chatLabel": "Chat",
+    "thinking": {
+      "label": "Thinking...",
+      "showThinking": "Show thinking",
+      "hideThinking": "Hide thinking"
+    }
+  },
+  "activityBar": {
+    "chat": "Chat",
+    "knowledge": "Knowledge",
+    "community": "Community",
+    "comingSoon": "Coming Soon"
+  },
+  "toolbar": {
+    "newChat": "New Chat",
+    "newChatCreating": "Creating...",
+    "uploadFile": "Upload File",
+    "resizeHint": "Drag to adjust input height",
+    "history": "History",
+    "search": "Search",
+    "searchBuiltin": "Built-in Search",
+    "searchSearxng": "Universal Search",
+    "knowledge": "Knowledge",
+    "knowledgeConnect": "Connect Knowledge Base",
+    "knowledgeDisconnect": "Disconnect",
+    "mcpTools": "MCP Tools Connected",
+    "searchOff": "Off",
+    "searchOffDesc": "Do not use search",
+    "searchBuiltinDesc": "Use model's native search capability",
+    "searchBuiltinNotSupported": "Current model does not support",
+    "searchBuiltinConflict": "Conflicts with MCP tools, cannot be used",
+    "searchSearxngDesc": "Use universal search engine",
+    "knowledgeSelect": "Select Knowledge Base",
+    "knowledgeEmpty": "No knowledge bases",
+    "knowledgeEmptyDesc": "Please create one in Knowledge panel first"
+  },
+  "input": {
+    "placeholder": "Send a message...",
+    "send": "Send",
+    "enterToSend": "Send",
+    "shiftEnterForNewline": "New line"
+  },
+  "modelCapabilities": {
+    "vision": "Vision Support",
+    "audioInput": "Audio Input",
+    "videoInput": "Video Input",
+    "webSearch": "Web Search"
+  },
+  "modelSelector": {
+    "noProvider": "Please add an LLM provider first",
+    "notConfigured": "Not Configured"
+  }
+}

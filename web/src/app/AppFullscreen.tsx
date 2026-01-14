@@ -1,4 +1,3 @@
-import { McpListModal } from "@/components/layouts/McpListModal";
 import { useXyzen } from "@/store";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { DndContext } from "@dnd-kit/core";
@@ -21,7 +20,6 @@ import { useTranslation } from "react-i18next";
 
 export interface AppFullscreenProps {
   backendUrl?: string;
-  showLlmProvider?: boolean;
 }
 
 export function AppFullscreen({
@@ -127,7 +125,6 @@ export function AppFullscreen({
         </div>
       </DndContext>
 
-      <McpListModal />
       <SettingsModal />
       <PwaInstallPrompt />
     </>

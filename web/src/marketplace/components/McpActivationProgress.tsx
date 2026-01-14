@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { McpActivationProgress } from "../types/bohrium";
 
 interface McpActivationProgressProps {
@@ -25,6 +26,7 @@ const McpActivationProgressComponent: React.FC<McpActivationProgressProps> = ({
   onClose,
   className = "",
 }) => {
+  const { t } = useTranslation();
   const { status, message, progress: percent, error } = progress;
 
   const getStatusIcon = () => {
@@ -124,7 +126,9 @@ const McpActivationProgressComponent: React.FC<McpActivationProgressProps> = ({
           {/* Retry Count Info */}
           {progress.retryCount && (
             <div className="mb-4 text-center text-xs text-neutral-500 dark:text-neutral-400">
-              重试次数: {progress.retryCount} / 15
+              {t("mcp.detail.progress.retryCount", {
+                count: progress.retryCount,
+              })}
             </div>
           )}
 
@@ -136,7 +140,7 @@ const McpActivationProgressComponent: React.FC<McpActivationProgressProps> = ({
                 className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
               >
                 <ArrowPathIcon className="h-4 w-4" />
-                重试
+                {t("mcp.detail.progress.retry")}
               </button>
             )}
 
@@ -145,7 +149,7 @@ const McpActivationProgressComponent: React.FC<McpActivationProgressProps> = ({
                 onClick={onClose}
                 className="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
               >
-                完成
+                {t("mcp.detail.progress.done")}
               </button>
             )}
 
@@ -154,7 +158,7 @@ const McpActivationProgressComponent: React.FC<McpActivationProgressProps> = ({
                 onClick={onClose}
                 className="rounded-lg bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-600 transition-colors"
               >
-                取消
+                {t("mcp.detail.progress.cancel")}
               </button>
             )}
           </div>
@@ -162,11 +166,8 @@ const McpActivationProgressComponent: React.FC<McpActivationProgressProps> = ({
           {/* Tips for user */}
           {status === "polling" && (
             <div className="mt-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
-              <p className="font-medium mb-1">💡 提示</p>
-              <p>
-                Bohrium 沙盒正在启动，这可能需要 30-60
-                秒。请耐心等待，不要关闭此窗口。
-              </p>
+              <p className="font-medium mb-1">{t("mcp.detail.progress.tip")}</p>
+              <p>{t("mcp.detail.progress.bohriumHint")}</p>
             </div>
           )}
         </motion.div>

@@ -126,7 +126,7 @@ async def _build_assistant_message(db: AsyncSession, message: Any, content: str)
             if content:
                 multimodal_content.append({"type": "text", "text": content})
             multimodal_content.extend(file_contents)
-            return AIMessage(content=multimodal_content, additional_kwargs=additional_kwargs)  # pyright: ignore
+            return AIMessage(content=multimodal_content, additional_kwargs=additional_kwargs)  # type: ignore
 
         return AIMessage(content=content, additional_kwargs=additional_kwargs)
 
@@ -154,6 +154,8 @@ def _build_tool_messages(
     """
     try:
         formatted_content = json.loads(content)
+
+        message: BaseMessage
 
         if formatted_content.get("event") == ChatEventType.TOOL_CALL_REQUEST:
             tool_call: ToolCall = {

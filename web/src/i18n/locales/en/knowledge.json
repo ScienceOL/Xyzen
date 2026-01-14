@@ -1,0 +1,176 @@
+{
+  "titles": {
+    "recents": "Recents",
+    "allFiles": "All Files",
+    "myKnowledge": "My Knowledge",
+    "knowledgeBase": "Knowledge Base",
+    "trash": "Trash"
+  },
+  "a11y": {
+    "navTitle": "Navigation Menu",
+    "navDescription": "Navigate through your knowledge base"
+  },
+  "prompts": {
+    "folderName": "Enter folder name:",
+    "knowledgeSetName": "Enter knowledge set name:",
+    "knowledgeSetDescription": "Enter description (optional):"
+  },
+  "errors": {
+    "createFolderFailed": "Failed to create folder",
+    "createKnowledgeSetFailed": "Failed to create knowledge set"
+  },
+  "upload": {
+    "errors": {
+      "fileTooLarge": "File \"{{name}}\" ({{fileSizeMB}}MB) exceeds the maximum file size limit of {{maxSizeMB}}MB",
+      "notEnoughStorage": "Not enough storage space. File size: {{fileSizeMB}}MB, Available: {{availableMB}}MB. Please delete some files first.",
+      "uploadFailed": "Upload failed"
+    }
+  },
+  "toolbar": {
+    "home": "Home",
+    "searchFilesPlaceholder": "Search files...",
+    "searchPlaceholder": "Search",
+    "listView": "List View",
+    "gridView": "Grid View",
+    "newFolder": "New Folder",
+    "emptyTrash": "Empty Trash",
+    "empty": "Empty",
+    "uploadFile": "Upload File",
+    "upload": "Upload",
+    "refresh": "Refresh"
+  },
+  "sidebar": {
+    "groups": {
+      "favorites": "Favorites",
+      "media": "Media",
+      "locations": "Locations"
+    },
+    "items": {
+      "images": "Images",
+      "documents": "Documents"
+    },
+    "newKnowledgeSet": "New Knowledge Set",
+    "deleteKnowledgeSet": "Delete Knowledge Set",
+    "deleteTitle": "Delete Knowledge Set",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? The files will not be deleted, only the knowledge set.",
+    "deleteConfirmButton": "Delete",
+    "noKnowledgeSets": "No knowledge sets"
+  },
+  "status": {
+    "items": "{{count}} items",
+    "usedOfTotal": "{{used}} of {{total}} used",
+    "available": "{{available}} available"
+  },
+  "contextMenu": {
+    "download": "Download",
+    "rename": "Rename",
+    "moveTo": "Move to...",
+    "addToKnowledgeSet": "Add to Knowledge Set",
+    "removeFromKnowledgeSet": "Remove from Knowledge Set",
+    "delete": "Delete"
+  },
+  "moveModal": {
+    "title": "Move \"{{name}}\"",
+    "home": "Home",
+    "noSubfolders": "No subfolders",
+    "moveHere": "Move Here"
+  },
+  "fileList": {
+    "itemTypes": {
+      "file": "File",
+      "folder": "Folder"
+    },
+    "columns": {
+      "name": "Name",
+      "size": "Size",
+      "dateModified": "Date Modified"
+    },
+    "empty": {
+      "trash": "Trash is empty",
+      "noItems": "No items"
+    },
+    "actions": {
+      "preview": "Preview",
+      "download": "Download",
+      "restore": "Restore",
+      "delete": "Delete",
+      "deleteForever": "Delete Forever",
+      "moveToTrash": "Move to Trash",
+      "deleteImmediately": "Delete Immediately",
+      "deleteFailed": "Delete failed",
+      "restoreFailed": "Restore failed",
+      "downloadFailed": "Download failed"
+    },
+    "deleteItem": {
+      "title": "Delete {{itemType}}",
+      "message": "Are you sure you want to delete this {{itemType}}?"
+    },
+    "moveToTrash": {
+      "message": "Are you sure you want to move this file to Trash?"
+    },
+    "deleteForever": {
+      "message": "Are you sure you want to permanently delete this file? This cannot be undone."
+    },
+    "emptyTrash": {
+      "title": "Empty Trash",
+      "message": "Are you sure you want to permanently delete {{count}} items? This cannot be undone.",
+      "confirm": "Empty Trash",
+      "failed": "Failed to empty trash completely. Some items may remain."
+    },
+    "rename": {
+      "titleFile": "Rename File",
+      "titleFolder": "Rename Folder",
+      "placeholder": "Enter new name",
+      "confirm": "Rename",
+      "failed": "Rename failed"
+    },
+    "move": {
+      "failed": "Move failed"
+    },
+    "knowledgeSet": {
+      "add": {
+        "title": "Add to Knowledge Set",
+        "subtitle": "Select a knowledge set to add \"{{name}}\""
+      },
+      "none": "No knowledge sets available. Create one first.",
+      "fileCount": "{{count}} files",
+      "added": "File added to knowledge set successfully",
+      "alreadyInSet": "This file is already in the knowledge set.",
+      "addFailed": "Failed to add file to knowledge set",
+      "remove": {
+        "title": "Remove from Knowledge Set",
+        "message": "Remove \"{{name}}\" from this knowledge set?",
+        "confirm": "Remove",
+        "failed": "Failed to remove file from knowledge set"
+      }
+    },
+    "notifications": {
+      "successTitle": "Success",
+      "noticeTitle": "Notice",
+      "errorTitle": "Error"
+    }
+  },
+  "createKnowledgeSetModal": {
+    "title": "Create Knowledge Set",
+    "fields": {
+      "name": {
+        "label": "Name",
+        "placeholder": "Enter a name"
+      },
+      "description": {
+        "label": "Description (optional)",
+        "placeholder": "Add a short description"
+      }
+    },
+    "actions": {
+      "create": "Create",
+      "creating": "Creating..."
+    },
+    "validation": {
+      "nameRequired": "Name is required"
+    },
+    "errors": {
+      "createFailed": "Failed to create knowledge set"
+    }
+  }
+}

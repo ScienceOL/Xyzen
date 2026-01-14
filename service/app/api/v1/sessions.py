@@ -1,15 +1,15 @@
 from typing import Any, Dict, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.common.code import ErrCodeError, handle_auth_error
+from app.core.session import SessionService
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.models.sessions import SessionCreate, SessionRead, SessionReadWithTopics, SessionUpdate
-from app.models.topic import TopicCreate, TopicRead
-from app.repos import MessageRepository, SessionRepository, TopicRepository
 
 # Ensure forward references are resolved after importing both models
 try:
@@ -66,52 +66,10 @@ async def create_session_with_default_topic(
     Raises:
         HTTPException: 400 if agent validation fails, 500 if session or topic creation fails
     """
-    session_repo = SessionRepository(db)
-    topic_repo = TopicRepository(db)
-
-    # Validate agent_id if provided
-    if session_data.agent_id is not None:
-        from app.repos.agent import AgentRepository
-
-        try:
-            # Convert string to UUID if needed
-            if isinstance(session_data.agent_id, str):
-                agent_id_uuid = UUID(session_data.agent_id)
-            else:
-                agent_id_uuid = session_data.agent_id
-
-            agent_repo = AgentRepository(db)
-            # Try to load as regular agent
-            agent = await agent_repo.get_agent_by_id(agent_id_uuid)
-            if agent is None:
-                raise HTTPException(status_code=400, detail=f"Agent not found: {session_data.agent_id}")
-
-            # Create validated session data with UUID
-            validated_session_data = SessionCreate(
-                name=session_data.name,
-                description=session_data.description,
-                is_active=session_data.is_active,
-                agent_id=agent_id_uuid,
-                provider_id=session_data.provider_id,
-                model=session_data.model,
-                google_search_enabled=session_data.google_search_enabled,
-            )
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid agent ID format: {session_data.agent_id}")
-        except Exception:
-            raise HTTPException(status_code=400, detail=f"Invalid agent ID: {session_data.agent_id}")
-    else:
-        validated_session_data = session_data
-
-    session = await session_repo.create_session(validated_session_data, user)
-    default_topic_data = TopicCreate(
-        name="新的聊天",
-        session_id=session.id,
-    )
-    await topic_repo.create_topic(default_topic_data)
-
-    await db.commit()
-    return SessionRead(**session.model_dump())
+    try:
+        return await SessionService(db).create_session_with_default_topic(session_data, user)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
 
 
 @router.get("/by-agent/{agent_id}", response_model=SessionRead)
@@ -136,39 +94,10 @@ async def get_session_by_agent(
     Raises:
         HTTPException: 404 if no session found for this user-agent combination
     """
-    session_repo = SessionRepository(db)
-
-    # Handle different agent ID types
-    agent_uuid = None
-
-    if agent_id == "default":
-        # Legacy default agent case - use system chat agent
-        from app.core.system_agent import SystemAgentManager
-
-        system_manager = SystemAgentManager(db)
-        chat_agent = await system_manager.get_system_agent("chat")
-        if not chat_agent:
-            raise HTTPException(status_code=500, detail="System chat agent not found")
-        agent_uuid = chat_agent.id
-    else:
-        # Regular agent case - try to parse as UUID
-        from app.repos.agent import AgentRepository
-
-        try:
-            agent_uuid = UUID(agent_id)
-            # Verify the agent exists
-            agent_repo = AgentRepository(db)
-            agent = await agent_repo.get_agent_by_id(agent_uuid)
-            if agent is None:
-                raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid agent ID format: '{agent_id}'")
-
-    session = await session_repo.get_session_by_user_and_agent(user, agent_uuid)
-    if not session:
-        raise HTTPException(status_code=404, detail="No session found for this user-agent combination")
-
-    return SessionRead(**session.model_dump())
+    try:
+        return await SessionService(db).get_session_by_agent(user, agent_id)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
 
 
 @router.get("/", response_model=List[SessionReadWithTopics])
@@ -192,21 +121,10 @@ async def get_sessions(
     Raises:
         HTTPException: None - this endpoint always succeeds, returning empty list if no sessions
     """
-    session_repo = SessionRepository(db)
-    topic_repo = TopicRepository(db)
-    sessions = await session_repo.get_sessions_by_user_ordered_by_activity(user)
-
-    # Load topics for each session
-    sessions_with_topics = []
-    for session in sessions:
-        topics = await topic_repo.get_topics_by_session(session.id, order_by_updated=True)
-        topic_reads = [TopicRead(**topic.model_dump()) for topic in topics]
-
-        session_dict = session.model_dump()
-        session_dict["topics"] = topic_reads
-        sessions_with_topics.append(SessionReadWithTopics(**session_dict))
-
-    return sessions_with_topics
+    try:
+        return await SessionService(db).get_sessions_with_topics(user)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
 
 
 @router.delete("/{session_id}/topics", status_code=204)
@@ -231,29 +149,11 @@ async def clear_session_topics(
     Raises:
         HTTPException: 404 if session not found, 403 if access denied
     """
-    session_repo = SessionRepository(db)
-    topic_repo = TopicRepository(db)
-    message_repo = MessageRepository(db)
-
-    session = await session_repo.get_session_by_id(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    if session.user_id != user:
-        raise HTTPException(status_code=403, detail="Access denied: You don't have permission to clear this session")
-
-    topics = await topic_repo.get_topics_by_session(session_id)
-    for topic in topics:
-        await message_repo.delete_messages_by_topic(topic.id)
-        await topic_repo.delete_topic(topic.id)
-
-    default_topic_data = TopicCreate(
-        name="新的聊天",
-        session_id=session_id,
-    )
-    await topic_repo.create_topic(default_topic_data)
-
-    await db.commit()
-    return
+    try:
+        await SessionService(db).clear_session_topics(session_id, user)
+        return
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
 
 
 @router.patch("/{session_id}", response_model=SessionRead)
@@ -275,16 +175,7 @@ async def update_session(
     Returns:
         SessionRead: The updated session
     """
-    session_repo = SessionRepository(db)
-    session = await session_repo.get_session_by_id(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    if session.user_id != user:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    updated_session = await session_repo.update_session(session_id, session_data)
-    if not updated_session:
-        raise HTTPException(status_code=500, detail="Failed to update session")
-
-    await db.commit()
-    return SessionRead(**updated_session.model_dump())
+    try:
+        return await SessionService(db).update_session(session_id, session_data, user)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)

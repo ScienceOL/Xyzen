@@ -1,0 +1,221 @@
+{
+  "modal": {
+    "title": "設定",
+    "back": "戻る"
+  },
+  "categories": {
+    "provider": "モデルプロバイダー",
+    "ui": "UI 設定",
+    "redemption": "引き換え"
+  },
+  "provider": {
+    "emptyHint": "モデルプロバイダーを選択または追加してください"
+  },
+  "ui": {
+    "title": "UI設定",
+    "subtitle": "インターフェースをカスタマイズ",
+    "options": {
+      "theme": {
+        "label": "テーマ",
+        "description": "外観をカスタマイズ"
+      },
+      "style": {
+        "label": "レイアウトスタイル",
+        "description": "サイドバーまたはフルスクリーン表示を切り替え"
+      },
+      "language": {
+        "label": "言語",
+        "description": "アプリの言語を切り替え"
+      }
+    }
+  },
+  "language": {
+    "title": "言語設定",
+    "subtitle": "お好みの言語を選択",
+    "en": {
+      "description": "英語をインターフェース言語として使用"
+    },
+    "zh": {
+      "description": "中国語をインターフェース言語として使用"
+    },
+    "ja": {
+      "description": "日本語をインターフェース言語として使用"
+    }
+  },
+  "theme": {
+    "title": "テーマ設定",
+    "subtitle": "Xyzenの見た目を選択",
+    "options": {
+      "light": {
+        "label": "ライト",
+        "description": "明るくクリアなインターフェース"
+      },
+      "dark": {
+        "label": "ダーク",
+        "description": "暗い環境でも目に優しい"
+      },
+      "system": {
+        "label": "システム",
+        "description": "システム設定に自動的に合わせる"
+      }
+    },
+    "about": {
+      "title": "テーマについて",
+      "body": "テーマ設定はアプリケーション全体の配色を制御します。システムテーマを選択すると、OSの設定に基づいてライトモードとダークモードが自動的に切り替わります。"
+    }
+  },
+  "style": {
+    "title": "インターフェース設定",
+    "subtitle": "Xyzenの外観と動作をカスタマイズ",
+    "sections": {
+      "layout": "レイアウトスタイル",
+      "inputPosition": "クイック入力位置"
+    },
+    "layout": {
+      "sidebar": {
+        "label": "サイドバー",
+        "description": "クラシックな右側パネルレイアウト",
+        "features": {
+          "resizable": "サイズ変更可能なパネル（280-600px）",
+          "floatingButton": "閉じた時にフローティングボタン表示",
+          "overlay": "コンテンツの上にオーバーレイ"
+        }
+      },
+      "fullscreen": {
+        "label": "フルスクリーン",
+        "description": "没入型3カラムワークスペース",
+        "features": {
+          "agentsLeft": "左側にエージェントリスト",
+          "chatCenter": "中央にチャット",
+          "topicsRight": "右側にトピック",
+          "fullWidth": "全幅レイアウト"
+        }
+      }
+    },
+    "inputPositions": {
+      "topLeft": {
+        "label": "左上",
+        "description": "左上隅"
+      },
+      "top": {
+        "label": "上",
+        "description": "上部中央"
+      },
+      "topRight": {
+        "label": "右上",
+        "description": "右上隅"
+      },
+      "center": {
+        "label": "中央",
+        "description": "スポットライトスタイル（画面中央）"
+      },
+      "bottomLeft": {
+        "label": "左下",
+        "description": "左下隅"
+      },
+      "bottom": {
+        "label": "下",
+        "description": "下部中央"
+      },
+      "bottomRight": {
+        "label": "右下",
+        "description": "右下隅"
+      }
+    },
+    "tip": {
+      "title": "💡 プロのヒント",
+      "body": "フルスクリーンレイアウトは大きなディスプレイに最適で、すべてを一度に表示できます。サイドバーレイアウトは集中作業や小さな画面に理想的です。"
+    }
+  },
+  "providers": {
+    "my": {
+      "title": "設定済み"
+    },
+    "templates": {
+      "title": "新規追加",
+      "supports": "{{count}}個のモデルをサポート"
+    },
+    "deleteConfirm": "{{name}}を削除してもよろしいですか？",
+    "deleteAria": "プロバイダー{{name}}を削除",
+    "form": {
+      "defaults": {
+        "name": "マイ{{name}}"
+      },
+      "empty": {
+        "title": "テンプレートまたは既存のプロバイダーを選択",
+        "subtitle": "リストのアイテムをクリックして設定を開始"
+      },
+      "title": {
+        "edit": "プロバイダーを編集",
+        "create": "プロバイダーを作成"
+      },
+      "systemBadge": "システムプロバイダー（読み取り専用）",
+      "providerType": {
+        "title": "プロバイダータイプ",
+        "availableModels": "{{count}}個のモデルが利用可能"
+      },
+      "fields": {
+        "name": {
+          "label": "名前 *",
+          "placeholder": "例：マイGeminiプロバイダー"
+        },
+        "api": {
+          "label": "APIエンドポイント",
+          "placeholder": "例：https://api.openai.com/v1",
+          "help": "デフォルトエンドポイントが事前入力されています。カスタムエンドポイントまたはプロキシを使用する場合は変更してください。"
+        },
+        "key": {
+          "label": "APIキー *",
+          "placeholder": "あなたのAPIキー"
+        },
+        "azureVersion": {
+          "label": "APIバージョン *",
+          "placeholder": "例：2024-02-15-preview",
+          "help": "Azure OpenAI APIバージョン（例：2024-02-15-preview、2023-05-15）"
+        },
+        "default": {
+          "label": "デフォルトプロバイダー"
+        }
+      },
+      "confirm": {
+        "delete": "このプロバイダーを削除してもよろしいですか？"
+      },
+      "actions": {
+        "delete": "削除",
+        "save": "変更を保存",
+        "create": "プロバイダーを作成"
+      },
+      "success": {
+        "updated": "プロバイダーを更新しました！",
+        "created": "プロバイダーを作成しました！",
+        "deleted": "プロバイダーを削除しました！",
+        "defaultSet": "デフォルトプロバイダーに設定しました！"
+      },
+      "errors": {
+        "systemReadOnlyEdit": "システムプロバイダーは読み取り専用のため編集できません。",
+        "systemReadOnlyDelete": "システムプロバイダーは削除できません。システムプロバイダーは読み取り専用です。",
+        "systemReadOnlyDefault": "システムプロバイダーをデフォルトに設定できません。システムプロバイダーは自動フォールバックです。",
+        "required": "名前、API、キーは必須です",
+        "saveFailed": "プロバイダーの保存に失敗しました",
+        "deleteFailed": "プロバイダーの削除に失敗しました",
+        "defaultFailed": "デフォルトプロバイダーの設定に失敗しました"
+      }
+    }
+  },
+  "redemption": {
+    "title": "引き換えコード",
+    "subtitle": "コードを引き換えて消費用の仮想残高を取得",
+    "card": {
+      "title": "コードを引き換え"
+    },
+    "form": {
+      "label": "引き換えコードを入力",
+      "placeholder": "コードを入力してください",
+      "redeem": "引き換え",
+      "redeeming": "引き換え中..."
+    },
+    "errors": {
+      "empty": "引き換えコードを入力してください"
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "title": "Agent Marketplace",
+  "tabs": {
+    "all": "All Agents",
+    "starred": "Starred",
+    "my": "My Agents"
+  },
+  "search": {
+    "placeholder": "Search agents..."
+  },
+  "sort": {
+    "recent": "Most Recent",
+    "likes": "Most Liked",
+    "forks": "Most Forked",
+    "views": "Most Viewed",
+    "oldest": "Oldest"
+  },
+  "filters": {
+    "filteredBy": "Filtered by:",
+    "clear": "Clear filters"
+  },
+  "loadError": "Failed to load listings. Please try again.",
+  "retry": "Retry",
+  "empty": {
+    "starred": {
+      "title": "No Starred Agents",
+      "body": "You haven't starred any agents yet. Browse the marketplace and click the heart icon to save your favorites!",
+      "browse": "Browse Agents"
+    },
+    "all": {
+      "title": "No Agents Yet",
+      "body": "Be the first to share your amazing agent with the community!"
+    },
+    "search": {
+      "body": "No agents match your search. Try different keywords or clear filters."
+    },
+    "publish": {
+      "title": "How to publish your agent:",
+      "steps": {
+        "1": "Go to the Chat panel and create or edit an agent",
+        "2": "Make sure your agent has a name, description, and prompt",
+        "3": "Click \"Publish to Marketplace\" button",
+        "4": "Share your agent with the community!"
+      }
+    }
+  },
+  "card": {
+    "by": "by {{author}}",
+    "noDescription": "No description provided",
+    "tagsMore": "+{{count}} more"
+  },
+  "detail": {
+    "loading": "Loading agent details...",
+    "error": "Failed to load agent details. Please try again.",
+    "back": "Back to Marketplace",
+    "publishedBy": "Published by",
+    "noDescription": "No description provided",
+    "stats": {
+      "likes": "Likes",
+      "forks": "Forks",
+      "views": "Views"
+    },
+    "tabs": {
+      "readme": "README",
+      "config": "Configuration",
+      "requirements": "Requirements"
+    },
+    "readme": {
+      "empty": "No README provided for this agent.",
+      "manage": "Manage to add a README"
+    },
+    "config": {
+      "model": "Model",
+      "systemPrompt": "System Prompt",
+      "mcpServers": "MCP Servers ({{count}})",
+      "empty": "No configuration available."
+    },
+    "requirements": {
+      "provider": {
+        "title": "LLM Provider Required:",
+        "description": "You'll need to configure an AI provider (OpenAI, Anthropic, etc.) to use this agent."
+      },
+      "mcpServers": "MCP Servers ({{count}})",
+      "autoConfigured": "Auto-configured",
+      "knowledgeBase": {
+        "title": "Knowledge Base:",
+        "description": "The original agent uses {{count}} files. These files will be copied to your workspace when you fork this agent."
+      },
+      "none": "No special requirements! This agent is ready to use after forking.",
+      "loading": "Loading requirements..."
+    },
+    "actions": {
+      "title": "Actions",
+      "fork": "Fork This Agent",
+      "liked": "Liked",
+      "like": "Like This Agent",
+      "manage": "Manage Agent"
+    },
+    "meta": {
+      "publishedBy": "Published By",
+      "firstPublished": "First Published:",
+      "lastUpdated": "Last Updated:"
+    },
+    "aboutForking": {
+      "title": "About Forking",
+      "description": "Forking creates your own independent copy. Changes won't affect the original agent."
+    }
+  }
+}

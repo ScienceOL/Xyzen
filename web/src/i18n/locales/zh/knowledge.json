@@ -1,0 +1,8 @@
+{
+  "sidebar": {
+    "deleteKnowledgeSet": "删除知识库",
+    "deleteTitle": "删除知识库",
+    "deleteConfirm": "确定要删除「{{name}}」吗？文件不会被删除，仅删除知识库。",
+    "deleteConfirmButton": "删除"
+  }
+}

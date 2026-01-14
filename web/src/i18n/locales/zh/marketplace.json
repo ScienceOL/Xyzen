@@ -1,0 +1,109 @@
+{
+  "title": "Agent 市场",
+  "tabs": {
+    "all": "全部",
+    "starred": "已收藏",
+    "my": "我的"
+  },
+  "search": {
+    "placeholder": "搜索 Agent..."
+  },
+  "sort": {
+    "recent": "最新",
+    "likes": "最多点赞",
+    "forks": "最多 Fork",
+    "views": "最多浏览",
+    "oldest": "最早"
+  },
+  "filters": {
+    "filteredBy": "筛选标签：",
+    "clear": "清除筛选"
+  },
+  "loadError": "加载列表失败，请稍后重试。",
+  "retry": "重试",
+  "empty": {
+    "starred": {
+      "title": "暂无收藏的 Agent",
+      "body": "你还没有收藏任何 Agent。浏览市场并点击爱心图标即可收藏。",
+      "browse": "去逛逛"
+    },
+    "all": {
+      "title": "暂无 Agent",
+      "body": "成为第一个把你的 Agent 分享给社区的人吧！"
+    },
+    "search": {
+      "body": "没有匹配你搜索的 Agent，试试换个关键词或清除筛选。"
+    },
+    "publish": {
+      "title": "如何发布你的 Agent：",
+      "steps": {
+        "1": "前往聊天面板创建或编辑一个 Agent",
+        "2": "确保 Agent 有名称、描述和提示词",
+        "3": "点击“发布到市场”按钮",
+        "4": "分享给社区，一起交流！"
+      }
+    }
+  },
+  "card": {
+    "by": "来自 {{author}}",
+    "noDescription": "暂无描述",
+    "tagsMore": "+{{count}} 更多"
+  },
+  "detail": {
+    "loading": "正在加载助手详情...",
+    "error": "加载助手详情失败，请重试。",
+    "back": "返回市场",
+    "publishedBy": "发布者",
+    "noDescription": "暂无描述",
+    "stats": {
+      "likes": "点赞",
+      "forks": "复刻",
+      "views": "浏览"
+    },
+    "tabs": {
+      "readme": "说明文档",
+      "config": "配置信息",
+      "requirements": "运行要求"
+    },
+    "readme": {
+      "empty": "该助手暂无说明文档。",
+      "manage": "去添加说明文档"
+    },
+    "config": {
+      "model": "模型",
+      "systemPrompt": "系统提示词",
+      "mcpServers": "MCP 服务 ({{count}})",
+      "empty": "暂无配置信息。"
+    },
+    "requirements": {
+      "provider": {
+        "title": "需要 LLM 服务商：",
+        "description": "你需要配置 AI 服务商（OpenAI, Anthropic 等）才能使用此助手。"
+      },
+      "mcpServers": "MCP 服务 ({{count}})",
+      "autoConfigured": "自动配置",
+      "knowledgeBase": {
+        "title": "知识库：",
+        "description": "原助手使用了 {{count}} 个文件。复刻此助手时，这些文件将被复制到你的工作区。"
+      },
+      "none": "无特殊要求！复刻后即可直接使用。",
+      "loading": "正在加载运行要求..."
+    },
+    "actions": {
+      "title": "操作",
+      "fork": "复刻此助手",
+      "liked": "已点赞",
+      "like": "点赞",
+      "manage": "管理助手"
+    },
+    "meta": {
+      "publishedBy": "发布者",
+      "firstPublished": "首次发布：",
+      "lastUpdated": "最后更新："
+    },
+    "aboutForking": {
+      "title": "关于复刻",
+      "description": "复刻会创建一个独立的副本。你的修改不会影响原始助手。"
+    }
+  }
+}

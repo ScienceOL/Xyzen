@@ -10,6 +10,7 @@ import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -18,8 +19,10 @@ import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { TokenInputModal } from "@/components/features/TokenInputModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserWallet } from "@/hooks/useUserWallet";
+import { useXyzen } from "@/store";
 import {
   ArrowTopRightOnSquareIcon,
+  Cog6ToothIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
   SparklesIcon,
@@ -34,6 +37,7 @@ export interface AuthStatusProps {
 
 export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   const auth = useAuth();
+  const { openSettingsModal } = useXyzen();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
@@ -204,6 +208,21 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
               >
                 <span className="block truncate">{maskedToken}</span>
               </button>
+            </div>
+
+            <DropdownMenuSeparator />
+
+            <div className="p-1">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setMenuOpen(false);
+                  openSettingsModal();
+                }}
+                className="flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
+              >
+                <Cog6ToothIcon className="mr-2 h-4 w-4" />
+                设置
+              </DropdownMenuItem>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

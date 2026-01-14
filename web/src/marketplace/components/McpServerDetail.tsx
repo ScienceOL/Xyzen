@@ -3,7 +3,6 @@
  * Bohrium MCP 服务器详情页面
  */
 
-import { Badge } from "@/components/base/Badge";
 import { useXyzen } from "@/store";
 import {
   ArrowLeftIcon,
@@ -13,9 +12,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { motion } from "framer-motion";
+import { UserIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useBohriumAppDetail, useMcpActivation } from "../hooks/useBohriumMcp";
-import McpActivationProgress from "./McpActivationProgress";
 
 interface McpServerDetailProps {
   appKey: string;
@@ -26,8 +26,9 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
   appKey,
   onBack,
 }) => {
+  const { t } = useTranslation();
   const { detail, loading, error } = useBohriumAppDetail(appKey);
-  const { progress, activateMcp, reset } = useMcpActivation();
+  const { activateMcp } = useMcpActivation();
   const { addMcpServer, mcpServers } = useXyzen();
 
   const [isActivating, setIsActivating] = useState(false);
@@ -77,12 +78,9 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
       console.log("MCP 服务器已添加成功！");
     } catch (err) {
       console.error("激活失败:", err);
+    } finally {
+      setIsActivating(false);
     }
-  };
-
-  const handleClose = () => {
-    reset();
-    setIsActivating(false);
   };
 
   if (loading) {
@@ -91,7 +89,7 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent"></div>
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
-            加载中...
+            {t("mcp.detail.loading")}
           </p>
         </div>
       </div>
@@ -109,7 +107,9 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
   if (!detail) {
     return (
       <div className="text-center py-8">
-        <p className="text-neutral-500 dark:text-neutral-400">未找到应用</p>
+        <p className="text-neutral-500 dark:text-neutral-400">
+          {t("mcp.detail.notFound")}
+        </p>
       </div>
     );
   }
@@ -124,64 +124,53 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
             className="flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
           >
             <ArrowLeftIcon className="h-4 w-4" />
-            返回
+            {t("mcp.detail.back")}
           </button>
         )}
       </div>
 
       {/* 左右布局容器 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左侧主要内容 */}
+        {/* 左侧主要信息 */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Cover Image */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="overflow-hidden rounded-sm"
-          >
-            <img
-              src={detail.cover}
-              alt={detail.title}
-              className="h-64 w-full object-cover"
-            />
-          </motion.div>
-
-          {/* Title and Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
-                  {detail.title}
-                </h1>
-                <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                  {detail.description || detail.descriptionCn}
-                </p>
-
-                {/* Tags */}
-                {detail.tags && detail.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {detail.tags.map((tag) => (
-                      <Badge
+              <div className="flex gap-4">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
+                  {detail.cover ? (
+                    <img
+                      src={detail.cover}
+                      alt={detail.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-neutral-400">
+                      {detail.title.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                    {detail.title}
+                  </h1>
+                  <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+                    {detail.description}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {detail.tags?.map((tag) => (
+                      <span
                         key={tag.id}
-                        variant={
-                          tag.theme === "blue"
-                            ? "blue"
-                            : tag.theme === "green"
-                              ? "green"
-                              : tag.theme === "red"
-                                ? "red"
-                                : "default"
-                        }
+                        className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
                       >
                         {tag.name}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Actions */}
@@ -199,7 +188,7 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
                   ) : (
                     <StarIcon className="h-5 w-5" />
                   )}
-                  {isStarred ? "已收藏" : "收藏"}
+                  {isStarred ? t("mcp.detail.starred") : t("mcp.detail.star")}
                 </button>
 
                 {!isAlreadyAdded ? (
@@ -209,42 +198,30 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
                     className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <RocketLaunchIcon className="h-5 w-5" />
-                    {isActivating ? "激活中..." : "激活 MCP"}
+                    {isActivating
+                      ? t("mcp.detail.activating")
+                      : t("mcp.detail.activate")}
                   </button>
                 ) : (
                   <div className="flex items-center gap-2 rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                     <StarIconSolid className="h-5 w-5" />
-                    已添加
+                    {t("mcp.detail.added")}
                   </div>
                 )}
               </div>
             </div>
           </motion.div>
 
-          {/* Activation Progress */}
-          {isActivating && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <McpActivationProgress
-                progress={progress}
-                onRetry={handleActivate}
-                onClose={handleClose}
-              />
-            </motion.div>
-          )}
-
-          {/* Stats */}
+          {/* Stats Grid */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.1 }}
             className="grid grid-cols-3 gap-4"
           >
             <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                订阅数
+                {t("mcp.detail.subscribeNum")}
               </p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {detail.subscribeNum}
@@ -252,7 +229,7 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
             </div>
             <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                访问次数
+                {t("mcp.detail.accessNum")}
               </p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {detail.accessNum}
@@ -260,7 +237,7 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
             </div>
             <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                机器类型
+                {t("mcp.detail.machineType")}
               </p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {detail.machineType}
@@ -278,33 +255,35 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
             >
               <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 <InformationCircleIcon className="h-5 w-5" />
-                作者信息
+                {t("mcp.detail.author")}
               </h2>
               <div className="flex flex-wrap gap-4">
-                {detail.authors.map((author) => (
-                  <div key={author.userId} className="flex items-center gap-3">
-                    {author.avatarUrl ? (
-                      <img
-                        src={author.avatarUrl}
-                        alt={author.userName}
-                        className="h-10 w-10 rounded-full"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-neutral-200 dark:bg-neutral-700" />
-                    )}
+                {detail.authors.map((author, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                      <UserIcon className="h-5 w-5" />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                      <p className="font-medium text-neutral-900 dark:text-white">
                         {author.userName}
                       </p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {author.email}
-                      </p>
+                      {author.email && (
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {author.email}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
+
+          {/* Readme - Currently disabled as content is not in detail object */}
+          {/* {(detail.readmeLink || detail.readmeLinkCn) && (...)} */}
         </div>
 
         {/* 右侧版本历史 */}
@@ -317,7 +296,7 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
               className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
             >
               <h2 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">
-                版本历史
+                {t("mcp.detail.history")}
               </h2>
               <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
                 {detail.changeLogs.map((log) => (

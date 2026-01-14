@@ -97,9 +97,12 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
     }
   };
 
+  // Build payload for custom agent - backend will generate graph_config
   const buildCustomAgentPayload = () => ({
     ...agent,
     mcp_server_ids: mcpServerIds,
+    // Note: graph_config is NOT sent - backend generates it using ReActAgent
+    // This ensures single source of truth for the ReAct pattern
     user_id: "temp", // Backend will get this from auth token
     mcp_servers: [], // Backend will handle associations
     created_at: new Date().toISOString(), // Will be overridden by backend

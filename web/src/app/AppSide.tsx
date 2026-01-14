@@ -4,7 +4,6 @@ import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
-import { McpListModal } from "@/components/layouts/McpListModal";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { SettingsModal } from "@/components/modals/SettingsModal";
@@ -16,7 +15,6 @@ import AuthErrorScreen from "./auth/AuthErrorScreen";
 
 export interface AppSideProps {
   backendUrl?: string;
-  showLlmProvider?: boolean;
   isMobile?: boolean; // when true, sidebar occupies full viewport width and is not resizable
   showAuthError?: boolean; // when auth failed, render error inline in panel
   onRetryAuth?: () => void;
@@ -28,7 +26,7 @@ type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 export function AppSide({
   backendUrl = DEFAULT_BACKEND_URL,
-  showLlmProvider = false,
+
   isMobile = false,
   showAuthError = false,
   onRetryAuth,
@@ -306,7 +304,6 @@ export function AppSide({
         <AppHeader
           variant="side"
           isMobile={isMobile}
-          showLlmProvider={showLlmProvider}
           onDragStart={handleDragStart}
           onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
@@ -386,7 +383,6 @@ export function AppSide({
         )}
       </div>
 
-      <McpListModal />
       <SettingsModal />
     </>
   );

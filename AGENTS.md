@@ -76,7 +76,9 @@ types/
 
 **Repository Pattern**: Data access via `repos/` classes. Business logic in `core/` services.
 
-**Frontend Layers**: Components (UI only) → Hooks → Core (business logic) → Service (HTTP/WS) → Store (Zustand)
+**Frontend Layers**:
+* Sever-Side Status: Components (UI only) → Hooks → Core (business logic) → ReactQuery (data cache) → Service (HTTP/WS)/Store (Zustand)
+* Client-Side Status: Components (UI only) → Hooks → Core (business logic) → read Service (HTTP/WS) → write to Store (Zustand)
 
 ## Agent System
 
@@ -187,6 +189,34 @@ yarn test                        # Vitest
 **TypeScript**: Strict typing, business logic in `core/` not components
 
 **Both**: Async by default, comprehensive error handling
+
+## Internationalization
+
+The frontend supports multiple languages (`en`, `zh`, `ja`). Translations are modularized into separate JSON files under `web/src/i18n/locales/{lang}/`.
+
+### Translation Modules
+
+| File               | Scope                                      |
+| ------------------ | ------------------------------------------ |
+| `app.json`         | Navigation, toolbar, model selector, input |
+| `common.json`      | Shared actions (OK, Cancel, Loading)       |
+| `settings.json`    | Settings modal, theme/language config      |
+| `marketplace.json` | Agent marketplace listing and details      |
+| `knowledge.json`   | File management, uploads, knowledge sets   |
+| `mcp.json`         | MCP server connection and management       |
+| `agents.json`      | Agent CRUD forms and validation            |
+
+### Workflow
+
+1.  **Add Keys**: Add new strings to the appropriate `en/*.json` file.
+2.  **Sync Languages**: Ensure `zh/*.json` and `ja/*.json` have matching keys.
+3.  **Component Usage**: Access using the `filename` as a prefix.
+
+```typescript
+// Example: accessing "ok" from common.json
+const { t } = useTranslation();
+<Button>{t('common.ok')}</Button>;
+```
 
 ## Backend Environment Variables
 

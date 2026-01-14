@@ -4,6 +4,7 @@ import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
   GiftIcon,
+  ServerStackIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -16,6 +17,7 @@ import {
   ThemeSettings,
   UiSettings,
 } from "./settings";
+import { McpSettings } from "./settings/McpSettings";
 
 export function SettingsModal() {
   const { t } = useTranslation();
@@ -38,6 +40,11 @@ export function SettingsModal() {
       id: "ui",
       label: t("settings.categories.ui"),
       icon: AdjustmentsHorizontalIcon,
+    },
+    {
+      id: "mcp",
+      label: t("settings.categories.mcp"),
+      icon: ServerStackIcon,
     },
     {
       id: "redemption",
@@ -125,6 +132,8 @@ export function SettingsModal() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-0 md:p-0">
+              {activeSettingsCategory === "mcp" && <McpSettings />}
+
               {activeSettingsCategory === "ui" && (
                 <div className="flex h-full flex-col md:flex-row">
                   <div
