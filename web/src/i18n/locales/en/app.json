@@ -63,19 +63,19 @@
     "title": "Select Model Tier",
     "tiers": {
       "ultra": {
-        "name": "Ultra",
+        "name": "Xyzen Ultra",
         "description": "Most powerful models for complex tasks"
       },
       "pro": {
-        "name": "Pro",
+        "name": "Xyzen Pro",
         "description": "Advanced models for professional use"
       },
       "standard": {
-        "name": "Standard",
+        "name": "Xyzen Standard",
         "description": "Balanced performance and efficiency"
       },
       "lite": {
-        "name": "Lite",
+        "name": "Xyzen Lite",
         "description": "Fast and lightweight for simple tasks"
       }
     }

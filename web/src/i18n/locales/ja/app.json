@@ -63,19 +63,19 @@
     "title": "モデルティアを選択",
     "tiers": {
       "ultra": {
-        "name": "ウルトラ",
+        "name": "Xyzen ウルトラ",
         "description": "複雑なタスク向けの最強モデル"
       },
       "pro": {
-        "name": "プロ",
+        "name": "Xyzen プロ",
         "description": "プロフェッショナル向けの高度なモデル"
       },
       "standard": {
-        "name": "スタンダード",
+        "name": "Xyzen スタンダード",
         "description": "性能と効率のバランス"
       },
       "lite": {
-        "name": "ライト",
+        "name": "Xyzen ライト",
         "description": "シンプルなタスク向けの高速軽量モデル"
       }
     }

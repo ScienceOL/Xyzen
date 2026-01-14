@@ -63,19 +63,19 @@
     "title": "选择模型等级",
     "tiers": {
       "ultra": {
-        "name": "旗舰",
+        "name": "Xyzen Ultra",
         "description": "最强大的模型，适合复杂任务"
       },
       "pro": {
-        "name": "专业",
+        "name": "Xyzen Pro",
         "description": "高级模型，适合专业用途"
       },
       "standard": {
-        "name": "标准",
+        "name": "Xyzen Standard",
         "description": "性能与效率均衡"
       },
       "lite": {
-        "name": "轻量",
+        "name": "Xyzen Lite",
         "description": "快速轻量，适合简单任务"
       }
     }
