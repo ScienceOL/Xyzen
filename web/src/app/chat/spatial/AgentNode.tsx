@@ -376,9 +376,19 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
 
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        animate={{
+          scale: 1,
+          opacity: 1,
+          width: style.width,
+          height: style.height,
+        }}
         whileHover={{ scale: 1.02 }} // Increased size slightly reduced to avoid popover issues
-        style={style}
+        transition={{
+          scale: { type: "spring", stiffness: 400, damping: 25 },
+          opacity: { duration: 0.2 },
+          width: { type: "spring", stiffness: 300, damping: 30 },
+          height: { type: "spring", stiffness: 300, damping: 30 },
+        }}
         onClick={(e) => {
           // Only trigger focus if we are NOT clicking inside the settings menu interactions
           e.stopPropagation();

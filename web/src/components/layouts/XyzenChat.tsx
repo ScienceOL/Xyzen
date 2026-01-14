@@ -57,9 +57,7 @@ const ThemedWelcomeMessage: React.FC<{
               category: "general",
               avatar:
                 currentAgent.avatar ||
-                (currentAgent.tags?.includes("default_chat")
-                  ? "/defaults/agents/avatar1.png"
-                  : "/defaults/agents/avatar2.png"),
+                "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
             }
           : undefined
       }
@@ -140,9 +138,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                 <img
                   src={
                     currentAgent.avatar ||
-                    (currentAgent.tags?.includes("default_chat")
-                      ? "/defaults/agents/avatar1.png"
-                      : "/defaults/agents/avatar2.png")
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
                   }
                   alt={currentAgent.name}
                   className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}

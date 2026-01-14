@@ -117,14 +117,10 @@ function ChatBubble({ message }: ChatBubbleProps) {
       );
     }
 
-    // Fallback to default agent avatars
-    const defaultAvatar = currentAgent?.tags?.includes("default_chat")
-      ? "/defaults/agents/avatar1.png"
-      : "/defaults/agents/avatar2.png";
-
+    // Fallback to DiceBear default avatar
     return (
       <img
-        src={defaultAvatar}
+        src="https://api.dicebear.com/7.x/avataaars/svg?seed=default"
         alt="Agent"
         className="h-6 w-6 rounded-full object-cover"
       />

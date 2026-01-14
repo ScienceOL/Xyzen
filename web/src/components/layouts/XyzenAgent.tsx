@@ -257,9 +257,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
           <img
             src={
               agent.avatar ||
-              (agent.tags?.includes("default_chat")
-                ? "/defaults/agents/avatar1.png"
-                : "/defaults/agents/avatar2.png")
+              "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
             }
             alt={agent.name}
             className="h-10 w-10 rounded-full border border-neutral-200 object-cover dark:border-neutral-700"

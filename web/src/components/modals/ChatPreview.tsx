@@ -45,9 +45,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
     // AI 机器人头像
     const robotAvatarUrl =
       currentAgent?.avatar ||
-      (currentAgent?.tags?.includes("default_chat")
-        ? "/defaults/agents/avatar1.png"
-        : "/defaults/agents/avatar2.png");
+      "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
 
     // 用户名
     const userName = currentUser?.username || "用户";

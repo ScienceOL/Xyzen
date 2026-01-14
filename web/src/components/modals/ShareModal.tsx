@@ -206,9 +206,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           // AI 头像逻辑
           const robotAvatarUrl =
             currentAgent?.avatar ||
-            (currentAgent?.tags && currentAgent.tags.includes("default_chat")
-              ? "/defaults/agents/avatar1.png"
-              : "/defaults/agents/avatar2.png");
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
 
           return (
             <div
