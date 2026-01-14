@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { usePublishAgent } from "@/hooks/useMarketplace";
 import { Button, Field, Label, Switch } from "@headlessui/react";
 import {

@@ -1,6 +1,6 @@
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { Button } from "@/components/animate-ui/primitives/buttons/button";
 import { LiquidButton } from "@/components/animate-ui/primitives/buttons/liquid";
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
 import { EditMcpServerModal } from "@/components/modals/EditMcpServerModal";

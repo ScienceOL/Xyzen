@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/primitives/headless/modal";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
 import type { McpServer, McpServerUpdate } from "@/types/mcp";

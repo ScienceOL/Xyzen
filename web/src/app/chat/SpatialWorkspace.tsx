@@ -87,6 +87,7 @@ function InnerWorkspace() {
     useNodesState<AgentFlowNode>(INITIAL_NODES);
   const [edges, , onEdgesChange] = useEdgesState([]);
   const [focusedAgentId, setFocusedAgentId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [prevViewport, setPrevViewport] = useState<{
     x: number;
     y: number;
@@ -148,16 +149,28 @@ function InnerWorkspace() {
       const node = getNode(id);
       if (!node) return;
 
-      const nodeW = node.measured?.width ?? 300;
-      const nodeH = node.measured?.height ?? 220;
-      const centerX = node.position.x + nodeW / 2;
+      const measuredH = node.measured?.height;
+      const gridSize = (node.data as FlowAgentNodeData | undefined)?.gridSize;
+      const fallbackH =
+        gridSize?.w && gridSize?.h
+          ? gridSize.h * 160 + (gridSize.h - 1) * 16
+          : 220;
+
+      const nodeH = measuredH ?? fallbackH;
       const centerY = node.position.y + nodeH / 2;
 
-      // Target Top-Left (approx 15% x, 25% y)
+      // Focus layout: keep a consistent left padding regardless of node size.
       const targetZoom = 1.35;
-      const screenX = window.innerWidth * 0.15;
-      const screenY = window.innerHeight * 0.25;
-      const x = -centerX * targetZoom + screenX;
+      const rect = containerRef.current?.getBoundingClientRect();
+      const containerW = rect?.width ?? window.innerWidth;
+      const containerH = rect?.height ?? window.innerHeight;
+
+      const leftPadding = Math.max(24, Math.min(64, containerW * 0.08));
+      const screenX = leftPadding;
+      const screenY = containerH * 0.25;
+
+      // Align the node's left edge to screenX.
+      const x = -node.position.x * targetZoom + screenX;
       const y = -centerY * targetZoom + screenY;
 
       setViewport({ x, y, zoom: targetZoom }, { duration: 900 });
@@ -187,9 +200,10 @@ function InnerWorkspace() {
       data: {
         ...n.data,
         onFocus: handleFocus,
+        isFocused: n.id === focusedAgentId,
       },
     }));
-  }, [nodes, handleFocus]);
+  }, [nodes, handleFocus, focusedAgentId]);
 
   const handleNodeDragStop = useCallback(
     (_: unknown, draggedNode: AgentFlowNode) => {
@@ -201,7 +215,16 @@ function InnerWorkspace() {
         const measuredH = node?.measured?.height;
         if (measuredW && measuredH) return { w: measuredW, h: measuredH };
 
-        const size = node?.data?.size;
+        const d = node?.data as FlowAgentNodeData | undefined;
+        if (d?.gridSize) {
+          const { w, h } = d.gridSize;
+          return {
+            w: w * 200 + (w - 1) * 16,
+            h: h * 160 + (h - 1) * 16,
+          };
+        }
+
+        const size = d?.size;
         if (size === "large") return { w: 400, h: 320 };
         if (size === "medium") return { w: 300, h: 220 };
         return { w: 200, h: 160 };
@@ -276,7 +299,10 @@ function InnerWorkspace() {
   }, [focusedAgentId, nodes]);
 
   return (
-    <div className="w-full h-full bg-[#f2ede4] dark:bg-neutral-950 relative">
+    <div
+      ref={containerRef}
+      className="w-full h-full bg-[#f2ede4] dark:bg-neutral-950 relative"
+    >
       <ReactFlow
         nodes={nodesWithHandler}
         edges={edges}
