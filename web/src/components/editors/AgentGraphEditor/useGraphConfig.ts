@@ -183,12 +183,13 @@ export function flowToGraphConfig(
   }));
 
   // Convert edges (only if we have user edges, otherwise preserve existing)
+  // Filter out only the direct START→END edge (both conditions must be true)
   const userEdges = edges.filter(
-    (e) => e.source !== START_NODE_ID || e.target !== END_NODE_ID,
+    (e) => !(e.source === START_NODE_ID && e.target === END_NODE_ID),
   );
   const graphEdges: GraphEdgeConfig[] =
     userEdges.length > 0 || !existingConfig?.edges?.length
-      ? edges.map((edge) => ({
+      ? userEdges.map((edge) => ({
           from_node: edge.source === START_NODE_ID ? "START" : edge.source,
           to_node: edge.target === END_NODE_ID ? "END" : edge.target,
           condition: edge.data?.config?.condition || null,

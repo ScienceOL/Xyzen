@@ -417,14 +417,13 @@ class GraphBuilderV2:
             raise ValueError(f"Tool node '{config.id}' missing tool_config")
 
         # Get tools for this node
-        if tool_config.execute_all:
+        # If execute_all=True OR no tool_filter specified, use all tools
+        if tool_config.execute_all or not tool_config.tool_filter:
             # Use all tools (or filtered by global config)
             tool_node = self._tool_node
         else:
-            # Use specific tools
-            tools = [
-                t for t in self.tool_registry.values() if tool_config.tool_filter and t.name in tool_config.tool_filter
-            ]
+            # Use specific tools from filter
+            tools = [t for t in self.tool_registry.values() if t.name in tool_config.tool_filter]
             tool_node = ToolNode(tools) if tools else None
 
         if not tool_node:

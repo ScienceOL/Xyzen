@@ -235,17 +235,17 @@ export function AgentGraphEditor({
               variant={BackgroundVariant.Dots}
               gap={20}
               size={1}
-              className="bg-neutral-50! dark:bg-neutral-900!"
+              className="!bg-neutral-50 dark:!bg-neutral-900"
             />
             <Controls
               showZoom
               showFitView
               showInteractive={!readOnly}
-              className="bg-white! dark:bg-neutral-800! border-neutral-200! dark:border-neutral-700! shadow-md!"
+              className="!bg-white dark:!bg-neutral-800 !border-neutral-200 dark:!border-neutral-700 !shadow-md"
             />
             <MiniMap
               nodeStrokeWidth={3}
-              className="bg-white! dark:bg-neutral-800! border-neutral-200! dark:border-neutral-700!"
+              className="!bg-white dark:!bg-neutral-800 !border-neutral-200 dark:!border-neutral-700"
               maskColor="rgba(0, 0, 0, 0.1)"
             />
           </ReactFlow>
