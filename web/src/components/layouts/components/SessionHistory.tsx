@@ -121,7 +121,8 @@ function SessionHistory({
     // 激活选中的频道，建立WebSocket连接
     await activateChannelFn(chatId);
     onSelectTopic?.(chatId);
-    // Keep history panel open for better UX - removed onClose()
+    // 选择后关闭历史记录面板，避免挡住对话内容
+    onClose();
   };
 
   // 切换置顶状态
