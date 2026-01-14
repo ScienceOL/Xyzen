@@ -275,6 +275,23 @@ class TestCreateReactConfig:
 class TestMigrateV1ToV2:
     """Test migrate_v1_to_v2 function."""
 
+    def test_migrate_empty_config_returns_react(self) -> None:
+        """Test that empty v1 config returns default ReAct config."""
+        v1_config = {
+            "version": "1.0",
+            "nodes": [],
+            "edges": [],
+            "entry_point": "agent",
+        }
+        v2_config = migrate_v1_to_v2(v1_config)
+        assert v2_config.version == "2.0"
+        # Should have ReAct pattern: agent + tools nodes
+        assert len(v2_config.nodes) == 2
+        assert v2_config.nodes[0].id == "agent"
+        assert v2_config.nodes[1].id == "tools"
+        # Should have 4 edges in ReAct pattern
+        assert len(v2_config.edges) == 4
+
     def test_migrate_simple_v1_config(self) -> None:
         """Test migrating a simple v1 config."""
         v1_config = {

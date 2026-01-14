@@ -389,18 +389,28 @@ def migrate_v1_to_v2(v1_config: dict[str, Any]) -> GraphConfig:
     """Migrate a v1 GraphConfig to v2 format.
 
     Handles:
+    - Empty configs: Returns default ReAct config
     - Converting router nodes to conditional edges
     - Simplifying state schema
     - Updating tool node configs
     - Preserving metadata
     """
+    # Extract v1 data
+    v1_nodes = v1_config.get("nodes", [])
+    v1_edges = v1_config.get("edges", [])
+
+    # Handle empty configs by returning a default ReAct config
+    # This ensures old agents with unconfigured graphs still work
+    if not v1_nodes:
+        return create_react_config(
+            prompt="You are a helpful assistant.",
+            tools_enabled=True,
+        )
+
     nodes: list[GraphNodeConfig] = []
     edges: list[GraphEdgeConfig] = []
     custom_state_fields: dict[str, StateFieldSchema] = {}
 
-    # Extract v1 data
-    v1_nodes = v1_config.get("nodes", [])
-    v1_edges = v1_config.get("edges", [])
     v1_state = v1_config.get("state_schema", {}).get("fields", {})
 
     # Migrate state fields (skip 'messages' and 'has_tool_calls' as they're handled automatically)
