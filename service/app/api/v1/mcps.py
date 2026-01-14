@@ -308,7 +308,7 @@ async def test_mcp_tool(
     start_time = time.time()
     try:
         # Use the same tool execution logic as in chat.py
-        from app.core.chat.tools import call_mcp_tool
+        from app.agents.mcp_tools import call_mcp_tool
 
         result = await call_mcp_tool(mcp_server, tool_name, test_request.parameters)
 

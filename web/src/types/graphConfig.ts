@@ -104,8 +104,13 @@ export interface LLMNodeConfig {
 }
 
 export interface ToolNodeConfig {
-  tool_name: string;
+  // v1 fields
+  tool_name?: string;
   arguments_template?: Record<string, string>;
+  // v2 fields
+  execute_all?: boolean;
+  tool_filter?: string[] | null;
+  // Common fields
   output_key?: string;
   timeout_seconds?: number;
   retry_count?: number;
@@ -195,10 +200,14 @@ export interface GraphNodeConfig {
 // Graph Edge Definition
 // =============================================================================
 
+// v2 condition types (string-based)
+export type ConditionType = "has_tool_calls" | "no_tool_calls";
+
 export interface GraphEdgeConfig {
   from_node: string; // 'START' for entry point
   to_node: string; // 'END' for exit point
-  condition?: EdgeCondition | null;
+  // v1: EdgeCondition object, v2: ConditionType string or CustomCondition
+  condition?: EdgeCondition | ConditionType | null;
   label?: string | null;
   priority?: number;
 }
@@ -208,18 +217,28 @@ export interface GraphEdgeConfig {
 // =============================================================================
 
 export interface GraphConfig {
-  version?: string;
+  version?: string; // "1.0" or "2.0"
 
-  // State definition
+  // v1: State definition
   state_schema?: GraphStateSchema;
+
+  // v2: Custom state fields (messages field is automatic)
+  custom_state_fields?: Record<string, StateFieldSchema>;
 
   // Graph structure
   nodes: GraphNodeConfig[];
   edges: GraphEdgeConfig[];
 
   // Entry and exit
-  entry_point: string;
+  entry_point?: string;
   exit_points?: string[];
+
+  // v2: Tool configuration
+  tool_config?: {
+    tool_filter?: string[] | null;
+    timeout_seconds?: number;
+    max_parallel?: number;
+  };
 
   // Reusable prompt templates
   prompt_templates?: Record<string, string>;
@@ -240,9 +259,22 @@ export interface GraphConfig {
 // =============================================================================
 
 /**
- * Create a default empty GraphConfig
+ * Create a default empty GraphConfig (v2)
  */
 export function createEmptyGraphConfig(): GraphConfig {
+  return {
+    version: "2.0",
+    nodes: [],
+    edges: [],
+    entry_point: "",
+    metadata: {},
+  };
+}
+
+/**
+ * Create a default empty GraphConfig (v1 - legacy)
+ */
+export function createEmptyGraphConfigV1(): GraphConfig {
   return {
     version: "1.0",
     state_schema: { fields: {} },

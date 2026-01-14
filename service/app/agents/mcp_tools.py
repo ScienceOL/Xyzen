@@ -6,17 +6,21 @@ import asyncio
 import json
 import logging
 from typing import Any
+from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.mcp import async_check_mcp_server_status
+from app.models.agent import Agent
 from app.models.mcp import McpServer
 from app.repos.mcp import McpRepository
 
 logger = logging.getLogger(__name__)
 
 
-async def prepare_mcp_tools(db: AsyncSession, agent: Any, session_id: Any = None) -> list[dict[str, Any]]:
+async def prepare_mcp_tools(
+    db: AsyncSession, agent: Agent | None, session_id: UUID | None = None
+) -> list[dict[str, Any]]:
     """
     Prepare MCP tools from both agent-level and session-level MCP servers.
 

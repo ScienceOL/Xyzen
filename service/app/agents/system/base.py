@@ -20,7 +20,11 @@ if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
     from langchain_core.tools import BaseTool
 
-    from app.schemas.graph_config import GraphConfig
+    from app.schemas.graph_config import GraphConfig as GraphConfigV1
+    from app.schemas.graph_config_v2 import GraphConfig as GraphConfigV2
+
+    # Union type for both v1 and v2 configs
+    GraphConfigType = GraphConfigV1 | GraphConfigV2
 
 
 class BaseSystemAgent(BaseBuiltinGraphAgent):
@@ -126,7 +130,7 @@ class BaseSystemAgent(BaseBuiltinGraphAgent):
         return self
 
     @abstractmethod
-    def export_graph_config(self) -> "GraphConfig":
+    def export_graph_config(self) -> "GraphConfigType":
         """
         Export the agent's workflow as a JSON GraphConfig.
 
@@ -136,7 +140,7 @@ class BaseSystemAgent(BaseBuiltinGraphAgent):
         3. Learn from the implementation
 
         Returns:
-            GraphConfig representing this agent's workflow
+            GraphConfig (v1 or v2) representing this agent's workflow
         """
         ...
 

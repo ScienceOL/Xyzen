@@ -182,6 +182,9 @@ class AgentRepository:
         This function does NOT commit the transaction, but it does flush the session
         to ensure the agent object is populated with DB-defaults before being returned.
 
+        If graph_config is not provided, generates a default ReAct-style graph_config
+        using the agent's prompt.
+
         Args:
             agent_data: The Pydantic model containing the data for the new agent.
             user_id: The user ID (from authentication).
@@ -200,9 +203,27 @@ class AgentRepository:
         # Extract MCP server IDs before creating agent
         mcp_server_ids = agent_data.mcp_server_ids
 
+        # Generate graph_config if not provided (single source of truth: ReActAgent)
+        graph_config = agent_data.graph_config
+        if graph_config is None:
+            from app.agents.system.react import ReActAgent
+
+            system_prompt = agent_data.prompt or "You are a helpful assistant."
+            react_agent = ReActAgent(system_prompt=system_prompt)
+            graph_config = react_agent.export_graph_config().model_dump()
+
+            # Add system_agent_key to metadata so the agent uses native ReActAgent at runtime
+            # This ensures consistent behavior between custom agents and template-based agents
+            if "metadata" not in graph_config:
+                graph_config["metadata"] = {}
+            graph_config["metadata"]["system_agent_key"] = "react"
+
+            logger.debug("Generated default ReAct graph_config for agent with system_agent_key")
+
         # Create agent without mcp_server_ids (which isn't a model field)
         agent_dict = agent_data.model_dump(exclude={"mcp_server_ids"})
         agent_dict["user_id"] = user_id
+        agent_dict["graph_config"] = graph_config  # Use generated or provided config
         agent = Agent(**agent_dict)
 
         self.db.add(agent)
