@@ -64,6 +64,15 @@
     "reportImplicitStringConcatenation": "none"
   },
 
+  "black-formatter.args": ["--line-length", "119"],
+
+  "flake8.args": [
+    "--max-line-length",
+    "119",
+    "--ignore",
+    "F401 W503 F541 F841 E226"
+  ],
+
   "todo-tree.highlights.defaultHighlight": {
     "icon": "alert",
     "type": "text",
