@@ -2,6 +2,9 @@
   "add": "エージェントを追加",
   "edit": "編集",
   "delete": "削除",
+  "badges": {
+    "marketplace": "マーケットプレイスに公開済み"
+  },
   "editAgent": "エージェントを編集",
   "deleteAgent": "エージェントを削除",
   "addButton": "+ エージェントを追加",
@@ -10,6 +13,8 @@
   "deleteTitle": "エージェントを削除",
   "deleteConfirm": "エージェント\"{{name}}\"を完全に削除してもよろしいですか？この操作は元に戻せません。",
   "deleteConfirmWithListing": "⚠️ このエージェントはマーケットプレイスに公開されています。削除すると、公開版も削除されます。\n\nエージェント\"{{name}}\"を完全に削除してもよろしいですか？この操作は元に戻せません。",
+  "deleteBlockedTitle": "エージェントを削除できません",
+  "deleteBlockedMessage": "このエージェントは Agent Market に公開されています。先にマーケットから非公開（下架）にしてから削除してください。",
   "createDescription": "カスタムプロンプトとツールを使用して新しいAIエージェントを作成します。",
   "updateDescription": "エージェントの詳細を更新します。",
   "systemDescription": "特殊な実行機能を持つ事前設定されたシステムエージェントを選択します。",

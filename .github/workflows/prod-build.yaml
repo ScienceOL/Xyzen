@@ -16,6 +16,7 @@ jobs:
         id: build_setup
         run: |
           echo "build_start=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "release_tag=RELEASE.$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_OUTPUT
           echo "commit_author=$(git log -1 --pretty=format:'%an')" >> $GITHUB_OUTPUT
           echo "commit_email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
           echo "commit_message=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
@@ -35,11 +36,17 @@ jobs:
 
       - name: Build and push Service Docker image
         run: |
-          docker build service -t registry.sciol.ac.cn/sciol/xyzen-service:latest --push
+          docker buildx build service \
+            -t registry.sciol.ac.cn/sciol/xyzen-service:latest \
+            -t registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.release_tag }} \
+            --push
 
       - name: Build and push Web Docker image
         run: |
-          docker build web -t registry.sciol.ac.cn/sciol/xyzen-web:latest --push
+          docker buildx build web \
+            -t registry.sciol.ac.cn/sciol/xyzen-web:latest \
+            -t registry.sciol.ac.cn/sciol/xyzen-web:${{ steps.build_setup.outputs.release_tag }} \
+            --push
 
       - name: Set up kubeconfig
         env:
@@ -51,11 +58,10 @@ jobs:
 
       - name: Rolling update deployments
         run: |
-          kubectl rollout restart deployment xyzen -n bohrium
-          kubectl rollout restart deployment xyzen-celery -n bohrium
-          kubectl rollout restart deployment xyzen -n sciol
-          kubectl rollout restart deployment xyzen-web -n sciol
-
+          kubectl -n bohrium set image deployment/xyzen *=registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.release_tag }}
+          kubectl -n bohrium set image deployment/xyzen-celery *=registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.release_tag }}
+          kubectl -n sciol set image deployment/xyzen *=registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.release_tag }}
+          kubectl -n sciol set image deployment/xyzen-web *=registry.sciol.ac.cn/sciol/xyzen-web:${{ steps.build_setup.outputs.release_tag }}
 
       - name: Calculate build duration
         if: always()
@@ -115,5 +121,5 @@ jobs:
           commit_sha: ${{ steps.build_setup.outputs.commit_sha }}
           commit_sha_short: ${{ steps.build_setup.outputs.commit_sha_short }}
           commit_date: ${{ steps.build_setup.outputs.commit_date }}
-          service_image: 'registry.sciol.ac.cn/sciol/xyzen-service:latest'
-          web_image: 'registry.sciol.ac.cn/sciol/xyzen-web:latest'
+          service_image: 'registry.sciol.ac.cn/sciol/xyzen-service:${{ steps.build_setup.outputs.release_tag }}'
+          web_image: 'registry.sciol.ac.cn/sciol/xyzen-web:${{ steps.build_setup.outputs.release_tag }}'

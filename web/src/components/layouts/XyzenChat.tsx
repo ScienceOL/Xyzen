@@ -115,19 +115,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     return (
       <div className="flex h-full flex-col">
         <ThemedEmptyState config={config} />
-
-        {/* Add toolbar even in empty state for history access */}
-        <div className="border-t border-neutral-200 dark:border-neutral-800" />
-        <div className="shrink-0">
-          <ChatToolbar
-            onShowHistory={handleToggleHistory}
-            onHeightChange={handleInputHeightChange}
-            showHistory={showHistory}
-            handleCloseHistory={handleCloseHistory}
-            handleSelectTopic={handleSelectTopic}
-            inputHeight={inputHeight}
-          />
-        </div>
       </div>
     );
   }

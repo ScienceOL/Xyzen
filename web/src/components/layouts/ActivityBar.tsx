@@ -2,11 +2,16 @@ import {
   ChatBubbleLeftRightIcon,
   FolderIcon,
   SparklesIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
-export type ActivityPanel = "chat" | "knowledge" | "marketplace";
+export type ActivityPanel =
+  | "chat"
+  | "knowledge"
+  | "marketplace"
+  | "workspace-test";
 
 interface ActivityBarProps {
   activePanel: ActivityPanel;
@@ -114,6 +119,12 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
       panel: "marketplace" as ActivityPanel,
       icon: SparklesIcon,
       label: t("app.activityBar.community"),
+      disabled: false,
+    },
+    {
+      panel: "workspace-test" as ActivityPanel,
+      icon: Squares2X2Icon,
+      label: "Workspace Concept",
       disabled: false,
     },
   ];
