@@ -58,5 +58,26 @@
   "modelSelector": {
     "noProvider": "Please add an LLM provider first",
     "notConfigured": "Not Configured"
+  },
+  "tierSelector": {
+    "title": "Select Model Tier",
+    "tiers": {
+      "ultra": {
+        "name": "Ultra",
+        "description": "Most powerful models for complex tasks"
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "Advanced models for professional use"
+      },
+      "standard": {
+        "name": "Standard",
+        "description": "Balanced performance and efficiency"
+      },
+      "lite": {
+        "name": "Lite",
+        "description": "Fast and lightweight for simple tasks"
+      }
+    }
   }
 }
