@@ -71,13 +71,15 @@ class ProviderManager:
         logger.info(f"Removed provider '{name}'")
 
     async def create_langchain_model(
-        self, provider_id: str | None = None, model: str | None = None, **override_kwargs: Any
+        self, provider_id: str | ProviderType | None = None, model: str | None = None, **override_kwargs: Any
     ) -> BaseChatModel:
         """
         Create a LangChain model using the stored config and the ChatModelFactory.
 
         Args:
-            provider_id: The provider ID (UUID string). If None, uses system provider as fallback.
+            provider_id: The provider ID (UUID string, system alias, or ProviderType enum).
+                         If ProviderType is passed, it will be converted to system:<provider_type> format.
+                         If None, uses system provider as fallback.
             model: The model name to use. Required.
             override_kwargs: Runtime overrides (e.g. temperature, max_tokens)
 
@@ -90,6 +92,10 @@ class ProviderManager:
         """
         if not model:
             raise ErrCode.MODEL_NOT_SPECIFIED.with_messages("Model must be specified")
+
+        # Convert ProviderType enum to system alias format
+        if isinstance(provider_id, ProviderType):
+            provider_id = f"{SYSTEM_PROVIDER_NAME}:{provider_id.value}"
 
         async def infer_provider_preference(model_name: str) -> list[ProviderType]:
             """Infer likely provider type(s) for a model.
@@ -164,22 +170,24 @@ class ProviderManager:
         return model_instance.llm
 
 
-user_provider_managers: dict[str, ProviderManager] = {}
-
-
 async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderManager:
     """
-    Create a provider manager with all providers for a specific user.
-    """
-    if user_id in user_provider_managers:
-        return user_provider_managers[user_id]
+    Create a provider manager with system providers.
 
+    Note: User-defined providers are disabled. This function now only loads
+    system providers configured via environment variables.
+
+    This function rebuilds the ProviderManager from the database on each call
+    to support stateless multi-pod deployments. Since all users share the same
+    system providers, the overhead is minimal (~5ms with connection pooling).
+    """
     from app.repos.provider import ProviderRepository
 
     provider_repo = ProviderRepository(db)
-    all_providers = await provider_repo.get_providers_by_user(user_id, include_system=True)
+    # Only load system providers - user-defined providers are disabled
+    all_providers = await provider_repo.get_all_system_providers()
     if not all_providers:
-        raise ErrCode.PROVIDER_NOT_FOUND.with_messages("No providers found for user")
+        raise ErrCode.PROVIDER_NOT_FOUND.with_messages("No system providers configured")
 
     from app.configs import configs
 
@@ -242,7 +250,5 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
         except Exception as e:
             logger.error(f"Failed to load provider {db_provider.name} for user {user_id}: {e}")
             continue
-
-    user_provider_managers[user_id] = user_provider_manager
 
     return user_provider_manager

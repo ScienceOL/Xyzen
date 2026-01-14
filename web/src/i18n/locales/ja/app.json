@@ -58,5 +58,26 @@
   "modelSelector": {
     "noProvider": "まずLLMプロバイダーを追加してください",
     "notConfigured": "未設定"
+  },
+  "tierSelector": {
+    "title": "モデルティアを選択",
+    "tiers": {
+      "ultra": {
+        "name": "Xyzen ウルトラ",
+        "description": "複雑なタスク向けの最強モデル"
+      },
+      "pro": {
+        "name": "Xyzen プロ",
+        "description": "プロフェッショナル向けの高度なモデル"
+      },
+      "standard": {
+        "name": "Xyzen スタンダード",
+        "description": "性能と効率のバランス"
+      },
+      "lite": {
+        "name": "Xyzen ライト",
+        "description": "シンプルなタスク向けの高速軽量モデル"
+      }
+    }
   }
 }

@@ -13,10 +13,13 @@ from app.configs import configs
 from app.core.celery_app import celery_app
 from app.core.chat import get_ai_response_stream
 from app.core.consume import create_consume_for_chat
+from app.core.consume_calculator import ConsumptionCalculator
+from app.core.consume_strategy import ConsumptionContext
 from app.infra.database import ASYNC_DATABASE_URL
 from app.models.citation import CitationCreate
 from app.models.message import Message, MessageCreate
 from app.repos import CitationRepository, FileRepository, MessageRepository, TopicRepository
+from app.repos.session import SessionRepository
 from app.schemas.chat_event_payloads import CitationData
 from app.schemas.chat_event_types import ChatEventType
 
@@ -387,15 +390,22 @@ async def _process_chat_message_async(
 
                 # Settlement
                 try:
-                    IMAGE_GENERATION_COST = 10
-                    generated_files_cost = generated_files_count * IMAGE_GENERATION_COST
+                    # Get session to retrieve model_tier
+                    session_repo = SessionRepository(db)
+                    session = await session_repo.get_session_by_id(session_id)
+                    model_tier = session.model_tier if session else None
 
-                    if total_tokens > 0:
-                        token_cost = (input_tokens * 1 + output_tokens * 3) // 1000
-                        total_cost = 3 + token_cost + generated_files_count  # base cost hardcoded to 3 as before
-                    else:
-                        base_cost = 3  # Hardcoded fallback
-                        total_cost = int(base_cost + len(full_content) // 100 + generated_files_cost)
+                    # Use strategy pattern for consumption calculation
+                    consume_context = ConsumptionContext(
+                        model_tier=model_tier,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        total_tokens=total_tokens,
+                        content_length=len(full_content),
+                        generated_files_count=generated_files_count,
+                    )
+                    result = ConsumptionCalculator.calculate(consume_context)
+                    total_cost = result.amount
 
                     remaining_amount = total_cost - pre_deducted_amount
 
@@ -413,6 +423,9 @@ async def _process_chat_message_async(
                             input_tokens=input_tokens if total_tokens > 0 else None,
                             output_tokens=output_tokens if total_tokens > 0 else None,
                             total_tokens=total_tokens if total_tokens > 0 else None,
+                            model_tier=model_tier.value if model_tier else None,
+                            tier_rate=result.breakdown.get("tier_rate"),
+                            calculation_breakdown=json.dumps(result.breakdown),
                         )
                 except ErrCodeError as e:
                     if e.code == ErrCode.INSUFFICIENT_BALANCE:

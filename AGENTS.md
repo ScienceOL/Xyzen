@@ -72,6 +72,10 @@ types/
 
 ## Core Patterns
 
+**Stateless Async Execution**: Decouple connection management (FastAPI) from heavy computation (Celery).
+* State Offloading: API containers remain stateless. Ephemeral state (Queues, Pub/Sub channels) resides in Redis; persistent state in DB.
+* Pub/Sub Bridge: Workers process tasks independently and broadcast results back to the specific API pod via Redis channels (chat:{connection_id}), enabling independent scaling of Web and Worker layers.
+
 **No-Foreign-Key Database**: Use logical references (`user_id: str`) instead of FK constraints. Handle relationships in service layer.
 
 **Repository Pattern**: Data access via `repos/` classes. Business logic in `core/` services.

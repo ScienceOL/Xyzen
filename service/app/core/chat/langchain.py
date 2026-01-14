@@ -84,7 +84,13 @@ async def get_ai_response_stream_langchain_legacy(
     agent = await _resolve_agent(db, agent, topic)
 
     # Determine provider and model
-    provider_id, model_name = await _resolve_provider_and_model(db, agent, topic)
+    provider_id, model_name = await _resolve_provider_and_model(
+        db=db,
+        agent=agent,
+        topic=topic,
+        message_text=message_text,
+        user_provider_manager=user_provider_manager,
+    )
 
     # Build system prompt
     system_prompt = await build_system_prompt(db, agent, model_name)
@@ -143,14 +149,25 @@ async def _resolve_agent(db: AsyncSession, agent: "Agent | None", topic: TopicMo
 
 
 async def _resolve_provider_and_model(
-    db: AsyncSession, agent: "Agent | None", topic: TopicModel
+    db: AsyncSession,
+    agent: "Agent | None",
+    topic: TopicModel,
+    message_text: str | None = None,
+    user_provider_manager: Any = None,
 ) -> tuple[str | None, str | None]:
     """
     Determine provider and model to use.
 
-    Priority: Session Override > Agent Default > System Default
+    Priority: Session Model > Session Tier (with intelligent selection) > Agent Default > System Default (STANDARD tier)
+
+    When model_tier is set but no session.model:
+    - Uses intelligent selection to pick the best model for the task
+    - Caches the selection in session.model for subsequent messages
     """
     from app.repos.session import SessionRepository
+    from app.schemas.model_tier import ModelTier, get_candidate_for_model, resolve_model_for_tier
+
+    from .model_selector import select_model_for_tier
 
     session_repo = SessionRepository(db)
     session = await session_repo.get_session_by_id(topic.session_id)
@@ -161,8 +178,41 @@ async def _resolve_provider_and_model(
     if session:
         if session.provider_id:
             provider_id = str(session.provider_id)
+
+        # If session.model is already set, use it directly (cached selection)
         if session.model:
             model_name = session.model
+            logger.info(f"Using cached session model: {model_name}")
+        # If model_tier is set but no model, do intelligent selection
+        elif session.model_tier:
+            if message_text and user_provider_manager:
+                try:
+                    model_name = await select_model_for_tier(
+                        tier=session.model_tier,
+                        first_message=message_text,
+                        user_provider_manager=user_provider_manager,
+                    )
+                    logger.info(f"Intelligent selection chose model: {model_name} for tier {session.model_tier.value}")
+
+                    # Cache the selection in session.model for subsequent messages.
+                    # Note: Concurrent requests may race to set this, but that's fine since
+                    # they would set the same (or equivalent) value - this is idempotent.
+                    from app.models.sessions import SessionUpdate
+
+                    await session_repo.update_session(
+                        session_id=session.id,
+                        session_update=SessionUpdate(model=model_name),
+                    )
+                    await db.commit()
+                    logger.info(f"Cached selected model in session: {model_name}")
+                except Exception as e:
+                    logger.error(f"Intelligent model selection failed: {e}")
+                    model_name = resolve_model_for_tier(session.model_tier)
+                    logger.warning(f"Falling back to tier default: {model_name}")
+            else:
+                # No message or provider manager, use simple fallback
+                model_name = resolve_model_for_tier(session.model_tier)
+                logger.info(f"Using tier fallback (no context): {model_name}")
 
     if not provider_id and agent and agent.provider_id:
         provider_id = str(agent.provider_id)
@@ -170,6 +220,41 @@ async def _resolve_provider_and_model(
     if not model_name and agent and agent.model:
         model_name = agent.model
 
+    # Final fallback: if still no model, use STANDARD tier default
+    # This handles cases where session has no model/tier and agent has no default model
+    if not model_name:
+        default_tier = ModelTier.STANDARD
+        if message_text and user_provider_manager:
+            try:
+                model_name = await select_model_for_tier(
+                    tier=default_tier,
+                    first_message=message_text,
+                    user_provider_manager=user_provider_manager,
+                )
+                logger.info(f"Using STANDARD tier selection: {model_name}")
+            except Exception as e:
+                logger.error(f"STANDARD tier selection failed: {e}")
+                model_name = resolve_model_for_tier(default_tier)
+                logger.warning(f"Falling back to STANDARD tier default: {model_name}")
+        else:
+            model_name = resolve_model_for_tier(default_tier)
+            logger.info(f"Using STANDARD tier fallback: {model_name}")
+
+    # Ensure we have the correct provider for the selected model.
+    # The model's required provider takes precedence over session.provider_id.
+    if model_name and user_provider_manager:
+        candidate = get_candidate_for_model(model_name)
+        if candidate:
+            # Find a configured provider that matches the candidate's required type
+            for config in user_provider_manager.list_providers():
+                if config.provider_type == candidate.provider_type:
+                    provider_id = config.name
+                    logger.info(
+                        f"Resolved provider {provider_id} for model {model_name} (type: {candidate.provider_type})"
+                    )
+                    break
+
+    logger.info(f"Resolved model: {model_name}, provider: {provider_id}")
     return provider_id, model_name
 
 
@@ -354,10 +439,18 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
         # Structured output nodes (clarify_with_user, write_research_brief, etc.)
         # These nodes use with_structured_output and don't stream normally
         # They return clean content in messages, so we emit it as if streamed
-        elif hasattr(last_message, "content") and step_name in {
-            "clarify_with_user",
-            "write_research_brief",
-        }:
+        # Check for structured output metadata to support custom nodes
+        elif hasattr(last_message, "content") and (
+            step_name
+            in {
+                "clarify_with_user",
+                "write_research_brief",
+            }
+            or (
+                hasattr(last_message, "additional_kwargs")
+                and "structured_output" in last_message.additional_kwargs.get("node_metadata", {})
+            )
+        ):
             content = last_message.content
             if isinstance(content, str) and content:
                 logger.debug("Structured output from '%s': %s", step_name, content[:100])

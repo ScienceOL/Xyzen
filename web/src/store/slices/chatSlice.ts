@@ -65,6 +65,7 @@ export interface ChatSlice {
     config: {
       provider_id?: string;
       model?: string;
+      model_tier?: "ultra" | "pro" | "standard" | "lite";
       google_search_enabled?: boolean;
     },
   ) => Promise<void>;
@@ -1971,6 +1972,8 @@ export const createChatSlice: StateCreator<
             state.channels[activeChannelId].provider_id =
               updatedSession.provider_id;
             state.channels[activeChannelId].model = updatedSession.model;
+            state.channels[activeChannelId].model_tier =
+              updatedSession.model_tier;
             state.channels[activeChannelId].google_search_enabled =
               updatedSession.google_search_enabled;
           }

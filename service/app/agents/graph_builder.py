@@ -377,7 +377,19 @@ class GraphBuilder:
             messages = messages + [HumanMessage(content=prompt)]
 
             # Invoke LLM
-            response = await llm.ainvoke(messages)
+            try:
+                response = await llm.ainvoke(messages)
+            except ValueError as e:
+                if "expected value at line 1 column 1" in str(e):
+                    logger.error(
+                        f"[LLM Node: {config.id}] JSON parsing failed. This often happens due to "
+                        "Azure Content Filters or empty model response."
+                    )
+                    raise ValueError(
+                        "Model execution failed: The provider returned an invalid response. "
+                        "This may be due to safety filters blocking the content."
+                    ) from e
+                raise
 
             # Handle structured output
             if structured_model and isinstance(response, BaseModel):

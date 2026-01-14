@@ -102,14 +102,17 @@ class SessionRepository:
         await self.db.refresh(session)
         return session
 
-    async def update_session(self, session_id: UUID, session_data: SessionUpdate) -> SessionModel | None:
+    async def update_session(self, session_id: UUID, session_update: SessionUpdate) -> SessionModel | None:
         """
         Updates an existing session.
         This function does NOT commit the transaction.
 
+        When model_tier is changed, clears session.model to trigger re-selection
+        on the next message.
+
         Args:
             session_id: The UUID of the session to update.
-            session_data: The Pydantic model containing the update data.
+            session_update: The Pydantic model containing the update data.
 
         Returns:
             The updated SessionModel instance, or None if not found.
@@ -119,9 +122,22 @@ class SessionRepository:
         if not session:
             return None
 
+        # Check if model_tier is being changed
+        update_data = session_update.model_dump(exclude_unset=True)
+        if "model_tier" in update_data:
+            new_tier = update_data.get("model_tier")
+            if new_tier != session.model_tier:
+                # Clear session.model to trigger re-selection on next message
+                logger.info(
+                    f"Session {session_id}: model_tier changed from {session.model_tier} to {new_tier}, "
+                    f"clearing model to trigger re-selection"
+                )
+                session.model = None
+
         # Only update fields that are not None to avoid null constraint violations
-        update_data = session_data.model_dump(exclude_unset=True, exclude_none=True)
-        for field, value in update_data.items():
+        # But we already handled model clearing above for tier changes
+        update_data_filtered = session_update.model_dump(exclude_unset=True, exclude_none=True)
+        for field, value in update_data_filtered.items():
             if hasattr(session, field):
                 setattr(session, field, value)
 

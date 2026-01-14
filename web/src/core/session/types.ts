@@ -14,6 +14,7 @@ export interface SessionResponse {
   user_id: string;
   provider_id?: string;
   model?: string;
+  model_tier?: "ultra" | "pro" | "standard" | "lite";
   google_search_enabled?: boolean;
   created_at: string;
   updated_at: string;
@@ -39,6 +40,7 @@ export interface SessionCreatePayload {
   agent_id?: string;
   provider_id?: string;
   model?: string;
+  model_tier?: "ultra" | "pro" | "standard" | "lite";
   mcp_server_ids?: string[];
 }
 

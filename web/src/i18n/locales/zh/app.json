@@ -58,5 +58,26 @@
   "modelSelector": {
     "noProvider": "请先添加LLM提供商",
     "notConfigured": "未设置"
+  },
+  "tierSelector": {
+    "title": "选择模型等级",
+    "tiers": {
+      "ultra": {
+        "name": "Xyzen Ultra",
+        "description": "最强大的模型，适合复杂任务"
+      },
+      "pro": {
+        "name": "Xyzen Pro",
+        "description": "高级模型，适合专业用途"
+      },
+      "standard": {
+        "name": "Xyzen Standard",
+        "description": "性能与效率均衡"
+      },
+      "lite": {
+        "name": "Xyzen Lite",
+        "description": "快速轻量，适合简单任务"
+      }
+    }
   }
 }

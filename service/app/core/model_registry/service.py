@@ -6,10 +6,12 @@ of AI model specifications, pricing, and capabilities.
 This service replaces LiteLLM-based model information with models.dev data.
 """
 
+import json
 import logging
 import re
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
@@ -116,36 +118,70 @@ class ModelsDevService:
 
     Features:
     - Async HTTP fetching from https://models.dev/api.json
-    - In-memory caching with configurable TTL
+    - Redis caching for multi-pod deployments (with in-memory fallback)
     - Model lookup by ID and provider
     - Conversion to LiteLLM-compatible ModelInfo format
     """
 
     API_URL = "https://models.dev/api.json"
     CACHE_TTL = 3600  # 1 hour in seconds
+    CACHE_KEY = "models:dev:api"
 
-    _cache: ModelsDevResponse | None = None
-    _cache_time: float = 0
+    # In-memory fallback cache (used when Redis is unavailable or disabled)
+    _local_cache: ModelsDevResponse | None = None
+    _local_cache_time: float = 0
 
     @classmethod
-    def _is_cache_valid(cls) -> bool:
-        """Check if the cache is still valid based on TTL."""
-        if cls._cache is None:
+    async def _get_redis(cls) -> Any | None:
+        """Get Redis client if available."""
+        try:
+            from app.configs import configs
+
+            if configs.Redis.CacheBackend != "redis":
+                return None
+
+            from app.infra.redis import get_redis_client
+
+            return await get_redis_client()
+        except Exception as e:
+            logger.debug(f"Redis not available for models cache: {e}")
+            return None
+
+    @classmethod
+    def _is_local_cache_valid(cls) -> bool:
+        """Check if the local cache is still valid based on TTL."""
+        if cls._local_cache is None:
             return False
-        return (time.time() - cls._cache_time) < cls.CACHE_TTL
+        return (time.time() - cls._local_cache_time) < cls.CACHE_TTL
 
     @classmethod
     async def fetch_data(cls) -> ModelsDevResponse:
         """
         Fetch model data from models.dev API with caching.
 
+        Uses Redis cache for multi-pod deployments, falls back to local cache.
+
         Returns:
             Dictionary mapping provider ID to ModelsDevProvider
         """
-        if cls._is_cache_valid() and cls._cache is not None:
-            logger.debug("Using cached models.dev data")
-            return cls._cache
+        # Try Redis cache first
+        redis_client = await cls._get_redis()
+        if redis_client:
+            try:
+                cached_data = await redis_client.get(cls.CACHE_KEY)
+                if cached_data:
+                    logger.debug("Using Redis cached models.dev data")
+                    raw_data = json.loads(cached_data)
+                    return cls._parse_raw_data(raw_data)
+            except Exception as e:
+                logger.warning(f"Redis cache read failed: {e}")
 
+        # Try local cache
+        if cls._is_local_cache_valid() and cls._local_cache is not None:
+            logger.debug("Using local cached models.dev data")
+            return cls._local_cache
+
+        # Fetch fresh data
         logger.info("Fetching fresh data from models.dev API")
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -153,28 +189,42 @@ class ModelsDevService:
                 response.raise_for_status()
                 raw_data = response.json()
 
-            # Parse the response into typed models
-            parsed: ModelsDevResponse = {}
-            for provider_id, provider_data in raw_data.items():
-                try:
-                    parsed[provider_id] = ModelsDevProvider.model_validate(provider_data)
-                except Exception as e:
-                    logger.warning(f"Failed to parse provider {provider_id}: {e}")
-                    continue
+            parsed = cls._parse_raw_data(raw_data)
 
-            # Update cache
-            cls._cache = parsed
-            cls._cache_time = time.time()
+            # Update Redis cache
+            if redis_client:
+                try:
+                    await redis_client.setex(cls.CACHE_KEY, cls.CACHE_TTL, json.dumps(raw_data))
+                    logger.info(f"Cached {len(parsed)} providers in Redis")
+                except Exception as e:
+                    logger.warning(f"Redis cache write failed: {e}")
+
+            # Update local cache as fallback
+            cls._local_cache = parsed
+            cls._local_cache_time = time.time()
             logger.info(f"Cached {len(parsed)} providers from models.dev")
+
             return parsed
 
         except httpx.HTTPError as e:
             logger.error(f"Failed to fetch from models.dev API: {e}")
-            # Return cached data if available, even if expired
-            if cls._cache is not None:
-                logger.warning("Returning stale cached data due to fetch error")
-                return cls._cache
+            # Return any cached data if available, even if expired
+            if cls._local_cache is not None:
+                logger.warning("Returning stale local cached data due to fetch error")
+                return cls._local_cache
             raise
+
+    @classmethod
+    def _parse_raw_data(cls, raw_data: dict) -> ModelsDevResponse:
+        """Parse raw API response into typed models."""
+        parsed: ModelsDevResponse = {}
+        for provider_id, provider_data in raw_data.items():
+            try:
+                parsed[provider_id] = ModelsDevProvider.model_validate(provider_data)
+            except Exception as e:
+                logger.warning(f"Failed to parse provider {provider_id}: {e}")
+                continue
+        return parsed
 
     @classmethod
     async def get_model_info(
@@ -626,8 +676,18 @@ class ModelsDevService:
         return model_ids
 
     @classmethod
-    def clear_cache(cls) -> None:
-        """Clear the in-memory cache."""
-        cls._cache = None
-        cls._cache_time = 0
-        logger.info("models.dev cache cleared")
+    async def clear_cache(cls) -> None:
+        """Clear both Redis and local caches."""
+        # Clear Redis cache
+        redis_client = await cls._get_redis()
+        if redis_client:
+            try:
+                await redis_client.delete(cls.CACHE_KEY)
+                logger.info("Redis models.dev cache cleared")
+            except Exception as e:
+                logger.warning(f"Failed to clear Redis cache: {e}")
+
+        # Clear local cache
+        cls._local_cache = None
+        cls._local_cache_time = 0
+        logger.info("Local models.dev cache cleared")

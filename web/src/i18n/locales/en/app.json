@@ -58,5 +58,26 @@
   "modelSelector": {
     "noProvider": "Please add an LLM provider first",
     "notConfigured": "Not Configured"
+  },
+  "tierSelector": {
+    "title": "Select Model Tier",
+    "tiers": {
+      "ultra": {
+        "name": "Xyzen Ultra",
+        "description": "Most powerful models for complex tasks"
+      },
+      "pro": {
+        "name": "Xyzen Pro",
+        "description": "Advanced models for professional use"
+      },
+      "standard": {
+        "name": "Xyzen Standard",
+        "description": "Balanced performance and efficiency"
+      },
+      "lite": {
+        "name": "Xyzen Lite",
+        "description": "Fast and lightweight for simple tasks"
+      }
+    }
   }
 }

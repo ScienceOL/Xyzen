@@ -19,7 +19,7 @@ export const SettingsButton = ({
     <button
       className={`${baseClass}${className ? ` ${className}` : ""}`}
       title={title}
-      onClick={() => openSettingsModal("provider")}
+      onClick={() => openSettingsModal("ui")}
       aria-label={title}
       type="button"
     >

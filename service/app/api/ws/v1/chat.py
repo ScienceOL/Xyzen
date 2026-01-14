@@ -150,12 +150,8 @@ async def chat_websocket(
                     )
                     await db.flush()
 
-                # 3. Echo user message (via Redis for consistency? No, echo immediately usually better UI)
-                # But to keep consistent order, maybe better to just let frontend handle optimistic update?
-                # Original code sent it back. We will send it back via WS directly or relying on frontend?
-                # Original: sent back "user_message_with_files".
+                # 3. Echo user message
                 user_message_with_files = await message_repo.get_message_with_files(user_message.id)
-                # We can send this directly via WS since we are in the loop
                 if user_message_with_files:
                     await websocket.send_text(user_message_with_files.model_dump_json())
                 else:
@@ -221,7 +217,7 @@ async def chat_websocket(
                     access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
                 )
 
-                # 7. Topic Renaming (Keep local async task or move to Celery too? Local is fine for now)
+                # 7. Topic Renaming - uses Redis pub/sub for cross-pod delivery
                 topic_refreshed = await topic_repo.get_topic_with_details(topic_id)
                 if topic_refreshed and topic_refreshed.name in ["新的聊天", "New Chat", "New Topic"]:
                     msgs = await message_repo.get_messages_by_topic(topic_id, limit=5)
@@ -232,13 +228,9 @@ async def chat_websocket(
                                 topic_id,
                                 session_id,
                                 auth_ctx.user_id,
-                                manager,  # Passing manager might be tricky if it uses non-redis send
                                 connection_id,
                             )
                         )
-                        # NOTE: generate_and_update_topic_title uses manager.send_personal_message
-                        # Our local 'manager' here sends via WS. So it works as long as THIS websocket is open.
-                        # If user disconnects, title update might fail to notify FE, but DB update happens.
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {connection_id}")

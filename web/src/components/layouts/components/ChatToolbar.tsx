@@ -2,11 +2,9 @@
 
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { FileUploadPreview } from "@/components/features";
-import { useAvailableModels, useMyProviders } from "@/hooks/queries";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
-import type { ModelInfo } from "@/types/llmProvider";
 import {
   DndContext,
   PointerSensor,
@@ -20,7 +18,7 @@ import {
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KnowledgeSelector } from "./KnowledgeSelector";
-import { ModelSelector } from "./ModelSelector";
+import { TierSelector, type ModelTier } from "./TierSelector";
 import {
   SearchMethodSelector,
   type SearchMethod,
@@ -89,7 +87,6 @@ export default function ChatToolbar({
     channels,
     agents,
     mcpServers,
-    updateSessionProviderAndModel,
     updateSessionConfig,
     uploadedFiles,
     isUploading,
@@ -98,10 +95,6 @@ export default function ChatToolbar({
     quickAddBuiltinServer,
     updateAgent,
   } = useXyzen();
-
-  // Use TanStack Query hooks for provider data
-  const { data: llmProviders = [] } = useMyProviders();
-  const { data: availableModels = {} } = useAvailableModels();
 
   // All user agents for lookup
   const allAgents = useMemo(() => {
@@ -210,17 +203,11 @@ export default function ChatToolbar({
     return allAgents.find((a) => a.id === channel.agentId) || null;
   }, [activeChatChannel, channels, allAgents]);
 
-  // Get current session's provider and model
-  const currentSessionProvider = useMemo(() => {
+  // Get current session's tier
+  const currentSessionTier = useMemo(() => {
     if (!activeChatChannel) return null;
     const channel = channels[activeChatChannel];
-    return channel?.provider_id || null;
-  }, [activeChatChannel, channels]);
-
-  const currentSessionModel = useMemo(() => {
-    if (!activeChatChannel) return null;
-    const channel = channels[activeChatChannel];
-    return channel?.model || null;
+    return channel?.model_tier || null;
   }, [activeChatChannel, channels]);
 
   // State for search method: none, builtin, or searxng
@@ -333,28 +320,24 @@ export default function ChatToolbar({
     }
   }, [activeChatChannel, channels, agents]);
 
-  // Model change handler - updates session's provider and model
-  const handleModelChange = useCallback(
-    async (providerId: string, model: string) => {
+  // Tier change handler - updates session's model tier
+  const handleTierChange = useCallback(
+    async (tier: ModelTier) => {
       if (!activeChatChannel) return;
 
       const channel = channels[activeChatChannel];
       if (!channel?.sessionId) return;
 
       try {
-        await updateSessionProviderAndModel(
-          channel.sessionId,
-          providerId,
-          model,
-        );
-        console.log(
-          `Updated session ${channel.sessionId} to provider ${providerId} and model ${model}`,
-        );
+        await updateSessionConfig(channel.sessionId, {
+          model_tier: tier,
+        });
+        console.log(`Updated session ${channel.sessionId} to tier ${tier}`);
       } catch (error) {
-        console.error("Failed to update session provider/model:", error);
+        console.error("Failed to update session tier:", error);
       }
     },
-    [activeChatChannel, channels, updateSessionProviderAndModel],
+    [activeChatChannel, channels, updateSessionConfig],
   );
 
   // Search method change handler
@@ -431,18 +414,11 @@ export default function ChatToolbar({
     // TODO: Show toast notification about MCP being disabled
   }, []);
 
-  // Check if current model supports web search
+  // Check if current model supports web search (always from standard tier for now)
   const supportsWebSearch = useMemo(() => {
-    if (!currentSessionModel || !currentSessionProvider) return false;
-
-    // Find the model info from availableModels (it's a Record<string, ModelInfo[]>)
-    const providerModels = Object.values(availableModels).flat();
-    const modelInfo = providerModels.find(
-      (m: ModelInfo) => m.key === currentSessionModel,
-    );
-
-    return modelInfo?.supports_web_search || false;
-  }, [currentSessionModel, currentSessionProvider, availableModels]);
+    // For tier-based selection, web search is enabled for standard and prod tiers
+    return currentSessionTier === "standard" || currentSessionTier === "pro";
+  }, [currentSessionTier]);
 
   // Detect if we're on mobile (viewport width < 768px, same as Tailwind md breakpoint)
   // Using useSyncExternalStore for better performance (no useEffect)
@@ -643,15 +619,11 @@ export default function ChatToolbar({
               </button>
             )} */}
 
-              {/* Model Selector */}
+              {/* Tier Selector */}
               {activeChatChannel && currentAgent && (
-                <ModelSelector
-                  currentAgent={currentAgent}
-                  currentSessionProvider={currentSessionProvider}
-                  currentSessionModel={currentSessionModel}
-                  llmProviders={llmProviders}
-                  availableModels={availableModels}
-                  onModelChange={handleModelChange}
+                <TierSelector
+                  currentTier={currentSessionTier}
+                  onTierChange={handleTierChange}
                 />
               )}
 

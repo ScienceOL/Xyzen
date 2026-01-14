@@ -49,6 +49,9 @@ class ConsumeService:
         input_tokens: int | None = None,
         output_tokens: int | None = None,
         total_tokens: int | None = None,
+        model_tier: str | None = None,
+        tier_rate: float | None = None,
+        calculation_breakdown: str | None = None,
     ) -> ConsumeRecord:
         """
         Create consumption record and execute remote billing (if needed)
@@ -67,6 +70,9 @@ class ConsumeService:
             input_tokens: Number of input tokens used
             output_tokens: Number of output tokens generated
             total_tokens: Total tokens (input + output)
+            model_tier: Model tier used (ultra/pro/standard/lite)
+            tier_rate: Tier rate multiplier applied
+            calculation_breakdown: JSON breakdown of calculation
 
         Returns:
             Created consumption record
@@ -109,6 +115,9 @@ class ConsumeService:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
+            model_tier=model_tier,
+            tier_rate=tier_rate,
+            calculation_breakdown=calculation_breakdown,
             consume_state=initial_state,
         )
 
@@ -327,6 +336,9 @@ async def create_consume_for_chat(
     input_tokens: int | None = None,
     output_tokens: int | None = None,
     total_tokens: int | None = None,
+    model_tier: str | None = None,
+    tier_rate: float | None = None,
+    calculation_breakdown: str | None = None,
 ) -> ConsumeRecord:
     """
     Convenience function to create consumption record for chat
@@ -344,6 +356,9 @@ async def create_consume_for_chat(
         input_tokens: Number of input tokens used
         output_tokens: Number of output tokens generated
         total_tokens: Total tokens (input + output)
+        model_tier: Model tier used (ultra/pro/standard/lite)
+        tier_rate: Tier rate multiplier applied
+        calculation_breakdown: JSON breakdown of calculation
 
     Returns:
         Consumption record
@@ -361,4 +376,7 @@ async def create_consume_for_chat(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         total_tokens=total_tokens,
+        model_tier=model_tier,
+        tier_rate=tier_rate,
+        calculation_breakdown=calculation_breakdown,
     )

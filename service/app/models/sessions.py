@@ -9,6 +9,8 @@ from sqlmodel import Column, Field, SQLModel
 if TYPE_CHECKING:
     from .topic import TopicRead
 
+from app.schemas.model_tier import ModelTier
+
 
 def builtin_agent_id_to_uuid(agent_id: str) -> UUID:
     """
@@ -73,6 +75,7 @@ class SessionBase(SQLModel):
     user_id: str = Field(index=True)
     provider_id: UUID | None = Field(default=None, description="If set, overrides the agent's provider")
     model: str | None = Field(default=None, description="If set, overrides the agent's model")
+    model_tier: ModelTier | None = Field(default=None, description="User-selected model tier for simplified selection")
     google_search_enabled: bool = Field(
         default=False, description="Enable built-in web search for supported models (e.g., Gemini)"
     )
@@ -97,6 +100,7 @@ class SessionCreate(SQLModel):
     agent_id: str | UUID | None = Field(default=None)
     provider_id: UUID | None = None
     model: str | None = None
+    model_tier: ModelTier | None = None
     google_search_enabled: bool = False
 
 
@@ -119,4 +123,5 @@ class SessionUpdate(SQLModel):
     is_active: bool | None = None
     provider_id: UUID | None = None
     model: str | None = None
+    model_tier: ModelTier | None = None
     google_search_enabled: bool | None = None
