@@ -146,11 +146,6 @@ function AvatarSelector({
   const generateRandom = useCallback(() => {
     const seed = Math.random().toString(36).slice(2, 10);
     const url = buildAvatarUrl(selectedStyle, seed, backendUrl);
-    console.log("[AvatarSelector] generateRandom:", {
-      style: selectedStyle,
-      seed,
-      url,
-    });
     onSelect(url);
   }, [selectedStyle, onSelect, backendUrl]);
 
@@ -158,18 +153,12 @@ function AvatarSelector({
   const generateFromSeed = useCallback(() => {
     if (!customSeed.trim()) return;
     const url = buildAvatarUrl(selectedStyle, customSeed.trim(), backendUrl);
-    console.log("[AvatarSelector] generateFromSeed:", {
-      style: selectedStyle,
-      seed: customSeed,
-      url,
-    });
     onSelect(url);
   }, [selectedStyle, customSeed, onSelect, backendUrl]);
 
   // Handle preset avatar selection
   const handlePresetSelect = useCallback(
     (avatarUrl: string) => {
-      console.log("[AvatarSelector] handlePresetSelect:", { avatarUrl });
       onSelect(avatarUrl);
     },
     [onSelect],

@@ -29,7 +29,9 @@ import type {
   AgentData,
   AgentFlowNode,
   AgentStatsDisplay,
+  DailyActivityData,
   FlowAgentNodeData,
+  YesterdaySummaryData,
 } from "./spatial/types";
 
 /**
@@ -41,6 +43,8 @@ const agentToFlowNode = (
   agent: AgentWithLayout,
   stats?: AgentStatsAggregated,
   sessionId?: string,
+  dailyActivity?: DailyActivityData[],
+  yesterdaySummary?: YesterdaySummaryData,
 ): AgentFlowNode => {
   const statsDisplay: AgentStatsDisplay | undefined = stats
     ? {
@@ -69,6 +73,8 @@ const agentToFlowNode = (
       gridSize: agent.spatial_layout.gridSize,
       position: agent.spatial_layout.position,
       stats: statsDisplay,
+      dailyActivity,
+      yesterdaySummary,
       onFocus: () => {},
     } as FlowAgentNodeData,
   };
@@ -82,6 +88,8 @@ function InnerWorkspace() {
     updateAgentAvatar,
     agentStats,
     sessionIdByAgentId,
+    dailyActivity,
+    yesterdaySummary,
   } = useXyzen();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AgentFlowNode>([]);
@@ -171,11 +179,39 @@ function InnerWorkspace() {
       const flowNodes = agents.map((agent) => {
         const stats = agentStats[agent.id];
         const sessionId = sessionIdByAgentId[agent.id];
-        return agentToFlowNode(agent, stats, sessionId);
+        // Convert daily activity to the format expected by AgentNode
+        const agentDailyActivity = dailyActivity[agent.id]?.daily_counts?.map(
+          (d) => ({
+            date: d.date,
+            count: d.message_count,
+          }),
+        );
+        // Convert yesterday summary
+        const agentYesterdaySummary = yesterdaySummary[agent.id]
+          ? {
+              messageCount: yesterdaySummary[agent.id].message_count,
+              lastMessagePreview:
+                yesterdaySummary[agent.id].last_message_content,
+            }
+          : undefined;
+        return agentToFlowNode(
+          agent,
+          stats,
+          sessionId,
+          agentDailyActivity,
+          agentYesterdaySummary,
+        );
       });
       setNodes(flowNodes);
     }
-  }, [agents, agentStats, sessionIdByAgentId, setNodes]);
+  }, [
+    agents,
+    agentStats,
+    sessionIdByAgentId,
+    dailyActivity,
+    yesterdaySummary,
+    setNodes,
+  ]);
 
   useEffect(() => {
     if (didInitialFitViewRef.current) return;

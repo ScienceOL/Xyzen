@@ -5,7 +5,9 @@ import type {
   AgentSpatialLayout,
   AgentStatsAggregated,
   AgentWithLayout,
+  DailyStatsResponse,
   SystemAgentTemplate,
+  YesterdaySummary,
 } from "@/types/agents";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
@@ -22,6 +24,11 @@ export interface AgentSlice {
   agentStats: Record<string, AgentStatsAggregated>;
   agentStatsLoading: boolean;
 
+  // Daily activity data for charts (last 7 days)
+  dailyActivity: Record<string, DailyStatsResponse>;
+  // Yesterday summary for each agent
+  yesterdaySummary: Record<string, YesterdaySummary>;
+
   // System agent templates
   systemAgentTemplates: SystemAgentTemplate[];
   templatesLoading: boolean;
@@ -29,6 +36,7 @@ export interface AgentSlice {
 
   fetchAgents: () => Promise<void>;
   fetchAgentStats: () => Promise<void>;
+  fetchDailyActivity: () => Promise<void>;
   incrementLocalAgentMessageCount: (agentId: string) => void;
 
   isCreatingAgent: boolean;
@@ -93,6 +101,10 @@ export const createAgentSlice: StateCreator<
   // Agent stats state
   agentStats: {},
   agentStatsLoading: false,
+
+  // Daily activity and yesterday summary
+  dailyActivity: {},
+  yesterdaySummary: {},
 
   // System agent templates state
   systemAgentTemplates: [],
@@ -199,11 +211,55 @@ export const createAgentSlice: StateCreator<
 
       const stats: Record<string, AgentStatsAggregated> = await response.json();
       set({ agentStats: stats, agentStatsLoading: false });
+
+      // Also fetch daily activity for visualization
+      get().fetchDailyActivity();
     } catch (error) {
       console.error("Failed to fetch agent stats:", error);
       set({ agentStatsLoading: false });
       // Don't throw - stats are optional enhancement
     }
+  },
+
+  fetchDailyActivity: async () => {
+    const agents = get().agents;
+    if (agents.length === 0) return;
+
+    const backendUrl = get().backendUrl;
+    const dailyActivity: Record<string, DailyStatsResponse> = {};
+    const yesterdaySummary: Record<string, YesterdaySummary> = {};
+
+    // Fetch daily stats and yesterday summary for each agent in parallel
+    await Promise.all(
+      agents.map(async (agent) => {
+        try {
+          // Fetch daily stats (last 7 days)
+          const dailyResponse = await fetch(
+            `${backendUrl}/xyzen/api/v1/agents/stats/${agent.id}/daily`,
+            { headers: createAuthHeaders() },
+          );
+          if (dailyResponse.ok) {
+            dailyActivity[agent.id] = await dailyResponse.json();
+          }
+
+          // Fetch yesterday summary
+          const yesterdayResponse = await fetch(
+            `${backendUrl}/xyzen/api/v1/agents/stats/${agent.id}/yesterday`,
+            { headers: createAuthHeaders() },
+          );
+          if (yesterdayResponse.ok) {
+            yesterdaySummary[agent.id] = await yesterdayResponse.json();
+          }
+        } catch (error) {
+          console.debug(
+            `Failed to fetch activity for agent ${agent.id}:`,
+            error,
+          );
+        }
+      }),
+    );
+
+    set({ dailyActivity, yesterdaySummary });
   },
 
   /**
@@ -381,26 +437,15 @@ export const createAgentSlice: StateCreator<
   },
 
   updateAgentAvatar: async (agentId, avatarUrl) => {
-    console.log("[agentSlice] updateAgentAvatar called:", {
-      agentId,
-      avatarUrl,
-    });
     try {
       // Get the session ID for this agent
       let sessionId = get().sessionIdByAgentId[agentId];
-      console.log(
-        "[agentSlice] Current sessionIdByAgentId:",
-        get().sessionIdByAgentId,
-      );
-      console.log("[agentSlice] Found sessionId:", sessionId);
 
       if (!sessionId) {
         // Try to fetch the session if not cached
         try {
-          console.log("[agentSlice] Fetching session for agent:", agentId);
           const session = await sessionService.getSessionByAgent(agentId);
           sessionId = session.id;
-          console.log("[agentSlice] Got session from API:", session.id);
           // Cache it
           set((state) => {
             state.sessionIdByAgentId[agentId] = sessionId;
@@ -408,8 +453,7 @@ export const createAgentSlice: StateCreator<
         } catch (fetchError) {
           // Session doesn't exist - create one first
           console.warn(
-            `[agentSlice] No session found for agent ${agentId}, creating one...`,
-            fetchError,
+            `No session found for agent ${agentId}, creating one...`,
           );
           const agent = get().agents.find((a) => a.id === agentId);
           const newSession = await sessionService.createSession({
@@ -417,7 +461,6 @@ export const createAgentSlice: StateCreator<
             agent_id: agentId,
             avatar: avatarUrl,
           });
-          console.log("[agentSlice] Created new session:", newSession.id);
           sessionId = newSession.id;
           set((state) => {
             state.sessionIdByAgentId[agentId] = sessionId;
@@ -435,12 +478,7 @@ export const createAgentSlice: StateCreator<
       }
 
       // Update the session's avatar via Session API
-      console.log("[agentSlice] Updating session avatar:", {
-        sessionId,
-        avatarUrl,
-      });
       await sessionService.updateSession(sessionId, { avatar: avatarUrl });
-      console.log("[agentSlice] Session avatar updated successfully");
 
       // Update local state optimistically
       set((state) => {
@@ -450,7 +488,7 @@ export const createAgentSlice: StateCreator<
         }
       });
     } catch (error) {
-      console.error("[agentSlice] Failed to update agent avatar:", error);
+      console.error("Failed to update agent avatar:", error);
       throw error;
     }
   },

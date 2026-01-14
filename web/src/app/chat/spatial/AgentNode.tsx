@@ -341,16 +341,12 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
   };
 
   const handleAvatarChange = (avatarUrl: string) => {
-    console.log("[AgentNode] handleAvatarChange called:", { id, avatarUrl });
     // Update local node data
     updateNodeData(id, { avatar: avatarUrl });
 
     // Notify parent to persist avatar change
     if (data.onAvatarChange) {
-      console.log("[AgentNode] Calling data.onAvatarChange");
       data.onAvatarChange(id, avatarUrl);
-    } else {
-      console.warn("[AgentNode] data.onAvatarChange is not defined!");
     }
   };
 

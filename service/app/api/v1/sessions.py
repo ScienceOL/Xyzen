@@ -175,15 +175,7 @@ async def update_session(
     Returns:
         SessionRead: The updated session
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.info(
-        f"[DEBUG] update_session called: session_id={session_id}, data={session_data.model_dump(exclude_unset=True)}"
-    )
     try:
-        result = await SessionService(db).update_session(session_id, session_data, user)
-        logger.info(f"[DEBUG] update_session success: avatar={result.avatar}")
-        return result
+        return await SessionService(db).update_session(session_id, session_data, user)
     except ErrCodeError as e:
         raise handle_auth_error(e)
