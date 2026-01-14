@@ -10,14 +10,11 @@ import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
-import XyzenAgent from "@/components/layouts/XyzenAgent";
-import XyzenChat from "@/components/layouts/XyzenChat";
 
 import { PwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 
 import { DEFAULT_BACKEND_URL } from "@/configs";
-import { useTranslation } from "react-i18next";
 
 export interface AppFullscreenProps {
   backendUrl?: string;
@@ -26,7 +23,6 @@ export interface AppFullscreenProps {
 export function AppFullscreen({
   backendUrl = DEFAULT_BACKEND_URL,
 }: AppFullscreenProps) {
-  const { t } = useTranslation();
   const {
     setBackendUrl,
     // centralized UI actions
@@ -80,33 +76,8 @@ export function AppFullscreen({
             {/* Panel Content */}
             <div className="flex flex-1 overflow-hidden bg-white dark:bg-neutral-950">
               {activePanel === "chat" && (
-                <div className="flex h-full w-full">
-                  {/* Left Sidebar: Assistants - Only show if no active chat or we want a split view?
-                      In fullscreen, we typically want the list AND the chat.
-                      However, to match AppSide logic where we drill down:
-                  */}
-
-                  {/* For fullscreen, we can keep the sidebar + chat layout for the "chat" panel */}
-                  <aside className="w-80 shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-                    <div className="flex h-full flex-col">
-                      <div className="px-4 py-3 dark:border-neutral-800">
-                        <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                          {t("app.chat.assistantsTitle")}
-                        </h2>
-                        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                          {t("app.chat.chooseAgentHint")}
-                        </p>
-                      </div>
-                      <div className="flex-1 overflow-y-auto py-4">
-                        <XyzenAgent systemAgentType="chat" />
-                      </div>
-                    </div>
-                  </aside>
-
-                  {/* Right Column: Chat Interface */}
-                  <section className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
-                    <XyzenChat />
-                  </section>
+                <div className="h-full w-full">
+                  <SpatialWorkspace />
                 </div>
               )}
 
@@ -119,12 +90,6 @@ export function AppFullscreen({
               {activePanel === "marketplace" && (
                 <div className="h-full w-full">
                   <AgentMarketplace />
-                </div>
-              )}
-
-              {activePanel === "workspace-test" && (
-                <div className="h-full w-full">
-                  <SpatialWorkspace />
                 </div>
               )}
             </div>
