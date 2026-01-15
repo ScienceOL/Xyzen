@@ -63,6 +63,10 @@
     "title": "モデルティアを選択",
     "free": "無料",
     "rateFormat": "{{rate}}x",
+    "infoModal": {
+      "title": "モデルティアガイド",
+      "imageGen": "画像生成"
+    },
     "tiers": {
       "ultra": {
         "name": "Xyzen ウルトラ",

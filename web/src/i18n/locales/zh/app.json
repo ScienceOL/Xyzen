@@ -61,8 +61,13 @@
   },
   "tierSelector": {
     "title": "选择模型等级",
-    "free": "免费",
+    "free": "0x",
     "rateFormat": "{{rate}}x",
+    "infoModal": {
+      "title": "模型等级说明",
+      "imageGen": "图像生成",
+      "disclaimer": "* 此列表仅作为模型能力参考，不代表实际调用的具体模型。"
+    },
     "tiers": {
       "ultra": {
         "name": "Xyzen Ultra",
