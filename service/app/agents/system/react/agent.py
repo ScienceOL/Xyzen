@@ -58,19 +58,16 @@ class ReActAgent(BaseSystemAgent):
 
     # Additional configuration options
     system_prompt: str
-    google_search_enabled: bool
 
     def __init__(
         self,
         system_prompt: str = "",
-        google_search_enabled: bool = False,
     ) -> None:
         """
         Initialize the ReAct agent.
 
         Args:
             system_prompt: System prompt to guide agent behavior
-            google_search_enabled: Enable Google's builtin web search
         """
         super().__init__(
             name="ReAct Agent",
@@ -81,14 +78,10 @@ class ReActAgent(BaseSystemAgent):
             author="Xyzen",
         )
         self.system_prompt = system_prompt
-        self.google_search_enabled = google_search_enabled
 
     def build_graph(self) -> CompiledStateGraph[Any, None, Any, Any]:
         """
         Build the ReAct agent graph using LangGraph's prebuilt implementation.
-
-        When google_search_enabled is True, binds both the google_search
-        provider tool and MCP tools together to the model.
 
         Returns:
             Compiled StateGraph ready for execution
@@ -97,7 +90,7 @@ class ReActAgent(BaseSystemAgent):
             raise RuntimeError("LLM not configured. Call configure() first.")
 
         tools = self.tools or []
-        logger.info(f"Building ReAct agent with {len(tools)} tools, google_search={self.google_search_enabled}")
+        logger.info(f"Building ReAct agent with {len(tools)} tools")
 
         # Combine all tools for binding
         # MCP tools (client-side) are passed as-is

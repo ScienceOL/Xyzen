@@ -64,9 +64,6 @@ class TestSessionService:
             SessionCreateFactory.build(name="S3"), user_id
         )
 
-        updated = await session_service.update_session(
-            created.id, SessionUpdate(name="S3-updated", google_search_enabled=True), user_id
-        )
+        updated = await session_service.update_session(created.id, SessionUpdate(name="S3-updated"), user_id)
         assert updated.id == created.id
         assert updated.name == "S3-updated"
-        assert updated.google_search_enabled is True

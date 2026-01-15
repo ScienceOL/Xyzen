@@ -1,8 +1,11 @@
 """
-LangChain tool preparation from MCP servers.
+LangChain tool preparation for agents.
 
-Converts MCP tool definitions into LangChain-compatible StructuredTool instances
-for use with LangChain agents.
+Prepares tools from:
+1. Builtin tools (web_search, knowledge_* etc.) - always loaded when available
+2. MCP servers (via mcp_server_ids on Agent)
+
+Tool filtering is handled by graph_config.tool_config.tool_filter at execution time.
 """
 
 from __future__ import annotations
@@ -28,22 +31,39 @@ async def prepare_langchain_tools(
     db: AsyncSession,
     agent: "Agent | None",
     session_id: "UUID | None" = None,
+    user_id: str | None = None,
+    session_knowledge_set_id: "UUID | None" = None,
 ) -> list[BaseTool]:
     """
-    Prepare LangChain tools from MCP servers (both agent-level and session-level).
+    Prepare LangChain tools from builtin tools and MCP servers.
+
+    All available tools are loaded. Filtering is done by graph_config at runtime.
+
+    Tool loading order:
+    1. Builtin tools (web_search, knowledge_* etc.) - always loaded when available
+    2. MCP tools from agent.mcp_server_ids (custom user MCPs)
 
     Args:
         db: Database session
         agent: Agent instance (optional)
         session_id: Session UUID for session-level MCP tools (optional)
+        user_id: User ID for knowledge tools context (optional)
+        session_knowledge_set_id: Session-level knowledge set override (optional).
+            If provided, overrides agent.knowledge_set_id for this session.
 
     Returns:
         List of LangChain BaseTool instances ready for agent use
     """
+    langchain_tools: list[BaseTool] = []
+
+    # 1. Load all available builtin tools
+    builtin_tools = _load_all_builtin_tools(agent, user_id, session_knowledge_set_id)
+    langchain_tools.extend(builtin_tools)
+
+    # 2. Load MCP tools (custom user MCPs)
     from app.agents.mcp_tools import prepare_mcp_tools
 
     mcp_tools = await prepare_mcp_tools(db, agent, session_id)
-    langchain_tools: list[BaseTool] = []
 
     for tool in mcp_tools:
         tool_name = tool.get("name", "")
@@ -60,10 +80,65 @@ async def prepare_langchain_tools(
         )
         langchain_tools.append(structured_tool)
 
-    logger.info(f"Loaded {len(langchain_tools)} tools")
-    logger.debug(f"Loaded {langchain_tools}")
+    logger.info(f"Loaded {len(langchain_tools)} tools (builtin + MCP)")
+    logger.debug(f"Tool names: {[t.name for t in langchain_tools]}")
 
     return langchain_tools
+
+
+def _load_all_builtin_tools(
+    agent: "Agent | None",
+    user_id: str | None = None,
+    session_knowledge_set_id: "UUID | None" = None,
+) -> list[BaseTool]:
+    """
+    Load all available builtin tools.
+
+    - Web search: loaded if SearXNG is enabled
+    - Knowledge tools: loaded if effective knowledge_set_id exists and user_id is available
+    - Image tools: loaded if image generation is enabled and user_id is available
+
+    Args:
+        agent: Agent instance (for knowledge_set_id fallback)
+        user_id: User ID for knowledge and image tools
+        session_knowledge_set_id: Session-level knowledge set override.
+            If provided, takes priority over agent.knowledge_set_id.
+
+    Returns:
+        List of available builtin BaseTool instances
+    """
+    from app.configs import configs
+    from app.tools import BuiltinToolRegistry
+
+    tools: list[BaseTool] = []
+
+    # Load web_search if available in registry (registered at startup if SearXNG enabled)
+    web_search = BuiltinToolRegistry.get("web_search")
+    if web_search:
+        tools.append(web_search)
+
+    # Determine effective knowledge_set_id
+    # Priority: session override > agent config
+    effective_knowledge_set_id = session_knowledge_set_id or (agent.knowledge_set_id if agent else None)
+
+    # Load knowledge tools if we have an effective knowledge_set_id
+    if effective_knowledge_set_id and user_id:
+        from app.tools.knowledge import create_knowledge_tools_for_agent
+
+        knowledge_tools = create_knowledge_tools_for_agent(
+            user_id=user_id,
+            knowledge_set_id=effective_knowledge_set_id,
+        )
+        tools.extend(knowledge_tools)
+
+    # Load image tools if enabled and user_id is available
+    if configs.Image.Enable and user_id:
+        from app.tools.image import create_image_tools_for_agent
+
+        image_tools = create_image_tools_for_agent(user_id=user_id)
+        tools.extend(image_tools)
+
+    return tools
 
 
 async def _create_structured_tool(

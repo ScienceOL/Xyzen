@@ -41,6 +41,9 @@ class BlobStorageService(StorageServiceProto):
             "region_name": configs.OSS.Region,
         }
         self.bucket = configs.OSS.BucketName
+        # Store endpoints for URL conversion
+        self._internal_endpoint = configs.OSS.Endpoint
+        self._public_endpoint = configs.OSS.PublicEndpoint
 
     async def initialize(self) -> None:
         """
@@ -319,13 +322,17 @@ class BlobStorageService(StorageServiceProto):
         """
         Generate a pre-signed URL for temporary access to a file.
 
+        The generated URL uses the public endpoint (PublicEndpoint config) to ensure
+        it's accessible from browsers, even if the backend uses an internal endpoint
+        (like host.docker.internal) for storage operations.
+
         Args:
             storage_key: Storage key of the file
             expires_in: URL expiration time in seconds (default: 1 hour)
             method: S3 method ('get_object' for download, 'put_object' for upload)
 
         Returns:
-            Pre-signed URL string
+            Pre-signed URL string with public endpoint
 
         Raises:
             ErrCodeError: If URL generation fails
@@ -337,6 +344,10 @@ class BlobStorageService(StorageServiceProto):
                     Params={"Bucket": self.bucket, "Key": storage_key},
                     ExpiresIn=expires_in,
                 )
+
+            # Replace internal endpoint with public endpoint for browser accessibility
+            if self._internal_endpoint != self._public_endpoint:
+                url = url.replace(self._internal_endpoint, self._public_endpoint)
 
             logger.info(f"Generated presigned URL for {storage_key}, expires in {expires_in}s")
             return url

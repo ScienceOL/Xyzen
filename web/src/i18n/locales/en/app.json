@@ -41,7 +41,19 @@
     "searchSearxngDesc": "Use universal search engine",
     "knowledgeSelect": "Select Knowledge Base",
     "knowledgeEmpty": "No knowledge bases",
-    "knowledgeEmptyDesc": "Please create one in Knowledge panel first"
+    "knowledgeEmptyDesc": "Please create one in Knowledge panel first",
+    "tools": "Tools",
+    "builtinTools": "Builtin Tools",
+    "webSearch": "Web Search",
+    "webSearchDesc": "Search the web for information",
+    "knowledgeDesc": "Access knowledge base files",
+    "noKnowledgeSet": "No knowledge base configured",
+    "selectKnowledge": "Select knowledge base",
+    "knowledgeSelected": "Knowledge base selected",
+    "noKnowledgeSets": "No knowledge bases available",
+    "noKnowledge": "None",
+    "image": "Image",
+    "imageDesc": "Generate and read images"
   },
   "input": {
     "placeholder": "Send a message...",

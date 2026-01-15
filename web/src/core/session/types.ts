@@ -15,7 +15,7 @@ export interface SessionResponse {
   provider_id?: string;
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
-  google_search_enabled?: boolean;
+  knowledge_set_id?: string;
   spatial_layout?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
@@ -42,6 +42,7 @@ export interface SessionCreatePayload {
   provider_id?: string;
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
+  knowledge_set_id?: string;
   mcp_server_ids?: string[];
 }
 

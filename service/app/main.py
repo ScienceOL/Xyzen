@@ -27,6 +27,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await initialize_providers_on_startup()
 
+    # Register builtin tools (web_search, knowledge_*, etc.)
+    from app.tools.registry import register_builtin_tools
+
+    register_builtin_tools()
+
     # Initialize system agents (Chat agent)
     from app.core.system_agent import SystemAgentManager
     from app.infra.database import AsyncSessionLocal

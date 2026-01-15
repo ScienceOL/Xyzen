@@ -13,7 +13,11 @@ class OSSConfig(BaseModel):
 
     Endpoint: str = Field(
         default="http://host.docker.internal:9000",
-        description="MinIO endpoint",
+        description="MinIO endpoint for backend-to-storage communication (internal)",
+    )
+    PublicEndpoint: str = Field(
+        default="http://localhost:9000",
+        description="MinIO endpoint for browser-accessible URLs (external)",
     )
     AccessKey: str = Field(
         default="minioadmin",

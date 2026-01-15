@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
+from .image import ImageConfig
 from .lab import LabConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
@@ -94,6 +95,11 @@ class AppConfig(BaseSettings):
     SearXNG: SearXNGConfig = Field(
         default_factory=lambda: SearXNGConfig(),
         description="SearXNG search configuration",
+    )
+
+    Image: ImageConfig = Field(
+        default_factory=lambda: ImageConfig(),
+        description="Image generation configuration",
     )
 
 

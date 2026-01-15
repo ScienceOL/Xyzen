@@ -17,6 +17,59 @@ interface ToolCallCardProps {
   onCancel?: (toolCallId: string) => void;
 }
 
+/**
+ * Check if tool result contains a displayable image URL or data URL
+ */
+const getImageFromResult = (result: unknown): string | null => {
+  if (!result || typeof result !== "object") return null;
+
+  const obj = result as Record<string, unknown>;
+
+  // Check for data_url (base64 encoded) - highest priority
+  if (
+    typeof obj.data_url === "string" &&
+    obj.data_url.startsWith("data:image/")
+  ) {
+    return obj.data_url;
+  }
+
+  // Check for url field that looks like an image
+  // Note: Backend now returns presigned URLs with public endpoint, no conversion needed
+  if (typeof obj.url === "string") {
+    const url = obj.url;
+    // Match common image extensions or generated image paths
+    if (
+      url.match(/\.(png|jpg|jpeg|gif|webp)(\?|$)/i) ||
+      url.includes("/generated/") ||
+      url.startsWith("data:image/")
+    ) {
+      return url;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Parse tool result into a structured object
+ */
+const parseToolResult = (result: ToolCall["result"]): unknown => {
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result);
+    } catch {
+      return result;
+    }
+  } else if (typeof result === "object" && result !== null) {
+    // New structured format from backend
+    if ("content" in result) {
+      return result.content;
+    }
+    return result;
+  }
+  return result;
+};
+
 const getStatusText = (status: ToolCall["status"]) => {
   switch (status) {
     case "pending":
@@ -189,32 +242,42 @@ export default function ToolCallCard({
                   <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     执行结果:
                   </h4>
-                  <JsonDisplay
-                    data={(() => {
-                      // Handle both old format (string) and new format (structured object)
-                      if (typeof toolCall.result === "string") {
-                        try {
-                          return JSON.parse(toolCall.result);
-                        } catch {
-                          return toolCall.result;
-                        }
-                      } else if (
-                        typeof toolCall.result === "object" &&
-                        toolCall.result !== null
-                      ) {
-                        // New structured format from backend
-                        if ("content" in toolCall.result) {
-                          return toolCall.result.content;
-                        }
-                        return toolCall.result;
-                      }
-                      return toolCall.result;
-                    })()}
-                    compact
-                    variant={jsonVariant}
-                    hideHeader
-                    enableCharts={true}
-                  />
+                  {(() => {
+                    const parsedResult = parseToolResult(toolCall.result);
+                    const imageUrl = getImageFromResult(parsedResult);
+
+                    if (imageUrl) {
+                      // Display image inline with JSON details below
+                      return (
+                        <div className="space-y-3">
+                          <div className="rounded-md overflow-hidden border border-neutral-200 dark:border-neutral-700">
+                            <img
+                              src={imageUrl}
+                              alt="Generated image"
+                              className="max-w-full h-auto"
+                              loading="lazy"
+                            />
+                          </div>
+                          <JsonDisplay
+                            data={parsedResult}
+                            compact
+                            variant={jsonVariant}
+                            hideHeader
+                          />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <JsonDisplay
+                        data={parsedResult}
+                        compact
+                        variant={jsonVariant}
+                        hideHeader
+                        enableCharts={true}
+                      />
+                    );
+                  })()}
                 </div>
               )}
 

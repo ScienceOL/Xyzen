@@ -1,5 +1,5 @@
 import logging
-from typing import Any, cast
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -59,27 +59,17 @@ class ChatModelFactory:
         return ModelInstance(llm=llm, config=config)
 
     def _create_openai(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
-        # Extract generic search flag
-        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
-
         llm = ChatOpenAI(
             model=model,
             api_key=credentials["api_key"],
             **runtime_kwargs,
         )
 
-        if web_search_enabled:
-            logger.info(f"Enabling native web search for OpenAI model {model}")
-            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
-
         return llm
 
     def _create_azure_openai(
         self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]
     ) -> BaseChatModel:
-        # Extract generic search flag
-        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
-
         if "azure_endpoint" not in credentials:
             if "api_endpoint" not in credentials:
                 raise ErrCode.MODEL_NOT_AVAILABLE.with_messages("Azure endpoint is not provided")
@@ -105,27 +95,14 @@ class ChatModelFactory:
             # **runtime_kwargs,
         )
 
-        if web_search_enabled:
-            logger.info(f"Enabling native web search for Azure OpenAI model {model}")
-            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
-
         return llm
 
     def _create_google(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
-        # Extract google_search_enabled from runtime_kwargs
-        google_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
-
         llm = ChatGoogleGenerativeAI(
             model=model,
             google_api_key=credentials["api_key"],
             **runtime_kwargs,
         )
-
-        # If built-in search is enabled, bind the google_search tool
-        # bind_tools() returns a Runnable, but it's still compatible with BaseChatModel interface
-        if google_search_enabled:
-            logger.info(f"Enabling built-in web search for model {model}")
-            llm = cast(BaseChatModel, llm.bind_tools([{"google_search": {}}]))
 
         return llm
 
@@ -142,9 +119,6 @@ class ChatModelFactory:
         import tempfile
 
         from google.oauth2 import service_account
-
-        # Extract google_search_enabled from runtime_kwargs
-        google_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as file:
             json.dump(credentials["vertex_sa"], file)
@@ -164,12 +138,6 @@ class ChatModelFactory:
             **runtime_kwargs,
         )
 
-        # If built-in search is enabled, bind the google_search tool
-        # bind_tools() returns a Runnable, but it's still compatible with BaseChatModel interface
-        if google_search_enabled:
-            logger.info(f"Enabling built-in web search for Vertex AI model {model}")
-            llm = cast(BaseChatModel, llm.bind_tools([{"google_search": {}}]))
-
         return llm
 
     def _create_gpugeek(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
@@ -179,7 +147,6 @@ class ChatModelFactory:
         GPUGeek provides an OpenAI-compatible endpoint that supports multiple model vendors.
         """
         # Get base_url from credentials, default to GPUGeek endpoint
-        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
         base_url = credentials.get("api_endpoint", "https://api.gpugeek.com/v1")
         if "image" in model.lower():
             base_url = "https://api.gpugeek.com/v1/predictions"
@@ -200,10 +167,6 @@ class ChatModelFactory:
                 **runtime_kwargs,
             )
 
-        if web_search_enabled:
-            logger.info(f"Enabling native web search for OpenAI model {model}")
-            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
-
         return llm
 
     def _create_qwen(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
@@ -215,8 +178,6 @@ class ChatModelFactory:
         """
         if "dashscope" in model:
             model = model.replace("dashscope/", "")
-        # Extract generic search flag
-        web_search_enabled = runtime_kwargs.pop("google_search_enabled", False)
 
         # Get base_url from credentials, default to DashScope endpoint
         base_url = credentials.get("api_endpoint", "https://dashscope.aliyuncs.com/compatible-mode/v1")
@@ -227,9 +188,5 @@ class ChatModelFactory:
             base_url=base_url,
             **runtime_kwargs,
         )
-
-        if web_search_enabled:
-            logger.info(f"Enabling native web search for Qwen model {model}")
-            llm = cast(BaseChatModel, llm.bind_tools([{"type": "web_search_preview"}]))
 
         return llm

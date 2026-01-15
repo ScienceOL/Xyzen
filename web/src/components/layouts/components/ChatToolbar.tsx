@@ -16,20 +16,15 @@ import {
   type DragMoveEvent,
 } from "@dnd-kit/core";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KnowledgeSelector } from "./KnowledgeSelector";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { TierSelector, type ModelTier } from "./TierSelector";
-import {
-  SearchMethodSelector,
-  type SearchMethod,
-} from "./SearchMethodSelector";
-// Extracted components from ./ChatToolbar/ directory
 import { useTranslation } from "react-i18next";
 import {
   HistorySheetButton,
   McpToolsButton,
   MobileMoreMenu,
   ToolbarActions,
+  ToolSelector,
 } from "./ChatToolbar/index";
 
 interface ChatToolbarProps {
@@ -38,7 +33,7 @@ interface ChatToolbarProps {
   showHistory: boolean;
   handleCloseHistory: () => void;
   handleSelectTopic: (topic: string) => void;
-  inputHeight: number; // Add inputHeight as prop
+  inputHeight: number;
 }
 
 // Draggable resize handle component
@@ -90,16 +85,11 @@ export default function ChatToolbar({
     updateSessionConfig,
     uploadedFiles,
     isUploading,
-    builtinMcpServers,
-    fetchBuiltinMcpServers,
-    quickAddBuiltinServer,
     updateAgent,
   } = useXyzen();
 
   // All user agents for lookup
-  const allAgents = useMemo(() => {
-    return agents;
-  }, [agents]);
+  const allAgents = useMemo(() => agents, [agents]);
 
   // Get current channel and associated MCP tools
   const currentMcpInfo = useMemo(() => {
@@ -121,80 +111,6 @@ export default function ChatToolbar({
     };
   }, [activeChatChannel, channels, allAgents, mcpServers]);
 
-  const isKnowledgeMcpConnected = useMemo(() => {
-    return currentMcpInfo?.servers.some((s) => s.name.includes("Knowledge"));
-  }, [currentMcpInfo]);
-
-  const handleConnectKnowledge = async () => {
-    if (!currentAgent) return;
-
-    // If builtin search is enabled, switch to searxng first since MCP can't work with builtin search
-    if (searchMethod === "builtin") {
-      await handleSearchMethodChange("searxng");
-    }
-
-    // 1. Check if already connected (in user's MCP list)
-    let knowledgeMcp = mcpServers.find((s) => s.name.includes("Knowledge"));
-
-    // 2. If not, try to create from builtin
-    if (!knowledgeMcp) {
-      // Find in builtins
-      const builtin = builtinMcpServers.find((s) =>
-        s.name.includes("Knowledge"),
-      );
-
-      // If not loaded, try fetch
-      if (!builtin) {
-        await fetchBuiltinMcpServers();
-        // Since we can't access updated state here immediately due to closure,
-        // we can try to find it in the builtins we just fetched (if fetch returned it, but it doesn't).
-        // However, fetching triggers a re-render.
-        // For now, we will return and rely on the user clicking again or the re-render.
-        // Ideally we should wait for the state update, but React state is async.
-        // A simple workaround is to let the user know or just return.
-        // Since the button remains "Connect", they can click again.
-        return;
-      }
-
-      if (builtin) {
-        knowledgeMcp = await quickAddBuiltinServer(builtin);
-      }
-    }
-
-    if (!knowledgeMcp) return;
-
-    // 3. Attach to Agent
-    if (!currentAgent.mcp_servers?.some((ref) => ref.id === knowledgeMcp!.id)) {
-      // Construct new list
-      const currentIds = currentAgent.mcp_servers?.map((s) => s.id) || [];
-      const newIds = [...currentIds, knowledgeMcp.id];
-
-      try {
-        await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
-      } catch (e) {
-        console.error("Failed to attach knowledge base:", e);
-      }
-    }
-  };
-
-  const handleDisconnectKnowledge = async () => {
-    if (!currentAgent) return;
-
-    const knowledgeMcp = mcpServers.find((s) => s.name.includes("Knowledge"));
-    if (!knowledgeMcp) return;
-
-    const newIds =
-      currentAgent.mcp_servers
-        ?.map((s) => s.id)
-        .filter((id) => id !== knowledgeMcp.id) || [];
-
-    try {
-      await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
-    } catch (e) {
-      console.error("Failed to disconnect knowledge base:", e);
-    }
-  };
-
   // Get current agent
   const currentAgent = useMemo(() => {
     if (!activeChatChannel) return null;
@@ -203,15 +119,16 @@ export default function ChatToolbar({
     return allAgents.find((a) => a.id === channel.agentId) || null;
   }, [activeChatChannel, channels, allAgents]);
 
-  // Get current session's tier
-  const currentSessionTier = useMemo(() => {
+  // Get current channel
+  const currentChannel = useMemo(() => {
     if (!activeChatChannel) return null;
-    const channel = channels[activeChatChannel];
-    return channel?.model_tier || null;
+    return channels[activeChatChannel] || null;
   }, [activeChatChannel, channels]);
 
-  // State for search method: none, builtin, or searxng
-  const [searchMethod, setSearchMethod] = useState<SearchMethod>("none");
+  // Get current session's tier
+  const currentSessionTier = useMemo(() => {
+    return currentChannel?.model_tier || null;
+  }, [currentChannel]);
 
   // State for new chat creation loading
   const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
@@ -221,226 +138,53 @@ export default function ChatToolbar({
   const initialHeightRef = useRef(inputHeight);
   const dragDeltaRef = useRef(0);
 
-  // Connect Web Search MCP
-  const connectSearchMcp = useCallback(async () => {
-    if (!currentAgent) return;
+  // Detect if we're on mobile
+  const isMobile = useIsMobile();
 
-    // 1. Check if already connected (in user's MCP list)
-    let searchMcp = mcpServers.find((s) => s.name.includes("Web Search"));
+  // Setup dnd sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 0 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 0, tolerance: 0 },
+    }),
+  );
 
-    // 2. If not, try to create from builtin
-    if (!searchMcp) {
-      // Find in builtins
-      const builtin = builtinMcpServers.find((s) =>
-        s.name.includes("Web Search"),
-      );
-
-      // If not loaded, try fetch
-      if (!builtin) {
-        await fetchBuiltinMcpServers();
-        return;
-      }
-
-      if (builtin) {
-        searchMcp = await quickAddBuiltinServer(builtin);
-      }
-    }
-
-    if (!searchMcp) return;
-
-    // 3. Attach to Agent
-    if (!currentAgent.mcp_servers?.some((ref) => ref.id === searchMcp!.id)) {
-      // Construct new list
-      const currentIds = currentAgent.mcp_servers?.map((s) => s.id) || [];
-      const newIds = [...currentIds, searchMcp.id];
-
-      try {
-        await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
-      } catch (e) {
-        console.error("Failed to attach Web Search:", e);
-      }
-    }
-  }, [
-    currentAgent,
-    mcpServers,
-    builtinMcpServers,
-    fetchBuiltinMcpServers,
-    quickAddBuiltinServer,
-    updateAgent,
-  ]);
-
-  // Disconnect Web Search MCP
-  const disconnectSearchMcp = useCallback(async () => {
-    if (!currentAgent) return;
-
-    const searchMcp = mcpServers.find((s) => s.name.includes("Web Search"));
-    if (!searchMcp) return;
-
-    // Only remove if it is currently connected
-    if (currentAgent.mcp_servers?.some((ref) => ref.id === searchMcp.id)) {
-      const newIds =
-        currentAgent.mcp_servers
-          ?.map((s) => s.id)
-          .filter((id) => id !== searchMcp.id) || [];
-
-      try {
-        await updateAgent({ ...currentAgent, mcp_server_ids: newIds });
-      } catch (e) {
-        console.error("Failed to disconnect Web Search:", e);
-      }
-    }
-  }, [currentAgent, mcpServers, updateAgent]);
-
-  // Fetch current session's built-in search enabled status
-  useEffect(() => {
-    if (!activeChatChannel) {
-      return;
-    }
-
-    const channel = channels[activeChatChannel];
-    if (!channel?.sessionId) {
-      return;
-    }
-
-    // Fetch search method from session config
-    if (channel.google_search_enabled) {
-      setSearchMethod("builtin");
-    } else {
-      // Check if Search MCP is connected
-      const agent = agents.find((a) => a.id === channel.agentId);
-      const hasSearchMcp = agent?.mcp_servers?.some((s) => {
-        return s.name?.includes("Web Search");
-      });
-
-      if (hasSearchMcp) {
-        setSearchMethod("searxng");
-      } else {
-        setSearchMethod("none");
-      }
-    }
-  }, [activeChatChannel, channels, agents]);
-
-  // Tier change handler - updates session's model tier
+  // Tier change handler
   const handleTierChange = useCallback(
     async (tier: ModelTier) => {
-      if (!activeChatChannel) return;
-
-      const channel = channels[activeChatChannel];
-      if (!channel?.sessionId) return;
+      if (!currentChannel?.sessionId) return;
 
       try {
-        await updateSessionConfig(channel.sessionId, {
+        await updateSessionConfig(currentChannel.sessionId, {
           model_tier: tier,
         });
-        console.log(`Updated session ${channel.sessionId} to tier ${tier}`);
       } catch (error) {
         console.error("Failed to update session tier:", error);
       }
     },
-    [activeChatChannel, channels, updateSessionConfig],
+    [currentChannel, updateSessionConfig],
   );
 
-  // Search method change handler
-  const handleSearchMethodChange = useCallback(
-    async (method: SearchMethod) => {
-      if (!activeChatChannel) return;
-
-      const channel = channels[activeChatChannel];
-      if (!channel?.sessionId) return;
+  // Knowledge set change handler
+  const handleKnowledgeSetChange = useCallback(
+    async (knowledgeSetId: string | null) => {
+      if (!currentChannel?.sessionId) return;
 
       try {
-        // Update google_search_enabled based on method
-        const enabled = method === "builtin";
-
-        // 1. Update session config for built-in search
-        if (channel.google_search_enabled !== enabled) {
-          await updateSessionConfig(channel.sessionId, {
-            google_search_enabled: enabled,
-          });
-        }
-
-        // 2. Handle MCP binding
-        if (method === "searxng") {
-          // Enable MCP
-          await connectSearchMcp();
-        } else {
-          // Disable MCP (for both 'builtin' and 'none')
-          // Only disconnect if we are switching FROM searxng or if it's currently connected.
-          // The disconnectSearchMcp checks if connected, so it's safe to call.
-          await disconnectSearchMcp();
-        }
-
-        setSearchMethod(method);
-        console.log(
-          `Updated session ${channel.sessionId} search method to ${method}`,
-        );
+        await updateSessionConfig(currentChannel.sessionId, {
+          knowledge_set_id: knowledgeSetId,
+        });
       } catch (error) {
-        console.error("Failed to update search method:", error);
+        console.error("Failed to update session knowledge set:", error);
       }
     },
-    [
-      activeChatChannel,
-      channels,
-      updateSessionConfig,
-      connectSearchMcp,
-      disconnectSearchMcp,
-    ],
-  );
-
-  // Auto-switch from builtin search to searxng when non-search MCPs are added
-  // This handles the case when MCPs are added via agent modals (AddAgentModal, EditAgentModal)
-  useEffect(() => {
-    if (!activeChatChannel || !currentMcpInfo) return;
-
-    // Check if there are any non-search MCPs connected
-    const hasNonSearchMcp = currentMcpInfo.servers.some(
-      (s) => !s.name.includes("Web Search"),
-    );
-
-    // If builtin search is enabled and non-search MCPs are connected, auto-switch to searxng
-    if (searchMethod === "builtin" && hasNonSearchMcp) {
-      handleSearchMethodChange("searxng");
-    }
-  }, [
-    activeChatChannel,
-    currentMcpInfo,
-    searchMethod,
-    handleSearchMethodChange,
-  ]);
-
-  // Handle MCP conflict when switching to builtin search
-  const handleMcpConflict = useCallback(() => {
-    console.warn("MCP tools will be disabled when using builtin search");
-    // TODO: Show toast notification about MCP being disabled
-  }, []);
-
-  // Check if current model supports web search (always from standard tier for now)
-  const supportsWebSearch = useMemo(() => {
-    // For tier-based selection, web search is enabled for standard and prod tiers
-    return currentSessionTier === "standard" || currentSessionTier === "pro";
-  }, [currentSessionTier]);
-
-  // Detect if we're on mobile (viewport width < 768px, same as Tailwind md breakpoint)
-  // Using useSyncExternalStore for better performance (no useEffect)
-  const isMobile = useIsMobile();
-
-  // Setup dnd sensors - use TouchSensor for mobile, PointerSensor for desktop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 0,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 0,
-        tolerance: 0,
-      },
-    }),
+    [currentChannel, updateSessionConfig],
   );
 
   const handleNewChat = async () => {
-    if (isCreatingNewChat) return; // Prevent multiple clicks
+    if (isCreatingNewChat) return;
 
     try {
       setIsCreatingNewChat(true);
@@ -452,75 +196,40 @@ export default function ChatToolbar({
     }
   };
 
-  // const handleToggleToolCallConfirmation = async () => {
-  //   if (!activeChatChannel) return;
-
-  //   const channel = channels[activeChatChannel];
-  //   if (!channel?.agentId) return;
-
-  //   const agent = agents.find((a) => a.id === channel.agentId);
-  //   if (!agent) return;
-
-  //   try {
-  //     // Update agent with new confirmation setting
-  //     const updatedAgent = {
-  //       ...agent,
-  //       require_tool_confirmation: !agent.require_tool_confirmation,
-  //     };
-
-  //     await updateAgent(updatedAgent);
-  //     console.log(
-  //       `Tool call confirmation ${updatedAgent.require_tool_confirmation ? "enabled" : "disabled"} for agent ${agent.name}`,
-  //     );
-  //   } catch (error) {
-  //     console.error("Failed to update tool call confirmation setting:", error);
-  //   }
-  // };
-
-  // Handle drag start
+  // Drag handlers
   const handleDragStart = () => {
     initialHeightRef.current = inputHeight;
     dragDeltaRef.current = 0;
   };
 
-  // Handle drag move - desktop version (no height limit)
   const handleDragMoveDesktop = useCallback(
     (event: DragMoveEvent) => {
       const { delta } = event;
       dragDeltaRef.current = delta.y;
-      // Desktop: no height limit, allow unlimited dragging
       const newHeight = Math.max(60, initialHeightRef.current - delta.y);
-
-      // Real-time update for smooth dragging experience
       onHeightChange?.(newHeight);
     },
     [onHeightChange],
   );
 
-  // Handle drag move - mobile version (with 65% viewport height limit)
   const handleDragMoveMobile = useCallback(
     (event: DragMoveEvent) => {
       const { delta } = event;
       dragDeltaRef.current = delta.y;
-      // Mobile: limit height to 65% of viewport to keep chat history visible
       const maxHeight = Math.floor(window.innerHeight * 0.65);
       const newHeight = Math.max(
         60,
         Math.min(initialHeightRef.current - delta.y, maxHeight),
       );
-
-      // Real-time update for smooth dragging experience
       onHeightChange?.(newHeight);
     },
     [onHeightChange],
   );
 
-  // Use appropriate drag move handler based on device
   const handleDragMove = isMobile
     ? handleDragMoveMobile
     : handleDragMoveDesktop;
 
-  // Handle drag end - desktop version (no height limit)
   const handleDragEndDesktop = useCallback(
     (_: DragEndEvent) => {
       const finalHeight = Math.max(
@@ -533,7 +242,6 @@ export default function ChatToolbar({
     [onHeightChange],
   );
 
-  // Handle drag end - mobile version (with 65% viewport height limit)
   const handleDragEndMobile = useCallback(
     (_: DragEndEvent) => {
       const maxHeight = Math.floor(window.innerHeight * 0.65);
@@ -547,7 +255,6 @@ export default function ChatToolbar({
     [onHeightChange],
   );
 
-  // Use appropriate drag end handler based on device
   const handleDragEnd = isMobile ? handleDragEndMobile : handleDragEndDesktop;
 
   const toolbarButtonClass = cn(
@@ -569,24 +276,20 @@ export default function ChatToolbar({
         {/* Drag handle positioned above the toolbar */}
         <ResizeHandle />
 
-        {/* File Upload Preview - Show above toolbar when files are present */}
+        {/* File Upload Preview */}
         {uploadedFiles.length > 0 && (
           <FileUploadPreview className="border-b border-neutral-200 dark:border-neutral-800" />
         )}
+
         {/* Mobile More Menu */}
-        {activeChatChannel && (
+        {activeChatChannel && currentAgent && (
           <MobileMoreMenu
             isOpen={showMoreMenu}
-            searchMethod={searchMethod}
-            onSearchMethodChange={handleSearchMethodChange}
-            supportsWebSearch={supportsWebSearch}
-            mcpEnabled={!!currentMcpInfo?.servers.length}
-            onMcpConflict={handleMcpConflict}
-            isKnowledgeConnected={!!isKnowledgeMcpConnected}
-            onConnectKnowledge={handleConnectKnowledge}
-            onDisconnectKnowledge={handleDisconnectKnowledge}
+            agent={currentAgent}
+            onUpdateAgent={updateAgent}
             mcpInfo={currentMcpInfo}
-            onClose={() => setShowMoreMenu(false)}
+            sessionKnowledgeSetId={currentChannel?.knowledge_set_id}
+            onUpdateSessionKnowledge={handleKnowledgeSetChange}
           />
         )}
 
@@ -600,25 +303,6 @@ export default function ChatToolbar({
                 buttonClassName={toolbarButtonClass}
               />
 
-              {/* Tool Call Confirmation Toggle */}
-              {/* {activeChatChannel && (
-              <button
-                onClick={handleToggleToolCallConfirmation}
-                className={`flex items-center justify-center rounded-sm p-1.5 transition-colors ${
-                  requireToolCallConfirmation
-                    ? "bg-indigo-100 text-indigo-600 hover:bg-indigo-200/60 dark:bg-indigo-900/50 dark:text-indigo-400 dark:hover:bg-indigo-800/60"
-                    : "text-neutral-500 hover:bg-neutral-200/60 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-300"
-                }`}
-                title={
-                  requireToolCallConfirmation
-                    ? "工具调用需要确认（开启）"
-                    : "工具调用需要确认（关闭）"
-                }
-              >
-                <ShieldCheckIcon className="h-4 w-4" />
-              </button>
-            )} */}
-
               {/* Tier Selector */}
               {activeChatChannel && currentAgent && (
                 <TierSelector
@@ -629,23 +313,17 @@ export default function ChatToolbar({
 
               {/* Desktop View: Expanded Items */}
               <div className="hidden md:flex items-center space-x-1">
-                {/* Search Method Selector */}
-                {activeChatChannel && (
-                  <SearchMethodSelector
-                    method={searchMethod}
-                    onMethodChange={handleSearchMethodChange}
-                    supportsBuiltinSearch={supportsWebSearch}
-                    mcpEnabled={!!currentMcpInfo?.servers.length}
-                    onMcpConflict={handleMcpConflict}
-                  />
-                )}
-
-                {/* Knowledge Selector */}
-                {activeChatChannel && (
-                  <KnowledgeSelector
-                    isConnected={!!isKnowledgeMcpConnected}
-                    onConnect={handleConnectKnowledge}
-                    onDisconnect={handleDisconnectKnowledge}
+                {/* Tool Selector - replaces SearchMethodSelector and KnowledgeSelector */}
+                {activeChatChannel && currentAgent && (
+                  <ToolSelector
+                    agent={currentAgent}
+                    onUpdateAgent={updateAgent}
+                    hasKnowledgeSet={
+                      !!currentAgent.knowledge_set_id ||
+                      !!currentChannel?.knowledge_set_id
+                    }
+                    sessionKnowledgeSetId={currentChannel?.knowledge_set_id}
+                    onUpdateSessionKnowledge={handleKnowledgeSetChange}
                   />
                 )}
 
@@ -675,6 +353,7 @@ export default function ChatToolbar({
                 </button>
               </div>
             </div>
+
             <div className="flex items-center space-x-1">
               <HistorySheetButton
                 isOpen={showHistory}

@@ -40,7 +40,6 @@ describe("createChannelFromSession", () => {
     user_id: "user-789",
     provider_id: "provider-001",
     model: "gpt-4",
-    google_search_enabled: true,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
   };
@@ -62,7 +61,6 @@ describe("createChannelFromSession", () => {
     expect(channel.agentId).toBe("agent-456");
     expect(channel.provider_id).toBe("provider-001");
     expect(channel.model).toBe("gpt-4");
-    expect(channel.google_search_enabled).toBe(true);
     expect(channel.connected).toBe(false);
     expect(channel.error).toBeNull();
     expect(channel.messages).toEqual([]);

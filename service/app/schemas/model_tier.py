@@ -61,12 +61,12 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             capabilities=["reasoning", "creative", "coding"],
             description="Best for coding and choose this for most tasks if no need to generate images",
         ),
-        TierModelCandidate(
-            model="gemini-3-pro-image-preview",
-            provider_type=ProviderType.GOOGLE_VERTEX,
-            priority=2,
-            description="Must select this if user wants to generate images",
-        ),
+        # TierModelCandidate(
+        #     model="gemini-3-pro-image-preview",
+        #     provider_type=ProviderType.GOOGLE_VERTEX,
+        #     priority=2,
+        #     description="Must select this if user wants to generate images",
+        # ),
         TierModelCandidate(
             model="gpt-5.2-pro",
             provider_type=ProviderType.AZURE_OPENAI,
@@ -83,12 +83,12 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             priority=1,
             description="Choose this for most tasks if no need to generate images",
         ),
-        TierModelCandidate(
-            model="gemini-2.5-flash-image",
-            provider_type=ProviderType.GOOGLE_VERTEX,
-            priority=2,
-            description="Must select this if user wants to generate images",
-        ),
+        # TierModelCandidate(
+        #     model="gemini-2.5-flash-image",
+        #     provider_type=ProviderType.GOOGLE_VERTEX,
+        #     priority=2,
+        #     description="Must select this if user wants to generate images",
+        # ),
         TierModelCandidate(
             model="gpt-5.2",
             provider_type=ProviderType.AZURE_OPENAI,

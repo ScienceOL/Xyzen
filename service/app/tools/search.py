@@ -1,52 +1,57 @@
 """
-MCP Server for Web Search via SearXNG
+Web Search Tool
 
-Provides web search capabilities using a self-hosted SearXNG metasearch engine.
-Supports multiple search engines and categories with configurable result limits.
+LangChain tool for web search via SearXNG metasearch engine.
+Converted from mcp/search.py to a native LangChain tool.
 """
+
+from __future__ import annotations
 
 import logging
 from typing import Any, Literal
 
 import httpx
-from fastmcp import FastMCP
-from fastmcp.server.auth import JWTVerifier, TokenVerifier
+from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, Field
 
 from app.configs import configs
-from app.middleware.auth import AuthProvider
-from app.middleware.auth.token_verifier.bohr_app_token_verifier import BohrAppTokenVerifier
 
 logger = logging.getLogger(__name__)
 
-# MCP metadata for registry
-__mcp_metadata__ = {
-    "source": "official",
-    "description": "Web search using SearXNG metasearch engine",
-    "banner": None,
-}
 
-# Create MCP server instance
-search_mcp: FastMCP = FastMCP(name="Web Search 🔍")
+class WebSearchInput(BaseModel):
+    """Input schema for web search tool."""
 
-# Authentication setup (matches knowledge.py pattern)
-auth: TokenVerifier
-match AuthProvider.get_provider_name():
-    case "bohrium":
-        auth = JWTVerifier(public_key=AuthProvider.public_key)
-    case "casdoor":
-        auth = JWTVerifier(jwks_uri=AuthProvider.jwks_uri)
-    case "bohr_app":
-        auth = BohrAppTokenVerifier(
-            api_url=AuthProvider.issuer,
-            x_app_key="xyzen-uuid1760783737",
-        )
-    case _:
-        raise ValueError(f"Unsupported authentication provider: {AuthProvider.get_provider_name()}")
+    query: str = Field(
+        description="The search query string. Supports advanced syntax like "
+        '"site:github.com python" or "filetype:pdf machine learning".'
+    )
+    categories: str = Field(
+        default="",
+        description='Comma-separated categories (e.g., "general,science,news"). '
+        "Available: general, images, videos, news, map, music, it, science, files, social media.",
+    )
+    engines: str = Field(
+        default="",
+        description='Comma-separated engine names to use (e.g., "google,bing"). '
+        "Leave empty to use all enabled engines.",
+    )
+    language: str = Field(
+        default="en",
+        description='Language code for results (e.g., "en", "zh", "ja").',
+    )
+    time_range: Literal["", "day", "week", "month", "year"] = Field(
+        default="",
+        description='Filter by time - "day", "week", "month", "year", or "" for all.',
+    )
+    max_results: int = Field(
+        default=10,
+        description="Maximum number of results to return.",
+    )
 
 
 class SearchResult(BaseModel):
-    """Individual search result"""
+    """Individual search result."""
 
     title: str
     url: str
@@ -54,54 +59,25 @@ class SearchResult(BaseModel):
     engine: str = ""
 
 
-class SearchResponse(BaseModel):
-    """Search response with results and metadata"""
-
-    query: str
-    results: list[SearchResult]
-    total_results: int
-    categories: list[str] = Field(default_factory=list)
-    success: bool = True
-    error: str | None = None
-
-
-@search_mcp.tool
-async def web_search(
+async def _web_search(
     query: str,
     categories: str = "",
     engines: str = "",
     language: str = "en",
     time_range: Literal["", "day", "week", "month", "year"] = "",
-    safe_search: Literal[0, 1, 2] = 0,
-    page: int = 1,
-    max_results: int | None = None,
+    max_results: int = 10,
 ) -> dict[str, Any]:
     """
     Search the web using SearXNG metasearch engine.
 
-    This tool aggregates results from multiple search engines (Google, Bing,
+    This function aggregates results from multiple search engines (Google, Bing,
     DuckDuckGo, Wikipedia, GitHub, etc.) to provide comprehensive search results.
-
-    Args:
-        query: The search query string. Supports advanced syntax like
-               "site:github.com python" or "filetype:pdf machine learning".
-        categories: Comma-separated categories (e.g., "general,science,news").
-                   Available: general, images, videos, news, map, music,
-                   it, science, files, social media.
-        engines: Comma-separated engine names to use (e.g., "google,bing").
-                Leave empty to use all enabled engines.
-        language: Language code for results (e.g., "en", "zh", "ja").
-        time_range: Filter by time - "day", "week", "month", "year", or "" for all.
-        safe_search: Safe search level - 0 (off), 1 (moderate), 2 (strict).
-        page: Page number for pagination (default: 1).
-        max_results: Maximum number of results to return (default: from config).
 
     Returns:
         A dictionary containing:
         - query: The original search query
         - results: List of search results with title, url, content, engine
         - total_results: Number of results returned
-        - categories: Categories searched
         - success: Boolean indicating success
         - error: Error message if failed
     """
@@ -132,9 +108,9 @@ async def web_search(
     params: dict[str, Any] = {
         "q": query,
         "format": "json",
-        "pageno": page,
+        "pageno": 1,
         "language": language,
-        "safesearch": safe_search,
+        "safesearch": 0,
     }
 
     if effective_categories:
@@ -154,26 +130,25 @@ async def web_search(
             data = response.json()
 
         # Parse results
-        results: list[SearchResult] = []
+        results: list[dict[str, str]] = []
         for item in data.get("results", [])[:effective_max_results]:
             results.append(
-                SearchResult(
-                    title=item.get("title", ""),
-                    url=item.get("url", ""),
-                    content=item.get("content", ""),
-                    engine=item.get("engine", ""),
-                )
+                {
+                    "title": item.get("title", ""),
+                    "url": item.get("url", ""),
+                    "content": item.get("content", ""),
+                    "engine": item.get("engine", ""),
+                }
             )
 
         logger.info(f"Search completed: '{query}' returned {len(results)} results")
 
-        return SearchResponse(
-            query=query,
-            results=results,
-            total_results=len(results),
-            categories=effective_categories.split(",") if effective_categories else [],
-            success=True,
-        ).model_dump()
+        return {
+            "query": query,
+            "results": results,
+            "total_results": len(results),
+            "success": True,
+        }
 
     except httpx.TimeoutException:
         error_msg = f"Search request timed out after {configs.SearXNG.Timeout}s"
@@ -196,7 +171,7 @@ async def web_search(
             "total_results": 0,
         }
     except Exception as e:
-        error_msg = f"Search failed: {str(e)}"
+        error_msg = f"Search failed: {e!s}"
         logger.error(error_msg)
         return {
             "success": False,
@@ -205,3 +180,30 @@ async def web_search(
             "results": [],
             "total_results": 0,
         }
+
+
+def create_web_search_tool() -> BaseTool | None:
+    """
+    Create the web search tool.
+
+    Returns:
+        StructuredTool for web search, or None if SearXNG is disabled.
+    """
+    if not configs.SearXNG.Enable:
+        logger.info("SearXNG is disabled, web search tool not created")
+        return None
+
+    return StructuredTool(
+        name="web_search",
+        description=(
+            "Search the web using SearXNG metasearch engine. "
+            "Aggregates results from multiple search engines (Google, Bing, DuckDuckGo, etc.) "
+            "to provide comprehensive search results. "
+            "Use this when you need to find current information, verify facts, or research topics."
+        ),
+        args_schema=WebSearchInput,
+        coroutine=_web_search,
+    )
+
+
+__all__ = ["create_web_search_tool", "WebSearchInput"]

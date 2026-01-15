@@ -76,8 +76,10 @@ class SessionBase(SQLModel):
     provider_id: UUID | None = Field(default=None, description="If set, overrides the agent's provider")
     model: str | None = Field(default=None, description="If set, overrides the agent's model")
     model_tier: ModelTier | None = Field(default=None, description="User-selected model tier for simplified selection")
-    google_search_enabled: bool = Field(
-        default=False, description="Enable built-in web search for supported models (e.g., Gemini)"
+    knowledge_set_id: UUID | None = Field(
+        default=None,
+        index=True,
+        description="Session-level knowledge set override. If set, overrides the agent's knowledge_set_id for this session.",
     )
     avatar: str | None = Field(
         default=None,
@@ -111,7 +113,7 @@ class SessionCreate(SQLModel):
     provider_id: UUID | None = None
     model: str | None = None
     model_tier: ModelTier | None = None
-    google_search_enabled: bool = False
+    knowledge_set_id: UUID | None = None
     avatar: str | None = None
     spatial_layout: dict[str, Any] | None = None
 
@@ -136,6 +138,6 @@ class SessionUpdate(SQLModel):
     provider_id: UUID | None = None
     model: str | None = None
     model_tier: ModelTier | None = None
-    google_search_enabled: bool | None = None
+    knowledge_set_id: UUID | None = None
     avatar: str | None = None
     spatial_layout: dict[str, Any] | None = None

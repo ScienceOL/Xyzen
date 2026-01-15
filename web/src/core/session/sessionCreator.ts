@@ -33,7 +33,7 @@ export function createChannelFromSession(
     agentId: session.agent_id,
     provider_id: session.provider_id,
     model: session.model,
-    google_search_enabled: session.google_search_enabled,
+    knowledge_set_id: session.knowledge_set_id,
     connected: false,
     error: null,
   };

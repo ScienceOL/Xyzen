@@ -41,7 +41,19 @@
     "searchSearxngDesc": "使用通用搜索引擎进行搜索",
     "knowledgeSelect": "选择知识库",
     "knowledgeEmpty": "暂无知识库",
-    "knowledgeEmptyDesc": "请先在知识库面板创建"
+    "knowledgeEmptyDesc": "请先在知识库面板创建",
+    "tools": "工具",
+    "builtinTools": "内置工具",
+    "webSearch": "网络搜索",
+    "webSearchDesc": "搜索网络获取信息",
+    "knowledgeDesc": "访问知识库文件",
+    "noKnowledgeSet": "未配置知识库",
+    "selectKnowledge": "选择知识库",
+    "knowledgeSelected": "已选择知识库",
+    "noKnowledgeSets": "暂无可用知识库",
+    "noKnowledge": "无",
+    "image": "图片",
+    "imageDesc": "生成和读取图片"
   },
   "input": {
     "placeholder": "输入消息...",

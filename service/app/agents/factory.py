@@ -79,12 +79,21 @@ async def create_chat_agent(
     session_repo = SessionRepository(db)
     session: "Session | None" = await session_repo.get_session_by_id(topic.session_id)
 
-    # Check if built-in search is enabled
-    google_search_enabled: bool = session.google_search_enabled if session else False
+    # Get user_id for knowledge tool context binding
+    user_id: str | None = session.user_id if session else None
 
-    # Prepare tools from MCP servers
+    # Get session-level knowledge_set_id override (if any)
+    session_knowledge_set_id: "UUID | None" = session.knowledge_set_id if session else None
+
+    # Prepare tools from builtin tools and MCP servers
     session_id: "UUID | None" = topic.session_id if topic else None
-    tools: list[BaseTool] = await prepare_langchain_tools(db, agent_config, session_id)
+    tools: list[BaseTool] = await prepare_langchain_tools(
+        db,
+        agent_config,
+        session_id,
+        user_id,
+        session_knowledge_set_id=session_knowledge_set_id,
+    )
 
     # Determine how to execute this agent
     agent_type_str, system_key = _resolve_agent_config(agent_config)
@@ -109,7 +118,6 @@ async def create_chat_agent(
         # (some providers like Google don't accept temperature=None)
         model_kwargs: dict[str, Any] = {
             "model": override_model,
-            "google_search_enabled": google_search_enabled,
         }
         if override_temp is not None:
             model_kwargs["temperature"] = override_temp
@@ -135,7 +143,6 @@ async def create_chat_agent(
         create_llm,
         tools,
         system_prompt,
-        google_search_enabled,
         event_ctx,
     )
 
@@ -202,7 +209,6 @@ async def _create_system_agent(
     llm_factory: LLMFactory,
     tools: list["BaseTool"],
     system_prompt: str,
-    google_search_enabled: bool,
     event_ctx: AgentEventContext,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """
@@ -214,7 +220,6 @@ async def _create_system_agent(
         llm_factory: Factory function to create LLM
         tools: List of tools available to the agent
         system_prompt: System prompt for the agent
-        google_search_enabled: Whether Google search is enabled
         event_ctx: Event context for tracking
 
     Returns:
@@ -233,13 +238,12 @@ async def _create_system_agent(
     if not system_agent:
         raise ValueError(f"System agent not found: {system_key}")
 
-    # Special handling for react agent - pass system_prompt and google_search
+    # Special handling for react agent - pass system_prompt
     if system_key == "react":
         from app.agents.system.react import ReActAgent
 
         if isinstance(system_agent, ReActAgent):
             system_agent.system_prompt = system_prompt
-            system_agent.google_search_enabled = google_search_enabled
 
     # Build graph
     compiled_graph = system_agent.build_graph()

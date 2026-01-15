@@ -67,7 +67,7 @@ export interface ChatSlice {
       provider_id?: string;
       model?: string;
       model_tier?: "ultra" | "pro" | "standard" | "lite";
-      google_search_enabled?: boolean;
+      knowledge_set_id?: string | null;
     },
   ) => Promise<void>;
   updateSessionProviderAndModel: (
@@ -268,8 +268,6 @@ export const createChatSlice: StateCreator<
           let sessionAgentId = undefined;
           let sessionProviderId = undefined;
           let sessionModel = undefined;
-          let googleSearchEnabled = undefined;
-
           for (const session of sessions) {
             const topic = session.topics.find((t) => t.id === topicId);
             if (topic) {
@@ -278,7 +276,6 @@ export const createChatSlice: StateCreator<
               sessionAgentId = session.agent_id; // 获取 session 的 agent_id
               sessionProviderId = session.provider_id;
               sessionModel = session.model;
-              googleSearchEnabled = session.google_search_enabled;
               break;
             }
           }
@@ -292,7 +289,6 @@ export const createChatSlice: StateCreator<
               agentId: sessionAgentId, // 使用从 session 获取的 agentId
               provider_id: sessionProviderId,
               model: sessionModel,
-              google_search_enabled: googleSearchEnabled,
               connected: false,
               error: null,
             };
@@ -459,7 +455,6 @@ export const createChatSlice: StateCreator<
               agentId: session.agent_id,
               provider_id: session.provider_id,
               model: session.model,
-              google_search_enabled: session.google_search_enabled,
               connected: false,
               error: null,
             };
@@ -494,7 +489,6 @@ export const createChatSlice: StateCreator<
                 agentId: session.agent_id,
                 provider_id: session.provider_id,
                 model: session.model,
-                google_search_enabled: session.google_search_enabled,
                 connected: false,
                 error: null,
               };
@@ -1734,7 +1728,6 @@ export const createChatSlice: StateCreator<
               agentId: existingSession.agent_id,
               provider_id: existingSession.provider_id,
               model: existingSession.model,
-              google_search_enabled: existingSession.google_search_enabled,
               connected: false,
               error: null,
             };
@@ -1837,7 +1830,6 @@ export const createChatSlice: StateCreator<
             agentId: newSession.agent_id,
             provider_id: newSession.provider_id,
             model: newSession.model,
-            google_search_enabled: newSession.google_search_enabled,
             connected: false,
             error: null,
           };
@@ -2096,8 +2088,8 @@ export const createChatSlice: StateCreator<
             state.channels[activeChannelId].model = updatedSession.model;
             state.channels[activeChannelId].model_tier =
               updatedSession.model_tier;
-            state.channels[activeChannelId].google_search_enabled =
-              updatedSession.google_search_enabled;
+            state.channels[activeChannelId].knowledge_set_id =
+              updatedSession.knowledge_set_id;
           }
         });
       } catch (error) {

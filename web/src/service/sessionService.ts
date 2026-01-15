@@ -10,7 +10,7 @@ export interface SessionCreate {
   provider_id?: string;
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
-  google_search_enabled?: boolean;
+  knowledge_set_id?: string;
   avatar?: string;
   spatial_layout?: AgentSpatialLayout;
 }
@@ -22,7 +22,7 @@ export interface SessionUpdate {
   provider_id?: string;
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
-  google_search_enabled?: boolean;
+  knowledge_set_id?: string | null;
   avatar?: string;
   spatial_layout?: AgentSpatialLayout;
 }
@@ -37,7 +37,7 @@ export interface SessionRead {
   provider_id?: string;
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
-  google_search_enabled?: boolean;
+  knowledge_set_id?: string;
   avatar?: string;
   spatial_layout?: AgentSpatialLayout;
   created_at: string;

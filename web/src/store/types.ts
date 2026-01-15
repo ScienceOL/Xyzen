@@ -158,7 +158,7 @@ export interface ChatChannel {
   provider_id?: string;
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
-  google_search_enabled?: boolean;
+  knowledge_set_id?: string; // Session-level knowledge set override
   knowledgeContext?: KnowledgeContext;
   connected: boolean;
   error: string | null;
@@ -202,7 +202,7 @@ export interface SessionResponse {
   provider_id?: string;
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
-  google_search_enabled?: boolean;
+  knowledge_set_id?: string;
   spatial_layout?: Record<string, unknown> | null;
   topics: TopicResponse[];
 }

@@ -47,6 +47,7 @@ class AgentBase(SQLModel):
     # JSON configuration for graph-based agents
     # If None or empty, fallback to the default react system agent
     # Can include metadata.system_agent_key to use a specific system agent as base
+    # Tools are configured via graph_config.tool_config.tool_filter
     graph_config: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
 
 

@@ -41,7 +41,19 @@
     "searchSearxngDesc": "ユニバーサル検索エンジンを使用",
     "knowledgeSelect": "ナレッジベースを選択",
     "knowledgeEmpty": "ナレッジベースがありません",
-    "knowledgeEmptyDesc": "まずナレッジパネルで作成してください"
+    "knowledgeEmptyDesc": "まずナレッジパネルで作成してください",
+    "tools": "ツール",
+    "builtinTools": "ビルトインツール",
+    "webSearch": "ウェブ検索",
+    "webSearchDesc": "ウェブで情報を検索",
+    "knowledgeDesc": "ナレッジベースファイルにアクセス",
+    "noKnowledgeSet": "ナレッジベースが設定されていません",
+    "selectKnowledge": "ナレッジベースを選択",
+    "knowledgeSelected": "ナレッジベースが選択されています",
+    "noKnowledgeSets": "利用可能なナレッジベースがありません",
+    "noKnowledge": "なし",
+    "image": "画像",
+    "imageDesc": "画像を生成・読み取り"
   },
   "input": {
     "placeholder": "メッセージを送信...",
