@@ -185,6 +185,7 @@ export const createChatSlice: StateCreator<
                     agentId: session.agent_id,
                     provider_id: session.provider_id,
                     model: session.model,
+                    model_tier: session.model_tier,
                     connected: false,
                     error: null,
                   };
@@ -268,6 +269,7 @@ export const createChatSlice: StateCreator<
           let sessionAgentId = undefined;
           let sessionProviderId = undefined;
           let sessionModel = undefined;
+          let sessionModelTier = undefined;
           let googleSearchEnabled = undefined;
 
           for (const session of sessions) {
@@ -278,6 +280,7 @@ export const createChatSlice: StateCreator<
               sessionAgentId = session.agent_id; // 获取 session 的 agent_id
               sessionProviderId = session.provider_id;
               sessionModel = session.model;
+              sessionModelTier = session.model_tier;
               googleSearchEnabled = session.google_search_enabled;
               break;
             }
@@ -292,6 +295,7 @@ export const createChatSlice: StateCreator<
               agentId: sessionAgentId, // 使用从 session 获取的 agentId
               provider_id: sessionProviderId,
               model: sessionModel,
+              model_tier: sessionModelTier,
               google_search_enabled: googleSearchEnabled,
               connected: false,
               error: null,
@@ -459,6 +463,7 @@ export const createChatSlice: StateCreator<
               agentId: session.agent_id,
               provider_id: session.provider_id,
               model: session.model,
+              model_tier: session.model_tier,
               google_search_enabled: session.google_search_enabled,
               connected: false,
               error: null,
@@ -494,6 +499,7 @@ export const createChatSlice: StateCreator<
                 agentId: session.agent_id,
                 provider_id: session.provider_id,
                 model: session.model,
+                model_tier: session.model_tier,
                 google_search_enabled: session.google_search_enabled,
                 connected: false,
                 error: null,
@@ -1734,6 +1740,7 @@ export const createChatSlice: StateCreator<
               agentId: existingSession.agent_id,
               provider_id: existingSession.provider_id,
               model: existingSession.model,
+              model_tier: existingSession.model_tier,
               google_search_enabled: existingSession.google_search_enabled,
               connected: false,
               error: null,
@@ -1837,6 +1844,7 @@ export const createChatSlice: StateCreator<
             agentId: newSession.agent_id,
             provider_id: newSession.provider_id,
             model: newSession.model,
+            model_tier: newSession.model_tier,
             google_search_enabled: newSession.google_search_enabled,
             connected: false,
             error: null,
@@ -1897,6 +1905,8 @@ export const createChatSlice: StateCreator<
             agentId: newSession.agent_id,
             provider_id: newSession.provider_id,
             model: newSession.model,
+            model_tier: newSession.model_tier,
+            google_search_enabled: newSession.google_search_enabled,
             connected: false,
             error: null,
           };
