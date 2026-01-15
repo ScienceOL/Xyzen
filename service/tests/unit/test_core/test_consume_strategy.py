@@ -78,10 +78,8 @@ class TestTierBasedConsumptionStrategy:
         # STANDARD rate is 1.0
         assert TIER_MODEL_CONSUMPTION_RATE[ModelTier.STANDARD] == 1.0
 
-        # Calculate expected: base(3) + tokens(1000*0.2/1000 + 1000*1/1000) = 3 + 0.2 + 1 = 4.2
-        # With multiplier 1.0 = int(4.2) = 4
-        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)  # 0.2 + 1 = 1.2
-        expected = int((3 + expected_token_cost) * 1.0)
+        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
+        expected = int((1 + expected_token_cost) * 1.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 1.0
 
@@ -101,8 +99,8 @@ class TestTierBasedConsumptionStrategy:
         # PRO rate is 3.0
         assert TIER_MODEL_CONSUMPTION_RATE[ModelTier.PRO] == 3.0
 
-        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)  # 1.2
-        expected = int((3 + expected_token_cost) * 3.0)  # 4.2 * 3 = 12.6 -> 12
+        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
+        expected = int((1 + expected_token_cost) * 3.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 3.0
 
@@ -122,8 +120,8 @@ class TestTierBasedConsumptionStrategy:
         # ULTRA rate is 6.8
         assert TIER_MODEL_CONSUMPTION_RATE[ModelTier.ULTRA] == 6.8
 
-        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)  # 1.2
-        expected = int((3 + expected_token_cost) * 6.8)  # 4.2 * 6.8 = 28.56 -> 28
+        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
+        expected = int((1 + expected_token_cost) * 6.8)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 6.8
 
@@ -140,8 +138,7 @@ class TestTierBasedConsumptionStrategy:
         )
         result = strategy.calculate(context)
 
-        # Base(3) + files(2*10) = 23, with rate 1.0 = 23
-        expected = int((3 + 20) * 1.0)
+        expected = int((1 + 20) * 1.0)
         assert result.amount == expected
         assert result.breakdown["file_cost"] == 20
 
@@ -159,8 +156,8 @@ class TestTierBasedConsumptionStrategy:
         result = strategy.calculate(context)
 
         # Should use default rate 1.0
-        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)  # 1.2
-        expected = int((3 + expected_token_cost) * 1.0)  # 4
+        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
+        expected = int((1 + expected_token_cost) * 1.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 1.0
         assert result.breakdown["tier"] == "default"
@@ -213,8 +210,8 @@ class TestConsumptionCalculator:
         result = ConsumptionCalculator.calculate(context)
 
         # PRO rate is 3.0
-        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)  # 1.2
-        expected = int((3 + expected_token_cost) * 3.0)  # 12
+        expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
+        expected = int((1 + expected_token_cost) * 3.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 3.0
 
