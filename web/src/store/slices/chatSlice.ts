@@ -270,6 +270,7 @@ export const createChatSlice: StateCreator<
           let sessionProviderId = undefined;
           let sessionModel = undefined;
           let sessionModelTier = undefined;
+          let sessionKnowledgeSetId = undefined;
 
           for (const session of sessions) {
             const topic = session.topics.find((t) => t.id === topicId);
@@ -280,6 +281,7 @@ export const createChatSlice: StateCreator<
               sessionProviderId = session.provider_id;
               sessionModel = session.model;
               sessionModelTier = session.model_tier;
+              sessionKnowledgeSetId = session.knowledge_set_id;
               break;
             }
           }
@@ -294,6 +296,7 @@ export const createChatSlice: StateCreator<
               provider_id: sessionProviderId,
               model: sessionModel,
               model_tier: sessionModelTier,
+              knowledge_set_id: sessionKnowledgeSetId,
               connected: false,
               error: null,
             };
@@ -1736,6 +1739,7 @@ export const createChatSlice: StateCreator<
               provider_id: existingSession.provider_id,
               model: existingSession.model,
               model_tier: existingSession.model_tier,
+              knowledge_set_id: existingSession.knowledge_set_id,
               connected: false,
               error: null,
             };
@@ -2098,6 +2102,8 @@ export const createChatSlice: StateCreator<
             state.channels[activeChannelId].model = updatedSession.model;
             state.channels[activeChannelId].model_tier =
               updatedSession.model_tier;
+            state.channels[activeChannelId].knowledge_set_id =
+              updatedSession.knowledge_set_id;
           }
         });
       } catch (error) {

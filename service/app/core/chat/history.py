@@ -165,8 +165,13 @@ def _build_tool_messages(
             }
 
             if num_tool_calls == 0:
-                # First tool call - create new AIMessage
-                message = AIMessage(content=[], tool_calls=[tool_call])
+                # Attempt to merge with previous AIMessage (e.g., text content/thought before tool call)
+                if history and isinstance(history[-1], AIMessage):
+                    history[-1].tool_calls.append(tool_call)
+                    return None, num_tool_calls + 1
+
+                # First tool call and no previous AIMessage - create new one
+                message = AIMessage(content="", tool_calls=[tool_call])
                 return message, num_tool_calls + 1
             else:
                 # Subsequent tool call - append to existing AIMessage

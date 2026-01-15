@@ -450,6 +450,7 @@ const MarkdownImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
   const token = useXyzen((state) => state.token);
   const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
   const [failed, setFailed] = React.useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = React.useState(false);
 
   const fullSrc = React.useMemo(() => {
     if (!src) return "";
@@ -532,27 +533,109 @@ const MarkdownImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
 
   if (!src) return null;
 
-  if (!shouldAuthFetch) {
-    return <img src={fullSrc} alt={alt} {...rest} />;
-  }
+  const imageSrc = shouldAuthFetch ? blobUrl : fullSrc;
 
-  if (blobUrl) {
-    return <img src={blobUrl} alt={alt} {...rest} />;
-  }
-
-  if (failed) {
+  if (shouldAuthFetch && !blobUrl) {
+    if (failed) {
+      return (
+        <span className="text-xs text-neutral-500 dark:text-neutral-400">
+          Image failed to load
+        </span>
+      );
+    }
     return (
       <span className="text-xs text-neutral-500 dark:text-neutral-400">
-        Image failed to load
+        Loading image...
       </span>
     );
   }
 
-  return (
-    <span className="text-xs text-neutral-500 dark:text-neutral-400">
-      Loading image...
-    </span>
-  );
+  // Check if this looks like a generated image (from our image tool)
+  const isGeneratedImage =
+    fullSrc.includes("/generated/") ||
+    fullSrc.includes("generated_") ||
+    alt?.toLowerCase().includes("generated");
+
+  // For generated images, show a constrained preview with lightbox
+  if (isGeneratedImage && imageSrc) {
+    return (
+      <>
+        <span
+          className="inline-block cursor-pointer group not-prose"
+          onClick={() => setIsLightboxOpen(true)}
+        >
+          <span className="relative inline-block rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow">
+            <img
+              src={imageSrc}
+              alt={alt}
+              {...rest}
+              className="max-w-[320px] max-h-[320px] w-auto h-auto object-contain"
+            />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+                <ArrowsPointingOutIcon className="w-3 h-3" />
+                Click to expand
+              </span>
+            </span>
+          </span>
+        </span>
+
+        {/* Lightbox Modal */}
+        <AnimatePresence>
+          {isLightboxOpen && (
+            <Dialog
+              static
+              open={isLightboxOpen}
+              onClose={() => setIsLightboxOpen(false)}
+              className={`relative ${zIndexClasses.modal}`}
+            >
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+                aria-hidden="true"
+              />
+
+              {/* Image container */}
+              <div
+                className="fixed inset-0 flex items-center justify-center p-4"
+                onClick={() => setIsLightboxOpen(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  className="relative max-w-[90vw] max-h-[90vh]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DialogPanel>
+                    <img
+                      src={imageSrc}
+                      alt={alt}
+                      className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                    />
+                    <button
+                      onClick={() => setIsLightboxOpen(false)}
+                      className="absolute -top-3 -right-3 rounded-full p-1.5 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 shadow-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                    </button>
+                  </DialogPanel>
+                </motion.div>
+              </div>
+            </Dialog>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
+
+  // For regular images, render normally
+  return <img src={imageSrc || ""} alt={alt} {...rest} />;
 };
 
 const Markdown: React.FC<MarkdownProps> = function Markdown(props) {

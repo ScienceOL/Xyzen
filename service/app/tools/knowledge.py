@@ -42,16 +42,49 @@ class KnowledgeListFilesInput(BaseModel):
 class KnowledgeReadFileInput(BaseModel):
     """Input schema for read_file tool."""
 
-    filename: str = Field(description="The name of the file to read from the knowledge base.")
+    filename: str = Field(
+        description=(
+            "The name of the file to read from the knowledge base. "
+            "Supported formats: PDF, DOCX, XLSX, PPTX, HTML, JSON, YAML, XML, "
+            "images (PNG/JPG/GIF/WEBP with OCR), and plain text files."
+        )
+    )
 
 
 class KnowledgeWriteFileInput(BaseModel):
     """Input schema for write_file tool."""
 
     filename: str = Field(
-        description="The name of the file to create or update. Use appropriate extensions (.txt, .md, .docx, etc.)."
+        description=(
+            "The name of the file to create or update. Use appropriate extensions: "
+            ".txt, .md (plain text), .pdf (PDF document), .docx (Word), "
+            ".xlsx (Excel), .pptx (PowerPoint), .json, .yaml, .xml, .html."
+        )
     )
-    content: str = Field(description="The text content to write to the file.")
+    content: str = Field(
+        description=(
+            "The content to write. Can be plain text (creates simple documents) or "
+            "a JSON specification for production-quality documents:\n\n"
+            "**For PDF/DOCX (DocumentSpec JSON):**\n"
+            '{"title": "My Report", "author": "Name", "content": [\n'
+            '  {"type": "heading", "content": "Section 1", "level": 1},\n'
+            '  {"type": "text", "content": "Paragraph text here"},\n'
+            '  {"type": "list", "items": ["Item 1", "Item 2"], "ordered": false},\n'
+            '  {"type": "table", "headers": ["Col1", "Col2"], "rows": [["A", "B"]]},\n'
+            '  {"type": "page_break"}\n'
+            "]}\n\n"
+            "**For XLSX (SpreadsheetSpec JSON):**\n"
+            '{"sheets": [{"name": "Data", "headers": ["Name", "Value"], '
+            '"data": [["A", 1], ["B", 2]], "freeze_header": true}]}\n\n'
+            "**For PPTX (PresentationSpec JSON):**\n"
+            '{"title": "My Presentation", "slides": [\n'
+            '  {"layout": "title", "title": "Welcome", "subtitle": "Intro"},\n'
+            '  {"layout": "title_content", "title": "Slide 2", '
+            '"content": [{"type": "list", "items": ["Point 1", "Point 2"]}], '
+            '"notes": "Speaker notes here"}\n'
+            "]}"
+        )
+    )
 
 
 class KnowledgeSearchFilesInput(BaseModel):
@@ -303,7 +336,8 @@ def create_knowledge_tools() -> dict[str, BaseTool]:
     tools["knowledge_list"] = StructuredTool(
         name="knowledge_list",
         description=(
-            "List all files in the agent's knowledge base. Returns a list of filenames that can be read or searched."
+            "List all files in the agent's knowledge base. Returns a list of filenames "
+            "that can be read or searched. Use this first to discover available files."
         ),
         args_schema=KnowledgeListFilesInput,
         coroutine=list_files_placeholder,
@@ -317,6 +351,9 @@ def create_knowledge_tools() -> dict[str, BaseTool]:
         name="knowledge_read",
         description=(
             "Read the content of a file from the agent's knowledge base. "
+            "Supports: PDF (text + tables), DOCX (text + tables), XLSX (all sheets), "
+            "PPTX (text + speaker notes), HTML (text extraction), JSON/YAML/XML (formatted), "
+            "images (OCR text extraction from PNG/JPG/GIF/WEBP), and plain text files. "
             "Use knowledge_list first to see available files."
         ),
         args_schema=KnowledgeReadFileInput,
@@ -331,7 +368,10 @@ def create_knowledge_tools() -> dict[str, BaseTool]:
         name="knowledge_write",
         description=(
             "Create or update a file in the agent's knowledge base. "
-            "Supports various formats based on file extension (.txt, .md, .docx, etc.)."
+            "Supports: PDF, DOCX, XLSX, PPTX, HTML, JSON, YAML, XML, and plain text. "
+            "For production-quality documents (PDF/DOCX/XLSX/PPTX), provide a JSON "
+            "specification with structured content (headings, lists, tables, etc.) "
+            "instead of plain text. See content field description for JSON schema examples."
         ),
         args_schema=KnowledgeWriteFileInput,
         coroutine=write_file_placeholder,
@@ -376,7 +416,10 @@ def create_knowledge_tools_for_agent(user_id: str, knowledge_set_id: UUID) -> li
     tools.append(
         StructuredTool(
             name="knowledge_list",
-            description=("List all files in your knowledge base. Returns filenames that can be read or searched."),
+            description=(
+                "List all files in your knowledge base. Returns filenames that can be read or searched. "
+                "Use this first to discover available files."
+            ),
             args_schema=KnowledgeListFilesInput,
             coroutine=list_files_bound,
         )
@@ -390,7 +433,11 @@ def create_knowledge_tools_for_agent(user_id: str, knowledge_set_id: UUID) -> li
         StructuredTool(
             name="knowledge_read",
             description=(
-                "Read the content of a file from your knowledge base. Use knowledge_list first to see available files."
+                "Read the content of a file from your knowledge base. "
+                "Supports: PDF (text + tables), DOCX (text + tables), XLSX (all sheets), "
+                "PPTX (text + speaker notes), HTML (text extraction), JSON/YAML/XML (formatted), "
+                "images (OCR text extraction from PNG/JPG/GIF/WEBP), and plain text files. "
+                "Use knowledge_list first to see available files."
             ),
             args_schema=KnowledgeReadFileInput,
             coroutine=read_file_bound,
@@ -405,7 +452,11 @@ def create_knowledge_tools_for_agent(user_id: str, knowledge_set_id: UUID) -> li
         StructuredTool(
             name="knowledge_write",
             description=(
-                "Create or update a file in your knowledge base. Supports various formats based on file extension."
+                "Create or update a file in your knowledge base. "
+                "Supports: PDF, DOCX, XLSX, PPTX, HTML, JSON, YAML, XML, and plain text. "
+                "For production-quality documents (PDF/DOCX/XLSX/PPTX), provide a JSON "
+                "specification with structured content (headings, lists, tables, etc.) "
+                "instead of plain text. See content field description for JSON schema examples."
             ),
             args_schema=KnowledgeWriteFileInput,
             coroutine=write_file_bound,

@@ -630,6 +630,20 @@ def _handle_streaming_error(e: Exception, user_id: str) -> StreamingEvent:
             "The conversation is too long for the model to process. "
             "Please try starting a new chat or reducing the number of attached files."
         )
+    elif "content_filter" in error_str or "content_management_policy" in error_str:
+        # Azure OpenAI content filter triggered
+        logger.warning(f"Content filter triggered for user {user_id}: {e}")
+        return StreamingEventHandler.create_error_event(
+            "Your message was flagged by the content filter. Please rephrase your request and try again."
+        )
+    elif "rate_limit" in error_str or "429" in error_str:
+        logger.warning(f"Rate limit exceeded for user {user_id}: {e}")
+        return StreamingEventHandler.create_error_event("Too many requests. Please wait a moment and try again.")
+    elif "authentication" in error_str or "401" in error_str or "403" in error_str:
+        logger.error(f"Authentication error for user {user_id}: {e}")
+        return StreamingEventHandler.create_error_event("Authentication error. Please check your API configuration.")
     else:
         logger.error(f"Agent execution failed: {e}", exc_info=True)
-        return StreamingEventHandler.create_error_event(f"Service unavailable: {e}")
+        return StreamingEventHandler.create_error_event(
+            "An error occurred while processing your request. Please try again."
+        )
