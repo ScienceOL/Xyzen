@@ -61,6 +61,8 @@
   },
   "tierSelector": {
     "title": "选择模型等级",
+    "free": "免费",
+    "rateFormat": "{{rate}}x",
     "tiers": {
       "ultra": {
         "name": "Xyzen Ultra",

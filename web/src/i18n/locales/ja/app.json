@@ -61,6 +61,8 @@
   },
   "tierSelector": {
     "title": "モデルティアを選択",
+    "free": "無料",
+    "rateFormat": "{{rate}}x",
     "tiers": {
       "ultra": {
         "name": "Xyzen ウルトラ",

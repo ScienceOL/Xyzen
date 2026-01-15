@@ -61,6 +61,8 @@
   },
   "tierSelector": {
     "title": "Select Model Tier",
+    "free": "Free",
+    "rateFormat": "{{rate}}x",
     "tiers": {
       "ultra": {
         "name": "Xyzen Ultra",

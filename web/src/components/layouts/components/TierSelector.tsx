@@ -18,6 +18,7 @@ interface TierConfig {
   bgColor: string;
   textColor: string;
   dotColor: string;
+  rate: number; // Consumption rate multiplier
 }
 
 const TIER_CONFIGS: TierConfig[] = [
@@ -26,24 +27,28 @@ const TIER_CONFIGS: TierConfig[] = [
     bgColor: "bg-purple-500/10 dark:bg-purple-500/20",
     textColor: "text-purple-700 dark:text-purple-400",
     dotColor: "bg-purple-500",
+    rate: 6.8,
   },
   {
     key: "pro",
     bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
     textColor: "text-blue-700 dark:text-blue-400",
     dotColor: "bg-blue-500",
+    rate: 3.0,
   },
   {
     key: "standard",
     bgColor: "bg-green-500/10 dark:bg-green-500/20",
     textColor: "text-green-700 dark:text-green-400",
     dotColor: "bg-green-500",
+    rate: 1.0,
   },
   {
     key: "lite",
     bgColor: "bg-orange-500/10 dark:bg-orange-500/20",
     textColor: "text-orange-700 dark:text-orange-400",
     dotColor: "bg-orange-500",
+    rate: 0.0,
   },
 ];
 
@@ -63,6 +68,12 @@ export function TierSelector({
   const handleTierClick = (tier: ModelTier) => {
     onTierChange(tier);
     setIsOpen(false);
+  };
+
+  // Format rate for display
+  const formatRate = (rate: number): string => {
+    if (rate === 0) return t("app.tierSelector.free");
+    return t("app.tierSelector.rateFormat", { rate: rate.toFixed(1) });
   };
 
   return (
@@ -119,8 +130,13 @@ export function TierSelector({
                     className={`h-2 w-2 shrink-0 rounded-full ${config.dotColor}`}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
-                      {t(`app.tierSelector.tiers.${config.key}.name`)}
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                        {t(`app.tierSelector.tiers.${config.key}.name`)}
+                      </span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                        {formatRate(config.rate)}
+                      </span>
                     </div>
                     <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {t(`app.tierSelector.tiers.${config.key}.description`)}
