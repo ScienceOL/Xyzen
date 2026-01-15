@@ -186,6 +186,18 @@ yarn test                        # Vitest
 ./launch/dev.sh -d               # Start all services
 ```
 
+## Database Migrations
+
+When creating or running migrations, use `docker exec` to access the container:
+
+```bash
+# Generate migration
+docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic revision --autogenerate -m 'Description'"
+# Apply migrations
+docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic upgrade head"
+```
+**Note**: Register new models in `models/__init__.py` before generating migrations.
+
 ## Code Style
 
 **Python**: Use `list[T]`, `dict[K,V]`, `str | None` (not `List`, `Dict`, `Optional`)
