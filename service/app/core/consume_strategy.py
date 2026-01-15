@@ -67,7 +67,7 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
     - Tier rate multiplies ALL costs (base + tokens + files)
     """
 
-    BASE_COST = 3
+    BASE_COST = 1
     INPUT_TOKEN_RATE = 0.2 / 1000  # per token
     OUTPUT_TOKEN_RATE = 1 / 1000  # per token
     FILE_GENERATION_COST = 10

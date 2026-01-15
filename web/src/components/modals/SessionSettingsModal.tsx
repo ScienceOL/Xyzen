@@ -6,6 +6,7 @@ import {
   CheckIcon,
   Cog6ToothIcon,
   SparklesIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -280,6 +281,7 @@ interface SessionSettingsModalProps {
   onAvatarChange: (avatarUrl: string) => void;
   onGridSizeChange: (w: number, h: number) => void;
   onOpenAgentSettings?: () => void;
+  onDelete?: () => void;
 }
 
 const SessionSettingsModal: React.FC<SessionSettingsModalProps> = ({
@@ -291,12 +293,14 @@ const SessionSettingsModal: React.FC<SessionSettingsModalProps> = ({
   onAvatarChange,
   onGridSizeChange,
   onOpenAgentSettings,
+  onDelete,
 }) => {
   const { t } = useTranslation();
   const backendUrl = useXyzen((state) => state.backendUrl);
   const [activeSection, setActiveSection] = useState<"avatar" | "size">(
     "avatar",
   );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
     <Modal
@@ -369,6 +373,47 @@ const SessionSettingsModal: React.FC<SessionSettingsModalProps> = ({
               <Cog6ToothIcon className="w-4 h-4" />
               {t("agents.editTitle", { name: agentName })}
             </button>
+          </div>
+        )}
+
+        {/* Delete Agent */}
+        {onDelete && (
+          <div className="pt-3 border-t border-neutral-200 dark:border-neutral-700">
+            {!showDeleteConfirm ? (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-md transition-colors"
+              >
+                <TrashIcon className="w-4 h-4" />
+                {t("common.delete")}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
+                  {t("agents.deleteConfirm", { name: agentName })}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 rounded-md transition-colors"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDelete();
+                      onClose();
+                    }}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-md transition-colors"
+                  >
+                    {t("common.delete")}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

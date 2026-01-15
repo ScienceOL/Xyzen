@@ -357,6 +357,12 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
     }
   };
 
+  const handleDelete = () => {
+    if (data.onDelete && data.agentId) {
+      data.onDelete(data.agentId);
+    }
+  };
+
   return (
     <>
       <SessionSettingsModal
@@ -372,6 +378,7 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
         onOpenAgentSettings={
           data.onOpenAgentSettings ? handleOpenAgentSettings : undefined
         }
+        onDelete={data.onDelete ? handleDelete : undefined}
       />
 
       <motion.div

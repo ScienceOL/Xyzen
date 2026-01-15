@@ -9,6 +9,7 @@ interface FocusedViewProps {
   agents: (AgentData & { id: string })[];
   onClose: () => void;
   onSwitchAgent: (id: string) => void;
+  onCanvasClick?: () => void; // Callback specifically for canvas clicks
 }
 
 export function FocusedView({
@@ -16,6 +17,7 @@ export function FocusedView({
   agents,
   onClose,
   onSwitchAgent,
+  onCanvasClick,
 }: FocusedViewProps) {
   const switcherRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -32,15 +34,34 @@ export function FocusedView({
   }, [agent.agentId, activateChannelForAgent]);
 
   useEffect(() => {
+    // Check if user is typing in an editable element
+    const isEditableTarget = (el: Element | null): boolean => {
+      if (!el) return false;
+      const tag = (el as HTMLElement).tagName;
+      const editable = (el as HTMLElement).isContentEditable;
+      return (
+        editable ||
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        (el as HTMLElement).closest?.('[role="textbox"]') !== null ||
+        (el as HTMLElement).closest?.(".tiptap") !== null ||
+        (el as HTMLElement).closest?.(".ProseMirror") !== null
+      );
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // Don't close if user is typing in an input field
+      if (e.key === "Escape" && !isEditableTarget(document.activeElement)) {
+        onClose();
+      }
     };
 
     const onPointerDownCapture = (e: PointerEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Clicking on a node should focus it, not close.
+      // Clicking on a node should switch focus to that node, not close.
       if (target.closest(".react-flow__node, .xy-flow__node")) return;
 
       // Clicking inside UI panels should not close.
@@ -56,14 +77,27 @@ export function FocusedView({
       )
         return;
 
-      // Prevent XYFlow from starting a pan/drag on the same click,
-      // which can override the restore viewport animation.
+      // Clicking on modals or dialogs should not close
+      if (target.closest("[role='dialog'], [role='alertdialog'], .modal"))
+        return;
+
+      // Only close if clicking on the ReactFlow canvas/pane background
+      const isCanvasClick = target.closest(
+        ".react-flow__pane, .react-flow__renderer",
+      );
+      if (!isCanvasClick) return;
+
+      // This is a canvas click - close the focused view
       e.preventDefault();
       e.stopPropagation();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (e as any).stopImmediatePropagation?.();
 
-      onClose();
+      if (onCanvasClick) {
+        onCanvasClick();
+      } else {
+        onClose();
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -72,7 +106,7 @@ export function FocusedView({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onPointerDownCapture, true);
     };
-  }, [onClose]);
+  }, [onClose, onCanvasClick]);
 
   return (
     <div className="absolute inset-0 z-40 flex items-stretch p-4 gap-4 pointer-events-none">

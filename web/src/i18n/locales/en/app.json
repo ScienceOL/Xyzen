@@ -73,6 +73,13 @@
   },
   "tierSelector": {
     "title": "Select Model Tier",
+    "free": "Free",
+    "rateFormat": "{{rate}}x",
+    "infoModal": {
+      "title": "Model Tier Guide",
+      "imageGen": "Image Generation",
+      "disclaimer": "* Models listed are for capability reference only and do not guarantee the actual model used."
+    },
     "tiers": {
       "ultra": {
         "name": "Xyzen Ultra",

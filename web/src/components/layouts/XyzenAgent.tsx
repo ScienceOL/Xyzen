@@ -365,7 +365,7 @@ export default function XyzenAgent({
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
   const {
     agents,
-    fetchAgents,
+
     createDefaultChannel,
     deleteAgent,
 
@@ -393,9 +393,8 @@ export default function XyzenAgent({
     return ids;
   }, [myListings]);
 
-  useEffect(() => {
-    fetchAgents();
-  }, [fetchAgents]);
+  // Note: fetchAgents is called in App.tsx during initial load
+  // No need to fetch again here - agents are already in the store
 
   // Ensure providers are loaded on mount (only if authenticated)
   useEffect(() => {

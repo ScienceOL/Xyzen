@@ -1,7 +1,7 @@
 /*
 自动切换为移动端布局的断点宽度，单位为像素
 */
-export const MOBILE_BREAKPOINT = 640;
+export const MOBILE_BREAKPOINT = 787;
 
 // Default timezone used for admin stats date boundaries.
 export const DEFAULT_TIMEZONE = "Asia/Shanghai";

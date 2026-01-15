@@ -1,5 +1,6 @@
 {
   "ok": "OK",
   "cancel": "Cancel",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "delete": "Delete"
 }

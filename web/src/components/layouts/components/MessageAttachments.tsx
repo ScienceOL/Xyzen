@@ -8,6 +8,7 @@ import {
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { MarkdownRenderer } from "@/components/preview/renderers/MarkdownRenderer";
 
@@ -36,6 +37,8 @@ export default function MessageAttachments({
   >({});
   const backendUrl = useXyzen((state) => state.backendUrl);
   const token = useXyzen((state) => state.token);
+
+  const portalRoot = typeof document !== "undefined" ? document.body : null;
 
   // Helper to convert relative URLs to absolute
   const getFullUrl = useCallback(
@@ -428,167 +431,203 @@ export default function MessageAttachments({
       )}
 
       {/* Image Lightbox Modal */}
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
-            onClick={() => setSelectedImage(null)}
-          >
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              whileHover={{ scale: 1.1, rotate: 90 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setSelectedImage(null)}
-              className="absolute top-6 right-6 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
-              aria-label="Close"
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+      {portalRoot &&
+        createPortal(
+          <AnimatePresence>
+            {selectedImage && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
+                role="dialog"
+                aria-modal="true"
+                onClick={() => setSelectedImage(null)}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+                <ImagePreviewEscapeCatcher
+                  onEscape={() => setSelectedImage(null)}
                 />
-              </svg>
-            </motion.button>
-            <motion.img
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              src={selectedImage}
-              alt="Full size"
-              className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </motion.div>
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setSelectedImage(null)}
+                  className="absolute top-6 right-6 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
+                  aria-label="Close"
+                >
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </motion.button>
+                <motion.img
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  src={selectedImage}
+                  alt="Full size"
+                  className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          portalRoot,
         )}
-      </AnimatePresence>
 
       {/* Document Preview Modal */}
-      <AnimatePresence>
-        {selectedDoc && fileBlobUrls[selectedDoc.id] && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
-            onClick={() => setSelectedDoc(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-neutral-200/50 dark:border-neutral-700/50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 bg-linear-to-b from-neutral-50 to-white dark:from-neutral-800 dark:to-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                    <svg
-                      className="h-4 w-4 text-red-600 dark:text-red-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                      />
-                    </svg>
+      {portalRoot &&
+        createPortal(
+          <AnimatePresence>
+            {selectedDoc && fileBlobUrls[selectedDoc.id] && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+                role="dialog"
+                aria-modal="true"
+                onClick={() => setSelectedDoc(null)}
+              >
+                <ImagePreviewEscapeCatcher
+                  onEscape={() => setSelectedDoc(null)}
+                />
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-neutral-200/50 dark:border-neutral-700/50"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-6 py-4 bg-linear-to-b from-neutral-50 to-white dark:from-neutral-800 dark:to-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <svg
+                          className="h-4 w-4 text-red-600 dark:text-red-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
+                        {selectedDoc.name || "Document Preview"}
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <motion.a
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        href={fileBlobUrls[selectedDoc.id]}
+                        download={selectedDoc.name}
+                        className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+                      >
+                        <svg
+                          className="h-4 w-4 inline-block mr-1.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                          />
+                        </svg>
+                        Download
+                      </motion.a>
+                      <motion.button
+                        whileHover={{ scale: 1.05, rotate: 90 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setSelectedDoc(null)}
+                        className="rounded-lg p-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                        aria-label="Close"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </motion.button>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
-                    {selectedDoc.name || "Document Preview"}
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <motion.a
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    href={fileBlobUrls[selectedDoc.id]}
-                    download={selectedDoc.name}
-                    className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
-                  >
-                    <svg
-                      className="h-4 w-4 inline-block mr-1.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                      />
-                    </svg>
-                    Download
-                  </motion.a>
-                  <motion.button
-                    whileHover={{ scale: 1.05, rotate: 90 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setSelectedDoc(null)}
-                    className="rounded-lg p-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                    aria-label="Close"
-                  >
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </motion.button>
-                </div>
-              </div>
 
-              {/* Document Viewer */}
-              <div className="flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-950">
-                {selectedDoc.type === "text/markdown" ||
-                selectedDoc.name?.toLowerCase().endsWith(".md") ? (
-                  <MarkdownRenderer
-                    file={{
-                      id: selectedDoc.id,
-                      name: selectedDoc.name,
-                      type: selectedDoc.type,
-                      size: selectedDoc.size,
-                      url: fileBlobUrls[selectedDoc.id],
-                    }}
-                    url={fileBlobUrls[selectedDoc.id]}
-                    className="h-full w-full overflow-y-auto bg-white dark:bg-neutral-950 p-8"
-                  />
-                ) : (
-                  <iframe
-                    src={fileBlobUrls[selectedDoc.id]}
-                    className="w-full h-full border-0"
-                    title="Document Preview"
-                  />
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
+                  {/* Document Viewer */}
+                  <div className="flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-950">
+                    {selectedDoc.type === "text/markdown" ||
+                    selectedDoc.name?.toLowerCase().endsWith(".md") ? (
+                      <MarkdownRenderer
+                        file={{
+                          id: selectedDoc.id,
+                          name: selectedDoc.name,
+                          type: selectedDoc.type,
+                          size: selectedDoc.size,
+                          url: fileBlobUrls[selectedDoc.id],
+                        }}
+                        url={fileBlobUrls[selectedDoc.id]}
+                        className="h-full w-full overflow-y-auto bg-white dark:bg-neutral-950 p-8"
+                      />
+                    ) : (
+                      <iframe
+                        src={fileBlobUrls[selectedDoc.id]}
+                        className="w-full h-full border-0"
+                        title="Document Preview"
+                      />
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          portalRoot,
         )}
-      </AnimatePresence>
     </div>
   );
+}
+
+function ImagePreviewEscapeCatcher({ onEscape }: { onEscape: () => void }) {
+  useEffect(() => {
+    const onKeyDownCapture = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (e as any).stopImmediatePropagation?.();
+      onEscape();
+    };
+
+    window.addEventListener("keydown", onKeyDownCapture, true);
+    return () => window.removeEventListener("keydown", onKeyDownCapture, true);
+  }, [onEscape]);
+
+  return null;
 }

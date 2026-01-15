@@ -1,5 +1,6 @@
 {
   "ok": "确定",
   "cancel": "取消",
-  "loading": "加载中..."
+  "loading": "加载中...",
+  "delete": "删除"
 }

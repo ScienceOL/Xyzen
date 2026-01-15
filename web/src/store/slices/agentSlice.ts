@@ -205,8 +205,8 @@ export const createAgentSlice: StateCreator<
         sessionIdByAgentId: sessionMap,
       });
 
-      // Also fetch stats for growth visualization
-      get().fetchAgentStats();
+      // Also fetch stats for growth visualization (await to ensure all data is ready)
+      await get().fetchAgentStats();
     } catch (error) {
       console.error("Failed to fetch agents:", error);
       set({ agentsLoading: false });
@@ -231,8 +231,8 @@ export const createAgentSlice: StateCreator<
       const stats: Record<string, AgentStatsAggregated> = await response.json();
       set({ agentStats: stats, agentStatsLoading: false });
 
-      // Also fetch daily activity for visualization
-      get().fetchDailyActivity();
+      // Also fetch daily activity for visualization (await to ensure all data is ready)
+      await get().fetchDailyActivity();
     } catch (error) {
       console.error("Failed to fetch agent stats:", error);
       set({ agentStatsLoading: false });
