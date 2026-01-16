@@ -152,6 +152,18 @@ def register_builtin_tools() -> None:
                 display_name=tool.name.replace("_", " ").title(),
             )
 
+    # Register code executor tools
+    from app.tools.code_executor import create_code_executor_tools
+
+    code_tools = create_code_executor_tools()
+    for tool in code_tools:
+        BuiltinToolRegistry.register(
+            tool_id=tool.name,
+            tool=tool,
+            category="code_execution",
+            display_name=tool.name.replace("_", " ").title(),
+        )
+
     logger.info(f"Registered {len(BuiltinToolRegistry._tools)} builtin tools")
 
 

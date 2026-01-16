@@ -12,6 +12,7 @@ from .marketplace import router as marketplace_router
 from .mcps import router as mcps_router
 from .providers import router as providers_router
 from .redemption import router as redemption_router
+from .sandbox import router as sandbox_router
 from .sessions import router as sessions_router
 from .tools import router as tools_router
 from .topics import router as topics_router
@@ -93,3 +94,4 @@ v1_router.include_router(knowledge_sets_router, prefix="/knowledge-sets")
 v1_router.include_router(marketplace_router, prefix="/marketplace")
 v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(tools_router, prefix="/tools")
+v1_router.include_router(sandbox_router, prefix="/sandbox")
