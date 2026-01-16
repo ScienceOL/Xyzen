@@ -53,7 +53,9 @@
     "noKnowledgeSets": "利用可能なナレッジベースがありません",
     "noKnowledge": "なし",
     "image": "画像",
-    "imageDesc": "画像を生成・読み取り"
+    "imageDesc": "画像を生成・読み取り",
+    "memory": "メモリ",
+    "memoryDesc": "会話履歴を検索"
   },
   "input": {
     "placeholder": "メッセージを送信...",

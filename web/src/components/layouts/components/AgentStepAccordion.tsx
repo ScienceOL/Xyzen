@@ -1,42 +1,51 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDownIcon, CheckIcon } from "@heroicons/react/24/solid";
+import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { useState, useEffect } from "react";
-import type { ExecutionStatus } from "@/types/agentEvents";
+import type { ExecutionStatus, PhaseExecution } from "@/types/agentEvents";
 import Markdown from "@/lib/Markdown";
 import LoadingMessage from "./LoadingMessage";
+import ToolCallPill from "./ToolCallPill";
+import type { ToolCall } from "@/store/types";
 
-interface AgentNodeItemProps {
-  nodeName: string;
-  status: ExecutionStatus;
-  content?: string;
-  isActive?: boolean;
+interface AgentStepAccordionProps {
+  phase: PhaseExecution;
+  isActive: boolean;
+  toolCalls?: ToolCall[];
   className?: string;
 }
 
 /**
- * AgentNodeItem displays a single node/phase in a compact accordion style.
- * Features checkbox-style status indicators matching the new design spec.
+ * AgentStepAccordion displays a single step in the agent execution timeline.
+ * Features:
+ * - Checkbox-style status indicators (completed: green check, running: spinner, pending: hollow)
+ * - Auto-expand on running, auto-collapse when completed
+ * - Manual toggle via header click
+ * - Chevron rotation animation
+ * - Tool calls displayed as pills inside the step
  */
-export default function AgentNodeItem({
-  nodeName,
-  status,
-  content,
-  isActive = false,
+export default function AgentStepAccordion({
+  phase,
+  isActive,
+  toolCalls = [],
   className = "",
-}: AgentNodeItemProps) {
+}: AgentStepAccordionProps) {
+  // Auto-collapse completed, auto-expand running
   const [isExpanded, setIsExpanded] = useState(isActive);
 
-  // Auto-expand when node becomes active, auto-collapse when completed
+  // Auto-expand when phase becomes active, auto-collapse when completed
   useEffect(() => {
     if (isActive) {
       setIsExpanded(true);
-    } else if (status === "completed" || status === "failed") {
+    } else if (phase.status === "completed" || phase.status === "failed") {
+      // Auto-collapse when step completes
       setIsExpanded(false);
     }
-  }, [isActive, status]);
+  }, [isActive, phase.status]);
 
-  const hasContent = Boolean(content && content.trim().length > 0);
-  const canExpand = hasContent && status !== "pending";
+  const hasContent = Boolean(
+    phase.streamedContent || phase.outputSummary || toolCalls.length > 0,
+  );
+  const canExpand = hasContent && phase.status !== "pending";
 
   return (
     <motion.div
@@ -56,16 +65,16 @@ export default function AgentNodeItem({
         } ${isActive ? "bg-neutral-100/50 dark:bg-neutral-700/20" : ""}`}
       >
         {/* Status Indicator */}
-        <StatusIndicator status={status} />
+        <StatusIndicator status={phase.status} />
 
-        {/* Node Name */}
+        {/* Step Title */}
         <span className="flex-1 text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate">
-          {nodeName}
+          {phase.name}
         </span>
 
-        {/* Right side indicator */}
+        {/* Right side: status text or chevron */}
         <RightIndicator
-          status={status}
+          status={phase.status}
           hasContent={hasContent}
           isExpanded={isExpanded}
           canExpand={canExpand}
@@ -83,9 +92,23 @@ export default function AgentNodeItem({
             className="overflow-hidden"
           >
             <div className="pl-9 pr-3 pb-2">
-              <div className="prose prose-sm dark:prose-invert max-w-none text-neutral-600 dark:text-neutral-400 max-h-64 overflow-y-auto">
-                <Markdown content={content ?? ""} />
-              </div>
+              {/* Tool Calls as Pills */}
+              {toolCalls.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {toolCalls.map((toolCall) => (
+                    <ToolCallPill key={toolCall.id} toolCall={toolCall} />
+                  ))}
+                </div>
+              )}
+
+              {/* Streaming/Output Content */}
+              {(phase.streamedContent || phase.outputSummary) && (
+                <div className="prose prose-sm dark:prose-invert max-w-none text-neutral-600 dark:text-neutral-400 max-h-64 overflow-y-auto">
+                  <Markdown
+                    content={phase.streamedContent || phase.outputSummary || ""}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -95,7 +118,7 @@ export default function AgentNodeItem({
 }
 
 /**
- * Checkbox-style status indicator
+ * Status indicator icon matching the design spec
  */
 function StatusIndicator({ status }: { status: ExecutionStatus }) {
   switch (status) {
@@ -178,6 +201,7 @@ function RightIndicator({
     return null;
   }
 
+  // Has content - show expand toggle
   return (
     <motion.div
       animate={{ rotate: isExpanded ? 180 : 0 }}

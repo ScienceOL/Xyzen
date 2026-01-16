@@ -23,16 +23,9 @@ from app.schemas.agent_event_payloads import (
     AgentErrorData,
     AgentExecutionContext,
     AgentStartData,
-    HumanInputReceivedData,
-    HumanInputRequiredData,
-    IterationEndData,
-    IterationStartData,
     NodeEndData,
     NodeStartData,
-    PhaseEndData,
-    PhaseStartData,
     ProgressUpdateData,
-    StateUpdateData,
     SubagentEndData,
     SubagentStartData,
 )
@@ -334,20 +327,6 @@ class AgentErrorEvent(TypedDict):
     data: AgentErrorData
 
 
-class PhaseStartEvent(TypedDict):
-    """Full event structure for phase start."""
-
-    type: Literal[ChatEventType.PHASE_START]
-    data: PhaseStartData
-
-
-class PhaseEndEvent(TypedDict):
-    """Full event structure for phase end."""
-
-    type: Literal[ChatEventType.PHASE_END]
-    data: PhaseEndData
-
-
 class NodeStartEvent(TypedDict):
     """Full event structure for node start."""
 
@@ -383,41 +362,6 @@ class ProgressUpdateEvent(TypedDict):
     data: ProgressUpdateData
 
 
-class IterationStartEvent(TypedDict):
-    """Full event structure for iteration start."""
-
-    type: Literal[ChatEventType.ITERATION_START]
-    data: IterationStartData
-
-
-class IterationEndEvent(TypedDict):
-    """Full event structure for iteration end."""
-
-    type: Literal[ChatEventType.ITERATION_END]
-    data: IterationEndData
-
-
-class StateUpdateEvent(TypedDict):
-    """Full event structure for state update."""
-
-    type: Literal[ChatEventType.STATE_UPDATE]
-    data: StateUpdateData
-
-
-class HumanInputRequiredEvent(TypedDict):
-    """Full event structure for human input required."""
-
-    type: Literal[ChatEventType.HUMAN_INPUT_REQUIRED]
-    data: HumanInputRequiredData
-
-
-class HumanInputReceivedEvent(TypedDict):
-    """Full event structure for human input received."""
-
-    type: Literal[ChatEventType.HUMAN_INPUT_RECEIVED]
-    data: HumanInputReceivedData
-
-
 # =============================================================================
 # Union type for generic event handling
 # =============================================================================
@@ -444,18 +388,11 @@ StreamingEvent = (
     | AgentStartEvent
     | AgentEndEvent
     | AgentErrorEvent
-    | PhaseStartEvent
-    | PhaseEndEvent
     | NodeStartEvent
     | NodeEndEvent
     | SubagentStartEvent
     | SubagentEndEvent
     | ProgressUpdateEvent
-    | IterationStartEvent
-    | IterationEndEvent
-    | StateUpdateEvent
-    | HumanInputRequiredEvent
-    | HumanInputReceivedEvent
 )
 
 
@@ -463,18 +400,11 @@ AgentEvent = (
     AgentStartEvent
     | AgentEndEvent
     | AgentErrorEvent
-    | PhaseStartEvent
-    | PhaseEndEvent
     | NodeStartEvent
     | NodeEndEvent
     | SubagentStartEvent
     | SubagentEndEvent
     | ProgressUpdateEvent
-    | IterationStartEvent
-    | IterationEndEvent
-    | StateUpdateEvent
-    | HumanInputRequiredEvent
-    | HumanInputReceivedEvent
 )
 
 
@@ -524,30 +454,16 @@ __all__ = [
     "NodeStartData",
     "NodeEndData",
     "ProgressUpdateData",
-    "PhaseStartData",
-    "PhaseEndData",
     "SubagentStartData",
     "SubagentEndData",
-    "IterationStartData",
-    "IterationEndData",
-    "StateUpdateData",
-    "HumanInputRequiredData",
-    "HumanInputReceivedData",
     "AgentStartEvent",
     "AgentEndEvent",
     "AgentErrorEvent",
-    "PhaseStartEvent",
-    "PhaseEndEvent",
     "NodeStartEvent",
     "NodeEndEvent",
     "ProgressUpdateEvent",
     "SubagentStartEvent",
     "SubagentEndEvent",
-    "IterationStartEvent",
-    "IterationEndEvent",
-    "StateUpdateEvent",
-    "HumanInputRequiredEvent",
-    "HumanInputReceivedEvent",
     # Union
     "StreamingEvent",
     "AgentEvent",

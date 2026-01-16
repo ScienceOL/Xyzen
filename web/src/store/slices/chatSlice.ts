@@ -8,13 +8,8 @@ import type {
   AgentErrorData,
   AgentExecutionState,
   AgentStartData,
-  IterationEndData,
-  IterationStartData,
   NodeEndData,
   NodeStartData,
-  PhaseEndData,
-  PhaseExecution,
-  PhaseStartData,
   ProgressUpdateData,
   SubagentEndData,
   SubagentStartData,
@@ -1307,67 +1302,6 @@ export const createChatSlice: StateCreator<
                 break;
               }
 
-              case "phase_start": {
-                const data = event.data as PhaseStartData;
-                const { context } = data;
-
-                // Find the message with this agent execution
-                const msgIndex = channel.messages.findIndex(
-                  (m) => m.agentExecution?.executionId === context.execution_id,
-                );
-
-                if (msgIndex !== -1) {
-                  const execution = channel.messages[msgIndex].agentExecution;
-                  if (execution) {
-                    execution.currentPhase = data.phase_name;
-
-                    // Add phase to phases array
-                    const newPhase: PhaseExecution = {
-                      id: data.phase_id,
-                      name: data.phase_name,
-                      description: data.description,
-                      status: "running",
-                      startedAt: Date.now(),
-                      nodes: [],
-                    };
-                    execution.phases.push(newPhase);
-                  }
-                }
-                break;
-              }
-
-              case "phase_end": {
-                const data = event.data as PhaseEndData;
-                const { context } = data;
-
-                // Find the message with this agent execution
-                const msgIndex = channel.messages.findIndex(
-                  (m) => m.agentExecution?.executionId === context.execution_id,
-                );
-
-                if (msgIndex !== -1) {
-                  const execution = channel.messages[msgIndex].agentExecution;
-                  if (execution) {
-                    // Find and update the phase
-                    const phase = execution.phases.find(
-                      (p) => p.id === data.phase_id,
-                    );
-                    if (phase) {
-                      phase.status =
-                        data.status === "completed"
-                          ? "completed"
-                          : data.status === "skipped"
-                            ? "skipped"
-                            : "failed";
-                      phase.endedAt = Date.now();
-                      phase.durationMs = data.duration_ms;
-                      phase.outputSummary = data.output_summary;
-                    }
-                  }
-                }
-                break;
-              }
-
               case "node_start": {
                 const data = event.data as NodeStartData;
                 const { context } = data;
@@ -1532,56 +1466,6 @@ export const createChatSlice: StateCreator<
                     execution.progressMessage = data.message;
                   }
                 }
-                break;
-              }
-
-              case "iteration_start": {
-                const data = event.data as IterationStartData;
-                const { context } = data;
-
-                // Find the message with this agent execution
-                const msgIndex = channel.messages.findIndex(
-                  (m) => m.agentExecution?.executionId === context.execution_id,
-                );
-
-                if (msgIndex !== -1) {
-                  const execution = channel.messages[msgIndex].agentExecution;
-                  if (execution) {
-                    execution.iteration = {
-                      current: data.iteration_number,
-                      max: data.max_iterations,
-                      reason: data.reason,
-                    };
-                  }
-                }
-                break;
-              }
-
-              case "iteration_end": {
-                const data = event.data as IterationEndData;
-                const { context } = data;
-
-                // Find the message with this agent execution
-                const msgIndex = channel.messages.findIndex(
-                  (m) => m.agentExecution?.executionId === context.execution_id,
-                );
-
-                if (msgIndex !== -1) {
-                  const execution = channel.messages[msgIndex].agentExecution;
-                  if (execution && execution.iteration) {
-                    execution.iteration.current = data.iteration_number;
-                    if (!data.will_continue) {
-                      // Iteration complete, clear the reason
-                      execution.iteration.reason = data.reason;
-                    }
-                  }
-                }
-                break;
-              }
-
-              case "state_update": {
-                // State updates are informational, we don't need to store them
-                // but we could add them to a debug log if needed
                 break;
               }
             }

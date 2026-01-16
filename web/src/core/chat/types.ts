@@ -10,16 +10,11 @@ import type {
   AgentStartData,
   AgentEndData,
   AgentErrorData,
-  PhaseStartData,
-  PhaseEndData,
   NodeStartData,
   NodeEndData,
   SubagentStartData,
   SubagentEndData,
   ProgressUpdateData,
-  IterationStartData,
-  IterationEndData,
-  StateUpdateData,
 } from "@/types/agentEvents";
 
 /**
@@ -46,16 +41,11 @@ export type WebSocketMessageEvent =
   | { type: "agent_start"; data: AgentStartData }
   | { type: "agent_end"; data: AgentEndData }
   | { type: "agent_error"; data: AgentErrorData }
-  | { type: "phase_start"; data: PhaseStartData }
-  | { type: "phase_end"; data: PhaseEndData }
   | { type: "node_start"; data: NodeStartData }
   | { type: "node_end"; data: NodeEndData }
   | { type: "subagent_start"; data: SubagentStartData }
   | { type: "subagent_end"; data: SubagentEndData }
-  | { type: "progress_update"; data: ProgressUpdateData }
-  | { type: "iteration_start"; data: IterationStartData }
-  | { type: "iteration_end"; data: IterationEndData }
-  | { type: "state_update"; data: StateUpdateData };
+  | { type: "progress_update"; data: ProgressUpdateData };
 
 /**
  * Connection status from WebSocket

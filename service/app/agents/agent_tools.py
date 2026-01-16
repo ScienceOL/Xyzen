@@ -33,6 +33,7 @@ async def prepare_langchain_tools(
     session_id: "UUID | None" = None,
     user_id: str | None = None,
     session_knowledge_set_id: "UUID | None" = None,
+    topic_id: "UUID | None" = None,
 ) -> list[BaseTool]:
     """
     Prepare LangChain tools from builtin tools and MCP servers.
@@ -40,7 +41,7 @@ async def prepare_langchain_tools(
     All available tools are loaded. Filtering is done by graph_config at runtime.
 
     Tool loading order:
-    1. Builtin tools (web_search, knowledge_* etc.) - always loaded when available
+    1. Builtin tools (web_search, knowledge_*, memory_search etc.) - always loaded when available
     2. MCP tools from agent.mcp_server_ids (custom user MCPs)
 
     Args:
@@ -50,6 +51,8 @@ async def prepare_langchain_tools(
         user_id: User ID for knowledge tools context (optional)
         session_knowledge_set_id: Session-level knowledge set override (optional).
             If provided, overrides agent.knowledge_set_id for this session.
+        topic_id: Current topic ID for memory tools (optional).
+            Used to exclude current conversation from memory search results.
 
     Returns:
         List of LangChain BaseTool instances ready for agent use
@@ -57,7 +60,7 @@ async def prepare_langchain_tools(
     langchain_tools: list[BaseTool] = []
 
     # 1. Load all available builtin tools
-    builtin_tools = _load_all_builtin_tools(agent, user_id, session_knowledge_set_id)
+    builtin_tools = _load_all_builtin_tools(agent, user_id, session_knowledge_set_id, topic_id)
     langchain_tools.extend(builtin_tools)
 
     # 2. Load MCP tools (custom user MCPs)
@@ -90,6 +93,7 @@ def _load_all_builtin_tools(
     agent: "Agent | None",
     user_id: str | None = None,
     session_knowledge_set_id: "UUID | None" = None,
+    topic_id: "UUID | None" = None,
 ) -> list[BaseTool]:
     """
     Load all available builtin tools.
@@ -97,12 +101,15 @@ def _load_all_builtin_tools(
     - Web search: loaded if SearXNG is enabled
     - Knowledge tools: loaded if effective knowledge_set_id exists and user_id is available
     - Image tools: loaded if image generation is enabled and user_id is available
+    - Memory tools: loaded if agent and user_id are available
 
     Args:
-        agent: Agent instance (for knowledge_set_id fallback)
-        user_id: User ID for knowledge and image tools
+        agent: Agent instance (for knowledge_set_id fallback and memory tools)
+        user_id: User ID for knowledge, image, and memory tools
         session_knowledge_set_id: Session-level knowledge set override.
             If provided, takes priority over agent.knowledge_set_id.
+        topic_id: Current topic ID for memory tools (optional).
+            Used to exclude current conversation from memory search results.
 
     Returns:
         List of available builtin BaseTool instances
@@ -137,6 +144,19 @@ def _load_all_builtin_tools(
 
         image_tools = create_image_tools_for_agent(user_id=user_id)
         tools.extend(image_tools)
+
+    # Load memory tools if agent and user_id are available
+    # Memory tools allow agents to search their conversation history
+    # Disabled: ILIKE '%query%' causes full table scans, pending RAG/pgvector implementation
+    # if agent and user_id:
+    #     from app.tools.memory import create_memory_tools_for_agent
+    #
+    #     memory_tools = create_memory_tools_for_agent(
+    #         user_id=user_id,
+    #         agent_id=agent.id,
+    #         current_topic_id=topic_id,
+    #     )
+    #     tools.extend(memory_tools)
 
     return tools
 

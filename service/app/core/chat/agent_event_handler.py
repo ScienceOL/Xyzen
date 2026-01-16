@@ -17,14 +17,9 @@ from app.schemas.agent_event_payloads import (
     AgentErrorData,
     AgentExecutionContext,
     AgentStartData,
-    IterationEndData,
-    IterationStartData,
     NodeEndData,
     NodeStartData,
-    PhaseEndData,
-    PhaseStartData,
     ProgressUpdateData,
-    StateUpdateData,
     SubagentEndData,
     SubagentStartData,
 )
@@ -32,14 +27,9 @@ from app.schemas.chat_event_payloads import (
     AgentEndEvent,
     AgentErrorEvent,
     AgentStartEvent,
-    IterationEndEvent,
-    IterationStartEvent,
     NodeEndEvent,
     NodeStartEvent,
-    PhaseEndEvent,
-    PhaseStartEvent,
     ProgressUpdateEvent,
-    StateUpdateEvent,
     SubagentEndEvent,
     SubagentStartEvent,
 )
@@ -191,53 +181,6 @@ class AgentEventHandler:
 
         return {"type": ChatEventType.AGENT_ERROR, "data": data}
 
-    # === Phase Events ===
-
-    @staticmethod
-    def emit_phase_start(
-        ctx: AgentEventContext,
-        phase_id: str,
-        phase_name: str,
-        description: str | None = None,
-        expected_duration_ms: int | None = None,
-    ) -> PhaseStartEvent:
-        """Emit PHASE_START event."""
-        ctx.set_current_phase(phase_id)
-
-        data: PhaseStartData = {
-            "phase_id": phase_id,
-            "phase_name": phase_name,
-            "context": ctx.to_context_dict(),
-        }
-        if description:
-            data["description"] = description
-        if expected_duration_ms is not None:
-            data["expected_duration_ms"] = expected_duration_ms
-
-        return {"type": ChatEventType.PHASE_START, "data": data}
-
-    @staticmethod
-    def emit_phase_end(
-        ctx: AgentEventContext,
-        phase_id: str,
-        phase_name: str,
-        status: str,
-        start_time: float,
-        output_summary: str | None = None,
-    ) -> PhaseEndEvent:
-        """Emit PHASE_END event."""
-        data: PhaseEndData = {
-            "phase_id": phase_id,
-            "phase_name": phase_name,
-            "status": status,
-            "duration_ms": int((time.time() - start_time) * 1000),
-            "context": ctx.to_context_dict(),
-        }
-        if output_summary:
-            data["output_summary"] = output_summary
-
-        return {"type": ChatEventType.PHASE_END, "data": data}
-
     # === Node Events ===
 
     @staticmethod
@@ -349,65 +292,6 @@ class AgentEventHandler:
             data["details"] = details
 
         return {"type": ChatEventType.PROGRESS_UPDATE, "data": data}
-
-    # === Iteration Events ===
-
-    @staticmethod
-    def emit_iteration_start(
-        ctx: AgentEventContext,
-        iteration_number: int,
-        max_iterations: int,
-        reason: str | None = None,
-    ) -> IterationStartEvent:
-        """Emit ITERATION_START event."""
-        data: IterationStartData = {
-            "iteration_number": iteration_number,
-            "max_iterations": max_iterations,
-            "context": ctx.to_context_dict(),
-        }
-        if reason:
-            data["reason"] = reason
-
-        return {"type": ChatEventType.ITERATION_START, "data": data}
-
-    @staticmethod
-    def emit_iteration_end(
-        ctx: AgentEventContext,
-        iteration_number: int,
-        will_continue: bool,
-        reason: str | None = None,
-    ) -> IterationEndEvent:
-        """Emit ITERATION_END event."""
-        data: IterationEndData = {
-            "iteration_number": iteration_number,
-            "will_continue": will_continue,
-            "context": ctx.to_context_dict(),
-        }
-        if reason:
-            data["reason"] = reason
-
-        return {"type": ChatEventType.ITERATION_END, "data": data}
-
-    # === State Events ===
-
-    @staticmethod
-    def emit_state_update(
-        ctx: AgentEventContext,
-        updated_keys: list[str],
-        summary: dict[str, str],
-    ) -> StateUpdateEvent:
-        """
-        Emit STATE_UPDATE event.
-
-        Only include non-sensitive, summarized state information.
-        """
-        data: StateUpdateData = {
-            "updated_keys": updated_keys,
-            "summary": summary,
-            "context": ctx.to_context_dict(),
-        }
-
-        return {"type": ChatEventType.STATE_UPDATE, "data": data}
 
 
 # Export

@@ -118,6 +118,8 @@ def register_builtin_tools() -> None:
     """
     from app.configs import configs
     from app.tools.knowledge import create_knowledge_tools
+
+    # from app.tools.memory import create_memory_tools  # Disabled: performance issues, pending RAG implementation
     from app.tools.search import create_web_search_tool
 
     # Register web search tool
@@ -138,6 +140,17 @@ def register_builtin_tools() -> None:
             tool=tool,
             category="knowledge",
         )
+
+    # Register memory tools (always available when agent context exists)
+    # Disabled: ILIKE '%query%' causes full table scans, pending RAG/pgvector implementation
+    # memory_tools = create_memory_tools()
+    # for tool_id, tool in memory_tools.items():
+    #     BuiltinToolRegistry.register(
+    #         tool_id=tool_id,
+    #         tool=tool,
+    #         category="memory",
+    #         display_name="Memory Search",
+    #     )
 
     # Register image tools (if enabled)
     if configs.Image.Enable:

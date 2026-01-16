@@ -12,6 +12,7 @@ import {
   isWebSearchEnabled,
   updateImageEnabled,
   updateKnowledgeEnabled,
+  // updateMemoryEnabled,
   updateWebSearchEnabled,
 } from "@/core/agent/toolConfig";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,8 @@ export function ToolSelector({
   const webSearchEnabled = isWebSearchEnabled(agent);
   const knowledgeEnabled = isKnowledgeEnabled(agent);
   const imageEnabled = isImageEnabled(agent);
+  // const memoryEnabled = isMemoryEnabled(agent);  // Disabled: pending RAG/pgvector implementation
+  // const memoryEnabled = false; // Hardcoded off until RAG is implemented
 
   // Effective knowledge set is session override or agent default
   const effectiveKnowledgeSetId =
@@ -67,6 +70,7 @@ export function ToolSelector({
     webSearchEnabled,
     effectiveKnowledgeSetId && knowledgeEnabled,
     imageEnabled,
+    // memoryEnabled,  // Disabled: pending RAG/pgvector implementation
   ].filter(Boolean).length;
 
   // Load knowledge sets when picker is opened
@@ -110,6 +114,12 @@ export function ToolSelector({
     const newGraphConfig = updateImageEnabled(agent, !imageEnabled);
     await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
   };
+
+  // const handleToggleMemory = async () => {
+  //   if (!agent) return;
+  //   const newGraphConfig = updateMemoryEnabled(agent, !memoryEnabled);
+  //   await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+  // };
 
   if (!agent) return null;
 
@@ -317,6 +327,34 @@ export function ToolSelector({
             </div>
             {imageEnabled && <CheckIcon className="h-4 w-4 text-green-500" />}
           </button>
+
+          {/* Memory Search - Disabled: pending RAG/pgvector implementation */}
+          {/* <button
+            onClick={handleToggleMemory}
+            className={cn(
+              "w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors",
+              "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+              memoryEnabled && "bg-amber-50 dark:bg-amber-900/20",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <ClockIcon
+                className={cn(
+                  "h-4 w-4",
+                  memoryEnabled ? "text-amber-500" : "text-neutral-400",
+                )}
+              />
+              <div className="text-left">
+                <div className="text-sm font-medium">
+                  {t("app.toolbar.memory", "Memory")}
+                </div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {t("app.toolbar.memoryDesc", "Search conversation history")}
+                </div>
+              </div>
+            </div>
+            {memoryEnabled && <CheckIcon className="h-4 w-4 text-amber-500" />}
+          </button> */}
         </div>
       </PopoverContent>
     </Popover>

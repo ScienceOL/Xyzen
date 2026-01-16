@@ -18,7 +18,8 @@ from app.core.consume_strategy import ConsumptionContext
 from app.infra.database import ASYNC_DATABASE_URL
 from app.models.citation import CitationCreate
 from app.models.message import Message, MessageCreate
-from app.repos import CitationRepository, FileRepository, MessageRepository, TopicRepository
+from app.models.agent_run import AgentRunCreate
+from app.repos import AgentRunRepository, CitationRepository, FileRepository, MessageRepository, TopicRepository
 from app.repos.session import SessionRepository
 from app.schemas.chat_event_payloads import CitationData
 from app.schemas.chat_event_types import ChatEventType
@@ -176,6 +177,9 @@ async def _process_chat_message_async(
             output_tokens: int = 0
             total_tokens: int = 0
 
+            # Agent run tracking
+            agent_run_start_time: float | None = None
+
             # Incremental save tracking - save content every 3 seconds during streaming
             import time
 
@@ -192,6 +196,7 @@ async def _process_chat_message_async(
 
                 if stream_event["type"] == ChatEventType.STREAMING_START:
                     ai_message_id = stream_event["data"]["id"]
+                    agent_run_start_time = time.time()  # Track agent run start time
                     if not ai_message_obj:
                         ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
                         ai_message_obj = await message_repo.create_message(ai_message_create)
@@ -237,8 +242,33 @@ async def _process_chat_message_async(
                                 full_content = final_content.get("content", str(final_content))
 
                     if agent_state_data and ai_message_obj:
-                        ai_message_obj.agent_metadata = agent_state_data
-                        db.add(ai_message_obj)
+                        # Save AgentRun record (agent_metadata is now stored in AgentRun table)
+                        try:
+                            agent_run_end_time = time.time()
+                            agent_run_repo = AgentRunRepository(db)
+                            agent_run_create = AgentRunCreate(
+                                message_id=ai_message_obj.id,
+                                execution_id=agent_state_data.get("execution_id", ai_message_id or ""),
+                                agent_id=agent_state_data.get("agent_id", ""),
+                                agent_name=agent_state_data.get("agent_name", ""),
+                                agent_type=agent_state_data.get("agent_type", "react"),
+                                status="completed",
+                                started_at=agent_run_start_time or agent_run_end_time,
+                                ended_at=agent_run_end_time,
+                                duration_ms=int(
+                                    (agent_run_end_time - (agent_run_start_time or agent_run_end_time)) * 1000
+                                ),
+                                node_data={
+                                    "node_outputs": agent_state_data.get("node_outputs"),
+                                    "node_order": agent_state_data.get("node_order"),
+                                    "node_names": agent_state_data.get("node_names"),
+                                },
+                            )
+                            await agent_run_repo.create(agent_run_create)
+                            logger.debug(f"Saved AgentRun for message {ai_message_obj.id}")
+                        except Exception as e:
+                            logger.error(f"Failed to save AgentRun: {e}")
+
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.TOKEN_USAGE:

@@ -87,12 +87,14 @@ async def create_chat_agent(
 
     # Prepare tools from builtin tools and MCP servers
     session_id: "UUID | None" = topic.session_id if topic else None
+    topic_id: "UUID | None" = topic.id if topic else None
     tools: list[BaseTool] = await prepare_langchain_tools(
         db,
         agent_config,
         session_id,
         user_id,
         session_knowledge_set_id=session_knowledge_set_id,
+        topic_id=topic_id,
     )
 
     # Determine how to execute this agent

@@ -53,7 +53,9 @@
     "noKnowledgeSets": "No knowledge bases available",
     "noKnowledge": "None",
     "image": "Image",
-    "imageDesc": "Generate and read images"
+    "imageDesc": "Generate and read images",
+    "memory": "Memory",
+    "memoryDesc": "Search conversation history"
   },
   "input": {
     "placeholder": "Send a message...",

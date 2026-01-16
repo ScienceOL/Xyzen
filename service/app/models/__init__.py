@@ -2,6 +2,7 @@ import logging
 
 from .agent import Agent, AgentReadWithDetails
 from .agent_like import AgentLike, AgentLikeCreate, AgentLikeRead
+from .agent_run import AgentRun, AgentRunCreate, AgentRunRead, AgentRunUpdate
 from .agent_marketplace import (
     AgentMarketplace,
     AgentMarketplaceCreate,
@@ -44,6 +45,10 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "Agent",
+    "AgentRun",
+    "AgentRunCreate",
+    "AgentRunRead",
+    "AgentRunUpdate",
     "AgentSnapshot",
     "AgentSnapshotCreate",
     "AgentSnapshotRead",

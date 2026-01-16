@@ -1,6 +1,7 @@
 from .agent import AgentRepository
 from .agent_like import AgentLikeRepository
 from .agent_marketplace import AgentMarketplaceRepository
+from .agent_run import AgentRunRepository
 from .agent_snapshot import AgentSnapshotRepository
 from .citation import CitationRepository
 from .consume import ConsumeRepository
@@ -15,6 +16,7 @@ from .topic import TopicRepository
 
 __all__ = [
     "AgentRepository",
+    "AgentRunRepository",
     "AgentSnapshotRepository",
     "AgentMarketplaceRepository",
     "AgentLikeRepository",

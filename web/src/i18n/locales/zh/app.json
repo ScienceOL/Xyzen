@@ -53,7 +53,9 @@
     "noKnowledgeSets": "暂无可用知识库",
     "noKnowledge": "无",
     "image": "图片",
-    "imageDesc": "生成和读取图片"
+    "imageDesc": "生成和读取图片",
+    "memory": "记忆",
+    "memoryDesc": "搜索对话历史"
   },
   "input": {
     "placeholder": "输入消息...",

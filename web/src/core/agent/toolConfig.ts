@@ -18,6 +18,7 @@ export const BUILTIN_TOOLS = {
   KNOWLEDGE_SEARCH: "knowledge_search",
   GENERATE_IMAGE: "generate_image",
   READ_IMAGE: "read_image",
+  MEMORY_SEARCH: "memory_search",
 } as const;
 
 // All builtin tool IDs as array
@@ -26,6 +27,7 @@ export const ALL_BUILTIN_TOOL_IDS = [
   ...Object.values(BUILTIN_TOOLS).filter((id) => id.startsWith("knowledge_")),
   BUILTIN_TOOLS.GENERATE_IMAGE,
   BUILTIN_TOOLS.READ_IMAGE,
+  BUILTIN_TOOLS.MEMORY_SEARCH,
 ];
 
 // Knowledge tools as a group
@@ -244,4 +246,21 @@ export function updateImageEnabled(
       tool_filter: newFilter,
     },
   };
+}
+
+/**
+ * Check if memory search is enabled
+ */
+export function isMemoryEnabled(agent: Agent | null): boolean {
+  return isToolEnabled(agent, BUILTIN_TOOLS.MEMORY_SEARCH);
+}
+
+/**
+ * Enable/disable memory search
+ */
+export function updateMemoryEnabled(
+  agent: Agent,
+  enabled: boolean,
+): Record<string, unknown> {
+  return updateToolFilter(agent, BUILTIN_TOOLS.MEMORY_SEARCH, enabled);
 }

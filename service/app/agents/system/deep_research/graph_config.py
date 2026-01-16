@@ -30,6 +30,7 @@ from app.schemas.graph_config import (
     NodeType,
     ReducerType,
     StateFieldSchema,
+    ToolNodeConfig,
 )
 
 if TYPE_CHECKING:
@@ -114,6 +115,11 @@ def create_state_schema() -> GraphStateSchema:
                 type="int",
                 default=0,
                 description="Current iteration count in research loop",
+            ),
+            "has_tool_calls": StateFieldSchema(
+                type="bool",
+                default=False,
+                description="Whether the last LLM response has pending tool calls",
             ),
         }
     )
@@ -252,6 +258,24 @@ def create_deep_research_graph_config(
         )
     )
 
+    # 3.5. Execute Research Tools
+    # Executes pending tool calls from the research_supervisor node.
+    # This implements the ReAct pattern: supervisor -> tools -> supervisor (loop)
+    nodes.append(
+        GraphNodeConfig(
+            id="execute_tools",
+            name="Execute Research Tools",
+            type=NodeType.TOOL,
+            description="Execute pending tool calls from the research supervisor",
+            tool_config=ToolNodeConfig(
+                tool_name="__all__",  # Execute all pending tool calls
+                output_key="tool_results",
+                timeout_seconds=120,  # Research tools may take longer
+            ),
+            tags=["tools", "execution"],
+        )
+    )
+
     # 4. Final Report Generation
     nodes.append(
         GraphNodeConfig(
@@ -328,8 +352,40 @@ def create_deep_research_graph_config(
     # write_research_brief -> research_supervisor
     edges.append(GraphEdgeConfig(from_node="write_research_brief", to_node="research_supervisor"))
 
-    # research_supervisor -> final_report_generation
-    edges.append(GraphEdgeConfig(from_node="research_supervisor", to_node="final_report_generation"))
+    # research_supervisor -> execute_tools (if has_tool_calls is True)
+    edges.append(
+        GraphEdgeConfig(
+            from_node="research_supervisor",
+            to_node="execute_tools",
+            condition=EdgeCondition(
+                state_key="has_tool_calls",
+                operator=ConditionOperator.TRUTHY,
+                value=None,
+                target="execute_tools",
+            ),
+            label="Execute tool calls",
+            priority=1,  # Higher priority - check for tool calls first
+        )
+    )
+
+    # research_supervisor -> final_report_generation (if no tool calls)
+    edges.append(
+        GraphEdgeConfig(
+            from_node="research_supervisor",
+            to_node="final_report_generation",
+            condition=EdgeCondition(
+                state_key="has_tool_calls",
+                operator=ConditionOperator.FALSY,
+                value=None,
+                target="final_report_generation",
+            ),
+            label="Generate final report",
+            priority=0,  # Lower priority - fallback when no tool calls
+        )
+    )
+
+    # execute_tools -> research_supervisor (loop back to process tool results)
+    edges.append(GraphEdgeConfig(from_node="execute_tools", to_node="research_supervisor"))
 
     # final_report_generation -> END
     edges.append(GraphEdgeConfig(from_node="final_report_generation", to_node="END"))

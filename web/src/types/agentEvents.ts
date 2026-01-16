@@ -53,25 +53,6 @@ export interface AgentErrorData {
   node_id?: string;
 }
 
-// === Phase Events ===
-
-export interface PhaseStartData {
-  phase_id: string;
-  phase_name: string;
-  description?: string;
-  expected_duration_ms?: number;
-  context: AgentExecutionContext;
-}
-
-export interface PhaseEndData {
-  phase_id: string;
-  phase_name: string;
-  status: string; // "completed", "failed", "skipped"
-  duration_ms: number;
-  output_summary?: string;
-  context: AgentExecutionContext;
-}
-
 // === Node Events ===
 
 export interface NodeStartData {
@@ -119,30 +100,6 @@ export interface ProgressUpdateData {
   progress_percent: number; // 0-100
   message: string;
   details?: Record<string, unknown>;
-  context: AgentExecutionContext;
-}
-
-// === Iteration Events ===
-
-export interface IterationStartData {
-  iteration_number: number; // 1-indexed
-  max_iterations: number;
-  reason?: string;
-  context: AgentExecutionContext;
-}
-
-export interface IterationEndData {
-  iteration_number: number;
-  will_continue: boolean;
-  reason?: string;
-  context: AgentExecutionContext;
-}
-
-// === State Events ===
-
-export interface StateUpdateData {
-  updated_keys: string[];
-  summary: Record<string, string>;
   context: AgentExecutionContext;
 }
 

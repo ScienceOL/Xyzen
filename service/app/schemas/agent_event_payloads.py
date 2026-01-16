@@ -73,30 +73,6 @@ class AgentErrorData(TypedDict):
     node_id: NotRequired[str]  # Node where error occurred
 
 
-# === Phase Events ===
-
-
-class PhaseStartData(TypedDict):
-    """Data for PHASE_START event."""
-
-    phase_id: str
-    phase_name: str
-    description: NotRequired[str]
-    expected_duration_ms: NotRequired[int]
-    context: AgentExecutionContext
-
-
-class PhaseEndData(TypedDict):
-    """Data for PHASE_END event."""
-
-    phase_id: str
-    phase_name: str
-    status: str  # "completed", "failed", "skipped"
-    duration_ms: int
-    output_summary: NotRequired[str]
-    context: AgentExecutionContext
-
-
 # === Node Events ===
 
 
@@ -158,80 +134,15 @@ class ProgressUpdateData(TypedDict):
     context: AgentExecutionContext
 
 
-# === Iteration Events ===
-
-
-class IterationStartData(TypedDict):
-    """Data for ITERATION_START event."""
-
-    iteration_number: int  # 1-indexed
-    max_iterations: int
-    reason: NotRequired[str]  # Why iteration is needed
-    context: AgentExecutionContext
-
-
-class IterationEndData(TypedDict):
-    """Data for ITERATION_END event."""
-
-    iteration_number: int
-    will_continue: bool  # Whether another iteration will follow
-    reason: NotRequired[str]  # Why continuing or stopping
-    context: AgentExecutionContext
-
-
-# === State Events ===
-
-
-class StateUpdateData(TypedDict):
-    """
-    Data for STATE_UPDATE event.
-
-    Only includes non-sensitive state changes that are safe to display.
-    """
-
-    updated_keys: list[str]  # State keys that changed
-    summary: dict[str, str]  # Key -> human-readable summary of new value
-    context: AgentExecutionContext
-
-
-# === Human-in-the-Loop Events ===
-
-
-class HumanInputRequiredData(TypedDict):
-    """Data for HUMAN_INPUT_REQUIRED event."""
-
-    prompt: str  # Message to display to user
-    input_type: str  # "text", "choice", "confirm", "form"
-    choices: NotRequired[list[str]]  # For "choice" type
-    form_schema: NotRequired[dict[str, Any]]  # JSON Schema for "form" type
-    timeout_seconds: NotRequired[int]
-    context: AgentExecutionContext
-
-
-class HumanInputReceivedData(TypedDict):
-    """Data for HUMAN_INPUT_RECEIVED event."""
-
-    input_value: Any  # The user's input
-    input_type: str
-    context: AgentExecutionContext
-
-
 # Export all types
 __all__ = [
     "AgentExecutionContext",
     "AgentStartData",
     "AgentEndData",
     "AgentErrorData",
-    "PhaseStartData",
-    "PhaseEndData",
     "NodeStartData",
     "NodeEndData",
     "SubagentStartData",
     "SubagentEndData",
     "ProgressUpdateData",
-    "IterationStartData",
-    "IterationEndData",
-    "StateUpdateData",
-    "HumanInputRequiredData",
-    "HumanInputReceivedData",
 ]

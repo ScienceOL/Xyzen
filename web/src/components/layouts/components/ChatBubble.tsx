@@ -64,20 +64,9 @@ function ChatBubble({ message }: ChatBubbleProps) {
     second: "2-digit",
   });
 
-  // Different styles for user vs AI messages
-  const messageStyles = isUserMessage
-    ? "rounded-sm border-blue-400 bg-blue-50/50 dark:border-blue-600 dark:bg-blue-900/20"
-    : "rounded-sm border-neutral-300 bg-white dark:border-neutral-600 dark:bg-neutral-800/50";
-
-  // Loading state styles
-  const loadingStyles = isLoading
-    ? "rounded-sm border-purple-400 bg-purple-50/30 dark:border-purple-500 dark:bg-purple-900/10"
-    : messageStyles;
-
-  // Streaming animation styles
-  const streamingStyles = isStreaming
-    ? "rounded-sm border-green-400 bg-green-50/30 dark:border-green-500 dark:bg-green-900/10"
-    : loadingStyles;
+  // Unified neutral/transparent styling for all messages
+  const messageStyles =
+    "rounded-[12px] bg-neutral-50/50 dark:bg-neutral-800/30";
 
   // 渲染头像
   const renderAvatar = () => {
@@ -224,7 +213,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
         {/* Message content */}
         <div
-          className={`relative w-full min-w-0 rounded-none ${streamingStyles} transition-all duration-200 hover:shadow-sm`}
+          className={`relative w-full min-w-0 ${messageStyles} transition-all duration-200 hover:shadow-sm`}
         >
           <div className="px-4 py-3 min-w-0">
             {/* File Attachments - shown before text for user messages */}
@@ -241,17 +230,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
                   : "text-sm text-neutral-700 dark:text-neutral-300"
               }`}
             >
-              {/* Agent execution timeline - only show for multi-phase agent types */}
-              {/* Skip timeline for react/simple agents - they just show content directly */}
-              {!isUserMessage &&
-                agentExecution &&
-                agentExecution.agentType !== "react" && (
-                  <AgentExecutionTimeline
-                    execution={agentExecution}
-                    isExecuting={agentExecution.status === "running"}
-                  />
-                )}
-
               {/* Thinking content - shown before main response for assistant messages */}
               {!isUserMessage && thinkingContent && (
                 <ThinkingBubble
@@ -260,10 +238,24 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 />
               )}
 
+              {/* Agent execution timeline - show for all agents with phases */}
+              {!isUserMessage &&
+                agentExecution &&
+                agentExecution.phases.length > 0 && (
+                  <AgentExecutionTimeline
+                    execution={agentExecution}
+                    isExecuting={agentExecution.status === "running"}
+                  />
+                )}
+
               {(() => {
-                // Explicit loading state
+                // Explicit loading state - show inline loading dots
                 if (isLoading) {
-                  return <LoadingMessage size="medium" className="text-sm" />;
+                  return (
+                    <span className="inline-flex items-center gap-1">
+                      <LoadingMessage size="small" />
+                    </span>
+                  );
                 }
 
                 // No agent execution - regular chat
@@ -271,59 +263,51 @@ function ChatBubble({ message }: ChatBubbleProps) {
                   return markdownContent;
                 }
 
-                // React/simple agents - show streaming content from phase or message.content
-                if (agentExecution.agentType === "react") {
-                  // If we have phases with streamedContent, show that
-                  if (agentExecution.phases.length > 0) {
-                    const activePhase = agentExecution.phases.find(
-                      (p) => p.status === "running",
-                    );
-                    const phaseContent =
-                      activePhase?.streamedContent ||
-                      agentExecution.phases[agentExecution.phases.length - 1]
-                        ?.streamedContent;
-                    if (phaseContent) {
-                      return <Markdown content={phaseContent} />;
-                    }
-                  }
-
-                  // Still waiting for content - show loading animation
-                  // This handles the gap between agent_start and first streaming_chunk
-                  if (
-                    agentExecution.status === "running" &&
-                    !content &&
-                    agentExecution.phases.length === 0
-                  ) {
-                    return <LoadingMessage size="medium" className="text-sm" />;
-                  }
-
-                  // Fallback to message.content
-                  return markdownContent;
-                }
-
-                // Multi-phase agents - content is shown in timeline, don't show here
-                return null;
-              })()}
-
-              {/* For multi-phase agents, show final report below timeline when completed */}
-              {!isUserMessage &&
-                !isStreaming &&
-                agentExecution &&
-                agentExecution.agentType !== "react" &&
-                agentExecution.status !== "running" &&
-                agentExecution.phases.length > 0 &&
-                (() => {
-                  const finalPhase =
+                // Agent with phases - get content from phases
+                if (agentExecution.phases.length > 0) {
+                  const activePhase = agentExecution.phases.find(
+                    (p) => p.status === "running",
+                  );
+                  const lastPhase =
                     agentExecution.phases[agentExecution.phases.length - 1];
-                  if (finalPhase?.streamedContent) {
+                  const phaseContent =
+                    activePhase?.streamedContent || lastPhase?.streamedContent;
+
+                  // Show final phase content below timeline when completed
+                  if (
+                    !isStreaming &&
+                    agentExecution.status !== "running" &&
+                    lastPhase?.streamedContent
+                  ) {
                     return (
                       <div className="mt-4">
-                        <Markdown content={finalPhase.streamedContent} />
+                        <Markdown content={lastPhase.streamedContent} />
                       </div>
                     );
                   }
-                  return null;
-                })()}
+
+                  // Still streaming - content shown in timeline
+                  if (phaseContent) {
+                    return null;
+                  }
+                }
+
+                // Still waiting for content - show inline loading dots
+                if (
+                  agentExecution.status === "running" &&
+                  !content &&
+                  agentExecution.phases.length === 0
+                ) {
+                  return (
+                    <span className="inline-flex items-center gap-1">
+                      <LoadingMessage size="small" />
+                    </span>
+                  );
+                }
+
+                // Fallback to message.content
+                return markdownContent;
+              })()}
 
               {isStreaming && !isLoading && (
                 <motion.span
