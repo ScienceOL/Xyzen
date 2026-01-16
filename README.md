@@ -18,24 +18,15 @@ Your Next Agent Capital!
 
 ## Getting Started
 
-Xyzen supports two development approaches:
-
-1. **Containerized Development** (Recommended) - Full-stack development with Docker
-2. **Local Development** - Backend/frontend development with local tools
+Xyzen uses Docker for all development to ensure consistency across environments and to manage required infrastructure services (PostgreSQL, Redis, Mosquitto, Casdoor).
 
 ### Prerequisites
 
-- **For Containerized Development:**
+- Docker and Docker Compose
+- [uv](https://docs.astral.sh/uv/) for pre-commit hooks (Python tools)
+- Node.js with Yarn (via [Corepack](https://nodejs.org/api/corepack.html)) for pre-commit hooks (Frontend tools)
 
-  - Docker and Docker Compose
-  - [uv](https://docs.astral.sh/uv/) for pre-commit hooks
-
-- **For Local Development:**
-  - Python 3.13+
-  - [uv](https://docs.astral.sh/uv/) for Python package management
-  - Node.js with Yarn (via Corepack) for frontend development
-
-## Containerized Development (Recommended)
+## Development Setup
 
 The easiest way to get started with Xyzen is using the containerized development environment. This automatically sets up all services (PostgreSQL, Mosquitto, Casdoor) and development tools.
 
@@ -118,23 +109,31 @@ Xyzen uses a standardized instruction file for AI coding assistants to ensuring 
 
 The master file is located at **[`AGENTS.md`](./AGENTS.md)**.
 
-To configure your preferred AI tool, create a symbolic link (or copy) `AGENTS.md` to the filename expected by your tool. These specific filenames are ignored by git to keep the repository clean.
+**Quick Setup:**
 
-**GitHub Copilot:**
+Run the interactive setup script to configure your AI tools:
 
 ```bash
-mkdir -p .github
-ln -s ../AGENTS.md .github/copilot-instructions.md
+./launch/setup-ai-rules.sh
 ```
 
-**Claude / Cursor / Windsurf / Cline:**
+This script will:
+
+- Detect your system language (English/Chinese)
+- Show current configuration status
+- Let you select which AI tools to configure (Claude, Cursor, Windsurf, GitHub Copilot, Cline)
+- Create symbolic links from `AGENTS.md` to each tool's expected config file
+
+**Manual Setup:**
+
+If you prefer manual configuration:
 
 ```bash
-ln -s AGENTS.md CLAUDE.md       # For Claude
-ln -s AGENTS.md .cursorrules    # For Cursor
-ln -s AGENTS.md .windsurfrules  # For Windsurf
-ln -s AGENTS.md .clinerules     # For Cline
-ln -s AGENTS.md .rules          # Generic
+ln -s AGENTS.md CLAUDE.md                      # For Claude
+ln -s AGENTS.md .cursorrules                   # For Cursor
+ln -s AGENTS.md .windsurfrules                 # For Windsurf
+mkdir -p .github && ln -s ../AGENTS.md .github/copilot-instructions.md  # For GitHub Copilot
+ln -s AGENTS.md .clinerules                    # For Cline/Roo Code
 ```
 
 ## Contributing
@@ -172,17 +171,17 @@ uv run pytest -m "unit"                # Run only unit tests
 
 Xyzen uses `pre-commit` for code formatting, linting, and type-checking. All PRs must pass these checks (they run automatically in CI).
 
-**Install pre-commit hooks** (done automatically by `make dev` or `dev.sh`):
+**Install pre-commit hooks** (done automatically by `./launch/dev.sh`):
 
 ```bash
-cd service
 uv run pre-commit install
 ```
+
+**Note:** Pre-commit hooks use both `uv` (for Python/Ruff/Pyright) and `yarn` (for Prettier/ESLint/TypeScript checking).
 
 **Run checks manually:**
 
 ```bash
-cd service
 uv run pre-commit run --all-files      # Run all hooks on all files
 uv run pre-commit run                  # Run on staged files only
 ```

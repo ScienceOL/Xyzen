@@ -8,7 +8,7 @@ To use the Xyzen component in your own project, you need to deploy the backend s
 
 ### Step 1: Deploy the Backend
 
-The Xyzen component requires a running backend service to handle chat logic and LLM connections.
+The Xyzen component requires a running backend service to handle chat logic and LLM connections. The backend uses Docker for all infrastructure dependencies.
 
 1. Clone the Xyzen repository:
 
@@ -17,7 +17,7 @@ The Xyzen component requires a running backend service to handle chat logic and 
    cd Xyzen
    ```
 
-2. Deploy the backend using the one-click setup script:
+2. Deploy the backend using Docker:
 
    **On Unix/Linux/macOS:**
 

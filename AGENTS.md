@@ -73,16 +73,18 @@ types/
 ## Core Patterns
 
 **Stateless Async Execution**: Decouple connection management (FastAPI) from heavy computation (Celery).
-* State Offloading: API containers remain stateless. Ephemeral state (Queues, Pub/Sub channels) resides in Redis; persistent state in DB.
-* Pub/Sub Bridge: Workers process tasks independently and broadcast results back to the specific API pod via Redis channels (chat:{connection_id}), enabling independent scaling of Web and Worker layers.
+
+- State Offloading: API containers remain stateless. Ephemeral state (Queues, Pub/Sub channels) resides in Redis; persistent state in DB.
+- Pub/Sub Bridge: Workers process tasks independently and broadcast results back to the specific API pod via Redis channels (chat:{connection_id}), enabling independent scaling of Web and Worker layers.
 
 **No-Foreign-Key Database**: Use logical references (`user_id: str`) instead of FK constraints. Handle relationships in service layer.
 
 **Repository Pattern**: Data access via `repos/` classes. Business logic in `core/` services.
 
 **Frontend Layers**:
-* Sever-Side Status: Components (UI only) → Hooks → Core (business logic) → ReactQuery (data cache) → Service (HTTP/WS)/Store (Zustand)
-* Client-Side Status: Components (UI only) → Hooks → Core (business logic) → read Service (HTTP/WS) → write to Store (Zustand)
+
+- Sever-Side Status: Components (UI only) → Hooks → Core (business logic) → ReactQuery (data cache) → Service (HTTP/WS)/Store (Zustand)
+- Client-Side Status: Components (UI only) → Hooks → Core (business logic) → read Service (HTTP/WS) → write to Store (Zustand)
 
 ## Agent System
 
@@ -141,10 +143,10 @@ interface Message {
   content: string;
   agentExecution?: {
     agentType: string; // "react", "deep_research"
-    status: 'running' | 'completed' | 'failed';
+    status: "running" | "completed" | "failed";
     phases: Array<{
       id: string; // Node ID
-      status: 'running' | 'completed';
+      status: "running" | "completed";
       streamedContent: string; // Accumulated content
     }>;
     currentNode?: string;
@@ -174,7 +176,10 @@ interface Message {
 ```bash
 # Backend (from service/)
 uv run pytest                    # Run tests
+uv run pytest --cov              # Run tests with coverage
 uv run pyright .                 # Type checking
+uv run ruff check .              # Lint code
+uv run ruff format .             # Format code (auto-applied on save in VSCode)
 
 # Frontend (from web/)
 yarn dev                         # Dev server
@@ -196,6 +201,7 @@ docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic revision --autogener
 # Apply migrations
 docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic upgrade head"
 ```
+
 **Note**: Register new models in `models/__init__.py` before generating migrations.
 
 ## Code Style
@@ -231,7 +237,7 @@ The frontend supports multiple languages (`en`, `zh`, `ja`). Translations are mo
 ```typescript
 // Example: accessing "ok" from common.json
 const { t } = useTranslation();
-<Button>{t('common.ok')}</Button>;
+<Button>{t("common.ok")}</Button>;
 ```
 
 ## Backend Environment Variables

@@ -27,9 +27,7 @@
 
 ## 快速开始
 
-你可以选择 Docker 或本地运行（uv）。
-
-### 方式 A：Docker（推荐）
+### Docker 开发环境（必需）
 
 1. 在仓库根目录使用 Dev 编排：
 
@@ -61,17 +59,12 @@
   - `XYZEN_LLM_VERSION=...`
   - `XYZEN_LLM_DEPLOYMENT=gpt-4o`（示例）
 
-3. 启动：
+3. 启动（在仓库根目录执行）：
 
-- 使用两份 compose 叠加启动 Dev 服务（在仓库根目录执行）。
-
-### 方式 B：本地（uv）
-
-1. 进入 `service/` 目录并安装依赖（`uv sync`）。
-
-2. 准备 `.env`（见上方环境变量示例）。
-
-3. 运行：`uv run python -m app.main`。
+   ```bash
+   ./launch/dev.sh     # 前台启动
+   ./launch/dev.sh -d  # 后台启动
+   ```
 
 应用启动后：
 
