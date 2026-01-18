@@ -75,11 +75,17 @@
   },
   "tierSelector": {
     "title": "モデルティアを選択",
-    "free": "無料",
+    "free": "0.0x",
     "rateFormat": "{{rate}}x",
+    "consumption": "消費",
     "infoModal": {
-      "title": "モデルティアガイド",
-      "imageGen": "画像生成"
+      "title": "インテリジェンスモードを選択",
+      "subtitle": "タスクの難易度に応じてAI計算能力を柔軟に割り当て",
+      "speed": "応答速度",
+      "reasoning": "推論深度",
+      "availableModels": "能力の参考",
+      "imageGen": "画像生成",
+      "disclaimer": "* このリストはモデル能力の参考用であり、実際に使用されるモデルを保証するものではありません。"
     },
     "tiers": {
       "ultra": {

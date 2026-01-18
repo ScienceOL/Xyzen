@@ -27,18 +27,26 @@ export default defineConfig(() => {
       plugins.push(
         VitePWA({
           registerType: "autoUpdate",
-          includeAssets: ["pwa-icon-dark.png", "pwa-icon-light.png"],
+          includeAssets: ["icon.png", "icon-512.png"],
           manifest: {
             name: "Xyzen",
             short_name: "Xyzen",
             description: "Xyzen Application",
             display: "standalone",
             display_override: ["window-controls-overlay"],
+            // background_color: "#000000",
+            // theme_color: "#000000",
             icons: [
+              // {
+              //   src: "icon.png",
+              //   sizes: "256x256",
+              //   type: "image/png",
+              // },
               {
-                src: "icon.png",
-                sizes: "192x192 256x256 512x512",
+                src: "icon-512.png",
+                sizes: "512x512",
                 type: "image/png",
+                // purpose: "maskable",
               },
             ],
           },

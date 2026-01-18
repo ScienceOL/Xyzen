@@ -9,6 +9,7 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface PublishAgentModalProps {
   open: boolean;
@@ -43,6 +44,7 @@ export default function PublishAgentModal({
   readme,
   onPublishSuccess,
 }: PublishAgentModalProps) {
+  const { t } = useTranslation();
   const [commitMessage, setCommitMessage] = useState("");
   const [readmeContent, setReadmeContent] = useState(readme || "");
   const [publishImmediately, setPublishImmediately] = useState(true);
@@ -86,13 +88,13 @@ export default function PublishAgentModal({
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
             {isPublished
-              ? "Update Marketplace Listing"
-              : "Publish to Marketplace"}
+              ? t("marketplace.publish.titleUpdate")
+              : t("marketplace.publish.title")}
           </h2>
           <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
             {isPublished
-              ? "Create a new version of your agent for the community."
-              : "Share your agent with the community. You can update or unpublish it anytime."}
+              ? t("marketplace.publish.descriptionUpdate")
+              : t("marketplace.publish.description")}
           </p>
         </div>
 
@@ -103,8 +105,7 @@ export default function PublishAgentModal({
               <div className="flex gap-2">
                 <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
                 <div className="text-sm">
-                  Your agent must have a prompt before publishing to the
-                  marketplace.
+                  {t("marketplace.publish.validation.noPrompt")}
                 </div>
               </div>
             </div>
@@ -115,11 +116,10 @@ export default function PublishAgentModal({
             <div className="flex gap-2">
               <InformationCircleIcon className="h-4 w-4 shrink-0" />
               <div className="text-sm">
-                <strong>What gets published:</strong> Agent configuration
-                (prompt, model, settings), MCP server requirements (names only),
-                and knowledge base structure (including file references).{" "}
-                <strong>Note:</strong> Users forking your agent will receive a
-                copy of your knowledge base files.
+                <strong>{t("marketplace.publish.info.title")}</strong>{" "}
+                {t("marketplace.publish.info.content")}{" "}
+                <strong>{t("marketplace.publish.info.note")}</strong>{" "}
+                {t("marketplace.publish.info.noteContent")}
               </div>
             </div>
           </div>
@@ -127,37 +127,39 @@ export default function PublishAgentModal({
           {/* Commit Message */}
           <Field className="space-y-2">
             <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              Commit Message <span className="text-red-500">*</span>
+              {t("marketplace.publish.commitMessage.label")}{" "}
+              <span className="text-red-500">*</span>
             </Label>
             <textarea
               id="commit-message"
-              placeholder="Describe what changed in this version (e.g., 'Improved system prompt for better responses', 'Added support for web search')"
+              placeholder={t("marketplace.publish.commitMessage.placeholder")}
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
               rows={3}
               className="w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
             />
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {commitMessage.length}/500 characters
+              {t("marketplace.publish.commitMessage.charCount", {
+                count: commitMessage.length,
+              })}
             </p>
           </Field>
 
           {/* README Editor */}
           <Field className="space-y-2">
             <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              README.md
+              {t("marketplace.publish.readme.label")}
             </Label>
             <textarea
               id="readme-editor"
-              placeholder="Add comprehensive documentation for your agent... (Markdown supported)"
+              placeholder={t("marketplace.publish.readme.placeholder")}
               value={readmeContent}
               onChange={(e) => setReadmeContent(e.target.value)}
               rows={6}
               className="w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
             />
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Basic Markdown syntax is supported. This will be displayed on the
-              agent's marketplace page.
+              {t("marketplace.publish.readme.hint")}
             </p>
           </Field>
 
@@ -168,10 +170,10 @@ export default function PublishAgentModal({
                 htmlFor="publish-toggle"
                 className="cursor-pointer text-sm font-medium text-neutral-900 dark:text-neutral-100"
               >
-                Publish Immediately
+                {t("marketplace.publish.publishImmediately.label")}
               </Label>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Make this listing visible in the marketplace right away
+                {t("marketplace.publish.publishImmediately.description")}
               </p>
             </div>
             <Switch
@@ -198,21 +200,23 @@ export default function PublishAgentModal({
             onClick={() => setShowPreview(!showPreview)}
             className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            {showPreview ? "Hide Preview" : "Show What Will Be Published"}
+            {showPreview
+              ? t("marketplace.publish.preview.hide")
+              : t("marketplace.publish.preview.show")}
           </button>
 
           {/* Preview Section */}
           {showPreview && (
             <div className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
               <h4 className="font-semibold text-neutral-900 dark:text-neutral-100">
-                Preview
+                {t("marketplace.publish.preview.title")}
               </h4>
 
               {/* Agent Info */}
               <div className="space-y-2">
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Name
+                    {t("marketplace.publish.preview.name")}
                   </p>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400">
                     {agentName}
@@ -222,7 +226,7 @@ export default function PublishAgentModal({
                 {agentDescription && (
                   <div>
                     <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                      Description
+                      {t("marketplace.publish.preview.description")}
                     </p>
                     <p className="text-sm text-neutral-600 dark:text-neutral-400">
                       {agentDescription}
@@ -233,7 +237,7 @@ export default function PublishAgentModal({
                 {agentPrompt && (
                   <div>
                     <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                      System Prompt
+                      {t("marketplace.publish.preview.systemPrompt")}
                     </p>
                     <p className="max-h-32 overflow-y-auto text-sm text-neutral-600 dark:text-neutral-400">
                       {agentPrompt.slice(0, 200)}
@@ -247,7 +251,9 @@ export default function PublishAgentModal({
               {mcpServers.length > 0 && (
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Required MCP Servers ({mcpServers.length})
+                    {t("marketplace.publish.preview.mcpServers", {
+                      count: mcpServers.length,
+                    })}
                   </p>
                   <ul className="mt-1 space-y-1">
                     {mcpServers.map((mcp) => (
@@ -261,7 +267,7 @@ export default function PublishAgentModal({
                     ))}
                   </ul>
                   <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                    ⚠️ Users will need to configure their own MCP connections
+                    {t("marketplace.publish.preview.mcpWarning")}
                   </p>
                 </div>
               )}
@@ -270,15 +276,16 @@ export default function PublishAgentModal({
               {knowledgeSetInfo && knowledgeSetInfo.file_count > 0 && (
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Knowledge Base
+                    {t("marketplace.publish.preview.knowledgeBase")}
                   </p>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {knowledgeSetInfo.name} ({knowledgeSetInfo.file_count}{" "}
-                    files)
+                    {t("marketplace.publish.preview.knowledgeFiles", {
+                      name: knowledgeSetInfo.name,
+                      count: knowledgeSetInfo.file_count,
+                    })}
                   </p>
                   <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
-                    ℹ️ Users will receive a copy of these files in their
-                    workspace
+                    {t("marketplace.publish.preview.knowledgeInfo")}
                   </p>
                 </div>
               )}
@@ -292,8 +299,8 @@ export default function PublishAgentModal({
                 <CheckCircleIcon className="h-4 w-4 shrink-0 text-green-600" />
                 <div className="text-sm">
                   {isPublished
-                    ? "Agent listing updated successfully!"
-                    : "Agent published to marketplace successfully!"}
+                    ? t("marketplace.publish.success.updated")
+                    : t("marketplace.publish.success.published")}
                 </div>
               </div>
             </div>
@@ -307,7 +314,7 @@ export default function PublishAgentModal({
                 <div className="text-sm">
                   {publishMutation.error instanceof Error
                     ? publishMutation.error.message
-                    : "Failed to publish agent. Please try again."}
+                    : t("marketplace.publish.error.default")}
                 </div>
               </div>
             </div>
@@ -324,7 +331,7 @@ export default function PublishAgentModal({
             disabled={publishMutation.isPending}
             className="rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
-            Cancel
+            {t("marketplace.publish.actions.cancel")}
           </Button>
           <Button
             onClick={handlePublish}
@@ -332,12 +339,12 @@ export default function PublishAgentModal({
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
           >
             {publishMutation.isPending
-              ? "Publishing..."
+              ? t("marketplace.publish.actions.publishing")
               : isPublished
-                ? "Update Listing"
+                ? t("marketplace.publish.actions.update")
                 : publishImmediately
-                  ? "Publish"
-                  : "Save as Draft"}
+                  ? t("marketplace.publish.actions.publish")
+                  : t("marketplace.publish.actions.saveAsDraft")}
           </Button>
         </div>
       </div>

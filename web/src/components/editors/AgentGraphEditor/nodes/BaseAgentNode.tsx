@@ -1,17 +1,17 @@
-import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import type { AgentNode } from "../useGraphConfig";
 import { getNodeTypeInfo } from "@/types/graphConfig";
 import {
-  SparklesIcon,
-  WrenchScrewdriverIcon,
-  ArrowsRightLeftIcon,
-  UserGroupIcon,
   ArrowPathIcon,
+  ArrowsRightLeftIcon,
+  SparklesIcon,
   Squares2X2Icon,
+  UserGroupIcon,
   UserIcon,
   PuzzlePieceIcon,
+  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { memo } from "react";
+import type { AgentNode } from "../useGraphConfig";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   sparkles: SparklesIcon,
@@ -36,7 +36,7 @@ function BaseAgentNode({ data, selected }: NodeProps<AgentNode>) {
   return (
     <div
       className={`
-        min-w-[140px] rounded-lg border-2 bg-white shadow-md
+        min-w-35 rounded-lg border-2 bg-white shadow-md
         transition-all duration-200
         dark:bg-neutral-800
         ${selected ? "ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-neutral-900" : ""}
@@ -47,7 +47,7 @@ function BaseAgentNode({ data, selected }: NodeProps<AgentNode>) {
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-neutral-400 !border-2 !border-white dark:!border-neutral-800"
+        className="w-3! h-3! bg-neutral-400! border-2! border-white! dark:border-neutral-800!"
       />
 
       {/* Header with type badge */}
@@ -75,7 +75,7 @@ function BaseAgentNode({ data, selected }: NodeProps<AgentNode>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-neutral-400 !border-2 !border-white dark:!border-neutral-800"
+        className="w-3! h-3! bg-neutral-400! border-2! border-white! dark:border-neutral-800!"
       />
     </div>
   );

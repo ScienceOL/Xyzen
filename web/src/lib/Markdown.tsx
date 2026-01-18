@@ -10,6 +10,7 @@ import clsx from "clsx";
 import ReactECharts from "echarts-for-react";
 import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -535,108 +536,126 @@ const MarkdownImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
 
   const imageSrc = shouldAuthFetch ? blobUrl : fullSrc;
 
-  if (shouldAuthFetch && !blobUrl) {
-    if (failed) {
-      return (
-        <span className="text-xs text-neutral-500 dark:text-neutral-400">
-          Image failed to load
-        </span>
-      );
-    }
-    return (
-      <span className="text-xs text-neutral-500 dark:text-neutral-400">
-        Loading image...
-      </span>
-    );
-  }
+  // Loading state - shimmer animation (same as MessageAttachments)
+  const isLoading = shouldAuthFetch && !blobUrl && !failed;
 
-  // Check if this looks like a generated image (from our image tool)
-  const isGeneratedImage =
-    fullSrc.includes("/generated/") ||
-    fullSrc.includes("generated_") ||
-    alt?.toLowerCase().includes("generated");
-
-  // For generated images, show a constrained preview with lightbox
-  if (isGeneratedImage && imageSrc) {
-    return (
-      <>
-        <span
-          className="inline-block cursor-pointer group not-prose"
-          onClick={() => setIsLightboxOpen(true)}
-        >
-          <span className="relative inline-block rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow">
+  // Render image container with loading state and lightbox
+  return (
+    <>
+      <span
+        className="inline-block not-prose cursor-pointer"
+        onClick={() => !isLoading && imageSrc && setIsLightboxOpen(true)}
+      >
+        {isLoading ? (
+          // Shimmer loading animation
+          <span
+            className="block relative overflow-hidden rounded-lg bg-neutral-200 dark:bg-neutral-800"
+            style={{ width: "200px", height: "150px" }}
+          >
+            <motion.span
+              className="absolute inset-0 bg-linear-to-r from-transparent via-white/50 dark:via-white/10 to-transparent"
+              animate={{
+                x: ["-100%", "200%"],
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+              style={{
+                backgroundSize: "200% 100%",
+              }}
+            />
+          </span>
+        ) : failed ? (
+          // Failed state
+          <span
+            className="flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-xs"
+            style={{ width: "200px", height: "150px" }}
+          >
+            Image failed to load
+          </span>
+        ) : imageSrc ? (
+          // Loaded image with hover effect - container adapts to image size
+          <span className="relative group/img inline-block rounded-lg">
             <img
               src={imageSrc}
               alt={alt}
               {...rest}
-              className="max-w-[320px] max-h-[320px] w-auto h-auto object-contain"
+              className="block w-[95%] sm:max-w-80 max-h-80 h-auto rounded-lg transition-all duration-200 group-hover/img:scale-[1.02] group-hover/img:shadow-lg"
             />
-            <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
-                <ArrowsPointingOutIcon className="w-3 h-3" />
-                Click to expand
-              </span>
-            </span>
+            {/* Hover overlay */}
+            <span className="absolute inset-0 rounded-lg bg-black/0 group-hover/img:bg-black/10 transition-colors pointer-events-none" />
           </span>
-        </span>
+        ) : null}
+      </span>
 
-        {/* Lightbox Modal */}
-        <AnimatePresence>
-          {isLightboxOpen && (
-            <Dialog
-              static
-              open={isLightboxOpen}
-              onClose={() => setIsLightboxOpen(false)}
-              className={`relative ${zIndexClasses.modal}`}
-            >
-              {/* Backdrop */}
+      {/* Lightbox Modal - using portal like MessageAttachments */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {isLightboxOpen && imageSrc && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm"
-                aria-hidden="true"
-              />
-
-              {/* Image container */}
-              <div
-                className="fixed inset-0 flex items-center justify-center p-4"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
+                role="dialog"
+                aria-modal="true"
                 onClick={() => setIsLightboxOpen(false)}
               >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
+                <ImageLightboxEscapeCatcher
+                  onEscape={() => setIsLightboxOpen(false)}
+                />
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.2 }}
-                  className="relative max-w-[90vw] max-h-[90vh]"
-                  onClick={(e) => e.stopPropagation()}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setIsLightboxOpen(false)}
+                  className="absolute top-6 right-6 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
+                  aria-label="Close"
                 >
-                  <DialogPanel>
-                    <img
-                      src={imageSrc}
-                      alt={alt}
-                      className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                    />
-                    <button
-                      onClick={() => setIsLightboxOpen(false)}
-                      className="absolute -top-3 -right-3 rounded-full p-1.5 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 shadow-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-                    >
-                      <XMarkIcon className="h-5 w-5" />
-                    </button>
-                  </DialogPanel>
-                </motion.div>
-              </div>
-            </Dialog>
-          )}
-        </AnimatePresence>
-      </>
-    );
-  }
-
-  // For regular images, render normally
-  return <img src={imageSrc || ""} alt={alt} {...rest} />;
+                  <XMarkIcon className="h-6 w-6" />
+                </motion.button>
+                <motion.img
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  src={imageSrc}
+                  alt={alt || "Full size"}
+                  className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+    </>
+  );
 };
+
+// Helper component to catch Escape key for image lightbox
+function ImageLightboxEscapeCatcher({ onEscape }: { onEscape: () => void }) {
+  useEffect(() => {
+    const onKeyDownCapture = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (e as any).stopImmediatePropagation?.();
+      onEscape();
+    };
+
+    window.addEventListener("keydown", onKeyDownCapture, true);
+    return () => window.removeEventListener("keydown", onKeyDownCapture, true);
+  }, [onEscape]);
+
+  return null;
+}
 
 const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
   const { content = "", className } = props;

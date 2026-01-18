@@ -105,5 +105,61 @@
       "title": "About Forking",
       "description": "Forking creates your own independent copy. Changes won't affect the original agent."
     }
+  },
+  "publish": {
+    "title": "Publish to Marketplace",
+    "titleUpdate": "Update Marketplace Listing",
+    "description": "Share your agent with the community. You can update or unpublish it anytime.",
+    "descriptionUpdate": "Create a new version of your agent for the community.",
+    "validation": {
+      "noPrompt": "Your agent must have a prompt before publishing to the marketplace."
+    },
+    "info": {
+      "title": "What gets published:",
+      "content": "Agent configuration (prompt, model, settings), MCP server requirements (names only), and knowledge base structure (including file references).",
+      "note": "Note:",
+      "noteContent": "Users forking your agent will receive a copy of your knowledge base files."
+    },
+    "commitMessage": {
+      "label": "Commit Message",
+      "placeholder": "Describe what changed in this version (e.g., 'Improved system prompt for better responses', 'Added support for web search')",
+      "charCount": "{{count}}/500 characters"
+    },
+    "readme": {
+      "label": "README.md",
+      "placeholder": "Add comprehensive documentation for your agent... (Markdown supported)",
+      "hint": "Basic Markdown syntax is supported. This will be displayed on the agent's marketplace page."
+    },
+    "publishImmediately": {
+      "label": "Publish Immediately",
+      "description": "Make this listing visible in the marketplace right away"
+    },
+    "preview": {
+      "show": "Show What Will Be Published",
+      "hide": "Hide Preview",
+      "title": "Preview",
+      "name": "Name",
+      "description": "Description",
+      "systemPrompt": "System Prompt",
+      "mcpServers": "Required MCP Servers ({{count}})",
+      "mcpWarning": "⚠️ Users will need to configure their own MCP connections",
+      "knowledgeBase": "Knowledge Base",
+      "knowledgeFiles": "{{name}} ({{count}} files)",
+      "knowledgeInfo": "ℹ️ Users will receive a copy of these files in their workspace"
+    },
+    "success": {
+      "published": "Agent published to marketplace successfully!",
+      "updated": "Agent listing updated successfully!"
+    },
+    "error": {
+      "default": "Failed to publish agent. Please try again."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "publish": "Publish",
+      "update": "Update Listing",
+      "saveAsDraft": "Save as Draft",
+      "publishing": "Publishing..."
+    }
   }
 }

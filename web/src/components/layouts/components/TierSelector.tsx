@@ -114,7 +114,7 @@ export function TierSelector({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="absolute bottom-full left-0 mb-1 z-50 w-80 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-2"
+              className="absolute bottom-full left-0 mb-1 z-50 w-80 rounded-xl border border-neutral-200/60 bg-white/80 shadow-xl backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-900/80 p-2"
             >
               <div className="flex items-center justify-between px-2 py-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
@@ -149,7 +149,7 @@ export function TierSelector({
                       className={`h-2 w-2 shrink-0 rounded-full ${config.dotColor}`}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
                           {t(`app.tierSelector.tiers.${config.key}.name`)}
                         </span>

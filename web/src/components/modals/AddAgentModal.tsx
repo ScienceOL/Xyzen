@@ -24,11 +24,12 @@ import { McpServerItem } from "./McpServerItem";
 interface AddAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (agentId: string) => void;
 }
 
 type TabMode = "custom" | "system";
 
-function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
+function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
   const { t } = useTranslation();
   const {
     createAgent,
@@ -115,24 +116,29 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
+      let newAgentId: string | undefined;
       if (tabMode === "custom") {
         if (!agent.name) {
           alert(t("agents.errors.nameRequired"));
           return;
         }
-        await createAgent(buildCustomAgentPayload());
+        newAgentId = await createAgent(buildCustomAgentPayload());
       } else {
         if (!selectedTemplateKey) {
           alert(t("agents.errors.templateRequired"));
           return;
         }
         // Use the new from-template endpoint
-        await createAgentFromTemplate(
+        newAgentId = await createAgentFromTemplate(
           selectedTemplateKey,
           customName || undefined,
         );
       }
       handleClose();
+      // Notify parent about the created agent
+      if (newAgentId && onCreated) {
+        onCreated(newAgentId);
+      }
     } catch (error) {
       console.error("Failed to create agent:", error);
       alert(t("agents.errors.createFailed"));
@@ -311,7 +317,7 @@ function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
                 <Button
                   type="button"
                   onClick={handleClose}
-                  className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-[hover]:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
+                  className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
                 >
                   {t("agents.actions.cancel")}
                 </Button>

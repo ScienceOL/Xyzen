@@ -1,4 +1,4 @@
-import type { AgentSpatialLayout } from "@/types/agents";
+import type { Agent, AgentSpatialLayout } from "@/types/agents";
 import type { Node, NodeProps } from "@xyflow/react";
 
 export type XYPosition = { x: number; y: number };
@@ -42,6 +42,8 @@ export interface AgentData {
   agentId: string;
   /** Session ID (used for Session API calls) */
   sessionId?: string;
+  /** Full Agent object for editing */
+  agent?: Agent;
   name: string;
   role: string;
   desc: string;
@@ -56,6 +58,10 @@ export interface AgentData {
   dailyActivity?: DailyActivityData[];
   /** Yesterday's summary */
   yesterdaySummary?: YesterdaySummaryData;
+  /** Last conversation timestamp (ISO string) */
+  lastConversationTime?: string;
+  /** Whether the agent is published to marketplace */
+  isMarketplacePublished?: boolean;
 }
 
 /** Runtime-only fields injected by the workspace. */
@@ -63,9 +69,9 @@ export interface AgentNodeRuntimeData {
   onFocus: (id: string) => void;
   onLayoutChange?: (id: string, layout: AgentSpatialLayout) => void;
   onAvatarChange?: (id: string, avatarUrl: string) => void;
-  onOpenAgentSettings?: (agentId: string) => void;
   onDelete?: (agentId: string) => void;
   isFocused?: boolean;
+  isNewlyCreated?: boolean;
 }
 
 export type AgentNodeData = AgentData & AgentNodeRuntimeData;

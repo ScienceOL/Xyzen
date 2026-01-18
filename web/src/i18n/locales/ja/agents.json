@@ -61,5 +61,47 @@
     "templateRequired": "システムエージェントを選択してください",
     "createFailed": "エージェントの作成に失敗しました。コンソールで詳細を確認してください。",
     "updateFailed": "保存に失敗しました。後でもう一度お試しください。"
+  },
+  "sessionSettings": {
+    "title": "{{name}} 設定",
+    "tabs": {
+      "profile": "プロフィール",
+      "size": "サイズ",
+      "workflow": "ワークフロー",
+      "danger": "危険"
+    },
+    "avatar": {
+      "title": "アバター",
+      "description": "このエージェントのアバターをカスタマイズ",
+      "style": "スタイル",
+      "select": "アバターを選択",
+      "random": "ランダム",
+      "seedPlaceholder": "カスタムシード...",
+      "apply": "適用",
+      "loading": "読み込み中..."
+    },
+    "profile": {
+      "title": "エージェントプロフィール",
+      "description": "エージェントの基本情報とシステムプロンプトを編集"
+    },
+    "size": {
+      "title": "ウィジェットサイズ",
+      "description": "空間ワークスペースでのウィジェットサイズを調整"
+    },
+    "workflow": {
+      "title": "エージェントワークフロー",
+      "description": "エージェントの実行グラフと接続ツールを設定",
+      "openSettings": "ワークフロー設定を開く",
+      "visualEditor": "ビジュアルエディター",
+      "jsonEditor": "JSONエディター",
+      "jsonDescription": "JSONを使用して高度なエージェント動作を設定します。空欄の場合はデフォルトを使用します。"
+    },
+    "danger": {
+      "title": "危険ゾーン",
+      "description": "元に戻せない操作",
+      "deleteButton": "エージェントを削除",
+      "deleteConfirmTitle": "エージェントを削除しますか？",
+      "deleteConfirmMessage": "\"{{name}}\"を削除してもよろしいですか？この操作は元に戻せません。"
+    }
   }
 }

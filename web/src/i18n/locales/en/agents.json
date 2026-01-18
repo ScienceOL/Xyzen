@@ -61,5 +61,47 @@
     "templateRequired": "Please select a system agent",
     "createFailed": "Failed to create agent, please check the console for more information.",
     "updateFailed": "Failed to save, please try again later."
+  },
+  "sessionSettings": {
+    "title": "{{name}} Settings",
+    "tabs": {
+      "profile": "Profile",
+      "size": "Size",
+      "workflow": "Agent Graph",
+      "danger": "Danger"
+    },
+    "avatar": {
+      "title": "Avatar",
+      "description": "Customize the avatar for this agent",
+      "style": "Style",
+      "select": "Select Avatar",
+      "random": "Random",
+      "seedPlaceholder": "Custom seed...",
+      "apply": "Apply",
+      "loading": "Loading..."
+    },
+    "profile": {
+      "title": "Agent Profile",
+      "description": "Edit the agent's basic information and system prompt"
+    },
+    "size": {
+      "title": "Widget Size",
+      "description": "Adjust the widget size in the spatial workspace"
+    },
+    "workflow": {
+      "title": "Agent Workflow",
+      "description": "Configure the agent's execution graph and connected tools",
+      "openSettings": "Open Workflow Settings",
+      "visualEditor": "Visual Editor",
+      "jsonEditor": "JSON Editor",
+      "jsonDescription": "Configure advanced agent behavior using JSON. Leave empty to use defaults."
+    },
+    "danger": {
+      "title": "Danger Zone",
+      "description": "Destructive actions that cannot be undone",
+      "deleteButton": "Delete Agent",
+      "deleteConfirmTitle": "Delete Agent?",
+      "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+    }
   }
 }

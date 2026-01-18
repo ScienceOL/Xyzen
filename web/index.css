@@ -233,12 +233,16 @@
 }
 
 /* 鼠标悬停时的状态 */
-.avatar-glow:hover {
+.avatar-glow:hover,
+.group:hover .avatar-glow,
+.avatar-glow.is-focused {
   /* 1. 外发光圈效果 (颜色可以换成你的主题色) */
   box-shadow: 0 0 0 2px #1677ff;
 }
 
-.avatar-glow:hover::before {
+.avatar-glow:hover::before,
+.group:hover .avatar-glow::before,
+.avatar-glow.is-focused::before {
   /* 2. 光条移动到右侧，形成扫光动画 */
   transform: skewX(-45deg) translateX(400%);
 }

@@ -1,9 +1,11 @@
-import SessionSettingsModal from "@/components/modals/SessionSettingsModal";
+import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
+import { formatTime } from "@/lib/formatDate";
 import { cn } from "@/lib/utils";
 import {
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
+  ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
 import { useReactFlow } from "@xyflow/react";
 import { motion } from "framer-motion";
@@ -350,13 +352,6 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
     }
   };
 
-  const handleOpenAgentSettings = () => {
-    setIsSettingsOpen(false);
-    if (data.onOpenAgentSettings && data.agentId) {
-      data.onOpenAgentSettings(data.agentId);
-    }
-  };
-
   const handleDelete = () => {
     if (data.onDelete && data.agentId) {
       data.onDelete(data.agentId);
@@ -365,20 +360,22 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
 
   return (
     <>
-      <SessionSettingsModal
+      <AgentSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         sessionId={data.sessionId || id}
         agentId={data.agentId || id}
         agentName={data.name}
+        agent={data.agent}
         currentAvatar={data.avatar}
         currentGridSize={data.gridSize || { w: currentW, h: currentH }}
         onAvatarChange={handleAvatarChange}
         onGridSizeChange={handleResize}
-        onOpenAgentSettings={
-          data.onOpenAgentSettings ? handleOpenAgentSettings : undefined
+        onDelete={
+          data.onDelete && !data.isMarketplacePublished
+            ? handleDelete
+            : undefined
         }
-        onDelete={data.onDelete ? handleDelete : undefined}
       />
 
       <motion.div
@@ -406,6 +403,22 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
           data.isFocused ? "z-50" : "z-0", // focused node higher z-index
         )}
       >
+        {/* Newly Created Glow - Pulsing highlight effect */}
+        {data.isNewlyCreated && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{
+              opacity: [0, 0.6, 0.3, 0.6, 0.3, 0],
+              scale: [0.95, 1.05, 1.02, 1.05, 1.02, 1],
+            }}
+            transition={{
+              duration: 2.5,
+              ease: "easeInOut",
+            }}
+            className="absolute -inset-3 -z-30 rounded-[40px] bg-linear-to-r from-emerald-400 via-cyan-400 to-blue-500 blur-xl pointer-events-none"
+          />
+        )}
+
         {/* IsFocused Glow - BEHIND CARD */}
         {data.isFocused && (
           <motion.div
@@ -442,18 +455,43 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
           </div>
 
           <div className="flex items-center gap-3 mb-2">
-            <img
-              src={data.avatar}
-              className="w-10 h-10 rounded-full bg-gray-200 border-2 border-white dark:border-white/20 shadow-sm shrink-0"
-              alt="avatar"
-              draggable={false}
-            />
-            <div className="min-w-0">
+            <div
+              className={cn(
+                "relative shrink-0 avatar-glow",
+                data.isFocused && "is-focused",
+              )}
+            >
+              <img
+                src={data.avatar}
+                className="w-10 h-10 rounded-full bg-gray-200 border-2 border-white dark:border-white/20 shadow-sm"
+                alt="avatar"
+                draggable={false}
+              />
+              {/* Marketplace badge */}
+              {data.isMarketplacePublished && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center border-2 border-white dark:border-neutral-900 shadow-sm"
+                  title="Published to Marketplace"
+                >
+                  <ShoppingBagIcon className="w-3 h-3 text-white" />
+                </motion.div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
               <div className="font-bold text-base leading-tight text-neutral-800 dark:text-neutral-100 truncate">
                 {data.name}
               </div>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium truncate">
-                {data.role}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium truncate">
+                  {data.role}
+                </span>
+                {data.lastConversationTime && (
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 shrink-0">
+                    · {formatTime(data.lastConversationTime)}
+                  </span>
+                )}
               </div>
             </div>
           </div>

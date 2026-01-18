@@ -61,5 +61,47 @@
     "templateRequired": "请选择一个系统助手",
     "createFailed": "创建助手失败，请查看控制台了解更多信息。",
     "updateFailed": "保存失败，请稍后重试。"
+  },
+  "sessionSettings": {
+    "title": "{{name}} 设置",
+    "tabs": {
+      "profile": "资料",
+      "size": "尺寸",
+      "workflow": "助手图谱",
+      "danger": "危险操作"
+    },
+    "avatar": {
+      "title": "头像",
+      "description": "自定义此助手的头像",
+      "style": "风格",
+      "select": "选择头像",
+      "random": "随机",
+      "seedPlaceholder": "自定义种子...",
+      "apply": "应用",
+      "loading": "加载中..."
+    },
+    "profile": {
+      "title": "助手资料",
+      "description": "编辑助手的基本信息和系统提示词"
+    },
+    "size": {
+      "title": "组件尺寸",
+      "description": "调整在空间工作区中的组件大小"
+    },
+    "workflow": {
+      "title": "助手工作流",
+      "description": "配置助手的执行图和连接的工具",
+      "openSettings": "打开工作流设置",
+      "visualEditor": "可视化编辑器",
+      "jsonEditor": "JSON 编辑器",
+      "jsonDescription": "使用 JSON 配置高级助手行为。留空使用默认设置。"
+    },
+    "danger": {
+      "title": "危险区域",
+      "description": "不可撤销的操作",
+      "deleteButton": "删除助手",
+      "deleteConfirmTitle": "删除助手？",
+      "deleteConfirmMessage": "确定要删除 \"{{name}}\" 吗？此操作无法撤销。"
+    }
   }
 }

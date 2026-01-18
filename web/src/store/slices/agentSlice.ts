@@ -40,11 +40,11 @@ export interface AgentSlice {
   incrementLocalAgentMessageCount: (agentId: string) => void;
 
   isCreatingAgent: boolean;
-  createAgent: (agent: Omit<Agent, "id">) => Promise<void>;
+  createAgent: (agent: Omit<Agent, "id">) => Promise<string | undefined>;
   createAgentFromTemplate: (
     systemKey: string,
     customName?: string,
-  ) => Promise<void>;
+  ) => Promise<string | undefined>;
   updateAgent: (agent: Agent | AgentWithLayout) => Promise<void>;
   updateAgentLayout: (
     agentId: string,
@@ -312,7 +312,7 @@ export const createAgentSlice: StateCreator<
     const { isCreatingAgent } = get();
     if (isCreatingAgent) {
       console.log("Agent creation already in progress");
-      return;
+      return undefined;
     }
 
     set({ isCreatingAgent: true });
@@ -326,7 +326,17 @@ export const createAgentSlice: StateCreator<
         const errorText = await response.text();
         throw new Error(`Failed to create agent: ${errorText}`);
       }
-      await get().fetchAgents();
+      const createdAgent = await response.json();
+
+      // Directly add to local state instead of refetching all agents
+      const existingAgents = get().agents;
+      const newAgent: AgentWithLayout = {
+        ...createdAgent,
+        spatial_layout: defaultSpatialLayoutForIndex(existingAgents.length),
+      };
+      set({ agents: [...existingAgents, newAgent] });
+
+      return createdAgent.id as string;
     } catch (error) {
       console.error(error);
       throw error;
@@ -339,7 +349,7 @@ export const createAgentSlice: StateCreator<
     const { isCreatingAgent } = get();
     if (isCreatingAgent) {
       console.log("Agent creation already in progress");
-      return;
+      return undefined;
     }
 
     set({ isCreatingAgent: true });
@@ -354,10 +364,11 @@ export const createAgentSlice: StateCreator<
         throw new Error(`Failed to create agent from template: ${errorText}`);
       }
 
+      let createdAgent = await response.json();
+
       // If custom name provided, update the agent
       if (customName) {
-        const createdAgent = await response.json();
-        await fetch(
+        const updateResponse = await fetch(
           `${get().backendUrl}/xyzen/api/v1/agents/${createdAgent.id}`,
           {
             method: "PATCH",
@@ -365,9 +376,20 @@ export const createAgentSlice: StateCreator<
             body: JSON.stringify({ name: customName }),
           },
         );
+        if (updateResponse.ok) {
+          createdAgent = { ...createdAgent, name: customName };
+        }
       }
 
-      await get().fetchAgents();
+      // Directly add to local state instead of refetching all agents
+      const existingAgents = get().agents;
+      const newAgent: AgentWithLayout = {
+        ...createdAgent,
+        spatial_layout: defaultSpatialLayoutForIndex(existingAgents.length),
+      };
+      set({ agents: [...existingAgents, newAgent] });
+
+      return createdAgent.id as string;
     } catch (error) {
       console.error(error);
       throw error;

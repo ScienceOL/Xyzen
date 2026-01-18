@@ -105,5 +105,61 @@
       "title": "关于复刻",
       "description": "复刻会创建一个独立的副本。你的修改不会影响原始助手。"
     }
+  },
+  "publish": {
+    "title": "发布到市场",
+    "titleUpdate": "更新市场列表",
+    "description": "将你的助手分享给社区。你可以随时更新或取消发布。",
+    "descriptionUpdate": "为社区创建你的助手的新版本。",
+    "validation": {
+      "noPrompt": "你的助手必须有提示词才能发布到市场。"
+    },
+    "info": {
+      "title": "发布内容包括：",
+      "content": "助手配置（提示词、模型、设置）、MCP 服务要求（仅名称）以及知识库结构（包括文件引用）。",
+      "note": "注意：",
+      "noteContent": "复刻你助手的用户将获得你知识库文件的副本。"
+    },
+    "commitMessage": {
+      "label": "提交信息",
+      "placeholder": "描述此版本的更改（例如：\"改进系统提示词以获得更好的响应\"、\"添加网页搜索支持\"）",
+      "charCount": "{{count}}/500 字符"
+    },
+    "readme": {
+      "label": "README.md",
+      "placeholder": "为你的助手添加详细文档...（支持 Markdown）",
+      "hint": "支持基本的 Markdown 语法。这将显示在助手的市场页面上。"
+    },
+    "publishImmediately": {
+      "label": "立即发布",
+      "description": "让此列表立即在市场中可见"
+    },
+    "preview": {
+      "show": "显示将要发布的内容",
+      "hide": "隐藏预览",
+      "title": "预览",
+      "name": "名称",
+      "description": "描述",
+      "systemPrompt": "系统提示词",
+      "mcpServers": "所需 MCP 服务（{{count}}）",
+      "mcpWarning": "⚠️ 用户需要配置自己的 MCP 连接",
+      "knowledgeBase": "知识库",
+      "knowledgeFiles": "{{name}}（{{count}} 个文件）",
+      "knowledgeInfo": "ℹ️ 用户将在其工作区中获得这些文件的副本"
+    },
+    "success": {
+      "published": "助手已成功发布到市场！",
+      "updated": "助手列表更新成功！"
+    },
+    "error": {
+      "default": "发布助手失败，请重试。"
+    },
+    "actions": {
+      "cancel": "取消",
+      "publish": "发布",
+      "update": "更新列表",
+      "saveAsDraft": "保存为草稿",
+      "publishing": "发布中..."
+    }
   }
 }
