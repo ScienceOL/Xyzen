@@ -57,31 +57,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Don't fail startup if system agents can't be created
             pass
 
-    # Seed builtin graph agents to database
-    from app.agents import registry as builtin_agent_registry
-
-    async with AsyncSessionLocal() as db:
-        try:
-            stats = await builtin_agent_registry.seed_to_database(db)
-            await db.commit()
-
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.info(
-                f"Builtin graph agents seeded: {stats['created']} created, "
-                f"{stats['updated']} updated, {stats['failed']} failed"
-            )
-
-        except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to seed builtin graph agents: {e}")
-            await db.rollback()
-            # Don't fail startup if builtin agents can't be seeded
-            pass
-
     # 自动创建和管理所有 MCP 服务器
     from app.mcp import registry
 

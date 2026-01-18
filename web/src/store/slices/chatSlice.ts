@@ -973,7 +973,59 @@ export const createChatSlice: StateCreator<
                   channel.messages.splice(loadingIndex, 1);
                 }
 
-                // Create a new assistant message with the tool call
+                // Create the tool call object
+                const toolCall = {
+                  id: toolCallData.id,
+                  name: toolCallData.name,
+                  description: toolCallData.description,
+                  arguments: toolCallData.arguments,
+                  status: toolCallData.status as
+                    | "waiting_confirmation"
+                    | "executing"
+                    | "completed"
+                    | "failed",
+                  timestamp: new Date(toolCallData.timestamp).toISOString(),
+                };
+
+                // Check if there's a running agent execution with a running phase
+                const agentMsgIndex = channel.messages.findLastIndex(
+                  (m) => m.agentExecution?.status === "running",
+                );
+
+                if (agentMsgIndex !== -1) {
+                  const execution =
+                    channel.messages[agentMsgIndex].agentExecution;
+                  if (execution) {
+                    // Find the running phase (or use currentNode to find the correct phase)
+                    let targetPhase = execution.currentNode
+                      ? execution.phases.find(
+                          (p) => p.id === execution.currentNode,
+                        )
+                      : null;
+
+                    // Fallback to running phase
+                    if (!targetPhase) {
+                      targetPhase = execution.phases.find(
+                        (p) => p.status === "running",
+                      );
+                    }
+
+                    if (targetPhase) {
+                      // Add tool call to the phase
+                      if (!targetPhase.toolCalls) {
+                        targetPhase.toolCalls = [];
+                      }
+                      targetPhase.toolCalls.push(toolCall);
+                      console.log(
+                        `ChatSlice: Added tool call ${toolCallData.name} to phase ${targetPhase.id}`,
+                      );
+                      break;
+                    }
+                  }
+                }
+
+                // Fallback: Create a new assistant message with the tool call
+                // (for non-agent executions like simple ReAct)
                 const toolCallMessageId = `tool-call-${toolCallData.id}`;
                 const newMessage = {
                   id: toolCallMessageId,
@@ -984,20 +1036,7 @@ export const createChatSlice: StateCreator<
                   isLoading: false,
                   isStreaming: false,
                   isNewMessage: true,
-                  toolCalls: [
-                    {
-                      id: toolCallData.id,
-                      name: toolCallData.name,
-                      description: toolCallData.description,
-                      arguments: toolCallData.arguments,
-                      status: toolCallData.status as
-                        | "waiting_confirmation"
-                        | "executing"
-                        | "completed"
-                        | "failed",
-                      timestamp: new Date(toolCallData.timestamp).toISOString(),
-                    },
-                  ],
+                  toolCalls: [toolCall],
                 };
 
                 channel.messages.push(newMessage);
@@ -1015,7 +1054,43 @@ export const createChatSlice: StateCreator<
                   error?: string;
                 };
 
-                // Find and update the tool call
+                // First check agent execution phases for the tool call
+                const agentMsgIndex = channel.messages.findLastIndex(
+                  (m) => m.agentExecution?.status === "running",
+                );
+
+                if (agentMsgIndex !== -1) {
+                  const execution =
+                    channel.messages[agentMsgIndex].agentExecution;
+                  if (execution) {
+                    // Search all phases for the tool call
+                    for (const phase of execution.phases) {
+                      if (phase.toolCalls) {
+                        const toolCall = phase.toolCalls.find(
+                          (tc) => tc.id === responseData.toolCallId,
+                        );
+                        if (toolCall) {
+                          toolCall.status = responseData.status as
+                            | "waiting_confirmation"
+                            | "executing"
+                            | "completed"
+                            | "failed";
+                          if (responseData.result) {
+                            toolCall.result = JSON.stringify(
+                              responseData.result,
+                            );
+                          }
+                          if (responseData.error) {
+                            toolCall.error = responseData.error;
+                          }
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+
+                // Also check standalone tool call messages (fallback)
                 channel.messages.forEach((message) => {
                   if (message.toolCalls) {
                     message.toolCalls.forEach((toolCall) => {
@@ -1338,6 +1413,7 @@ export const createChatSlice: StateCreator<
                     if (existingPhase) {
                       existingPhase.status = "running";
                       existingPhase.name = displayName; // Update name in case it was set differently
+                      existingPhase.componentKey = data.component_key; // Store component key
                       existingPhase.startedAt = Date.now();
                       existingPhase.streamedContent = "";
                     } else {
@@ -1345,6 +1421,7 @@ export const createChatSlice: StateCreator<
                       execution.phases.push({
                         id: data.node_id,
                         name: displayName,
+                        componentKey: data.component_key, // Store component key for specialized rendering
                         status: "running",
                         startedAt: Date.now(),
                         nodes: [],

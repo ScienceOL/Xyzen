@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { useState, useEffect } from "react";
 import type { ExecutionStatus, PhaseExecution } from "@/types/agentEvents";
-import Markdown from "@/lib/Markdown";
+import { getRenderer, DefaultRenderer } from "@/components/agents/renderers";
 import LoadingMessage from "./LoadingMessage";
 import ToolCallPill from "./ToolCallPill";
 import type { ToolCall } from "@/store/types";
@@ -22,6 +22,7 @@ interface AgentStepAccordionProps {
  * - Manual toggle via header click
  * - Chevron rotation animation
  * - Tool calls displayed as pills inside the step
+ * - Dynamic content rendering based on componentKey
  */
 export default function AgentStepAccordion({
   phase,
@@ -46,6 +47,10 @@ export default function AgentStepAccordion({
     phase.streamedContent || phase.outputSummary || toolCalls.length > 0,
   );
   const canExpand = hasContent && phase.status !== "pending";
+
+  // Get custom renderer based on componentKey, or fall back to DefaultRenderer
+  const CustomRenderer = getRenderer(phase.componentKey);
+  const ContentRenderer = CustomRenderer || DefaultRenderer;
 
   return (
     <motion.div
@@ -101,13 +106,9 @@ export default function AgentStepAccordion({
                 </div>
               )}
 
-              {/* Streaming/Output Content */}
+              {/* Dynamic Content Renderer */}
               {(phase.streamedContent || phase.outputSummary) && (
-                <div className="prose prose-sm dark:prose-invert max-w-none text-neutral-600 dark:text-neutral-400 max-h-64 overflow-y-auto">
-                  <Markdown
-                    content={phase.streamedContent || phase.outputSummary || ""}
-                  />
-                </div>
+                <ContentRenderer phase={phase} isActive={isActive} />
               )}
             </div>
           </motion.div>

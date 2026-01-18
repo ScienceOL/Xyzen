@@ -3,6 +3,8 @@ Agent Event Data Types - Typed dictionaries for agent execution events.
 
 This module defines the data structures for complex agent execution events,
 providing flat context metadata for tracking nested agent execution.
+
+Also includes timeline data structures for AgentRun persistence.
 """
 
 from __future__ import annotations
@@ -10,6 +12,51 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from typing_extensions import NotRequired
+
+
+# === Timeline Data Structures ===
+
+
+class TimelineEntryDict(TypedDict, total=False):
+    """
+    Single entry in the AgentRun execution timeline.
+
+    Stored in AgentRun.node_data["timeline"] for execution replay.
+    """
+
+    event_type: str  # "agent_start", "node_start", "node_end", "agent_end"
+    timestamp: float  # Unix timestamp
+
+    # Node information (for node_start/node_end events)
+    node_id: str
+    node_name: str
+    node_type: str  # "llm", "tool", "router"
+
+    # Completion information (for node_end/agent_end events)
+    status: str  # "completed", "failed", "skipped"
+    duration_ms: int
+
+    # Node output (for node_end events)
+    output: Any  # Full structured output for timeline display
+
+    # Additional metadata
+    metadata: dict[str, Any]
+
+
+class NodeDataDict(TypedDict, total=False):
+    """
+    Complete node execution data stored in AgentRun.node_data.
+
+    Contains both timeline (for replay) and convenience maps (for quick access).
+    """
+
+    # Full execution timeline
+    timeline: list[TimelineEntryDict]
+
+    # Convenience maps for quick access
+    node_outputs: dict[str, Any]  # node_id -> output
+    node_order: list[str]  # Execution order of nodes
+    node_names: dict[str, str]  # node_id -> display name
 
 
 class AgentExecutionContext(TypedDict):
@@ -82,6 +129,7 @@ class NodeStartData(TypedDict):
     node_id: str
     node_name: str
     node_type: str  # "llm", "tool", "router", etc.
+    component_key: NotRequired[str]  # e.g., "system:deep_research:clarify"
     input_summary: NotRequired[str]
     context: AgentExecutionContext
 
@@ -92,6 +140,7 @@ class NodeEndData(TypedDict):
     node_id: str
     node_name: str
     node_type: str
+    component_key: NotRequired[str]  # e.g., "system:deep_research:clarify"
     status: str  # "completed", "failed", "skipped"
     duration_ms: int
     output_summary: NotRequired[str]
@@ -136,6 +185,10 @@ class ProgressUpdateData(TypedDict):
 
 # Export all types
 __all__ = [
+    # Timeline types
+    "TimelineEntryDict",
+    "NodeDataDict",
+    # Context types
     "AgentExecutionContext",
     "AgentStartData",
     "AgentEndData",

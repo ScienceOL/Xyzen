@@ -337,6 +337,28 @@ export function reconstructAgentExecutionFromMetadata(
     | Record<string, string>
     | undefined;
 
+  // Build nodeId -> componentKey map from timeline
+  const componentKeyMap = new Map<string, string>();
+  const timeline = agent_metadata.timeline as
+    | Array<{
+        event_type: string;
+        node_id?: string;
+        metadata?: { component_key?: string };
+      }>
+    | undefined;
+
+  if (timeline) {
+    for (const entry of timeline) {
+      if (
+        entry.event_type === "node_start" &&
+        entry.node_id &&
+        entry.metadata?.component_key
+      ) {
+        componentKeyMap.set(entry.node_id, entry.metadata.component_key);
+      }
+    }
+  }
+
   // Use preserved execution order from metadata, or fallback to object keys order
   const nodeOrder =
     (agent_metadata.node_order as string[] | undefined) ||
@@ -350,6 +372,7 @@ export function reconstructAgentExecutionFromMetadata(
       phases.push({
         id: nodeId,
         name: getNodeDisplayName(nodeId, nodeNames),
+        componentKey: componentKeyMap.get(nodeId), // Restore componentKey from timeline
         status: "completed",
         nodes: [],
         outputSummary: content ? truncate(content, 200) : undefined,
@@ -368,6 +391,7 @@ export function reconstructAgentExecutionFromMetadata(
       phases.push({
         id: nodeId,
         name: getNodeDisplayName(nodeId, nodeNames),
+        componentKey: componentKeyMap.get(nodeId), // Restore componentKey from timeline
         status: "completed",
         nodes: [],
         outputSummary: content ? truncate(content, 200) : undefined,

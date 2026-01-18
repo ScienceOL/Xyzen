@@ -14,11 +14,8 @@ from .base import (
     BaseComponent,
     ComponentMetadata,
     ComponentType,
-    NodeComponent,
-    PromptTemplateComponent,
-    StateSchemaComponent,
-    SubgraphComponent,
 )
+from .executable import ExecutableComponent
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +113,65 @@ class ComponentRegistry:
             The component or None if not found
         """
         return self._components.get(key)
+
+    def resolve(self, key: str, version_constraint: str = "*") -> BaseComponent | None:
+        """
+        Resolve a component by key with version matching.
+
+        Args:
+            key: Component key (e.g., 'system:deep_research:supervisor')
+            version_constraint: SemVer constraint (e.g., '^2.0', '>=1.0.0', '*')
+
+        Returns:
+            Matching component or None if not found or version doesn't match
+        """
+        component = self._components.get(key)
+        if not component:
+            logger.debug(f"Component not found: {key}")
+            return None
+
+        if version_constraint == "*":
+            return component
+
+        # Check version compatibility using packaging library
+        try:
+            from packaging.specifiers import SpecifierSet
+            from packaging.version import Version
+
+            comp_version = Version(component.metadata.version)
+
+            # Handle caret constraint (^X.Y.Z) - allow compatible versions
+            if version_constraint.startswith("^"):
+                base_version = version_constraint[1:]
+                base = Version(base_version)
+                # ^2.0 means >=2.0.0, <3.0.0
+                next_major = f"{base.major + 1}.0.0"
+                specifier = SpecifierSet(f">={base_version},<{next_major}")
+            # Handle tilde constraint (~X.Y.Z) - allow patch updates
+            elif version_constraint.startswith("~"):
+                base_version = version_constraint[1:]
+                base = Version(base_version)
+                # ~2.0.1 means >=2.0.1, <2.1.0
+                next_minor = f"{base.major}.{base.minor + 1}.0"
+                specifier = SpecifierSet(f">={base_version},<{next_minor}")
+            else:
+                # Standard specifier (>=, <=, ==, etc.)
+                specifier = SpecifierSet(version_constraint)
+
+            if comp_version in specifier:
+                return component
+            else:
+                logger.debug(f"Component {key} version {comp_version} doesn't match constraint {version_constraint}")
+                return None
+
+        except ImportError:
+            # If packaging library is not available, return component anyway
+            logger.warning("packaging library not installed, skipping version check")
+            return component
+        except Exception as e:
+            # If version parsing fails, log warning and return component anyway
+            logger.warning(f"Version parsing failed for {key}: {e}, returning component")
+            return component
 
     def get_metadata(self, key: str) -> ComponentMetadata | None:
         """
@@ -248,6 +304,45 @@ class ComponentRegistry:
 # Global registry instance
 component_registry = ComponentRegistry()
 
+# Track if components have been registered
+_components_registered = False
+
+
+def ensure_components_registered() -> None:
+    """
+    Ensure all builtin components are registered.
+
+    This should be called before building any graph that uses components.
+    Safe to call multiple times - only registers once.
+    """
+    global _components_registered
+
+    if _components_registered:
+        return
+
+    logger.info("Registering builtin components...")
+
+    # React component
+    from app.agents.components.react import ReActComponent
+
+    component_registry.register(ReActComponent())
+
+    # Deep research components
+    from app.agents.components.deep_research.components import (
+        ClarifyWithUserComponent,
+        FinalReportComponent,
+        ResearchBriefComponent,
+        ResearchSupervisorComponent,
+    )
+
+    component_registry.register(ClarifyWithUserComponent())
+    component_registry.register(ResearchBriefComponent())
+    component_registry.register(ResearchSupervisorComponent())
+    component_registry.register(FinalReportComponent())
+
+    _components_registered = True
+    logger.info(f"Registered {len(component_registry.list_all())} components")
+
 
 # Convenience functions
 def register_component(component: BaseComponent, override: bool = False) -> None:
@@ -270,16 +365,16 @@ __all__ = [
     # Registry
     "ComponentRegistry",
     "component_registry",
+    # Registration
+    "ensure_components_registered",
     # Convenience functions
     "register_component",
     "get_component",
     "get_component_config",
     # Base classes (re-exported from base.py)
     "BaseComponent",
-    "NodeComponent",
-    "SubgraphComponent",
-    "StateSchemaComponent",
-    "PromptTemplateComponent",
     "ComponentType",
     "ComponentMetadata",
+    # Executable component (re-exported from executable.py)
+    "ExecutableComponent",
 ]

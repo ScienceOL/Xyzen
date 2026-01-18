@@ -4,17 +4,19 @@ Agent Factory - Creates agents for chat conversations.
 This module provides factory functions to instantiate the appropriate agent
 based on session configuration, agent type, and other parameters.
 
-Supports:
-- graph_config v1: Legacy JSON-configured graph agent (uses GraphBuilder)
-- graph_config v2: Simplified JSON-configured graph agent (uses GraphBuilderV2)
-- No config: Falls back to the built-in react system agent
-- graph_config with metadata.system_agent_key: Uses specified system agent
+Unified Agent Creation Path:
+All agents (builtin and user-defined) go through the same path:
+1. Resolve GraphConfig (from DB or builtin registry)
+2. Build using GraphBuilder
+3. Return CompiledStateGraph + AgentEventContext
 
-The default agent is the "react" system agent.
+Config Resolution Order:
+1. agent_config.graph_config exists → use it directly
+2. agent_config.graph_config.metadata.builtin_key exists → use builtin config
+3. agent_config.graph_config.metadata.system_agent_key exists → use builtin config (legacy)
+4. No config → fall back to "react" builtin
 
-Version detection:
-- v2.x configs use GraphBuilderV2 with LangGraph primitives (ToolNode, tools_condition)
-- v1.x configs use legacy GraphBuilder (will be migrated to v2 on read)
+The default agent is the "react" builtin agent.
 """
 
 from __future__ import annotations
@@ -41,8 +43,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Default system agent key when no agent is specified
-DEFAULT_SYSTEM_AGENT = "react"
+# Default builtin agent key when no agent is specified
+DEFAULT_BUILTIN_AGENT = "react"
 
 
 async def create_chat_agent(
@@ -57,8 +59,10 @@ async def create_chat_agent(
     """
     Create the appropriate agent for a chat session.
 
-    This factory function determines which agent type to use based on
-    the configuration and instantiates it with the necessary parameters.
+    This factory function uses a unified path for all agents:
+    1. Resolve which GraphConfig to use
+    2. Build the graph using GraphBuilder
+    3. Return the compiled graph and event context
 
     Args:
         db: Database session
@@ -72,7 +76,7 @@ async def create_chat_agent(
     Returns:
         Tuple of (CompiledStateGraph, AgentEventContext) for streaming execution
     """
-    from app.agents.agent_tools import prepare_langchain_tools
+    from app.tools.prepare import prepare_tools
     from app.repos.session import SessionRepository
 
     # Get session for configuration
@@ -88,7 +92,7 @@ async def create_chat_agent(
     # Prepare tools from builtin tools and MCP servers
     session_id: "UUID | None" = topic.session_id if topic else None
     topic_id: "UUID | None" = topic.id if topic else None
-    tools: list[BaseTool] = await prepare_langchain_tools(
+    tools: list[BaseTool] = await prepare_tools(
         db,
         agent_config,
         session_id,
@@ -97,21 +101,17 @@ async def create_chat_agent(
         topic_id=topic_id,
     )
 
-    # Determine how to execute this agent
-    agent_type_str, system_key = _resolve_agent_config(agent_config)
-
-    # For frontend event tracking, use the actual system key (react, deep_research)
-    # instead of generic "system" so the UI can distinguish between agent types
-    event_agent_type = system_key if system_key else agent_type_str
+    # Resolve the agent configuration
+    resolved_config, agent_type_key = _resolve_agent_config(agent_config, system_prompt)
 
     # Create event context for tracking
     event_ctx = AgentEventContext(
         agent_id=str(agent_config.id) if agent_config else "default",
         agent_name=agent_config.name if agent_config else "Default Agent",
-        agent_type=event_agent_type,
+        agent_type=agent_type_key,
     )
 
-    # Create LLM factory for graph and system agents
+    # Create LLM factory
     async def create_llm(**kwargs: Any) -> "BaseChatModel":
         override_model = kwargs.get("model") or model_name
         override_temp = kwargs.get("temperature")
@@ -129,28 +129,118 @@ async def create_chat_agent(
             **model_kwargs,
         )
 
-    # Route to appropriate agent builder based on type
-    if agent_type_str == "graph":
-        return await _create_graph_agent(
-            agent_config,
-            create_llm,
-            tools,
-            event_ctx,
-        )
-
-    # System agent (includes react, deep_research, etc.)
-    return await _create_system_agent(
-        system_key,
-        agent_config,
+    # Build the agent using unified GraphBuilder path
+    compiled_graph, node_component_keys = await _build_graph_agent(
+        resolved_config,
         create_llm,
         tools,
         system_prompt,
-        event_ctx,
     )
+
+    # Populate node->component mapping for frontend rendering
+    if node_component_keys:
+        event_ctx.node_component_keys = node_component_keys
+        logger.debug(f"Populated {len(node_component_keys)} node->component mappings")
+
+    logger.info(f"Created agent '{agent_type_key}' with {len(tools)} tools")
+    return compiled_graph, event_ctx
+
+
+def _resolve_agent_config(
+    agent_config: "Agent | None",
+    system_prompt: str,
+) -> tuple[dict[str, Any], str]:
+    """
+    Resolve which GraphConfig to use for an agent.
+
+    Resolution order:
+    1. agent_config has graph_config → use it, check for builtin_key/system_agent_key
+    2. agent_config is None or has no graph_config → use default builtin (react)
+
+    Args:
+        agent_config: Agent configuration from database (may be None)
+        system_prompt: System prompt to inject if using react agent
+
+    Returns:
+        Tuple of (raw_config_dict, agent_type_key)
+        - raw_config_dict: GraphConfig as dict (for version detection)
+        - agent_type_key: Agent type for events (e.g., "react", "deep_research")
+    """
+    from app.agents.builtin import get_builtin_config
+
+    if agent_config and agent_config.graph_config:
+        # Agent has a graph_config
+        raw_config = agent_config.graph_config
+        metadata = raw_config.get("metadata", {})
+
+        # Check for builtin_key or system_agent_key (legacy)
+        builtin_key = metadata.get("builtin_key") or metadata.get("system_agent_key")
+
+        if builtin_key:
+            # This config references a builtin - use the builtin config
+            builtin_config = get_builtin_config(builtin_key)
+            if builtin_config:
+                # Apply system_prompt override for react
+                config_dict = builtin_config.model_dump()
+                if builtin_key == "react" and system_prompt:
+                    config_dict = _inject_system_prompt(config_dict, system_prompt)
+                return config_dict, builtin_key
+
+            # Builtin not found, use the provided config as-is
+            logger.warning(f"Builtin '{builtin_key}' not found, using provided config")
+            return raw_config, builtin_key or "graph"
+
+        # Pure user-defined graph config
+        return raw_config, "graph"
+
+    # No agent config or no graph_config - use default builtin (react)
+    builtin_config = get_builtin_config(DEFAULT_BUILTIN_AGENT)
+    if not builtin_config:
+        raise ValueError(f"Default builtin agent '{DEFAULT_BUILTIN_AGENT}' not found")
+
+    config_dict = builtin_config.model_dump()
+    if system_prompt:
+        config_dict = _inject_system_prompt(config_dict, system_prompt)
+
+    return config_dict, DEFAULT_BUILTIN_AGENT
+
+
+def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> dict[str, Any]:
+    """
+    Inject system_prompt into a react-style config.
+
+    For configs using stdlib:react component, updates the config_overrides
+    to include the system_prompt.
+
+    Args:
+        config_dict: GraphConfig as dict
+        system_prompt: System prompt to inject
+
+    Returns:
+        Modified config dict with system_prompt injected
+    """
+    # Deep copy to avoid mutating original
+    import copy
+
+    config = copy.deepcopy(config_dict)
+
+    # Find component nodes and inject system_prompt
+    for node in config.get("nodes", []):
+        if node.get("type") == "component":
+            comp_config = node.get("component_config", {})
+            comp_ref = comp_config.get("component_ref", {})
+
+            # Only inject into react components
+            if comp_ref.get("key") == "react":
+                overrides = comp_config.setdefault("config_overrides", {})
+                overrides["system_prompt"] = system_prompt
+
+    return config
 
 
 def _detect_config_version(config: dict) -> str:
-    """Detect the version of a graph config.
+    """
+    Detect the version of a graph config.
 
     Returns:
         Version string (e.g., "1.0", "2.0")
@@ -159,238 +249,168 @@ def _detect_config_version(config: dict) -> str:
     return version
 
 
-async def _create_graph_agent(
-    agent_config: "Agent | None",
+async def _build_graph_agent(
+    raw_config: dict[str, Any],
     llm_factory: LLMFactory,
     tools: list["BaseTool"],
-    event_ctx: AgentEventContext,
-) -> tuple[DynamicCompiledGraph, AgentEventContext]:
-    """Create a JSON-configured graph agent.
-
-    All configs are migrated to v2 and use GraphBuilderV2 with LangGraph primitives.
-    v1 configs are automatically migrated at runtime.
+    system_prompt: str,
+) -> tuple[DynamicCompiledGraph, dict[str, str]]:
     """
-    if not agent_config or not agent_config.graph_config:
-        raise ValueError("Graph agent requires agent_config with graph_config")
+    Build a graph agent from configuration using GraphBuilder.
 
-    from app.agents.graph_builder_v2 import GraphBuilderV2
+    This is the unified build path for all agents (builtin and user-defined).
+    All configs are migrated to v2 format if needed.
+
+    Args:
+        raw_config: GraphConfig as dict (may be v1 or v2)
+        llm_factory: Factory function to create LLM instances
+        tools: List of tools available to the agent
+        system_prompt: System prompt (already injected into config)
+
+    Returns:
+        Tuple of (CompiledStateGraph, node_component_keys)
+    """
+    from app.agents.components import ensure_components_registered
+    from app.agents.graph_builder import GraphBuilder
     from app.schemas.graph_config_v2 import GraphConfig as GraphConfigV2
     from app.schemas.graph_config_v2 import migrate_graph_config
+
+    # Ensure components are registered before building
+    ensure_components_registered()
 
     # Build tool registry
     tool_registry = {t.name: t for t in tools}
 
     # Detect version and migrate if needed
-    version = _detect_config_version(agent_config.graph_config)
+    version = _detect_config_version(raw_config)
 
     if version.startswith("2."):
         # Already v2, just validate
-        graph_config = GraphConfigV2.model_validate(agent_config.graph_config)
-        logger.debug(f"Using v2 config for agent '{agent_config.name}'")
+        graph_config = GraphConfigV2.model_validate(raw_config)
+        logger.debug("Using v2 config")
     else:
         # Auto-migrate v1 to v2
-        logger.info(f"Migrating v1 config to v2 for agent '{agent_config.name}'")
-        graph_config = migrate_graph_config(agent_config.graph_config)
+        logger.info("Migrating v1 config to v2")
+        graph_config = migrate_graph_config(raw_config)
         logger.info(f"Migration complete: {len(graph_config.nodes)} nodes, {len(graph_config.edges)} edges")
 
-    # Always use v2 builder
-    builder = GraphBuilderV2(
+    # Build using GraphBuilder
+    builder = GraphBuilder(
         config=graph_config,
         llm_factory=llm_factory,
         tool_registry=tool_registry,
     )
+
     compiled_graph = builder.build()
-    logger.info(f"Created graph agent '{agent_config.name}' with {len(graph_config.nodes)} nodes")
+    node_component_keys = builder.get_node_component_keys()
 
-    return compiled_graph, event_ctx
-
-
-async def _create_system_agent(
-    system_key: str,
-    agent_config: "Agent | None",
-    llm_factory: LLMFactory,
-    tools: list["BaseTool"],
-    system_prompt: str,
-    event_ctx: AgentEventContext,
-) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
-    """
-    Create a Python-coded system agent.
-
-    Args:
-        system_key: System agent key (e.g., "react", "deep_research")
-        agent_config: Optional agent configuration
-        llm_factory: Factory function to create LLM
-        tools: List of tools available to the agent
-        system_prompt: System prompt for the agent
-        event_ctx: Event context for tracking
-
-    Returns:
-        Tuple of (CompiledStateGraph, AgentEventContext)
-    """
-    from app.agents.system import system_agent_registry
-
-    # Get system agent instance
-    llm = await llm_factory()
-    system_agent = system_agent_registry.get_instance(
-        system_key,
-        llm=llm,
-        tools=tools,
-    )
-
-    if not system_agent:
-        raise ValueError(f"System agent not found: {system_key}")
-
-    # Special handling for react agent - pass system_prompt
-    if system_key == "react":
-        from app.agents.system.react import ReActAgent
-
-        if isinstance(system_agent, ReActAgent):
-            system_agent.system_prompt = system_prompt
-
-    # Build graph
-    compiled_graph = system_agent.build_graph()
-
-    logger.info(f"Created system agent '{system_key}' with {len(tools)} tools")
-    return compiled_graph, event_ctx
-
-
-def _resolve_agent_config(agent_config: "Agent | None") -> tuple[str, str]:
-    """
-    Resolve how to execute an agent based on its graph_config.
-
-    Resolution logic:
-    1. No agent_config → use react fallback
-    2. Agent has graph_config with metadata.system_agent_key → use that system agent
-    3. Agent has graph_config → use graph agent
-    4. Agent has no graph_config → use react fallback
-
-    Args:
-        agent_config: Agent configuration (may be None)
-
-    Returns:
-        Tuple of (agent_type_for_events, system_key)
-        - agent_type_for_events: "graph" or "system" for event tracking
-        - system_key: System agent key (e.g., "react", "deep_research"), empty for pure graph
-    """
-    if agent_config is None:
-        # Default to react system agent
-        return "system", DEFAULT_SYSTEM_AGENT
-
-    # Check graph_config
-    if agent_config.graph_config:
-        # Check for system_agent_key in metadata (uses system agent as base)
-        metadata = agent_config.graph_config.get("metadata", {})
-        system_key = metadata.get("system_agent_key")
-        if system_key:
-            return "system", system_key
-        # Pure graph agent
-        return "graph", ""
-
-    # No graph_config = use react fallback
-    return "system", DEFAULT_SYSTEM_AGENT
+    logger.info(f"Built graph agent with {len(graph_config.nodes)} nodes")
+    return compiled_graph, node_component_keys
 
 
 async def create_agent_from_builtin(
-    builtin_name: str,
-    user_provider_manager: "ProviderManager",
-    provider_id: str | None,
-    model_name: str | None,
-) -> CompiledStateGraph[Any, None, Any, Any] | None:
-    """
-    Create an agent from the builtin registry.
-
-    Args:
-        builtin_name: Name of the builtin agent in registry
-        user_provider_manager: Provider manager for LLM access
-        provider_id: Provider ID to use
-        model_name: Model name to use
-
-    Returns:
-        Compiled StateGraph or None if agent not found
-    """
-    from app.agents import registry
-
-    agent = registry.get_agent(builtin_name)
-    if agent is None:
-        logger.warning(f"Builtin agent '{builtin_name}' not found in registry")
-        return None
-
-    try:
-        graph: CompiledStateGraph[Any, None, Any, Any] = agent.build_graph()
-        logger.info(f"Created builtin agent '{builtin_name}'")
-        return graph
-    except Exception as e:
-        logger.error(f"Failed to build builtin agent '{builtin_name}': {e}")
-        return None
-
-
-async def create_system_agent_graph(
-    system_key: str,
+    builtin_key: str,
     user_provider_manager: "ProviderManager",
     provider_id: str | None,
     model_name: str | None,
     tools: list["BaseTool"] | None = None,
+    system_prompt: str = "",
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext] | None:
     """
-    Create a system agent graph directly by key.
+    Create an agent directly from a builtin config.
 
-    Useful for invoking system agents outside of the normal chat flow.
+    Useful for programmatic agent creation outside of chat flow.
 
     Args:
-        system_key: System agent key (e.g., "deep_research")
+        builtin_key: Key of the builtin agent (e.g., "react", "deep_research")
         user_provider_manager: Provider manager for LLM access
         provider_id: Provider ID to use
         model_name: Model name to use
         tools: Optional tools to provide
+        system_prompt: Optional system prompt override
 
     Returns:
         Tuple of (CompiledStateGraph, AgentEventContext) or None if not found
     """
-    from app.agents.system import system_agent_registry
+    from app.agents.builtin import get_builtin_config
 
-    # Create LLM
-    llm = await user_provider_manager.create_langchain_model(
-        provider_id,
-        model=model_name,
-    )
-
-    # Get system agent
-    system_agent = system_agent_registry.get_instance(
-        system_key,
-        llm=llm,
-        tools=tools or [],
-    )
-
-    if not system_agent:
-        logger.warning(f"System agent '{system_key}' not found")
+    config = get_builtin_config(builtin_key)
+    if not config:
+        logger.warning(f"Builtin agent '{builtin_key}' not found")
         return None
 
-    # Create event context
-    # Use the actual system_key (e.g., "deep_research") as agent_type
-    # so frontend can distinguish between different system agents
-    event_ctx = AgentEventContext(
-        agent_id=system_key,
-        agent_name=system_agent.name,
-        agent_type=system_key,
-    )
+    # Create LLM factory
+    async def create_llm(**kwargs: Any) -> "BaseChatModel":
+        override_model = kwargs.get("model") or model_name
+        override_temp = kwargs.get("temperature")
 
-    # Build graph
+        model_kwargs: dict[str, Any] = {"model": override_model}
+        if override_temp is not None:
+            model_kwargs["temperature"] = override_temp
+
+        return await user_provider_manager.create_langchain_model(
+            provider_id,
+            **model_kwargs,
+        )
+
+    # Get config and inject system prompt if needed
+    config_dict = config.model_dump()
+    if system_prompt:
+        config_dict = _inject_system_prompt(config_dict, system_prompt)
+
+    # Build the agent
     try:
-        graph = system_agent.build_graph()
-        logger.info(f"Created system agent graph '{system_key}'")
-        return graph, event_ctx
+        compiled_graph, node_component_keys = await _build_graph_agent(
+            config_dict,
+            create_llm,
+            tools or [],
+            system_prompt,
+        )
+
+        event_ctx = AgentEventContext(
+            agent_id=builtin_key,
+            agent_name=config.metadata.get("display_name", builtin_key),
+            agent_type=builtin_key,
+        )
+
+        if node_component_keys:
+            event_ctx.node_component_keys = node_component_keys
+
+        logger.info(f"Created builtin agent '{builtin_key}'")
+        return compiled_graph, event_ctx
+
     except Exception as e:
-        logger.error(f"Failed to build system agent '{system_key}': {e}")
+        logger.error(f"Failed to build builtin agent '{builtin_key}': {e}")
         return None
 
 
 def list_available_system_agents() -> list[SystemAgentInfo]:
     """
-    List all available system agents.
+    List all available system/builtin agents.
 
     Returns:
         List of system agent metadata dictionaries
     """
-    from app.agents.system import system_agent_registry
+    from app.agents.builtin import list_builtin_metadata
 
-    return system_agent_registry.get_all_metadata()  # type: ignore[return-value]
+    result: list[SystemAgentInfo] = []
+
+    for metadata in list_builtin_metadata():
+        result.append(
+            {
+                "key": metadata["key"],
+                "metadata": {
+                    "name": metadata["display_name"],
+                    "description": metadata.get("description", ""),
+                    "version": metadata.get("version", "1.0.0"),
+                    "capabilities": [],
+                    "tags": [],
+                    "author": metadata.get("author"),
+                    "license": None,
+                },
+                "forkable": metadata.get("forkable", True),
+                "components": [],  # Components are now registered globally
+            }
+        )
+
+    return result

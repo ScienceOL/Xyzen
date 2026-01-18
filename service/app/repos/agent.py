@@ -203,22 +203,25 @@ class AgentRepository:
         # Extract MCP server IDs before creating agent
         mcp_server_ids = agent_data.mcp_server_ids
 
-        # Generate graph_config if not provided (single source of truth: ReActAgent)
+        # Generate graph_config if not provided (single source of truth: builtin react config)
         graph_config = agent_data.graph_config
         if graph_config is None:
-            from app.agents.system.react import ReActAgent
+            from app.agents.builtin import get_builtin_config
 
-            system_prompt = agent_data.prompt or "You are a helpful assistant."
-            react_agent = ReActAgent(system_prompt=system_prompt)
-            graph_config = react_agent.export_graph_config().model_dump()
+            # Get the builtin react config
+            builtin_config = get_builtin_config("react")
+            if not builtin_config:
+                raise ValueError("Default 'react' builtin agent not found")
 
-            # Add system_agent_key to metadata so the agent uses native ReActAgent at runtime
+            graph_config = builtin_config.model_dump()
+
+            # Add builtin_key to metadata so the agent uses the builtin at runtime
             # This ensures consistent behavior between custom agents and template-based agents
             if "metadata" not in graph_config:
                 graph_config["metadata"] = {}
-            graph_config["metadata"]["system_agent_key"] = "react"
+            graph_config["metadata"]["builtin_key"] = "react"
 
-            logger.debug("Generated default ReAct graph_config for agent with system_agent_key")
+            logger.debug("Generated default ReAct graph_config for agent with builtin_key")
 
         # Create agent without mcp_server_ids (which isn't a model field)
         agent_dict = agent_data.model_dump(exclude={"mcp_server_ids"})

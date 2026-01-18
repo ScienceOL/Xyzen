@@ -8,7 +8,7 @@ from fastmcp.server.dependencies import get_access_token
 
 from app.configs import configs
 from app.middleware.auth import AuthProvider
-from app.utils.tool_loader import tool_loader
+from app.tools.dynamic.loader import tool_loader
 
 logger = logging.getLogger(__name__)
 

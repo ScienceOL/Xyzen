@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastmcp import FastMCP
 
-from app.utils.built_in_tools import register_built_in_tools
+from app.mcp.builtin_tools import register_built_in_tools
 
 
 class TestBuiltInTools:
@@ -27,7 +27,7 @@ class TestBuiltInTools:
         assert mock_mcp.tool.call_count >= 4  # We have at least 4 tools
         assert mock_mcp.resource.call_count >= 1  # We have at least 1 resource
 
-    @patch("app.utils.built_in_tools.request.urlopen")
+    @patch("app.mcp.builtin_tools.request.urlopen")
     def test_search_github_success(self, mock_urlopen: MagicMock, mock_mcp: MagicMock) -> None:
         """Test GitHub search tool with successful response."""
         # Mock response data
@@ -62,7 +62,7 @@ class TestBuiltInTools:
         mock_response.__exit__ = MagicMock(return_value=None)
         mock_urlopen.return_value = mock_response
 
-        with patch("app.utils.built_in_tools.json.load") as mock_json_load:
+        with patch("app.mcp.builtin_tools.json.load") as mock_json_load:
             mock_json_load.return_value = mock_response_data
 
             register_built_in_tools(mock_mcp)
@@ -74,7 +74,7 @@ class TestBuiltInTools:
             # For this test, we'll verify the mock was set up correctly
             assert mock_mcp.tool.called
 
-    @patch("app.utils.built_in_tools.request.urlopen")
+    @patch("app.mcp.builtin_tools.request.urlopen")
     def test_search_github_empty_query(self, mock_urlopen: MagicMock, mock_mcp: MagicMock) -> None:
         """Test GitHub search with empty query."""
         register_built_in_tools(mock_mcp)
@@ -83,7 +83,7 @@ class TestBuiltInTools:
         # For now, we verify the registration happened
         assert mock_mcp.tool.called
 
-    @patch("app.utils.built_in_tools.request.urlopen")
+    @patch("app.mcp.builtin_tools.request.urlopen")
     def test_search_github_api_error(self, mock_urlopen: MagicMock, mock_mcp: MagicMock) -> None:
         """Test GitHub search with API error."""
         # Mock URL open to raise an exception
@@ -107,7 +107,7 @@ class TestBuiltInTools:
 
     async def test_llm_web_search_no_auth(self, mock_mcp: MagicMock) -> None:
         """Test LLM web search without authentication."""
-        with patch("app.utils.built_in_tools.get_access_token") as mock_get_token:
+        with patch("app.mcp.builtin_tools.get_access_token") as mock_get_token:
             mock_get_token.return_value = None
 
             register_built_in_tools(mock_mcp)
@@ -148,9 +148,9 @@ class TestBuiltInTools:
     async def test_refresh_tools_success(self, mock_mcp: MagicMock) -> None:
         """Test refresh tools functionality."""
         with (
-            patch("app.utils.built_in_tools.get_access_token") as mock_get_token,
-            patch("app.utils.built_in_tools.AuthProvider") as mock_auth_provider,
-            patch("app.utils.built_in_tools.tool_loader") as mock_tool_loader,
+            patch("app.mcp.builtin_tools.get_access_token") as mock_get_token,
+            patch("app.mcp.builtin_tools.AuthProvider") as mock_auth_provider,
+            patch("app.mcp.builtin_tools.tool_loader") as mock_tool_loader,
         ):
             # Mock authentication
             mock_token = MagicMock()
@@ -175,7 +175,7 @@ class TestBuiltInTools:
 
     async def test_refresh_tools_no_auth(self, mock_mcp: MagicMock) -> None:
         """Test refresh tools without authentication."""
-        with patch("app.utils.built_in_tools.get_access_token") as mock_get_token:
+        with patch("app.mcp.builtin_tools.get_access_token") as mock_get_token:
             mock_get_token.return_value = None
 
             register_built_in_tools(mock_mcp)
@@ -185,7 +185,7 @@ class TestBuiltInTools:
 
     def test_get_server_status(self, mock_mcp: MagicMock) -> None:
         """Test get server status tool."""
-        with patch("app.utils.built_in_tools.tool_loader") as mock_tool_loader:
+        with patch("app.mcp.builtin_tools.tool_loader") as mock_tool_loader:
             mock_proxy_manager = MagicMock()
             mock_proxy_manager.list_proxies.return_value = ["proxy1", "proxy2"]
             mock_tool_loader.proxy_manager = mock_proxy_manager

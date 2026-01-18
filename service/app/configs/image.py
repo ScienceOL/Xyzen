@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 class ImageConfig(BaseModel):
     """Configuration for image generation and vision tools."""
 
-    Enable: bool = Field(default=True, description="Enable image generation tools")
     Provider: str = Field(
         default="google_vertex",
         description="Provider for image generation (e.g., google_vertex, openai)",

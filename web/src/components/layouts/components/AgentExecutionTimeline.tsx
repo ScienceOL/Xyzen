@@ -74,6 +74,7 @@ export default function AgentExecutionTimeline({
                 <AgentStepAccordion
                   phase={phaseForDisplay}
                   isActive={isActive}
+                  toolCalls={phase.toolCalls}
                 />
               </div>
             );

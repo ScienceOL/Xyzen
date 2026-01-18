@@ -1,15 +1,32 @@
+"""
+Database Tool Loader - Loads user-created dynamic tools from database.
+
+.. deprecated::
+    This module is deprecated and will be replaced in a future refactor.
+    The MCP-based dynamic tool system will be redesigned.
+
+    Do not build new features on this module.
+"""
+
 import json
 import logging
+import warnings
 from typing import Any, Dict, Optional
 
-from fastmcp import FastMCP
-from fastmcp.tools import FunctionTool
+warnings.warn(
+    "app.tools.dynamic.loader is deprecated and will be refactored. Do not build new features on this module.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-from app.infra.database import AsyncSessionLocal
-from app.models.tool import ToolFunction, ToolStatus, ToolVersion
-from app.repos.tool import ToolRepository
-from app.utils.parser import parse_requirements
-from app.utils.tool_proxy import ContainerToolProxy, ToolProxyManager
+from fastmcp import FastMCP  # noqa: E402
+from fastmcp.tools import FunctionTool  # noqa: E402
+
+from app.infra.database import AsyncSessionLocal  # noqa: E402
+from app.models.tool import ToolFunction, ToolStatus, ToolVersion  # noqa: E402
+from app.repos.tool import ToolRepository  # noqa: E402
+from app.tools.dynamic.proxy import ContainerToolProxy, ToolProxyManager  # noqa: E402
+from app.utils.parser import parse_requirements  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

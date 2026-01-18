@@ -1,11 +1,11 @@
-"""Tests for graph_builder_v2 module."""
+"""Tests for graph_builder module."""
 
 import pytest
 from unittest.mock import AsyncMock
 
 from pydantic import BaseModel
 
-from app.agents.graph_builder_v2 import GraphBuilderV2, build_state_class_v2
+from app.agents.graph_builder import GraphBuilder, build_state_class
 from app.schemas.graph_config_v2 import (
     GraphConfig,
     GraphNodeConfig,
@@ -17,25 +17,25 @@ from app.schemas.graph_config_v2 import (
 )
 
 
-class TestBuildStateClassV2:
-    """Test build_state_class_v2 function."""
+class TestBuildStateClass:
+    """Test build_state_class function."""
 
     def test_creates_pydantic_model(self) -> None:
         """Test that function creates a Pydantic model."""
         config = GraphConfig(nodes=[], edges=[])
-        state_class = build_state_class_v2(config)
+        state_class = build_state_class(config)
         assert issubclass(state_class, BaseModel)
 
     def test_has_messages_field(self) -> None:
         """Test state class has messages field."""
         config = GraphConfig(nodes=[], edges=[])
-        state_class = build_state_class_v2(config)
+        state_class = build_state_class(config)
         assert "messages" in state_class.model_fields
 
     def test_has_execution_context_field(self) -> None:
         """Test state class has execution_context field."""
         config = GraphConfig(nodes=[], edges=[])
-        state_class = build_state_class_v2(config)
+        state_class = build_state_class(config)
         assert "execution_context" in state_class.model_fields
 
     def test_custom_state_fields(self) -> None:
@@ -47,18 +47,18 @@ class TestBuildStateClassV2:
                 "counter": StateFieldSchema(type="int"),
             },
         )
-        state_class = build_state_class_v2(config)
+        state_class = build_state_class(config)
         assert "counter" in state_class.model_fields
 
 
-class TestGraphBuilderV2Init:
-    """Test GraphBuilderV2 initialization."""
+class TestGraphBuilderInit:
+    """Test GraphBuilder initialization."""
 
     def test_init_with_valid_config(self) -> None:
         """Test initialization with valid config."""
         config = create_react_config("Test")
         llm_factory = AsyncMock()
-        builder = GraphBuilderV2(
+        builder = GraphBuilder(
             config=config,
             llm_factory=llm_factory,
             tool_registry={},
@@ -74,15 +74,15 @@ class TestGraphBuilderV2Init:
         )
         llm_factory = AsyncMock()
         with pytest.raises(ValueError):
-            GraphBuilderV2(
+            GraphBuilder(
                 config=config,
                 llm_factory=llm_factory,
                 tool_registry={},
             )
 
 
-class TestGraphBuilderV2Build:
-    """Test GraphBuilderV2.build method."""
+class TestGraphBuilderBuild:
+    """Test GraphBuilder.build method."""
 
     def test_build_simple_graph(self) -> None:
         """Test build with a simple LLM-only graph."""
@@ -105,7 +105,7 @@ class TestGraphBuilderV2Build:
             entry_point="agent",
         )
         llm_factory = AsyncMock()
-        builder = GraphBuilderV2(
+        builder = GraphBuilder(
             config=config,
             llm_factory=llm_factory,
             tool_registry={},

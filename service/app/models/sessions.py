@@ -55,10 +55,10 @@ def uuid_to_builtin_agent_id(agent_uuid: UUID) -> str | None:
         The original builtin agent string ID if found, None otherwise
     """
     try:
-        from app.agents import registry as builtin_registry
+        from app.agents.builtin import list_builtin_keys
 
         # Check all registered builtin agents
-        for agent_name in builtin_registry.list_agent_names():
+        for agent_name in list_builtin_keys():
             builtin_agent_id = f"builtin_{agent_name}"
             if builtin_agent_id_to_uuid(builtin_agent_id) == agent_uuid:
                 return builtin_agent_id

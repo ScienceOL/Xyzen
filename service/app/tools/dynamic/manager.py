@@ -1,27 +1,40 @@
 """
-MCP Tool Management - Tool and function management for MCP server
+MCP Tool Management - Tool and function management for MCP server.
+
+.. deprecated::
+    This module is deprecated and will be replaced in a future refactor.
+    The MCP-based dynamic tool system will be redesigned.
+
+    Do not build new features on this module.
 """
 
 import logging
 import uuid
+import warnings
 from datetime import datetime, timedelta
 from typing import Any
 
-from fastmcp import FastMCP
-from fastmcp.server.dependencies import AccessToken, get_access_token
+warnings.warn(
+    "app.tools.dynamic.manager is deprecated and will be refactored. Do not build new features on this module.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-from app.infra.database import AsyncSessionLocal
-from app.middleware.auth import AuthProvider, UserInfo
-from app.models.tool import (
+from fastmcp import FastMCP  # noqa: E402
+from fastmcp.server.dependencies import AccessToken, get_access_token  # noqa: E402
+
+from app.infra.database import AsyncSessionLocal  # noqa: E402
+from app.middleware.auth import AuthProvider, UserInfo  # noqa: E402
+from app.models.tool import (  # noqa: E402
     ToolCreate,
     ToolFunctionCreate,
     ToolStatus,
     ToolUpdate,
     ToolVersionCreate,
 )
-from app.repos.tool import ToolRepository
-from app.utils.code_analyzer import discover_functions_from_code, generate_basic_schema
-from app.utils.tool_loader import tool_loader
+from app.repos.tool import ToolRepository  # noqa: E402
+from app.tools.dynamic.loader import tool_loader  # noqa: E402
+from app.utils.code_analyzer import discover_functions_from_code, generate_basic_schema  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

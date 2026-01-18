@@ -183,24 +183,33 @@ async def create_agent_from_template(
     Raises:
         HTTPException: 404 if system agent template not found
     """
-    from app.agents.system import system_agent_registry
+    from app.agents.builtin import get_builtin_config, get_builtin_metadata
 
-    # Get the system agent class
-    agent_class = system_agent_registry.get_class(system_key)
-    if not agent_class:
+    # Get the builtin config
+    builtin_config = get_builtin_config(system_key)
+    if not builtin_config:
         raise HTTPException(status_code=404, detail=f"System agent template '{system_key}' not found")
 
-    # Create an instance and get the forkable config (includes graph_config)
-    system_agent = agent_class()
-    forkable_config = system_agent.get_forkable_config()
+    # Get metadata for display info
+    metadata = get_builtin_metadata(system_key)
+    display_name = metadata.get("display_name", system_key) if metadata else system_key
+    description = metadata.get("description", "") if metadata else ""
+
+    # Export config for forking
+    graph_config_dict = builtin_config.model_dump()
+
+    # Add builtin_key to metadata so the agent can reference the builtin at runtime
+    if "metadata" not in graph_config_dict:
+        graph_config_dict["metadata"] = {}
+    graph_config_dict["metadata"]["builtin_key"] = system_key
 
     # Create the agent with the exported graph_config
     agent_data = AgentCreate(
         scope=AgentScope.USER,
-        name=forkable_config.get("name", system_agent.name),
-        description=forkable_config.get("description", system_agent.description),
-        tags=forkable_config.get("tags", []),
-        graph_config=forkable_config.get("graph_config"),
+        name=f"{display_name} (Custom)",
+        description=description,
+        tags=["forked", f"from:{system_key}"],
+        graph_config=graph_config_dict,
     )
 
     agent_repo = AgentRepository(db)

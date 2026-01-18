@@ -55,6 +55,8 @@ class AgentEventContext:
     started_at: float = field(default_factory=time.time)
     current_node: str | None = None
     current_phase: str | None = None
+    # Mapping of node_id -> component_key for v2 COMPONENT nodes
+    node_component_keys: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Initialize execution path if empty."""

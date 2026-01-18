@@ -34,6 +34,7 @@ class NodeType(StrEnum):
     LLM = "llm"  # LLM call with optional structured output
     TOOL = "tool"  # Tool execution (uses LangGraph's ToolNode)
     TRANSFORM = "transform"  # Data transformation
+    COMPONENT = "component"  # Reference to a registered ExecutableComponent
 
 
 class ReducerType(StrEnum):
@@ -212,6 +213,33 @@ class TransformNodeConfig(BaseModel):
     )
 
 
+# --- Component Node Configuration ---
+
+
+class ComponentReference(BaseModel):
+    """Reference to a registered ExecutableComponent."""
+
+    key: str = Field(description="Component key (e.g., 'system:deep_research:supervisor', 'stdlib:react')")
+    version: str = Field(
+        default="*",
+        description="SemVer constraint (e.g., '^2.0', '>=1.0.0', '*' for any)",
+    )
+
+
+class ComponentNodeConfig(BaseModel):
+    """Configuration for component nodes.
+
+    Component nodes reference ExecutableComponents from the component registry.
+    At build time, the component is resolved and its build_graph() method is called.
+    """
+
+    component_ref: ComponentReference = Field(description="Reference to the component (key and version constraint)")
+    config_overrides: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Runtime configuration overrides passed to build_graph()",
+    )
+
+
 # --- Edge Conditions ---
 
 
@@ -239,6 +267,7 @@ class GraphNodeConfig(BaseModel):
     llm_config: LLMNodeConfig | None = None
     tool_config: ToolNodeConfig | None = None
     transform_config: TransformNodeConfig | None = None
+    component_config: ComponentNodeConfig | None = None
 
     # UI positioning for visual editor
     position: dict[str, float] | None = Field(
@@ -364,6 +393,11 @@ def validate_graph_config(config: GraphConfig) -> list[str]:
             case NodeType.TRANSFORM:
                 if not node.transform_config:
                     errors.append(f"Node '{node.id}' is type TRANSFORM but missing transform_config")
+            case NodeType.COMPONENT:
+                if not node.component_config:
+                    errors.append(f"Node '{node.id}' is type COMPONENT but missing component_config")
+                elif not node.component_config.component_ref.key:
+                    errors.append(f"Node '{node.id}' component_config missing component_ref.key")
 
     # Check reachability
     reachable = {"START"}
@@ -687,6 +721,9 @@ __all__ = [
     "LLMNodeConfig",
     "ToolNodeConfig",
     "TransformNodeConfig",
+    # Component configs
+    "ComponentReference",
+    "ComponentNodeConfig",
     # Edge
     "CustomCondition",
     "GraphEdgeConfig",

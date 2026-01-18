@@ -2,7 +2,7 @@
 
 # Xyzen
 
-Your Next Agent Capital!
+Your next agent platform for multi-agent orchestration, real-time chat, and document processing.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
@@ -15,6 +15,19 @@ Your Next Agent Capital!
 [![Prod Build](https://github.com/ScienceOL/Xyzen/actions/workflows/prod-build.yaml/badge.svg)](https://github.com/ScienceOL/Xyzen/actions/workflows/prod-build.yaml)
 [![Test Suite](https://github.com/ScienceOL/Xyzen/actions/workflows/test.yaml/badge.svg)](https://github.com/ScienceOL/Xyzen/actions/workflows/test.yaml)
 [![codecov](https://codecov.io/github/ScienceOL/Xyzen/graph/badge.svg?token=91W3GO7CRI)](https://codecov.io/github/ScienceOL/Xyzen)
+
+## Language Versions
+
+[![English](https://img.shields.io/badge/Language-English-blue)](README.md)
+[![中文文档](https://img.shields.io/badge/Language-中文-orange)](README_zh.md)
+
+## Overview
+
+Xyzen is an AI lab server built with FastAPI + LangGraph on the backend and React + Zustand on the frontend. It provides multi-agent orchestration, WebSocket streaming chat, and extensible provider + MCP integrations.
+
+- Backend: `service/` (FastAPI, LangGraph, SQLModel, Celery)
+- Frontend: `web/` (React, Zustand, shadcn/ui)
+- Docs: `service/README.md`, `web/README.md`, `AGENTS.md`
 
 ## Getting Started
 
@@ -103,9 +116,9 @@ The script will automatically:
 ./launch/dev.sh -h
 ```
 
-## AI Agent Configuration
+## AI Assistant Rules
 
-Xyzen uses a standardized instruction file for AI coding assistants to ensuring consistency across different tools.
+Xyzen uses a standardized instruction file for AI coding assistants to keep tool-specific rules aligned.
 
 The master file is located at **[`AGENTS.md`](./AGENTS.md)**.
 
@@ -202,4 +215,4 @@ The pre-commit hooks include:
 6. Commit your changes and push to your fork
 7. Open a pull request against the `main` branch of `ScienceOL/Xyzen`
 
-Please open an issue or discussion for questions or suggestions before starting significant work!
+Please open an issue or discussion for questions or suggestions before starting significant work.

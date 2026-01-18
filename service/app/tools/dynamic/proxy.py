@@ -1,26 +1,39 @@
 #!/usr/bin/env python3
 """
-Tool Proxy - 工具代理模块
+Tool Proxy - Container-based tool execution proxy.
 
-为独立环境中的工具提供代理功能：
-- 在主进程中创建工具代理
-- 通过子进程执行实际的工具调用
-- 处理参数序列化和结果反序列化
+Provides proxy functionality for tools in isolated environments:
+- Create tool proxies in main process
+- Execute actual tool calls via subprocess
+- Handle argument serialization and result deserialization
+
+.. deprecated::
+    This module is deprecated and will be replaced in a future refactor.
+    The MCP-based dynamic tool system will be redesigned.
+
+    Do not build new features on this module.
 """
 
 import json
 import logging
+import warnings
 from typing import Any
 
-from llm_sandbox import SandboxBackend, SandboxSession
-from llm_sandbox.exceptions import SandboxTimeoutError
-from llm_sandbox.security import (
+warnings.warn(
+    "app.tools.dynamic.proxy is deprecated and will be refactored. Do not build new features on this module.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from llm_sandbox import SandboxBackend, SandboxSession  # noqa: E402
+from llm_sandbox.exceptions import SandboxTimeoutError  # noqa: E402
+from llm_sandbox.security import (  # noqa: E402
     SecurityIssueSeverity,
     SecurityPattern,
     SecurityPolicy,
 )
 
-from app.configs import configs
+from app.configs import configs  # noqa: E402
 
 logger = logging.getLogger(__name__)
 policy = SecurityPolicy(

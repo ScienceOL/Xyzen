@@ -204,6 +204,15 @@ docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic upgrade head"
 
 **Note**: Register new models in `models/__init__.py` before generating migrations.
 
+## Database Queries
+
+Query PostgreSQL directly for debugging (credentials: `postgres/postgres`, database: `postgres`):
+
+```bash
+# List tables
+docker exec sciol-xyzen-postgresql-1 psql -U postgres -d postgres -c "\dt"
+```
+
 ## Code Style
 
 **Python**: Use `list[T]`, `dict[K,V]`, `str | None` (not `List`, `Dict`, `Optional`)

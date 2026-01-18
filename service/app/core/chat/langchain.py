@@ -14,12 +14,10 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 from langgraph.graph.state import CompiledStateGraph
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.agents.factory import create_chat_agent
-from app.agents.mcp_tools import format_tool_result
+from app.tools.mcp import format_tool_result
 from app.core.chat.agent_event_handler import AgentEventContext
 from app.core.chat.history import load_conversation_history
 from app.core.chat.stream_handlers import (
-    AgentEventStreamHandler,
     CitationExtractor,
     GeneratedFileHandler,
     StreamContext,
@@ -28,6 +26,7 @@ from app.core.chat.stream_handlers import (
     TokenStreamProcessor,
     ToolEventHandler,
 )
+from app.core.chat.tracer import LangGraphTracer
 from app.core.prompts import build_system_prompt
 from app.core.providers import get_user_provider_manager
 from app.models.topic import Topic as TopicModel
@@ -268,6 +267,8 @@ async def _create_langchain_agent(
     system_prompt: str,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """Create and configure the LangChain agent using the agent factory."""
+    from app.agents.factory import create_chat_agent
+
     graph, event_ctx = await create_chat_agent(
         db=db,
         agent_config=agent,
@@ -292,77 +293,106 @@ async def _process_agent_stream(
     if ctx.event_ctx:
         logger.info(f"[AgentEvent] agent_name={ctx.event_ctx.agent_name}, agent_type={ctx.event_ctx.agent_type}")
 
-    # Emit agent_start event
+    # Create tracer for centralized event tracking
+    tracer = LangGraphTracer(
+        stream_id=ctx.stream_id,
+        event_ctx=ctx.event_ctx,
+        db=ctx.db,
+    )
+
+    # Emit agent_start event via tracer
     if ctx.event_ctx:
-        agent_start_event = AgentEventStreamHandler.create_agent_start_event(ctx)
+        agent_start_event = tracer.on_agent_start()
         if agent_start_event:
+            ctx.agent_started = True
+            ctx.agent_start_time = tracer.agent_start_time
             logger.info(f"[AgentEvent] Emitting agent_start for {ctx.event_ctx.agent_name}")
             yield agent_start_event
 
     chunk_count = 0
+    agent_error: Exception | None = None
 
-    async for chunk in agent.astream({"messages": history_messages}, stream_mode=["updates", "messages"]):
-        chunk_count += 1
-        try:
-            mode, data = chunk
-            logger.info(f"[Chunk {chunk_count}] mode={mode}, data_type={type(data).__name__}")
-        except Exception:
-            logger.warning("Received malformed chunk from astream: %r", chunk)
-            continue
+    try:
+        async for chunk in agent.astream({"messages": history_messages}, stream_mode=["updates", "messages"]):
+            chunk_count += 1
+            try:
+                mode, data = chunk
+                logger.info(f"[Chunk {chunk_count}] mode={mode}, data_type={type(data).__name__}")
+            except Exception:
+                logger.warning("Received malformed chunk from astream: %r", chunk)
+                continue
 
-        if mode == "updates":
-            if isinstance(data, dict):
-                logger.info(f"[Updates] step_names={list(data.keys())}")
-                # Log content of each step for debugging
-                # NOTE: Node events are primarily emitted from messages mode for accurate timing
-                # Updates mode handles non-streaming nodes (structured output nodes)
-                # that were already handled in _handle_updates_mode
-                for step_name, step_data in data.items():
-                    messages = step_data.get("messages", []) if isinstance(step_data, dict) else []
-                    logger.info(f"[Updates/{step_name}] messages_count={len(messages)}")
-                    if messages:
-                        last_msg = messages[-1]
-                        logger.info(
-                            f"[Updates/{step_name}] last_msg_type={type(last_msg).__name__}, has_content={hasattr(last_msg, 'content')}"
-                        )
-            async for event in _handle_updates_mode(data, ctx):
-                yield event
-        elif mode == "messages":
-            if isinstance(data, tuple) and len(data) >= 2:
-                msg_chunk, metadata = data
-                if isinstance(metadata, dict):
-                    node = metadata.get("langgraph_node") or metadata.get("node")
-                    logger.info(f"[Messages] node={node}, chunk_type={type(msg_chunk).__name__}")
-                    # Log if there's content in the chunk
-                    if hasattr(msg_chunk, "content"):
-                        content = msg_chunk.content
-                        content_preview = str(content)[:100] if content else "None"
-                        logger.info(f"[Messages] content_preview={content_preview}")
-            async for event in _handle_messages_mode(data, ctx):
-                yield event
+            if mode == "updates":
+                if isinstance(data, dict):
+                    logger.info(f"[Updates] step_names={list(data.keys())}")
+                    # Log content of each step for debugging
+                    # NOTE: Node events are primarily emitted from messages mode for accurate timing
+                    # Updates mode handles non-streaming nodes (structured output nodes)
+                    # that were already handled in _handle_updates_mode
+                    for step_name, step_data in data.items():
+                        messages = step_data.get("messages", []) if isinstance(step_data, dict) else []
+                        logger.info(f"[Updates/{step_name}] messages_count={len(messages)}")
+                        if messages:
+                            last_msg = messages[-1]
+                            logger.info(
+                                f"[Updates/{step_name}] last_msg_type={type(last_msg).__name__}, has_content={hasattr(last_msg, 'content')}"
+                            )
+                async for event in _handle_updates_mode(data, ctx, tracer):
+                    yield event
+            elif mode == "messages":
+                if isinstance(data, tuple) and len(data) >= 2:
+                    msg_chunk, metadata = data
+                    if isinstance(metadata, dict):
+                        node = metadata.get("langgraph_node") or metadata.get("node")
+                        logger.info(f"[Messages] node={node}, chunk_type={type(msg_chunk).__name__}")
+                        # Log if there's content in the chunk
+                        if hasattr(msg_chunk, "content"):
+                            content = msg_chunk.content
+                            content_preview = str(content)[:100] if content else "None"
+                            logger.info(f"[Messages] content_preview={content_preview}")
+                async for event in _handle_messages_mode(data, ctx, tracer):
+                    yield event
 
+    except Exception as e:
+        # Capture the error for agent_end status
+        agent_error = e
+        logger.error(f"Error during agent stream: {e}", exc_info=True)
+        # Don't re-raise - we'll yield finalization events and then an error event
+
+    # Finalization (always runs, even after error)
     logger.info(f"Stream finished after {chunk_count} chunks, is_streaming={ctx.is_streaming}")
 
-    # Emit node_end for the last node
-    if ctx.current_node:
-        node_end_event = AgentEventStreamHandler.create_node_end_event(ctx, ctx.current_node)
+    # Emit node_end for the last node via tracer
+    current_node_id = tracer.get_current_node_id()
+    if current_node_id:
+        # Collect streamed content as output for the final node
+        final_output = "".join(ctx.assistant_buffer) if ctx.assistant_buffer else None
+        status = "failed" if agent_error else "completed"
+        node_end_event = tracer.on_node_end(current_node_id, status, output=final_output)
         if node_end_event:
-            logger.info(f"[AgentEvent] Emitting final node_end for {ctx.current_node}")
+            logger.info(f"[AgentEvent] Emitting final node_end for {current_node_id}")
             yield node_end_event
 
     # Finalize streaming
-    async for event in _finalize_streaming(ctx):
+    async for event in _finalize_streaming(ctx, tracer):
         yield event
 
-    # Emit agent_end event
+    # Emit agent_end event via tracer (always emit, with correct status)
     if ctx.event_ctx and ctx.agent_started:
-        agent_end_event = AgentEventStreamHandler.create_agent_end_event(ctx, "completed")
+        status = "failed" if agent_error else "completed"
+        agent_end_event = tracer.on_agent_end(status)
         if agent_end_event:
-            logger.info(f"[AgentEvent] Emitting agent_end for {ctx.event_ctx.agent_name}")
+            logger.info(f"[AgentEvent] Emitting agent_end for {ctx.event_ctx.agent_name} (status={status})")
             yield agent_end_event
 
+    # If there was an error, re-raise it AFTER finalization events are yielded
+    if agent_error:
+        raise agent_error
 
-async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
+
+async def _handle_updates_mode(
+    data: Any, ctx: StreamContext, tracer: LangGraphTracer
+) -> AsyncGenerator[StreamingEvent, None]:
     """Handle 'updates' mode events (tool calls, model responses)."""
     if not isinstance(data, dict):
         return
@@ -370,7 +400,26 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
     for step_name, step_data in data.items():
         logger.debug("Update step: %s", step_name)
 
-        # Skip if step_data is None or not a dict
+        # Emit node transition events for ALL steps (not just ones with messages)
+        # This ensures all nodes (clarify, brief, supervisor, final_report) get proper events
+        if step_name != tracer.get_current_node_id() and step_name not in ("tools",):
+            current_node = tracer.get_current_node_id()
+            if current_node:
+                # Capture streamed content as output for the ending node
+                node_output = "".join(ctx.assistant_buffer) if ctx.assistant_buffer else None
+                node_end_event = tracer.on_node_end(current_node, "completed", output=node_output)
+                if node_end_event:
+                    logger.info(f"[AgentEvent/Updates] Emitting node_end for {current_node}")
+                    yield node_end_event
+                # Clear buffer for next node
+                ctx.assistant_buffer.clear()
+            node_start_event = tracer.on_node_start(step_name, step_name, "llm")
+            if node_start_event:
+                logger.info(f"[AgentEvent/Updates] Emitting node_start for {step_name}")
+                yield node_start_event
+            ctx.current_node = step_name
+
+        # Skip further processing if step_data is None or not a dict
         if not step_data or not isinstance(step_data, dict):
             continue
 
@@ -385,26 +434,26 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
             msg_agent_state = last_message.additional_kwargs.get("agent_state")
             if msg_agent_state:
                 logger.debug("Extracted agent_state from step '%s': %s", step_name, list(msg_agent_state.keys()))
-                # Initialize agent_state with context info for persistence
+                # Record node outputs to tracer for timeline
+                if "node_outputs" in msg_agent_state:
+                    for node_id, output in msg_agent_state["node_outputs"].items():
+                        node_name = msg_agent_state.get("node_names", {}).get(node_id)
+                        tracer.record_node_output(node_id, output, node_name)
+                # Also maintain ctx.agent_state for backward compatibility
                 if ctx.agent_state is None:
                     ctx.agent_state = {"node_outputs": {}, "node_order": [], "node_names": {}}
-                    # Include agent identification for persistence (from event context)
                     if ctx.event_ctx:
                         ctx.agent_state["agent_id"] = ctx.event_ctx.agent_id
                         ctx.agent_state["agent_name"] = ctx.event_ctx.agent_name
                         ctx.agent_state["agent_type"] = ctx.event_ctx.agent_type
                         ctx.agent_state["execution_id"] = ctx.event_ctx.execution_id
-                # Merge node outputs and track execution order
                 if "node_outputs" in msg_agent_state:
                     for node_id in msg_agent_state["node_outputs"]:
-                        # Track order of node execution
                         if node_id not in ctx.agent_state.get("node_order", []):
                             ctx.agent_state.setdefault("node_order", []).append(node_id)
                         ctx.agent_state["node_outputs"][node_id] = msg_agent_state["node_outputs"][node_id]
-                # Merge node display names
                 if "node_names" in msg_agent_state:
                     ctx.agent_state.setdefault("node_names", {}).update(msg_agent_state["node_names"])
-                # Track current node
                 if "current_node" in msg_agent_state:
                     ctx.agent_state["current_node"] = msg_agent_state["current_node"]
 
@@ -455,16 +504,6 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
             if isinstance(content, str) and content:
                 logger.debug("Structured output from '%s': %s", step_name, content[:100])
 
-                # Emit node_start if not already current node
-                if step_name != ctx.current_node:
-                    if ctx.current_node:
-                        node_end_event = AgentEventStreamHandler.create_node_end_event(ctx, ctx.current_node)
-                        if node_end_event:
-                            yield node_end_event
-                    node_start_event = AgentEventStreamHandler.create_node_start_event(ctx, step_name)
-                    if node_start_event:
-                        yield node_start_event
-
                 # Emit the content as if it was streamed (single chunk for the whole message)
                 if not ctx.is_streaming:
                     ctx.is_streaming = True
@@ -493,7 +532,9 @@ async def _handle_updates_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[
                     yield CitationExtractor.create_citations_event(citations)
 
 
-async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
+async def _handle_messages_mode(
+    data: Any, ctx: StreamContext, tracer: LangGraphTracer
+) -> AsyncGenerator[StreamingEvent, None]:
     """Handle 'messages' mode events (token streaming and thinking content)."""
     if not isinstance(data, tuple):
         return
@@ -532,19 +573,28 @@ async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator
 
     # Emit node events based on streaming metadata (more accurate timing than updates mode)
     # This ensures node_start is emitted BEFORE streaming chunks for that node
-    if node and node != ctx.current_node:
-        # Emit node_end for previous node
-        if ctx.current_node:
-            node_end_event = AgentEventStreamHandler.create_node_end_event(ctx, ctx.current_node)
+    # Use tracer's detect_node_transition for consistent node tracking
+    new_node = tracer.detect_node_transition(metadata) if isinstance(metadata, dict) else None
+    if new_node:
+        # Emit node_end for previous node via tracer
+        current_node = tracer.get_current_node_id()
+        if current_node:
+            # Capture streamed content as output for the ending node
+            node_output = "".join(ctx.assistant_buffer) if ctx.assistant_buffer else None
+            node_end_event = tracer.on_node_end(current_node, "completed", output=node_output)
             if node_end_event:
-                logger.info(f"[AgentEvent/Messages] Emitting node_end for {ctx.current_node}")
+                logger.info(f"[AgentEvent/Messages] Emitting node_end for {current_node}")
                 yield node_end_event
+            # Clear buffer for next node
+            ctx.assistant_buffer.clear()
 
-        # Emit node_start for new node
-        node_start_event = AgentEventStreamHandler.create_node_start_event(ctx, node)
+        # Emit node_start for new node via tracer
+        node_start_event = tracer.on_node_start(new_node, new_node, "llm")
         if node_start_event:
-            logger.info(f"[AgentEvent/Messages] Emitting node_start for {node}")
+            logger.info(f"[AgentEvent/Messages] Emitting node_start for {new_node}")
             yield node_start_event
+        # Also update ctx for compatibility
+        ctx.current_node = new_node
 
     # Check for thinking content first (from reasoning models like Claude, DeepSeek R1, Gemini 3)
     thinking_content = ThinkingEventHandler.extract_thinking_content(message_chunk)
@@ -574,11 +624,12 @@ async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator
     if not ctx.is_streaming:
         # Emit synthetic node_start if no node was detected
         # This handles prebuilt agents (like ReAct) that don't include langgraph_node metadata
-        if ctx.event_ctx and not ctx.current_node:
-            node_start_event = AgentEventStreamHandler.create_node_start_event(ctx, "agent")
+        if ctx.event_ctx and not tracer.get_current_node_id():
+            node_start_event = tracer.on_node_start("agent", "Response", "llm")
             if node_start_event:
                 logger.info("[AgentEvent/Messages] Emitting synthetic node_start for 'agent'")
                 yield node_start_event
+            ctx.current_node = "agent"
 
         logger.debug("Emitting streaming_start for stream_id=%s", ctx.stream_id)
         ctx.is_streaming = True
@@ -588,7 +639,7 @@ async def _handle_messages_mode(data: Any, ctx: StreamContext) -> AsyncGenerator
     yield StreamingEventHandler.create_streaming_chunk(ctx.stream_id, token_text)
 
 
-async def _finalize_streaming(ctx: StreamContext) -> AsyncGenerator[StreamingEvent, None]:
+async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> AsyncGenerator[StreamingEvent, None]:
     """Finalize the streaming session."""
     # If still thinking when finalizing, emit thinking_end
     if ctx.is_thinking:
@@ -597,13 +648,21 @@ async def _finalize_streaming(ctx: StreamContext) -> AsyncGenerator[StreamingEve
         yield ThinkingEventHandler.create_thinking_end(ctx.stream_id)
 
     if ctx.is_streaming:
+        # Get agent state from tracer (includes timeline data)
+        agent_state = tracer.get_agent_state()
+        # Merge with ctx.agent_state for backward compatibility
+        if ctx.agent_state:
+            # Prefer tracer's data but include any extra fields from ctx
+            merged_state = {**ctx.agent_state, **agent_state}
+            agent_state = merged_state
+
         logger.debug(
             "Emitting streaming_end for stream_id=%s (total tokens: %d, has_agent_state=%s)",
             ctx.stream_id,
             ctx.token_count,
-            ctx.agent_state is not None,
+            bool(agent_state),
         )
-        yield StreamingEventHandler.create_streaming_end(ctx.stream_id, ctx.agent_state)
+        yield StreamingEventHandler.create_streaming_end(ctx.stream_id, agent_state or None)
 
         # Emit token usage
         if ctx.total_tokens > 0 or ctx.total_input_tokens > 0 or ctx.total_output_tokens > 0:

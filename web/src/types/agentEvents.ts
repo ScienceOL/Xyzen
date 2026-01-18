@@ -5,6 +5,8 @@
  * These define the structure of agent execution events received via WebSocket.
  */
 
+import type { ToolCall } from "@/store/types";
+
 /**
  * Flat context metadata included with all agent events.
  * Allows frontend to track agent execution, depth, and timing.
@@ -59,6 +61,7 @@ export interface NodeStartData {
   node_id: string;
   node_name: string;
   node_type: string; // "llm", "tool", "router", etc.
+  component_key?: string; // e.g., "system:deep_research:clarify"
   input_summary?: string;
   context: AgentExecutionContext;
 }
@@ -67,6 +70,7 @@ export interface NodeEndData {
   node_id: string;
   node_name: string;
   node_type: string;
+  component_key?: string; // e.g., "system:deep_research:clarify"
   status: string; // "completed", "failed", "skipped"
   duration_ms: number;
   output_summary?: string;
@@ -115,6 +119,7 @@ export type ExecutionStatus =
 export interface PhaseExecution {
   id: string;
   name: string;
+  componentKey?: string; // e.g., "system:deep_research:clarify" - for specialized rendering
   description?: string;
   status: ExecutionStatus;
   startedAt?: number;
@@ -124,6 +129,8 @@ export interface PhaseExecution {
   nodes: NodeExecution[];
   // Streamed content during this phase (for per-node output display)
   streamedContent?: string;
+  // Tool calls made during this phase
+  toolCalls?: ToolCall[];
 }
 
 export interface NodeExecution {

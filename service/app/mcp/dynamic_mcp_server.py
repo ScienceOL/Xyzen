@@ -27,10 +27,10 @@ from app.configs import configs
 from app.middleware.auth import AuthProvider
 from app.middleware.auth import AuthProvider as InternalAuthProvider
 from app.middleware.auth.token_verifier.bohr_app_token_verifier import BohrAppTokenVerifier
-from app.utils.built_in_tools import register_built_in_tools
+from app.mcp.builtin_tools import register_built_in_tools
 from app.utils.json_patch import apply_json_patch
-from app.utils.manage_tools import register_manage_tools
-from app.utils.tool_loader import tool_loader
+from app.tools.dynamic.manager import register_manage_tools
+from app.tools.dynamic.loader import tool_loader
 
 # 创建认证提供者 - 使用 TokenVerifier 类型但赋值给变量名 auth
 # 这个变量会被 MCP 自动发现机制识别为 AuthProvider（因为 TokenVerifier 继承自 AuthProvider）
