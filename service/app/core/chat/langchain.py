@@ -293,6 +293,33 @@ async def _process_agent_stream(
     if ctx.event_ctx:
         logger.info(f"[AgentEvent] agent_name={ctx.event_ctx.agent_name}, agent_type={ctx.event_ctx.agent_type}")
 
+    # Extract historical AI message contents to avoid re-streaming them
+    # Messages mode returns full conversation history - we only want NEW responses
+    from langchain_core.messages import AIMessage
+
+    for msg in history_messages:
+        if isinstance(msg, AIMessage):
+            # Track historical AI content
+            if msg.content:
+                content = msg.content
+                if isinstance(content, str):
+                    ctx.historical_ai_contents.add(content)
+                elif isinstance(content, list):
+                    # Handle structured content (extract text)
+                    text_parts = [item.get("text", "") if isinstance(item, dict) else str(item) for item in content]
+                    ctx.historical_ai_contents.add("".join(text_parts))
+            # Track historical tool call IDs
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tool_call in msg.tool_calls:
+                    tool_id = tool_call.get("id", "")
+                    if tool_id:
+                        ctx.historical_tool_call_ids.add(tool_id)
+                        # Also mark as already having results emitted (since they're historical)
+                        ctx.emitted_tool_result_ids.add(tool_id)
+    logger.info(
+        f"Loaded {len(ctx.historical_ai_contents)} historical AI contents and {len(ctx.historical_tool_call_ids)} historical tool calls to skip"
+    )
+
     # Create tracer for centralized event tracking
     tracer = LangGraphTracer(
         stream_id=ctx.stream_id,
@@ -427,6 +454,48 @@ async def _handle_updates_mode(
         if not messages:
             continue
 
+        # Emit tool events for new tool calls (not historical)
+        # Process all messages to find tool calls and tool results
+        from langchain_core.messages import ToolMessage
+
+        logger.info(f"[ToolEvent] Processing {len(messages)} messages in step '{step_name}'")
+        for msg in messages:
+            logger.info(
+                f"[ToolEvent] Message type: {type(msg).__name__}, has_tool_calls: {hasattr(msg, 'tool_calls') and bool(getattr(msg, 'tool_calls', None))}"
+            )
+            # Emit tool_call_request for AIMessage with tool_calls
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                logger.info(f"[ToolEvent] Found {len(msg.tool_calls)} tool_calls in message")
+                for tool_call in msg.tool_calls:
+                    tool_id = tool_call.get("id", "")
+                    tool_name = tool_call.get("name", "unknown")
+                    logger.info(f"[ToolEvent] Tool call: id={tool_id}, name={tool_name}")
+                    # Skip if this is a historical tool call
+                    if tool_id in ctx.historical_tool_call_ids:
+                        logger.info(f"[ToolEvent] Skipping historical tool call: {tool_id}")
+                        continue
+                    # Skip if already emitted
+                    if tool_id in ctx.emitted_tool_result_ids:
+                        logger.info(f"[ToolEvent] Skipping already emitted tool call: {tool_id}")
+                        continue
+                    logger.info(f"[ToolEvent] >>> Emitting tool_call_request for {tool_name} (id={tool_id})")
+                    yield ToolEventHandler.create_tool_request_event(tool_call)
+
+            # Emit tool_call_response for ToolMessage
+            if isinstance(msg, ToolMessage):
+                tool_call_id = getattr(msg, "tool_call_id", None)
+                tool_name = getattr(msg, "name", "") or "tool"
+                logger.info(f"[ToolEvent] Found ToolMessage: tool_call_id={tool_call_id}, name={tool_name}")
+                if tool_call_id and tool_call_id not in ctx.emitted_tool_result_ids:
+                    # Skip if historical
+                    if tool_call_id in ctx.historical_tool_call_ids:
+                        logger.info(f"[ToolEvent] Skipping historical tool response: {tool_call_id}")
+                        continue
+                    ctx.emitted_tool_result_ids.add(tool_call_id)
+                    result = format_tool_result(msg.content, tool_name)
+                    logger.info(f"[ToolEvent] >>> Emitting tool_call_response for {tool_call_id}")
+                    yield ToolEventHandler.create_tool_response_event(tool_call_id, result)
+
         last_message = messages[-1]
 
         # Extract agent_state from AIMessage additional_kwargs (for persistence)
@@ -466,30 +535,11 @@ async def _handle_updates_mode(
                     node_metadata.get("is_intermediate"),
                 )
 
-        # Tool call request
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            logger.debug("Detected tool_calls in step '%s'", step_name)
-            for tool_call in last_message.tool_calls:
-                logger.debug(
-                    "Tool call requested: %s args=%s",
-                    tool_call.get("name"),
-                    tool_call.get("args"),
-                )
-                yield ToolEventHandler.create_tool_request_event(tool_call)
-
-        # Tool execution result
-        elif hasattr(last_message, "content") and step_name == "tools":
-            tool_call_id = getattr(last_message, "tool_call_id", "")
-            tool_name = getattr(last_message, "name", "unknown")
-            formatted_result = format_tool_result(last_message.content, tool_name)
-            logger.debug("Tool finished in step '%s' id=%s", step_name, tool_call_id)
-            yield ToolEventHandler.create_tool_response_event(tool_call_id, formatted_result)
-
         # Structured output nodes (clarify_with_user, write_research_brief, etc.)
         # These nodes use with_structured_output and don't stream normally
         # They return clean content in messages, so we emit it as if streamed
         # Check for structured output metadata to support custom nodes
-        elif hasattr(last_message, "content") and (
+        if hasattr(last_message, "content") and (
             step_name
             in {
                 "clarify_with_user",
@@ -544,6 +594,29 @@ async def _handle_messages_mode(
     except Exception:
         logger.debug("Malformed messages data: %r", data)
         return
+
+    # Track HumanMessage to distinguish history from current turn
+    # Messages mode returns full conversation history - we only want to stream NEW AI responses
+    from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+
+    if isinstance(message_chunk, HumanMessage):
+        # Each HumanMessage marks a turn boundary - reset buffer for next AI response
+        if ctx.assistant_buffer:
+            ctx.assistant_buffer.clear()
+        ctx.seen_current_human_message = True
+        return
+
+    # Skip ToolMessage - tool results are handled by tool event handler in updates mode
+    if isinstance(message_chunk, ToolMessage):
+        logger.debug("Skipping ToolMessage (handled by tool event handler)")
+        return
+
+    # Check if this AIMessage is from history (already in our known historical contents)
+    if isinstance(message_chunk, AIMessage):
+        content = TokenStreamProcessor.extract_token_text(message_chunk)
+        if content and content in ctx.historical_ai_contents:
+            logger.debug("Skipping historical AIMessage (content already in history)")
+            return
 
     # Extract token usage
     usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
@@ -608,10 +681,11 @@ async def _handle_messages_mode(
 
         ctx.thinking_buffer.append(thinking_content)
         yield ThinkingEventHandler.create_thinking_chunk(ctx.stream_id, thinking_content)
-        return
+        # Don't return here - continue to process regular content as well
+        # Some models (Qwen, etc.) have both reasoning_content AND regular content
 
     # If we were thinking but now have regular content, end thinking first
-    if ctx.is_thinking:
+    if ctx.is_thinking and not thinking_content:
         logger.debug("Emitting thinking_end for stream_id=%s", ctx.stream_id)
         ctx.is_thinking = False
         yield ThinkingEventHandler.create_thinking_end(ctx.stream_id)
@@ -620,6 +694,19 @@ async def _handle_messages_mode(
     token_text = TokenStreamProcessor.extract_token_text(message_chunk)
     if not token_text:
         return
+
+    # Handle accumulated content (AIMessage contains full response, not delta)
+    # If the extracted text starts with what we've already buffered, extract only the new part
+    buffered_content = "".join(ctx.assistant_buffer)
+    if buffered_content and token_text.startswith(buffered_content):
+        # Extract only the delta (new content beyond what we've seen)
+        delta_text = token_text[len(buffered_content) :]
+        if not delta_text:
+            # No new content - this is a duplicate/state update, skip it
+            logger.debug("Skipping accumulated content with no new delta")
+            return
+        logger.debug(f"Extracted delta from accumulated content: {len(delta_text)} chars")
+        token_text = delta_text
 
     if not ctx.is_streaming:
         # Emit synthetic node_start if no node was detected

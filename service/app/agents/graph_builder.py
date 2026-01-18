@@ -32,7 +32,7 @@ from app.agents.types import (
     StateDict,
 )
 from app.agents.utils import extract_text_from_content
-from app.schemas.graph_config_v2 import (
+from app.schemas.graph_config import (
     ConditionType,
     CustomCondition,
     GraphConfig,

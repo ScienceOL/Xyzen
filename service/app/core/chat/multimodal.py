@@ -299,6 +299,13 @@ async def process_message_files(db: AsyncSession, message_id: UUID) -> list[dict
     for file in files:
         try:
             file_content = await processor.process_file(file.id)
+            if file.category == "images":
+                all_content.append(
+                    {
+                        "type": "text",
+                        "text": f"[Image attachment id: {file.id} filename: {file.original_filename}]",
+                    }
+                )
             all_content.extend(file_content)
             logger.info(f"Processed file {file.id} ({file.original_filename}): {len(file_content)} content items")
         except Exception as e:

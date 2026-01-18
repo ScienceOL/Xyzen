@@ -312,10 +312,19 @@ def format_tool_result(tool_result: Any, tool_name: str) -> str:
                             formatted += f"... and {len(data['builtin_tools']) - 5} more tools\n"
                     return formatted
             if isinstance(data, dict):
-                keys = list(data.keys())[:5]
-                return f"Tool '{tool_name}' returned JSON data with keys: {keys}"
+                # Return structured JSON for dict results so agent can use the values
+                # Compact format to save tokens while preserving essential data
+                compact_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+                if len(compact_json) > 2000:
+                    # Truncate but keep structure visible
+                    return f"Tool '{tool_name}' result: {compact_json[:1800]}... (truncated)"
+                return f"Tool '{tool_name}' result: {compact_json}"
             elif isinstance(data, list):
-                return f"Tool '{tool_name}' returned a list with {len(data)} items"
+                # For lists, also return the actual data
+                compact_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+                if len(compact_json) > 2000:
+                    return f"Tool '{tool_name}' result: {compact_json[:1800]}... (truncated, {len(data)} items)"
+                return f"Tool '{tool_name}' result: {compact_json}"
         except json.JSONDecodeError:
             pass
 

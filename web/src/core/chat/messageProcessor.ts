@@ -337,6 +337,22 @@ export function reconstructAgentExecutionFromMetadata(
     | Record<string, string>
     | undefined;
 
+  // Get tool calls from metadata (node_id -> array of tool calls)
+  const toolCallsMap = agent_metadata.tool_calls as
+    | Record<
+        string,
+        Array<{
+          id: string;
+          name: string;
+          arguments?: Record<string, unknown>;
+          status: string;
+          result?: unknown;
+          error?: string;
+          timestamp: number;
+        }>
+      >
+    | undefined;
+
   // Build nodeId -> componentKey map from timeline
   const componentKeyMap = new Map<string, string>();
   const timeline = agent_metadata.timeline as
@@ -369,6 +385,21 @@ export function reconstructAgentExecutionFromMetadata(
       const output = nodeOutputs[nodeId];
       const content = extractNodeContent(output);
 
+      // Convert tool calls from backend format to frontend format
+      const nodeToolCalls = toolCallsMap?.[nodeId]?.map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        arguments: tc.arguments || {},
+        status: (tc.status || "completed") as ToolCall["status"],
+        result: tc.result
+          ? typeof tc.result === "string"
+            ? tc.result
+            : JSON.stringify(tc.result)
+          : undefined,
+        error: tc.error,
+        timestamp: new Date(tc.timestamp).toISOString(),
+      }));
+
       phases.push({
         id: nodeId,
         name: getNodeDisplayName(nodeId, nodeNames),
@@ -378,6 +409,8 @@ export function reconstructAgentExecutionFromMetadata(
         outputSummary: content ? truncate(content, 200) : undefined,
         // Store full content for expandable view (empty string if no content)
         streamedContent: content || "",
+        // Restore tool calls for this phase
+        toolCalls: nodeToolCalls,
       });
     }
   }
@@ -388,6 +421,21 @@ export function reconstructAgentExecutionFromMetadata(
       const output = nodeOutputs[nodeId];
       const content = extractNodeContent(output);
 
+      // Convert tool calls from backend format to frontend format
+      const nodeToolCalls = toolCallsMap?.[nodeId]?.map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        arguments: tc.arguments || {},
+        status: (tc.status || "completed") as ToolCall["status"],
+        result: tc.result
+          ? typeof tc.result === "string"
+            ? tc.result
+            : JSON.stringify(tc.result)
+          : undefined,
+        error: tc.error,
+        timestamp: new Date(tc.timestamp).toISOString(),
+      }));
+
       phases.push({
         id: nodeId,
         name: getNodeDisplayName(nodeId, nodeNames),
@@ -396,6 +444,8 @@ export function reconstructAgentExecutionFromMetadata(
         nodes: [],
         outputSummary: content ? truncate(content, 200) : undefined,
         streamedContent: content || "",
+        // Restore tool calls for this phase
+        toolCalls: nodeToolCalls,
       });
     }
   }

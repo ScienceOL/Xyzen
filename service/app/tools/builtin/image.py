@@ -35,6 +35,13 @@ class GenerateImageInput(BaseModel):
         default="1:1",
         description="Aspect ratio of the generated image.",
     )
+    image_id: str | None = Field(
+        default=None,
+        description=(
+            "Optional image UUID to use as a reference input. "
+            "Use the 'image_id' value returned from generate_image or upload tools."
+        ),
+    )
 
 
 class ReadImageInput(BaseModel):
@@ -55,6 +62,8 @@ class ReadImageInput(BaseModel):
 async def _generate_image_with_langchain(
     prompt: str,
     aspect_ratio: str = "1:1",
+    image_bytes: bytes | None = None,
+    image_mime_type: str | None = None,
 ) -> tuple[bytes, str]:
     """
     Generate an image using LangChain ChatGoogleGenerativeAI via ProviderManager.
@@ -74,10 +83,13 @@ async def _generate_image_with_langchain(
     from langchain_core.messages import HumanMessage
 
     from app.core.providers.manager import get_user_provider_manager
-    from app.infra.database import AsyncSessionLocal
+    from app.infra.database import create_task_session_factory
     from app.schemas.provider import ProviderType
 
-    async with AsyncSessionLocal() as db:
+    # Create a fresh session factory for the current event loop (Celery worker)
+    TaskSessionLocal = create_task_session_factory()
+
+    async with TaskSessionLocal() as db:
         # Get provider manager which loads system providers from DB
         # The "system" user_id is used since we're accessing system providers
         provider_manager = await get_user_provider_manager("system", db)
@@ -90,7 +102,27 @@ async def _generate_image_with_langchain(
         )
 
     # Request image generation via LangChain
-    message = HumanMessage(content=f"Generate an image with aspect ratio {aspect_ratio}: {prompt}")
+    if image_bytes and image_mime_type:
+        b64_data = base64.b64encode(image_bytes).decode("utf-8")
+        message = HumanMessage(
+            content=[
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{image_mime_type};base64,{b64_data}",
+                    },
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        "Use the provided image as a reference. "
+                        f"Generate a new image with aspect ratio {aspect_ratio}: {prompt}"
+                    ),
+                },
+            ]
+        )
+    else:
+        message = HumanMessage(content=f"Generate an image with aspect ratio {aspect_ratio}: {prompt}")
     response = await llm.ainvoke([message])
 
     # Extract image from response content blocks
@@ -140,7 +172,47 @@ async def _generate_image_with_langchain(
     raise ValueError("No image data in response. Model may not support image generation.")
 
 
-async def _generate_image(user_id: str, prompt: str, aspect_ratio: str = "1:1") -> dict[str, Any]:
+async def _load_image_for_generation(user_id: str, image_id: str) -> tuple[bytes, str, str]:
+    from app.infra.database import create_task_session_factory
+    from app.repos.file import FileRepository
+
+    try:
+        file_uuid = UUID(image_id)
+    except ValueError as exc:
+        raise ValueError(f"Invalid image_id format: {image_id}") from exc
+
+    # Create a fresh session factory for the current event loop (Celery worker)
+    TaskSessionLocal = create_task_session_factory()
+
+    async with TaskSessionLocal() as db:
+        file_repo = FileRepository(db)
+        file_record = await file_repo.get_file_by_id(file_uuid)
+
+        if file_record is None:
+            raise ValueError(f"Image not found: {image_id}")
+
+        if file_record.is_deleted:
+            raise ValueError(f"Image has been deleted: {image_id}")
+
+        if file_record.user_id != user_id and file_record.scope != "public":
+            raise ValueError("Permission denied: you don't have access to this image")
+
+        storage_key = file_record.storage_key
+        content_type = file_record.content_type or "image/png"
+
+    storage = get_storage_service()
+    buffer = io.BytesIO()
+    await storage.download_file(storage_key, buffer)
+    image_bytes = buffer.getvalue()
+    return image_bytes, content_type, storage_key
+
+
+async def _generate_image(
+    user_id: str,
+    prompt: str,
+    aspect_ratio: str = "1:1",
+    image_id: str | None = None,
+) -> dict[str, Any]:
     """
     Generate an image and store it to OSS, then register in database.
 
@@ -153,8 +225,24 @@ async def _generate_image(user_id: str, prompt: str, aspect_ratio: str = "1:1") 
         Dictionary with success status, path, URL, and metadata
     """
     try:
+        # Load optional reference image
+        source_image_bytes = None
+        source_mime_type = None
+        source_storage_key = None
+        source_image_id = image_id
+        if source_image_id:
+            source_image_bytes, source_mime_type, source_storage_key = await _load_image_for_generation(
+                user_id,
+                source_image_id,
+            )
+
         # Generate image using LangChain via ProviderManager
-        image_bytes, mime_type = await _generate_image_with_langchain(prompt, aspect_ratio)
+        image_bytes, mime_type = await _generate_image_with_langchain(
+            prompt,
+            aspect_ratio,
+            image_bytes=source_image_bytes,
+            image_mime_type=source_mime_type,
+        )
 
         # Determine file extension from mime type
         ext_map = {
@@ -181,11 +269,14 @@ async def _generate_image(user_id: str, prompt: str, aspect_ratio: str = "1:1") 
         url = await storage.generate_download_url(storage_key, expires_in=3600 * 24 * 7)  # 7 days
 
         # Register file in database so it appears in knowledge base
-        from app.infra.database import AsyncSessionLocal
+        from app.infra.database import create_task_session_factory
         from app.models.file import FileCreate
         from app.repos.file import FileRepository
 
-        async with AsyncSessionLocal() as db:
+        # Create a fresh session factory for the current event loop (Celery worker)
+        TaskSessionLocal = create_task_session_factory()
+
+        async with TaskSessionLocal() as db:
             file_repo = FileRepository(db)
             file_data = FileCreate(
                 user_id=user_id,
@@ -196,7 +287,12 @@ async def _generate_image(user_id: str, prompt: str, aspect_ratio: str = "1:1") 
                 scope="generated",
                 category="images",
                 status="confirmed",
-                metainfo={"prompt": prompt, "aspect_ratio": aspect_ratio},
+                metainfo={
+                    "prompt": prompt,
+                    "aspect_ratio": aspect_ratio,
+                    "source_image_id": source_image_id,
+                    "source_storage_key": source_storage_key,
+                },
             )
             file_record = await file_repo.create_file(file_data)
             await db.commit()
@@ -214,6 +310,7 @@ async def _generate_image(user_id: str, prompt: str, aspect_ratio: str = "1:1") 
             "markdown": f"![Generated Image]({url})",
             "prompt": prompt,
             "aspect_ratio": aspect_ratio,
+            "source_image_id": source_image_id,
             "mime_type": mime_type,
             "size_bytes": len(image_bytes),
         }
@@ -242,13 +339,16 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     from langchain_core.messages import HumanMessage
 
     from app.core.providers.manager import get_user_provider_manager
-    from app.infra.database import AsyncSessionLocal
+    from app.infra.database import create_task_session_factory
     from app.schemas.provider import ProviderType
 
     # Encode image to base64 for the vision model
     b64_data = base64.b64encode(image_bytes).decode("utf-8")
 
-    async with AsyncSessionLocal() as db:
+    # Create a fresh session factory for the current event loop (Celery worker)
+    TaskSessionLocal = create_task_session_factory()
+
+    async with TaskSessionLocal() as db:
         provider_manager = await get_user_provider_manager("system", db)
         llm = await provider_manager.create_langchain_model(
             provider_id=ProviderType.GOOGLE_VERTEX,
@@ -303,7 +403,7 @@ async def _read_image(user_id: str, image_id: str, question: str) -> dict[str, A
     Returns:
         Dictionary with success status, analysis result, and metadata
     """
-    from app.infra.database import AsyncSessionLocal
+    from app.infra.database import create_task_session_factory
     from app.repos.file import FileRepository
 
     try:
@@ -317,8 +417,11 @@ async def _read_image(user_id: str, image_id: str, question: str) -> dict[str, A
                 "image_id": image_id,
             }
 
+        # Create a fresh session factory for the current event loop (Celery worker)
+        TaskSessionLocal = create_task_session_factory()
+
         # Look up file record in database
-        async with AsyncSessionLocal() as db:
+        async with TaskSessionLocal() as db:
             file_repo = FileRepository(db)
             file_record = await file_repo.get_file_by_id(file_uuid)
 
@@ -405,7 +508,11 @@ def create_image_tools() -> dict[str, BaseTool]:
     tools: dict[str, BaseTool] = {}
 
     # Generate image tool (placeholder)
-    async def generate_image_placeholder(prompt: str, aspect_ratio: str = "1:1") -> dict[str, Any]:
+    async def generate_image_placeholder(
+        prompt: str,
+        aspect_ratio: str = "1:1",
+        image_id: str | None = None,
+    ) -> dict[str, Any]:
         return {"error": "Image tools require agent context binding", "success": False}
 
     tools["generate_image"] = StructuredTool(
@@ -413,7 +520,8 @@ def create_image_tools() -> dict[str, BaseTool]:
         description=(
             "Generate an image based on a text description. "
             "Provide a detailed prompt describing the desired image. "
-            "Returns a result containing a 'markdown' field - use this field directly in your response to display the image."
+            "To modify or generate based on a previous image, pass the 'image_id' from a previous generate_image result. "
+            "Returns a JSON result containing 'image_id' (for future reference), 'url', and 'markdown' - use the 'markdown' field directly in your response to display the image."
         ),
         args_schema=GenerateImageInput,
         coroutine=generate_image_placeholder,
@@ -452,8 +560,12 @@ def create_image_tools_for_agent(user_id: str) -> list[BaseTool]:
     tools: list[BaseTool] = []
 
     # Generate image tool (bound to user)
-    async def generate_image_bound(prompt: str, aspect_ratio: str = "1:1") -> dict[str, Any]:
-        return await _generate_image(user_id, prompt, aspect_ratio)
+    async def generate_image_bound(
+        prompt: str,
+        aspect_ratio: str = "1:1",
+        image_id: str | None = None,
+    ) -> dict[str, Any]:
+        return await _generate_image(user_id, prompt, aspect_ratio, image_id)
 
     tools.append(
         StructuredTool(
@@ -461,7 +573,8 @@ def create_image_tools_for_agent(user_id: str) -> list[BaseTool]:
             description=(
                 "Generate an image based on a text description. "
                 "Provide a detailed prompt describing the desired image including style, colors, composition, and subject. "
-                "Returns a result containing a 'markdown' field - use this field directly in your response to display the image to the user."
+                "To modify or generate based on a previous image, pass the 'image_id' from a previous generate_image result. "
+                "Returns a JSON result containing 'image_id' (for future reference), 'url', and 'markdown' - use the 'markdown' field directly in your response to display the image to the user."
             ),
             args_schema=GenerateImageInput,
             coroutine=generate_image_bound,

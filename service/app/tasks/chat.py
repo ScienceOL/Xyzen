@@ -323,7 +323,9 @@ async def _process_chat_message_async(
                             ),
                             topic_id=topic_id,
                         )
-                        await message_repo.create_message_in_isolated_transaction(tool_message)
+                        await message_repo.create_message_in_isolated_transaction(
+                            tool_message, session_factory=TaskSessionLocal
+                        )
                     except Exception as e:
                         logger.warning(f"Failed to persist tool call request message: {e}")
                     await publisher.publish(json.dumps(stream_event))
@@ -345,7 +347,9 @@ async def _process_chat_message_async(
                             ),
                             topic_id=topic_id,
                         )
-                        await message_repo.create_message_in_isolated_transaction(tool_message)
+                        await message_repo.create_message_in_isolated_transaction(
+                            tool_message, session_factory=TaskSessionLocal
+                        )
                     except Exception as e:
                         logger.warning(f"Failed to persist tool call response message: {e}")
                     await publisher.publish(json.dumps(stream_event))

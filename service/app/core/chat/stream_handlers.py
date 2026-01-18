@@ -71,6 +71,14 @@ class StreamContext:
     node_start_time: float = 0.0
     # Agent state metadata (for persistence)
     agent_state: dict[str, Any] | None = None
+    # Track if we've seen current turn's HumanMessage (to distinguish history from new response)
+    seen_current_human_message: bool = False
+    # Set of historical AI message contents (to skip re-streaming history)
+    historical_ai_contents: set[str] = field(default_factory=set)
+    # Set of historical tool call IDs (to skip re-emitting tool events)
+    historical_tool_call_ids: set[str] = field(default_factory=set)
+    # Set of tool call IDs that we've emitted results for (to skip duplicates)
+    emitted_tool_result_ids: set[str] = field(default_factory=set)
 
 
 class ToolEventHandler:

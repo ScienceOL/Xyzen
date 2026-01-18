@@ -20,7 +20,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.schemas.graph_config_v2 import GraphConfig
+    from app.schemas.graph_config import GraphConfig
 
 logger = logging.getLogger(__name__)
 

@@ -76,8 +76,8 @@ async def create_chat_agent(
     Returns:
         Tuple of (CompiledStateGraph, AgentEventContext) for streaming execution
     """
-    from app.tools.prepare import prepare_tools
     from app.repos.session import SessionRepository
+    from app.tools.prepare import prepare_tools
 
     # Get session for configuration
     session_repo = SessionRepository(db)
@@ -272,8 +272,8 @@ async def _build_graph_agent(
     """
     from app.agents.components import ensure_components_registered
     from app.agents.graph_builder import GraphBuilder
-    from app.schemas.graph_config_v2 import GraphConfig as GraphConfigV2
-    from app.schemas.graph_config_v2 import migrate_graph_config
+    from app.schemas.graph_config import GraphConfig as GraphConfigV2
+    from app.schemas.graph_config import migrate_graph_config
 
     # Ensure components are registered before building
     ensure_components_registered()

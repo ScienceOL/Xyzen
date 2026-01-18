@@ -1,6 +1,6 @@
 """Tests for graph_config_v2 schema and migration functions."""
 
-from app.schemas.graph_config_v2 import (
+from app.schemas.graph_config import (
     ConditionOperator,
     ConditionType,
     CustomCondition,

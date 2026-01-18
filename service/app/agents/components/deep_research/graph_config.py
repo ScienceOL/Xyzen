@@ -26,7 +26,7 @@ Workflow:
 
 from __future__ import annotations
 
-from app.schemas.graph_config_v2 import (
+from app.schemas.graph_config import (
     ComponentNodeConfig,
     ComponentReference,
     ConditionOperator,

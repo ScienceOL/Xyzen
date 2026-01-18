@@ -10,6 +10,7 @@ import {
   ArrowPathIcon,
   Squares2X2Icon,
   UserIcon,
+  PuzzlePieceIcon,
 } from "@heroicons/react/24/outline";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -20,6 +21,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "arrows-exchange": ArrowPathIcon,
   "arrows-parallel": Squares2X2Icon,
   user: UserIcon,
+  puzzle: PuzzlePieceIcon,
 };
 
 /**

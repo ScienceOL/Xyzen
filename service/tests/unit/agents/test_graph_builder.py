@@ -1,15 +1,15 @@
 """Tests for graph_builder module."""
 
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
 from pydantic import BaseModel
 
 from app.agents.graph_builder import GraphBuilder, build_state_class
-from app.schemas.graph_config_v2 import (
+from app.schemas.graph_config import (
     GraphConfig,
-    GraphNodeConfig,
     GraphEdgeConfig,
+    GraphNodeConfig,
     LLMNodeConfig,
     NodeType,
     StateFieldSchema,

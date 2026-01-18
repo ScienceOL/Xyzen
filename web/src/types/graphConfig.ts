@@ -18,7 +18,8 @@ export type NodeType =
   | "subagent"
   | "transform"
   | "parallel"
-  | "human";
+  | "human"
+  | "component";
 
 // Matches backend ConditionOperator enum values
 export type ConditionOperator =
@@ -474,6 +475,12 @@ export function getNodeTypeInfo(type: NodeType): {
       description: "Human-in-the-loop",
       color: "#14b8a6", // teal
       icon: "user",
+    },
+    component: {
+      label: "Component",
+      description: "Reusable component reference",
+      color: "#059669", // emerald-600
+      icon: "puzzle",
     },
   };
 

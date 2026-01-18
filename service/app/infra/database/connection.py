@@ -46,6 +46,30 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+def create_task_session_factory() -> async_sessionmaker[AsyncSession]:
+    """
+    Create a fresh async session factory bound to the current event loop.
+
+    This should be used instead of AsyncSessionLocal in contexts where the code
+    runs in a different event loop than the main FastAPI application, such as:
+    - Celery workers
+    - Background tasks with their own event loop
+    - Tool executions within agent graphs
+
+    The returned session factory creates sessions bound to the current event loop,
+    avoiding "Future attached to a different loop" errors.
+
+    Returns:
+        A new async_sessionmaker instance bound to a fresh async engine.
+    """
+    task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
+    return async_sessionmaker(
+        bind=task_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+
 async def create_db_and_tables() -> None:
     """
     Initialize database by automatically applying Alembic migrations.

@@ -1,6 +1,8 @@
 import logging
+from typing import Any
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -182,7 +184,11 @@ class MessageRepository:
                 count += 1
         return count
 
-    async def create_message_in_isolated_transaction(self, message_data: MessageCreate) -> None:
+    async def create_message_in_isolated_transaction(
+        self,
+        message_data: MessageCreate,
+        session_factory: async_sessionmaker[Any] | None = None,
+    ) -> None:
         """
         Creates and commits a tool event message in a separate, short-lived session.
 
@@ -191,9 +197,15 @@ class MessageRepository:
 
         Args:
             message_data: The Pydantic model containing the data for the new message.
+            session_factory: Optional session factory to use. If not provided, uses the
+                global AsyncSessionLocal. Callers in Celery tasks should pass their
+                task-scoped session factory to avoid event loop issues.
         """
         logger.debug(f"Creating isolated tool event message for topic_id: {message_data.topic_id}")
-        async with AsyncSessionLocal() as db:
+        # Use provided session factory or fall back to global AsyncSessionLocal
+        # Celery tasks must provide their own session factory bound to their event loop
+        factory = session_factory or AsyncSessionLocal
+        async with factory() as db:
             isolated_repo = MessageRepository(db)
             await isolated_repo.create_message(message_data=message_data)
             await db.commit()

@@ -143,6 +143,9 @@ class LangGraphTracer:
     is_thinking: bool = False
     thinking_buffer: list[str] = field(default_factory=list)
 
+    # Tool call tracking (node_id -> list of tool calls)
+    tool_calls: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+
     def on_agent_start(self) -> StreamingEvent | None:
         """
         Handle agent start event.
