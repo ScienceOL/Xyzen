@@ -28,8 +28,8 @@ from app.utils.literature.exporter import (
     persist_xlsx,
 )
 from app.utils.literature.providers.openalex import (
-    search_sources as openalex_search_sources,
-    search_authors as openalex_search_authors,
+    normalize_openalex_provider_params,
+    prepare_openalex_precision,
 )
 
 
@@ -338,6 +338,8 @@ async def fetch_works(
     OpenAlex cannot reliably filter by journal *name* directly. Use the two-step ID pattern:
     - Preferred: `journal_source_id`: OpenAlex Source IDs like `S2764455111`.
       The tool will filter works using `primary_location.source.id:Sxxxx` (OR supported via `|`).
+            For convenience, `journal_source_id` may also include journal ISSN values (e.g. `1476-4687`);
+            these will be translated into `primary_location.source.issn:<issn>` filters.
     - Convenience: `journal`: One or more journal names. If provided *without* `journal_source_id`,
       the tool performs a lookup against `/sources` and returns a **retryable** response that includes
       candidate Source IDs in `meta.journal_candidates`, plus a suggested second call.
@@ -346,6 +348,8 @@ async def fetch_works(
         OpenAlex cannot reliably filter by author *name* directly. Use the two-step ID pattern:
         - Preferred: `author_id`: OpenAlex Author IDs like `A1234567890`.
             The tool will filter works using `authorships.author.id:Axxxx` (OR supported via `|`).
+        - Also supported: ORCID (e.g. `0000-0003-1613-5981` or `https://orcid.org/0000-...`) which
+            will be translated into `authorships.author.orcid:<orcid>` filters.
         - Convenience: `author`: If provided *without* `author_id`, the tool performs a lookup
             against `/authors` and returns candidate Author IDs in `meta.author_candidates`, plus
             a suggested second call.
@@ -511,94 +515,48 @@ async def fetch_works(
             extra_meta={"call_attempt": call_attempt_i, "max_call_attempts": max_call_attempts_i},
         )
 
-    # Normalize provider params:
-    # - If caller passes OpenAlex raw params directly, wrap into {"openalex": {...}}
-    # - If caller passes {"openalex": {...}}, keep as-is.
-    normalized_provider_params: dict[str, dict[str, Any]] = {}
-    if provider_params_d:
-        if isinstance(provider_params_d.get("openalex"), dict):
-            normalized_provider_params = {"openalex": provider_params_d["openalex"]}
-        else:
-            normalized_provider_params = {"openalex": provider_params_d}
+    normalized_provider_params, openalex_params = normalize_openalex_provider_params(
+        provider_params_d,
+        mailto=mailto,
+        default_mailto=_DEFAULT_OPENALEX_MAILTO,
+    )
 
-    # Ensure OpenAlex gets a `mailto` value (caller-provided wins).
-    openalex_params = normalized_provider_params.setdefault("openalex", {})
-    if mailto:
-        openalex_params["mailto"] = mailto
-    elif "mailto" not in openalex_params:
-        openalex_params["mailto"] = _DEFAULT_OPENALEX_MAILTO
-
-    # Journal / Author targeting:
-    # - Preferred: explicit IDs (journal_source_id, author_id)
-    # - Convenience: name lookup (two-step)
-    # - Fuzzy fallback: ONLY when call_attempt == max_call_attempts
     mailto_effective: str | None = mailto
     if mailto_effective is None:
         mv = openalex_params.get("mailto")
         mailto_effective = mv if isinstance(mv, str) else None
 
-    precision_meta: dict[str, Any] = {}
-    precision_warnings: list[str] = []
-    is_last_attempt = call_attempt_i >= max_call_attempts_i
-
-    resolved_journal_ids: list[str] = []
-    journal_candidates_by_name: dict[str, Any] = {}
-    if journal_names and not journal_source_ids:
-        for jn in journal_names:
-            cands = await openalex_search_sources(jn, mailto=mailto_effective, per_page=10)
-            journal_candidates_by_name[jn] = cands
-            exact = [
-                c
-                for c in cands
-                if isinstance(c.get("display_name"), str) and c["display_name"].strip().lower() == jn.strip().lower()
-            ]
-            if len(exact) == 1 and isinstance(exact[0].get("id"), str):
-                resolved_journal_ids.append(exact[0]["id"])
-            elif len(cands) == 1 and isinstance(cands[0].get("id"), str):
-                resolved_journal_ids.append(cands[0]["id"])
-        precision_meta["journal_candidates"] = journal_candidates_by_name
-        precision_warnings.append("journal name lookup performed; use journal_source_id for exact filtering")
-
-    resolved_author_ids: list[str] = []
-    author_candidates_by_name: dict[str, Any] = {}
-    if author and not author_ids:
-        cands = await openalex_search_authors(author, mailto=mailto_effective, per_page=10)
-        author_candidates_by_name[author] = cands
-        exact = [
-            c
-            for c in cands
-            if isinstance(c.get("display_name"), str) and c["display_name"].strip().lower() == author.strip().lower()
-        ]
-        if len(exact) == 1 and isinstance(exact[0].get("id"), str):
-            resolved_author_ids.append(exact[0]["id"])
-        elif len(cands) == 1 and isinstance(cands[0].get("id"), str):
-            resolved_author_ids.append(cands[0]["id"])
-        precision_meta["author_candidates"] = author_candidates_by_name
-        precision_warnings.append("author name lookup performed; use author_id for exact filtering")
-
-    # Decide whether we must stop and ask for a precise retry.
-    journal_ambiguous = bool(
-        journal_names
-        and not journal_source_id
-        and ((not resolved_journal_ids) or (resolved_journal_ids and len(resolved_journal_ids) != len(journal_names)))
+    precision = await prepare_openalex_precision(
+        query=query,
+        title=title,
+        author=author,
+        journal_names=journal_names,
+        journal_source_ids=journal_source_ids,
+        author_ids=author_ids,
+        openalex_params=openalex_params,
+        mailto_effective=mailto_effective,
+        call_attempt=call_attempt_i,
+        max_call_attempts=max_call_attempts_i,
+        sort_by_cited_by_count=bool(sort_by_cited_by_count_b),
     )
-    author_ambiguous = bool(author and not author_id and not resolved_author_ids)
+    precision_meta: dict[str, Any] = precision.precision_meta
+    precision_warnings: list[str] = precision.precision_warnings
+    journal_source_ids = precision.journal_source_ids
+    author_ids = precision.author_ids
 
-    # If not last attempt, do not run a fuzzy works search.
-    # Return candidates and ask caller to retry with explicit IDs.
-    if (journal_ambiguous or author_ambiguous) and not is_last_attempt:
+    if precision.retry:
         suggested_args: dict[str, Any] = {
             "query": query,
             "doi": doi,
             "title": title,
             "author": author,
-            "author_id": resolved_author_ids or None,
+            "author_id": author_ids,
             "year_from": year_from_i,
             "year_to": year_to_i,
             "limit": limit_i,
             "sort_by_cited_by_count": sort_by_cited_by_count_b,
             "journal": journal_names,
-            "journal_source_id": resolved_journal_ids or None,
+            "journal_source_id": journal_source_ids,
             "knowledge_set_id": str(knowledge_set_uuid) if knowledge_set_uuid else None,
             "user_id": user_id_s,
             "mailto": mailto,
@@ -609,57 +567,12 @@ async def fetch_works(
             "max_call_attempts": max_call_attempts_i,
         }
         suggested_args = {k: v for k, v in suggested_args.items() if v is not None}
-        extra_meta: dict[str, Any] = dict(precision_meta)
-        extra_meta.update({"call_attempt": call_attempt_i, "max_call_attempts": max_call_attempts_i})
         return _build_retry_response(
-            message=(
-                "Journal/author names are ambiguous in OpenAlex. Please retry with explicit journal_source_id and/or author_id."
-            ),
+            message=precision.retry.message,
             suggested_args=suggested_args,
-            warnings=precision_warnings or ["name lookup performed; retry with explicit IDs for exact filtering"],
-            extra_meta=extra_meta,
+            warnings=precision.retry.warnings,
+            extra_meta=precision.retry.extra_meta,
         )
-
-    # If we resolved IDs confidently from names, apply them as if caller provided them.
-    if resolved_journal_ids and not journal_source_ids:
-        journal_source_ids = resolved_journal_ids
-    if resolved_author_ids and not author_ids:
-        author_ids = resolved_author_ids
-
-    # If journal is ambiguous (no IDs), we still try one fuzzy works call (best-effort)
-    # ONLY on the last attempt.
-    if is_last_attempt and journal_names and not journal_source_ids:
-        base_parts = [p for p in [query, title, author] if isinstance(p, str) and p.strip()]
-        base_search = openalex_params.get("search") if isinstance(openalex_params.get("search"), str) else None
-        if not base_search:
-            base_search = " ".join(base_parts)
-        journal_hint = " ".join(journal_names)
-        combined = (base_search + " " + journal_hint).strip() if base_search else journal_hint
-        if combined:
-            openalex_params["search"] = combined
-
-    # Keep precision metadata for UI/LLM even on fuzzy fallback.
-    if precision_warnings:
-        precision_meta.setdefault("call_attempt", call_attempt_i)
-        precision_meta.setdefault("max_call_attempts", max_call_attempts_i)
-
-    if journal_source_ids:
-        journal_filter = "primary_location.source.id:" + "|".join(journal_source_ids)
-        if isinstance(openalex_params.get("filter"), str) and openalex_params["filter"].strip():
-            openalex_params["filter"] = f"{openalex_params['filter']},{journal_filter}"
-        else:
-            openalex_params["filter"] = journal_filter
-
-    if author_ids:
-        author_filter = "authorships.author.id:" + "|".join(author_ids)
-        if isinstance(openalex_params.get("filter"), str) and openalex_params["filter"].strip():
-            openalex_params["filter"] = f"{openalex_params['filter']},{author_filter}"
-        else:
-            openalex_params["filter"] = author_filter
-
-    # Optional: ask provider to sort by citations.
-    if sort_by_cited_by_count_b:
-        openalex_params.setdefault("sort", "cited_by_count:desc")
 
     cleaner_callable: str | None = None
     if cleaner_params_d and isinstance(cleaner_params_d.get("callable"), str):
