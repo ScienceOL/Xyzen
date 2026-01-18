@@ -164,20 +164,60 @@ async def execute_tool_call(
                                 f"Checking tool '{tool_name}' for injection. Schema props: {list(input_schema.get('properties', {}).keys())}"
                             )
 
-                            if "knowledge_set_id" in input_schema.get("properties", {}):
-                                logger.info(f"Tool '{tool_name}' requires knowledge_set_id.")
-                                if agent:
-                                    ks_id = getattr(agent, "knowledge_set_id", None)
-                                    logger.info(f"Agent found. Knowledge Set ID: {ks_id}")
-                                    if ks_id:
-                                        args_dict["knowledge_set_id"] = str(ks_id)
-                                        logger.info(f"Injected knowledge_set_id: {ks_id} into args")
-                                    else:
-                                        logger.warning(f"Agent {agent.id} has NO knowledge_set_id bound!")
+                            schema_props = input_schema.get("properties", {})
+
+                            # Inject knowledge_set_id when tool schema supports it.
+                            if "knowledge_set_id" in schema_props:
+                                logger.info(f"Tool '{tool_name}' supports knowledge_set_id injection.")
+                                effective_ks_id = None
+                                # Prefer session-level override if available.
+                                if session_id:
+                                    try:
+                                        from app.repos.session import SessionRepository
+
+                                        session_repo = SessionRepository(db)
+                                        session_obj = await session_repo.get_session_by_id(session_id)
+                                        if session_obj and getattr(session_obj, "knowledge_set_id", None):
+                                            effective_ks_id = session_obj.knowledge_set_id
+                                            logger.info(f"Using session knowledge_set_id override: {effective_ks_id}")
+                                    except Exception as e:
+                                        logger.warning(f"Failed to load session knowledge_set_id override: {e}")
+
+                                if effective_ks_id is None and agent:
+                                    effective_ks_id = getattr(agent, "knowledge_set_id", None)
+                                    logger.info(f"Agent Knowledge Set ID: {effective_ks_id}")
+
+                                if effective_ks_id:
+                                    args_dict["knowledge_set_id"] = str(effective_ks_id)
+                                    logger.info(f"Injected knowledge_set_id: {effective_ks_id} into args")
                                 else:
-                                    logger.warning("No agent context available for injection!")
-                            else:
-                                logger.info(f"Tool '{tool_name}' does NOT require knowledge_set_id.")
+                                    logger.warning("No knowledge_set_id available for injection")
+
+                            # Inject user_id when tool schema supports it.
+                            if "user_id" in schema_props:
+                                logger.info(f"Tool '{tool_name}' supports user_id injection.")
+                                effective_user_id = None
+                                if session_id:
+                                    try:
+                                        from app.repos.session import SessionRepository
+
+                                        session_repo = SessionRepository(db)
+                                        session_obj = await session_repo.get_session_by_id(session_id)
+                                        if session_obj and getattr(session_obj, "user_id", None):
+                                            effective_user_id = session_obj.user_id
+                                            logger.info(f"Using session user_id: {effective_user_id}")
+                                    except Exception as e:
+                                        logger.warning(f"Failed to load session user_id: {e}")
+
+                                if effective_user_id is None and agent:
+                                    effective_user_id = getattr(agent, "user_id", None)
+                                    logger.info(f"Agent user_id: {effective_user_id}")
+
+                                if effective_user_id:
+                                    args_dict["user_id"] = str(effective_user_id)
+                                    logger.info("Injected user_id into args")
+                                else:
+                                    logger.warning("No user_id available for injection")
 
                             try:
                                 result = await call_mcp_tool(refreshed_server, tool_name, args_dict)

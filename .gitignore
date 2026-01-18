@@ -99,6 +99,10 @@ tsconfig.tsbuildinfo*
 *.njsproj
 *.sln
 *.sw?
+.vs/
+
+# ===== 本仓库特定忽略 =====
+service/docs/openalex/
 
 
 # ===== 数据库文件 =====
