@@ -67,7 +67,7 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             is_fallback=True,
             priority=99,
             capabilities=["coding", "analysis"],
-            description="Only use this for really complex reasoning, never use this for normal tasks. Strong in agentic coding and deep reasoning.",
+            description="Only use this for really complex reasoning(<1%), never use this for normal tasks. Strong in agentic coding and deep reasoning.",
         ),
     ],
     ModelTier.PRO: [
@@ -75,14 +75,14 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             model="gemini-3-pro-preview",
             provider_type=ProviderType.GOOGLE_VERTEX,
             priority=1,
-            description="Choose this for most tasks, suitable daily chat. Strong in coding; good for multimodal and reasoning tasks.",
+            description="Default choice (95%+). Best for chat, reports, multimodal, and general tasks.",
         ),
         TierModelCandidate(
             model="gpt-5.2",
             provider_type=ProviderType.AZURE_OPENAI,
             priority=3,
             capabilities=["coding", "analysis"],
-            description="Don't use this unless user need a logical reasoning task and just for coding. Improved reasoning and consistency.",
+            description="Only for pure code/logic reasoning WITHOUT text output. Poor at writing.",
         ),
         TierModelCandidate(
             model="Vendor2/Claude-4.5-Sonnet",
@@ -90,7 +90,7 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             is_fallback=True,
             priority=99,
             capabilities=["reasoning", "creative", "coding"],
-            description="Choose this model if user wants to code and write documents. Balanced performance; excellent for writing, editing, and complex tasks.",
+            description="For reasoning WITH text (coding + docs, complex writing). Better tool use than Gemini.",
         ),
     ],
     ModelTier.STANDARD: [

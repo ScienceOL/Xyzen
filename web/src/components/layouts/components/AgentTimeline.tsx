@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
 interface AgentTimelineProps {
@@ -6,23 +7,28 @@ interface AgentTimelineProps {
 }
 
 /**
- * AgentTimeline provides a vertical timeline container with a dashed line
- * connecting child step items. Used to display agent execution phases.
+ * AgentTimeline provides a minimal vertical timeline container.
+ * Subtle styling to keep focus on content.
  */
 export default function AgentTimeline({
   children,
   className = "",
 }: AgentTimelineProps) {
   return (
-    <div className={`relative ${className}`}>
-      {/* Vertical dashed line - positioned to align with step indicators */}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className={`relative ${className}`}
+    >
+      {/* Subtle vertical line - very light to not distract */}
       <div
-        className="absolute left-[11px] top-4 bottom-4 w-px border-l border-dashed border-neutral-300 dark:border-neutral-600"
+        className="absolute left-[9px] top-5 bottom-5 w-px bg-neutral-100 dark:bg-neutral-800"
         aria-hidden="true"
       />
 
       {/* Timeline items container */}
-      <div className="relative space-y-1">{children}</div>
-    </div>
+      <div className="relative space-y-0.5">{children}</div>
+    </motion.div>
   );
 }

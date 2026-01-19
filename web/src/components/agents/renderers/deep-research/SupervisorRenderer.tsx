@@ -1,17 +1,16 @@
 /**
  * Supervisor Renderer
  *
- * Renders the research supervisor phase output.
- * Shows research progress with iteration info and current action.
+ * Compact display for research progress.
+ * Minimal, content-focused design.
  */
 
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import Markdown from "@/lib/Markdown";
+import { motion } from "framer-motion";
 import type { ComponentRendererProps } from "../registry";
 
 /**
- * SupervisorRenderer displays the research supervisor's progress,
- * including the current action and accumulated notes.
+ * SupervisorRenderer displays research progress with minimal styling.
  */
 export default function SupervisorRenderer({
   phase,
@@ -22,27 +21,39 @@ export default function SupervisorRenderer({
   if (!content) return null;
 
   return (
-    <div className="space-y-2">
-      {/* Header */}
-      <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-        <MagnifyingGlassIcon className="h-4 w-4" />
-        <span className="text-xs font-medium uppercase tracking-wide">
-          {isActive ? "Researching..." : "Research Progress"}
-        </span>
-        {isActive && (
-          <span className="flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-purple-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500" />
-          </span>
-        )}
-      </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="relative"
+    >
+      {/* Subtle left accent */}
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full bg-violet-400/50 dark:bg-violet-500/40" />
 
       {/* Content */}
-      <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 p-3 max-h-48 overflow-y-auto">
-        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 text-neutral-600 dark:text-neutral-400">
-          <Markdown content={content} />
+      <div className="pl-3">
+        {isActive && (
+          <motion.div
+            className="mb-2 flex items-center gap-1.5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <motion.div
+              className="h-1.5 w-1.5 rounded-full bg-violet-500"
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+            />
+            <span className="text-[11px] font-medium text-violet-600 dark:text-violet-400">
+              Researching
+            </span>
+          </motion.div>
+        )}
+        <div className="max-h-40 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-200 dark:scrollbar-thumb-neutral-700">
+          <div className="prose prose-sm max-w-none text-neutral-500 dark:prose-invert dark:text-neutral-400 prose-p:my-0.5 prose-p:leading-relaxed prose-ul:my-0.5 prose-li:my-0">
+            <Markdown content={content} />
+          </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

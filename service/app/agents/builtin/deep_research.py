@@ -27,8 +27,8 @@ from app.agents.components.deep_research import create_deep_research_graph_confi
 # This maintains backward compatibility while enabling the new unified path
 DEEP_RESEARCH_CONFIG = create_deep_research_graph_config(
     allow_clarification=True,
-    max_iterations=6,
-    max_concurrent_units=5,
+    max_iterations=24,
+    max_concurrent_units=12,
 )
 
 

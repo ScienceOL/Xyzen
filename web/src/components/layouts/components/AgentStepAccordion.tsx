@@ -1,11 +1,10 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect } from "react";
-import type { ExecutionStatus, PhaseExecution } from "@/types/agentEvents";
-import { getRenderer, DefaultRenderer } from "@/components/agents/renderers";
-import LoadingMessage from "./LoadingMessage";
-import ToolCallPill from "./ToolCallPill";
+import { DefaultRenderer, getRenderer } from "@/components/agents/renderers";
 import type { ToolCall } from "@/store/types";
+import type { ExecutionStatus, PhaseExecution } from "@/types/agentEvents";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import ToolCallPill from "./ToolCallPill";
 
 interface AgentStepAccordionProps {
   phase: PhaseExecution;
@@ -16,13 +15,7 @@ interface AgentStepAccordionProps {
 
 /**
  * AgentStepAccordion displays a single step in the agent execution timeline.
- * Features:
- * - Checkbox-style status indicators (completed: green check, running: spinner, pending: hollow)
- * - Auto-expand on running, auto-collapse when completed
- * - Manual toggle via header click
- * - Chevron rotation animation
- * - Tool calls displayed as pills inside the step
- * - Dynamic content rendering based on componentKey
+ * Features minimal, content-focused design with subtle animations.
  */
 export default function AgentStepAccordion({
   phase,
@@ -54,30 +47,38 @@ export default function AgentStepAccordion({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
       className={`relative ${className}`}
     >
-      {/* Header */}
+      {/* Header - Minimal design */}
       <button
         onClick={() => canExpand && setIsExpanded(!isExpanded)}
         disabled={!canExpand}
-        className={`flex w-full items-center gap-3 rounded-[6px] px-3 py-2 text-left transition-colors ${
+        className={`group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-all duration-200 ${
           canExpand
-            ? "cursor-pointer hover:bg-neutral-100/80 dark:hover:bg-neutral-700/30"
+            ? "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
             : "cursor-default"
-        } ${isActive ? "bg-neutral-100/50 dark:bg-neutral-700/20" : ""}`}
+        }`}
       >
-        {/* Status Indicator */}
+        {/* Minimal Status Indicator */}
         <StatusIndicator status={phase.status} />
 
-        {/* Step Title */}
-        <span className="flex-1 text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate">
+        {/* Step Title - Muted when complete, emphasized when active */}
+        <span
+          className={`flex-1 text-[13px] font-medium truncate transition-colors ${
+            isActive
+              ? "text-neutral-800 dark:text-neutral-100"
+              : phase.status === "completed"
+                ? "text-neutral-500 dark:text-neutral-400"
+                : "text-neutral-600 dark:text-neutral-300"
+          }`}
+        >
           {phase.name}
         </span>
 
-        {/* Right side: status text or chevron */}
+        {/* Right side: subtle indicators */}
         <RightIndicator
           status={phase.status}
           hasContent={hasContent}
@@ -93,13 +94,13 @@ export default function AgentStepAccordion({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="pl-9 pr-3 pb-2">
+            <div className="pl-7 pr-2 pb-3 pt-0.5">
               {/* Tool Calls as Pills */}
               {toolCalls.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
                   {toolCalls.map((toolCall) => (
                     <ToolCallPill key={toolCall.id} toolCall={toolCall} />
                   ))}
@@ -119,57 +120,81 @@ export default function AgentStepAccordion({
 }
 
 /**
- * Status indicator icon matching the design spec
+ * Minimal status indicator - subtle dots and lines
  */
 function StatusIndicator({ status }: { status: ExecutionStatus }) {
   switch (status) {
     case "completed":
       return (
         <motion.div
-          initial={{ scale: 0.5 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-green-500 dark:bg-green-600"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="flex h-4 w-4 items-center justify-center"
         >
-          <CheckIcon className="h-3 w-3 text-white" />
+          {/* Simple checkmark line - no background */}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            className="text-emerald-500 dark:text-emerald-400"
+          >
+            <motion.path
+              d="M2.5 6L5 8.5L9.5 3.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            />
+          </svg>
         </motion.div>
       );
 
     case "running":
       return (
-        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-blue-500 dark:border-blue-400 bg-white dark:bg-neutral-900">
-          <LoadingMessage size="small" />
+        <div className="flex h-4 w-4 items-center justify-center">
+          {/* Pulsing dot */}
+          <motion.div
+            className="h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400"
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.7, 1, 0.7],
+            }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          />
         </div>
       );
 
     case "failed":
       return (
-        <motion.div
-          initial={{ scale: 0.5 }}
-          animate={{ scale: 1 }}
-          className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-red-500 dark:bg-red-600"
-        >
-          <span className="text-white text-xs font-bold">!</span>
-        </motion.div>
+        <div className="flex h-4 w-4 items-center justify-center">
+          <div className="h-2 w-2 rounded-full bg-red-500 dark:bg-red-400" />
+        </div>
       );
 
     case "skipped":
       return (
-        <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-yellow-400 dark:bg-yellow-500">
-          <span className="text-white text-xs">-</span>
+        <div className="flex h-4 w-4 items-center justify-center">
+          <div className="h-0.5 w-2 rounded-full bg-neutral-300 dark:bg-neutral-600" />
         </div>
       );
 
     case "pending":
     default:
       return (
-        <div className="h-[22px] w-[22px] rounded-full border-2 border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900" />
+        <div className="flex h-4 w-4 items-center justify-center">
+          <div className="h-1.5 w-1.5 rounded-full border border-neutral-300 dark:border-neutral-600" />
+        </div>
       );
   }
 }
 
 /**
- * Right side indicator (status text or chevron)
+ * Minimal right side indicator
  */
 function RightIndicator({
   status,
@@ -183,18 +208,18 @@ function RightIndicator({
   canExpand: boolean;
 }) {
   if (status === "pending") {
-    return (
-      <span className="text-xs text-neutral-400 dark:text-neutral-500">
-        pending
-      </span>
-    );
+    return null;
   }
 
   if (status === "running" && !hasContent) {
     return (
-      <span className="text-xs text-blue-500 dark:text-blue-400">
-        running...
-      </span>
+      <motion.span
+        animate={{ opacity: [0.4, 0.8, 0.4] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="text-[11px] text-neutral-400 dark:text-neutral-500"
+      >
+        •••
+      </motion.span>
     );
   }
 
@@ -202,13 +227,14 @@ function RightIndicator({
     return null;
   }
 
-  // Has content - show expand toggle
+  // Has content - show subtle expand toggle
   return (
     <motion.div
       animate={{ rotate: isExpanded ? 180 : 0 }}
-      transition={{ duration: 0.2, ease: "easeInOut" }}
+      transition={{ duration: 0.2 }}
+      className="text-neutral-300 dark:text-neutral-600 group-hover:text-neutral-400 dark:group-hover:text-neutral-500 transition-colors"
     >
-      <ChevronDownIcon className="h-4 w-4 text-neutral-400" />
+      <ChevronDown className="h-3.5 w-3.5" />
     </motion.div>
   );
 }

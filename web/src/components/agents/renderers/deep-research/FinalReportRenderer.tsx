@@ -1,17 +1,16 @@
 /**
  * Final Report Renderer
  *
- * Renders the final research report with enhanced formatting.
- * Shows the comprehensive report with proper structure.
+ * Clean presentation for the final research report.
+ * Content-focused with minimal decoration.
  */
 
-import { DocumentChartBarIcon } from "@heroicons/react/24/outline";
 import Markdown from "@/lib/Markdown";
+import { motion } from "framer-motion";
 import type { ComponentRendererProps } from "../registry";
 
 /**
- * FinalReportRenderer displays the final research report
- * with enhanced formatting and a distinct visual style.
+ * FinalReportRenderer displays the research report with clean styling.
  */
 export default function FinalReportRenderer({
   phase,
@@ -22,21 +21,39 @@ export default function FinalReportRenderer({
   if (!content) return null;
 
   return (
-    <div className="space-y-2">
-      {/* Header */}
-      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-        <DocumentChartBarIcon className="h-4 w-4" />
-        <span className="text-xs font-medium uppercase tracking-wide">
-          {isActive ? "Writing Report..." : "Research Report"}
-        </span>
-      </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="relative"
+    >
+      {/* Subtle left accent */}
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full bg-emerald-400/50 dark:bg-emerald-500/40" />
 
       {/* Content */}
-      <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/30 p-3 max-h-96 overflow-y-auto">
-        <div className="prose prose-sm dark:prose-invert max-w-none prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-h1:mt-4 prose-h1:first:mt-0 prose-h2:mt-3 prose-h3:mt-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0.5">
-          <Markdown content={content} />
+      <div className="pl-3">
+        {isActive && (
+          <motion.div
+            className="mb-2 flex items-center gap-1.5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <motion.div
+              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+            />
+            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+              Writing Report
+            </span>
+          </motion.div>
+        )}
+        <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-200 dark:scrollbar-thumb-neutral-700">
+          <div className="prose prose-sm max-w-none text-neutral-700 dark:prose-invert dark:text-neutral-200 prose-headings:font-medium prose-headings:text-neutral-800 prose-headings:dark:text-neutral-100 prose-h1:mb-2 prose-h1:mt-4 prose-h1:text-base prose-h1:first:mt-0 prose-h2:mb-1.5 prose-h2:mt-3 prose-h2:text-[15px] prose-h3:mb-1 prose-h3:mt-2 prose-h3:text-sm prose-p:my-1.5 prose-p:leading-relaxed prose-ul:my-1.5 prose-li:my-0.5">
+            <Markdown content={content} />
+          </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
