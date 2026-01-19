@@ -334,14 +334,24 @@ async def _process_chat_message_async(
                     # Persist tool call response
                     try:
                         resp = stream_event["data"]
+                        tool_call_id = resp.get("toolCallId")
+
+                        # Only persist if toolCallId is valid - skip otherwise
+                        if not tool_call_id or not isinstance(tool_call_id, str):
+                            logger.warning(
+                                f"Skipping persistence of tool response with invalid toolCallId: {tool_call_id!r}"
+                            )
+                            await publisher.publish(json.dumps(stream_event))
+                            continue  # Skip to next event, but still publish to frontend
+
                         tool_message = MessageCreate(
                             role="tool",
                             content=json.dumps(
                                 {
                                     "event": ChatEventType.TOOL_CALL_RESPONSE,
-                                    "toolCallId": resp.get("toolCallId"),
+                                    "toolCallId": tool_call_id,
                                     "status": resp.get("status"),
-                                    "result": resp.get("result"),
+                                    "result": resp.get("result", ""),
                                     "error": resp.get("error"),
                                 }
                             ),

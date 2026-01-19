@@ -334,15 +334,21 @@ class GraphBuilder:
         async def llm_node(state: StateDict | BaseModel) -> StateDict:
             logger.info(f"[LLM Node: {config.id}] Starting execution")
 
-            # Convert state to dict (handles both dict and Pydantic BaseModel)
+            # Get messages BEFORE converting state to dict to preserve BaseMessage types
+            # model_dump() loses tool_call_id and other message-specific fields
+            if isinstance(state, BaseModel):
+                messages: list[BaseMessage] = list(getattr(state, "messages", []))
+            else:
+                messages = list(state.get("messages", []))
+
+            # Convert state to dict for template rendering (but we already have messages)
             state_dict = self._state_to_dict(state)
-            messages: list[BaseMessage] = list(state_dict.get("messages", []))
 
             # Render prompt template
             prompt = self._render_template(llm_config.prompt_template, state_dict)
 
             # Build messages for LLM
-            llm_messages = messages + [HumanMessage(content=prompt)]
+            llm_messages = list(messages) + [HumanMessage(content=prompt)]
 
             # Invoke LLM (using pre-created configured_llm)
             response = await configured_llm.ainvoke(llm_messages)
