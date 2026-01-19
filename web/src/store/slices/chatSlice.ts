@@ -717,16 +717,16 @@ export const createChatSlice: StateCreator<
                     // Fix: Detect and handle duplicate full-content chunks
                     // The backend sometimes sends the complete content as a final chunk
                     // after already streaming it incrementally. Detect this by checking
-                    // if the chunk starts with the same content as existing streamedContent.
+                    // if the NEW chunk starts with the EXISTING accumulated content.
                     const existingContent = targetPhase.streamedContent || "";
                     if (
-                      existingContent.length > 0 &&
-                      eventData.content.length > 100 && // Only check substantial chunks
-                      existingContent.startsWith(
-                        eventData.content.slice(0, 100),
+                      existingContent.length > 100 &&
+                      eventData.content.length > existingContent.length &&
+                      eventData.content.startsWith(
+                        existingContent.slice(0, 100),
                       )
                     ) {
-                      // This chunk contains content from the beginning - it's a full-content chunk
+                      // New chunk contains all existing content - it's a full-content chunk
                       // Replace instead of append to avoid duplication
                       targetPhase.streamedContent = eventData.content;
                     } else {
@@ -803,6 +803,14 @@ export const createChatSlice: StateCreator<
                     created_at:
                       eventData.created_at || new Date().toISOString(),
                   } as import("../types").Message;
+                  console.debug(
+                    "[ChatSlice] streaming_end: finalized message at index",
+                    endingIndex,
+                  );
+                } else {
+                  console.warn(
+                    "[ChatSlice] streaming_end: no message found to finalize",
+                  );
                 }
                 break;
               }

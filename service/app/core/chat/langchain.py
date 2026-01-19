@@ -316,7 +316,7 @@ async def _process_agent_stream(
                         ctx.historical_tool_call_ids.add(tool_id)
                         # Also mark as already having results emitted (since they're historical)
                         ctx.emitted_tool_result_ids.add(tool_id)
-    logger.info(
+    logger.debug(
         f"Loaded {len(ctx.historical_ai_contents)} historical AI contents and {len(ctx.historical_tool_call_ids)} historical tool calls to skip"
     )
 
@@ -611,42 +611,18 @@ async def _handle_messages_mode(
         logger.debug("Skipping ToolMessage (handled by tool event handler)")
         return
 
-    # Check if this AIMessage is from history (already in our known historical contents)
-    if isinstance(message_chunk, AIMessage):
-        content = TokenStreamProcessor.extract_token_text(message_chunk)
-        if content and content in ctx.historical_ai_contents:
-            logger.debug("Skipping historical AIMessage (content already in history)")
-            return
-
-    # Extract token usage
-    usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
-    if usage:
-        ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens = usage
-
-    # Batch logging
-    ctx.token_count += 1
-    if TokenStreamProcessor.should_log_batch(ctx.token_count):
-        logger.debug(
-            "Received message chunks (token count: %d)",
-            ctx.token_count,
-        )
-
-    # Only skip streaming from tool execution nodes and structured output nodes
-    # - 'tools' node: where tool calls are executed, not LLM responses
-    # - 'clarify_with_user': uses structured output (JSON), we only want the final extracted message
-    # - 'write_research_brief': uses structured output, handled in updates mode
-    # All other LLM nodes should stream their output normally
-    SKIP_STREAMING_NODES = {"tools", "clarify_with_user", "write_research_brief"}
-
+    # Get node from metadata early - needed for node transition detection
     node: str | None = None
     if isinstance(metadata, dict):
         node = metadata.get("langgraph_node") or metadata.get("node")
-        if node in SKIP_STREAMING_NODES:
-            return
 
-    # Emit node events based on streaming metadata (more accurate timing than updates mode)
-    # This ensures node_start is emitted BEFORE streaming chunks for that node
-    # Use tracer's detect_node_transition for consistent node tracking
+    # Only skip streaming from tool execution nodes and structured output nodes
+    SKIP_STREAMING_NODES = {"tools", "clarify_with_user", "write_research_brief"}
+    if node in SKIP_STREAMING_NODES:
+        return
+
+    # IMPORTANT: Detect node transition and clear buffer BEFORE checking AIMessage skip
+    # This ensures the buffer only has content from the CURRENT node, not previous nodes
     new_node = tracer.detect_node_transition(metadata) if isinstance(metadata, dict) else None
     if new_node:
         # Emit node_end for previous node via tracer
@@ -668,6 +644,37 @@ async def _handle_messages_mode(
             yield node_start_event
         # Also update ctx for compatibility
         ctx.current_node = new_node
+
+    # Skip final AIMessage (full content) - only process AIMessageChunk (streaming deltas)
+    # LangGraph sends AIMessageChunk during streaming, then a final AIMessage with full content.
+    # We must skip the final AIMessage to avoid duplicating content in the frontend.
+    # Note: AIMessageChunk is a subclass of AIMessage, so check the exact type.
+    if type(message_chunk) is AIMessage:
+        content = TokenStreamProcessor.extract_token_text(message_chunk)
+        # Skip if this is historical (matches known historical content)
+        if content and content in ctx.historical_ai_contents:
+            logger.debug(f"Skipping historical AIMessage ({len(content)} chars)")
+            return
+        # Skip final AIMessage only if we already have streaming content in the buffer for THIS node
+        # This prevents duplication when LLM streams chunks then sends final full content,
+        # but allows single AIMessage (no streaming) to pass through (e.g., deep research final_report)
+        buffered_content = "".join(ctx.assistant_buffer)
+        if ctx.is_streaming and buffered_content:
+            logger.debug(f"Skipping final AIMessage (already have {len(buffered_content)} chars streamed)")
+            return
+
+    # Extract token usage
+    usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
+    if usage:
+        ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens = usage
+
+    # Batch logging
+    ctx.token_count += 1
+    if TokenStreamProcessor.should_log_batch(ctx.token_count):
+        logger.debug(
+            "Received message chunks (token count: %d)",
+            ctx.token_count,
+        )
 
     # Check for thinking content first (from reasoning models like Claude, DeepSeek R1, Gemini 3)
     thinking_content = ThinkingEventHandler.extract_thinking_content(message_chunk)
@@ -695,30 +702,17 @@ async def _handle_messages_mode(
     if not token_text:
         return
 
-    # Handle accumulated content (AIMessage contains full response, not delta)
-    # If the extracted text starts with what we've already buffered, extract only the new part
-    buffered_content = "".join(ctx.assistant_buffer)
-    if buffered_content and token_text.startswith(buffered_content):
-        # Extract only the delta (new content beyond what we've seen)
-        delta_text = token_text[len(buffered_content) :]
-        if not delta_text:
-            # No new content - this is a duplicate/state update, skip it
-            logger.debug("Skipping accumulated content with no new delta")
-            return
-        logger.debug(f"Extracted delta from accumulated content: {len(delta_text)} chars")
-        token_text = delta_text
-
     if not ctx.is_streaming:
         # Emit synthetic node_start if no node was detected
         # This handles prebuilt agents (like ReAct) that don't include langgraph_node metadata
         if ctx.event_ctx and not tracer.get_current_node_id():
             node_start_event = tracer.on_node_start("agent", "Response", "llm")
             if node_start_event:
-                logger.info("[AgentEvent/Messages] Emitting synthetic node_start for 'agent'")
+                logger.debug("[AgentEvent/Messages] Emitting synthetic node_start for 'agent'")
                 yield node_start_event
             ctx.current_node = "agent"
 
-        logger.debug("Emitting streaming_start for stream_id=%s", ctx.stream_id)
+        logger.debug(f"Emitting streaming_start for stream_id={ctx.stream_id}")
         ctx.is_streaming = True
         yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
 

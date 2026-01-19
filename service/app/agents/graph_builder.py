@@ -175,7 +175,7 @@ class GraphBuilder:
             if tools:
                 self._tool_node = ToolNode(tools)
 
-    def build(self) -> DynamicCompiledGraph:
+    async def build(self) -> DynamicCompiledGraph:
         """
         Build and compile the LangGraph from configuration.
 
@@ -189,7 +189,7 @@ class GraphBuilder:
 
         # Add all nodes
         for node_config in self.config.nodes:
-            node_fn = self._build_node(node_config)
+            node_fn = await self._build_node(node_config)
             # Note: LangGraph's add_node has strict typing that doesn't match our dynamic state
             graph.add_node(node_config.id, node_fn)  # type: ignore[arg-type]
             logger.debug(f"Added node: {node_config.id} ({node_config.type})")
@@ -282,22 +282,25 @@ class GraphBuilder:
         rendered = re.sub(r"\{(\w+)\}", replace_placeholder, rendered)
         return rendered
 
-    def _build_node(self, config: GraphNodeConfig) -> NodeFunction:
-        """Build a node function from configuration."""
+    async def _build_node(self, config: GraphNodeConfig) -> NodeFunction | DynamicCompiledGraph:
+        """Build a node function or subgraph from configuration."""
         match config.type:
             case NodeType.LLM:
-                return self._build_llm_node(config)
+                return await self._build_llm_node(config)
             case NodeType.TOOL:
                 return self._build_tool_node(config)
             case NodeType.TRANSFORM:
                 return self._build_transform_node(config)
             case NodeType.COMPONENT:
-                return self._build_component_node(config)
+                return await self._build_component_node(config)
             case _:
                 raise ValueError(f"Unknown node type: {config.type}")
 
-    def _build_llm_node(self, config: GraphNodeConfig) -> NodeFunction:
-        """Build an LLM node using LangGraph patterns."""
+    async def _build_llm_node(self, config: GraphNodeConfig) -> NodeFunction:
+        """Build an LLM node using LangGraph patterns.
+
+        Creates the LLM BEFORE compilation to enable proper streaming interception.
+        """
         llm_config = config.llm_config
         if not llm_config:
             raise ValueError(f"LLM node '{config.id}' missing llm_config")
@@ -307,36 +310,42 @@ class GraphBuilder:
         if llm_config.structured_output:
             structured_model = self._build_structured_output_model(config.id, llm_config.structured_output)
 
+        # Create LLM BEFORE building the node function
+        # This is critical for LangGraph to properly intercept and stream tokens
+        base_llm = await self.llm_factory(
+            model=llm_config.model_override,
+            temperature=llm_config.temperature_override,
+        )
+
+        # Configure LLM based on mode
+        if structured_model:
+            configured_llm = base_llm.with_structured_output(structured_model)
+        elif llm_config.tools_enabled and self.tool_registry:
+            tools_to_bind = list(self.tool_registry.values())
+            if llm_config.tool_filter:
+                tools_to_bind = [t for t in tools_to_bind if t.name in llm_config.tool_filter]
+            if tools_to_bind:
+                configured_llm = base_llm.bind_tools(tools_to_bind)
+            else:
+                configured_llm = base_llm
+        else:
+            configured_llm = base_llm
+
         async def llm_node(state: StateDict) -> StateDict:
             logger.info(f"[LLM Node: {config.id}] Starting execution")
 
-            state_dict = self._state_to_dict(state)
-            messages: list[BaseMessage] = state_dict.get("messages", [])
+            # Access messages directly from state
+            # LangGraph passes state as dict with 'messages' key containing BaseMessage objects
+            messages: list[BaseMessage] = list(state.get("messages", []))
 
             # Render prompt template
             prompt = self._render_template(llm_config.prompt_template, state)
 
-            # Get LLM with optional overrides
-            llm = await self.llm_factory(
-                model=llm_config.model_override,
-                temperature=llm_config.temperature_override,
-            )
-
-            # Configure LLM based on mode
-            if structured_model:
-                llm = llm.with_structured_output(structured_model)
-            elif llm_config.tools_enabled and self.tool_registry:
-                tools_to_bind = list(self.tool_registry.values())
-                if llm_config.tool_filter:
-                    tools_to_bind = [t for t in tools_to_bind if t.name in llm_config.tool_filter]
-                if tools_to_bind:
-                    llm = llm.bind_tools(tools_to_bind)
-
             # Build messages for LLM
             llm_messages = messages + [HumanMessage(content=prompt)]
 
-            # Invoke LLM
-            response = await llm.ainvoke(llm_messages)
+            # Invoke LLM (using pre-created configured_llm)
+            response = await configured_llm.ainvoke(llm_messages)
 
             # Handle structured output
             if structured_model and isinstance(response, BaseModel):
@@ -459,11 +468,14 @@ class GraphBuilder:
 
         return transform_node
 
-    def _build_component_node(self, config: GraphNodeConfig) -> NodeFunction:
+    async def _build_component_node(self, config: GraphNodeConfig) -> NodeFunction | DynamicCompiledGraph:
         """Build a node that invokes a registered ExecutableComponent.
 
         This resolves the component from the registry, filters tools by the
         component's required capabilities, and builds the component's subgraph.
+
+        Returns the compiled subgraph directly (not wrapped in a function) so that
+        LangGraph can properly propagate streaming through the subgraph.
         """
         from app.agents.components import component_registry
         from app.agents.components.executable import ExecutableComponent
@@ -489,8 +501,8 @@ class GraphBuilder:
         # Filter tools by component's required capabilities
         filtered_tools = self._filter_tools_by_capabilities(component.metadata.required_capabilities)
 
-        # Build the component's subgraph
-        subgraph = component.build_graph(
+        # Build the component's subgraph (async to create LLM before compilation)
+        subgraph = await component.build_graph(
             llm_factory=self.llm_factory,
             tools=filtered_tools,
             config=comp_config.config_overrides,
@@ -501,17 +513,8 @@ class GraphBuilder:
             f"with {len(filtered_tools)} tools"
         )
 
-        async def invoke_component(state: StateDict) -> StateDict:
-            """Invoke the component's subgraph."""
-            logger.info(f"[Component Node: {config.id}] Invoking component subgraph")
-
-            # Invoke the component's compiled graph
-            result = await subgraph.ainvoke(state)
-
-            logger.info(f"[Component Node: {config.id}] Component completed")
-            return dict(result) if result else {}
-
-        return invoke_component
+        # Return the compiled subgraph directly - LangGraph will handle streaming propagation
+        return subgraph
 
     def _filter_tools_by_capabilities(self, required_capabilities: list[str]) -> list["BaseTool"]:
         """Filter tools to those matching required capabilities.

@@ -151,7 +151,7 @@ class ClarifyWithUserComponent(ExecutableComponent):
             },
         )
 
-    def build_graph(
+    async def build_graph(
         self,
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
@@ -253,7 +253,7 @@ class ResearchBriefComponent(ExecutableComponent):
             },
         )
 
-    def build_graph(
+    async def build_graph(
         self,
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
@@ -374,7 +374,7 @@ class ResearchSupervisorComponent(ExecutableComponent):
             },
         )
 
-    def build_graph(
+    async def build_graph(
         self,
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
@@ -568,7 +568,7 @@ class FinalReportComponent(ExecutableComponent):
             },
         )
 
-    def build_graph(
+    async def build_graph(
         self,
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],

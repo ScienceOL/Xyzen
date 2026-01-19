@@ -301,7 +301,7 @@ async def _build_graph_agent(
         tool_registry=tool_registry,
     )
 
-    compiled_graph = builder.build()
+    compiled_graph = await builder.build()
     node_component_keys = builder.get_node_component_keys()
 
     logger.info(f"Built graph agent with {len(graph_config.nodes)} nodes")
@@ -344,7 +344,10 @@ async def create_agent_from_builtin(
         override_model = kwargs.get("model") or model_name
         override_temp = kwargs.get("temperature")
 
-        model_kwargs: dict[str, Any] = {"model": override_model}
+        model_kwargs: dict[str, Any] = {
+            "model": override_model,
+            "streaming": True,  # Enable streaming for token-by-token output
+        }
         if override_temp is not None:
             model_kwargs["temperature"] = override_temp
 

@@ -65,7 +65,7 @@ class ExecutableComponent(BaseComponent):
         return None
 
     @abstractmethod
-    def build_graph(
+    async def build_graph(
         self,
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
@@ -76,6 +76,9 @@ class ExecutableComponent(BaseComponent):
 
         This method constructs a LangGraph workflow that can be invoked
         as part of a larger agent or standalone.
+
+        Note: This is async to allow creating the LLM before graph compilation,
+        which is required for LangGraph to properly intercept and stream tokens.
 
         Args:
             llm_factory: Factory to create LLM instances with optional overrides.

@@ -117,7 +117,7 @@ class ReActComponent(ExecutableComponent):
             },
         )
 
-    def build_graph(
+    async def build_graph(
         self,
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
@@ -140,13 +140,22 @@ class ReActComponent(ExecutableComponent):
 
         logger.info(f"Building ReActComponent graph with {len(tools)} tools")
 
+        # Create LLM BEFORE building the graph - critical for streaming to work
+        # LangGraph needs the LLM object to exist before compilation to properly
+        # intercept and stream tokens
+        llm = await llm_factory()
+        if tools:
+            llm_with_tools = llm.bind_tools(tools)
+        else:
+            llm_with_tools = llm
+
         # Create state graph with MessagesState
         workflow: StateGraph[MessagesState] = StateGraph(MessagesState)
 
         # Track iterations to prevent infinite loops
         iteration_count = 0
 
-        # Agent node: LLM with tools bound
+        # Agent node: LLM with tools bound (uses pre-created LLM)
         async def agent_node(state: MessagesState) -> dict[str, Any]:
             nonlocal iteration_count
             iteration_count += 1
@@ -164,19 +173,10 @@ class ReActComponent(ExecutableComponent):
                     ]
                 }
 
-            # Get LLM from factory
-            llm = await llm_factory()
-
-            # Bind tools if available
-            if tools:
-                llm_with_tools = llm.bind_tools(tools)
-            else:
-                llm_with_tools = llm
-
             # Build messages with system prompt
             messages = [SystemMessage(content=system_prompt)] + list(state["messages"])
 
-            # Invoke LLM
+            # Invoke LLM (using pre-created llm_with_tools)
             response = await llm_with_tools.ainvoke(messages)
 
             return {"messages": [response]}
