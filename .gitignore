@@ -11,6 +11,7 @@ Thumbs.db
 *.bak
 *.swp
 **/tmp/
+.vs/
 
 # ===== 系统文件 =====
 # Windows
@@ -162,3 +163,6 @@ docker-compose.override.yml
 .claude/
 CLAUDE.md
 GEMINI.md
+
+# MCP说明文档
+/service/docs/literature
