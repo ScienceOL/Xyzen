@@ -331,15 +331,15 @@ class GraphBuilder:
         else:
             configured_llm = base_llm
 
-        async def llm_node(state: StateDict) -> StateDict:
+        async def llm_node(state: StateDict | BaseModel) -> StateDict:
             logger.info(f"[LLM Node: {config.id}] Starting execution")
 
-            # Access messages directly from state
-            # LangGraph passes state as dict with 'messages' key containing BaseMessage objects
-            messages: list[BaseMessage] = list(state.get("messages", []))
+            # Convert state to dict (handles both dict and Pydantic BaseModel)
+            state_dict = self._state_to_dict(state)
+            messages: list[BaseMessage] = list(state_dict.get("messages", []))
 
             # Render prompt template
-            prompt = self._render_template(llm_config.prompt_template, state)
+            prompt = self._render_template(llm_config.prompt_template, state_dict)
 
             # Build messages for LLM
             llm_messages = messages + [HumanMessage(content=prompt)]
