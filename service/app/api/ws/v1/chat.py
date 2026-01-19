@@ -206,7 +206,7 @@ async def chat_websocket(
 
                 # 6. Dispatch Celery Task
                 # Convert UUIDs to strings
-                process_chat_message.delay(  # type: ignore
+                process_chat_message.delay(
                     session_id_str=str(session_id),
                     topic_id_str=str(topic_id),
                     user_id_str=str(user),

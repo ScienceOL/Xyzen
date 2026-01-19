@@ -158,5 +158,6 @@ docker-compose.override.yml
 .windsurfrules
 .clinerules
 .github/copilot-instructions.md
+.claude/
 CLAUDE.md
 GEMINI.md
