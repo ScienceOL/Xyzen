@@ -11,6 +11,7 @@ Thumbs.db
 *.bak
 *.swp
 **/tmp/
+.vs/
 
 # ===== 系统文件 =====
 # Windows
@@ -160,3 +161,6 @@ docker-compose.override.yml
 .github/copilot-instructions.md
 CLAUDE.md
 GEMINI.md
+
+# MCP说明文档
+/service/docs/literature
