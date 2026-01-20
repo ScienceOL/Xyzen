@@ -7,8 +7,10 @@ Provides tools for searching academic literature from multiple data sources
 
 import json
 import logging
+from datetime import datetime
 from typing import Any
 
+import httpx
 from fastmcp import FastMCP
 
 from app.utils.literature import SearchRequest, WorkDistributor
@@ -29,7 +31,7 @@ __mcp_metadata__ = {
 @mcp.tool()
 async def search_literature(
     query: str,
-    mailto: str,
+    mailto: str | None = None,
     author: str | None = None,
     institution: str | None = None,
     source: str | None = None,
@@ -49,15 +51,16 @@ async def search_literature(
     """
     Search academic literature from multiple data sources (OpenAlex, etc.)
 
-    ⚠️ IMPORTANT: This tool REQUIRES a valid email address (mailto parameter).
-    If you don't have the user's email, ask for it before calling this tool.
+    ⚠️ IMPORTANT: A valid email address (mailto parameter) enables the OpenAlex polite pool
+    (10 req/s). If omitted, the default pool is used (1 req/s, sequential). Production
+    usage should provide an email.
 
     Basic usage: Provide query keywords and user's email. Returns a Markdown report
     with statistics and JSON list of papers.
 
     Args:
         query: Search keywords (e.g., "machine learning", "CRISPR")
-        mailto: **REQUIRED** - User's email (e.g., "researcher@university.edu")
+        mailto: OPTIONAL - User's email (e.g., "researcher@university.edu")
         author: OPTIONAL - Author name (e.g., "Albert Einstein")
         institution: OPTIONAL - Institution (e.g., "MIT", "Harvard University")
         source: OPTIONAL - Journal (e.g., "Nature", "Science")
@@ -123,6 +126,16 @@ async def search_literature(
         year_from_int = int(year_from) if year_from and str(year_from).strip() else None
         year_to_int = int(year_to) if year_to and str(year_to).strip() else None
 
+        # Clamp year ranges (warn but don't block search)
+        max_year = datetime.now().year + 1
+        year_warning = ""
+        if year_from_int is not None and year_from_int > max_year:
+            year_warning += f"year_from {year_from_int}→{max_year}. "
+            year_from_int = max_year
+        if year_to_int is not None and year_to_int < 1700:
+            year_warning += f"year_to {year_to_int}→1700. "
+            year_to_int = 1700
+
         # Convert is_oa to boolean
         is_oa_bool: bool | None = None
         if is_oa is not None:
@@ -149,7 +162,11 @@ async def search_literature(
         # Convert include_abstract to bool
         include_abstract_bool = str(include_abstract).lower() in ("true", "1", "yes") if include_abstract else False
 
-        logger.info(f"Literature search requested: query='{query}', mailto={mailto}, max_results={max_results_int}")
+        openalex_email = mailto.strip() if mailto and str(mailto).strip() else None
+
+        logger.info(
+            f"Literature search requested: query='{query}', mailto={openalex_email}, max_results={max_results_int}"
+        )
 
         # Create search request with converted types
         request = SearchRequest(
@@ -171,15 +188,24 @@ async def search_literature(
         )
 
         # Execute search
-        distributor = WorkDistributor(openalex_email=mailto)
-        result = await distributor.search(request)
+        async with WorkDistributor(openalex_email=openalex_email) as distributor:
+            result = await distributor.search(request)
+
+        if year_warning:
+            result.setdefault("warnings", []).append(f"⚠️ Year adjusted: {year_warning.strip()}")
 
         # Format output
         return _format_search_result(request, result, include_abstract_bool)
 
+    except ValueError as e:
+        logger.warning(f"Literature search validation error: {e}")
+        return f"❌ Invalid input: {str(e)}"
+    except httpx.HTTPError as e:
+        logger.error(f"Literature search network error: {e}", exc_info=True)
+        return "❌ Network error while contacting literature sources. Please try again later."
     except Exception as e:
         logger.error(f"Literature search failed: {e}", exc_info=True)
-        return f"❌ Search failed: {str(e)}"
+        return "❌ Unexpected error during search. Please retry or contact support."
 
 
 def _format_search_result(request: SearchRequest, result: dict[str, Any], include_abstract: bool = False) -> str:
@@ -348,54 +374,3 @@ def _format_search_result(request: SearchRequest, result: dict[str, Any], includ
     sections.append("\n".join(next_steps))
 
     return "\n".join(sections)
-
-
-# Optional: Add a tool to get a single work by DOI
-@mcp.tool()
-async def get_work_by_doi(doi: str, mailto: str, data_source: str = "openalex") -> str:
-    """
-    Get detailed information about a specific work by DOI
-
-    Args:
-        doi: Digital Object Identifier (e.g., "10.1038/nature12345")
-        mailto: Your email address for OpenAlex polite pool
-        data_source: Data source to query (default: "openalex")
-
-    Returns:
-        Detailed work information in JSON format
-
-    Examples:
-        get_work_by_doi("10.1038/nature12345", "your@email.com")
-    """
-    try:
-        distributor = WorkDistributor(openalex_email=mailto)
-        client = distributor.clients.get(data_source)
-
-        if not client:
-            return f"❌ Data source '{data_source}' not available"
-
-        work = await client.get_by_doi(doi)
-
-        if not work:
-            return f"❌ No work found with DOI: {doi}"
-
-        # Return as formatted JSON
-        work_dict = {
-            "id": work.id,
-            "doi": work.doi,
-            "title": work.title,
-            "authors": work.authors,
-            "publication_year": work.publication_year,
-            "cited_by_count": work.cited_by_count,
-            "abstract": work.abstract,
-            "journal": work.journal,
-            "is_oa": work.is_oa,
-            "oa_url": work.oa_url,
-            "source": work.source,
-        }
-
-        return json.dumps(work_dict, indent=2, ensure_ascii=False)
-
-    except Exception as e:
-        logger.error(f"Failed to get work by DOI {doi}: {e}", exc_info=True)
-        return f"❌ Failed to retrieve work: {str(e)}"

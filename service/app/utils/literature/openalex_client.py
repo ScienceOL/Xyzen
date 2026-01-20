@@ -17,9 +17,46 @@ from typing import Any
 import httpx
 
 from .base_client import BaseLiteratureClient
-from .work_distributor import LiteratureWork, SearchRequest
+from .models import LiteratureWork, SearchRequest
 
 logger = logging.getLogger(__name__)
+
+
+class _RateLimiter:
+    """
+    Simple global rate limiter with optional concurrency guard.
+
+    Enforces a minimum interval between request starts across all callers.
+    """
+
+    def __init__(self, rate_per_second: float, max_concurrency: int) -> None:
+        self._min_interval = 1.0 / rate_per_second if rate_per_second > 0 else 0.0
+        self._lock = asyncio.Lock()
+        self._last_request = 0.0
+        self._semaphore = asyncio.Semaphore(max_concurrency)
+
+    async def __aenter__(self) -> None:
+        await self._semaphore.acquire()
+        await self._throttle()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: Any | None,
+    ) -> None:
+        self._semaphore.release()
+
+    async def _throttle(self) -> None:
+        if self._min_interval <= 0:
+            return
+
+        async with self._lock:
+            now = asyncio.get_running_loop().time()
+            wait_time = self._last_request + self._min_interval - now
+            if wait_time > 0:
+                await asyncio.sleep(wait_time)
+            self._last_request = asyncio.get_running_loop().time()
 
 
 class OpenAlexClient(BaseLiteratureClient):
@@ -35,20 +72,29 @@ class OpenAlexClient(BaseLiteratureClient):
     MAX_RETRIES = 5
     TIMEOUT = 30.0
 
-    def __init__(self, email: str, rate_limit: int = 10, timeout: float = 30.0) -> None:
+    def __init__(self, email: str | None, rate_limit: int | None = None, timeout: float = 30.0) -> None:
         """
         Initialize OpenAlex client
 
         Args:
-            email: Email for polite pool (10x rate limit increase)
-            rate_limit: Requests per second (default: 10)
+            email: Email for polite pool (10x rate limit increase). If None, use default pool.
+            rate_limit: Requests per second (default: 10 with email, 1 without email)
             timeout: Request timeout in seconds (default: 30.0)
         """
         self.email = email
-        self.rate_limit = rate_limit
-        self.rate_limiter = asyncio.Semaphore(self.rate_limit)
+        self.rate_limit = rate_limit or (10 if self.email else 1)
+        max_concurrency = 10 if self.email else 1
+        self.rate_limiter = _RateLimiter(rate_per_second=self.rate_limit, max_concurrency=max_concurrency)
         self.client = httpx.AsyncClient(timeout=timeout)
-        logger.info(f"OpenAlex client initialized with email={self.email}, rate_limit={self.rate_limit}/s")
+        pool_type = "polite" if self.email else "default"
+        logger.info(
+            f"OpenAlex client initialized with pool={pool_type}, email={self.email}, rate_limit={self.rate_limit}/s"
+        )
+
+    @property
+    def pool_type(self) -> str:
+        """Return pool type string."""
+        return "polite" if self.email else "default"
 
     async def search(self, request: SearchRequest) -> tuple[list[LiteratureWork], list[str]]:
         """
@@ -70,7 +116,9 @@ class OpenAlexClient(BaseLiteratureClient):
             - works: List of literature works in standard format
             - warnings: List of warning/info messages for LLM feedback
         """
-        logger.info(f"OpenAlex search: query='{request.query}', max_results={request.max_results}")
+        logger.info(
+            f"OpenAlex search [{self.pool_type} @ {self.rate_limit}/s]: query='{request.query}', max_results={request.max_results}"
+        )
 
         warnings: list[str] = []
 
@@ -99,56 +147,6 @@ class OpenAlexClient(BaseLiteratureClient):
         # Step 6: Transform to standard format
         return [self._transform_work(w) for w in works], warnings
 
-    async def get_by_doi(self, doi: str) -> LiteratureWork | None:
-        """
-        Get a single work by DOI
-
-        Args:
-            doi: Digital Object Identifier
-
-        Returns:
-            Literature work if found, None otherwise
-        """
-        async with self.rate_limiter:
-            try:
-                # Ensure DOI has https://doi.org/ prefix for OpenAlex
-                if not doi.startswith("https://doi.org/"):
-                    doi = f"https://doi.org/{doi}"
-
-                url = f"{self.BASE_URL}/works/{doi}"
-                params = {"mailto": self.email}
-                response = await self._request_with_retry(url, params)
-
-                return self._transform_work(response)
-            except Exception as e:
-                logger.error(f"Failed to get work by DOI {doi}: {e}")
-                return None
-
-    async def get_by_id(self, work_id: str) -> LiteratureWork | None:
-        """
-        Get a single work by OpenAlex ID
-
-        Args:
-            work_id: OpenAlex work ID (e.g., "W2741809807")
-
-        Returns:
-            Literature work if found, None otherwise
-        """
-        async with self.rate_limiter:
-            try:
-                # Ensure ID has correct format
-                if not work_id.startswith("W") and not work_id.startswith("https://"):
-                    work_id = f"W{work_id}"
-
-                url = f"{self.BASE_URL}/works/{work_id}"
-                params = {"mailto": self.email}
-                response = await self._request_with_retry(url, params)
-
-                return self._transform_work(response)
-            except Exception as e:
-                logger.error(f"Failed to get work by ID {work_id}: {e}")
-                return None
-
     def _build_query_params(
         self,
         request: SearchRequest,
@@ -169,9 +167,11 @@ class OpenAlexClient(BaseLiteratureClient):
             Dictionary of query parameters
         """
         params: dict[str, str] = {
-            "mailto": self.email,
             "per-page": str(self.MAX_PER_PAGE),
         }
+
+        if self.email:
+            params["mailto"] = self.email
 
         # Search keywords
         if request.query:
@@ -252,7 +252,9 @@ class OpenAlexClient(BaseLiteratureClient):
         async with self.rate_limiter:
             try:
                 url = f"{self.BASE_URL}/authors"
-                params = {"search": author_name, "mailto": self.email}
+                params: dict[str, str] = {"search": author_name}
+                if self.email:
+                    params["mailto"] = self.email
                 response = await self._request_with_retry(url, params)
 
                 if results := response.get("results", []):
@@ -274,8 +276,6 @@ class OpenAlexClient(BaseLiteratureClient):
                 logger.warning(msg)
                 return None, False, msg
 
-        return None, False, f"⚠️ Author '{author_name}' resolution failed (unknown reason)"
-
     async def _resolve_institution_id(self, institution_name: str) -> tuple[str | None, bool, str]:
         """
         Two-step lookup: institution name -> institution ID
@@ -292,7 +292,9 @@ class OpenAlexClient(BaseLiteratureClient):
         async with self.rate_limiter:
             try:
                 url = f"{self.BASE_URL}/institutions"
-                params = {"search": institution_name, "mailto": self.email}
+                params: dict[str, str] = {"search": institution_name}
+                if self.email:
+                    params["mailto"] = self.email
                 response = await self._request_with_retry(url, params)
 
                 if results := response.get("results", []):
@@ -314,8 +316,6 @@ class OpenAlexClient(BaseLiteratureClient):
                 logger.warning(msg)
                 return None, False, msg
 
-        return None, False, f"⚠️ Institution '{institution_name}' resolution failed (unknown reason)"
-
     async def _resolve_source_id(self, source_name: str) -> tuple[str | None, bool, str]:
         """
         Two-step lookup: source name -> source ID
@@ -332,7 +332,9 @@ class OpenAlexClient(BaseLiteratureClient):
         async with self.rate_limiter:
             try:
                 url = f"{self.BASE_URL}/sources"
-                params = {"search": source_name, "mailto": self.email}
+                params: dict[str, str] = {"search": source_name}
+                if self.email:
+                    params["mailto"] = self.email
                 response = await self._request_with_retry(url, params)
 
                 if results := response.get("results", []):
@@ -353,8 +355,6 @@ class OpenAlexClient(BaseLiteratureClient):
                 msg = f"⚠️ Failed to resolve source '{source_name}': {e}"
                 logger.warning(msg)
                 return None, False, msg
-
-        return None, False, f"⚠️ Source '{source_name}' resolution failed (unknown reason)"
 
     async def _fetch_all_pages(self, params: dict[str, str], max_results: int) -> list[dict[str, Any]]:
         """
@@ -546,3 +546,14 @@ class OpenAlexClient(BaseLiteratureClient):
     async def close(self) -> None:
         """Close the HTTP client"""
         await self.client.aclose()
+
+    async def __aenter__(self) -> "OpenAlexClient":
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: Any | None,
+    ) -> None:
+        await self.close()

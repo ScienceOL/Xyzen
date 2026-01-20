@@ -21,7 +21,9 @@ def normalize_doi(doi: str | None) -> str | None:
     """
     Normalize DOI format to standard form
 
-    Removes common prefixes and validates format.
+    Removes common prefixes, validates format, and converts to lowercase.
+    DOI specification (ISO 26324) defines DOI matching as case-insensitive,
+    so lowercase conversion is safe and improves consistency.
 
     Args:
         doi: DOI string in any common format
@@ -86,11 +88,14 @@ def deduplicate_by_doi(works: list[T]) -> list[T]:
 
     for work in works:
         # Check if work has doi attribute
-        if not hasattr(work, "doi") or not work.doi:
+        if not work.doi:
             without_doi.append(work)
             continue
 
-        doi = work.doi
+        doi = normalize_doi(work.doi)
+        if not doi:
+            without_doi.append(work)
+            continue
 
         # If DOI already exists, compare priority
         if doi in with_doi:
