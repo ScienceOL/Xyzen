@@ -2,6 +2,8 @@
 
 import { PlateReadmeEditor } from "@/components/editor/PlateReadmeEditor";
 import { PlateReadmeViewer } from "@/components/editor/PlateReadmeViewer";
+import { AgentGraphEditor } from "@/components/editors/AgentGraphEditor";
+import { JsonEditor } from "@/components/editors/JsonEditor";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import {
   useListingHistory,
@@ -11,11 +13,15 @@ import {
 } from "@/hooks/useMarketplace";
 import type { AgentSnapshot } from "@/service/marketplaceService";
 import { marketplaceService } from "@/service/marketplaceService";
+import type { GraphConfig } from "@/types/graphConfig";
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
   CheckCircleIcon,
   ClockIcon,
+  CodeBracketIcon,
+  Cog6ToothIcon,
+  CubeTransparentIcon,
   DocumentTextIcon,
   EyeIcon,
   GlobeAltIcon,
@@ -23,8 +29,10 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface AgentMarketplaceManageProps {
   marketplaceId: string;
@@ -41,12 +49,23 @@ export default function AgentMarketplaceManage({
   marketplaceId,
   onBack,
 }: AgentMarketplaceManageProps) {
+  const { t } = useTranslation();
   const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false);
   const [isEditingReadme, setIsEditingReadme] = useState(false);
   const [readmeContent, setReadmeContent] = useState("");
   const [isSavingReadme, setIsSavingReadme] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"editor" | "history">("editor");
+  const [activeTab, setActiveTab] = useState<"editor" | "config" | "history">(
+    "editor",
+  );
+
+  // Configuration editing state
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [graphConfig, setGraphConfig] = useState<GraphConfig | null>(null);
+  const [graphConfigJson, setGraphConfigJson] = useState<string>("");
+  const [graphConfigError, setGraphConfigError] = useState<string | null>(null);
+  const [activeEditorTab, setActiveEditorTab] = useState(0);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -157,6 +176,162 @@ export default function AgentMarketplaceManage({
     );
   };
 
+  // Configuration editing handlers
+  const handleGraphConfigChange = useCallback((config: GraphConfig) => {
+    setGraphConfig(config);
+    setGraphConfigJson(JSON.stringify(config, null, 2));
+    setGraphConfigError(null);
+  }, []);
+
+  const handleJsonChange = useCallback(
+    (value: string) => {
+      setGraphConfigJson(value);
+      if (!value.trim()) {
+        setGraphConfig(null);
+        setGraphConfigError(null);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(value) as GraphConfig;
+        setGraphConfig(parsed);
+        setGraphConfigError(null);
+      } catch {
+        setGraphConfigError(t("marketplace.manage.config.invalidJson"));
+      }
+    },
+    [t],
+  );
+
+  const handleJsonValidation = useCallback(
+    (isValid: boolean, errors: string[]) => {
+      setGraphConfigError(
+        isValid
+          ? null
+          : errors[0] || t("marketplace.manage.config.invalidJson"),
+      );
+    },
+    [t],
+  );
+
+  const handleEditorTabChange = useCallback(
+    (index: number) => {
+      if (activeEditorTab === 1 && index === 0 && graphConfigJson.trim()) {
+        try {
+          const parsed = JSON.parse(graphConfigJson) as GraphConfig;
+          setGraphConfig(parsed);
+          setGraphConfigError(null);
+        } catch {
+          // Keep error
+        }
+      }
+      setActiveEditorTab(index);
+    },
+    [activeEditorTab, graphConfigJson],
+  );
+
+  const startEditingConfig = () => {
+    const config = listing?.snapshot?.configuration?.graph_config;
+    if (config) {
+      const parsed = config as unknown as GraphConfig;
+      setGraphConfig(parsed);
+      setGraphConfigJson(JSON.stringify(config, null, 2));
+    } else {
+      // Create a default ReAct config if none exists
+      // Must match backend's REACT_CONFIG structure for validation
+      const defaultConfig: GraphConfig = {
+        version: "2.0",
+        metadata: {
+          builtin_key: "react",
+          pattern: "react",
+          display_name: "ReAct Agent",
+        },
+        nodes: [
+          {
+            id: "agent",
+            name: "ReAct Agent",
+            type: "llm",
+            llm_config: {
+              prompt_template: "You are a helpful assistant.",
+              tools_enabled: true,
+              output_key: "response",
+            },
+          },
+          {
+            id: "tools",
+            name: "Tool Executor",
+            type: "tool",
+            tool_config: {
+              execute_all: true,
+            },
+          },
+        ],
+        edges: [
+          { from_node: "START", to_node: "agent" },
+          { from_node: "agent", to_node: "tools", condition: "has_tool_calls" },
+          { from_node: "agent", to_node: "END", condition: "no_tool_calls" },
+          { from_node: "tools", to_node: "agent" },
+        ],
+        entry_point: "agent",
+      };
+      setGraphConfig(defaultConfig);
+      setGraphConfigJson(JSON.stringify(defaultConfig, null, 2));
+    }
+    setGraphConfigError(null);
+    setActiveEditorTab(0);
+    setIsEditingConfig(true);
+  };
+
+  const cancelEditingConfig = () => {
+    setIsEditingConfig(false);
+    setGraphConfig(null);
+    setGraphConfigJson("");
+    setGraphConfigError(null);
+  };
+
+  const saveConfig = async () => {
+    if (!listing) return;
+    if (graphConfigError) {
+      return;
+    }
+
+    let finalGraphConfig: Record<string, unknown> | null = null;
+    if (graphConfigJson.trim()) {
+      try {
+        finalGraphConfig = JSON.parse(graphConfigJson);
+      } catch {
+        setGraphConfigError(t("marketplace.manage.config.invalidJson"));
+        return;
+      }
+    }
+
+    try {
+      setIsSavingConfig(true);
+      // Use the updateAgentAndPublish endpoint to update the agent and create a new version
+      await marketplaceService.updateAgentAndPublish(listing.id, {
+        commit_message: t("marketplace.manage.config.commitMessage", {
+          defaultValue: "Updated agent configuration",
+        }),
+        graph_config: finalGraphConfig,
+      });
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ["marketplace", "listing", listing.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["marketplace", "history", listing.id],
+      });
+
+      setIsEditingConfig(false);
+      setGraphConfig(null);
+      setGraphConfigJson("");
+    } catch (error) {
+      console.error("Failed to update configuration:", error);
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -254,6 +429,17 @@ export default function AgentMarketplaceManage({
                 Editor
               </button>
               <button
+                onClick={() => setActiveTab("config")}
+                className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === "config"
+                    ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                }`}
+              >
+                <Cog6ToothIcon className="h-4 w-4" />
+                {t("marketplace.manage.config.title")}
+              </button>
+              <button
                 onClick={() => setActiveTab("history")}
                 className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === "history"
@@ -267,7 +453,7 @@ export default function AgentMarketplaceManage({
             </div>
 
             {/* Tab Content */}
-            {activeTab === "editor" ? (
+            {activeTab === "editor" && (
               /* README Editor */
               <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
@@ -339,7 +525,148 @@ export default function AgentMarketplaceManage({
                   )}
                 </div>
               </div>
-            ) : (
+            )}
+
+            {activeTab === "config" && (
+              /* Configuration Editor */
+              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
+                  <div className="flex items-center gap-2">
+                    <Cog6ToothIcon className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+                    <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                      {t("marketplace.manage.config.title")}
+                    </h2>
+                  </div>
+                  {!isEditingConfig && (
+                    <button
+                      onClick={startEditingConfig}
+                      className="flex items-center gap-1.5 rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/30"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                      {t("marketplace.manage.config.edit")}
+                    </button>
+                  )}
+                </div>
+
+                <div className="p-6">
+                  {isEditingConfig ? (
+                    <div className="flex flex-col" style={{ height: "60vh" }}>
+                      <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
+                        {t("marketplace.manage.config.description")}
+                      </p>
+
+                      {/* Graph/JSON Editor Tabs */}
+                      <TabGroup
+                        selectedIndex={activeEditorTab}
+                        onChange={handleEditorTabChange}
+                        className="flex flex-1 flex-col min-h-0"
+                      >
+                        <TabList className="shrink-0 flex gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
+                          <Tab className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 data-[selected]:bg-white data-[selected]:text-indigo-600 data-[selected]:shadow-sm dark:data-[selected]:bg-neutral-700 dark:data-[selected]:text-indigo-400 transition-all outline-none">
+                            <CubeTransparentIcon className="w-4 h-4" />
+                            {t("marketplace.manage.config.visualEditor")}
+                          </Tab>
+                          <Tab className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 data-[selected]:bg-white data-[selected]:text-indigo-600 data-[selected]:shadow-sm dark:data-[selected]:bg-neutral-700 dark:data-[selected]:text-indigo-400 transition-all outline-none">
+                            <CodeBracketIcon className="w-4 h-4" />
+                            {t("marketplace.manage.config.jsonEditor")}
+                            {graphConfigError && (
+                              <span className="w-2 h-2 rounded-full bg-red-500" />
+                            )}
+                          </Tab>
+                        </TabList>
+
+                        <TabPanels className="flex-1 mt-3 min-h-0">
+                          {/* Visual Editor Panel */}
+                          <TabPanel className="h-full">
+                            <AgentGraphEditor
+                              value={graphConfig}
+                              onChange={handleGraphConfigChange}
+                              height="100%"
+                              graphId={listing.id}
+                            />
+                          </TabPanel>
+
+                          {/* JSON Editor Panel */}
+                          <TabPanel className="h-full flex flex-col">
+                            <p className="shrink-0 mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+                              {t("marketplace.manage.config.jsonDescription")}
+                            </p>
+                            <div className="flex-1 min-h-0">
+                              <JsonEditor
+                                value={graphConfigJson}
+                                onChange={handleJsonChange}
+                                onValidationChange={handleJsonValidation}
+                                height="100%"
+                              />
+                            </div>
+                            {graphConfigError && (
+                              <p className="shrink-0 mt-2 text-xs text-red-600 dark:text-red-400">
+                                {graphConfigError}
+                              </p>
+                            )}
+                          </TabPanel>
+                        </TabPanels>
+                      </TabGroup>
+
+                      {/* Actions */}
+                      <div className="shrink-0 mt-4 flex justify-end gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                        <button
+                          onClick={cancelEditingConfig}
+                          disabled={isSavingConfig}
+                          className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        >
+                          {t("marketplace.manage.config.cancel")}
+                        </button>
+                        <button
+                          onClick={saveConfig}
+                          disabled={isSavingConfig || !!graphConfigError}
+                          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                        >
+                          {isSavingConfig ? (
+                            <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircleIcon className="h-4 w-4" />
+                          )}
+                          {isSavingConfig
+                            ? t("marketplace.manage.config.saving")
+                            : t("marketplace.manage.config.save")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      {listing.snapshot?.configuration?.graph_config ? (
+                        <div style={{ height: "400px" }}>
+                          <JsonEditor
+                            value={JSON.stringify(
+                              listing.snapshot.configuration.graph_config,
+                              null,
+                              2,
+                            )}
+                            onChange={() => {}}
+                            readOnly={true}
+                            height="100%"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
+                          <Cog6ToothIcon className="mb-3 h-12 w-12 opacity-20" />
+                          <p>{t("marketplace.manage.config.empty")}</p>
+                          <button
+                            onClick={startEditingConfig}
+                            className="mt-2 text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                          >
+                            {t("marketplace.manage.config.configureNow")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "history" && (
               /* Version History */
               <div className="space-y-4">
                 {isLoadingHistory ? (

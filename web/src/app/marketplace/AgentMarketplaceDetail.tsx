@@ -22,6 +22,35 @@ import {
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AgentSnapshot } from "@/service/marketplaceService";
+
+// Helper to detect agent type from graph_config
+function getAgentType(
+  graphConfig: Record<string, unknown> | null | undefined,
+): string {
+  if (!graphConfig) return "ReAct";
+  const metadata = graphConfig.metadata as Record<string, unknown> | undefined;
+  if (metadata?.builtin_key) return String(metadata.builtin_key);
+  if (metadata?.pattern) return String(metadata.pattern);
+  // Check if it has custom nodes beyond the standard react pattern
+  const nodes = graphConfig.nodes as Array<unknown> | undefined;
+  if (nodes && nodes.length > 2) return "Custom Graph";
+  return "ReAct";
+}
+
+// Helper to extract display prompt from configuration
+function getDisplayPrompt(
+  config: AgentSnapshot["configuration"],
+): string | null {
+  // Check graph_config.prompt_config.custom_instructions first
+  const gc = config.graph_config as Record<string, unknown> | undefined;
+  if (gc?.prompt_config) {
+    const pc = gc.prompt_config as Record<string, unknown>;
+    if (pc.custom_instructions) return String(pc.custom_instructions);
+  }
+  // Fallback to legacy prompt
+  return config.prompt || null;
+}
 
 interface AgentMarketplaceDetailProps {
   marketplaceId: string;
@@ -303,9 +332,14 @@ export default function AgentMarketplaceDetail({
                   <div className="space-y-6">
                     {listing.snapshot ? (
                       <>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
                             v{listing.snapshot.version}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                            {getAgentType(
+                              listing.snapshot.configuration.graph_config,
+                            )}
                           </span>
                           <span className="text-sm text-neutral-500 dark:text-neutral-400">
                             {listing.snapshot.commit_message}
@@ -325,14 +359,16 @@ export default function AgentMarketplaceDetail({
                         )}
 
                         {/* System Prompt */}
-                        {listing.snapshot.configuration.prompt && (
+                        {getDisplayPrompt(listing.snapshot.configuration) && (
                           <div>
                             <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                               {t("marketplace.detail.config.systemPrompt")}
                             </h3>
                             <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
                               <pre className="whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
-                                {listing.snapshot.configuration.prompt}
+                                {getDisplayPrompt(
+                                  listing.snapshot.configuration,
+                                )}
                               </pre>
                             </div>
                           </div>

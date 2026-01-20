@@ -73,8 +73,34 @@ def merge_prompt_configs(base: PromptConfig, override: PromptConfig) -> PromptCo
     return PromptConfig.model_validate(base_dict)
 
 
+def get_display_prompt_from_config(config: dict[str, Any]) -> str | None:
+    """
+    Extract display prompt from snapshot configuration for UI purposes.
+
+    Priority:
+    1. graph_config.prompt_config.custom_instructions
+    2. Legacy prompt field
+
+    Args:
+        config: The snapshot configuration dict
+
+    Returns:
+        The display prompt string or None if not found
+    """
+    # Priority 1: Check graph_config.prompt_config.custom_instructions
+    graph_config = config.get("graph_config")
+    if graph_config:
+        prompt_config = graph_config.get("prompt_config", {})
+        if custom_instructions := prompt_config.get("custom_instructions"):
+            return custom_instructions
+
+    # Priority 2: Legacy prompt field
+    return config.get("prompt")
+
+
 __all__ = [
     "DEFAULT_PROMPT_CONFIG",
     "get_prompt_config_from_graph_config",
     "merge_prompt_configs",
+    "get_display_prompt_from_config",
 ]

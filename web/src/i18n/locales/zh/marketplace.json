@@ -161,5 +161,32 @@
       "saveAsDraft": "保存为草稿",
       "publishing": "发布中..."
     }
+  },
+  "simplePromptEditor": {
+    "label": "系统提示词",
+    "description": "定义你的助手如何行为和响应用户。",
+    "placeholder": "输入助手的指令...",
+    "complexAgent": {
+      "title": "复杂助手配置",
+      "description": "此助手使用自定义图形配置。请使用完整的工作流编辑器来修改其行为。"
+    }
+  },
+  "manage": {
+    "config": {
+      "title": "配置",
+      "description": "编辑助手的图形配置和工作流。",
+      "save": "保存并发布",
+      "saving": "保存中...",
+      "cancel": "取消",
+      "edit": "编辑配置",
+      "success": "配置已更新并发布成功！",
+      "error": "更新配置失败，请重试。",
+      "visualEditor": "可视化编辑器",
+      "jsonEditor": "JSON 编辑器",
+      "jsonDescription": "编辑原始 JSON 配置。更改将与可视化编辑器同步。",
+      "invalidJson": "无效的 JSON 格式",
+      "empty": "暂无配置信息。",
+      "configureNow": "立即配置"
+    }
   }
 }

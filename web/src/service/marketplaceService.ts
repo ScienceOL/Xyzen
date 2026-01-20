@@ -38,9 +38,10 @@ export interface AgentSnapshot {
     tags: string[];
     model?: string;
     temperature?: number;
-    prompt?: string;
+    prompt?: string; // Legacy field, kept for backward compat
     require_tool_confirmation: boolean;
     scope: string;
+    graph_config?: Record<string, unknown> | null; // Source of truth for agent configuration
   };
   mcp_server_configs: Array<{
     id: string;
@@ -70,6 +71,7 @@ export interface UpdateAgentRequest {
   tags?: string[];
   readme?: string | null;
   commit_message: string;
+  graph_config?: Record<string, unknown> | null;
 }
 
 export interface PublishRequest {
@@ -117,6 +119,7 @@ export interface RequirementsResponse {
     file_count: number;
   } | null;
   provider_needed: boolean;
+  graph_config?: Record<string, unknown> | null; // For agent type detection
 }
 
 export interface SearchParams {

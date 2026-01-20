@@ -57,9 +57,10 @@ class AgentMarketplaceService:
             "tags": agent.tags or [],
             "model": agent.model,
             "temperature": agent.temperature,
-            "prompt": agent.prompt,
+            "prompt": agent.prompt,  # Legacy field, kept for backward compat
             "require_tool_confirmation": agent.require_tool_confirmation,
             "scope": agent.scope,
+            "graph_config": agent.graph_config,  # Source of truth for agent configuration
         }
 
         # Serialize MCP server metadata (no credentials)
@@ -252,11 +253,12 @@ class AgentMarketplaceService:
             tags=config.get("tags", []),
             model=config.get("model"),
             temperature=config.get("temperature"),
-            prompt=config.get("prompt"),
+            prompt=config.get("prompt"),  # Legacy field for backward compat
             require_tool_confirmation=config.get("require_tool_confirmation", False),
             provider_id=None,  # User must configure their own provider
             knowledge_set_id=None,  # Create empty knowledge set
             mcp_server_ids=[],  # Will link compatible MCPs below
+            graph_config=config.get("graph_config"),  # Restore from snapshot
         )
 
         # Create the forked agent
@@ -518,6 +520,7 @@ class AgentMarketplaceService:
         marketplace_id: UUID,
         agent_update: AgentMarketplaceUpdate,
         commit_message: str,
+        graph_config: dict[str, Any] | None = None,
     ) -> AgentMarketplace | None:
         """
         Updates the underlying agent and publishes a new version.
@@ -526,6 +529,7 @@ class AgentMarketplaceService:
             marketplace_id: The marketplace listing ID.
             agent_update: Data to update (name, description, tags, readme).
             commit_message: Description of the update.
+            graph_config: Optional graph configuration to update.
 
         Returns:
             The updated marketplace listing.
@@ -547,6 +551,7 @@ class AgentMarketplaceService:
             description=agent_update.description,
             avatar=agent_update.avatar,
             tags=agent_update.tags,
+            graph_config=graph_config,  # Update graph_config if provided
         )
         await self.agent_repo.update_agent(agent.id, update_data)
         # Refresh agent to get latest state for snapshot
@@ -633,8 +638,9 @@ class AgentMarketplaceService:
             tags=config.get("tags", []),
             model=config.get("model"),
             temperature=config.get("temperature"),
-            prompt=config.get("prompt"),
+            prompt=config.get("prompt"),  # Legacy field for backward compat
             require_tool_confirmation=config.get("require_tool_confirmation", False),
+            graph_config=config.get("graph_config"),  # Sync from marketplace
         )
 
         updated_agent = await self.agent_repo.update_agent(agent.id, update_data)

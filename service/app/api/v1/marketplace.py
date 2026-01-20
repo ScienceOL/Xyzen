@@ -11,7 +11,7 @@ This module provides the following endpoints for agent marketplace:
 - GET /my-listings: Get current user's published listings
 """
 
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -76,6 +76,7 @@ class UpdateAgentRequest(BaseModel):
     tags: list[str] | None = None
     readme: str | None = None
     commit_message: str
+    graph_config: dict[str, Any] | None = None
 
 
 class ForkRequest(BaseModel):
@@ -633,7 +634,7 @@ async def update_agent_and_listing(
 
     try:
         updated_listing = await marketplace_service.update_agent_and_publish(
-            marketplace_id, update_data, request.commit_message
+            marketplace_id, update_data, request.commit_message, request.graph_config
         )
         if not updated_listing:
             raise HTTPException(status_code=404, detail="Marketplace listing not found")

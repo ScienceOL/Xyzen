@@ -161,5 +161,32 @@
       "saveAsDraft": "Save as Draft",
       "publishing": "Publishing..."
     }
+  },
+  "simplePromptEditor": {
+    "label": "System Prompt",
+    "description": "Define how your agent should behave and respond to users.",
+    "placeholder": "Enter instructions for your agent...",
+    "complexAgent": {
+      "title": "Complex Agent Configuration",
+      "description": "This agent uses a custom graph configuration. Use the full Workflow Editor to modify its behavior."
+    }
+  },
+  "manage": {
+    "config": {
+      "title": "Configuration",
+      "description": "Edit your agent's graph configuration and workflow.",
+      "save": "Save & Publish",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "edit": "Edit Configuration",
+      "success": "Configuration updated and published successfully!",
+      "error": "Failed to update configuration. Please try again.",
+      "visualEditor": "Visual Editor",
+      "jsonEditor": "JSON Editor",
+      "jsonDescription": "Edit the raw JSON configuration. Changes will be synced with the visual editor.",
+      "invalidJson": "Invalid JSON format",
+      "empty": "No configuration available.",
+      "configureNow": "Configure now"
+    }
   }
 }

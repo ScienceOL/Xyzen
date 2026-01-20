@@ -161,5 +161,32 @@
       "saveAsDraft": "下書きとして保存",
       "publishing": "公開中..."
     }
+  },
+  "simplePromptEditor": {
+    "label": "システムプロンプト",
+    "description": "エージェントがどのように動作し、ユーザーに応答するかを定義します。",
+    "placeholder": "エージェントへの指示を入力...",
+    "complexAgent": {
+      "title": "複雑なエージェント設定",
+      "description": "このエージェントはカスタムグラフ設定を使用しています。動作を変更するには、完全なワークフローエディタを使用してください。"
+    }
+  },
+  "manage": {
+    "config": {
+      "title": "設定",
+      "description": "エージェントのグラフ設定とワークフローを編集します。",
+      "save": "保存して公開",
+      "saving": "保存中...",
+      "cancel": "キャンセル",
+      "edit": "設定を編集",
+      "success": "設定が更新・公開されました！",
+      "error": "設定の更新に失敗しました。もう一度お試しください。",
+      "visualEditor": "ビジュアルエディタ",
+      "jsonEditor": "JSON エディタ",
+      "jsonDescription": "生のJSON設定を編集します。変更はビジュアルエディタと同期されます。",
+      "invalidJson": "無効なJSON形式",
+      "empty": "設定情報はありません。",
+      "configureNow": "今すぐ設定"
+    }
   }
 }
