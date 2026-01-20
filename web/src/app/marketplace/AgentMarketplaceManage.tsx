@@ -33,6 +33,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 interface AgentMarketplaceManageProps {
   marketplaceId: string;
@@ -325,8 +326,10 @@ export default function AgentMarketplaceManage({
       setIsEditingConfig(false);
       setGraphConfig(null);
       setGraphConfigJson("");
+      toast.success(t("marketplace.manage.config.success"));
     } catch (error) {
       console.error("Failed to update configuration:", error);
+      toast.error(t("marketplace.manage.config.error"));
     } finally {
       setIsSavingConfig(false);
     }

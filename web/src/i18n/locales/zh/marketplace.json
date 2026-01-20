@@ -179,6 +179,7 @@
       "saving": "保存中...",
       "cancel": "取消",
       "edit": "编辑配置",
+      "commitMessage": "更新助手配置",
       "success": "配置已更新并发布成功！",
       "error": "更新配置失败，请重试。",
       "visualEditor": "可视化编辑器",

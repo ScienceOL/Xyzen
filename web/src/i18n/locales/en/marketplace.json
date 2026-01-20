@@ -179,6 +179,7 @@
       "saving": "Saving...",
       "cancel": "Cancel",
       "edit": "Edit Configuration",
+      "commitMessage": "Updated agent configuration",
       "success": "Configuration updated and published successfully!",
       "error": "Failed to update configuration. Please try again.",
       "visualEditor": "Visual Editor",
