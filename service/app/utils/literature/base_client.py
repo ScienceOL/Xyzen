@@ -4,7 +4,7 @@ Abstract base class for literature data source clients
 
 from abc import ABC, abstractmethod
 
-from .work_distributor import LiteratureWork, SearchRequest
+from .models import LiteratureWork, SearchRequest
 
 
 class BaseLiteratureClient(ABC):
@@ -16,7 +16,7 @@ class BaseLiteratureClient(ABC):
     """
 
     @abstractmethod
-    async def search(self, request: SearchRequest) -> list[LiteratureWork] | tuple[list[LiteratureWork], list[str]]:
+    async def search(self, request: SearchRequest) -> tuple[list[LiteratureWork], list[str]]:
         """
         Execute search and return results in standard format
 
@@ -24,37 +24,9 @@ class BaseLiteratureClient(ABC):
             request: Standardized search request
 
         Returns:
-            Either:
-            - List of literature works in standard format (legacy format)
-            - Tuple of (works, warnings) where warnings is a list of messages for LLM feedback (new format)
+            Tuple of (works, warnings) where warnings is a list of messages for LLM feedback
 
         Raises:
             Exception: If search fails after retries
-        """
-        pass
-
-    @abstractmethod
-    async def get_by_doi(self, doi: str) -> LiteratureWork | None:
-        """
-        Get a single work by DOI
-
-        Args:
-            doi: Digital Object Identifier
-
-        Returns:
-            Literature work if found, None otherwise
-        """
-        pass
-
-    @abstractmethod
-    async def get_by_id(self, work_id: str) -> LiteratureWork | None:
-        """
-        Get a single work by data source internal ID
-
-        Args:
-            work_id: Internal ID in the data source
-
-        Returns:
-            Literature work if found, None otherwise
         """
         pass
