@@ -57,7 +57,8 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
         TierModelCandidate(
             model="Vendor2/Claude-4.5-Opus",
             provider_type=ProviderType.GPUGEEK,
-            priority=1,
+            is_fallback=True,
+            priority=99,
             capabilities=["reasoning", "creative", "coding"],
             description="Best for coding and choose this for most tasks. Exceptional in complex coding, agentic tasks, and reasoning; highly reliable for software engineering.",
         ),
@@ -104,7 +105,8 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
         TierModelCandidate(
             model="qwen3-max",
             provider_type=ProviderType.QWEN,
-            priority=2,
+            is_fallback=True,
+            priority=99,
             capabilities=["coding", "multilingual"],
             description="Choose this if user uses Chinese. Impressive in programming, agent tasks, and multilingual support with high benchmark scores; strong for coding and math.",
         ),
