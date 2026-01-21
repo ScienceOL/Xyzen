@@ -95,7 +95,7 @@ class RedemptionService {
    */
   async redeemCode(code: string): Promise<RedeemCodeResponse> {
     const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/redemption/redeem`,
+      `${this.getBackendUrl()}/xyzen/api/v1/business/redeem`,
       {
         method: "POST",
         headers: this.createAuthHeaders(),
@@ -118,7 +118,7 @@ class RedemptionService {
    */
   async getUserWallet(): Promise<UserWalletResponse> {
     const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/redemption/wallet`,
+      `${this.getBackendUrl()}/xyzen/api/v1/business/wallet`,
       {
         method: "GET",
         headers: this.createAuthHeaders(),
@@ -143,7 +143,7 @@ class RedemptionService {
     offset = 0,
   ): Promise<RedemptionHistoryResponse[]> {
     const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/redemption/history?limit=${limit}&offset=${offset}`,
+      `${this.getBackendUrl()}/xyzen/api/v1/business/history?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
         headers: this.createAuthHeaders(),
@@ -169,7 +169,7 @@ class RedemptionService {
     tz?: string,
   ): Promise<DailyTokenStatsResponse> {
     const url = new URL(
-      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/daily-tokens`,
+      `${this.getBackendUrl()}/xyzen/api/v1/business/admin/stats/daily-tokens`,
     );
     if (date) {
       url.searchParams.append("date", date);
@@ -204,7 +204,7 @@ class RedemptionService {
     limit = 20,
   ): Promise<UserConsumptionResponse[]> {
     const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/top-users?limit=${limit}`,
+      `${this.getBackendUrl()}/xyzen/api/v1/business/admin/stats/top-users?limit=${limit}`,
       {
         method: "GET",
         headers: {
@@ -236,7 +236,7 @@ class RedemptionService {
     offset = 0,
   ): Promise<ConsumeRecordResponse[]> {
     const url = new URL(
-      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/consume-records`,
+      `${this.getBackendUrl()}/xyzen/api/v1/business/admin/stats/consume-records`,
     );
     if (startDate) {
       url.searchParams.append("start_date", startDate);
@@ -314,7 +314,7 @@ class RedemptionService {
     tz?: string,
   ): Promise<DailyUserActivityResponse[]> {
     const url = new URL(
-      `${this.getBackendUrl()}/xyzen/api/v1/redemption/admin/stats/user-activity`,
+      `${this.getBackendUrl()}/xyzen/api/v1/business/admin/stats/user-activity`,
     );
     if (startDate) {
       url.searchParams.append("start_date", startDate);

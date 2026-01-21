@@ -195,7 +195,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
       // Invalidate queries to refresh data
       await queryClient.invalidateQueries({ queryKey: ["check-in"] });
-      await queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      await queryClient.invalidateQueries({ queryKey: ["userWallet"] });
 
       onCheckInSuccess?.(response);
     } catch (error) {
