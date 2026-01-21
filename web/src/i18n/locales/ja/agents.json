@@ -54,7 +54,7 @@
     "save": "変更を保存",
     "saving": "保存中...",
     "publish": "マーケットプレイスに公開",
-    "publishTooltip": "公開する前にプロンプトを追加してください"
+    "publishTooltip": "公開する前にエージェントを設定してください"
   },
   "errors": {
     "nameRequired": "エージェント名を入力してください",

@@ -203,10 +203,10 @@ export default function WorkflowEditor({
         <HeadlessButton
           type="button"
           onClick={() => setShowPublishModal(true)}
-          disabled={!agentToEdit.prompt}
+          disabled={!agentToEdit.graph_config}
           className="inline-flex items-center gap-2 rounded-md bg-purple-100 py-2 px-4 text-sm font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
           title={
-            !agentToEdit.prompt
+            !agentToEdit.graph_config
               ? t("agents.actions.publishTooltip")
               : t("agents.actions.publish")
           }
@@ -244,6 +244,7 @@ export default function WorkflowEditor({
         agentName={agentToEdit.name}
         agentDescription={agentToEdit.description}
         agentPrompt={agentToEdit.prompt}
+        graphConfig={agentToEdit.graph_config}
         mcpServers={agentToEdit.mcp_servers?.map((s) => ({
           id: s.id,
           name: s.name,

@@ -138,10 +138,10 @@ async def publish_agent(
         agent = await auth_service.authorize_agent_write(request.agent_id, user_id)
 
         # Validate that agent has required fields
-        if not agent.prompt:
+        if not agent.graph_config:
             raise HTTPException(
                 status_code=400,
-                detail="Agent must have a prompt before publishing to marketplace",
+                detail="Agent must have a configuration before publishing to marketplace",
             )
 
         # Publish the agent

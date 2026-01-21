@@ -112,7 +112,7 @@
     "description": "Share your agent with the community. You can update or unpublish it anytime.",
     "descriptionUpdate": "Create a new version of your agent for the community.",
     "validation": {
-      "noPrompt": "Your agent must have a prompt before publishing to the marketplace."
+      "noConfig": "Your agent must have a configuration before publishing to the marketplace."
     },
     "info": {
       "title": "What gets published:",

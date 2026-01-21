@@ -54,7 +54,7 @@
     "save": "Save Changes",
     "saving": "Saving...",
     "publish": "Publish to Marketplace",
-    "publishTooltip": "Add a prompt before publishing"
+    "publishTooltip": "Configure agent before publishing"
   },
   "errors": {
     "nameRequired": "Agent name cannot be empty",

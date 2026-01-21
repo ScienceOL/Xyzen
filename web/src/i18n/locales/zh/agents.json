@@ -54,7 +54,7 @@
     "save": "保存修改",
     "saving": "保存中...",
     "publish": "发布到市场",
-    "publishTooltip": "发布前请先添加提示词"
+    "publishTooltip": "发布前请先配置助手"
   },
   "errors": {
     "nameRequired": "助手名称不能为空",

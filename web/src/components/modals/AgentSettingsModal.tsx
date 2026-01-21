@@ -761,10 +761,10 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
               type="button"
               variant="outline"
               onClick={() => setShowPublishModal(true)}
-              disabled={!agent.prompt}
+              disabled={!agent.graph_config}
               className="w-full gap-2 h-10 text-purple-700 border-purple-200 hover:bg-purple-50 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/20"
               title={
-                !agent.prompt
+                !agent.graph_config
                   ? t("agents.actions.publishTooltip")
                   : t("agents.actions.publish")
               }
@@ -785,6 +785,7 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
           agentName={agent.name}
           agentDescription={agent.description}
           agentPrompt={agent.prompt}
+          graphConfig={agent.graph_config}
           mcpServers={agent.mcp_servers?.map((s) => ({
             id: s.id,
             name: s.name,

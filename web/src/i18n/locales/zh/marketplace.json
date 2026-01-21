@@ -112,7 +112,7 @@
     "description": "将你的助手分享给社区。你可以随时更新或取消发布。",
     "descriptionUpdate": "为社区创建你的助手的新版本。",
     "validation": {
-      "noPrompt": "你的助手必须有提示词才能发布到市场。"
+      "noConfig": "你的助手必须有配置才能发布到市场。"
     },
     "info": {
       "title": "发布内容包括：",
