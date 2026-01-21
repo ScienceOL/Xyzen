@@ -13,6 +13,17 @@ class ConcreteClient(BaseLiteratureClient):
         """Dummy search implementation."""
         return [], []
 
+<<<<<<< HEAD:service/tests/unit/test_literature/test_base_client.py
+=======
+    async def get_by_doi(self, doi: str) -> LiteratureWork | None:
+        """Dummy get_by_doi implementation."""
+        return None
+
+    async def get_by_id(self, work_id: str) -> LiteratureWork | None:
+        """Dummy get_by_id implementation."""
+        return None
+
+>>>>>>> 1794485dfcc48ad6b089f2b31eb788a021eadea5:service/tests/unit/test_utils/test_base_client.py
 
 class TestBaseLiteratureClientProtocol:
     """Test BaseLiteratureClient protocol and abstract methods."""
@@ -35,6 +46,21 @@ class TestBaseLiteratureClientProtocol:
         result = await ConcreteClient().search(request)
         assert result == ([], [])
 
+<<<<<<< HEAD:service/tests/unit/test_literature/test_base_client.py
+=======
+    @pytest.mark.asyncio
+    async def test_get_by_doi_method_required(self) -> None:
+        """Test that get_by_doi method is required."""
+        result = await ConcreteClient().get_by_doi("10.1038/nature12345")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_id_method_required(self) -> None:
+        """Test that get_by_id method is required."""
+        result = await ConcreteClient().get_by_id("W2741809807")
+        assert result is None
+
+>>>>>>> 1794485dfcc48ad6b089f2b31eb788a021eadea5:service/tests/unit/test_utils/test_base_client.py
 
 class TestSearchRequestDataclass:
     """Test SearchRequest data model."""
