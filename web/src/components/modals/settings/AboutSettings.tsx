@@ -16,7 +16,8 @@ const GITHUB_REPO = "https://github.com/ScienceOL/Xyzen";
 
 export const AboutSettings = () => {
   const { t } = useTranslation();
-  const { frontend, backend, status, isLoading, refresh } = useVersion();
+  const { frontend, backend, status, isLoading, isError, refresh } =
+    useVersion();
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -52,6 +53,7 @@ export const AboutSettings = () => {
         status={status}
         frontend={frontend}
         backend={backend}
+        isError={isError}
       />
 
       {/* Version Cards Grid */}
@@ -220,13 +222,40 @@ interface VersionStatusBannerProps {
   status: "match" | "mismatch" | "unknown";
   frontend: VersionInfo;
   backend: NormalizedVersionInfo;
+  /**
+   * Indicates whether the version fetch request has failed.
+   * When true and status is "unknown", an error state is shown
+   * instead of the loading spinner.
+   */
+  isError?: boolean;
 }
 
 const VersionStatusBanner = ({
   status,
   frontend,
   backend,
+  isError,
 }: VersionStatusBannerProps) => {
+  // Error state - fetch failed
+  if (status === "unknown" && isError) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-gradient-to-r from-red-50 to-rose-50 p-4 dark:border-red-800/50 dark:from-red-900/20 dark:to-rose-900/20">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">
+          <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+        </div>
+        <div>
+          <p className="font-medium text-red-800 dark:text-red-200">
+            Unable to connect to backend
+          </p>
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Version check failed. Please verify the server is running.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state - still fetching
   if (status === "unknown") {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">

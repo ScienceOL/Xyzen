@@ -21,6 +21,8 @@ interface UseVersionResult {
   status: VersionStatus;
   /** Whether backend version is loading */
   isLoading: boolean;
+  /** Whether backend version fetch failed */
+  isError: boolean;
   /** Refresh backend version */
   refresh: () => void;
 }
@@ -64,6 +66,7 @@ export function useVersion(): UseVersionResult {
     backend,
     status,
     isLoading,
+    isError,
     refresh: fetchVersion,
   };
 }
