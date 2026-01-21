@@ -1,5 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
+import { execSync } from "child_process";
+import fs from "fs";
 import path from "path";
 import { defineConfig, type BuildOptions, type PluginOption } from "vite";
 import dts from "vite-plugin-dts";
@@ -9,6 +11,24 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(() => {
   const isLibBuild = process.env.BUILD_MODE === "library";
   const isIframeBuild = process.env.BUILD_MODE === "iframe";
+
+  // Build version info
+  let version = "0.0.0";
+  try {
+    const pkg = JSON.parse(fs.readFileSync("package.json", "utf-8"));
+    version = pkg.version;
+  } catch {
+    /* ignore */
+  }
+
+  let commit = "unknown";
+  try {
+    commit = execSync("git rev-parse --short HEAD").toString().trim();
+  } catch {
+    /* ignore */
+  }
+
+  const buildTime = new Date().toISOString();
 
   const plugins: PluginOption[] = [react(), tailwindcss()];
 
@@ -96,6 +116,11 @@ export default defineConfig(() => {
 
   const config = {
     plugins,
+    define: {
+      __APP_VERSION__: JSON.stringify(version),
+      __APP_COMMIT__: JSON.stringify(commit),
+      __APP_BUILD_TIME__: JSON.stringify(buildTime),
+    },
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "./src"),

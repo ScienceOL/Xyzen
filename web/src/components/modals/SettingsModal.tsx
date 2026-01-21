@@ -4,6 +4,7 @@ import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
   GiftIcon,
+  InformationCircleIcon,
   ServerStackIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
@@ -11,6 +12,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  AboutSettings,
   LanguageSettings,
   RedemptionSettings,
   StyleSettings,
@@ -50,6 +52,11 @@ export function SettingsModal() {
       id: "redemption",
       label: t("settings.categories.redemption"),
       icon: GiftIcon,
+    },
+    {
+      id: "about",
+      label: t("settings.categories.about"),
+      icon: InformationCircleIcon,
     },
   ];
 
@@ -171,6 +178,12 @@ export function SettingsModal() {
               {activeSettingsCategory === "redemption" && (
                 <div className="h-full overflow-y-auto p-4 md:p-6">
                   <RedemptionSettings />
+                </div>
+              )}
+
+              {activeSettingsCategory === "about" && (
+                <div className="h-full overflow-y-auto p-4 md:p-6">
+                  <AboutSettings />
                 </div>
               )}
             </div>

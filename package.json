@@ -1,0 +1,27 @@
+{
+  "name": "xyzen-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run",
+    "commit": "cz"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "commitizen": "^4.3.1",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "cz-conventional-changelog": "^3.3.0",
+    "semantic-release": "^24.2.1"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "packageManager": "yarn@4.9.2"
+}

@@ -7,7 +7,8 @@
     "provider": "Model Providers",
     "ui": "UI Settings",
     "redemption": "Redemption",
-    "mcp": "MCP Servers"
+    "mcp": "MCP Servers",
+    "about": "About"
   },
   "provider": {
     "emptyHint": "Select or add a model provider"
@@ -218,5 +219,10 @@
     "errors": {
       "empty": "Please enter a redemption code"
     }
+  },
+  "about": {
+    "frontend": "Frontend",
+    "backend": "Backend",
+    "versionMismatch": "Version mismatch detected. Try refreshing the page."
   }
 }

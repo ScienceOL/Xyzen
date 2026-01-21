@@ -6,7 +6,9 @@
   "categories": {
     "provider": "モデルプロバイダー",
     "ui": "UI 設定",
-    "redemption": "引き換え"
+    "redemption": "引き換え",
+    "mcp": "MCPサーバー",
+    "about": "このアプリについて"
   },
   "provider": {
     "emptyHint": "モデルプロバイダーを選択または追加してください"
@@ -217,5 +219,10 @@
     "errors": {
       "empty": "引き換えコードを入力してください"
     }
+  },
+  "about": {
+    "frontend": "フロントエンド",
+    "backend": "バックエンド",
+    "versionMismatch": "バージョンの不一致が検出されました。ページを更新してください。"
   }
 }

@@ -10,31 +10,34 @@ export { queryKeys } from "./queryKeys";
 
 // Provider queries
 export {
-  useMyProviders,
-  useSystemProviders,
-  useProviderTemplates,
-  useAvailableModels,
-  useDefaultModelConfig,
-  useCreateProvider,
-  useUpdateProvider,
-  useDeleteProvider,
   prefetchProviders,
+  useAvailableModels,
+  useCreateProvider,
+  useDefaultModelConfig,
+  useDeleteProvider,
+  useMyProviders,
+  useProviderTemplates,
+  useSystemProviders,
+  useUpdateProvider,
 } from "./useProvidersQuery";
 
 // Session queries
 export {
-  useSessions,
-  useSessionByAgent,
-  useCreateSession,
-  useUpdateSession,
-  useClearSessionTopics,
   prefetchSessions,
+  useClearSessionTopics,
+  useCreateSession,
+  useSessionByAgent,
+  useSessions,
+  useUpdateSession,
 } from "./useSessionsQuery";
 
 // Message queries
 export {
-  useTopicMessages,
   useInvalidateTopicMessages,
-  useUpdateMessagesCache,
   usePrefetchTopicMessages,
+  useTopicMessages,
+  useUpdateMessagesCache,
 } from "./useMessagesQuery";
+
+// System queries
+export { useBackendVersion, useInvalidateVersion } from "./useSystemQuery";
