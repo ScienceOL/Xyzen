@@ -54,6 +54,7 @@ dist/
 .next-server/
 .nuxt/
 .cache/
+.yarn/
 
 # ===== Next.js 项目 =====
 next-env.d.ts

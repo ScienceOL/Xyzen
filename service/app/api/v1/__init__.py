@@ -13,6 +13,7 @@ from .mcps import router as mcps_router
 from .providers import router as providers_router
 from .redemption import router as redemption_router
 from .sessions import router as sessions_router
+from .system import router as system_router
 from .tools import router as tools_router
 from .topics import router as topics_router
 
@@ -85,7 +86,7 @@ v1_router.include_router(topics_router, prefix="/topics")
 v1_router.include_router(agents_router, prefix="/agents")
 
 v1_router.include_router(mcps_router, prefix="/mcps")
-v1_router.include_router(redemption_router, prefix="/redemption")
+v1_router.include_router(redemption_router, prefix="/business", tags=["business"])
 v1_router.include_router(checkin_router, prefix="/checkin")
 v1_router.include_router(files_router, prefix="/files")
 v1_router.include_router(folders_router, prefix="/folders")
@@ -93,3 +94,4 @@ v1_router.include_router(knowledge_sets_router, prefix="/knowledge-sets")
 v1_router.include_router(marketplace_router, prefix="/marketplace")
 v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(tools_router, prefix="/tools")
+v1_router.include_router(system_router, tags=["system"])

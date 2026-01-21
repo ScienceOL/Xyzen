@@ -1,5 +1,7 @@
-export { LanguageSettings } from "./LanguageSettings";
-export { RedemptionSettings } from "./RedemptionSettings";
-export { StyleSettings } from "./StyleSettings";
-export { ThemeSettings } from "./ThemeSettings";
-export { UiSettings } from "./UiSettings";
+export * from "./AboutSettings";
+export * from "./LanguageSettings";
+export * from "./McpSettings";
+export * from "./RedemptionSettings";
+export * from "./StyleSettings";
+export * from "./ThemeSettings";
+export * from "./UiSettings";

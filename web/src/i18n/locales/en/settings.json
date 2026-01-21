@@ -7,7 +7,8 @@
     "provider": "Model Providers",
     "ui": "UI Settings",
     "redemption": "Redemption",
-    "mcp": "MCP Servers"
+    "mcp": "MCP Servers",
+    "about": "About"
   },
   "provider": {
     "emptyHint": "Select or add a model provider"
