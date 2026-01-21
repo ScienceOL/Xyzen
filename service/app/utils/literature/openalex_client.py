@@ -12,11 +12,13 @@ Implements the best practices from OpenAlex API guide:
 
 import asyncio
 import logging
+import random
 from typing import Any
 
 import httpx
 
 from .base_client import BaseLiteratureClient
+from .doi_cleaner import normalize_doi
 from .models import LiteratureWork, SearchRequest
 
 logger = logging.getLogger(__name__)
@@ -430,16 +432,33 @@ class OpenAlexClient(BaseLiteratureClient):
 
                 if response.status_code == 200:
                     return response.json()
+                elif response.status_code == 429:
+                    retry_after = self._parse_retry_after(response.headers.get("Retry-After"))
+                    wait_time = retry_after if retry_after is not None else 2**attempt
+                    wait_time = self._apply_jitter(wait_time)
+                    logger.warning(
+                        "Rate limited (429), waiting %.2fs... (attempt %d)",
+                        wait_time,
+                        attempt + 1,
+                    )
+                    await asyncio.sleep(wait_time)
                 elif response.status_code == 403:
                     # Rate limited
-                    wait_time = 2**attempt
-                    logger.warning(f"Rate limited (403), waiting {wait_time}s... (attempt {attempt + 1})")
+                    wait_time = self._apply_jitter(2**attempt)
+                    logger.warning(
+                        "Rate limited (403), waiting %.2fs... (attempt %d)",
+                        wait_time,
+                        attempt + 1,
+                    )
                     await asyncio.sleep(wait_time)
                 elif response.status_code >= 500:
                     # Server error
-                    wait_time = 2**attempt
+                    wait_time = self._apply_jitter(2**attempt)
                     logger.warning(
-                        f"Server error ({response.status_code}), waiting {wait_time}s... (attempt {attempt + 1})"
+                        "Server error (%d), waiting %.2fs... (attempt %d)",
+                        response.status_code,
+                        wait_time,
+                        attempt + 1,
                     )
                     await asyncio.sleep(wait_time)
                 else:
@@ -449,17 +468,30 @@ class OpenAlexClient(BaseLiteratureClient):
             except httpx.TimeoutException:
                 if attempt >= self.MAX_RETRIES - 1:
                     raise
-                wait_time = 2**attempt
-                logger.warning(f"Timeout, retrying in {wait_time}s... (attempt {attempt + 1})")
+                wait_time = self._apply_jitter(2**attempt)
+                logger.warning("Timeout, retrying in %.2fs... (attempt %d)", wait_time, attempt + 1)
                 await asyncio.sleep(wait_time)
             except Exception as e:
                 logger.error(f"Request failed: {e}")
                 if attempt >= self.MAX_RETRIES - 1:
                     raise
-                wait_time = 2**attempt
+                wait_time = self._apply_jitter(2**attempt)
                 await asyncio.sleep(wait_time)
 
         raise Exception(f"Failed after {self.MAX_RETRIES} retries")
+
+    @staticmethod
+    def _apply_jitter(wait_time: float) -> float:
+        return wait_time + random.uniform(0.1, 0.9)
+
+    @staticmethod
+    def _parse_retry_after(retry_after: str | None) -> float | None:
+        if not retry_after:
+            return None
+        try:
+            return float(retry_after)
+        except ValueError:
+            return None
 
     def _transform_work(self, work: dict[str, Any]) -> LiteratureWork:
         """
@@ -484,9 +516,9 @@ class OpenAlexClient(BaseLiteratureClient):
 
         # Extract journal/source
         journal = None
-        if primary_location := work.get("primary_location"):
-            if source := primary_location.get("source"):
-                journal = source.get("display_name")
+        primary_location = work.get("primary_location") or {}
+        if source := primary_location.get("source"):
+            journal = source.get("display_name")
 
         # Extract open access info
         oa_info = work.get("open_access", {})
@@ -499,7 +531,23 @@ class OpenAlexClient(BaseLiteratureClient):
         # Extract DOI (remove prefix)
         doi = None
         if doi_raw := work.get("doi"):
-            doi = doi_raw.replace("https://doi.org/", "")
+            doi = normalize_doi(doi_raw)
+
+        # Extract primary institution (first available)
+        primary_institution = None
+        for authorship in work.get("authorships", []):
+            institutions = authorship.get("institutions", [])
+            if institutions:
+                primary_institution = institutions[0].get("display_name")
+                if primary_institution:
+                    break
+
+        # Build best access URL (OA first, then landing page, then DOI)
+        access_url = oa_url
+        if not access_url:
+            access_url = primary_location.get("landing_page_url") or primary_location.get("pdf_url")
+        if not access_url and doi:
+            access_url = f"https://doi.org/{doi}"
 
         return LiteratureWork(
             id=work["id"].split("/")[-1],
@@ -511,8 +559,9 @@ class OpenAlexClient(BaseLiteratureClient):
             abstract=abstract,
             journal=journal,
             is_oa=is_oa,
-            oa_url=oa_url,
             source="openalex",
+            access_url=access_url,
+            primary_institution=primary_institution,
             raw_data=work,
         )
 

@@ -96,6 +96,9 @@ class WorkDistributor:
 
         # Determine which data sources to use
         sources = request.data_sources or ["openalex"]
+        unknown_sources = [source_name for source_name in sources if source_name not in self.clients]
+        if unknown_sources:
+            all_warnings.append("⚠️ Unknown data_sources ignored: " + ", ".join(sorted(set(unknown_sources))))
 
         # Collect works and warnings from all sources
         all_works: list[LiteratureWork] = []

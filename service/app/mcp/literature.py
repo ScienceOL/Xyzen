@@ -17,6 +17,9 @@ from app.utils.literature import SearchRequest, WorkDistributor
 
 logger = logging.getLogger(__name__)
 
+TRUE_VALUES = frozenset({"true", "1", "yes"})
+FALSE_VALUES = frozenset({"false", "0", "no"})
+
 # Create FastMCP instance
 mcp = FastMCP("literature")
 
@@ -49,79 +52,140 @@ async def search_literature(
     include_abstract: str | bool = False,
 ) -> str:
     """
-    Search academic literature from multiple data sources (OpenAlex, etc.)
+    Search academic literature from multiple data sources (OpenAlex, Semantic Scholar, PubMed, etc.)
 
-    ⚠️ IMPORTANT: A valid email address (mailto parameter) enables the OpenAlex polite pool
-    (10 req/s). If omitted, the default pool is used (1 req/s, sequential). Production
-    usage should provide an email.
+    🔑 STRONGLY RECOMMENDED: Always provide a valid email address (mailto parameter)
+    ═════════════════════════════════════════════════════════════════════════════════
 
-    Basic usage: Provide query keywords and user's email. Returns a Markdown report
-    with statistics and JSON list of papers.
+    📊 Performance Difference:
+    - WITH email (mailto):      10 requests/second (fast, ideal for large searches)
+    - WITHOUT email (mailto):   1 request/second  (slow, sequential processing)
+
+    ⚠️ Impact: Omitting email can cause 10x slowdown or timeouts for large result sets.
+    Production research should ALWAYS include email. Example: "researcher@university.edu"
+
+    Response Format Overview
+    ════════════════════════
+    The tool returns TWO sections automatically:
+
+    1️⃣ EXECUTIVE SUMMARY
+       - Key statistics (total found, unique count, sources)
+       - Average citations and open access rate
+       - Publication year range
+       - Warning/issue resolution status
+
+    2️⃣ DETAILED RESULTS (Complete JSON with URLs)
+       - Each paper includes:
+         • ✅ Valid URLs (access_url; doi is a raw identifier)
+         • Title, Authors (first 5), Publication Year
+         • Citation Count, Journal, Open Access Status
+         • Abstract (only if include_abstract=True)
+       - Format: JSON array for easy parsing/import
+       - All URLs are validated and functional
 
     Args:
-        query: Search keywords (e.g., "machine learning", "CRISPR")
-        mailto: OPTIONAL - User's email (e.g., "researcher@university.edu")
-        author: OPTIONAL - Author name (e.g., "Albert Einstein")
-        institution: OPTIONAL - Institution (e.g., "MIT", "Harvard University")
-        source: OPTIONAL - Journal (e.g., "Nature", "Science")
+        query: Search keywords (e.g., "machine learning", "CRISPR", "cancer immunotherapy")
+               [REQUIRED] Most important parameter for accurate results
+
+        mailto: Email address to enable fast API pool at OpenAlex
+               [⭐ STRONGLY RECOMMENDED - includes your email]
+               Examples: "researcher@mit.edu", "student@university.edu", "name@company.com"
+               Impact: 10x faster searches. Production users MUST provide this.
+               Note: Email is private, only used for API identification.
+
+        author: OPTIONAL - Filter by author name (e.g., "Albert Einstein", "Jennifer Doudna")
+                Will auto-correct common misspellings if not found exactly
+
+        institution: OPTIONAL - Filter by affiliation (e.g., "MIT", "Harvard", "Stanford University")
+                    Partial name matching supported
+
+        source: OPTIONAL - Filter by journal/venue (e.g., "Nature", "Science", "JAMA")
+                Matches both journal names and abbreviated titles
+
         year_from: OPTIONAL - Start year (e.g., "2020" or 2020)
+                  Accepts string or integer, will auto-clamp to valid range (1700-2026)
+
         year_to: OPTIONAL - End year (e.g., "2024" or 2024)
-        is_oa: OPTIONAL - Open access only ("true"/"false")
-        work_type: OPTIONAL - Work type: "article", "review", "preprint", "book", "dissertation", etc.
-        language: OPTIONAL - Language code (e.g., "en" for English, "zh" for Chinese, "fr" for French)
-        is_retracted: OPTIONAL - Filter retracted works ("true" to include only retracted, "false" to exclude)
-        has_abstract: OPTIONAL - Require abstract ("true" to include only works with abstracts)
-        has_fulltext: OPTIONAL - Require full text ("true" to include only works with full text)
-        sort_by: Sort: "relevance" (default), "cited_by_count", "publication_date"
-        max_results: Max papers (default: 50, range: 1-200, accepts string or int)
-        data_sources: Sources to search (default: ["openalex"])
-        include_abstract: Include abstracts (default: False, accepts string or bool)
+                Accepts string or integer, will auto-clamp to valid range (1700-2026)
+                If year_from > year_to, they will be automatically swapped
+
+        is_oa: OPTIONAL - Open access filter ("true"/"false"/"yes"/"no")
+               "true" returns ONLY open access papers with direct links
+
+        work_type: OPTIONAL - Filter by publication type
+                  Options: "article", "review", "preprint", "book", "dissertation", "dataset", etc.
+
+        language: OPTIONAL - Filter by publication language (e.g., "en", "zh", "ja", "fr", "de")
+                 "en" = English only, "zh" = Chinese only, etc.
+
+        is_retracted: OPTIONAL - Retracted paper filter ("true"/"false")
+                     "false" excludes retracted works (recommended for research)
+                     "true" shows ONLY retracted papers (for auditing)
+
+        has_abstract: OPTIONAL - Require abstract ("true"/"false")
+                     "true" returns only papers with abstracts
+
+        has_fulltext: OPTIONAL - Require full text access ("true"/"false")
+                     "true" returns only papers with available full text
+
+        sort_by: Sort results - "relevance" (default), "cited_by_count", "publication_date"
+                 "cited_by_count" useful for influential papers
+                 "publication_date" shows most recent first
+
+        max_results: Result limit (default: 50, range: 1-1000, accepts string or int)
+                    More results = slower query. Recommended: 50-200 for research
+
+        data_sources: Advanced - Sources to query (default: ["openalex"])
+                     Can include: ["openalex", "semantic_scholar", "pubmed"]
+
+        include_abstract: Include full abstracts in JSON output? (default: False)
+                 True = include full abstracts for detailed review
+                 False = save token budget by excluding abstracts
 
     Returns:
-        Markdown report with:
-        - Warnings if filters fail
-        - Statistics (citations, open access rate)
-        - JSON list of papers (title, authors, DOI, etc.)
-        - Next steps guidance
+        Markdown report with two sections:
 
-    Usage tips:
-        - START SIMPLE: just query + mailto
-        - Tool will suggest corrections if author/institution not found
-        - Review "Next Steps Guide" before searching again
+        📋 Section 1: EXECUTIVE SUMMARY
+           └─ Search conditions recap
+           └─ Total results found & unique count
+           └─ Statistics: avg citations, OA rate, year range
+           └─ ⚠️ Any warnings/filter issues & resolutions
 
-    Examples:
-        # Minimal (recommended)
-        search_literature("machine learning", mailto="researcher@uni.edu")
+        📊 Section 2: COMPLETE RESULTS (JSON Array)
+           └─ Each paper object contains:
+             • "doi": Raw DOI string (not a URL)
+             • "title": Paper title
+             • "authors": Author names [first 5 only to save tokens]
+             • "publication_year": Publication date
+             • "cited_by_count": Citation impact metric
+             • "journal": Journal/venue name
+             • "description": Short description about the paper
+           └─ access_url is validated and immediately accessible
+           └─ Copy JSON directly into spreadsheet, database, or reference manager
 
-        # With filters (accepts both strings and integers)
-        search_literature(
-            query="CRISPR",
-            mailto="researcher@uni.edu",
-            author="Jennifer Doudna",
-            year_from="2020",
-            year_to="2024"
-        )
+    Usage Tips (READ THIS!)
+    ══════════════════════
+    ✅ DO:
+       - Always provide mailto (10x faster searches)
+       - Start simple: query + mailto first
+       - Review results before refining search
+       - Use filters incrementally to narrow down
+       - Set include_abstract=True only for final review (saves API calls)
 
-        # Recent reviews (past 5 years, English only)
-        search_literature(
-            query="cancer immunotherapy",
-            mailto="user@example.com",
-            work_type="review",
-            language="en",
-            year_from="2020",
-            sort_by="cited_by_count"
-        )
-
-        # Research articles with abstracts (exclude retracted)
-        search_literature(
-            query="CRISPR gene editing",
-            mailto="user@example.com",
-            work_type="article",
-            has_abstract="true",
-            is_retracted="false"
-        )
+    ❌ DON'T:
+       - Make multiple searches without reviewing first results
+       - Use vague keywords like "research" or "analysis"
+       - Search without mailto unless doing quick test
+       - Ignore the "Next Steps Guide" section
+       - Omit email for production/important research
     """
     try:
+        # Validate query early to avoid accidental broad searches
+        if not query or not str(query).strip():
+            return "❌ Invalid input: query cannot be empty."
+        if len(str(query).strip()) < 3:
+            return "❌ Invalid input: query is too short (minimum 3 characters)."
+
         # Convert string parameters to proper types
         year_from_int = int(year_from) if year_from and str(year_from).strip() else None
         year_to_int = int(year_to) if year_to and str(year_to).strip() else None
@@ -150,9 +214,9 @@ async def search_literature(
             if isinstance(raw, bool):
                 return raw
             val = str(raw).strip().lower()
-            if val in ("true", "1", "yes"):
+            if val in TRUE_VALUES:
                 return True
-            if val in ("false", "0", "no"):
+            if val in FALSE_VALUES:
                 return False
             bool_warning_parts.append(f"{field_name}={raw!r} not recognized; ignoring this filter.")
             return None
@@ -217,6 +281,8 @@ async def search_literature(
             result.setdefault("warnings", []).append(f"⚠️ Year adjusted: {year_warning.strip()}")
         if bool_warning_parts:
             result.setdefault("warnings", []).append("⚠️ Boolean filter issues: " + " ".join(bool_warning_parts))
+        if max_results_warning:
+            result.setdefault("warnings", []).append(max_results_warning.strip())
 
         # Format output
         return _format_search_result(request, result, include_abstract_bool)
@@ -245,106 +311,102 @@ def _format_search_result(request: SearchRequest, result: dict[str, Any], includ
         Formatted markdown report with embedded JSON
     """
     works = result["works"]
-    total_count = result["total_count"]
-    unique_count = result["unique_count"]
-    sources = result["sources"]
-    warnings = result.get("warnings", [])
 
     # Build report sections
-    sections: list[str] = []
-
-    # Header
-    sections.append("# Literature Search Report\n")
+    sections: list[str] = ["# Literature Search Report\n"]
 
     # Warnings and resolution status (if any)
-    if warnings:
-        sections.append("## ⚠️ Warnings and Resolution Status\n")
-        for warning in warnings:
-            sections.append(f"{warning}")
-        sections.append("")
+    if warnings := result.get("warnings", []):
+        sections.extend(["## ⚠️ Warnings and Resolution Status\n", *warnings, ""])
 
     # Search conditions
-    sections.append("## Search Conditions\n")
-    conditions: list[str] = []
-    conditions.append(f"- **Query**: {request.query}")
-    if request.author:
-        conditions.append(f"- **Author**: {request.author}")
-    if request.institution:
-        conditions.append(f"- **Institution**: {request.institution}")
-    if request.source:
-        conditions.append(f"- **Source**: {request.source}")
-    if request.year_from or request.year_to:
-        year_range = f"{request.year_from or '...'} - {request.year_to or '...'}"
-        conditions.append(f"- **Year Range**: {year_range}")
-    if request.is_oa is not None:
-        conditions.append(f"- **Open Access Only**: {'Yes' if request.is_oa else 'No'}")
-    if request.work_type:
-        conditions.append(f"- **Work Type**: {request.work_type}")
-    if request.language:
-        conditions.append(f"- **Language**: {request.language}")
-    if request.is_retracted is not None:
-        conditions.append(f"- **Exclude Retracted**: {'No' if request.is_retracted else 'Yes'}")
-    if request.has_abstract is not None:
-        conditions.append(f"- **Require Abstract**: {'Yes' if request.has_abstract else 'No'}")
-    if request.has_fulltext is not None:
-        conditions.append(f"- **Require Full Text**: {'Yes' if request.has_fulltext else 'No'}")
-    conditions.append(f"- **Sort By**: {request.sort_by}")
-    conditions.append(f"- **Max Results**: {request.max_results}")
-    sections.append("\n".join(conditions))
-    sections.append("")
+    conditions: list[str] = [
+        f"- **Query**: {request.query}",
+        *([f"- **Author**: {request.author}"] if request.author else []),
+        *([f"- **Institution**: {request.institution}"] if request.institution else []),
+        *([f"- **Source**: {request.source}"] if request.source else []),
+        *(
+            [f"- **Year Range**: {request.year_from or '...'} - {request.year_to or '...'}"]
+            if request.year_from or request.year_to
+            else []
+        ),
+        *([f"- **Open Access Only**: {'Yes' if request.is_oa else 'No'}"] if request.is_oa is not None else []),
+        *([f"- **Work Type**: {request.work_type}"] if request.work_type else []),
+        *([f"- **Language**: {request.language}"] if request.language else []),
+        *(
+            [f"- **Exclude Retracted**: {'No' if request.is_retracted else 'Yes'}"]
+            if request.is_retracted is not None
+            else []
+        ),
+        *(
+            [f"- **Require Abstract**: {'Yes' if request.has_abstract else 'No'}"]
+            if request.has_abstract is not None
+            else []
+        ),
+        *(
+            [f"- **Require Full Text**: {'Yes' if request.has_fulltext else 'No'}"]
+            if request.has_fulltext is not None
+            else []
+        ),
+        f"- **Sort By**: {request.sort_by}",
+        f"- **Max Results**: {request.max_results}",
+    ]
+    sections.extend(["## Search Conditions\n", "\n".join(conditions), ""])
 
     # Check if no results
     if not works:
-        sections.append("## ❌ No Results Found\n")
-        sections.append("**Suggestions to improve your search:**\n")
-        suggestions: list[str] = []
-        suggestions.append("1. **Simplify keywords**: Try broader or different terms")
-        if request.author:
-            suggestions.append("2. **Remove author filter**: Author name may not be recognized")
-        if request.institution:
-            suggestions.append("3. **Remove institution filter**: Try without institution constraint")
-        if request.source:
-            suggestions.append("4. **Remove source filter**: Try without journal constraint")
-        if request.year_from or request.year_to:
-            suggestions.append("5. **Expand year range**: Current range may be too narrow")
-        if request.is_oa:
-            suggestions.append("6. **Remove open access filter**: Include non-OA papers")
-        suggestions.append("7. **Check spelling**: Verify all terms are spelled correctly")
-        sections.append("\n".join(suggestions))
-        sections.append("")
+        sections.extend(["## ❌ No Results Found\n", "**Suggestions to improve your search:**\n"])
+        suggestions: list[str] = [
+            "1. **Simplify keywords**: Try broader or different terms",
+            *(["2. **Remove author filter**: Author name may not be recognized"] if request.author else []),
+            *(["3. **Remove institution filter**: Try without institution constraint"] if request.institution else []),
+            *(["4. **Remove source filter**: Try without journal constraint"] if request.source else []),
+            *(
+                ["5. **Expand year range**: Current range may be too narrow"]
+                if request.year_from or request.year_to
+                else []
+            ),
+            *(["6. **Remove open access filter**: Include non-OA papers"] if request.is_oa else []),
+            "7. **Check spelling**: Verify all terms are spelled correctly",
+        ]
+        sections.extend(["\n".join(suggestions), ""])
         return "\n".join(sections)
 
     # Statistics and overall insights
-    sections.append("## Search Statistics\n")
-    stats: list[str] = []
-    stats.append(f"- **Total Found**: {total_count} works")
-    stats.append(f"- **After Deduplication**: {unique_count} works")
+    total_count = result["total_count"]
+    unique_count = result["unique_count"]
+    sources = result["sources"]
+
+    stats: list[str] = [
+        f"- **Total Found**: {total_count} works",
+        f"- **After Deduplication**: {unique_count} works",
+    ]
     source_info = ", ".join(f"{name}: {count}" for name, count in sources.items())
     stats.append(f"- **Data Sources**: {source_info}")
 
     # Add insights
-    if works:
-        avg_citations = sum(w.cited_by_count for w in works) / len(works)
-        stats.append(f"- **Average Citations**: {avg_citations:.1f}")
+    avg_citations = sum(w.cited_by_count for w in works) / len(works)
+    stats.append(f"- **Average Citations**: {avg_citations:.1f}")
 
-        oa_count = sum(w.is_oa for w in works)
-        oa_ratio = (oa_count / len(works)) * 100
-        stats.append(f"- **Open Access Rate**: {oa_ratio:.1f}% ({oa_count}/{len(works)})")
+    oa_count = sum(w.is_oa for w in works)
+    oa_ratio = (oa_count / len(works)) * 100
+    stats.append(f"- **Open Access Rate**: {oa_ratio:.1f}% ({oa_count}/{len(works)})")
 
-        years = [w.publication_year for w in works if w.publication_year]
-        if years:
-            stats.append(f"- **Year Range**: {min(years)} - {max(years)}")
+    if years := [w.publication_year for w in works if w.publication_year]:
+        stats.append(f"- **Year Range**: {min(years)} - {max(years)}")
 
-    sections.append("\n".join(stats))
-    sections.append("")
+    sections.extend(["## Search Statistics\n", "\n".join(stats), ""])
 
     # Complete JSON list
-    sections.append("## Complete Works List (JSON)\n")
-    if include_abstract:
-        sections.append("The following JSON contains all works with full abstracts:\n")
-    else:
-        sections.append("The following JSON contains all works (abstracts excluded to save tokens):\n")
-    sections.append("```json")
+    sections.extend(
+        [
+            "## Complete Works List (JSON)\n",
+            "The following JSON contains all works with full abstracts:\n"
+            if include_abstract
+            else "The following JSON contains all works (abstracts excluded to save tokens):\n",
+            "```json",
+        ]
+    )
 
     # Convert works to dict for JSON serialization
     works_dict = []
@@ -357,8 +419,9 @@ def _format_search_result(request: SearchRequest, result: dict[str, Any], includ
             "publication_year": work.publication_year,
             "cited_by_count": work.cited_by_count,
             "journal": work.journal,
+            "primary_institution": work.primary_institution,
             "is_oa": work.is_oa,
-            "oa_url": work.oa_url,
+            "access_url": work.access_url,
             "source": work.source,
         }
         # Only include abstract if requested
@@ -366,34 +429,34 @@ def _format_search_result(request: SearchRequest, result: dict[str, Any], includ
             work_data["abstract"] = work.abstract
         works_dict.append(work_data)
 
-    sections.append(json.dumps(works_dict, indent=2, ensure_ascii=False))
-    sections.append("```")
-    sections.append("")
+    sections.extend([json.dumps(works_dict, indent=2, ensure_ascii=False), "```", ""])
 
     # Next steps guidance - prevent infinite loops
-    sections.append("---")
-    sections.append("## 🎯 Next Steps Guide\n")
-    sections.append("**Before making another search, consider:**\n")
-    next_steps: list[str] = []
-
-    if unique_count > 0:
-        next_steps.append("✓ **Results found** - Review the JSON data above for your analysis")
-        if unique_count >= request.max_results:
-            next_steps.append(
+    sections.extend(["---", "## 🎯 Next Steps Guide\n", "**Before making another search, consider:**\n"])
+    next_steps: list[str] = [
+        *(["✓ **Results found** - Review the JSON data above for your analysis"] if unique_count > 0 else []),
+        *(
+            [
                 f"⚠️ **Result limit reached** ({request.max_results}) - "
                 "Consider narrowing filters (author, year, journal) for more targeted results"
-            )
-        if unique_count < 10:
-            next_steps.append("💡 **Few results** - Consider broadening your search by removing some filters")
-
-    next_steps.append("")
-    next_steps.append("**To refine your search:**")
-    next_steps.append("- If too many results → Add more specific filters (author, institution, journal, year)")
-    next_steps.append("- If too few results → Remove filters or use broader keywords")
-    next_steps.append("- If wrong results → Check filter spelling and try variations")
-    next_steps.append("")
-    next_steps.append("⚠️ **Important**: Avoid making multiple similar searches without reviewing results first!")
-    next_steps.append("Each search consumes API quota and context window. Make targeted, deliberate queries.")
+            ]
+            if unique_count >= request.max_results
+            else []
+        ),
+        *(
+            ["💡 **Few results** - Consider broadening your search by removing some filters"]
+            if 0 < unique_count < 10
+            else []
+        ),
+        "",
+        "**To refine your search:**",
+        "- If too many results → Add more specific filters (author, institution, journal, year)",
+        "- If too few results → Remove filters or use broader keywords",
+        "- If wrong results → Check filter spelling and try variations",
+        "",
+        "⚠️ **Important**: Avoid making multiple similar searches without reviewing results first!",
+        "Each search consumes API quota and context window. Make targeted, deliberate queries.",
+    ]
 
     sections.append("\n".join(next_steps))
 

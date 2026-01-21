@@ -61,7 +61,8 @@ class LiteratureWork:
         abstract: Abstract text
         journal: Journal or venue name
         is_oa: Whether open access
-        oa_url: URL to open access version
+        access_url: Best available access link (OA, landing page, or DOI)
+        primary_institution: First affiliated institution (if available)
         source: Data source name ("openalex", "semantic_scholar", etc.)
         raw_data: Original data from the source (for debugging)
     """
@@ -75,6 +76,7 @@ class LiteratureWork:
     abstract: str | None
     journal: str | None
     is_oa: bool
-    oa_url: str | None
     source: str
+    access_url: str | None = None
+    primary_institution: str | None = None
     raw_data: dict[str, Any] = field(default_factory=dict)
