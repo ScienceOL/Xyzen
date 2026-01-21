@@ -68,6 +68,14 @@ export const queryKeys = {
     tools: (serverId: string) =>
       [...queryKeys.mcp.all, "tools", serverId] as const,
   },
+
+  /**
+   * System-related query keys
+   */
+  system: {
+    all: ["system"] as const,
+    version: () => [...queryKeys.system.all, "version"] as const,
+  },
 } as const;
 
 /**

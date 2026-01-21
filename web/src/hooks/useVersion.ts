@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-
+import { useBackendVersion } from "@/hooks/queries";
 import type {
-  BackendVersionInfo,
   NormalizedVersionInfo,
   VersionInfo,
   VersionStatus,
@@ -29,36 +27,23 @@ interface UseVersionResult {
 
 /**
  * Hook to fetch and compare frontend/backend versions
+ *
+ * Uses TanStack Query for proper caching and server state management.
  */
 export function useVersion(): UseVersionResult {
-  const [backendData, setBackendData] = useState<BackendVersionInfo | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
-
-  const fetchVersion = useCallback(async () => {
-    setIsLoading(true);
-    setIsError(false);
-    try {
-      const res = await fetch("/xyzen/api/v1/system/version");
-      if (!res.ok) throw new Error("Failed to fetch version");
-      const data: BackendVersionInfo = await res.json();
-      setBackendData(data);
-    } catch {
-      setIsError(true);
-      setBackendData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchVersion();
-  }, [fetchVersion]);
+  const {
+    data: backendData,
+    isLoading,
+    isError,
+    refetch,
+  } = useBackendVersion();
 
   const frontend = getFrontendVersion();
-  const backend = normalizeBackendVersion(backendData, isLoading, isError);
+  const backend = normalizeBackendVersion(
+    backendData ?? null,
+    isLoading,
+    isError,
+  );
   const status = compareVersions(frontend, backend);
 
   return {
@@ -67,6 +52,6 @@ export function useVersion(): UseVersionResult {
     status,
     isLoading,
     isError,
-    refresh: fetchVersion,
+    refresh: () => void refetch(),
   };
 }
