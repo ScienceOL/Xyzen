@@ -86,7 +86,7 @@ v1_router.include_router(topics_router, prefix="/topics")
 v1_router.include_router(agents_router, prefix="/agents")
 
 v1_router.include_router(mcps_router, prefix="/mcps")
-v1_router.include_router(redemption_router, prefix="/business", tags=["business"])
+v1_router.include_router(redemption_router, prefix="/redemption", tags=["redemption"])
 v1_router.include_router(checkin_router, prefix="/checkin")
 v1_router.include_router(files_router, prefix="/files")
 v1_router.include_router(folders_router, prefix="/folders")
