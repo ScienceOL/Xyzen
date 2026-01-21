@@ -49,10 +49,7 @@ def normalize_doi(doi: str | None) -> str | None:
     doi = re.sub(r"^doi:\s*", "", doi)
 
     # Validate format (10.xxxx/yyyy)
-    if not re.match(r"^10\.\d+/.+", doi):
-        return None
-
-    return doi
+    return doi if re.match(r"^10\.\d+/.+", doi) else None
 
 
 def deduplicate_by_doi(works: list[T]) -> list[T]:
@@ -116,6 +113,4 @@ def deduplicate_by_doi(works: list[T]) -> list[T]:
             with_doi[doi] = work
 
     # Combine results: DOI works first, then non-DOI works
-    unique_works = list(with_doi.values()) + without_doi
-
-    return unique_works
+    return list(with_doi.values()) + without_doi

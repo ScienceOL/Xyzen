@@ -88,7 +88,10 @@ class OpenAlexClient(BaseLiteratureClient):
         self.client = httpx.AsyncClient(timeout=timeout)
         pool_type = "polite" if self.email else "default"
         logger.info(
-            f"OpenAlex client initialized with pool={pool_type}, email={self.email}, rate_limit={self.rate_limit}/s"
+            "OpenAlex client initialized with pool=%s, email=%s, rate_limit=%s/s",
+            pool_type,
+            "<redacted>" if self.email else None,
+            self.rate_limit,
         )
 
     @property
@@ -117,7 +120,11 @@ class OpenAlexClient(BaseLiteratureClient):
             - warnings: List of warning/info messages for LLM feedback
         """
         logger.info(
-            f"OpenAlex search [{self.pool_type} @ {self.rate_limit}/s]: query='{request.query}', max_results={request.max_results}"
+            "OpenAlex search [%s @ %s/s]: query=%r, max_results=%d",
+            self.pool_type,
+            self.rate_limit,
+            request.query,
+            request.max_results,
         )
 
         warnings: list[str] = []
@@ -190,13 +197,12 @@ class OpenAlexClient(BaseLiteratureClient):
             filters.append(f"primary_location.source.id:{source_id}")
 
         # Year range
-        if request.year_from or request.year_to:
-            if request.year_from and request.year_to:
-                filters.append(f"publication_year:{request.year_from}-{request.year_to}")
-            elif request.year_from:
-                filters.append(f"publication_year:>{request.year_from - 1}")
-            elif request.year_to:
-                filters.append(f"publication_year:<{request.year_to + 1}")
+        if request.year_from and request.year_to:
+            filters.append(f"publication_year:{request.year_from}-{request.year_to}")
+        elif request.year_from:
+            filters.append(f"publication_year:>{request.year_from - 1}")
+        elif request.year_to:
+            filters.append(f"publication_year:<{request.year_to + 1}")
 
         # Open access filter
         if request.is_oa is not None:
@@ -261,7 +267,7 @@ class OpenAlexClient(BaseLiteratureClient):
                     # Return first result's ID in short format
                     author_id = results[0]["id"].split("/")[-1]
                     author_display = results[0].get("display_name", author_name)
-                    logger.info(f"Resolved author '{author_name}' -> {author_id}")
+                    logger.info("Resolved author %r -> %s", author_name, author_id)
                     return author_id, True, f"✓ Author resolved: '{author_name}' -> '{author_display}'"
                 else:
                     msg = (
@@ -300,7 +306,7 @@ class OpenAlexClient(BaseLiteratureClient):
                 if results := response.get("results", []):
                     institution_id = results[0]["id"].split("/")[-1]
                     inst_display = results[0].get("display_name", institution_name)
-                    logger.info(f"Resolved institution '{institution_name}' -> {institution_id}")
+                    logger.info("Resolved institution %r -> %s", institution_name, institution_id)
                     return institution_id, True, f"✓ Institution resolved: '{institution_name}' -> '{inst_display}'"
                 else:
                     msg = (
@@ -340,7 +346,7 @@ class OpenAlexClient(BaseLiteratureClient):
                 if results := response.get("results", []):
                     source_id = results[0]["id"].split("/")[-1]
                     source_display = results[0].get("display_name", source_name)
-                    logger.info(f"Resolved source '{source_name}' -> {source_id}")
+                    logger.info("Resolved source %r -> %s", source_name, source_id)
                     return source_id, True, f"✓ Source resolved: '{source_name}' -> '{source_display}'"
                 else:
                     msg = (
@@ -382,7 +388,7 @@ class OpenAlexClient(BaseLiteratureClient):
                         break
 
                     all_works.extend(works)
-                    logger.info(f"Fetched page {page}: {len(works)} works")
+                    logger.info("Fetched page %d: %d works", page, len(works))
 
                     # Check if there are more pages
                     meta = response.get("meta", {})
@@ -441,19 +447,17 @@ class OpenAlexClient(BaseLiteratureClient):
                     response.raise_for_status()
 
             except httpx.TimeoutException:
-                if attempt < self.MAX_RETRIES - 1:
-                    wait_time = 2**attempt
-                    logger.warning(f"Timeout, retrying in {wait_time}s... (attempt {attempt + 1})")
-                    await asyncio.sleep(wait_time)
-                else:
+                if attempt >= self.MAX_RETRIES - 1:
                     raise
+                wait_time = 2**attempt
+                logger.warning(f"Timeout, retrying in {wait_time}s... (attempt {attempt + 1})")
+                await asyncio.sleep(wait_time)
             except Exception as e:
                 logger.error(f"Request failed: {e}")
-                if attempt < self.MAX_RETRIES - 1:
-                    wait_time = 2**attempt
-                    await asyncio.sleep(wait_time)
-                else:
+                if attempt >= self.MAX_RETRIES - 1:
                     raise
+                wait_time = 2**attempt
+                await asyncio.sleep(wait_time)
 
         raise Exception(f"Failed after {self.MAX_RETRIES} retries")
 
@@ -534,10 +538,9 @@ class OpenAlexClient(BaseLiteratureClient):
             return None
 
         # Expand inverted index to (position, word) pairs
-        word_positions: list[tuple[int, str]] = []
-        for word, positions in inverted_index.items():
-            for pos in positions:
-                word_positions.append((pos, word))
+        word_positions: list[tuple[int, str]] = [
+            (pos, word) for word, positions in inverted_index.items() for pos in positions
+        ]
 
         # Sort by position and join
         word_positions.sort()

@@ -136,36 +136,58 @@ async def search_literature(
             year_warning += f"year_to {year_to_int}→1700. "
             year_to_int = 1700
 
+        # Ensure year_from <= year_to when both are set
+        if year_from_int is not None and year_to_int is not None and year_from_int > year_to_int:
+            year_warning += f"year_from {year_from_int} and year_to {year_to_int} swapped to maintain a valid range. "
+            year_from_int, year_to_int = year_to_int, year_from_int
+
         # Convert is_oa to boolean
-        is_oa_bool: bool | None = None
-        if is_oa is not None:
-            is_oa_bool = str(is_oa).lower() in ("true", "1", "yes")
+        bool_warning_parts: list[str] = []
 
-        # Convert is_retracted to boolean
-        is_retracted_bool: bool | None = None
-        if is_retracted is not None:
-            is_retracted_bool = str(is_retracted).lower() in ("true", "1", "yes")
+        def _parse_bool_field(raw: str | bool | None, field_name: str) -> bool | None:
+            if raw is None:
+                return None
+            if isinstance(raw, bool):
+                return raw
+            val = str(raw).strip().lower()
+            if val in ("true", "1", "yes"):
+                return True
+            if val in ("false", "0", "no"):
+                return False
+            bool_warning_parts.append(f"{field_name}={raw!r} not recognized; ignoring this filter.")
+            return None
 
-        # Convert has_abstract to boolean
-        has_abstract_bool: bool | None = None
-        if has_abstract is not None:
-            has_abstract_bool = str(has_abstract).lower() in ("true", "1", "yes")
+        # Convert bool-like fields
+        is_oa_bool = _parse_bool_field(is_oa, "is_oa")
+        is_retracted_bool = _parse_bool_field(is_retracted, "is_retracted")
+        has_abstract_bool = _parse_bool_field(has_abstract, "has_abstract")
+        has_fulltext_bool = _parse_bool_field(has_fulltext, "has_fulltext")
 
-        # Convert has_fulltext to boolean
-        has_fulltext_bool: bool | None = None
-        if has_fulltext is not None:
-            has_fulltext_bool = str(has_fulltext).lower() in ("true", "1", "yes")
+        # Convert max_results to int with early clamping
+        max_results_warning = ""
+        try:
+            max_results_int = int(max_results) if max_results else 50
+        except (TypeError, ValueError):
+            max_results_warning = "⚠️ max_results is not a valid integer; using default 50. "
+            max_results_int = 50
 
-        # Convert max_results to int
-        max_results_int = int(max_results) if max_results else 50
+        if max_results_int < 1:
+            max_results_warning += f"max_results {max_results_int}→50 (minimum is 1). "
+            max_results_int = 50
+        elif max_results_int > 1000:
+            max_results_warning += f"max_results {max_results_int}→1000 (maximum is 1000). "
+            max_results_int = 1000
 
         # Convert include_abstract to bool
-        include_abstract_bool = str(include_abstract).lower() in ("true", "1", "yes") if include_abstract else False
+        include_abstract_bool = str(include_abstract).lower() in {"true", "1", "yes"} if include_abstract else False
 
         openalex_email = mailto.strip() if mailto and str(mailto).strip() else None
 
         logger.info(
-            f"Literature search requested: query='{query}', mailto={openalex_email}, max_results={max_results_int}"
+            "Literature search requested: query=%r, mailto=%s, max_results=%d",
+            query,
+            "<redacted>" if openalex_email else None,
+            max_results_int,
         )
 
         # Create search request with converted types
@@ -193,6 +215,8 @@ async def search_literature(
 
         if year_warning:
             result.setdefault("warnings", []).append(f"⚠️ Year adjusted: {year_warning.strip()}")
+        if bool_warning_parts:
+            result.setdefault("warnings", []).append("⚠️ Boolean filter issues: " + " ".join(bool_warning_parts))
 
         # Format output
         return _format_search_result(request, result, include_abstract_bool)
@@ -303,7 +327,7 @@ def _format_search_result(request: SearchRequest, result: dict[str, Any], includ
         avg_citations = sum(w.cited_by_count for w in works) / len(works)
         stats.append(f"- **Average Citations**: {avg_citations:.1f}")
 
-        oa_count = sum(1 for w in works if w.is_oa)
+        oa_count = sum(w.is_oa for w in works)
         oa_ratio = (oa_count / len(works)) * 100
         stats.append(f"- **Open Access Rate**: {oa_ratio:.1f}% ({oa_count}/{len(works)})")
 

@@ -104,13 +104,13 @@ class WorkDistributor:
         for source_name in sources:
             if client := self.clients.get(source_name):
                 try:
-                    logger.info(f"Fetching from {source_name}...")
+                    logger.info("Fetching from %s...", source_name)
                     works, warnings_data = await client.search(request)
                     all_warnings.extend(warnings_data)
 
                     all_works.extend(works)
                     source_counts[source_name] = len(works)
-                    logger.info(f"Fetched {len(works)} works from {source_name}")
+                    logger.info("Fetched %d works from %s", len(works), source_name)
                 except Exception as e:
                     logger.error(f"Error fetching from {source_name}: {e}", exc_info=True)
                     source_counts[source_name] = 0
@@ -119,9 +119,9 @@ class WorkDistributor:
                 logger.warning(f"Data source '{source_name}' not available")
 
         # Deduplicate by DOI
-        logger.info(f"Deduplicating {len(all_works)} works...")
+        logger.info("Deduplicating %d works...", len(all_works))
         unique_works = deduplicate_by_doi(all_works)
-        logger.info(f"After deduplication: {len(unique_works)} unique works")
+        logger.info("After deduplication: %d unique works", len(unique_works))
 
         # Sort results
         unique_works = self._sort_works(unique_works, request.sort_by)
@@ -153,7 +153,7 @@ class WorkDistributor:
         elif sort_by == "publication_date":
             return sorted(
                 works,
-                key=lambda w: w.publication_year if w.publication_year else float("-inf"),
+                key=lambda w: w.publication_year or float("-inf"),
                 reverse=True,
             )
         else:  # relevance or default
