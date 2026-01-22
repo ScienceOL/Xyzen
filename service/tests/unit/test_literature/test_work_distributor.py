@@ -53,7 +53,7 @@ class TestWorkDistributorSearch:
             abstract="Test abstract",
             journal="Nature",
             is_oa=True,
-            oa_url="https://example.com/paper.pdf",
+            access_url="https://example.com/paper.pdf",
             source="openalex",
         )
 
@@ -94,7 +94,7 @@ class TestWorkDistributorSearch:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="semantic_scholar",
         )
 
@@ -129,7 +129,7 @@ class TestWorkDistributorSearch:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
         work2 = LiteratureWork(
@@ -142,7 +142,7 @@ class TestWorkDistributorSearch:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="other",
         )
 
@@ -232,7 +232,7 @@ class TestWorkDistributorSearch:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             )
             for i in range(20)
@@ -263,7 +263,7 @@ class TestWorkDistributorSearch:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
 
@@ -303,7 +303,7 @@ class TestWorkDistributorSorting:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
             LiteratureWork(
@@ -316,7 +316,7 @@ class TestWorkDistributorSorting:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
             LiteratureWork(
@@ -329,7 +329,7 @@ class TestWorkDistributorSorting:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
         ]

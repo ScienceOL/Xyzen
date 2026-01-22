@@ -123,10 +123,7 @@ class TestOpenAlexClientSearch:
 
                 assert len(works) == 1
                 mock_resolve.assert_called_once_with("Jane Smith")
-<<<<<<< HEAD:service/tests/unit/test_literature/test_openalex_client.py
                 assert any("Author resolved" in msg for msg in warnings)
-=======
->>>>>>> 1794485dfcc48ad6b089f2b31eb788a021eadea5:service/tests/unit/test_utils/test_openalex_client.py
 
     @pytest.mark.asyncio
     async def test_search_with_institution_filter(self, client: OpenAlexClient, mock_response: dict) -> None:
@@ -142,10 +139,7 @@ class TestOpenAlexClientSearch:
 
                 assert len(works) == 1
                 mock_resolve.assert_called_once_with("Harvard University")
-<<<<<<< HEAD:service/tests/unit/test_literature/test_openalex_client.py
                 assert any("Institution resolved" in msg for msg in warnings)
-=======
->>>>>>> 1794485dfcc48ad6b089f2b31eb788a021eadea5:service/tests/unit/test_utils/test_openalex_client.py
 
     @pytest.mark.asyncio
     async def test_search_with_source_filter(self, client: OpenAlexClient, mock_response: dict) -> None:
@@ -161,10 +155,7 @@ class TestOpenAlexClientSearch:
 
                 assert len(works) == 1
                 mock_resolve.assert_called_once_with("Nature")
-<<<<<<< HEAD:service/tests/unit/test_literature/test_openalex_client.py
                 assert any("Source resolved" in msg for msg in warnings)
-=======
->>>>>>> 1794485dfcc48ad6b089f2b31eb788a021eadea5:service/tests/unit/test_utils/test_openalex_client.py
 
     @pytest.mark.asyncio
     async def test_search_with_year_range(self, client: OpenAlexClient, mock_response: dict) -> None:
@@ -209,130 +200,6 @@ class TestOpenAlexClientSearch:
             assert isinstance(warnings, list)
 
 
-<<<<<<< HEAD:service/tests/unit/test_literature/test_openalex_client.py
-=======
-class TestOpenAlexClientGetByDOI:
-    """Test OpenAlex get_by_doi functionality."""
-
-    @pytest.fixture
-    def client(self) -> OpenAlexClient:
-        """Create an OpenAlex client for testing."""
-        return OpenAlexClient(email="test@example.com")
-
-    @pytest.mark.asyncio
-    async def test_get_by_doi_success(self, client: OpenAlexClient) -> None:
-        """Test successful retrieval by DOI."""
-        mock_work = {
-            "id": "https://openalex.org/W2741809807",
-            "title": "Test Paper",
-            "doi": "https://doi.org/10.1038/nature12345",
-            "publication_year": 2020,
-            "cited_by_count": 100,
-            "abstract_inverted_index": None,
-            "authorships": [],
-            "primary_location": None,
-            "open_access": {"is_oa": False},
-        }
-
-        with patch.object(client, "_request_with_retry", new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = mock_work
-
-            result = await client.get_by_doi("10.1038/nature12345")
-
-            assert result is not None
-            assert result.title == "Test Paper"
-            assert result.doi == "10.1038/nature12345"
-
-    @pytest.mark.asyncio
-    async def test_get_by_doi_with_full_url(self, client: OpenAlexClient) -> None:
-        """Test retrieval by DOI with full URL."""
-        mock_work = {
-            "id": "https://openalex.org/W2741809807",
-            "title": "Test Paper",
-            "doi": "https://doi.org/10.1038/nature12345",
-            "publication_year": 2020,
-            "cited_by_count": 100,
-            "abstract_inverted_index": None,
-            "authorships": [],
-            "primary_location": None,
-            "open_access": {"is_oa": False},
-        }
-
-        with patch.object(client, "_request_with_retry", new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = mock_work
-
-            result = await client.get_by_doi("https://doi.org/10.1038/nature12345")
-
-            assert result is not None
-            mock_request.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_by_doi_not_found(self, client: OpenAlexClient) -> None:
-        """Test retrieval by DOI when work not found."""
-        with patch.object(client, "_request_with_retry", new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = Exception("Not found")
-
-            result = await client.get_by_doi("10.1038/invalid")
-
-            assert result is None
-
-
-class TestOpenAlexClientGetByID:
-    """Test OpenAlex get_by_id functionality."""
-
-    @pytest.fixture
-    def client(self) -> OpenAlexClient:
-        """Create an OpenAlex client for testing."""
-        return OpenAlexClient(email="test@example.com")
-
-    @pytest.mark.asyncio
-    async def test_get_by_id_success(self, client: OpenAlexClient) -> None:
-        """Test successful retrieval by OpenAlex ID."""
-        mock_work = {
-            "id": "https://openalex.org/W2741809807",
-            "title": "Test Paper",
-            "doi": None,
-            "publication_year": 2020,
-            "cited_by_count": 50,
-            "abstract_inverted_index": None,
-            "authorships": [],
-            "primary_location": None,
-            "open_access": {"is_oa": False},
-        }
-
-        with patch.object(client, "_request_with_retry", new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = mock_work
-
-            result = await client.get_by_id("W2741809807")
-
-            assert result is not None
-            assert result.title == "Test Paper"
-            assert result.id == "W2741809807"
-
-    @pytest.mark.asyncio
-    async def test_get_by_id_with_w_prefix(self, client: OpenAlexClient) -> None:
-        """Test retrieval by OpenAlex ID with W prefix."""
-        mock_work = {
-            "id": "https://openalex.org/W2741809807",
-            "title": "Test Paper",
-            "doi": None,
-            "publication_year": 2020,
-            "cited_by_count": 50,
-            "abstract_inverted_index": None,
-            "authorships": [],
-            "primary_location": None,
-            "open_access": {"is_oa": False},
-        }
-
-        with patch.object(client, "_request_with_retry", new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = mock_work
-
-            result = await client.get_by_id("W2741809807")
-
-            assert result is not None
-
-
->>>>>>> 1794485dfcc48ad6b089f2b31eb788a021eadea5:service/tests/unit/test_utils/test_openalex_client.py
 class TestOpenAlexClientPrivateMethods:
     """Test OpenAlex client private methods."""
 
@@ -475,7 +342,7 @@ class TestOpenAlexClientPrivateMethods:
         assert result.authors[0]["name"] == "Jane Smith"
         assert result.journal == "Nature"
         assert result.is_oa is True
-        assert result.oa_url == "https://example.com/paper.pdf"
+        assert result.access_url == "https://example.com/paper.pdf"
         assert result.source == "openalex"
 
     def test_transform_work_minimal(self, client: OpenAlexClient) -> None:

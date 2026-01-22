@@ -106,7 +106,7 @@ class TestDeduplicateByDOI:
             abstract="Test abstract",
             journal="Nature",
             is_oa=True,
-            oa_url="https://example.com/paper.pdf",
+            access_url="https://example.com/paper.pdf",
             source="openalex",
         )
 
@@ -133,7 +133,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
         work2 = LiteratureWork(
@@ -146,7 +146,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
 
@@ -166,7 +166,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
         work2 = LiteratureWork(
@@ -179,7 +179,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
 
@@ -199,7 +199,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
         work2 = LiteratureWork(
@@ -212,7 +212,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
 
@@ -231,7 +231,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
         work2 = LiteratureWork(
@@ -244,7 +244,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
 
@@ -266,7 +266,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
         work2 = LiteratureWork(
@@ -279,7 +279,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
 
@@ -299,7 +299,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
         work_with_doi = LiteratureWork(
@@ -312,7 +312,7 @@ class TestDeduplicateByDOI:
             abstract=None,
             journal=None,
             is_oa=False,
-            oa_url=None,
+            access_url=None,
             source="openalex",
         )
 
@@ -335,7 +335,7 @@ class TestDeduplicateByDOI:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
             LiteratureWork(
@@ -348,7 +348,7 @@ class TestDeduplicateByDOI:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
             # Another unique DOI
@@ -362,7 +362,7 @@ class TestDeduplicateByDOI:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
             # No DOI works
@@ -376,7 +376,7 @@ class TestDeduplicateByDOI:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
             LiteratureWork(
@@ -389,7 +389,7 @@ class TestDeduplicateByDOI:
                 abstract=None,
                 journal=None,
                 is_oa=False,
-                oa_url=None,
+                access_url=None,
                 source="openalex",
             ),
         ]
