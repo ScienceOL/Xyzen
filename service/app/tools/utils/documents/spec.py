@@ -62,7 +62,11 @@ class ImageBlock(BaseModel):
     """An image block."""
 
     type: Literal["image"] = "image"
-    url: str = Field(description="Image URL or base64 data URL")
+    url: str | None = Field(default=None, description="Image URL or base64 data URL")
+    image_id: str | None = Field(
+        default=None,
+        description="UUID of generated image from generate_image tool",
+    )
     caption: str | None = Field(default=None, description="Optional image caption")
     width: int | None = Field(default=None, description="Optional width in points/pixels")
 
@@ -186,11 +190,26 @@ class SlideSpec(BaseModel):
     notes: str | None = Field(default=None, description="Speaker notes")
 
 
+class ImageSlideSpec(BaseModel):
+    """Specification for an image-only slide (full-bleed generated image)."""
+
+    image_id: str = Field(description="UUID of the generated slide image from generate_image tool")
+    storage_url: str | None = Field(
+        default=None,
+        description="Resolved storage URL (set by async layer, not by user)",
+    )
+    notes: str | None = Field(default=None, description="Speaker notes for this slide")
+
+
 class PresentationSpec(BaseModel):
     """
     Production-ready presentation specification for PPTX generation.
 
-    Example:
+    Supports two modes:
+    - structured: Traditional slides with DSL content blocks (default)
+    - image_slides: Full-bleed AI-generated image slides
+
+    Example (structured mode):
     ```json
     {
         "title": "Q4 Review",
@@ -212,13 +231,39 @@ class PresentationSpec(BaseModel):
         ]
     }
     ```
+
+    Example (image_slides mode):
+    ```json
+    {
+        "mode": "image_slides",
+        "title": "Q4 Review",
+        "image_slides": [
+            {"image_id": "abc-123-...", "notes": "Welcome everyone"},
+            {"image_id": "def-456-...", "notes": "Revenue summary"}
+        ]
+    }
+    ```
     """
 
     title: str | None = Field(default=None, description="Presentation title")
     author: str | None = Field(default=None, description="Presentation author")
+
+    # Mode selection
+    mode: Literal["structured", "image_slides"] = Field(
+        default="structured",
+        description="'structured' for DSL slides, 'image_slides' for full-bleed generated images",
+    )
+
+    # For structured mode
     slides: list[SlideSpec] = Field(
         default_factory=list,
-        description="List of slide specifications",
+        description="List of slide specifications (for structured mode)",
+    )
+
+    # For image_slides mode
+    image_slides: list[ImageSlideSpec] = Field(
+        default_factory=list,
+        description="List of image slide specifications (for image_slides mode)",
     )
 
 
@@ -234,5 +279,6 @@ __all__ = [
     "SheetSpec",
     "SpreadsheetSpec",
     "SlideSpec",
+    "ImageSlideSpec",
     "PresentationSpec",
 ]

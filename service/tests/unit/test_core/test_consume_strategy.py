@@ -21,7 +21,7 @@ class TestConsumptionContext:
         assert context.output_tokens == 0
         assert context.total_tokens == 0
         assert context.content_length == 0
-        assert context.generated_files_count == 0
+        assert context.tool_costs == 0
 
     def test_with_values(self) -> None:
         """Test ConsumptionContext with custom values."""
@@ -31,14 +31,14 @@ class TestConsumptionContext:
             output_tokens=500,
             total_tokens=1500,
             content_length=5000,
-            generated_files_count=2,
+            tool_costs=15,
         )
         assert context.model_tier == ModelTier.PRO
         assert context.input_tokens == 1000
         assert context.output_tokens == 500
         assert context.total_tokens == 1500
         assert context.content_length == 5000
-        assert context.generated_files_count == 2
+        assert context.tool_costs == 15
 
 
 class TestTierBasedConsumptionStrategy:
@@ -53,7 +53,6 @@ class TestTierBasedConsumptionStrategy:
             output_tokens=5000,
             total_tokens=15000,
             content_length=50000,
-            generated_files_count=5,
         )
         result = strategy.calculate(context)
 
@@ -71,7 +70,6 @@ class TestTierBasedConsumptionStrategy:
             output_tokens=1000,
             total_tokens=2000,
             content_length=1000,
-            generated_files_count=0,
         )
         result = strategy.calculate(context)
 
@@ -92,7 +90,6 @@ class TestTierBasedConsumptionStrategy:
             output_tokens=1000,
             total_tokens=2000,
             content_length=1000,
-            generated_files_count=0,
         )
         result = strategy.calculate(context)
 
@@ -113,7 +110,6 @@ class TestTierBasedConsumptionStrategy:
             output_tokens=1000,
             total_tokens=2000,
             content_length=1000,
-            generated_files_count=0,
         )
         result = strategy.calculate(context)
 
@@ -125,8 +121,8 @@ class TestTierBasedConsumptionStrategy:
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 6.8
 
-    def test_file_generation_cost(self) -> None:
-        """Test that file generation cost is included."""
+    def test_tool_costs(self) -> None:
+        """Test that tool costs are included in calculation."""
         strategy = TierBasedConsumptionStrategy()
         context = ConsumptionContext(
             model_tier=ModelTier.STANDARD,
@@ -134,13 +130,14 @@ class TestTierBasedConsumptionStrategy:
             output_tokens=0,
             total_tokens=0,
             content_length=0,
-            generated_files_count=2,
+            tool_costs=20,
         )
         result = strategy.calculate(context)
 
+        # base_cost(1) + tool_costs(20) = 21
         expected = int((1 + 20) * 1.0)
         assert result.amount == expected
-        assert result.breakdown["file_cost"] == 20
+        assert result.breakdown["tool_costs"] == 20
 
     def test_no_tier_defaults_to_1(self) -> None:
         """Test that None tier defaults to rate 1.0."""
@@ -151,7 +148,6 @@ class TestTierBasedConsumptionStrategy:
             output_tokens=1000,
             total_tokens=2000,
             content_length=1000,
-            generated_files_count=0,
         )
         result = strategy.calculate(context)
 
@@ -171,13 +167,13 @@ class TestTierBasedConsumptionStrategy:
             output_tokens=500,
             total_tokens=1500,
             content_length=1000,
-            generated_files_count=1,
+            tool_costs=10,
         )
         result = strategy.calculate(context)
 
         assert "base_cost" in result.breakdown
         assert "token_cost" in result.breakdown
-        assert "file_cost" in result.breakdown
+        assert "tool_costs" in result.breakdown
         assert "tier_rate" in result.breakdown
         assert "tier" in result.breakdown
         assert "pre_multiplier_total" in result.breakdown
@@ -205,7 +201,6 @@ class TestConsumptionCalculator:
             input_tokens=1000,
             output_tokens=1000,
             total_tokens=2000,
-            generated_files_count=0,
         )
         result = ConsumptionCalculator.calculate(context)
 
@@ -222,7 +217,6 @@ class TestConsumptionCalculator:
             input_tokens=1000,
             output_tokens=500,
             total_tokens=1500,
-            generated_files_count=1,
         )
         result = ConsumptionCalculator.calculate(context)
 

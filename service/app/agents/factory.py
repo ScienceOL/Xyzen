@@ -207,10 +207,11 @@ def _resolve_agent_config(
 
 def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> dict[str, Any]:
     """
-    Inject system_prompt into a react-style config.
+    Inject system_prompt into a graph config.
 
-    For configs using stdlib:react component, updates the config_overrides
-    to include the system_prompt.
+    Handles both:
+    1. Component nodes with stdlib:react - updates config_overrides
+    2. LLM nodes - updates prompt_template
 
     Args:
         config_dict: GraphConfig as dict
@@ -224,8 +225,9 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
 
     config = copy.deepcopy(config_dict)
 
-    # Find component nodes and inject system_prompt
+    # Find nodes and inject system_prompt (first matching node only)
     for node in config.get("nodes", []):
+        # Handle component nodes (existing behavior)
         if node.get("type") == "component":
             comp_config = node.get("component_config", {})
             comp_ref = comp_config.get("component_ref", {})
@@ -234,6 +236,13 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
             if comp_ref.get("key") == "react":
                 overrides = comp_config.setdefault("config_overrides", {})
                 overrides["system_prompt"] = system_prompt
+                break
+
+        # Handle LLM nodes
+        elif node.get("type") == "llm":
+            llm_config = node.get("llm_config", {})
+            llm_config["prompt_template"] = system_prompt
+            break
 
     return config
 

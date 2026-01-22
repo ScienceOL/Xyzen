@@ -23,6 +23,7 @@ from app.repos import AgentRunRepository, CitationRepository, FileRepository, Me
 from app.repos.session import SessionRepository
 from app.schemas.chat_event_payloads import CitationData
 from app.schemas.chat_event_types import ChatEventType
+from app.tools.cost import calculate_tool_cost
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,10 @@ async def _process_chat_message_async(
             output_tokens: int = 0
             total_tokens: int = 0
 
+            # Tool cost tracking
+            tool_costs_total = 0
+            tool_call_data: dict[str, dict[str, Any]] = {}  # tool_call_id -> {name, args}
+
             # Agent run tracking (for new timeline-based persistence)
             agent_run_id: UUID | None = None
             agent_run_start_time: float | None = None
@@ -305,9 +310,24 @@ async def _process_chat_message_async(
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.TOOL_CALL_REQUEST:
+                    # Store tool call data for cost calculation
+                    req = stream_event["data"]
+                    tool_call_id = req.get("id")
+                    tool_name = req.get("name", "")
+                    if tool_call_id:
+                        # Parse arguments (may be JSON string)
+                        raw_args = req.get("arguments", {})
+                        if isinstance(raw_args, str):
+                            try:
+                                parsed_args = json.loads(raw_args)
+                            except json.JSONDecodeError:
+                                parsed_args = {}
+                        else:
+                            parsed_args = raw_args or {}
+                        tool_call_data[tool_call_id] = {"name": tool_name, "args": parsed_args}
+
                     # Persist tool call request
                     try:
-                        req = stream_event["data"]
                         tool_message = MessageCreate(
                             role="tool",
                             content=json.dumps(
@@ -331,11 +351,42 @@ async def _process_chat_message_async(
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.TOOL_CALL_RESPONSE:
+                    resp = stream_event["data"]
+                    tool_call_id = resp.get("toolCallId")
+
+                    # Calculate tool cost using stored data from TOOL_CALL_REQUEST
+                    if tool_call_id and tool_call_id in tool_call_data:
+                        stored = tool_call_data[tool_call_id]
+                        tool_name = stored.get("name", "")
+                        args = stored.get("args", {})
+                        # Use raw_result for cost calculation (unformatted)
+                        result = resp.get("raw_result")
+                        # Parse result if it's a JSON string
+                        if isinstance(result, str):
+                            try:
+                                result = json.loads(result)
+                            except json.JSONDecodeError:
+                                result = None
+                        # Only dict results are supported for cost calculation
+                        if not isinstance(result, dict):
+                            result = None
+
+                        # Only charge for successful tool executions
+                        tool_failed = (
+                            resp.get("status") == "error"
+                            or resp.get("error") is not None
+                            or (isinstance(result, dict) and result.get("success") is False)
+                        )
+                        if tool_failed:
+                            logger.info(f"Tool {tool_name} failed, not charging")
+                        else:
+                            cost = calculate_tool_cost(tool_name, args, result)
+                            if cost > 0:
+                                tool_costs_total += cost
+                                logger.info(f"Tool {tool_name} cost: {cost} (total: {tool_costs_total})")
+
                     # Persist tool call response
                     try:
-                        resp = stream_event["data"]
-                        tool_call_id = resp.get("toolCallId")
-
                         # Only persist if toolCallId is valid - skip otherwise
                         if not tool_call_id or not isinstance(tool_call_id, str):
                             logger.warning(
@@ -601,7 +652,7 @@ async def _process_chat_message_async(
                         output_tokens=output_tokens,
                         total_tokens=total_tokens,
                         content_length=len(full_content),
-                        generated_files_count=generated_files_count,
+                        tool_costs=tool_costs_total,
                     )
                     result = ConsumptionCalculator.calculate(consume_context)
                     total_cost = result.amount

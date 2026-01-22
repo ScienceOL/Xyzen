@@ -92,7 +92,8 @@ class ToolCallResponseData(TypedDict):
 
     toolCallId: str
     status: str
-    result: str
+    result: str  # Formatted result for display
+    raw_result: NotRequired[str | dict | list]  # Raw result for cost calculation
     error: NotRequired[str]
 
 

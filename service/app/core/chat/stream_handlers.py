@@ -107,15 +107,19 @@ class ToolEventHandler:
 
     @staticmethod
     def create_tool_response_event(
-        tool_call_id: str, result: str, status: str = ToolCallStatus.COMPLETED
+        tool_call_id: str,
+        result: str,
+        status: str = ToolCallStatus.COMPLETED,
+        raw_result: str | dict | list | None = None,
     ) -> StreamingEvent:
         """
         Create a tool call response event.
 
         Args:
             tool_call_id: ID of the tool call
-            result: Formatted result string
+            result: Formatted result string for display
             status: Tool call status
+            raw_result: Raw result for cost calculation (optional, unformatted)
 
         Returns:
             StreamingEvent for tool call response
@@ -125,6 +129,8 @@ class ToolEventHandler:
             "status": status,
             "result": result,
         }
+        if raw_result is not None:
+            data["raw_result"] = raw_result
         return {"type": ChatEventType.TOOL_CALL_RESPONSE, "data": data}
 
 

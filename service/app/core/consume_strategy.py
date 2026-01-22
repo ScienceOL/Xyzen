@@ -24,7 +24,7 @@ class ConsumptionContext:
     output_tokens: int = 0
     total_tokens: int = 0
     content_length: int = 0
-    generated_files_count: int = 0
+    tool_costs: int = 0
 
 
 @dataclass
@@ -64,13 +64,12 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
 
     Design decisions:
     - LITE tier (rate 0.0) = completely free
-    - Tier rate multiplies ALL costs (base + tokens + files)
+    - Tier rate multiplies ALL costs (base + tokens + tool costs)
     """
 
     BASE_COST = 1
     INPUT_TOKEN_RATE = 0.2 / 1000  # per token
     OUTPUT_TOKEN_RATE = 1 / 1000  # per token
-    FILE_GENERATION_COST = 10
 
     def calculate(self, context: ConsumptionContext) -> ConsumptionResult:
         """Calculate consumption with tier-based multiplier.
@@ -90,7 +89,7 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
                 breakdown={
                     "base_cost": 0,
                     "token_cost": 0,
-                    "file_cost": 0,
+                    "tool_costs": 0,
                     "tier_rate": 0.0,
                     "tier": context.model_tier.value if context.model_tier else "lite",
                     "note": "LITE tier - free usage",
@@ -99,10 +98,9 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
 
         # Calculate base token cost
         token_cost = context.input_tokens * self.INPUT_TOKEN_RATE + context.output_tokens * self.OUTPUT_TOKEN_RATE
-        file_cost = context.generated_files_count * self.FILE_GENERATION_COST
 
-        # Tier rate multiplies ALL costs
-        base_amount = self.BASE_COST + token_cost + file_cost
+        # Tier rate multiplies ALL costs (including tool costs)
+        base_amount = self.BASE_COST + token_cost + context.tool_costs
         final_amount = int(base_amount * tier_rate)
 
         return ConsumptionResult(
@@ -110,7 +108,7 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
             breakdown={
                 "base_cost": self.BASE_COST,
                 "token_cost": token_cost,
-                "file_cost": file_cost,
+                "tool_costs": context.tool_costs,
                 "pre_multiplier_total": base_amount,
                 "tier_rate": tier_rate,
                 "tier": context.model_tier.value if context.model_tier else "default",

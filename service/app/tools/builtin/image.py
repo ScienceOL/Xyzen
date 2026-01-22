@@ -521,7 +521,8 @@ def create_image_tools() -> dict[str, BaseTool]:
             "Generate an image based on a text description. "
             "Provide a detailed prompt describing the desired image. "
             "To modify or generate based on a previous image, pass the 'image_id' from a previous generate_image result. "
-            "Returns a JSON result containing 'image_id' (for future reference), 'url', and 'markdown' - use the 'markdown' field directly in your response to display the image."
+            "Returns a JSON result containing 'image_id' (for future reference), 'url', and 'markdown' - use the 'markdown' field directly in your response to display the image. "
+            "TIP: You can use 'image_id' values when creating PPTX presentations with knowledge_write - see knowledge_help(topic='image_slides') for details."
         ),
         args_schema=GenerateImageInput,
         coroutine=generate_image_placeholder,
@@ -574,7 +575,8 @@ def create_image_tools_for_agent(user_id: str) -> list[BaseTool]:
                 "Generate an image based on a text description. "
                 "Provide a detailed prompt describing the desired image including style, colors, composition, and subject. "
                 "To modify or generate based on a previous image, pass the 'image_id' from a previous generate_image result. "
-                "Returns a JSON result containing 'image_id' (for future reference), 'url', and 'markdown' - use the 'markdown' field directly in your response to display the image to the user."
+                "Returns a JSON result containing 'image_id' (for future reference), 'url', and 'markdown' - use the 'markdown' field directly in your response to display the image to the user. "
+                "TIP: You can use 'image_id' values when creating beautiful PPTX presentations with knowledge_write in image_slides mode - call knowledge_help(topic='image_slides') for the full workflow."
             ),
             args_schema=GenerateImageInput,
             coroutine=generate_image_bound,
