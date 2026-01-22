@@ -1,4 +1,4 @@
-name: Test Deploy
+name: Beta
 
 on:
   push:
@@ -6,27 +6,28 @@ on:
       - test
 
 jobs:
-  # 准备阶段：设置构建变量
+  # Setup: Build variables
   setup:
+    name: Setup
     runs-on: ubuntu-latest
     outputs:
-      build_start: ${{ steps.build_setup.outputs.build_start }}
-      beta_tag: ${{ steps.build_setup.outputs.beta_tag }}
-      commit_author: ${{ steps.build_setup.outputs.commit_author }}
-      commit_email: ${{ steps.build_setup.outputs.commit_email }}
-      commit_message: ${{ steps.build_setup.outputs.commit_message }}
-      commit_sha: ${{ steps.build_setup.outputs.commit_sha }}
-      commit_sha_short: ${{ steps.build_setup.outputs.commit_sha_short }}
-      commit_date: ${{ steps.build_setup.outputs.commit_date }}
+      build_start: ${{ steps.setup.outputs.build_start }}
+      beta_version: ${{ steps.setup.outputs.beta_version }}
+      commit_author: ${{ steps.setup.outputs.commit_author }}
+      commit_email: ${{ steps.setup.outputs.commit_email }}
+      commit_message: ${{ steps.setup.outputs.commit_message }}
+      commit_sha: ${{ steps.setup.outputs.commit_sha }}
+      commit_sha_short: ${{ steps.setup.outputs.commit_sha_short }}
+      commit_date: ${{ steps.setup.outputs.commit_date }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup build variables
-        id: build_setup
+        id: setup
         run: |
           echo "build_start=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          echo "beta_tag=BETA.$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_OUTPUT
+          echo "beta_version=beta-$(date -u '+%Y%m%d%H%M%S')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "commit_author=$(git log -1 --pretty=format:'%an')" >> $GITHUB_OUTPUT
           echo "commit_email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
           echo "commit_message=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
@@ -34,12 +35,15 @@ jobs:
           echo "commit_sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "commit_date=$(git log -1 --pretty=format:'%cd' --date=format:'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
 
-  # 并行构建：Service 镜像
+  # Parallel build: Service image
   build-service:
+    name: Build Service
     runs-on: ubuntu-latest
     needs: setup
+    env:
+      BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
@@ -52,19 +56,28 @@ jobs:
           username: ${{ secrets.SCIENCEOL_REGISTRY_USERNAME }}
           password: ${{ secrets.SCIENCEOL_REGISTRY_PASSWORD }}
 
-      - name: Build and push Service Docker image
-        run: |
-          docker buildx build service \
-            -t registry.sciol.ac.cn/sciol/xyzen-service:test \
-            -t registry.sciol.ac.cn/sciol/xyzen-service:${{ needs.setup.outputs.beta_tag }} \
-            --push
+      - name: Build and push Service image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./service
+          push: true
+          build-args: |
+            XYZEN_VERSION=${{ env.BETA_VERSION }}
+            XYZEN_COMMIT_SHA=${{ github.sha }}
+            XYZEN_BUILD_TIME=${{ needs.setup.outputs.commit_date }}
+          tags: |
+            registry.sciol.ac.cn/sciol/xyzen-service:beta
+            registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}
 
-  # 并行构建：Web 镜像
+  # Parallel build: Web image
   build-web:
+    name: Build Web
     runs-on: ubuntu-latest
     needs: setup
+    env:
+      BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
@@ -77,57 +90,70 @@ jobs:
           username: ${{ secrets.SCIENCEOL_REGISTRY_USERNAME }}
           password: ${{ secrets.SCIENCEOL_REGISTRY_PASSWORD }}
 
-      - name: Build and push Web Docker image
-        run: |
-          docker buildx build web \
-            -t registry.sciol.ac.cn/sciol/xyzen-web:test \
-            -t registry.sciol.ac.cn/sciol/xyzen-web:${{ needs.setup.outputs.beta_tag }} \
-            --push
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          push: true
+          tags: |
+            registry.sciol.ac.cn/sciol/xyzen-web:beta
+            registry.sciol.ac.cn/sciol/xyzen-web:${{ env.BETA_VERSION }}
 
-  # 部署阶段：等待所有构建完成后统一部署
+  # Deploy: Wait for all builds to complete
   deploy:
+    name: Deploy
     runs-on: ubuntu-latest
     needs: [setup, build-service, build-web]
+    env:
+      BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
     steps:
       - name: Download Let's Encrypt CA
         run: curl -o ca.crt https://letsencrypt.org/certs/isrgrootx1.pem
 
-      - name: Rolling update deployments
+      - name: Deploy to Kubernetes
         run: |
           kubectl \
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            set image deployment/xyzen -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ needs.setup.outputs.beta_tag }}
+            set image deployment/xyzen -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}
 
           kubectl \
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            set image deployment/xyzen-web -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-web:${{ needs.setup.outputs.beta_tag }}
+            set image deployment/xyzen-web -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-web:${{ env.BETA_VERSION }}
 
           kubectl \
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            set image deployment/xyzen-celery -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ needs.setup.outputs.beta_tag }}
+            set image deployment/xyzen-celery -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}
 
-  # 通知阶段：发送构建结果通知
+      - name: Deployment Summary
+        run: |
+          echo "## 🧪 Beta Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Image |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | \`registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web | \`registry.sciol.ac.cn/sciol/xyzen-web:${{ env.BETA_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # Notify: Send build result notification
   notify:
+    name: Notify
     runs-on: ubuntu-latest
     needs: [setup, build-service, build-web, deploy]
     if: always()
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Calculate build duration
-        id: build_duration
-        shell: bash
+        id: duration
         run: |
           BUILD_START="${{ needs.setup.outputs.build_start }}"
           if [ -z "$BUILD_START" ]; then
-            echo "Warning: build_start is empty, using current time as fallback"
             BUILD_START=$(date '+%Y-%m-%d %H:%M:%S')
           fi
 
@@ -140,10 +166,8 @@ jobs:
           MINUTES=$(((DURATION_SEC % 3600) / 60))
           SECONDS=$((DURATION_SEC % 60))
 
-          DURATION="${HOURS}h ${MINUTES}m ${SECONDS}s"
-
-          echo "build_end=$BUILD_END" >> $GITHUB_ENV
-          echo "build_duration=$DURATION" >> $GITHUB_ENV
+          echo "build_end=$BUILD_END" >> $GITHUB_OUTPUT
+          echo "build_duration=${HOURS}h ${MINUTES}m ${SECONDS}s" >> $GITHUB_OUTPUT
 
       - name: Determine overall status
         id: status
@@ -154,7 +178,7 @@ jobs:
             echo "status=failure" >> $GITHUB_OUTPUT
           fi
 
-      - name: Send build notification
+      - name: Send notification
         uses: ./.github/actions/email-notification
         with:
           status: ${{ steps.status.outputs.status }}
@@ -165,20 +189,20 @@ jobs:
           recipient: ${{ secrets.SMTP_RECEIVER }}
           architecture: 'amd64'
           pr_number: 'N/A'
-          pr_title: 'Push to test'
+          pr_title: 'Beta Deploy ${{ needs.setup.outputs.beta_version }}'
           pr_url: '${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}'
           head_ref: ${{ github.ref_name }}
           base_ref: 'test'
           repo: ${{ github.repository }}
           run_id: ${{ github.run_id }}
           build_start: ${{ needs.setup.outputs.build_start }}
-          build_end: ${{ env.build_end }}
-          build_duration: ${{ env.build_duration }}
+          build_end: ${{ steps.duration.outputs.build_end }}
+          build_duration: ${{ steps.duration.outputs.build_duration }}
           commit_author: ${{ needs.setup.outputs.commit_author }}
           commit_email: ${{ needs.setup.outputs.commit_email }}
           commit_message: ${{ needs.setup.outputs.commit_message }}
           commit_sha: ${{ needs.setup.outputs.commit_sha }}
           commit_sha_short: ${{ needs.setup.outputs.commit_sha_short }}
           commit_date: ${{ needs.setup.outputs.commit_date }}
-          service_image: 'registry.sciol.ac.cn/sciol/xyzen-service:${{ needs.setup.outputs.beta_tag }}'
-          web_image: 'registry.sciol.ac.cn/sciol/xyzen-web:${{ needs.setup.outputs.beta_tag }}'
+          service_image: 'registry.sciol.ac.cn/sciol/xyzen-service:${{ needs.setup.outputs.beta_version }}'
+          web_image: 'registry.sciol.ac.cn/sciol/xyzen-web:${{ needs.setup.outputs.beta_version }}'

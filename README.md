@@ -12,7 +12,7 @@ Your next agent platform for multi-agent orchestration, real-time chat, and docu
 [![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
 [![npm version](https://img.shields.io/npm/v/@sciol/xyzen.svg)](https://www.npmjs.com/package/@sciol/xyzen)
 [![Pre-commit CI](https://github.com/ScienceOL/Xyzen/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/ScienceOL/Xyzen/actions/workflows/pre-commit.yaml)
-[![Prod Build](https://github.com/ScienceOL/Xyzen/actions/workflows/prod-build.yaml/badge.svg)](https://github.com/ScienceOL/Xyzen/actions/workflows/prod-build.yaml)
+[![Release](https://github.com/ScienceOL/Xyzen/actions/workflows/release.yaml/badge.svg)](https://github.com/ScienceOL/Xyzen/actions/workflows/release.yaml)
 [![Test Suite](https://github.com/ScienceOL/Xyzen/actions/workflows/test.yaml/badge.svg)](https://github.com/ScienceOL/Xyzen/actions/workflows/test.yaml)
 [![codecov](https://codecov.io/github/ScienceOL/Xyzen/graph/badge.svg?token=91W3GO7CRI)](https://codecov.io/github/ScienceOL/Xyzen)
 
@@ -31,17 +31,9 @@ Xyzen is an AI lab server built with FastAPI + LangGraph on the backend and Reac
 
 ## Getting Started
 
-Xyzen uses Docker for all development to ensure consistency across environments and to manage required infrastructure services (PostgreSQL, Redis, Mosquitto, Casdoor).
-
 ### Prerequisites
 
 - Docker and Docker Compose
-- [uv](https://docs.astral.sh/uv/) for pre-commit hooks (Python tools)
-- Node.js with Yarn (via [Corepack](https://nodejs.org/api/corepack.html)) for pre-commit hooks (Frontend tools)
-
-## Development Setup
-
-The easiest way to get started with Xyzen is using the containerized development environment. This automatically sets up all services (PostgreSQL, Mosquitto, Casdoor) and development tools.
 
 ### Quick Start
 
@@ -52,69 +44,50 @@ The easiest way to get started with Xyzen is using the containerized development
    cd Xyzen
    ```
 
-2. Start the development environment:
-
-   **On Unix/Linux/macOS:**
+2. Create environment configuration:
 
    ```bash
-   ./launch/dev.sh
+   cp docker/.env.example docker/.env.dev
    ```
 
-   **On Windows (PowerShell):**
+3. Configure your LLM provider in `docker/.env.dev`:
 
-   ```powershell
-   .\launch\dev.ps1
+   ```bash
+   # Enable providers (comma-separated): azure_openai,openai,google,qwen
+   XYZEN_LLM_providers=openai
+
+   # OpenAI example
+   XYZEN_LLM_OpenAI_key=sk-your-api-key
+   XYZEN_LLM_OpenAI_endpoint=https://api.openai.com/v1
+   XYZEN_LLM_OpenAI_deployment=gpt-4o
+   ```
+
+   See `docker/.env.example` for all available configuration options.
+
+4. Start the development environment:
+
+   ```bash
+   ./launch/dev.sh        # Start in foreground (shows logs)
+   ./launch/dev.sh -d     # Start in background (daemon mode)
+   ./launch/dev.sh -s     # Stop containers
+   ./launch/dev.sh -e     # Stop and remove containers
    ```
 
    Or use the Makefile:
 
    ```bash
-   make dev              # Start in foreground (shows logs)
-   make dev ARGS="-d"    # Start in background (daemon mode)
-   make dev ARGS="-s"    # Stop containers (without removal)
-   make dev ARGS="-e"    # Stop and remove containers
+   make dev              # Start in foreground
+   make dev ARGS="-d"    # Start in background
    ```
 
-The script will automatically:
+The script will automatically set up all infrastructure services (PostgreSQL, Redis, Mosquitto, Casdoor) and launch development containers with hot reloading.
 
-- Check Docker and validate `.env.dev` file
-- Set up global Sciol virtual environment at `~/.sciol/venv`
-- Install and configure pre-commit hooks
-- Create VS Code workspace configuration
-- Start infrastructure services (PostgreSQL, Mosquitto, Casdoor)
-- Launch development containers with hot reloading
+## Development
 
-### Container Development Options
+### Prerequisites for Contributing
 
-**Start in foreground (see logs):**
-
-```bash
-./launch/dev.sh
-```
-
-**Start in background:**
-
-```bash
-./launch/dev.sh -d
-```
-
-**Stop containers:**
-
-```bash
-./launch/dev.sh -s
-```
-
-**Stop and remove containers:**
-
-```bash
-./launch/dev.sh -e
-```
-
-**Show help:**
-
-```bash
-./launch/dev.sh -h
-```
+- [uv](https://docs.astral.sh/uv/) for Python tools and pre-commit hooks
+- Node.js with Yarn (via [Corepack](https://nodejs.org/api/corepack.html)) for frontend tools
 
 ## AI Assistant Rules
 
