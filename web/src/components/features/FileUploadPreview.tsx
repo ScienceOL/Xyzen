@@ -1,3 +1,4 @@
+import React from "react";
 import { useXyzen } from "@/store";
 import { FileUploadThumbnail } from "./FileUploadThumbnail";
 import clsx from "clsx";
@@ -6,8 +7,11 @@ export interface FileUploadPreviewProps {
   className?: string;
 }
 
-export function FileUploadPreview({ className }: FileUploadPreviewProps) {
-  const { uploadedFiles, isUploading, uploadError } = useXyzen();
+function FileUploadPreviewComponent({ className }: FileUploadPreviewProps) {
+  // Use selective subscriptions to avoid re-renders from unrelated store changes
+  const uploadedFiles = useXyzen((state) => state.uploadedFiles);
+  const isUploading = useXyzen((state) => state.isUploading);
+  const uploadError = useXyzen((state) => state.uploadError);
 
   if (uploadedFiles.length === 0) {
     return null;
@@ -57,3 +61,5 @@ export function FileUploadPreview({ className }: FileUploadPreviewProps) {
     </div>
   );
 }
+
+export const FileUploadPreview = React.memo(FileUploadPreviewComponent);
