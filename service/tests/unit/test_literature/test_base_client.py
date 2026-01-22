@@ -138,7 +138,7 @@ class TestLiteratureWorkDataclass:
 
     def test_literature_work_complete(self) -> None:
         """Test LiteratureWork with all fields."""
-        authors = [
+        authors: list[dict[str, str | None]] = [
             {"name": "John Doe", "id": "A1"},
             {"name": "Jane Smith", "id": "A2"},
         ]

@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import TypedDict
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -14,6 +15,13 @@ logger = logging.getLogger(__name__)
 
 # Define timezone for check-in (UTC+8 for China Standard Time)
 CHECKIN_TZ = timezone(timedelta(hours=8))
+
+
+class CheckInStatus(TypedDict):
+    checked_in_today: bool
+    consecutive_days: int
+    next_points: int
+    total_check_ins: int
 
 
 class CheckInService:
@@ -58,19 +66,7 @@ class CheckInService:
         Returns:
             Points to award.
         """
-        if consecutive_days <= 0:
-            return 10
-        elif consecutive_days == 1:
-            return 10
-        elif consecutive_days == 2:
-            return 20
-        elif consecutive_days == 3:
-            return 30
-        elif consecutive_days == 4:
-            return 40
-        else:
-            # Day 5 and beyond: 50 points
-            return 50
+        return 10 * max(1, min(consecutive_days, 5))
 
     async def check_in(self, user_id: str) -> tuple[CheckIn, int]:
         """
@@ -101,7 +97,6 @@ class CheckInService:
         existing_check_in = await self.check_in_repo.get_check_in_by_user_and_date(user_id, today)
         if existing_check_in:
             logger.warning(f"User {user_id} has already checked in today")
-            # raise ErrCodeError(ErrCode.ALREADY_CHECKED_IN_TODAY, "您今天已经签到过了哦～")
             raise ErrCodeError(ErrCode.ALREADY_CHECKED_IN_TODAY)
 
         # Get latest check-in to calculate consecutive days
@@ -147,7 +142,7 @@ class CheckInService:
 
         return check_in, wallet.virtual_balance
 
-    async def get_check_in_status(self, user_id: str) -> dict:
+    async def get_check_in_status(self, user_id: str) -> CheckInStatus:
         """
         Get check-in status for a user.
 
