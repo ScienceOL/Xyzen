@@ -20,7 +20,7 @@ from fastmcp.utilities.types import Image
 from pydantic import BaseModel, ValidationError
 
 if TYPE_CHECKING:
-    from app.mcp.document_spec import DocumentSpec, PresentationSpec, SpreadsheetSpec
+    from app.tools.utils.documents.spec import DocumentSpec, PresentationSpec, SpreadsheetSpec
 
 logger = logging.getLogger(__name__)
 
@@ -384,7 +384,7 @@ class PdfFileHandler(BaseFileHandler):
 
     def create_content(self, text_content: str) -> bytes:
         """Create PDF from text or DocumentSpec JSON."""
-        from app.mcp.document_spec import DocumentSpec
+        from app.tools.utils.documents.spec import DocumentSpec
 
         spec = self._try_parse_spec(text_content, DocumentSpec)
         if spec:
@@ -554,7 +554,7 @@ class DocxFileHandler(BaseFileHandler):
 
     def create_content(self, text_content: str) -> bytes:
         """Create DOCX from text or DocumentSpec JSON."""
-        from app.mcp.document_spec import DocumentSpec
+        from app.tools.utils.documents.spec import DocumentSpec
 
         spec = self._try_parse_spec(text_content, DocumentSpec)
         if spec:
@@ -660,7 +660,7 @@ class ExcelFileHandler(BaseFileHandler):
 
     def create_content(self, text_content: str) -> bytes:
         """Create XLSX from text or SpreadsheetSpec JSON."""
-        from app.mcp.document_spec import SpreadsheetSpec
+        from app.tools.utils.documents.spec import SpreadsheetSpec
 
         spec = self._try_parse_spec(text_content, SpreadsheetSpec)
         if spec:
@@ -785,7 +785,7 @@ class PptxFileHandler(BaseFileHandler):
 
     def create_content(self, text_content: str) -> bytes:
         """Create PPTX from text or PresentationSpec JSON."""
-        from app.mcp.document_spec import PresentationSpec
+        from app.tools.utils.documents.spec import PresentationSpec
 
         spec = self._try_parse_spec(text_content, PresentationSpec)
         if spec:
@@ -816,12 +816,23 @@ class PptxFileHandler(BaseFileHandler):
 
     def _create_pptx_from_spec(self, spec: PresentationSpec) -> bytes:
         """Create production PPTX from PresentationSpec."""
+        # Route based on mode
+        if spec.mode == "image_slides":
+            return self._create_pptx_image_slides(spec)
+        else:
+            return self._create_pptx_structured(spec)
+
+    def _create_pptx_structured(self, spec: PresentationSpec) -> bytes:
+        """Create PPTX with structured DSL slides (traditional mode)."""
         try:
             from pptx import Presentation
         except ImportError:
             raise ImportError("python-pptx is required for PPTX handling. Please install 'python-pptx'.")
 
+        from app.tools.utils.documents.image_fetcher import ImageFetcher
+
         prs = Presentation()
+        image_fetcher = ImageFetcher()
 
         # Layout mapping
         LAYOUTS = {
@@ -849,20 +860,9 @@ class PptxFileHandler(BaseFileHandler):
             if slide_spec.subtitle and len(slide.placeholders) > 1:
                 slide.placeholders[1].text = slide_spec.subtitle  # type: ignore[union-attr]
 
-            # Add content to body placeholder
-            if slide_spec.content and len(slide.placeholders) > 1:
-                body = slide.placeholders[1]
-                if hasattr(body, "text_frame"):
-                    tf = body.text_frame  # type: ignore[union-attr]
-                    for i, block in enumerate(slide_spec.content):
-                        if block.type == "text":
-                            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-                            p.text = block.content  # type: ignore[union-attr]
-                        elif block.type == "list":
-                            for item in block.items:  # type: ignore[union-attr]
-                                p = tf.add_paragraph()
-                                p.text = item
-                                p.level = 0
+            # Render content blocks
+            if slide_spec.content:
+                self._render_content_blocks(slide, slide_spec.content, image_fetcher)
 
             # Add speaker notes
             if slide_spec.notes:
@@ -877,6 +877,373 @@ class PptxFileHandler(BaseFileHandler):
         buffer = io.BytesIO()
         prs.save(buffer)
         return buffer.getvalue()
+
+    def _create_pptx_image_slides(self, spec: PresentationSpec) -> bytes:
+        """Create PPTX with full-bleed images as slides."""
+        try:
+            from pptx import Presentation
+            from pptx.util import Inches, Pt
+        except ImportError:
+            raise ImportError("python-pptx is required for PPTX handling. Please install 'python-pptx'.")
+
+        from app.tools.utils.documents.image_fetcher import ImageFetcher
+
+        prs = Presentation()
+        # Set slide dimensions (16:9 widescreen)
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+
+        image_fetcher = ImageFetcher()
+        blank_layout = prs.slide_layouts[6]  # Blank layout
+
+        for slide_spec in spec.image_slides:
+            slide = prs.slides.add_slide(blank_layout)
+
+            # Use storage_url if available (resolved by async layer), otherwise fall back to image_id
+            if slide_spec.storage_url:
+                result = image_fetcher.fetch(url=slide_spec.storage_url)
+            else:
+                result = image_fetcher.fetch(image_id=slide_spec.image_id)
+
+            if result.success and result.data:
+                # Add full-bleed image (0,0 to full slide dimensions)
+                image_stream = io.BytesIO(result.data)
+                slide.shapes.add_picture(
+                    image_stream,
+                    Inches(0),
+                    Inches(0),
+                    prs.slide_width,
+                    prs.slide_height,
+                )
+            else:
+                # Add error text for failed images
+                text_box = slide.shapes.add_textbox(Inches(1), Inches(3), Inches(11), Inches(1))
+                tf = text_box.text_frame
+                tf.paragraphs[0].text = f"[Slide image failed: {result.error}]"
+                tf.paragraphs[0].font.size = Pt(24)
+                tf.paragraphs[0].font.italic = True
+
+            # Add speaker notes
+            if slide_spec.notes:
+                notes_slide = slide.notes_slide
+                if notes_slide.notes_text_frame:
+                    notes_slide.notes_text_frame.text = slide_spec.notes
+
+        # Ensure at least one slide exists
+        if not prs.slides:
+            slide = prs.slides.add_slide(blank_layout)
+
+        buffer = io.BytesIO()
+        prs.save(buffer)
+        return buffer.getvalue()
+
+    def _render_content_blocks(
+        self,
+        slide: Any,
+        content_blocks: list[Any],
+        image_fetcher: Any,
+    ) -> None:
+        """Render all content blocks on a slide with vertical stacking."""
+
+        # Content area dimensions (below title)
+        CONTENT_LEFT = 0.5  # inches
+        CONTENT_TOP = 1.8  # inches
+        CONTENT_WIDTH = 9.0  # inches
+        CONTENT_BOTTOM = 7.0  # inches
+
+        current_y = CONTENT_TOP
+
+        for block in content_blocks:
+            if current_y >= CONTENT_BOTTOM:
+                logger.warning("Slide content area full, skipping remaining blocks")
+                break
+
+            remaining_height = CONTENT_BOTTOM - current_y
+
+            if block.type == "text":
+                height = self._render_text_block(slide, block, CONTENT_LEFT, current_y, CONTENT_WIDTH)
+            elif block.type == "list":
+                height = self._render_list_block(slide, block, CONTENT_LEFT, current_y, CONTENT_WIDTH)
+            elif block.type == "image":
+                height = self._render_image_block(
+                    slide, block, CONTENT_LEFT, current_y, CONTENT_WIDTH, remaining_height, image_fetcher
+                )
+            elif block.type == "table":
+                height = self._render_table_block(
+                    slide, block, CONTENT_LEFT, current_y, CONTENT_WIDTH, remaining_height
+                )
+            elif block.type == "heading":
+                height = self._render_heading_block(slide, block, CONTENT_LEFT, current_y, CONTENT_WIDTH)
+            else:
+                # Unknown block type, skip
+                height = 0.0
+
+            current_y += height
+
+    def _render_text_block(
+        self,
+        slide: Any,
+        block: Any,
+        left: float,
+        top: float,
+        max_width: float,
+    ) -> float:
+        """Render a text block. Returns height in inches."""
+        from pptx.util import Inches, Pt
+
+        # Estimate height based on text length
+        chars_per_line = int(max_width * 12)  # ~12 chars per inch at 12pt
+        num_lines = max(1, len(block.content) // chars_per_line + 1)
+        box_height = num_lines * 0.25  # ~0.25 inches per line
+
+        text_box = slide.shapes.add_textbox(
+            Inches(left),
+            Inches(top),
+            Inches(max_width),
+            Inches(box_height),
+        )
+
+        tf = text_box.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = block.content
+        p.font.size = Pt(12)
+
+        # Apply style
+        if hasattr(block, "style"):
+            if block.style == "bold":
+                p.font.bold = True
+            elif block.style == "italic":
+                p.font.italic = True
+            elif block.style == "code":
+                p.font.name = "Courier New"
+                p.font.size = Pt(10)
+
+        return box_height + 0.1  # Add margin
+
+    def _render_list_block(
+        self,
+        slide: Any,
+        block: Any,
+        left: float,
+        top: float,
+        max_width: float,
+    ) -> float:
+        """Render a list block. Returns height in inches."""
+        from pptx.util import Inches, Pt
+
+        num_items = len(block.items)
+        item_height = 0.3  # inches per item
+        box_height = num_items * item_height
+
+        text_box = slide.shapes.add_textbox(
+            Inches(left),
+            Inches(top),
+            Inches(max_width),
+            Inches(box_height),
+        )
+
+        tf = text_box.text_frame
+        tf.word_wrap = True
+
+        for i, item in enumerate(block.items):
+            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+            prefix = f"{i + 1}. " if block.ordered else "• "
+            p.text = prefix + item
+            p.font.size = Pt(12)
+            p.level = 0
+
+        return box_height + 0.1
+
+    def _render_heading_block(
+        self,
+        slide: Any,
+        block: Any,
+        left: float,
+        top: float,
+        max_width: float,
+    ) -> float:
+        """Render a heading block. Returns height in inches."""
+        from pptx.util import Inches, Pt
+
+        # Font sizes by heading level
+        HEADING_SIZES = {
+            1: 24,
+            2: 20,
+            3: 18,
+            4: 16,
+            5: 14,
+            6: 12,
+        }
+
+        level = getattr(block, "level", 1)
+        font_size = HEADING_SIZES.get(level, 14)
+        box_height = font_size / 72.0 * 1.5  # Convert to inches with padding
+
+        text_box = slide.shapes.add_textbox(
+            Inches(left),
+            Inches(top),
+            Inches(max_width),
+            Inches(box_height),
+        )
+
+        tf = text_box.text_frame
+        p = tf.paragraphs[0]
+        p.text = block.content
+        p.font.size = Pt(font_size)
+        p.font.bold = True
+
+        return box_height + 0.1
+
+    def _render_table_block(
+        self,
+        slide: Any,
+        block: Any,
+        left: float,
+        top: float,
+        max_width: float,
+        max_height: float,
+    ) -> float:
+        """Render a table block. Returns height in inches."""
+        from pptx.dml.color import RGBColor
+        from pptx.enum.text import PP_ALIGN
+        from pptx.util import Inches, Pt
+
+        num_cols = len(block.headers)
+        if num_cols == 0:
+            return 0.0
+
+        num_rows = 1 + len(block.rows)  # Header + data rows
+
+        # Calculate row height
+        row_height = 0.4  # inches
+        table_height = num_rows * row_height
+
+        # Cap table height to available space
+        max_table_height = min(4.0, max_height - 0.2)
+        if table_height > max_table_height:
+            table_height = max_table_height
+            row_height = table_height / num_rows
+
+        # Create table
+        table_shape = slide.shapes.add_table(
+            num_rows,
+            num_cols,
+            Inches(left),
+            Inches(top),
+            Inches(max_width),
+            Inches(table_height),
+        )
+        table = table_shape.table
+
+        # Style header row
+        for i, header in enumerate(block.headers):
+            cell = table.cell(0, i)
+            cell.text = str(header)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = RGBColor(0x44, 0x72, 0xC4)
+
+            # Set text properties
+            if cell.text_frame.paragraphs:
+                para = cell.text_frame.paragraphs[0]
+                para.font.bold = True
+                para.font.size = Pt(11)
+                para.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                para.alignment = PP_ALIGN.CENTER
+
+        # Fill data rows
+        for row_idx, row_data in enumerate(block.rows):
+            for col_idx, cell_val in enumerate(row_data):
+                if col_idx < num_cols:
+                    cell = table.cell(row_idx + 1, col_idx)
+                    cell.text = str(cell_val)
+                    if cell.text_frame.paragraphs:
+                        para = cell.text_frame.paragraphs[0]
+                        para.font.size = Pt(10)
+
+        return table_height + 0.2
+
+    def _render_image_block(
+        self,
+        slide: Any,
+        block: Any,
+        left: float,
+        top: float,
+        max_width: float,
+        max_height: float,
+        image_fetcher: Any,
+    ) -> float:
+        """Render an image block. Returns height in inches."""
+        from pptx.enum.text import PP_ALIGN
+        from pptx.util import Inches, Pt
+
+        # Fetch image by url or image_id
+        url = getattr(block, "url", None)
+        image_id = getattr(block, "image_id", None)
+        result = image_fetcher.fetch(url=url, image_id=image_id)
+
+        if not result.success:
+            # Add error placeholder
+            text_box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(max_width), Inches(0.5))
+            tf = text_box.text_frame
+            tf.paragraphs[0].text = f"[Image failed to load: {result.error}]"
+            tf.paragraphs[0].font.italic = True
+            tf.paragraphs[0].font.size = Pt(10)
+            return 0.6
+
+        # Calculate image dimensions
+        if block.width:
+            # Use specified width (in points, convert to inches)
+            img_width = block.width / 72.0
+        elif result.width and result.height:
+            # Scale to fit max_width while maintaining aspect ratio
+            img_width = min(max_width * 0.8, result.width / 96.0)  # 96 DPI assumption, 80% max width
+        else:
+            img_width = min(max_width * 0.6, 4.0)  # Default 4 inches or 60% width
+
+        # Calculate height maintaining aspect ratio
+        if result.width and result.height:
+            aspect = result.height / result.width
+            img_height = img_width * aspect
+        else:
+            img_height = img_width * 0.75  # Default 4:3 aspect
+
+        # Cap height to available space (leave room for caption)
+        caption_space = 0.5 if block.caption else 0.1
+        available_height = max_height - caption_space
+        if img_height > available_height:
+            scale = available_height / img_height
+            img_height = available_height
+            img_width = img_width * scale
+
+        # Center image horizontally
+        img_left = left + (max_width - img_width) / 2
+
+        # Add image to slide
+        image_stream = io.BytesIO(result.data)
+        slide.shapes.add_picture(
+            image_stream,
+            Inches(img_left),
+            Inches(top),
+            Inches(img_width),
+            Inches(img_height),
+        )
+
+        total_height = img_height + 0.1
+
+        # Add caption if present
+        if block.caption:
+            caption_top = top + img_height + 0.1
+            caption_box = slide.shapes.add_textbox(Inches(left), Inches(caption_top), Inches(max_width), Inches(0.3))
+            tf = caption_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = block.caption
+            p.alignment = PP_ALIGN.CENTER
+            p.font.size = Pt(10)
+            p.font.italic = True
+            total_height += 0.4
+
+        return total_height
 
 
 class FileHandlerFactory:
