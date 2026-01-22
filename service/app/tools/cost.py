@@ -34,10 +34,11 @@ def calculate_tool_cost(
     config = tool_info.cost
     cost = config.base_cost
 
-    # Add input image cost (for generate_image with reference)
+    # Add input image cost (for generate_image with reference images)
     if config.input_image_cost and tool_args:
-        if tool_args.get("image_id"):  # Has reference image
-            cost += config.input_image_cost
+        image_ids = tool_args.get("image_ids")
+        if image_ids:
+            cost += config.input_image_cost * len(image_ids)
 
     # Add output file cost (for knowledge_write creating new files)
     if config.output_file_cost and tool_result:
