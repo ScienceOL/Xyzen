@@ -22,6 +22,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class ToolCostConfig(BaseModel):
+    """Cost configuration for a tool."""
+
+    base_cost: int = Field(default=0, description="Base cost per execution")
+    input_image_cost: int = Field(default=0, description="Additional cost per input image")
+    output_file_cost: int = Field(default=0, description="Additional cost per output file")
+
+
 class ToolInfo(BaseModel):
     """Metadata about a builtin tool for API responses."""
 
@@ -41,6 +49,10 @@ class ToolInfo(BaseModel):
     requires_context: list[str] = Field(
         default_factory=list,
         description="Runtime context requirements (e.g., ['user_id', 'knowledge_set_id'])",
+    )
+    cost: ToolCostConfig = Field(
+        default_factory=ToolCostConfig,
+        description="Cost configuration for this tool",
     )
 
 
@@ -65,6 +77,7 @@ class BuiltinToolRegistry:
         ui_toggleable: bool = True,
         default_enabled: bool = False,
         requires_context: list[str] | None = None,
+        cost: ToolCostConfig | None = None,
     ) -> None:
         """
         Register a builtin tool.
@@ -77,6 +90,7 @@ class BuiltinToolRegistry:
             ui_toggleable: Whether to show as toggle in UI (default: True)
             default_enabled: Whether enabled by default for new agents (default: False)
             requires_context: List of required context keys (e.g., ["user_id"])
+            cost: Cost configuration for the tool (default: no cost)
         """
         cls._tools[tool_id] = tool
         cls._metadata[tool_id] = ToolInfo(
@@ -87,6 +101,7 @@ class BuiltinToolRegistry:
             ui_toggleable=ui_toggleable,
             default_enabled=default_enabled,
             requires_context=requires_context or [],
+            cost=cost or ToolCostConfig(),
         )
         logger.debug(f"Registered builtin tool: {tool_id} ({category})")
 
@@ -172,7 +187,17 @@ def register_builtin_tools() -> None:
             ui_toggleable=True,
             default_enabled=True,  # Web search enabled by default
             requires_context=[],
+            cost=ToolCostConfig(base_cost=1),
         )
+
+    # Tool cost configs for knowledge tools
+    knowledge_tool_costs = {
+        "knowledge_list": ToolCostConfig(),  # Free
+        "knowledge_read": ToolCostConfig(),  # Free
+        "knowledge_write": ToolCostConfig(output_file_cost=5),  # Charge for new files
+        "knowledge_search": ToolCostConfig(),  # Free
+        "knowledge_help": ToolCostConfig(),  # Free
+    }
 
     # Register knowledge tools (auto-enabled when knowledge_set exists, not UI toggleable)
     knowledge_tools = create_knowledge_tools()
@@ -184,6 +209,7 @@ def register_builtin_tools() -> None:
             ui_toggleable=False,  # Auto-enabled based on context
             default_enabled=False,
             requires_context=["user_id", "knowledge_set_id"],
+            cost=knowledge_tool_costs.get(tool_id, ToolCostConfig()),
         )
 
     # Register memory tools (disabled due to performance issues)
@@ -200,6 +226,12 @@ def register_builtin_tools() -> None:
     #         requires_context=["user_id", "agent_id"],
     #     )
 
+    # Tool cost configs for image tools
+    image_tool_costs = {
+        "generate_image": ToolCostConfig(base_cost=10, input_image_cost=5),  # 10 base, +5 if using reference
+        "read_image": ToolCostConfig(base_cost=2),  # Vision model inference
+    }
+
     # Register image tools
     from app.tools.builtin.image import create_image_tools
 
@@ -213,9 +245,10 @@ def register_builtin_tools() -> None:
             ui_toggleable=True,
             default_enabled=False,
             requires_context=["user_id"],
+            cost=image_tool_costs.get(tool_id, ToolCostConfig()),
         )
 
     logger.info(f"Registered {BuiltinToolRegistry.count()} builtin tools")
 
 
-__all__ = ["BuiltinToolRegistry", "ToolInfo", "register_builtin_tools"]
+__all__ = ["BuiltinToolRegistry", "ToolCostConfig", "ToolInfo", "register_builtin_tools"]

@@ -492,9 +492,11 @@ async def _handle_updates_mode(
                         logger.info(f"[ToolEvent] Skipping historical tool response: {tool_call_id}")
                         continue
                     ctx.emitted_tool_result_ids.add(tool_call_id)
-                    result = format_tool_result(msg.content, tool_name)
+                    # Get raw content before formatting (for cost calculation)
+                    raw_content = msg.content
+                    result = format_tool_result(raw_content, tool_name)
                     logger.info(f"[ToolEvent] >>> Emitting tool_call_response for {tool_call_id}")
-                    yield ToolEventHandler.create_tool_response_event(tool_call_id, result)
+                    yield ToolEventHandler.create_tool_response_event(tool_call_id, result, raw_result=raw_content)
 
         last_message = messages[-1]
 

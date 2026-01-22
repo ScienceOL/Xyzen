@@ -87,17 +87,16 @@ class ImageFetcher:
         Fetch an image from the given URL or resolve image_id to storage.
 
         Args:
-            url: HTTP URL, base64 data URL, or storage:// URL
-            image_id: UUID of a generated image from generate_image tool
+            url: HTTP URL, base64 data URL, or storage:// URL (takes precedence if provided)
+            image_id: UUID of a generated image from generate_image tool (fallback if no url)
 
         Returns:
             FetchedImage with data or error information
         """
         try:
-            # Resolve image_id to storage URL first
-            if image_id:
-                return self._fetch_by_image_id(image_id)
-            elif url:
+            # Prefer URL over image_id when both are present
+            # This allows the async layer to resolve image_ids to URLs beforehand
+            if url:
                 if url.startswith("data:"):
                     return self._fetch_base64(url)
                 elif url.startswith("storage://"):
@@ -106,6 +105,9 @@ class ImageFetcher:
                     return self._fetch_http(url)
                 else:
                     return FetchedImage(success=False, error=f"Unsupported URL scheme: {url[:50]}")
+            elif image_id:
+                # Fallback to image_id if no URL provided
+                return self._fetch_by_image_id(image_id)
             else:
                 return FetchedImage(success=False, error="Either url or image_id must be provided")
         except Exception as e:

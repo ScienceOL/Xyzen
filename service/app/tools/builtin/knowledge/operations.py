@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 async def _resolve_image_ids_to_storage_urls(
     content: str,
     file_repo: FileRepository,
+    user_id: str,
 ) -> str:
     """
     Resolve image_ids in document specs to storage:// URLs.
@@ -38,6 +39,11 @@ async def _resolve_image_ids_to_storage_urls(
     Supports:
     - PresentationSpec with image_slides mode (image_slides[].image_id)
     - PresentationSpec with ImageBlocks in slides (slides[].content[].image_id)
+
+    Args:
+        content: JSON content to process
+        file_repo: File repository for database lookups
+        user_id: User ID for ownership verification (security check)
     """
     try:
         data = json.loads(content)
@@ -76,6 +82,12 @@ async def _resolve_image_ids_to_storage_urls(
             file_uuid = UUID(image_id)
             file_record = await file_repo.get_file_by_id(file_uuid)
             if file_record and not file_record.is_deleted:
+                # Security check: verify the file belongs to the current user
+                if file_record.user_id != user_id:
+                    logger.warning(
+                        f"Image ownership mismatch: {image_id} belongs to {file_record.user_id}, not {user_id}"
+                    )
+                    continue
                 id_to_storage_url[image_id] = f"storage://{file_record.storage_key}"
             else:
                 logger.warning(f"Image not found or deleted: {image_id}")
@@ -251,7 +263,7 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
 
             # Resolve image_ids to storage URLs for PPTX files (async DB lookup here)
             if filename.endswith(".pptx"):
-                content = await _resolve_image_ids_to_storage_urls(content, file_repo)
+                content = await _resolve_image_ids_to_storage_urls(content, file_repo, user_id)
 
             # Use handler to create content bytes
             handler = FileHandlerFactory.get_handler(filename)
