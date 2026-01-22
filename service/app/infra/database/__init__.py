@@ -5,6 +5,7 @@ from .connection import (
     create_task_session_factory,
     engine,
     get_session,
+    get_task_db_session,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "AsyncSessionLocal",
     "ASYNC_DATABASE_URL",
     "create_task_session_factory",
+    "get_task_db_session",
 ]

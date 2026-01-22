@@ -1,4 +1,6 @@
+import os
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -137,4 +139,46 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     Dependency that provides a database session for each request.
     """
     async with AsyncSessionLocal() as session:
+        yield session
+
+
+_worker_engines: dict[int, async_sessionmaker[AsyncSession]] = {}
+
+
+@asynccontextmanager
+async def get_task_db_session():
+    """
+    Get a database session suitable for Celery Worker / tool execution contexts.
+
+    Each call creates a new engine bound to the current event loop to avoid cross-process issues.
+
+    Usage:
+        async with get_task_db_session() as db:
+            result = await db.execute(...)
+    """
+    # task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
+    # TaskSessionLocal = async_sessionmaker(
+    #     bind=task_engine,
+    #     class_=AsyncSession,
+    #     expire_on_commit=False,
+    # )
+
+    # async with TaskSessionLocal() as session:
+    #     try:
+    #         yield session
+    #     finally:
+    #         await task_engine.dispose()
+
+    # Better version that reuses engines per process
+    pid = os.getpid()
+
+    if pid not in _worker_engines:
+        task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
+        _worker_engines[pid] = async_sessionmaker(
+            bind=task_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+
+    async with _worker_engines[pid]() as session:
         yield session

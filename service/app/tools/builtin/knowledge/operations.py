@@ -17,7 +17,7 @@ from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.storage import FileCategory, FileScope, generate_storage_key, get_storage_service
-from app.infra.database import AsyncSessionLocal
+from app.infra.database import get_task_db_session
 from app.models.file import FileCreate
 from app.repos.file import FileRepository
 from app.repos.knowledge_set import KnowledgeSetRepository
@@ -138,7 +138,7 @@ async def get_files_in_knowledge_set(db: AsyncSession, user_id: str, knowledge_s
 async def list_files(user_id: str, knowledge_set_id: UUID) -> dict[str, Any]:
     """List all files in the knowledge set."""
     try:
-        async with AsyncSessionLocal() as db:
+        async with get_task_db_session() as db:
             file_repo = FileRepository(db)
 
             try:
@@ -178,7 +178,7 @@ async def read_file(user_id: str, knowledge_set_id: UUID, filename: str) -> dict
         # Normalize filename
         filename = filename.strip("/").split("/")[-1]
 
-        async with AsyncSessionLocal() as db:
+        async with get_task_db_session() as db:
             file_repo = FileRepository(db)
             target_file = None
 
@@ -229,7 +229,7 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
     try:
         filename = filename.strip("/").split("/")[-1]
 
-        async with AsyncSessionLocal() as db:
+        async with get_task_db_session() as db:
             file_repo = FileRepository(db)
             knowledge_set_repo = KnowledgeSetRepository(db)
             storage = get_storage_service()
@@ -309,7 +309,7 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
 async def search_files(user_id: str, knowledge_set_id: UUID, query: str) -> dict[str, Any]:
     """Search for files by name in the knowledge set."""
     try:
-        async with AsyncSessionLocal() as db:
+        async with get_task_db_session() as db:
             file_repo = FileRepository(db)
             matches: list[str] = []
 
