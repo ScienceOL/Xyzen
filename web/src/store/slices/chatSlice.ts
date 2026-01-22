@@ -402,27 +402,9 @@ export const createChatSlice: StateCreator<
      * - If no session exists, creates one with a default topic
      */
     activateChannelForAgent: async (agentId: string) => {
-      const { channels, chatHistory, backendUrl } = get();
+      const { backendUrl } = get();
 
-      // First, check if we already have a channel for this agent
-      const existingChannel = Object.values(channels).find(
-        (ch) => ch.agentId === agentId,
-      );
-
-      if (existingChannel) {
-        // Already have a channel, activate it
-        await get().activateChannel(existingChannel.id);
-        return;
-      }
-
-      // Check chat history for existing topics with this agent
-      const existingHistory = chatHistory.find((h) => h.sessionId === agentId);
-      if (existingHistory) {
-        await get().activateChannel(existingHistory.id);
-        return;
-      }
-
-      // No existing channel, try to find or create a session for this agent
+      // Always fetch from backend to get the most recent topic
       const token = authService.getToken();
       if (!token) {
         console.error("No authentication token available");
@@ -446,8 +428,8 @@ export const createChatSlice: StateCreator<
 
           // Get the most recent topic for this session, or create one
           if (session.topics && session.topics.length > 0) {
-            // Activate the most recent topic
-            const latestTopic = session.topics[session.topics.length - 1];
+            // Activate the most recent topic (backend returns topics ordered by updated_at descending)
+            const latestTopic = session.topics[0];
 
             // Create channel if doesn't exist
             const channel: ChatChannel = {

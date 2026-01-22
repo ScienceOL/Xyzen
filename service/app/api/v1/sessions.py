@@ -72,16 +72,17 @@ async def create_session_with_default_topic(
         raise handle_auth_error(e)
 
 
-@router.get("/by-agent/{agent_id}", response_model=SessionRead)
+@router.get("/by-agent/{agent_id}", response_model=SessionReadWithTopics)
 async def get_session_by_agent(
     agent_id: str, user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)
-) -> SessionRead:
+) -> SessionReadWithTopics:
     """
-    Retrieve a session for the current user with a specific agent.
+    Retrieve a session for the current user with a specific agent, including topics.
 
     Finds a session associated with the given agent ID for the authenticated user.
     The agent_id can be "default" for sessions without an agent, a UUID string
     for sessions with a specific agent, or a builtin agent string ID.
+    Topics are ordered by updated_at descending (most recent first).
 
     Args:
         agent_id: Agent identifier ("default", UUID string, or builtin agent ID)
@@ -89,13 +90,13 @@ async def get_session_by_agent(
         db: Database session (injected by dependency)
 
     Returns:
-        SessionRead: The session associated with the user and agent
+        SessionReadWithTopics: The session with topics associated with the user and agent
 
     Raises:
         HTTPException: 404 if no session found for this user-agent combination
     """
     try:
-        return await SessionService(db).get_session_by_agent(user, agent_id)
+        return await SessionService(db).get_session_by_agent_with_topics(user, agent_id)
     except ErrCodeError as e:
         raise handle_auth_error(e)
 

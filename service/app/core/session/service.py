@@ -49,6 +49,20 @@ class SessionService:
             raise ErrCode.SESSION_NOT_FOUND.with_messages("No session found for this user-agent combination")
         return SessionRead(**session.model_dump())
 
+    async def get_session_by_agent_with_topics(self, user_id: str, agent_id: str) -> SessionReadWithTopics:
+        agent_uuid = await self._resolve_agent_uuid_for_lookup(agent_id)
+        session = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
+        if not session:
+            raise ErrCode.SESSION_NOT_FOUND.with_messages("No session found for this user-agent combination")
+
+        # Fetch topics ordered by updated_at descending (most recent first)
+        topics = await self.topic_repo.get_topics_by_session(session.id, order_by_updated=True)
+        topic_reads = [TopicRead(**topic.model_dump()) for topic in topics]
+
+        session_dict = session.model_dump()
+        session_dict["topics"] = topic_reads
+        return SessionReadWithTopics(**session_dict)
+
     async def get_sessions_with_topics(self, user_id: str) -> list[SessionReadWithTopics]:
         sessions = await self.session_repo.get_sessions_by_user_ordered_by_activity(user_id)
 
