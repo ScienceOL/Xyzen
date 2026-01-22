@@ -1,168 +1,224 @@
 """
-Sandbox API Handlers.
+E2B 沙箱 API
 
-This module provides the following endpoints for code execution:
-- POST /execute: Execute code in a sandbox
-- POST /execute-function: Execute a function with arguments
+提供 E2B 沙箱的 REST API 端点。
 """
 
 import logging
-from typing import Any
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, UploadFile, File, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.infra.database import get_session
 from app.middleware.auth import get_current_user
-from app.sandbox import SandboxExecutor, ResourceLimits
+from app.sandbox import (
+    E2BSandboxManager,
+    ExecutionResult,
+    FileInfo,
+    SandboxInfo,
+    SandboxType,
+    SandboxError,
+    SandboxStartError,
+    SandboxExecutionError,
+    SandboxTimeoutError,
+    SandboxFileError,
+)
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Sandbox"])
+router = APIRouter(prefix="/session/{session_id}/sandbox", tags=["Sandbox"])
+
+
+# 请求/响应模型
+class StartSandboxRequest(BaseModel):
+    """启动沙箱请求"""
+    sandbox_type: SandboxType = Field(
+        default=SandboxType.CODE_INTERPRETER,
+        description="沙箱类型：code_interpreter 或 custom",
+    )
 
 
 class ExecuteCodeRequest(BaseModel):
-    """Request to execute code in sandbox."""
-
-    code: str = Field(..., description="The code to execute")
-    language: str = Field(
-        default="python",
-        description="Programming language: python, javascript, bash",
-    )
-    stdin: str = Field(
-        default="",
-        description="Standard input to provide to the code",
-    )
-    timeout_secs: int | None = Field(
-        default=None,
-        description="Execution timeout in seconds (default: 30, max: 60)",
-    )
+    """执行代码请求"""
+    code: str = Field(..., description="要执行的 Python 代码")
 
 
-class ExecuteFunctionRequest(BaseModel):
-    """Request to execute a function with arguments."""
-
-    code: str = Field(..., description="The code containing the function definition")
-    function_name: str = Field(..., description="Name of the function to call")
-    args: list[Any] = Field(
-        default_factory=list,
-        description="Positional arguments for the function",
-    )
-    kwargs: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Keyword arguments for the function",
-    )
+class InstallPackagesRequest(BaseModel):
+    """安装包请求"""
+    packages: list[str] = Field(..., description="要安装的 pip 包列表")
 
 
-class ExecuteResponse(BaseModel):
-    """Response from code execution."""
-
-    success: bool = Field(..., description="Whether execution was successful")
-    output: str = Field(default="", description="Standard output from execution")
-    stderr: str | None = Field(default=None, description="Standard error output")
-    exit_code: int = Field(default=0, description="Exit code from execution")
-    duration_ms: int = Field(default=0, description="Execution duration in milliseconds")
-    error: str | None = Field(default=None, description="Error message if execution failed")
+# 依赖注入
+def get_sandbox_manager() -> E2BSandboxManager:
+    return E2BSandboxManager.get_instance()
 
 
-class FunctionResponse(BaseModel):
-    """Response from function execution."""
-
-    success: bool = Field(..., description="Whether execution was successful")
-    result: Any = Field(default=None, description="Return value from the function")
-    error: str | None = Field(default=None, description="Error message if execution failed")
-    traceback: str | None = Field(default=None, description="Traceback if an exception occurred")
+SessionId = Annotated[str, Path(description="用户会话 ID")]
 
 
+# 生命周期管理端点
+@router.post(
+    "/start",
+    response_model=SandboxInfo,
+    summary="启动沙箱",
+    description="为指定会话启动一个新的 E2B 沙箱。如果沙箱已存在，返回现有实例。",
+)
+async def start_sandbox(
+    session_id: SessionId,
+    request: StartSandboxRequest,
+    current_user: str = Depends(get_current_user),
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> SandboxInfo:
+    """启动沙箱"""
+    logger.info(f"User {current_user} starting sandbox for session {session_id}")
+    try:
+        return await manager.start(session_id, request.sandbox_type)
+    except SandboxStartError as e:
+        logger.error(f"Failed to start sandbox: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/stop",
+    status_code=204,
+    summary="关停沙箱",
+    description="关停指定会话的沙箱。",
+)
+async def stop_sandbox(
+    session_id: SessionId,
+    current_user: str = Depends(get_current_user),
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> None:
+    """关停沙箱"""
+    logger.info(f"User {current_user} stopping sandbox for session {session_id}")
+    await manager.stop(session_id)
+
+
+@router.get(
+    "/status",
+    response_model=SandboxInfo | None,
+    summary="获取沙箱状态",
+    description="获取指定会话的沙箱状态信息。",
+)
+async def get_sandbox_status(
+    session_id: SessionId,
+    current_user: str = Depends(get_current_user),
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> SandboxInfo | None:
+    """获取沙箱状态"""
+    return await manager.get_status(session_id)
+
+
+# 代码执行端点
 @router.post(
     "/execute",
-    response_model=ExecuteResponse,
-    summary="Execute code in sandbox",
-    description="Execute code in a secure sandbox environment with resource limits.",
+    response_model=ExecutionResult,
+    summary="执行代码",
+    description="在沙箱中执行 Python 代码。如果沙箱不存在，将自动启动。",
 )
 async def execute_code(
+    session_id: SessionId,
     request: ExecuteCodeRequest,
-    session: AsyncSession = Depends(get_session),
     current_user: str = Depends(get_current_user),
-) -> ExecuteResponse:
-    """Execute code in a sandbox."""
-    logger.info(f"User {current_user} executing {request.language} code")
-
-    # Validate timeout
-    timeout_secs = request.timeout_secs
-    if timeout_secs is not None:
-        if timeout_secs < 1:
-            raise HTTPException(status_code=400, detail="Timeout must be at least 1 second")
-        if timeout_secs > 60:
-            raise HTTPException(status_code=400, detail="Timeout cannot exceed 60 seconds")
-
-    # Create executor with optional custom timeout
-    limits = ResourceLimits.from_config()
-    if timeout_secs:
-        limits.wall_time_ms = timeout_secs * 1000
-
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> ExecutionResult:
+    """执行代码"""
+    logger.info(f"User {current_user} executing code in session {session_id}")
     try:
-        async with SandboxExecutor(limits=limits) as executor:
-            result = await executor.execute(
-                code=request.code,
-                language=request.language,
-                stdin=request.stdin,
-            )
-
-        return ExecuteResponse(
-            success=result.success,
-            output=result.output_str,
-            stderr=result.stderr_str if result.stderr else None,
-            exit_code=result.exit_code,
-            duration_ms=result.duration_ms,
-            error=result.error,
-        )
-    except Exception as e:
-        logger.error(f"Sandbox execution failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Execution failed: {e}")
+        return await manager.execute(session_id, request.code)
+    except SandboxTimeoutError as e:
+        raise HTTPException(status_code=408, detail=str(e))
+    except SandboxExecutionError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except SandboxError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
+# 文件操作端点
 @router.post(
-    "/execute-function",
-    response_model=FunctionResponse,
-    summary="Execute a function with arguments",
-    description="Execute a specific function from code with given arguments.",
+    "/upload",
+    summary="上传文件",
+    description="上传文件到沙箱。",
 )
-async def execute_function(
-    request: ExecuteFunctionRequest,
-    session: AsyncSession = Depends(get_session),
+async def upload_file(
+    session_id: SessionId,
+    file: UploadFile = File(...),
+    path: str = Query("/home/user/upload", description="目标路径"),
     current_user: str = Depends(get_current_user),
-) -> FunctionResponse:
-    """Execute a function with arguments."""
-    logger.info(f"User {current_user} executing function {request.function_name}")
-
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> dict[str, str]:
+    """上传文件"""
+    logger.info(f"User {current_user} uploading file to {path} in session {session_id}")
     try:
-        async with SandboxExecutor() as executor:
-            result = await executor.execute_with_function(
-                code=request.code,
-                function_name=request.function_name,
-                args=tuple(request.args),
-                kwargs_dict=request.kwargs,
-            )
+        content = await file.read()
+        target_path = f"{path.rstrip('/')}/{file.filename}"
+        result_path = await manager.upload(session_id, content, target_path)
+        return {"path": result_path}
+    except SandboxFileError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        if not result.success:
-            return FunctionResponse(
-                success=False,
-                error=result.error or result.stderr_str,
-            )
 
-        # Parse the JSON output from the wrapper
-        import json
+@router.get(
+    "/download",
+    summary="下载文件",
+    description="从沙箱下载文件。",
+)
+async def download_file(
+    session_id: SessionId,
+    path: str = Query(..., description="文件路径"),
+    current_user: str = Depends(get_current_user),
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> Response:
+    """下载文件"""
+    logger.info(f"User {current_user} downloading file from {path} in session {session_id}")
+    try:
+        content = await manager.download(session_id, path)
+        filename = path.split("/")[-1]
+        return Response(
+            content=content,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except SandboxFileError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-        try:
-            output = json.loads(result.output_str.strip())
-            return FunctionResponse(**output)
-        except json.JSONDecodeError:
-            return FunctionResponse(
-                success=True,
-                result=result.output_str,
-            )
-    except Exception as e:
-        logger.error(f"Function execution failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Execution failed: {e}")
+
+@router.get(
+    "/files",
+    response_model=list[FileInfo],
+    summary="列出文件",
+    description="列出沙箱中指定路径的文件。",
+)
+async def list_files(
+    session_id: SessionId,
+    path: str = Query("/", description="目录路径"),
+    current_user: str = Depends(get_current_user),
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> list[FileInfo]:
+    """列出文件"""
+    try:
+        return await manager.list_files(session_id, path)
+    except SandboxFileError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# 环境管理端点
+@router.post(
+    "/install",
+    response_model=ExecutionResult,
+    summary="安装依赖包",
+    description="在沙箱中安装 pip 包。",
+)
+async def install_packages(
+    session_id: SessionId,
+    request: InstallPackagesRequest,
+    current_user: str = Depends(get_current_user),
+    manager: E2BSandboxManager = Depends(get_sandbox_manager),
+) -> ExecutionResult:
+    """安装依赖包"""
+    logger.info(f"User {current_user} installing packages {request.packages} in session {session_id}")
+    try:
+        return await manager.install(session_id, request.packages)
+    except SandboxError as e:
+        raise HTTPException(status_code=500, detail=str(e))
