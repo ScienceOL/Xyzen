@@ -117,7 +117,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             for context in lifespan_contexts:
                 await stack.enter_async_context(context)
 
-            yield
+            # 启动沙箱清理后台任务
+            import asyncio
+            from app.sandbox import start_cleanup_task, stop_cleanup_task
+
+            cleanup_task = asyncio.create_task(start_cleanup_task())
+
+            try:
+                yield
+            finally:
+                # 停止清理任务
+                await stop_cleanup_task()
+                cleanup_task.cancel()
+                try:
+                    await cleanup_task
+                except asyncio.CancelledError:
+                    pass
 
     except Exception as e:
         import logging
