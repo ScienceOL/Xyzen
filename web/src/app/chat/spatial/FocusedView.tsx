@@ -12,6 +12,9 @@ interface FocusedViewProps {
   onClose: () => void;
   onSwitchAgent: (id: string) => void;
   onCanvasClick?: () => void; // Callback specifically for canvas clicks
+  // Agent edit/delete handlers
+  onEditAgent?: (agentId: string) => void;
+  onDeleteAgent?: (agentId: string) => void;
 }
 
 export function FocusedView({
@@ -20,6 +23,8 @@ export function FocusedView({
   onClose,
   onSwitchAgent,
   onCanvasClick,
+  onEditAgent,
+  onDeleteAgent,
 }: FocusedViewProps) {
   const switcherRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -71,6 +76,27 @@ export function FocusedView({
   const handleAgentClick = useCallback(
     (a: Agent) => onSwitchAgent(a.id),
     [onSwitchAgent],
+  );
+
+  // Map node id back to real agentId for edit/delete
+  const handleEditClick = useCallback(
+    (a: Agent) => {
+      const agentData = agentDataMap.get(a.id);
+      if (agentData?.agentId && onEditAgent) {
+        onEditAgent(agentData.agentId);
+      }
+    },
+    [agentDataMap, onEditAgent],
+  );
+
+  const handleDeleteClick = useCallback(
+    (a: Agent) => {
+      const agentData = agentDataMap.get(a.id);
+      if (agentData?.agentId && onDeleteAgent) {
+        onDeleteAgent(agentData.agentId);
+      }
+    },
+    [agentDataMap, onDeleteAgent],
   );
 
   // Activate the channel for the selected agent
@@ -183,6 +209,8 @@ export function FocusedView({
               getAgentStatus={getAgentStatus}
               getAgentRole={getAgentRole}
               onAgentClick={handleAgentClick}
+              onEdit={onEditAgent ? handleEditClick : undefined}
+              onDelete={onDeleteAgent ? handleDeleteClick : undefined}
             />
           </div>
         </motion.div>

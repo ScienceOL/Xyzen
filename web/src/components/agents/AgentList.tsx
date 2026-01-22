@@ -42,11 +42,12 @@ interface CompactAgentListProps extends AgentListBaseProps {
   selectedAgentId?: string;
   getAgentStatus?: (agent: Agent) => "idle" | "busy";
   getAgentRole?: (agent: Agent) => string | undefined;
+  // Right-click menu support (shared with detailed)
+  publishedAgentIds?: Set<string>;
+  onEdit?: (agent: Agent) => void;
+  onDelete?: (agent: Agent) => void;
   // Detailed variant props not used
-  publishedAgentIds?: never;
   lastConversationTimeByAgent?: never;
-  onEdit?: never;
-  onDelete?: never;
 }
 
 export type AgentListProps = DetailedAgentListProps | CompactAgentListProps;
@@ -82,8 +83,14 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
   }
 
   // Compact variant
-  const { selectedAgentId, getAgentStatus, getAgentRole } =
-    props as CompactAgentListProps;
+  const {
+    selectedAgentId,
+    getAgentStatus,
+    getAgentRole,
+    publishedAgentIds,
+    onEdit,
+    onDelete,
+  } = props as CompactAgentListProps;
 
   return (
     <div className="space-y-1">
@@ -95,7 +102,10 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
           isSelected={agent.id === selectedAgentId}
           status={getAgentStatus?.(agent) ?? "idle"}
           role={getAgentRole?.(agent)}
+          isMarketplacePublished={publishedAgentIds?.has(agent.id)}
           onClick={onAgentClick}
+          onEdit={onEdit}
+          onDelete={onDelete}
         />
       ))}
     </div>

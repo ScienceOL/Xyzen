@@ -15,6 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 // Animation variants for detailed variant
@@ -163,11 +164,12 @@ interface CompactVariantProps extends AgentListItemBaseProps {
   isSelected?: boolean;
   status?: "idle" | "busy";
   role?: string;
+  // Right-click menu support (shared with detailed)
+  isMarketplacePublished?: boolean;
+  onEdit?: (agent: Agent) => void;
+  onDelete?: (agent: Agent) => void;
   // Detailed variant props not used
-  isMarketplacePublished?: never;
   lastConversationTime?: never;
-  onEdit?: never;
-  onDelete?: never;
 }
 
 export type AgentListItemProps = DetailedVariantProps | CompactVariantProps;
@@ -320,18 +322,20 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
         </div>
       </motion.div>
 
-      {/* Context menu */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onEdit={() => onEdit?.(agent)}
-          onDelete={() => onDelete?.(agent)}
-          onClose={() => setContextMenu(null)}
-          isDefaultAgent={isDefaultAgent}
-          isMarketplacePublished={isMarketplacePublished}
-        />
-      )}
+      {/* Context menu - rendered via portal to escape overflow:hidden containers */}
+      {contextMenu &&
+        createPortal(
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onEdit={() => onEdit?.(agent)}
+            onDelete={() => onDelete?.(agent)}
+            onClose={() => setContextMenu(null)}
+            isDefaultAgent={isDefaultAgent}
+            isMarketplacePublished={isMarketplacePublished}
+          />,
+          document.body,
+        )}
     </>
   );
 };
@@ -342,42 +346,120 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
   isSelected = false,
   status = "idle",
   role,
+  isMarketplacePublished = false,
   onClick,
+  onEdit,
+  onDelete,
 }) => {
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPress = useRef(false);
+
+  // Check if it's a default agent based on tags
+  const isDefaultAgent = agent.tags?.some((tag) => tag.startsWith("default_"));
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!onEdit && !onDelete) return; // No context menu if no handlers
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!onEdit && !onDelete) return;
+    isLongPress.current = false;
+    const touch = e.touches[0];
+    const { clientX, clientY } = touch;
+
+    longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      setContextMenu({ x: clientX, y: clientY });
+      try {
+        if ("vibrate" in navigator) {
+          navigator.vibrate(10);
+        }
+      } catch {
+        // ignore
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   return (
-    <button
-      onClick={() => onClick?.(agent)}
-      className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 ${
-        isSelected
-          ? "bg-white/80 dark:bg-white/20 shadow-sm"
-          : "hover:bg-white/40 dark:hover:bg-white/10"
-      }`}
-    >
-      <div className="relative">
-        <img
-          src={
-            agent.avatar ||
-            "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
-          }
-          alt={agent.name}
-          className="w-10 h-10 rounded-full border border-white/50 object-cover"
-        />
-        {status === "busy" && (
-          <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500"></span>
-          </span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1 text-left">
-        <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-          {agent.name}
+    <>
+      <button
+        onClick={() => {
+          if (isLongPress.current) return;
+          onClick?.(agent);
+        }}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 ${
+          isSelected
+            ? "bg-white/80 dark:bg-white/20 shadow-sm"
+            : "hover:bg-white/40 dark:hover:bg-white/10"
+        }`}
+      >
+        <div className="relative">
+          <img
+            src={
+              agent.avatar ||
+              "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+            }
+            alt={agent.name}
+            className="w-10 h-10 rounded-full border border-white/50 object-cover"
+          />
+          {status === "busy" && (
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500"></span>
+            </span>
+          )}
         </div>
-        {role && (
-          <div className="truncate text-[10px] text-neutral-500">{role}</div>
+        <div className="min-w-0 flex-1 text-left">
+          <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+            {agent.name}
+          </div>
+          {role && (
+            <div className="truncate text-[10px] text-neutral-500">{role}</div>
+          )}
+        </div>
+      </button>
+
+      {/* Context menu - rendered via portal to escape overflow:hidden containers */}
+      {contextMenu &&
+        (onEdit || onDelete) &&
+        createPortal(
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onEdit={() => onEdit?.(agent)}
+            onDelete={() => onDelete?.(agent)}
+            onClose={() => setContextMenu(null)}
+            isDefaultAgent={isDefaultAgent}
+            isMarketplacePublished={isMarketplacePublished}
+          />,
+          document.body,
         )}
-      </div>
-    </button>
+    </>
   );
 };
 
