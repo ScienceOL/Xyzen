@@ -1,7 +1,7 @@
 """
-Sandbox Configuration
+E2B 沙箱配置
 
-Configuration for code execution sandbox with resource limits.
+E2B 云原生沙箱的配置项。
 """
 
 from pydantic import Field
@@ -9,100 +9,39 @@ from pydantic_settings import BaseSettings
 
 
 class SandboxConfig(BaseSettings):
-    """Sandbox execution configuration with resource limits."""
+    """E2B 沙箱配置"""
 
-    # Memory limits
-    memory_limit_bytes: int = Field(
-        default=256 * 1024 * 1024,  # 256MB
-        description="Maximum memory in bytes for sandbox execution",
+    model_config = {"env_prefix": "SANDBOX_"}
+
+    # E2B API 配置
+    e2b_api_key: str = Field(
+        default="",
+        description="E2B API Key",
     )
 
-    # CPU/Time limits
+    # 沙箱类型配置
+    default_sandbox_type: str = Field(
+        default="code_interpreter",
+        description="默认沙箱类型: code_interpreter, custom",
+    )
+
+    custom_template_id: str = Field(
+        default="",
+        description="Custom Sandbox 的模板 ID（E2B 控制台创建）",
+    )
+
+    # 超时配置
     execution_timeout_secs: int = Field(
-        default=30,
-        description="Maximum execution time in seconds",
+        default=300,  # 5 分钟
+        description="单次代码执行超时（秒）",
     )
 
-    cpu_time_limit_secs: int = Field(
-        default=5,
-        description="Maximum CPU time in seconds",
+    sandbox_idle_timeout_secs: int = Field(
+        default=1800,  # 30 分钟
+        description="沙箱空闲超时，超时后自动关闭",
     )
 
-    # Fuel limit for WASM execution (computational steps)
-    max_fuel: int = Field(
-        default=1_000_000_000,  # 1 billion
-        description="Maximum fuel units for WASM execution",
-    )
-
-    # File system limits
-    max_file_size_bytes: int = Field(
-        default=10 * 1024 * 1024,  # 10MB
-        description="Maximum file size in bytes",
-    )
-
-    max_open_files: int = Field(
-        default=10,
-        description="Maximum number of open files",
-    )
-
-    # Process limits
-    max_threads: int = Field(
-        default=4,
-        description="Maximum number of threads",
-    )
-
-    # Filesystem access
-    enable_filesystem: bool = Field(
-        default=True,
-        description="Enable filesystem access in sandbox",
-    )
-
-    allowed_paths: list[str] = Field(
-        default_factory=lambda: ["/tmp", "/data/cache"],
-        description="Allowed filesystem paths for sandbox access",
-    )
-
-    # Security settings
-    allow_network: bool = Field(
-        default=False,
-        description="Allow network access in sandbox (disabled by default)",
-    )
-
-    allow_env_access: bool = Field(
-        default=False,
-        description="Allow environment variable access",
-    )
-
-    # Backend selection
-    default_backend: str = Field(
-        default="subprocess",
-        description="Default sandbox backend: subprocess, docker, kubernetes, wasm",
-    )
-
-    # Docker/Kubernetes settings (for container backends)
-    docker_image: str = Field(
-        default="python:3.12-slim",
-        description="Docker image for container sandbox",
-    )
-
-    kube_namespace: str = Field(
-        default="sandbox",
-        description="Kubernetes namespace for sandbox pods",
-    )
-
-    # Security policy
-    security_severity_threshold: str = Field(
-        default="MEDIUM",
-        description="Security severity threshold: LOW, MEDIUM, HIGH, CRITICAL",
-    )
-
-    # Cache settings
-    enable_result_cache: bool = Field(
-        default=True,
-        description="Enable caching of execution results",
-    )
-
-    cache_ttl_secs: int = Field(
-        default=300,  # 5 minutes
-        description="Cache TTL in seconds",
+    sandbox_max_lifetime_secs: int = Field(
+        default=7200,  # 2 小时
+        description="沙箱最大存活时间",
     )
