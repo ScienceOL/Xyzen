@@ -11,9 +11,13 @@ import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
+import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { useMyMarketplaceListings } from "@/hooks/useMarketplace";
 import { useXyzen } from "@/store";
+import type { Agent } from "@/types/agents";
 import { AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 import {
   AddAgentButton,
@@ -34,6 +38,7 @@ import {
 } from "./spatial";
 
 function InnerWorkspace() {
+  const { t } = useTranslation();
   const {
     agents,
     updateAgentLayout,
@@ -101,6 +106,10 @@ function InnerWorkspace() {
   });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
+  const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [prevViewport, setPrevViewport] = useState<Viewport | null>(null);
   const [newlyCreatedAgentId, setNewlyCreatedAgentId] = useState<string | null>(
     null,
@@ -516,6 +525,29 @@ function InnerWorkspace() {
     }, 1000);
   }, [setViewport, getViewport, fitView]);
 
+  // Agent edit/delete handlers for FocusedView (with confirmation modal)
+  const handleEditAgentFromFocus = useCallback(
+    (agentId: string) => {
+      const agent = agents.find((a) => a.id === agentId);
+      if (agent) {
+        setEditingAgent(agent);
+        setEditModalOpen(true);
+      }
+    },
+    [agents],
+  );
+
+  const handleDeleteAgentFromFocus = useCallback(
+    (agentId: string) => {
+      const agent = agents.find((a) => a.id === agentId);
+      if (agent) {
+        setAgentToDelete(agent);
+        setConfirmModalOpen(true);
+      }
+    },
+    [agents],
+  );
+
   // Viewport change handler
   const handleViewportChange = useCallback((_: unknown, viewport: Viewport) => {
     if (focusedAgentIdRef.current) return;
@@ -622,6 +654,8 @@ function InnerWorkspace() {
             onClose={handleCloseFocus}
             onSwitchAgent={(id) => handleFocus(id)}
             onCanvasClick={handleCloseFocus}
+            onEditAgent={handleEditAgentFromFocus}
+            onDeleteAgent={handleDeleteAgentFromFocus}
           />
         )}
       </AnimatePresence>
@@ -630,6 +664,58 @@ function InnerWorkspace() {
         isOpen={isAddModalOpen}
         onClose={() => setAddModalOpen(false)}
       />
+
+      {/* Edit Agent Modal */}
+      {editingAgent && (
+        <AgentSettingsModal
+          key={editingAgent.id}
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setEditingAgent(null);
+          }}
+          sessionId=""
+          agentId={editingAgent.id}
+          agentName={editingAgent.name}
+          agent={editingAgent}
+          currentAvatar={editingAgent.avatar ?? undefined}
+          onAvatarChange={(avatarUrl) => {
+            setEditingAgent({ ...editingAgent, avatar: avatarUrl });
+            updateAgentAvatar(editingAgent.id, avatarUrl);
+          }}
+          onGridSizeChange={() => {}}
+          onDelete={
+            publishedAgentIds.has(editingAgent.id)
+              ? undefined
+              : () => {
+                  deleteAgent(editingAgent.id);
+                  setEditModalOpen(false);
+                  setEditingAgent(null);
+                }
+          }
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {agentToDelete && (
+        <ConfirmationModal
+          isOpen={isConfirmModalOpen}
+          onClose={() => {
+            setConfirmModalOpen(false);
+            setAgentToDelete(null);
+          }}
+          onConfirm={() => {
+            if (publishedAgentIds.has(agentToDelete.id)) return;
+            deleteAgent(agentToDelete.id);
+            setConfirmModalOpen(false);
+            setAgentToDelete(null);
+          }}
+          title={t("agents.deleteAgent")}
+          message={t("agents.deleteConfirmation", { name: agentToDelete.name })}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@
  * Tool filter semantics:
  * - null: All available tools are enabled
  * - []: No tools enabled
- * - ["web_search"]: Only web_search enabled
+ * - ["web_search", "web_fetch"]: Only web search tools enabled (always bundled)
  */
 
 import type { Agent } from "@/types/agents";
@@ -12,6 +12,7 @@ import type { Agent } from "@/types/agents";
 // Available builtin tool IDs
 export const BUILTIN_TOOLS = {
   WEB_SEARCH: "web_search",
+  WEB_FETCH: "web_fetch",
   KNOWLEDGE_LIST: "knowledge_list",
   KNOWLEDGE_READ: "knowledge_read",
   KNOWLEDGE_WRITE: "knowledge_write",
@@ -21,14 +22,11 @@ export const BUILTIN_TOOLS = {
   MEMORY_SEARCH: "memory_search",
 } as const;
 
-// All builtin tool IDs as array
-export const ALL_BUILTIN_TOOL_IDS = [
+// Web search tools as a group (search + fetch always together)
+export const WEB_SEARCH_TOOLS = [
   BUILTIN_TOOLS.WEB_SEARCH,
-  ...Object.values(BUILTIN_TOOLS).filter((id) => id.startsWith("knowledge_")),
-  BUILTIN_TOOLS.GENERATE_IMAGE,
-  BUILTIN_TOOLS.READ_IMAGE,
-  BUILTIN_TOOLS.MEMORY_SEARCH,
-];
+  BUILTIN_TOOLS.WEB_FETCH,
+] as const;
 
 // Knowledge tools as a group
 export const KNOWLEDGE_TOOLS = [
@@ -37,6 +35,15 @@ export const KNOWLEDGE_TOOLS = [
   BUILTIN_TOOLS.KNOWLEDGE_WRITE,
   BUILTIN_TOOLS.KNOWLEDGE_SEARCH,
 ] as const;
+
+// All builtin tool IDs as array
+export const ALL_BUILTIN_TOOL_IDS = [
+  ...WEB_SEARCH_TOOLS,
+  ...KNOWLEDGE_TOOLS,
+  BUILTIN_TOOLS.GENERATE_IMAGE,
+  BUILTIN_TOOLS.READ_IMAGE,
+  BUILTIN_TOOLS.MEMORY_SEARCH,
+];
 
 // Image tools as a group
 export const IMAGE_TOOLS = [
@@ -74,10 +81,12 @@ export function isToolEnabled(agent: Agent | null, toolId: string): boolean {
 }
 
 /**
- * Check if web search is enabled
+ * Check if web search tools are enabled (web_search + web_fetch)
  */
 export function isWebSearchEnabled(agent: Agent | null): boolean {
-  return isToolEnabled(agent, BUILTIN_TOOLS.WEB_SEARCH);
+  const filter = getToolFilter(agent);
+  if (filter === null) return true;
+  return WEB_SEARCH_TOOLS.some((toolId) => filter.includes(toolId));
 }
 
 /**
@@ -185,13 +194,50 @@ export function updateKnowledgeEnabled(
 }
 
 /**
- * Enable/disable web search
+ * Enable/disable all web search tools at once (web_search + web_fetch)
  */
 export function updateWebSearchEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  return updateToolFilter(agent, BUILTIN_TOOLS.WEB_SEARCH, enabled);
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
+  const currentFilter = currentConfig.tool_config?.tool_filter;
+
+  let newFilter: string[] | null;
+
+  if (currentFilter === null || currentFilter === undefined) {
+    // Currently all enabled
+    if (enabled) {
+      // Already enabled, keep null
+      newFilter = null;
+    } else {
+      // Disable web search: list all tools EXCEPT web search ones
+      newFilter = ALL_BUILTIN_TOOL_IDS.filter(
+        (id) =>
+          !WEB_SEARCH_TOOLS.includes(id as (typeof WEB_SEARCH_TOOLS)[number]),
+      );
+    }
+  } else {
+    // Working with explicit filter
+    if (enabled) {
+      const existing = new Set(currentFilter);
+      WEB_SEARCH_TOOLS.forEach((toolId) => existing.add(toolId));
+      newFilter = Array.from(existing);
+    } else {
+      newFilter = currentFilter.filter(
+        (id) =>
+          !WEB_SEARCH_TOOLS.includes(id as (typeof WEB_SEARCH_TOOLS)[number]),
+      );
+    }
+  }
+
+  return {
+    ...currentConfig,
+    tool_config: {
+      ...currentConfig.tool_config,
+      tool_filter: newFilter,
+    },
+  };
 }
 
 /**

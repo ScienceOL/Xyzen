@@ -1,6 +1,7 @@
 import { zIndexClasses } from "@/constants/zIndex";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import {
+  ArrowDownTrayIcon,
   ArrowsPointingOutIcon,
   CheckIcon,
   ClipboardIcon,
@@ -443,6 +444,27 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const isXyzenDownloadUrl = (src: string) =>
   src.includes("/xyzen/api/v1/files/") && src.includes("/download");
 
+const getDownloadFilename = (alt?: string, src?: string): string => {
+  // Use alt text if available and sensible
+  if (alt && alt.length > 0 && alt.length < 100 && !alt.includes("/")) {
+    const sanitized = alt.replace(/[^a-zA-Z0-9-_. ]/g, "").trim();
+    if (sanitized) {
+      return /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(sanitized)
+        ? sanitized
+        : `${sanitized}.png`;
+    }
+  }
+  // Try to extract from URL
+  if (src) {
+    const urlFilename = src.split("/").pop()?.split("?")[0];
+    if (urlFilename && /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(urlFilename)) {
+      return urlFilename;
+    }
+  }
+  // Fallback
+  return `image-${Date.now()}.png`;
+};
+
 const MarkdownImageComponent: React.FC<
   React.ImgHTMLAttributes<HTMLImageElement>
 > = (props) => {
@@ -608,18 +630,50 @@ const MarkdownImageComponent: React.FC<
                 <ImageLightboxEscapeCatcher
                   onEscape={() => setIsLightboxOpen(false)}
                 />
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsLightboxOpen(false)}
-                  className="absolute top-6 right-6 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
-                  aria-label="Close"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </motion.button>
+                {/* Download and Close buttons */}
+                <div className="absolute top-6 right-6 z-10 flex items-center gap-2">
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        // Fetch image as blob to handle cross-origin downloads
+                        const response = await fetch(imageSrc);
+                        const blob = await response.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = blobUrl;
+                        link.download = getDownloadFilename(alt, fullSrc);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(blobUrl);
+                      } catch (err) {
+                        console.error("Failed to download image:", err);
+                      }
+                    }}
+                    className="rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
+                    aria-label="Download"
+                  >
+                    <ArrowDownTrayIcon className="h-6 w-6" />
+                  </motion.button>
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsLightboxOpen(false)}
+                    className="rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
+                    aria-label="Close"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </motion.button>
+                </div>
                 <motion.img
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}

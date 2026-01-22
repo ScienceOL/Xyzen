@@ -173,6 +173,7 @@ def register_builtin_tools() -> None:
 
     Called at app startup to populate the registry.
     """
+    from app.tools.builtin.fetch import create_web_fetch_tool
     from app.tools.builtin.knowledge import create_knowledge_tools
     from app.tools.builtin.search import create_web_search_tool
 
@@ -189,6 +190,19 @@ def register_builtin_tools() -> None:
             requires_context=[],
             cost=ToolCostConfig(base_cost=1),
         )
+
+    # Register web fetch tool (bundled with web_search, not separate toggle)
+    fetch_tool = create_web_fetch_tool()
+    BuiltinToolRegistry.register(
+        tool_id="web_fetch",
+        tool=fetch_tool,
+        category="search",
+        display_name="Web Fetch",
+        ui_toggleable=False,  # Bundled with web_search
+        default_enabled=True,
+        requires_context=[],
+        cost=ToolCostConfig(base_cost=1),
+    )
 
     # Tool cost configs for knowledge tools
     knowledge_tool_costs = {

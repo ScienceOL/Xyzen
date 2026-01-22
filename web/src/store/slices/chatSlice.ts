@@ -29,6 +29,7 @@ import type {
 export interface ChatSlice {
   // Chat panel state
   activeChatChannel: string | null;
+  activeTopicByAgent: Record<string, string>; // agentId -> topicId mapping
   chatHistory: ChatHistoryItem[];
   chatHistoryLoading: boolean;
   channels: Record<string, ChatChannel>;
@@ -117,6 +118,7 @@ export const createChatSlice: StateCreator<
   return {
     // Chat panel state
     activeChatChannel: null,
+    activeTopicByAgent: {},
     chatHistory: [],
     chatHistoryLoading: true,
     channels: {},
@@ -240,6 +242,15 @@ export const createChatSlice: StateCreator<
       }
 
       set({ activeChatChannel: topicId });
+
+      // Track active topic per agent
+      const existingChannel = channels[topicId];
+      if (existingChannel?.agentId) {
+        set((state: ChatSlice) => {
+          state.activeTopicByAgent[existingChannel.agentId!] = topicId;
+        });
+      }
+
       let channel = channels[topicId];
 
       if (!channel) {
@@ -398,13 +409,21 @@ export const createChatSlice: StateCreator<
     /**
      * Activate or create a chat channel for a specific agent.
      * This is used by the spatial workspace to open chat with an agent.
-     * - If a session exists for the agent, activates the most recent topic
+     * - If user previously had an active topic for this agent, restore it
+     * - If no previous topic, activates the most recent topic
      * - If no session exists, creates one with a default topic
      */
     activateChannelForAgent: async (agentId: string) => {
-      const { backendUrl } = get();
+      const { backendUrl, activeTopicByAgent, channels } = get();
 
-      // Always fetch from backend to get the most recent topic
+      // First check if there's a previously active topic for this agent
+      const previousTopicId = activeTopicByAgent[agentId];
+      if (previousTopicId && channels[previousTopicId]) {
+        await get().activateChannel(previousTopicId);
+        return;
+      }
+
+      // No previous topic, fetch from backend to get the most recent topic
       const token = authService.getToken();
       if (!token) {
         console.error("No authentication token available");

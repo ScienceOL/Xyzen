@@ -17,7 +17,7 @@ Submodules:
 Tool Categories:
 | Category   | Tools                     | UI Toggle | Auto-enabled |
 |------------|---------------------------|-----------|--------------|
-| search     | web_search                | Yes       | -            |
+| search     | web_search, web_fetch     | Yes       | -            |
 | knowledge  | knowledge_*               | No        | Yes (with knowledge_set) |
 | image      | generate_image, read_image| Yes       | -            |
 | research   | think, ConductResearch    | No        | Component-internal |

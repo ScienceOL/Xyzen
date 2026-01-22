@@ -47,6 +47,7 @@ dependencies = [
     "pytesseract>=0.3.13",
     "pillow>=12.0.0",
     "celery-types>=0.24.0",
+    "trafilatura>=1.12.0",
 ]
 
 [dependency-groups]

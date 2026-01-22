@@ -1,7 +1,9 @@
+import { AgentList } from "@/components/agents";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { useXyzen } from "@/store";
+import type { Agent } from "@/types/agents";
 import { motion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AgentData } from "./types";
 
 interface FocusedViewProps {
@@ -10,6 +12,9 @@ interface FocusedViewProps {
   onClose: () => void;
   onSwitchAgent: (id: string) => void;
   onCanvasClick?: () => void; // Callback specifically for canvas clicks
+  // Agent edit/delete handlers
+  onEditAgent?: (agentId: string) => void;
+  onDeleteAgent?: (agentId: string) => void;
 }
 
 export function FocusedView({
@@ -18,11 +23,81 @@ export function FocusedView({
   onClose,
   onSwitchAgent,
   onCanvasClick,
+  onEditAgent,
+  onDeleteAgent,
 }: FocusedViewProps) {
   const switcherRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
 
   const { activateChannelForAgent } = useXyzen();
+
+  // Convert AgentData to Agent type for AgentList component
+  const agentsForList: Agent[] = useMemo(
+    () =>
+      agents.map((a) => ({
+        id: a.id, // Use node ID for switching
+        name: a.name,
+        description: a.desc,
+        avatar: a.avatar,
+        user_id: "",
+        created_at: "",
+        updated_at: "",
+      })),
+    [agents],
+  );
+
+  // Create a map for quick lookup of original AgentData
+  const agentDataMap = useMemo(
+    () => new Map(agents.map((a) => [a.id, a])),
+    [agents],
+  );
+
+  // Get selected agent's node ID
+  const selectedAgentId = useMemo(
+    () => agents.find((a) => a.name === agent.name)?.id,
+    [agents, agent.name],
+  );
+
+  // Callbacks to get status and role from original AgentData
+  const getAgentStatus = useCallback(
+    (a: Agent) => {
+      const status = agentDataMap.get(a.id)?.status;
+      // Map "offline" to "idle" since compact variant only supports "idle" | "busy"
+      return status === "busy" ? "busy" : "idle";
+    },
+    [agentDataMap],
+  );
+
+  const getAgentRole = useCallback(
+    (a: Agent) => agentDataMap.get(a.id)?.role,
+    [agentDataMap],
+  );
+
+  const handleAgentClick = useCallback(
+    (a: Agent) => onSwitchAgent(a.id),
+    [onSwitchAgent],
+  );
+
+  // Map node id back to real agentId for edit/delete
+  const handleEditClick = useCallback(
+    (a: Agent) => {
+      const agentData = agentDataMap.get(a.id);
+      if (agentData?.agentId && onEditAgent) {
+        onEditAgent(agentData.agentId);
+      }
+    },
+    [agentDataMap, onEditAgent],
+  );
+
+  const handleDeleteClick = useCallback(
+    (a: Agent) => {
+      const agentData = agentDataMap.get(a.id);
+      if (agentData?.agentId && onDeleteAgent) {
+        onDeleteAgent(agentData.agentId);
+      }
+    },
+    [agentDataMap, onDeleteAgent],
+  );
 
   // Activate the channel for the selected agent
   useEffect(() => {
@@ -126,40 +201,17 @@ export function FocusedView({
               Active Agents
             </h3>
           </div>
-          <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
-            {agents.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => onSwitchAgent(a.id)}
-                className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 ${
-                  a.name === agent.name
-                    ? "bg-white/80 dark:bg-white/20 shadow-sm"
-                    : "hover:bg-white/40 dark:hover:bg-white/10"
-                }`}
-              >
-                <div className="relative">
-                  <img
-                    src={a.avatar}
-                    alt={a.name}
-                    className="w-10 h-10 rounded-full border border-white/50 object-cover"
-                  />
-                  {a.status === "busy" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                      <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500"></span>
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-                    {a.name}
-                  </div>
-                  <div className="truncate text-[10px] text-neutral-500">
-                    {a.role}
-                  </div>
-                </div>
-              </button>
-            ))}
+          <div className="overflow-y-auto p-2 custom-scrollbar">
+            <AgentList
+              agents={agentsForList}
+              variant="compact"
+              selectedAgentId={selectedAgentId}
+              getAgentStatus={getAgentStatus}
+              getAgentRole={getAgentRole}
+              onAgentClick={handleAgentClick}
+              onEdit={onEditAgent ? handleEditClick : undefined}
+              onDelete={onDeleteAgent ? handleDeleteClick : undefined}
+            />
           </div>
         </motion.div>
       </div>
