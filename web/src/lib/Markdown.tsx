@@ -443,9 +443,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const isXyzenDownloadUrl = (src: string) =>
   src.includes("/xyzen/api/v1/files/") && src.includes("/download");
 
-const MarkdownImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
-  props,
-) => {
+const MarkdownImageComponent: React.FC<
+  React.ImgHTMLAttributes<HTMLImageElement>
+> = (props) => {
   const { src, alt, ...rest } = props;
   const backendUrl = useXyzen((state) => state.backendUrl);
   const token = useXyzen((state) => state.token);
@@ -581,6 +581,7 @@ const MarkdownImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
             <img
               src={imageSrc}
               alt={alt}
+              decoding="async"
               {...rest}
               className="block w-[95%] sm:max-w-80 max-h-80 h-auto rounded-lg transition-all duration-200 group-hover/img:scale-[1.02] group-hover/img:shadow-lg"
             />
@@ -637,6 +638,14 @@ const MarkdownImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
     </>
   );
 };
+
+// Memoize MarkdownImage to prevent re-renders during streaming
+// Only re-render when src or alt changes
+const MarkdownImage = React.memo(
+  MarkdownImageComponent,
+  (prevProps, nextProps) =>
+    prevProps.src === nextProps.src && prevProps.alt === nextProps.alt,
+);
 
 // Helper component to catch Escape key for image lightbox
 function ImageLightboxEscapeCatcher({ onEscape }: { onEscape: () => void }) {
@@ -761,9 +770,7 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
           </code>
         );
       },
-      img(props: React.ComponentPropsWithoutRef<"img">) {
-        return <MarkdownImage {...props} />;
-      },
+      img: MarkdownImage,
     }),
     [isDark],
   );

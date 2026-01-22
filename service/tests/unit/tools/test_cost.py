@@ -77,14 +77,34 @@ class TestCalculateToolCost:
         assert cost == 10
 
     def test_generate_image_with_reference(self) -> None:
-        """Test generate_image cost with reference image."""
+        """Test generate_image cost with single reference image."""
         cost = calculate_tool_cost(
             tool_name="generate_image",
-            tool_args={"prompt": "a beautiful sunset", "image_id": "ref123"},
+            tool_args={"prompt": "a beautiful sunset", "image_ids": ["ref123"]},
             tool_result={"success": True, "image_id": "abc123"},
         )
         # Base cost (10) + input_image_cost (5) = 15
         assert cost == 15
+
+    def test_generate_image_with_multiple_references(self) -> None:
+        """Test generate_image cost with multiple reference images."""
+        cost = calculate_tool_cost(
+            tool_name="generate_image",
+            tool_args={"prompt": "combine these images", "image_ids": ["ref1", "ref2", "ref3"]},
+            tool_result={"success": True, "image_id": "abc123"},
+        )
+        # Base cost (10) + input_image_cost (5) * 3 = 25
+        assert cost == 25
+
+    def test_generate_image_with_empty_image_ids(self) -> None:
+        """Test generate_image cost with empty image_ids list."""
+        cost = calculate_tool_cost(
+            tool_name="generate_image",
+            tool_args={"prompt": "a sunset", "image_ids": []},
+            tool_result={"success": True, "image_id": "abc123"},
+        )
+        # Base cost only (10), empty list means no input images
+        assert cost == 10
 
     def test_read_image_cost(self) -> None:
         """Test read_image cost."""

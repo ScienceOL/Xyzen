@@ -86,6 +86,7 @@ export default function ChatToolbar({
     uploadedFiles,
     isUploading,
     updateAgent,
+    openSettingsModal,
   } = useXyzen();
 
   // All user agents for lookup
@@ -288,6 +289,8 @@ export default function ChatToolbar({
             agent={currentAgent}
             onUpdateAgent={updateAgent}
             mcpInfo={currentMcpInfo}
+            allMcpServers={mcpServers}
+            onOpenSettings={() => openSettingsModal("mcp")}
             sessionKnowledgeSetId={currentChannel?.knowledge_set_id}
             onUpdateSessionKnowledge={handleKnowledgeSetChange}
           />
@@ -328,9 +331,15 @@ export default function ChatToolbar({
                 )}
 
                 {/* MCP Tool Button */}
-                {currentMcpInfo && (
+                {currentAgent && (
                   <McpToolsButton
-                    mcpInfo={currentMcpInfo}
+                    mcpInfo={
+                      currentMcpInfo || { agent: currentAgent, servers: [] }
+                    }
+                    allMcpServers={mcpServers}
+                    agent={currentAgent}
+                    onUpdateAgent={updateAgent}
+                    onOpenSettings={() => openSettingsModal("mcp")}
                     buttonClassName={cn(
                       toolbarButtonClass,
                       "w-auto px-2 gap-1.5",

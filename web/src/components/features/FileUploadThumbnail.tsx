@@ -1,3 +1,4 @@
+import React, { useCallback } from "react";
 import {
   XMarkIcon,
   DocumentIcon,
@@ -12,20 +13,28 @@ export interface FileUploadThumbnailProps {
   file: UploadedFile;
 }
 
-export function FileUploadThumbnail({ file }: FileUploadThumbnailProps) {
-  const { removeFile, retryUpload } = useXyzen();
+function FileUploadThumbnailComponent({ file }: FileUploadThumbnailProps) {
+  // Use selective subscriptions to avoid re-renders from unrelated store changes
+  const removeFile = useXyzen((state) => state.removeFile);
+  const retryUpload = useXyzen((state) => state.retryUpload);
 
-  const handleRemove = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    removeFile(file.id);
-  };
+  const handleRemove = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      removeFile(file.id);
+    },
+    [removeFile, file.id],
+  );
 
-  const handleRetry = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    retryUpload(file.id);
-  };
+  const handleRetry = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      retryUpload(file.id);
+    },
+    [retryUpload, file.id],
+  );
 
   const getFileIcon = () => {
     if (file.category === "images") {
@@ -74,6 +83,7 @@ export function FileUploadThumbnail({ file }: FileUploadThumbnailProps) {
           <img
             src={file.thumbnailUrl}
             alt={file.name}
+            decoding="async"
             className="w-full h-full object-cover"
           />
         ) : (
@@ -165,3 +175,27 @@ export function FileUploadThumbnail({ file }: FileUploadThumbnailProps) {
     </div>
   );
 }
+
+// Custom comparison function for React.memo
+// Only re-render when relevant file properties change
+function arePropsEqual(
+  prevProps: FileUploadThumbnailProps,
+  nextProps: FileUploadThumbnailProps,
+): boolean {
+  const prevFile = prevProps.file;
+  const nextFile = nextProps.file;
+
+  return (
+    prevFile.id === nextFile.id &&
+    prevFile.status === nextFile.status &&
+    prevFile.progress === nextFile.progress &&
+    prevFile.thumbnailUrl === nextFile.thumbnailUrl &&
+    prevFile.name === nextFile.name &&
+    prevFile.category === nextFile.category
+  );
+}
+
+export const FileUploadThumbnail = React.memo(
+  FileUploadThumbnailComponent,
+  arePropsEqual,
+);

@@ -388,7 +388,8 @@ class FileService {
   }
 
   /**
-   * Generate thumbnail URL for preview
+   * Generate thumbnail URL for preview using Canvas API
+   * Resizes image to max 160px dimension and outputs as JPEG for small file size
    */
   generateThumbnail(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -397,16 +398,53 @@ class FileService {
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          resolve(e.target.result as string);
+      const MAX_SIZE = 160;
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+
+        // Calculate scaled dimensions maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
         } else {
-          reject(new Error("Failed to read file"));
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
         }
+
+        // Create canvas and draw scaled image
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Export as JPEG with 0.8 quality for small file size
+        const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.8);
+        resolve(thumbnailUrl);
       };
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsDataURL(file);
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Failed to load image"));
+      };
+
+      img.src = objectUrl;
     });
   }
 }
