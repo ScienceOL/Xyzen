@@ -1,158 +1,90 @@
 """
-Code Executor Tool
+代码执行工具
 
-Provides secure code execution capabilities as a LangChain tool.
-Uses the sandbox module for isolated execution.
+提供基于 E2B 沙箱的代码执行 LangChain 工具。
 """
 
-import json
 import logging
 from typing import Any
 
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from app.sandbox import SandboxExecutor, ResourceLimits
+from app.sandbox import E2BSandboxManager
 
 logger = logging.getLogger(__name__)
 
 
 class CodeExecuteInput(BaseModel):
-    """Input schema for code execution."""
+    """代码执行输入"""
 
-    code: str = Field(description="The code to execute")
-    language: str = Field(
-        default="python",
-        description="Programming language: python, javascript, bash",
-    )
-    stdin: str = Field(
-        default="",
-        description="Standard input to provide to the code",
-    )
-    timeout_secs: int | None = Field(
-        default=None,
-        description="Execution timeout in seconds (default: 30)",
-    )
+    code: str = Field(description="要执行的 Python 代码")
 
 
-class FunctionCallInput(BaseModel):
-    """Input schema for function call execution."""
+class InstallPackageInput(BaseModel):
+    """安装包输入"""
 
-    code: str = Field(description="The code containing the function definition")
-    function_name: str = Field(description="Name of the function to call")
-    args: list[Any] = Field(
-        default_factory=list,
-        description="Positional arguments for the function",
-    )
-    kwargs: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Keyword arguments for the function",
-    )
+    packages: list[str] = Field(description="要安装的 pip 包列表")
 
 
-async def _execute_code(
-    code: str,
-    language: str = "python",
-    stdin: str = "",
-    timeout_secs: int | None = None,
-) -> dict[str, Any]:
-    """Execute code in a sandbox and return the result."""
-    logger.info(f"Executing {language} code in sandbox")
-
-    # Create executor with optional custom timeout
-    limits = ResourceLimits.from_config()
-    if timeout_secs:
-        limits.wall_time_ms = timeout_secs * 1000
-
-    async with SandboxExecutor(limits=limits) as executor:
-        result = await executor.execute(code, language, stdin)
-
-    return {
-        "success": result.success,
-        "output": result.output_str,
-        "stderr": result.stderr_str if result.stderr else None,
-        "exit_code": result.exit_code,
-        "duration_ms": result.duration_ms,
-        "error": result.error,
-    }
+def _get_session_id(config: RunnableConfig) -> str:
+    """从 RunnableConfig 中获取 session_id"""
+    configurable = config.get("configurable", {})
+    session_id = configurable.get("session_id")
+    if not session_id:
+        raise ValueError("session_id not found in config.configurable")
+    return session_id
 
 
-async def _execute_function(
-    code: str,
-    function_name: str,
-    args: list[Any] | None = None,
-    kwargs: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Execute a function from code with given arguments."""
-    logger.info(f"Executing function {function_name} in sandbox")
+async def _execute_code(code: str, config: RunnableConfig) -> dict[str, Any]:
+    """执行代码"""
+    session_id = _get_session_id(config)
+    logger.info(f"Executing code in session {session_id}")
 
-    args = args or []
-    kwargs = kwargs or {}
+    manager = E2BSandboxManager.get_instance()
+    result = await manager.execute(session_id, code)
+    return result.model_dump()
 
-    async with SandboxExecutor() as executor:
-        result = await executor.execute_with_function(
-            code=code,
-            function_name=function_name,
-            args=tuple(args),
-            kwargs_dict=kwargs,
-        )
 
-    if not result.success:
-        return {
-            "success": False,
-            "error": result.error or result.stderr_str,
-        }
+async def _install_packages(packages: list[str], config: RunnableConfig) -> dict[str, Any]:
+    """安装 pip 包"""
+    session_id = _get_session_id(config)
+    logger.info(f"Installing packages {packages} in session {session_id}")
 
-    # Parse the JSON output from the wrapper
-    try:
-        output = json.loads(result.output_str.strip())
-        return output
-    except json.JSONDecodeError:
-        return {
-            "success": True,
-            "result": result.output_str,
-        }
+    manager = E2BSandboxManager.get_instance()
+    result = await manager.install(session_id, packages)
+    return result.model_dump()
 
 
 def create_code_executor_tools() -> list[StructuredTool]:
-    """Create code executor tools for agent use."""
-    tools: list[StructuredTool] = []
-
-    # Code execution tool
-    tools.append(
+    """创建代码执行工具列表"""
+    return [
         StructuredTool(
-            name="execute_code",
+            name="execute_python",
             description=(
-                "Execute code in a secure sandbox environment. "
-                "Supports Python, JavaScript, and Bash. "
-                "The code runs in isolation with resource limits. "
-                "Returns the output, exit code, and any errors."
+                "在沙箱中执行 Python 代码。"
+                "支持数据分析、文件处理、图表生成等操作。"
+                "执行环境会保持状态，变量和导入的模块在后续调用中仍然可用。"
             ),
             args_schema=CodeExecuteInput,
             coroutine=_execute_code,
-        )
-    )
-
-    # Function call tool
-    tools.append(
+        ),
         StructuredTool(
-            name="execute_function",
+            name="install_packages",
             description=(
-                "Execute a specific function from code with given arguments. "
-                "Provide the code containing the function definition, "
-                "the function name, and the arguments to pass. "
-                "Returns the function's return value."
+                "在沙箱中安装 Python 依赖包。"
+                "使用 pip 安装指定的包。"
+                "安装后的包在当前会话中可用。"
             ),
-            args_schema=FunctionCallInput,
-            coroutine=_execute_function,
-        )
-    )
-
-    return tools
+            args_schema=InstallPackageInput,
+            coroutine=_install_packages,
+        ),
+    ]
 
 
 def register_code_executor_tools() -> None:
-    """Register code executor tools with the builtin tool registry."""
+    """注册代码执行工具到内置工具注册表"""
     from app.tools.registry import BuiltinToolRegistry
 
     tools = create_code_executor_tools()
