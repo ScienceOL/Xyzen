@@ -18,7 +18,7 @@ import logging
 from typing import TYPE_CHECKING, Annotated, Any
 
 from jinja2 import Template
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -344,11 +344,15 @@ class GraphBuilder:
             # Convert state to dict for template rendering (but we already have messages)
             state_dict = self._state_to_dict(state)
 
-            # Render prompt template
-            prompt = self._render_template(llm_config.prompt_template, state_dict)
+            # Build messages for LLM - start with conversation messages
+            llm_messages = list(messages)
 
-            # Build messages for LLM
-            llm_messages = list(messages) + [HumanMessage(content=prompt)]
+            # Prepend system prompt if configured (uses Jinja2 template rendering)
+            if llm_config.prompt_template:
+                rendered_prompt = self._render_template(llm_config.prompt_template, state_dict)
+                # Filter any existing SystemMessage and prepend ours
+                llm_messages = [m for m in llm_messages if not isinstance(m, SystemMessage)]
+                llm_messages = [SystemMessage(content=rendered_prompt)] + llm_messages
 
             # Invoke LLM (using pre-created configured_llm)
             response = await configured_llm.ainvoke(llm_messages)
@@ -382,11 +386,15 @@ class GraphBuilder:
 
             logger.info(f"[LLM Node: {config.id}] Text output completed, tool_calls: {len(tool_calls)}")
 
-            # Build AIMessage preserving tool_calls
-            ai_message = AIMessage(
-                content=content_str,
-                tool_calls=tool_calls,
-            )
+            # Preserve the original response message to retain provider-specific metadata
+            # (e.g., Gemini thought signatures needed for tool calling).
+            if isinstance(response, BaseMessage):
+                ai_message = response
+            else:
+                ai_message = AIMessage(
+                    content=content_str,
+                    tool_calls=tool_calls,
+                )
 
             return {
                 llm_config.output_key: content_str,
