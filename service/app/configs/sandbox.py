@@ -42,6 +42,6 @@ class SandboxConfig(BaseSettings):
     )
 
     sandbox_max_lifetime_secs: int = Field(
-        default=7200,  # 2 小时
-        description="沙箱最大存活时间",
+        default=3600,  # 1 小时（E2B 最大限制）
+        description="沙箱最大存活时间（E2B 限制最大 1 小时）",
     )
