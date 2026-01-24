@@ -24,7 +24,7 @@ from app.core.auth import AuthorizationService, get_auth_service
 from app.core.system_agent import SystemAgentManager
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
-from app.models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate
+from app.models.agent import AgentCreate, AgentRead, AgentReadWithDetails, AgentScope, AgentUpdate, ConfigVisibility
 from app.models.session_stats import AgentStatsAggregated, DailyStatsResponse, YesterdaySummary
 from app.repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
 from app.repos.agent_marketplace import AgentMarketplaceRepository
@@ -197,6 +197,13 @@ async def create_agent_from_template(
 
     # Export config for forking
     graph_config_dict = builtin_config.model_dump()
+
+    # Simplify prompt_config to only show custom_instructions
+    # (hide verbose PromptConfig defaults from user)
+    if graph_config_dict.get("prompt_config"):
+        graph_config_dict["prompt_config"] = {
+            "custom_instructions": graph_config_dict["prompt_config"].get("custom_instructions", "")
+        }
 
     # Add builtin_key to metadata so the agent can reference the builtin at runtime
     if "metadata" not in graph_config_dict:
@@ -431,9 +438,17 @@ async def get_agent(
         agent_repo = AgentRepository(db)
         mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
 
+        # Check if user is the owner
+        is_owner = agent.user_id == user_id
+
         # Create agent dict with MCP servers
         agent_dict = agent.model_dump()
         agent_dict["mcp_servers"] = mcp_servers
+
+        # Hide config for non-owners when visibility is hidden
+        if not is_owner and agent.config_visibility == ConfigVisibility.HIDDEN:
+            agent_dict["graph_config"] = None
+
         return AgentReadWithDetails(**agent_dict)
     except ErrCodeError as e:
         raise handle_auth_error(e)
@@ -471,6 +486,13 @@ async def update_agent(
 
         if agent.scope == AgentScope.SYSTEM:
             raise HTTPException(status_code=403, detail="Cannot modify system agents")
+
+        # Block config editing for non-editable agents
+        if not agent.config_editable and agent_data.graph_config is not None:
+            raise HTTPException(
+                status_code=403,
+                detail="This agent's configuration cannot be edited",
+            )
 
         if agent_data.provider_id is not None:
             provider_repo = ProviderRepository(db)

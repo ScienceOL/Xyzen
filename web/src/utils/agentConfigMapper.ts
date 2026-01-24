@@ -68,8 +68,9 @@ function findMainLLMNode(graphConfig: GraphConfig): GraphNodeConfig | null {
 /**
  * Extract simple configuration from a graph_config.
  *
- * This reads the main LLM node's settings and converts them
- * to the simple format for display in the form.
+ * This reads the prompt from prompt_config.custom_instructions (preferred)
+ * or falls back to llm_config.prompt_template (legacy).
+ * Other settings come from the main LLM node.
  *
  * @param graphConfig - The full graph configuration (can be null)
  * @param fallbackPrompt - Fallback prompt if not found in graph_config
@@ -89,11 +90,16 @@ export function extractSimpleConfig(
   const llmNode = findMainLLMNode(graphConfig);
   const llmConfig = llmNode?.llm_config;
 
+  // Read prompt from prompt_config.custom_instructions (preferred)
+  // Fall back to llm_config.prompt_template for legacy configs
+  const prompt =
+    graphConfig.prompt_config?.custom_instructions ||
+    llmConfig?.prompt_template ||
+    fallbackPrompt ||
+    DEFAULT_SIMPLE_CONFIG.prompt;
+
   return {
-    prompt:
-      llmConfig?.prompt_template ||
-      fallbackPrompt ||
-      DEFAULT_SIMPLE_CONFIG.prompt,
+    prompt,
     model: llmConfig?.model_override || null,
     temperature: llmConfig?.temperature_override ?? null,
     toolsEnabled: llmConfig?.tools_enabled ?? true,
@@ -104,8 +110,8 @@ export function extractSimpleConfig(
 /**
  * Update a graph_config with values from simple config.
  *
- * This finds the main LLM node and updates its configuration
- * while preserving all other nodes and graph structure.
+ * This writes the prompt to prompt_config.custom_instructions (the correct location)
+ * and updates the main LLM node's other settings (model, temperature, etc.)
  *
  * @param graphConfig - The existing graph configuration
  * @param simple - The simple configuration from the form
@@ -117,6 +123,11 @@ export function updateGraphConfigFromSimple(
 ): GraphConfig {
   return {
     ...graphConfig,
+    // Store prompt in prompt_config.custom_instructions
+    prompt_config: {
+      ...graphConfig.prompt_config,
+      custom_instructions: simple.prompt,
+    },
     nodes: graphConfig.nodes.map((node) => {
       // Only update the main LLM node
       if (node.type === "llm" && node.id === "agent" && node.llm_config) {
@@ -124,7 +135,7 @@ export function updateGraphConfigFromSimple(
           ...node,
           llm_config: {
             ...node.llm_config,
-            prompt_template: simple.prompt,
+            // Don't store prompt here - it goes in prompt_config
             model_override: simple.model,
             temperature_override: simple.temperature,
             tools_enabled: simple.toolsEnabled,
@@ -140,7 +151,7 @@ export function updateGraphConfigFromSimple(
             ...node,
             llm_config: {
               ...node.llm_config,
-              prompt_template: simple.prompt,
+              // Don't store prompt here - it goes in prompt_config
               model_override: simple.model,
               temperature_override: simple.temperature,
               tools_enabled: simple.toolsEnabled,
@@ -168,6 +179,7 @@ export function updateGraphConfigFromSimple(
  * - No state_schema (messages field is automatic)
  * - Tool node uses execute_all instead of tool_name="__all__"
  * - Edges use condition type strings instead of EdgeCondition objects
+ * - Prompt stored in prompt_config.custom_instructions (NOT llm_config.prompt_template)
  *
  * @param simple - Simple configuration from the form
  * @returns Complete v2 graph configuration matching ReActAgent structure
@@ -177,6 +189,10 @@ export function createGraphConfigFromSimple(
 ): GraphConfig {
   return {
     version: "2.0",
+    // Store prompt in prompt_config.custom_instructions
+    prompt_config: {
+      custom_instructions: simple.prompt,
+    },
     nodes: [
       {
         id: "agent",
@@ -185,7 +201,8 @@ export function createGraphConfigFromSimple(
         description:
           "Reasons about the task and decides whether to use tools or respond",
         llm_config: {
-          prompt_template: simple.prompt,
+          // prompt_template is intentionally omitted - backend will inject from prompt_config
+          prompt_template: "",
           output_key: "response",
           tools_enabled: simple.toolsEnabled,
           model_override: simple.model,

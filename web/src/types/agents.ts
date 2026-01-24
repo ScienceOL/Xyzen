@@ -1,5 +1,8 @@
 // Agent type definitions and type guards
 
+// Configuration access control types
+export type ConfigVisibility = "visible" | "hidden";
+
 // Spatial/layout primitives (used by spatial chat UI)
 export type XYPosition = { x: number; y: number };
 export type GridSize = { w: number; h: number };
@@ -125,6 +128,10 @@ export interface Agent {
 
   // Graph configuration for agent behavior
   graph_config?: Record<string, unknown> | null;
+
+  // Configuration access control (defaults handled by API: visible=true, editable=true)
+  config_visibility?: ConfigVisibility;
+  config_editable?: boolean;
 }
 
 /**

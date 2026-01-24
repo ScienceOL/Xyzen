@@ -17,6 +17,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.prompt_config import PromptConfig
+
 
 # --- Enums ---
 
@@ -133,7 +135,13 @@ class StructuredOutputSchema(BaseModel):
 class LLMNodeConfig(BaseModel):
     """Configuration for LLM nodes."""
 
-    prompt_template: str = Field(description="Jinja2 template for the prompt. Access state via {{ state.field_name }}")
+    prompt_template: str = Field(
+        default="",
+        description=(
+            "INTERNAL: Overwritten at runtime by system prompt builder. "
+            "Set your prompt in graph_config.prompt_config.custom_instructions instead."
+        ),
+    )
     output_key: str = Field(
         default="response",
         description="State key to store the LLM response",
@@ -340,6 +348,12 @@ class GraphConfig(BaseModel):
     tool_config: ToolSetConfig | None = Field(
         default=None,
         description="Global tool configuration",
+    )
+
+    # Prompt configuration
+    prompt_config: PromptConfig | None = Field(
+        default=None,
+        description="System prompt configuration including custom_instructions",
     )
 
     # Metadata

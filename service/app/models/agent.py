@@ -16,6 +16,20 @@ class AgentScope(StrEnum):
     USER = "user"
 
 
+class ConfigVisibility(StrEnum):
+    """Controls whether the agent's graph_config is visible to users."""
+
+    VISIBLE = "visible"  # Users can view graph_config
+    HIDDEN = "hidden"  # graph_config is hidden from users
+
+
+class ForkMode(StrEnum):
+    """Controls what access forked agents get."""
+
+    EDITABLE = "editable"  # Forked agents get visible + editable config
+    LOCKED = "locked"  # Forked agents get hidden + non-editable config
+
+
 class AgentBase(SQLModel):
     scope: AgentScope = Field(
         sa_column=sa.Column(
@@ -50,6 +64,21 @@ class AgentBase(SQLModel):
     # Tools are configured via graph_config.tool_config.tool_filter
     graph_config: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
 
+    # Configuration access control
+    config_visibility: ConfigVisibility = Field(
+        default=ConfigVisibility.VISIBLE,
+        sa_column=sa.Column(
+            sa.Enum(*(v.value for v in ConfigVisibility), name="configvisibility", native_enum=True),
+            nullable=False,
+            server_default="visible",
+        ),
+        description="Whether the graph_config is visible to the user",
+    )
+    config_editable: bool = Field(
+        default=True,
+        description="Whether the user can edit graph_config",
+    )
+
 
 class Agent(AgentBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
@@ -77,6 +106,8 @@ class AgentCreate(SQLModel):
     knowledge_set_id: UUID | None = Field(default=None)
     mcp_server_ids: list[UUID] = []
     graph_config: dict[str, Any] | None = None
+    config_visibility: ConfigVisibility = ConfigVisibility.VISIBLE
+    config_editable: bool = True
 
 
 class AgentRead(AgentBase):
@@ -101,3 +132,5 @@ class AgentUpdate(SQLModel):
     knowledge_set_id: UUID | None = None
     mcp_server_ids: list[UUID] | None = None
     graph_config: dict[str, Any] | None = None
+    config_visibility: ConfigVisibility | None = None
+    config_editable: bool | None = None

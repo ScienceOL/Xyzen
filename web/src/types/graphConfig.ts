@@ -214,6 +214,73 @@ export interface GraphEdgeConfig {
 }
 
 // =============================================================================
+// Prompt Configuration Types
+// =============================================================================
+
+export interface IdentityConfig {
+  name?: string;
+  description?: string;
+  persona?: string | null;
+}
+
+export interface BrandingConfig {
+  mask_provider?: boolean;
+  mask_model?: boolean;
+  branded_name?: string;
+  forbidden_reveals?: string[];
+}
+
+export interface SecurityConfig {
+  injection_defense?: boolean;
+  refuse_prompt_reveal?: boolean;
+  refuse_instruction_override?: boolean;
+  confidential_sections?: string[];
+}
+
+export interface SafetyConfig {
+  content_safety?: boolean;
+  refuse_illegal?: boolean;
+  refuse_harmful?: boolean;
+  refuse_explicit?: boolean;
+  refuse_violence?: boolean;
+  refuse_hate?: boolean;
+  refuse_self_harm?: boolean;
+}
+
+export interface FormattingConfig {
+  use_markdown?: boolean;
+  code_blocks?: boolean;
+  language_identifiers?: boolean;
+  custom_blocks?: string[];
+}
+
+export interface ContextConfig {
+  include_date?: boolean;
+  include_time?: boolean;
+  date_format?: string;
+  custom_context?: string | null;
+}
+
+export interface OverridesConfig {
+  meta_instruction?: string | null;
+  persona_instruction?: string | null;
+  tool_instruction?: string | null;
+  format_instruction?: string | null;
+}
+
+export interface PromptConfig {
+  version?: string;
+  identity?: IdentityConfig;
+  branding?: BrandingConfig;
+  security?: SecurityConfig;
+  safety?: SafetyConfig;
+  formatting?: FormattingConfig;
+  context?: ContextConfig;
+  custom_instructions?: string | null;
+  overrides?: OverridesConfig;
+}
+
+// =============================================================================
 // Complete Graph Configuration
 // =============================================================================
 
@@ -240,6 +307,9 @@ export interface GraphConfig {
     timeout_seconds?: number;
     max_parallel?: number;
   };
+
+  // Prompt configuration (system prompt settings)
+  prompt_config?: PromptConfig;
 
   // Reusable prompt templates
   prompt_templates?: Record<string, string>;

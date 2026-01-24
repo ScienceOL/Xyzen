@@ -5,6 +5,7 @@ import { PlateReadmeViewer } from "@/components/editor/PlateReadmeViewer";
 import { AgentGraphEditor } from "@/components/editors/AgentGraphEditor";
 import { JsonEditor } from "@/components/editors/JsonEditor";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { toast } from "sonner";
 import {
   useListingHistory,
   useMarketplaceListing,
@@ -12,7 +13,10 @@ import {
   useUnpublishAgent,
 } from "@/hooks/useMarketplace";
 import type { AgentSnapshot } from "@/service/marketplaceService";
-import { marketplaceService } from "@/service/marketplaceService";
+import {
+  marketplaceService,
+  type ForkMode,
+} from "@/service/marketplaceService";
 import type { GraphConfig } from "@/types/graphConfig";
 import {
   ArrowLeftIcon,
@@ -26,6 +30,8 @@ import {
   EyeIcon,
   GlobeAltIcon,
   HeartIcon,
+  LockClosedIcon,
+  LockOpenIcon,
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
@@ -33,7 +39,6 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 
 interface AgentMarketplaceManageProps {
   marketplaceId: string;
@@ -67,6 +72,7 @@ export default function AgentMarketplaceManage({
   const [graphConfigError, setGraphConfigError] = useState<string | null>(null);
   const [activeEditorTab, setActiveEditorTab] = useState(0);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isSavingForkMode, setIsSavingForkMode] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -177,6 +183,26 @@ export default function AgentMarketplaceManage({
     );
   };
 
+  const handleForkModeChange = async (newForkMode: ForkMode) => {
+    if (!listing) return;
+    try {
+      setIsSavingForkMode(true);
+      await marketplaceService.updateListing(listing.id, {
+        fork_mode: newForkMode,
+      });
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ["marketplace", "listing", listing.id],
+      });
+      toast.success(t("marketplace.manage.forkMode.success"));
+    } catch (error) {
+      console.error("Failed to update fork mode:", error);
+      toast.error(t("marketplace.manage.forkMode.error"));
+    } finally {
+      setIsSavingForkMode(false);
+    }
+  };
+
   // Configuration editing handlers
   const handleGraphConfigChange = useCallback((config: GraphConfig) => {
     setGraphConfig(config);
@@ -246,13 +272,17 @@ export default function AgentMarketplaceManage({
           pattern: "react",
           display_name: "ReAct Agent",
         },
+        // Prompt stored in prompt_config.custom_instructions (not llm_config.prompt_template)
+        prompt_config: {
+          custom_instructions: "You are a helpful assistant.",
+        },
         nodes: [
           {
             id: "agent",
             name: "ReAct Agent",
             type: "llm",
             llm_config: {
-              prompt_template: "You are a helpful assistant.",
+              prompt_template: "", // Backend will inject from prompt_config
               tools_enabled: true,
               output_key: "response",
             },
@@ -811,6 +841,86 @@ export default function AgentMarketplaceManage({
                     {isPublishing ? "Publishing..." : "Publish Agent"}
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* Fork Mode Settings Card */}
+            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                {t("marketplace.manage.forkMode.title")}
+              </h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleForkModeChange("editable")}
+                  disabled={
+                    isSavingForkMode || listing.fork_mode === "editable"
+                  }
+                  className={`flex w-full items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                    listing.fork_mode === "editable"
+                      ? "border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/20"
+                      : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      listing.fork_mode === "editable"
+                        ? "bg-green-500 text-white"
+                        : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                    }`}
+                  >
+                    <LockOpenIcon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-neutral-900 dark:text-neutral-100">
+                      {t("marketplace.forkMode.editable")}
+                    </div>
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {t("marketplace.forkMode.editableDescription")}
+                    </div>
+                  </div>
+                  {listing.fork_mode === "editable" && (
+                    <CheckCircleIcon className="h-5 w-5 shrink-0 text-green-500" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleForkModeChange("locked")}
+                  disabled={isSavingForkMode || listing.fork_mode === "locked"}
+                  className={`flex w-full items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                    listing.fork_mode === "locked"
+                      ? "border-amber-500 bg-amber-50 dark:border-amber-600 dark:bg-amber-900/20"
+                      : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      listing.fork_mode === "locked"
+                        ? "bg-amber-500 text-white"
+                        : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                    }`}
+                  >
+                    <LockClosedIcon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-neutral-900 dark:text-neutral-100">
+                      {t("marketplace.forkMode.locked")}
+                    </div>
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {t("marketplace.forkMode.lockedDescription")}
+                    </div>
+                  </div>
+                  {listing.fork_mode === "locked" && (
+                    <CheckCircleIcon className="h-5 w-5 shrink-0 text-amber-500" />
+                  )}
+                </button>
+                {isSavingForkMode && (
+                  <div className="flex items-center justify-center gap-2 py-2 text-sm text-neutral-500">
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    <span>{t("marketplace.manage.forkMode.saving")}</span>
+                  </div>
+                )}
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {t("marketplace.manage.forkMode.help")}
+                </p>
               </div>
             </div>
 

@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.storage import FileScope
-from app.models.agent import Agent, AgentCreate, AgentScope
+from app.models.agent import Agent, AgentCreate, AgentScope, ConfigVisibility, ForkMode
 from app.models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate
 from app.models.agent_snapshot import AgentSnapshot, AgentSnapshotCreate
 from app.models.file import FileCreate
@@ -102,7 +102,12 @@ class AgentMarketplaceService:
         return snapshot
 
     async def publish_agent(
-        self, agent: Agent, commit_message: str, is_published: bool = True, readme: str | None = None
+        self,
+        agent: Agent,
+        commit_message: str,
+        is_published: bool = True,
+        readme: str | None = None,
+        fork_mode: ForkMode = ForkMode.EDITABLE,
     ) -> AgentMarketplace | None:
         """
         Publishes an agent to the marketplace or updates an existing listing.
@@ -112,6 +117,7 @@ class AgentMarketplaceService:
             commit_message: Description of changes.
             is_published: Whether to set the listing as published.
             readme: Optional markdown README content.
+            fork_mode: Access mode for forked agents.
 
         Returns:
             The marketplace listing.
@@ -134,6 +140,7 @@ class AgentMarketplaceService:
                 tags=agent.tags or [],
                 is_published=is_published,
                 readme=readme,
+                fork_mode=fork_mode,
             )
             listing = await self.marketplace_repo.update_listing(existing_listing.id, update_data)
 
@@ -154,6 +161,7 @@ class AgentMarketplaceService:
                 avatar=agent.avatar,
                 tags=agent.tags or [],
                 readme=readme,
+                fork_mode=fork_mode,
             )
             listing = await self.marketplace_repo.create_listing(listing_data)
 
@@ -245,12 +253,25 @@ class AgentMarketplaceService:
             final_name = f"{base_name} ({counter})"
             counter += 1
 
+        # Filter out default_* tags - those are for system agents only
+        # Forked agents should not be treated as system defaults
+        original_tags = config.get("tags", [])
+        forked_tags = [t for t in original_tags if not t.startswith("default_")]
+
+        # Determine config access based on listing's fork_mode
+        if listing.fork_mode == ForkMode.EDITABLE:
+            config_visibility = ConfigVisibility.VISIBLE
+            config_editable = True
+        else:  # LOCKED
+            config_visibility = ConfigVisibility.HIDDEN
+            config_editable = False
+
         agent_create = AgentCreate(
             scope=AgentScope.USER,
             name=final_name,
             description=config.get("description"),
             avatar=config.get("avatar"),
-            tags=config.get("tags", []),
+            tags=forked_tags,
             model=config.get("model"),
             temperature=config.get("temperature"),
             prompt=config.get("prompt"),  # Legacy field for backward compat
@@ -259,6 +280,8 @@ class AgentMarketplaceService:
             knowledge_set_id=None,  # Create empty knowledge set
             mcp_server_ids=[],  # Will link compatible MCPs below
             graph_config=config.get("graph_config"),  # Restore from snapshot
+            config_visibility=config_visibility,
+            config_editable=config_editable,
         )
 
         # Create the forked agent
@@ -630,12 +653,17 @@ class AgentMarketplaceService:
         # We preserve the user's provider_id and knowledge_set_id if possible
         # but update core logic fields
 
+        # Filter out default_* tags - those are for system agents only
+        # Forked agents should not become system defaults when pulling updates
+        original_tags = config.get("tags", [])
+        filtered_tags = [t for t in original_tags if not t.startswith("default_")]
+
         from app.models.agent import AgentUpdate
 
         update_data = AgentUpdate(
             description=config.get("description"),
             avatar=config.get("avatar"),
-            tags=config.get("tags", []),
+            tags=filtered_tags,
             model=config.get("model"),
             temperature=config.get("temperature"),
             prompt=config.get("prompt"),  # Legacy field for backward compat

@@ -215,6 +215,15 @@ class AgentRepository:
 
             graph_config = builtin_config.model_dump()
 
+            # Simplify prompt_config to only show custom_instructions
+            # (hide verbose PromptConfig defaults from user)
+            if graph_config.get("prompt_config"):
+                logger.info(f"Simplifying prompt_config. Before: {list(graph_config['prompt_config'].keys())}")
+                graph_config["prompt_config"] = {
+                    "custom_instructions": graph_config["prompt_config"].get("custom_instructions", "")
+                }
+                logger.info(f"After simplification: {graph_config['prompt_config']}")
+
             # Add builtin_key to metadata so the agent uses the builtin at runtime
             # This ensures consistent behavior between custom agents and template-based agents
             if "metadata" not in graph_config:

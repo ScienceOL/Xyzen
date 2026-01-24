@@ -9,8 +9,11 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { ForkMode } from "@/service/marketplaceService";
 
 interface ForkAgentModalProps {
   open: boolean;
@@ -23,6 +26,7 @@ interface ForkAgentModalProps {
     knowledge_base: { name: string; file_count: number } | null;
     provider_needed: boolean;
   };
+  forkMode: ForkMode;
   onForkSuccess?: (agentId: string) => void;
 }
 
@@ -39,8 +43,10 @@ export default function ForkAgentModal({
   agentName,
   agentDescription,
   requirements,
+  forkMode,
   onForkSuccess,
 }: ForkAgentModalProps) {
+  const { t } = useTranslation();
   const [customName, setCustomName] = useState(`${agentName} (Fork)`);
   const [currentStep, setCurrentStep] = useState<
     "name" | "requirements" | "confirm"
@@ -160,15 +166,30 @@ export default function ForkAgentModal({
           {/* Step 1: Name */}
           {currentStep === "name" && (
             <div className="space-y-4">
-              <div className="relative w-full rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="flex gap-2">
-                  <InformationCircleIcon className="h-4 w-4 shrink-0" />
-                  <div className="text-sm">
-                    Your forked agent will be completely independent. Changes
-                    won't affect the original.
+              {forkMode === "locked" ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+                  <div className="flex gap-3">
+                    <LockClosedIcon className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <h4 className="font-medium text-amber-800 dark:text-amber-300">
+                        {t("marketplace.fork.lockedAgent")}
+                      </h4>
+                      <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                        {t("marketplace.fork.lockedAgentDescription")}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="relative w-full rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                  <div className="flex gap-2">
+                    <InformationCircleIcon className="h-4 w-4 shrink-0" />
+                    <div className="text-sm">
+                      {t("marketplace.fork.editableDescription")}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <Field className="space-y-2">
                 <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
