@@ -4,45 +4,22 @@ Tool Proxy - 工具代理模块
 
 为独立环境中的工具提供代理功能：
 - 在主进程中创建工具代理
-- 通过子进程执行实际的工具调用
+- 通过 E2B 沙箱执行实际的工具调用
 - 处理参数序列化和结果反序列化
 """
 
+import asyncio
 import json
 import logging
 from typing import Any
 
-from llm_sandbox import SandboxBackend, SandboxSession
-from llm_sandbox.exceptions import SandboxTimeoutError
-from llm_sandbox.security import (
-    SecurityIssueSeverity,
-    SecurityPattern,
-    SecurityPolicy,
-)
-
-from app.configs import configs
+from app.sandbox import E2BSandboxManager
 
 logger = logging.getLogger(__name__)
-policy = SecurityPolicy(
-    severity_threshold=SecurityIssueSeverity.MEDIUM,
-    patterns=[
-        SecurityPattern(
-            pattern=r"os\.system",
-            description="System command execution",
-            severity=SecurityIssueSeverity.HIGH,
-        ),
-        SecurityPattern(
-            pattern=r"eval\s*\(",
-            description="Dynamic code evaluation",
-            severity=SecurityIssueSeverity.MEDIUM,
-        ),
-    ],
-)
-dynamic_mcp_config = configs.DynamicMCP
 
 
 class ContainerToolProxy:
-    """容器工具代理类"""
+    """容器工具代理类 - 使用 E2B 沙箱执行"""
 
     def __init__(
         self,
@@ -61,8 +38,8 @@ class ContainerToolProxy:
         else:
             self.function_name = tool_data["name"].split(".")[-1]
 
-    def _build_execution_code(self, args: tuple[Any], kwargs: dict[str, Any]) -> str:
-        """Build the execution code for container execution."""
+    def _build_execution_code(self, args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
+        """Build the execution code for E2B sandbox execution."""
         return f"""
 {self.code_content}
 
@@ -101,83 +78,86 @@ except Exception as e:
     }}, ensure_ascii=False))
 """
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        """代理函数调用 - 使用 llm-sandbox 在容器中直接执行代码"""
-        try:
-            logger.debug(f"Executing tool {self.tool_name} in container")
-            logger.debug(f"Function: {self.function_name}, Args: {args}, Kwargs: {kwargs}")
-            logger.debug(f"Requirements: {self.requirements}")
+    async def _execute_async(self, *args: Any, **kwargs: Any) -> Any:
+        """异步执行工具调用"""
+        logger.debug(f"Executing tool {self.tool_name} in E2B sandbox")
+        logger.debug(f"Function: {self.function_name}, Args: {args}, Kwargs: {kwargs}")
+        logger.debug(f"Requirements: {self.requirements}")
 
-            # Build execution code: original code + function call + result serialization
+        # 使用工具名称作为临时的 session_id
+        # 每个工具调用使用独立的沙箱会话
+        session_id = f"tool_proxy_{self.tool_name}_{id(self)}"
+
+        manager = E2BSandboxManager.get_instance()
+
+        try:
+            # 如果有依赖库，先安装
+            if self.requirements:
+                logger.debug(f"Installing requirements: {self.requirements}")
+                install_result = await manager.install(session_id, self.requirements)
+                if not install_result.success:
+                    raise RuntimeError(f"Failed to install requirements: {install_result.error}")
+
+            # Build execution code
             execution_code = self._build_execution_code(args, kwargs)
 
-            if configs.Env == "prod":
-                from kubernetes import client as k8s_client
-                from kubernetes import config as k8s_config
+            # 执行代码
+            result = await manager.execute(session_id, execution_code)
 
-                k8s_config.load_incluster_config()
-                k8s_api = k8s_client.CoreV1Api()
-                session_kwargs: dict[str, Any] = {
-                    "backend": SandboxBackend.KUBERNETES,
-                    "lang": "python",
-                    "kube_namespace": configs.DynamicMCP.kubeNamespace,
-                    "libraries": self.requirements,
-                    "security_policy": policy,
-                    "in_cluster": True,
-                    "client": k8s_api,
-                }
+            if not result.success:
+                raise RuntimeError(f"Sandbox execution failed: {result.error}")
+
+            # 解析JSON输出
+            try:
+                output = json.loads(result.output.strip())
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Failed to parse sandbox output: {e}\nOutput: {result.output}")
+
+            # 检查工具执行结果
+            if output.get("success"):
+                tool_result = output["result"]
+                # Wrap non-dict results according to MCP protocol requirements
+                if not isinstance(tool_result, dict):
+                    return {"result": tool_result}
+                return tool_result
             else:
-                session_kwargs: dict[str, Any] = {
-                    "backend": SandboxBackend.DOCKER,
-                    "lang": "python",
-                    "libraries": self.requirements,
-                    "keep_template": True,
-                    "runtime_configs": {
-                        "cpu_count": dynamic_mcp_config.cpu_count,
-                        "mem_limit": dynamic_mcp_config.mem_limit,
-                    },
-                    "default_timeout": dynamic_mcp_config.default_timeout,
-                    "security_policy": policy,
-                }
+                error_msg = output.get("error", "Unknown tool execution error")
+                traceback_msg = output.get("traceback", "")
+                raise RuntimeError(f"Tool execution error: {error_msg}\n{traceback_msg}")
 
-            # 使用 llm-sandbox 执行
-            with SandboxSession(**session_kwargs) as session:
-                is_safe, violations = session.is_safe(execution_code)
+        except Exception as e:
+            logger.error(f"E2B sandbox tool execution failed for {self.tool_name}: {e}")
+            raise
 
-                if is_safe:
-                    result = session.run(execution_code)
+        finally:
+            # 清理沙箱会话
+            try:
+                await manager.stop(session_id)
+            except Exception as e:
+                logger.warning(f"Failed to stop sandbox session {session_id}: {e}")
 
-                    # 解析结果
-                    if result.exit_code != 0:
-                        error_msg = result.stderr or "Unknown container execution error"
-                        raise RuntimeError(f"Container execution failed: {error_msg}")
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """代理函数调用 - 使用 E2B 沙箱执行代码"""
+        try:
+            # 检查是否在事件循环中
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
 
-                    # 解析JSON输出
-                    try:
-                        output = json.loads(result.stdout)
-                    except json.JSONDecodeError as e:
-                        raise RuntimeError(f"Failed to parse container output: {e}\nOutput: {result.stdout}")
+            if loop is not None:
+                # 已经在事件循环中，创建任务
+                import concurrent.futures
 
-                    # 检查工具执行结果
-                    if output.get("success"):
-                        result = output["result"]
-                        # Wrap non-dict results according to MCP protocol requirements
-                        if not isinstance(result, dict):
-                            return {"result": result}
-                        return result
-                    else:
-                        error_msg = output.get("error", "Unknown tool execution error")
-                        traceback_msg = output.get("traceback", "")
-                        raise RuntimeError(f"Tool execution error: {error_msg}\n{traceback_msg}")
-                else:
-                    logger.error(f"Tool {self.tool_name} is not safe")
-                    for violation in violations:
-                        logger.error(f"Violation: {violation.description}")
-                    raise RuntimeError(f"Tool {self.tool_name} is not safe")
-
-        except SandboxTimeoutError as e:
-            logger.error(f"Container tool execution timed out for {self.tool_name}: {e}")
-            raise RuntimeError(f"Container tool execution timed out for {self.tool_name}: {e}")
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        self._execute_async(*args, **kwargs),
+                    )
+                    return future.result()
+            else:
+                # 不在事件循环中，直接运行
+                return asyncio.run(self._execute_async(*args, **kwargs))
 
         except Exception as e:
             logger.error(f"Container tool execution failed for {self.tool_name}: {e}")
