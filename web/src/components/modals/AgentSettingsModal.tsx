@@ -759,8 +759,8 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
           <div className="hidden md:block">{desktopContent}</div>
         </div>
 
-        {/* Publish to Marketplace Button - only show if agent exists */}
-        {agent && (
+        {/* Publish to Marketplace Button - only show if agent exists and is not forked */}
+        {agent && !agent.original_source_id && (
           <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
             <Button
               type="button"
@@ -781,8 +781,8 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
         )}
       </Modal>
 
-      {/* Publish to Marketplace Modal */}
-      {agent && (
+      {/* Publish to Marketplace Modal - only render for non-forked agents */}
+      {agent && !agent.original_source_id && (
         <PublishAgentModal
           open={showPublishModal}
           onOpenChange={setShowPublishModal}

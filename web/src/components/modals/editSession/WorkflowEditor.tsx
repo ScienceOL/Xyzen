@@ -200,20 +200,23 @@ export default function WorkflowEditor({
 
       {/* Footer - Actions */}
       <div className="shrink-0 mt-4 flex justify-between gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-        <HeadlessButton
-          type="button"
-          onClick={() => setShowPublishModal(true)}
-          disabled={!agentToEdit.graph_config}
-          className="inline-flex items-center gap-2 rounded-md bg-purple-100 py-2 px-4 text-sm font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
-          title={
-            !agentToEdit.graph_config
-              ? t("agents.actions.publishTooltip")
-              : t("agents.actions.publish")
-          }
-        >
-          <SparklesIcon className="h-4 w-4" />
-          {t("agents.actions.publish")}
-        </HeadlessButton>
+        {!agentToEdit.original_source_id && (
+          <HeadlessButton
+            type="button"
+            onClick={() => setShowPublishModal(true)}
+            disabled={!agentToEdit.graph_config}
+            className="inline-flex items-center gap-2 rounded-md bg-purple-100 py-2 px-4 text-sm font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+            title={
+              !agentToEdit.graph_config
+                ? t("agents.actions.publishTooltip")
+                : t("agents.actions.publish")
+            }
+          >
+            <SparklesIcon className="h-4 w-4" />
+            {t("agents.actions.publish")}
+          </HeadlessButton>
+        )}
+        {agentToEdit.original_source_id && <div />}
         <div className="flex gap-3">
           <HeadlessButton
             type="button"
@@ -236,25 +239,27 @@ export default function WorkflowEditor({
         </div>
       </div>
 
-      {/* Publish to Marketplace Modal */}
-      <PublishAgentModal
-        open={showPublishModal}
-        onOpenChange={setShowPublishModal}
-        agentId={agentToEdit.id}
-        agentName={agentToEdit.name}
-        agentDescription={agentToEdit.description}
-        agentPrompt={agentToEdit.prompt}
-        graphConfig={agentToEdit.graph_config}
-        mcpServers={agentToEdit.mcp_servers?.map((s) => ({
-          id: s.id,
-          name: s.name,
-          description: s.description || undefined,
-        }))}
-        onPublishSuccess={(marketplaceId) => {
-          console.log("Agent published to marketplace:", marketplaceId);
-          setShowPublishModal(false);
-        }}
-      />
+      {/* Publish to Marketplace Modal - only render for non-forked agents */}
+      {!agentToEdit.original_source_id && (
+        <PublishAgentModal
+          open={showPublishModal}
+          onOpenChange={setShowPublishModal}
+          agentId={agentToEdit.id}
+          agentName={agentToEdit.name}
+          agentDescription={agentToEdit.description}
+          agentPrompt={agentToEdit.prompt}
+          graphConfig={agentToEdit.graph_config}
+          mcpServers={agentToEdit.mcp_servers?.map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description || undefined,
+          }))}
+          onPublishSuccess={(marketplaceId) => {
+            console.log("Agent published to marketplace:", marketplaceId);
+            setShowPublishModal(false);
+          }}
+        />
+      )}
     </form>
   );
 }

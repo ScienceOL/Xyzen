@@ -132,6 +132,10 @@ export interface Agent {
   // Configuration access control (defaults handled by API: visible=true, editable=true)
   config_visibility?: ConfigVisibility;
   config_editable?: boolean;
+
+  // Fork tracking (set when agent was forked from marketplace)
+  original_source_id?: string | null;
+  source_version?: number | null;
 }
 
 /**
