@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.0.8](https://github.com/ScienceOL/Xyzen/compare/v1.0.7...v1.0.8) (2026-01-22)
+
+### 🐛 Bug Fixes
+
+* Literature MCP, tool cost system, and UI improvements ([#199](https://github.com/ScienceOL/Xyzen/issues/199)) ([73b2c7d](https://github.com/ScienceOL/Xyzen/commit/73b2c7d1e4220a071817cbd5b7c6cb6325178e46)), closes [#192](https://github.com/ScienceOL/Xyzen/issues/192) [#193](https://github.com/ScienceOL/Xyzen/issues/193)
+
 ## [1.0.7](https://github.com/ScienceOL/Xyzen/compare/v1.0.6...v1.0.7) (2026-01-21)
 
 ### 🐛 Bug Fixes
