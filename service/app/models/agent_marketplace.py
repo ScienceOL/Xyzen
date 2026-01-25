@@ -2,8 +2,11 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
+import sqlalchemy as sa
 from sqlalchemy import TIMESTAMP, Column
 from sqlmodel import JSON, Field, SQLModel
+
+from app.models.agent import ForkMode
 
 if TYPE_CHECKING:
     from .agent_snapshot import AgentSnapshotRead
@@ -34,6 +37,17 @@ class AgentMarketplace(SQLModel, table=True):
     # Visibility control
     is_published: bool = Field(default=False, index=True)
 
+    # Fork access control
+    fork_mode: ForkMode = Field(
+        default=ForkMode.EDITABLE,
+        sa_column=sa.Column(
+            sa.Enum(*(v.value for v in ForkMode), name="forkmode", native_enum=True),
+            nullable=False,
+            server_default="editable",
+        ),
+        description="Access mode for forked agents",
+    )
+
     # Timestamps
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -60,6 +74,7 @@ class AgentMarketplaceCreate(SQLModel):
     avatar: str | None = None
     tags: list[str] = []
     readme: str | None = None
+    fork_mode: ForkMode = ForkMode.EDITABLE
 
 
 class AgentMarketplaceRead(SQLModel):
@@ -78,6 +93,7 @@ class AgentMarketplaceRead(SQLModel):
     forks_count: int
     views_count: int
     is_published: bool
+    fork_mode: ForkMode
     created_at: datetime
     updated_at: datetime
     first_published_at: datetime | None
@@ -94,6 +110,7 @@ class AgentMarketplaceUpdate(SQLModel):
     tags: list[str] | None = None
     readme: str | None = None
     is_published: bool | None = None
+    fork_mode: ForkMode | None = None
 
 
 class AgentMarketplaceReadWithSnapshot(AgentMarketplaceRead):

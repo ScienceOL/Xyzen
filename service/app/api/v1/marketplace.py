@@ -23,7 +23,7 @@ from app.core.auth import AuthorizationService, get_auth_service
 from app.core.marketplace import AgentMarketplaceService
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
-from app.models.agent import AgentRead
+from app.models.agent import AgentRead, ForkMode
 from app.models.agent_marketplace import (
     AgentMarketplaceRead,
     AgentMarketplaceReadWithSnapshot,
@@ -42,6 +42,7 @@ class PublishRequest(BaseModel):
     commit_message: str
     is_published: bool = True
     readme: str | None = None
+    fork_mode: ForkMode = ForkMode.EDITABLE
 
 
 class PublishResponse(BaseModel):
@@ -59,6 +60,7 @@ class UpdateListingRequest(BaseModel):
 
     readme: str | None = None
     is_published: bool | None = None
+    fork_mode: ForkMode | None = None
 
 
 class PublishVersionRequest(BaseModel):
@@ -151,6 +153,7 @@ async def publish_agent(
             commit_message=request.commit_message,
             is_published=request.is_published,
             readme=request.readme,
+            fork_mode=request.fork_mode,
         )
         if not listing:
             raise HTTPException(status_code=404, detail="Marketplace listing not found")
@@ -208,6 +211,7 @@ async def update_listing(
     update_data = AgentMarketplaceUpdate(
         readme=request.readme,
         is_published=request.is_published,
+        fork_mode=request.fork_mode,
     )
     updated_listing = await marketplace_service.update_listing_details(marketplace_id, update_data)
 

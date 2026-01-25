@@ -84,6 +84,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
   const currentAgent = currentChannel?.agentId
     ? agents.find((a) => a.id === currentChannel.agentId)
     : null;
+
   const messages: Message[] = currentChannel?.messages || [];
   const connected = currentChannel?.connected || false;
   const error = currentChannel?.error || null;

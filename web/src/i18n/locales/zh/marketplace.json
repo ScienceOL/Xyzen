@@ -73,7 +73,9 @@
       "model": "模型",
       "systemPrompt": "系统提示词",
       "mcpServers": "MCP 服务 ({{count}})",
-      "empty": "暂无配置信息。"
+      "empty": "暂无配置信息。",
+      "hidden": "此助手的配置已隐藏。你仍可以复刻和使用它，但无法查看或修改其设置。",
+      "lockedOwnerNote": "此助手已锁定。复刻它的用户将无法查看或修改配置。"
     },
     "requirements": {
       "provider": {
@@ -160,6 +162,10 @@
       "update": "更新列表",
       "saveAsDraft": "保存为草稿",
       "publishing": "发布中..."
+    },
+    "forkMode": {
+      "label": "复刻模式",
+      "help": "控制用户对其复刻副本配置的访问权限"
     }
   },
   "simplePromptEditor": {
@@ -188,6 +194,24 @@
       "invalidJson": "无效的 JSON 格式",
       "empty": "暂无配置信息。",
       "configureNow": "立即配置"
+    },
+    "forkMode": {
+      "title": "复刻模式",
+      "help": "控制用户对其复刻副本配置的访问权限",
+      "saving": "保存中...",
+      "success": "复刻模式更新成功！",
+      "error": "更新复刻模式失败，请重试。"
     }
+  },
+  "forkMode": {
+    "editable": "可编辑",
+    "locked": "锁定",
+    "editableDescription": "用户可以查看和修改配置",
+    "lockedDescription": "配置已隐藏且为只读"
+  },
+  "fork": {
+    "lockedAgent": "锁定的助手",
+    "lockedAgentDescription": "此助手将以锁定模式复刻。你可以使用它，但配置将被隐藏且无法修改。",
+    "editableDescription": "你复刻的助手将完全独立。修改不会影响原始助手。"
   }
 }

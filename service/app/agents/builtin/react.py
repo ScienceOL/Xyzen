@@ -24,6 +24,7 @@ from app.schemas.graph_config import (
     NodeType,
     ToolNodeConfig,
 )
+from app.schemas.prompt_config import PromptConfig
 
 # ReAct Agent configuration using direct LLM and TOOL nodes (NOT subgraph)
 # This ensures proper streaming support through LangGraph's messages mode
@@ -62,6 +63,9 @@ REACT_CONFIG = GraphConfig(
         GraphEdgeConfig(from_node="tools", to_node="agent"),
     ],
     entry_point="agent",
+    prompt_config=PromptConfig(
+        custom_instructions="",  # User should set their instructions here
+    ),
     metadata={
         "builtin_key": "react",
         "display_name": "ReAct Agent",

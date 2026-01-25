@@ -7,6 +7,8 @@ import { useXyzen } from "@/store";
  * Handles all API interactions for the agent marketplace feature.
  */
 
+export type ForkMode = "editable" | "locked";
+
 export interface MarketplaceListing {
   id: string;
   agent_id: string;
@@ -20,6 +22,7 @@ export interface MarketplaceListing {
   forks_count: number;
   views_count: number;
   is_published: boolean;
+  fork_mode: ForkMode;
   created_at: string;
   updated_at: string;
   first_published_at: string | null;
@@ -79,6 +82,7 @@ export interface PublishRequest {
   commit_message: string;
   is_published?: boolean;
   readme?: string | null;
+  fork_mode?: ForkMode;
 }
 
 export interface PublishResponse {
@@ -92,6 +96,7 @@ export interface PublishResponse {
 export interface UpdateListingRequest {
   is_published?: boolean;
   readme?: string | null;
+  fork_mode?: ForkMode;
 }
 
 export interface ForkRequest {

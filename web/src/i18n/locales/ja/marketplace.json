@@ -73,7 +73,9 @@
       "model": "モデル",
       "systemPrompt": "システムプロンプト",
       "mcpServers": "MCPサーバー（{{count}}）",
-      "empty": "設定情報はありません。"
+      "empty": "設定情報はありません。",
+      "hidden": "このエージェントの設定は非表示です。フォークして使用することはできますが、設定を表示・変更することはできません。",
+      "lockedOwnerNote": "このエージェントはロックされています。フォークしたユーザーは設定を表示・変更できません。"
     },
     "requirements": {
       "provider": {
@@ -160,6 +162,10 @@
       "update": "リストを更新",
       "saveAsDraft": "下書きとして保存",
       "publishing": "公開中..."
+    },
+    "forkMode": {
+      "label": "フォークモード",
+      "help": "ユーザーがフォークしたコピーの設定にアクセスできる範囲を制御します"
     }
   },
   "simplePromptEditor": {
@@ -188,6 +194,24 @@
       "invalidJson": "無効なJSON形式",
       "empty": "設定情報はありません。",
       "configureNow": "今すぐ設定"
+    },
+    "forkMode": {
+      "title": "フォークモード",
+      "help": "ユーザーがフォークしたコピーの設定にアクセスできる範囲を制御します",
+      "saving": "保存中...",
+      "success": "フォークモードが更新されました！",
+      "error": "フォークモードの更新に失敗しました。もう一度お試しください。"
     }
+  },
+  "forkMode": {
+    "editable": "編集可能",
+    "locked": "ロック",
+    "editableDescription": "ユーザーは設定を表示・編集できます",
+    "lockedDescription": "設定は非表示で読み取り専用です"
+  },
+  "fork": {
+    "lockedAgent": "ロックされたエージェント",
+    "lockedAgentDescription": "このエージェントはロックモードでフォークされます。使用はできますが、設定は非表示で変更できません。",
+    "editableDescription": "フォークしたエージェントは完全に独立しています。変更は元のエージェントに影響しません。"
   }
 }

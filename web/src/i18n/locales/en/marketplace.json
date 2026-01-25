@@ -73,7 +73,9 @@
       "model": "Model",
       "systemPrompt": "System Prompt",
       "mcpServers": "MCP Servers ({{count}})",
-      "empty": "No configuration available."
+      "empty": "No configuration available.",
+      "hidden": "This agent's configuration is hidden. You can still fork and use it, but you won't be able to view or modify its settings.",
+      "lockedOwnerNote": "This agent is locked. Users who fork it will not be able to see or modify the configuration."
     },
     "requirements": {
       "provider": {
@@ -160,6 +162,10 @@
       "update": "Update Listing",
       "saveAsDraft": "Save as Draft",
       "publishing": "Publishing..."
+    },
+    "forkMode": {
+      "label": "Fork Mode",
+      "help": "Controls what access users have to their forked copy's configuration"
     }
   },
   "simplePromptEditor": {
@@ -188,6 +194,24 @@
       "invalidJson": "Invalid JSON format",
       "empty": "No configuration available.",
       "configureNow": "Configure now"
+    },
+    "forkMode": {
+      "title": "Fork Mode",
+      "help": "Controls what access users have to their forked copy's configuration",
+      "saving": "Saving...",
+      "success": "Fork mode updated successfully!",
+      "error": "Failed to update fork mode. Please try again."
     }
+  },
+  "forkMode": {
+    "editable": "Editable",
+    "locked": "Locked",
+    "editableDescription": "Users can view and modify the configuration",
+    "lockedDescription": "Configuration is hidden and read-only"
+  },
+  "fork": {
+    "lockedAgent": "Locked Agent",
+    "lockedAgentDescription": "This agent will be forked in locked mode. You can use it, but the configuration will be hidden and cannot be modified.",
+    "editableDescription": "Your forked agent will be completely independent. Changes won't affect the original."
   }
 }

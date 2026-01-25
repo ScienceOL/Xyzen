@@ -11,10 +11,13 @@ All agents (builtin and user-defined) go through the same path:
 3. Return CompiledStateGraph + AgentEventContext
 
 Config Resolution Order:
-1. agent_config.graph_config exists → use it directly
-2. agent_config.graph_config.metadata.builtin_key exists → use builtin config
-3. agent_config.graph_config.metadata.system_agent_key exists → use builtin config (legacy)
-4. No config → fall back to "react" builtin
+1. agent_config.graph_config exists → use it as the source of truth
+   (builtin_key in metadata is ONLY used for analytics/UI, not to replace the config)
+2. No config → fall back to "react" builtin
+
+IMPORTANT: The graph_config is always the single source of truth. This ensures
+forked agents retain their customizations (custom prompts, tools, etc.) rather
+than being replaced with the generic builtin config.
 
 The default agent is the "react" builtin agent.
 """
@@ -154,44 +157,37 @@ def _resolve_agent_config(
     Resolve which GraphConfig to use for an agent.
 
     Resolution order:
-    1. agent_config has graph_config → use it, check for builtin_key/system_agent_key
+    1. agent_config has graph_config → use it (graph_config is the source of truth)
     2. agent_config is None or has no graph_config → use default builtin (react)
+
+    The builtin_key in metadata is ONLY used for analytics/UI purposes, NOT to replace
+    the agent's actual graph_config. This ensures forked agents retain their customizations.
 
     Args:
         agent_config: Agent configuration from database (may be None)
-        system_prompt: System prompt to inject if using react agent
+        system_prompt: System prompt to inject into the config
 
     Returns:
         Tuple of (raw_config_dict, agent_type_key)
         - raw_config_dict: GraphConfig as dict (for version detection)
-        - agent_type_key: Agent type for events (e.g., "react", "deep_research")
+        - agent_type_key: Agent type for events (e.g., "react", "deep_research", "graph")
     """
     from app.agents.builtin import get_builtin_config
 
     if agent_config and agent_config.graph_config:
-        # Agent has a graph_config
+        # Agent has a graph_config - use it as the source of truth
         raw_config = agent_config.graph_config
         metadata = raw_config.get("metadata", {})
 
-        # Check for builtin_key or system_agent_key (legacy)
-        builtin_key = metadata.get("builtin_key") or metadata.get("system_agent_key")
+        # Extract agent type key for analytics/UI, but DON'T replace the config
+        # This fixes the bug where forked agents lost their customizations
+        agent_type_key = metadata.get("builtin_key") or metadata.get("system_agent_key") or "graph"
 
-        if builtin_key:
-            # This config references a builtin - use the builtin config
-            builtin_config = get_builtin_config(builtin_key)
-            if builtin_config:
-                # Apply system_prompt override for react
-                config_dict = builtin_config.model_dump()
-                if builtin_key == "react" and system_prompt:
-                    config_dict = _inject_system_prompt(config_dict, system_prompt)
-                return config_dict, builtin_key
+        # Inject system_prompt into the agent's actual config (not a builtin replacement)
+        if system_prompt:
+            raw_config = _inject_system_prompt(raw_config, system_prompt)
 
-            # Builtin not found, use the provided config as-is
-            logger.warning(f"Builtin '{builtin_key}' not found, using provided config")
-            return raw_config, builtin_key or "graph"
-
-        # Pure user-defined graph config
-        return raw_config, "graph"
+        return raw_config, agent_type_key
 
     # No agent config or no graph_config - use default builtin (react)
     builtin_config = get_builtin_config(DEFAULT_BUILTIN_AGENT)
@@ -209,9 +205,12 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
     """
     Inject system_prompt into a graph config.
 
-    Handles both:
-    1. Component nodes with stdlib:react - updates config_overrides
-    2. LLM nodes - updates prompt_template
+    Handles ALL nodes that support system_prompt:
+    1. Component nodes - updates config_overrides.system_prompt
+    2. LLM nodes - updates llm_config.prompt_template
+
+    This injects into ALL matching nodes (not just the first), ensuring
+    forked agents with multiple components all receive the custom prompt.
 
     Args:
         config_dict: GraphConfig as dict
@@ -220,29 +219,23 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
     Returns:
         Modified config dict with system_prompt injected
     """
-    # Deep copy to avoid mutating original
     import copy
 
     config = copy.deepcopy(config_dict)
 
-    # Find nodes and inject system_prompt (first matching node only)
     for node in config.get("nodes", []):
-        # Handle component nodes (existing behavior)
+        # Inject into ALL component nodes that support system_prompt
         if node.get("type") == "component":
-            comp_config = node.get("component_config", {})
-            comp_ref = comp_config.get("component_ref", {})
+            comp_config = node.setdefault("component_config", {})
+            overrides = comp_config.setdefault("config_overrides", {})
+            overrides["system_prompt"] = system_prompt
+            # Continue - don't break (inject into all components)
 
-            # Only inject into react components
-            if comp_ref.get("key") == "react":
-                overrides = comp_config.setdefault("config_overrides", {})
-                overrides["system_prompt"] = system_prompt
-                break
-
-        # Handle LLM nodes
+        # Inject into ALL LLM nodes
         elif node.get("type") == "llm":
-            llm_config = node.get("llm_config", {})
+            llm_config = node.setdefault("llm_config", {})
             llm_config["prompt_template"] = system_prompt
-            break
+            # Continue - don't break (inject into all LLM nodes)
 
     return config
 

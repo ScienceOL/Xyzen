@@ -17,6 +17,7 @@ import {
   EyeIcon,
   HeartIcon,
   InformationCircleIcon,
+  LockClosedIcon,
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
@@ -177,9 +178,17 @@ export default function AgentMarketplaceDetail({
                     </div>
                   )}
                   <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-                      {listing.name}
-                    </h1>
+                    <div className="flex items-center gap-3">
+                      <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+                        {listing.name}
+                      </h1>
+                      {listing.fork_mode === "locked" && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                          <LockClosedIcon className="h-3 w-3" />
+                          {t("marketplace.forkMode.locked")}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.detail.publishedBy")}{" "}
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
@@ -330,80 +339,119 @@ export default function AgentMarketplaceDetail({
                 {/* Configuration Tab */}
                 {activeTab === "config" && (
                   <div className="space-y-6">
-                    {listing.snapshot ? (
-                      <>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                            v{listing.snapshot.version}
-                          </span>
-                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                            {getAgentType(
-                              listing.snapshot.configuration.graph_config,
-                            )}
-                          </span>
-                          <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                            {listing.snapshot.commit_message}
-                          </span>
+                    {/* Locked agent - hide config for non-owners */}
+                    {listing.fork_mode === "locked" && !isOwner ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+                          <LockClosedIcon className="h-8 w-8 text-amber-600 dark:text-amber-400" />
                         </div>
-
-                        {/* Model */}
-                        {listing.snapshot.configuration.model && (
-                          <div>
-                            <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                              {t("marketplace.detail.config.model")}
-                            </h3>
-                            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                              {listing.snapshot.configuration.model}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* System Prompt */}
-                        {getDisplayPrompt(listing.snapshot.configuration) && (
-                          <div>
-                            <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                              {t("marketplace.detail.config.systemPrompt")}
-                            </h3>
-                            <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                              <pre className="whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
-                                {getDisplayPrompt(
-                                  listing.snapshot.configuration,
-                                )}
-                              </pre>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* MCP Servers in Configuration */}
-                        {listing.snapshot.mcp_server_configs &&
-                          listing.snapshot.mcp_server_configs.length > 0 && (
-                            <div>
-                              <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                {t("marketplace.detail.config.mcpServers", {
-                                  count:
-                                    listing.snapshot.mcp_server_configs.length,
-                                })}
-                              </h3>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {listing.snapshot.mcp_server_configs.map(
-                                  (mcp, index) => (
-                                    <span
-                                      key={index}
-                                      className="inline-flex items-center rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"
-                                    >
-                                      {mcp.name}
-                                    </span>
-                                  ),
-                                )}
+                        <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
+                          {t("marketplace.fork.lockedAgent")}
+                        </h3>
+                        <p className="mt-2 max-w-sm text-sm text-neutral-500 dark:text-neutral-400">
+                          {t("marketplace.detail.config.hidden")}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Locked agent warning for owner */}
+                        {listing.fork_mode === "locked" && isOwner && (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+                            <div className="flex gap-3">
+                              <LockClosedIcon className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                              <div>
+                                <p className="font-medium text-amber-800 dark:text-amber-300">
+                                  {t("marketplace.fork.lockedAgent")}
+                                </p>
+                                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                                  {t(
+                                    "marketplace.detail.config.lockedOwnerNote",
+                                  )}
+                                </p>
                               </div>
                             </div>
-                          )}
+                          </div>
+                        )}
+                        {listing.snapshot ? (
+                          <>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                v{listing.snapshot.version}
+                              </span>
+                              <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                                {getAgentType(
+                                  listing.snapshot.configuration.graph_config,
+                                )}
+                              </span>
+                              <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                                {listing.snapshot.commit_message}
+                              </span>
+                            </div>
+
+                            {/* Model */}
+                            {listing.snapshot.configuration.model && (
+                              <div>
+                                <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                                  {t("marketplace.detail.config.model")}
+                                </h3>
+                                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                                  {listing.snapshot.configuration.model}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* System Prompt */}
+                            {getDisplayPrompt(
+                              listing.snapshot.configuration,
+                            ) && (
+                              <div>
+                                <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                                  {t("marketplace.detail.config.systemPrompt")}
+                                </h3>
+                                <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                                  <pre className="whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
+                                    {getDisplayPrompt(
+                                      listing.snapshot.configuration,
+                                    )}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* MCP Servers in Configuration */}
+                            {listing.snapshot.mcp_server_configs &&
+                              listing.snapshot.mcp_server_configs.length >
+                                0 && (
+                                <div>
+                                  <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                                    {t("marketplace.detail.config.mcpServers", {
+                                      count:
+                                        listing.snapshot.mcp_server_configs
+                                          .length,
+                                    })}
+                                  </h3>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {listing.snapshot.mcp_server_configs.map(
+                                      (mcp, index) => (
+                                        <span
+                                          key={index}
+                                          className="inline-flex items-center rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-semibold text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"
+                                        >
+                                          {mcp.name}
+                                        </span>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
+                            <Cog6ToothIcon className="mb-3 h-12 w-12 opacity-20" />
+                            <p>{t("marketplace.detail.config.empty")}</p>
+                          </div>
+                        )}
                       </>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-500 dark:text-neutral-400">
-                        <Cog6ToothIcon className="mb-3 h-12 w-12 opacity-20" />
-                        <p>{t("marketplace.detail.config.empty")}</p>
-                      </div>
                     )}
                   </div>
                 )}
@@ -653,6 +701,7 @@ export default function AgentMarketplaceDetail({
           agentName={listing.name}
           agentDescription={listing.description || undefined}
           requirements={requirements}
+          forkMode={listing.fork_mode}
           onForkSuccess={handleForkSuccess}
         />
       )}

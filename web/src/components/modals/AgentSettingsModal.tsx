@@ -518,14 +518,19 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
   // Determine if agent tab is available
   const hasAgentData = !!agent;
 
+  // Check if config is visible (not hidden/locked)
+  const isConfigVisible = agent?.config_visibility !== "hidden";
+
   // Build filtered nav items based on available data
   const filteredNavItems = useMemo(() => {
     return NAV_ITEMS.filter((item) => {
-      if (item.id === "workflow" && !hasAgentData) return false;
+      // Hide workflow tab if no agent data or config is hidden
+      if (item.id === "workflow" && (!hasAgentData || !isConfigVisible))
+        return false;
       if (item.id === "danger" && !onDelete) return false;
       return true;
     });
-  }, [hasAgentData, onDelete]);
+  }, [hasAgentData, isConfigVisible, onDelete]);
 
   const handleTabClick = (tab: TabType) => {
     if (isMobile) {

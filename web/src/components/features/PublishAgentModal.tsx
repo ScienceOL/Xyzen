@@ -7,9 +7,12 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
+  LockClosedIcon,
+  LockOpenIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { ForkMode } from "@/service/marketplaceService";
 
 interface PublishAgentModalProps {
   open: boolean;
@@ -51,6 +54,7 @@ export default function PublishAgentModal({
   const [commitMessage, setCommitMessage] = useState("");
   const [readmeContent, setReadmeContent] = useState(readme || "");
   const [publishImmediately, setPublishImmediately] = useState(true);
+  const [forkMode, setForkMode] = useState<ForkMode>("editable");
   const [showPreview, setShowPreview] = useState(false);
 
   const publishMutation = usePublishAgent();
@@ -66,6 +70,7 @@ export default function PublishAgentModal({
         commit_message: commitMessage.trim(),
         is_published: publishImmediately,
         readme: readmeContent.trim() || null,
+        fork_mode: forkMode,
       });
 
       // Success callback
@@ -197,6 +202,72 @@ export default function PublishAgentModal({
                 } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
               />
             </Switch>
+          </Field>
+
+          {/* Fork Mode Selector */}
+          <Field className="space-y-3">
+            <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              {t("marketplace.publish.forkMode.label")}
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setForkMode("editable")}
+                className={`flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                  forkMode === "editable"
+                    ? "border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/20"
+                    : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
+                }`}
+              >
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    forkMode === "editable"
+                      ? "bg-green-500 text-white"
+                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                  }`}
+                >
+                  <LockOpenIcon className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                    {t("marketplace.forkMode.editable")}
+                  </div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {t("marketplace.forkMode.editableDescription")}
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForkMode("locked")}
+                className={`flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                  forkMode === "locked"
+                    ? "border-amber-500 bg-amber-50 dark:border-amber-600 dark:bg-amber-900/20"
+                    : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
+                }`}
+              >
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    forkMode === "locked"
+                      ? "bg-amber-500 text-white"
+                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                  }`}
+                >
+                  <LockClosedIcon className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                    {t("marketplace.forkMode.locked")}
+                  </div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {t("marketplace.forkMode.lockedDescription")}
+                  </div>
+                </div>
+              </button>
+            </div>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {t("marketplace.publish.forkMode.help")}
+            </p>
           </Field>
 
           {/* Preview Toggle */}
