@@ -173,45 +173,77 @@ interface Message {
 
 ## Development Commands
 
+This project uses [just](https://github.com/casey/just) as a command runner. Run `just --list` to see all available commands.
+
 ```bash
-# Backend (from service/)
-uv run pytest                    # Run tests
-uv run pytest --cov              # Run tests with coverage
-uv run pyright .                 # Type checking
-uv run ruff check .              # Lint code
-uv run ruff format .             # Format code (auto-applied on save in VSCode)
+# Development environment
+just dev                         # Start all services in background
+just stop                        # Stop containers (without removing)
+just down                        # Stop and remove all containers
 
-# Frontend (from web/)
-yarn dev                         # Dev server
-yarn type-check                  # TypeScript check
-yarn lint                        # ESLint
-yarn test                        # Vitest
+# Backend (runs in service/ directory)
+just test-backend                # uv run pytest
+just test-backend-cov            # uv run pytest --cov
+just type-backend                # uv run pyright .
+just lint-backend                # uv run ruff check .
+just fmt-backend                 # uv run ruff format .
+just check-backend               # Run all backend checks
 
-# Full stack (from root)
-./launch/dev.sh -d               # Start all services
+# Frontend (runs in web/ directory)
+just dev-web                     # yarn dev
+just type-web                    # yarn type-check
+just lint-web                    # yarn lint
+just test-web                    # yarn test
+just check-web                   # Run all frontend checks
+
+# Full stack
+just lint                        # Run all linters
+just test                        # Run all tests
+just check                       # Run all checks
 ```
 
 ## Database Migrations
 
-When creating or running migrations, use `docker exec` to access the container:
+Migrations run inside the `sciol-xyzen-service-1` container via `docker exec`:
 
 ```bash
-# Generate migration
-docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic revision --autogenerate -m 'Description'"
-# Apply migrations
-docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic upgrade head"
+just migrate "Description"       # alembic revision --autogenerate -m "..."
+just migrate-up                  # alembic upgrade head
+just migrate-down                # alembic downgrade -1
+just migrate-history             # alembic history
+just migrate-current             # alembic current
 ```
 
 **Note**: Register new models in `models/__init__.py` before generating migrations.
 
 ## Database Queries
 
-Query PostgreSQL directly for debugging (credentials: `postgres/postgres`, database: `postgres`):
+Database commands run against `sciol-xyzen-postgresql-1` container (credentials: `postgres/postgres`, database: `postgres`):
 
 ```bash
-# List tables
-docker exec sciol-xyzen-postgresql-1 psql -U postgres -d postgres -c "\dt"
+just db-tables                   # psql -c "\dt"
+just db-query "SELECT ..."       # psql -c "SELECT ..."
+just db-shell                    # Interactive psql shell
 ```
+
+## Docker Commands
+
+Docker compose uses `docker/docker-compose.base.yaml` + `docker/docker-compose.dev.yaml` with `docker/.env.dev`:
+
+```bash
+# Commonly used - check API server and Celery worker logs
+just logs-f service              # Follow FastAPI server logs
+just logs-f worker               # Follow Celery worker logs
+
+# Other commands
+just logs                        # View all service logs
+just ps                          # Show running containers
+just restart <service>           # Restart a service
+just rebuild <service>           # Rebuild and restart service
+just exec <service>              # Shell into container
+```
+
+**Container names**: `sciol-xyzen-{service}-1` (e.g., `sciol-xyzen-service-1`, `sciol-xyzen-worker-1`)
 
 ## Code Style
 

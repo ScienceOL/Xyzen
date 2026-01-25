@@ -55,8 +55,8 @@ class TestInjectSystemPrompt:
         # Result should have config_overrides with system_prompt
         assert result["nodes"][0]["component_config"]["config_overrides"]["system_prompt"] == "Custom system prompt"
 
-    def test_inject_only_into_first_matching_node(self) -> None:
-        """Test that system prompt is only injected into the first matching node."""
+    def test_inject_into_all_matching_nodes(self) -> None:
+        """Test that system prompt is injected into all matching nodes."""
         config_dict = {
             "version": "2.0",
             "nodes": [
@@ -80,10 +80,9 @@ class TestInjectSystemPrompt:
 
         result = _inject_system_prompt(config_dict, "Custom system prompt")
 
-        # First node should be updated
+        # Both nodes should be updated (inject into all matching nodes)
         assert result["nodes"][0]["llm_config"]["prompt_template"] == "Custom system prompt"
-        # Second node should remain unchanged
-        assert result["nodes"][1]["llm_config"]["prompt_template"] == "Prompt 2"
+        assert result["nodes"][1]["llm_config"]["prompt_template"] == "Custom system prompt"
 
     def test_llm_node_takes_precedence_over_non_react_component(self) -> None:
         """Test that LLM nodes are preferred over non-react components."""
