@@ -34,6 +34,9 @@ export default function WorkflowEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
 
+  // Check if agent is forked (explicit nullish check to match backend `is not None`)
+  const isForked = agentToEdit.original_source_id != null;
+
   // Graph config state
   const [graphConfig, setGraphConfig] = useState<GraphConfig | null>(() => {
     if (agentToEdit?.graph_config) {
@@ -199,8 +202,10 @@ export default function WorkflowEditor({
       </div>
 
       {/* Footer - Actions */}
-      <div className="shrink-0 mt-4 flex justify-between gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-        {!agentToEdit.original_source_id && (
+      <div
+        className={`shrink-0 mt-4 flex gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-700 ${isForked ? "justify-end" : "justify-between"}`}
+      >
+        {!isForked && (
           <HeadlessButton
             type="button"
             onClick={() => setShowPublishModal(true)}
@@ -216,7 +221,6 @@ export default function WorkflowEditor({
             {t("agents.actions.publish")}
           </HeadlessButton>
         )}
-        {agentToEdit.original_source_id && <div />}
         <div className="flex gap-3">
           <HeadlessButton
             type="button"
@@ -240,7 +244,7 @@ export default function WorkflowEditor({
       </div>
 
       {/* Publish to Marketplace Modal - only render for non-forked agents */}
-      {!agentToEdit.original_source_id && (
+      {!isForked && (
         <PublishAgentModal
           open={showPublishModal}
           onOpenChange={setShowPublishModal}
