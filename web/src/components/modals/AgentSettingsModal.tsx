@@ -521,6 +521,9 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
   // Check if config is visible (not hidden/locked)
   const isConfigVisible = agent?.config_visibility !== "hidden";
 
+  // Check if agent is forked (explicit nullish check to match backend `is not None`)
+  const isForked = agent?.original_source_id != null;
+
   // Build filtered nav items based on available data
   const filteredNavItems = useMemo(() => {
     return NAV_ITEMS.filter((item) => {
@@ -759,8 +762,8 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
           <div className="hidden md:block">{desktopContent}</div>
         </div>
 
-        {/* Publish to Marketplace Button - only show if agent exists */}
-        {agent && (
+        {/* Publish to Marketplace Button - only show if agent exists and is not forked */}
+        {agent && !isForked && (
           <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
             <Button
               type="button"
@@ -781,8 +784,8 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
         )}
       </Modal>
 
-      {/* Publish to Marketplace Modal */}
-      {agent && (
+      {/* Publish to Marketplace Modal - only render for non-forked agents */}
+      {agent && !isForked && (
         <PublishAgentModal
           open={showPublishModal}
           onOpenChange={setShowPublishModal}

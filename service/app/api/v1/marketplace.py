@@ -146,6 +146,13 @@ async def publish_agent(
                 detail="Agent must have a configuration before publishing to marketplace",
             )
 
+        # Validate that agent is not a forked agent
+        if agent.original_source_id is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Forked agents cannot be published to the marketplace",
+            )
+
         # Publish the agent
         marketplace_service = AgentMarketplaceService(db)
         listing = await marketplace_service.publish_agent(
