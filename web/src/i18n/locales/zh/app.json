@@ -84,6 +84,7 @@
     "free": "0.0x",
     "rateFormat": "{{rate}}x",
     "consumption": "消耗",
+    "multiplier": "倍率",
     "infoModal": {
       "title": "选择智能算力模式",
       "subtitle": "根据任务难度，灵活调配 AI 算力消耗",
@@ -92,6 +93,32 @@
       "availableModels": "模型能力参考",
       "imageGen": "图像生成",
       "disclaimer": "* 此列表仅作为模型能力参考，不代表实际调用的具体模型。"
+    },
+    "speedLabels": {
+      "ultraFast": "极快",
+      "fast": "快",
+      "moderate": "适中",
+      "thinking": "思考中..."
+    },
+    "reasoningLabels": {
+      "basic": "基础",
+      "standard": "标准",
+      "excellent": "优秀",
+      "max": "MAX"
+    },
+    "features": {
+      "quickTranslation": "快速翻译",
+      "textSummary": "文本摘要",
+      "simpleQA": "简单问答",
+      "dailyChat": "日常闲聊与助手",
+      "emailWriting": "邮件撰写",
+      "knowledgeQA": "知识问答",
+      "pdfAnalysis": "PDF 文档深度分析",
+      "codeWriting": "代码编写与调试",
+      "taskPlanning": "复杂任务规划与拆解",
+      "deepReasoning": "深度逻辑推理能力",
+      "academicAnalysis": "科研级学术分析",
+      "mathSolving": "复杂数学与算法求解"
     },
     "tiers": {
       "ultra": {

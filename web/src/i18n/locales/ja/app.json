@@ -78,6 +78,7 @@
     "free": "0.0x",
     "rateFormat": "{{rate}}x",
     "consumption": "消費",
+    "multiplier": "倍率",
     "infoModal": {
       "title": "インテリジェンスモードを選択",
       "subtitle": "タスクの難易度に応じてAI計算能力を柔軟に割り当て",
@@ -86,6 +87,32 @@
       "availableModels": "能力の参考",
       "imageGen": "画像生成",
       "disclaimer": "* このリストはモデル能力の参考用であり、実際に使用されるモデルを保証するものではありません。"
+    },
+    "speedLabels": {
+      "ultraFast": "超高速",
+      "fast": "高速",
+      "moderate": "標準",
+      "thinking": "思考中..."
+    },
+    "reasoningLabels": {
+      "basic": "基本",
+      "standard": "標準",
+      "excellent": "優秀",
+      "max": "MAX"
+    },
+    "features": {
+      "quickTranslation": "クイック翻訳",
+      "textSummary": "テキスト要約",
+      "simpleQA": "シンプルなQ&A",
+      "dailyChat": "日常会話とアシスタント",
+      "emailWriting": "メール作成",
+      "knowledgeQA": "ナレッジQ&A",
+      "pdfAnalysis": "PDF詳細分析",
+      "codeWriting": "コード作成とデバッグ",
+      "taskPlanning": "複雑なタスク計画",
+      "deepReasoning": "深い論理的推論",
+      "academicAnalysis": "研究レベルの分析",
+      "mathSolving": "複雑な数学とアルゴリズム"
     },
     "tiers": {
       "ultra": {

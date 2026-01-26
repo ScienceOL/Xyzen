@@ -48,9 +48,9 @@ interface TierInfo {
   rate: string;
   speed: number; // 0-100
   reasoning: number; // 0-100
-  speedLabel: string;
-  reasoningLabel: string;
-  features: string[];
+  speedLabelKey: string;
+  reasoningLabelKey: string;
+  featureKeys: string[];
   models: ModelInfo[];
   gradient?: string;
   accentColor: string;
@@ -79,11 +79,11 @@ const TIERS: TierInfo[] = [
     rate: "0.0x",
     speed: 95,
     reasoning: 35,
-    speedLabel: "极快",
-    reasoningLabel: "基础",
+    speedLabelKey: "ultraFast",
+    reasoningLabelKey: "basic",
     accentColor: "text-amber-500",
     buttonStyle: "bg-surface-200",
-    features: ["快速翻译", "文本摘要", "简单问答"],
+    featureKeys: ["quickTranslation", "textSummary", "simpleQA"],
     models: [
       { name: "Gemini 2.5 Flash-Lite", provider: "google" },
       { name: "Qwen3 30B A3B", provider: "qwen" },
@@ -96,11 +96,11 @@ const TIERS: TierInfo[] = [
     rate: "1.0x",
     speed: 80,
     reasoning: 75,
-    speedLabel: "快",
-    reasoningLabel: "标准",
+    speedLabelKey: "fast",
+    reasoningLabelKey: "standard",
     accentColor: "text-blue-500",
     buttonStyle: "bg-blue-600 hover:bg-blue-500",
-    features: ["日常闲聊与助手", "邮件撰写", "知识问答"],
+    featureKeys: ["dailyChat", "emailWriting", "knowledgeQA"],
     models: [
       { name: "Claude Haiku 4.5", provider: "anthropic" },
       { name: "DeepSeek V3.2", provider: "deepseek" },
@@ -114,12 +114,12 @@ const TIERS: TierInfo[] = [
     rate: "3.0x",
     speed: 65,
     reasoning: 90,
-    speedLabel: "适中",
-    reasoningLabel: "优秀",
+    speedLabelKey: "moderate",
+    reasoningLabelKey: "excellent",
     accentColor: "text-violet-500",
     buttonStyle: "bg-violet-600 hover:bg-violet-500",
     recommended: true,
-    features: ["PDF 文档深度分析", "代码编写与调试", "复杂任务规划与拆解"],
+    featureKeys: ["pdfAnalysis", "codeWriting", "taskPlanning"],
     models: [
       { name: "Claude Sonnet 4.5", provider: "anthropic" },
       { name: "Gemini 3 Pro", provider: "google" },
@@ -133,14 +133,14 @@ const TIERS: TierInfo[] = [
     rate: "6.8x",
     speed: 30,
     reasoning: 100,
-    speedLabel: "思考中...",
-    reasoningLabel: "MAX",
+    speedLabelKey: "thinking",
+    reasoningLabelKey: "max",
     accentColor: "text-purple-400",
     gradient:
       "from-purple-500/10 to-pink-500/10 dark:from-purple-900/40 dark:to-pink-900/40",
     buttonStyle:
       "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500",
-    features: ["深度逻辑推理能力", "科研级学术分析", "复杂数学与算法求解"],
+    featureKeys: ["deepReasoning", "academicAnalysis", "mathSolving"],
     models: [
       { name: "Claude Opus 4.5", provider: "anthropic" },
       { name: "GPT-5.2 Pro", provider: "openai" },
@@ -235,7 +235,9 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                           {t("app.tierSelector.infoModal.speed")}
                         </span>
                         <span className="text-zinc-700 dark:text-white/80 font-mono">
-                          {t(tier.speedLabel)}
+                          {t(
+                            `app.tierSelector.speedLabels.${tier.speedLabelKey}`,
+                          )}
                         </span>
                       </div>
                       <div className="h-1 bg-zinc-200 dark:bg-white/10 rounded-full overflow-hidden">
@@ -255,7 +257,9 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                           {t("app.tierSelector.infoModal.reasoning")}
                         </span>
                         <span className="text-zinc-700 dark:text-white/80 font-mono">
-                          {t(tier.reasoningLabel)}
+                          {t(
+                            `app.tierSelector.reasoningLabels.${tier.reasoningLabelKey}`,
+                          )}
                         </span>
                       </div>
                       <div className="h-1 bg-zinc-200 dark:bg-white/10 rounded-full overflow-hidden">
@@ -271,7 +275,7 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
 
                   {/* Features */}
                   <div className="space-y-2 mb-6 flex-grow">
-                    {tier.features.map((feature, idx) => (
+                    {tier.featureKeys.map((featureKey, idx) => (
                       <li
                         key={idx}
                         className="flex items-start gap-2.5 text-xs text-zinc-600 dark:text-white/70"
@@ -284,7 +288,9 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                               : "text-blue-500 dark:text-blue-400",
                           )}
                         />
-                        <span className="leading-tight">{t(feature)}</span>
+                        <span className="leading-tight">
+                          {t(`app.tierSelector.features.${featureKey}`)}
+                        </span>
                       </li>
                     ))}
                   </div>
