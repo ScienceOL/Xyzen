@@ -100,8 +100,8 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
         token_cost = context.input_tokens * self.INPUT_TOKEN_RATE + context.output_tokens * self.OUTPUT_TOKEN_RATE
 
         # Tier rate multiplies ALL costs (including tool costs)
-        base_amount = self.BASE_COST + token_cost + context.tool_costs
-        final_amount = int(base_amount * tier_rate)
+        base_amount = self.BASE_COST + token_cost
+        final_amount = int(base_amount * tier_rate) + context.tool_costs
 
         return ConsumptionResult(
             amount=final_amount,
