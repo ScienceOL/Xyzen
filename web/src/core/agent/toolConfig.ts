@@ -20,6 +20,7 @@ export const BUILTIN_TOOLS = {
   GENERATE_IMAGE: "generate_image",
   READ_IMAGE: "read_image",
   MEMORY_SEARCH: "memory_search",
+  LITERATURE_SEARCH: "literature_search",
 } as const;
 
 // Web search tools as a group (search + fetch always together)
@@ -43,6 +44,7 @@ export const ALL_BUILTIN_TOOL_IDS = [
   BUILTIN_TOOLS.GENERATE_IMAGE,
   BUILTIN_TOOLS.READ_IMAGE,
   BUILTIN_TOOLS.MEMORY_SEARCH,
+  BUILTIN_TOOLS.LITERATURE_SEARCH,
 ];
 
 // Image tools as a group
@@ -309,4 +311,21 @@ export function updateMemoryEnabled(
   enabled: boolean,
 ): Record<string, unknown> {
   return updateToolFilter(agent, BUILTIN_TOOLS.MEMORY_SEARCH, enabled);
+}
+
+/**
+ * Check if literature search is enabled
+ */
+export function isLiteratureSearchEnabled(agent: Agent | null): boolean {
+  return isToolEnabled(agent, BUILTIN_TOOLS.LITERATURE_SEARCH);
+}
+
+/**
+ * Enable/disable literature search
+ */
+export function updateLiteratureSearchEnabled(
+  agent: Agent,
+  enabled: boolean,
+): Record<string, unknown> {
+  return updateToolFilter(agent, BUILTIN_TOOLS.LITERATURE_SEARCH, enabled);
 }

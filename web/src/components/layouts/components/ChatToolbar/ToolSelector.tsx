@@ -9,9 +9,11 @@ import {
 import {
   isImageEnabled,
   isKnowledgeEnabled,
+  isLiteratureSearchEnabled,
   isWebSearchEnabled,
   updateImageEnabled,
   updateKnowledgeEnabled,
+  updateLiteratureSearchEnabled,
   // updateMemoryEnabled,
   updateWebSearchEnabled,
 } from "@/core/agent/toolConfig";
@@ -22,6 +24,7 @@ import {
 } from "@/service/knowledgeSetService";
 import type { Agent } from "@/types/agents";
 import {
+  AcademicCapIcon,
   BookOpenIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -59,6 +62,7 @@ export function ToolSelector({
   const webSearchEnabled = isWebSearchEnabled(agent);
   const knowledgeEnabled = isKnowledgeEnabled(agent);
   const imageEnabled = isImageEnabled(agent);
+  const literatureSearchEnabled = isLiteratureSearchEnabled(agent);
   // const memoryEnabled = isMemoryEnabled(agent);  // Disabled: pending RAG/pgvector implementation
   // const memoryEnabled = false; // Hardcoded off until RAG is implemented
 
@@ -70,6 +74,7 @@ export function ToolSelector({
     webSearchEnabled,
     effectiveKnowledgeSetId && knowledgeEnabled,
     imageEnabled,
+    literatureSearchEnabled,
     // memoryEnabled,  // Disabled: pending RAG/pgvector implementation
   ].filter(Boolean).length;
 
@@ -112,6 +117,12 @@ export function ToolSelector({
   const handleToggleImage = async () => {
     if (!agent) return;
     const newGraphConfig = updateImageEnabled(agent, !imageEnabled);
+    await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+  };
+
+  const handleToggleLiteratureSearch = async () => {
+    if (!agent) return;
+    const newGraphConfig = updateLiteratureSearchEnabled(agent, !literatureSearchEnabled);
     await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
   };
 
@@ -328,33 +339,35 @@ export function ToolSelector({
             {imageEnabled && <CheckIcon className="h-4 w-4 text-green-500" />}
           </button>
 
-          {/* Memory Search - Disabled: pending RAG/pgvector implementation */}
-          {/* <button
-            onClick={handleToggleMemory}
+          {/* Literature Search */}
+          <button
+            onClick={handleToggleLiteratureSearch}
             className={cn(
               "w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors",
               "hover:bg-neutral-100 dark:hover:bg-neutral-800",
-              memoryEnabled && "bg-amber-50 dark:bg-amber-900/20",
+              literatureSearchEnabled && "bg-amber-50 dark:bg-amber-900/20",
             )}
           >
             <div className="flex items-center gap-2">
-              <ClockIcon
+              <AcademicCapIcon
                 className={cn(
                   "h-4 w-4",
-                  memoryEnabled ? "text-amber-500" : "text-neutral-400",
+                  literatureSearchEnabled ? "text-amber-500" : "text-neutral-400",
                 )}
               />
               <div className="text-left">
                 <div className="text-sm font-medium">
-                  {t("app.toolbar.memory", "Memory")}
+                  {t("app.toolbar.literatureSearch", "Literature Search")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t("app.toolbar.memoryDesc", "Search conversation history")}
+                  {t("app.toolbar.literatureSearchDesc", "Search academic papers")}
                 </div>
               </div>
             </div>
-            {memoryEnabled && <CheckIcon className="h-4 w-4 text-amber-500" />}
-          </button> */}
+            {literatureSearchEnabled && <CheckIcon className="h-4 w-4 text-amber-500" />}
+          </button>
+
+          {/* Memory Search - Disabled: pending RAG/pgvector implementation */}
         </div>
       </PopoverContent>
     </Popover>
