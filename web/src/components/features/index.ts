@@ -6,3 +6,4 @@ export { CenteredInput } from "./CenteredInput";
 export { FileUploadButton } from "./FileUploadButton";
 export { FileUploadThumbnail } from "./FileUploadThumbnail";
 export { FileUploadPreview } from "./FileUploadPreview";
+export { UpdateOverlay } from "./UpdateOverlay";

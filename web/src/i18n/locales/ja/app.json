@@ -1,5 +1,8 @@
 {
   "title": "Xyzen",
+  "update": {
+    "updating": "v{{version}}に更新中..."
+  },
   "pwa": {
     "installTitle": "アプリをインストール",
     "installDescription": "より良い体験のために、アドレスバーのインストールアイコンをクリックしてください。"

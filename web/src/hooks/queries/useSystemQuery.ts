@@ -8,6 +8,11 @@ import { systemService } from "@/service/systemService";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
 
+interface UseBackendVersionOptions {
+  /** Whether to enable the query (default: true) */
+  enabled?: boolean;
+}
+
 /**
  * Fetch the backend system version information
  *
@@ -16,12 +21,14 @@ import { queryKeys } from "./queryKeys";
  * const { data: version, isLoading, error, refetch } = useBackendVersion();
  * ```
  */
-export function useBackendVersion() {
+export function useBackendVersion(options: UseBackendVersionOptions = {}) {
+  const { enabled = true } = options;
   return useQuery({
     queryKey: queryKeys.system.version(),
     queryFn: () => systemService.getVersion(),
     staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
     retry: 1, // Only retry once on failure
+    enabled,
   });
 }
 

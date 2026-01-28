@@ -1,5 +1,8 @@
 {
   "title": "Xyzen",
+  "update": {
+    "updating": "正在更新到 v{{version}}..."
+  },
   "pwa": {
     "installTitle": "安装应用",
     "installDescription": "点击地址栏的安装图标，获得更好的使用体验。"

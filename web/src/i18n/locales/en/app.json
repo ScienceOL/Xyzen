@@ -1,5 +1,8 @@
 {
   "title": "Xyzen",
+  "update": {
+    "updating": "Updating to v{{version}}..."
+  },
   "pwa": {
     "installTitle": "Install App",
     "installDescription": "Click the install icon in your address bar for a better experience."
