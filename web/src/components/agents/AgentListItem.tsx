@@ -531,9 +531,20 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
         ref={setNodeRef}
         style={style}
         data-agent-id={agent.id}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
         onClick={() => {
           if (isLongPress.current || isDragging) return;
           onClick?.(agent);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (!isLongPress.current && !isDragging) {
+              onClick?.(agent);
+            }
+          }
         }}
         onContextMenu={handleContextMenu}
         onTouchStart={handleTouchStart}

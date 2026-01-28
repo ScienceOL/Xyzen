@@ -51,14 +51,22 @@ function getUpdateState(): UpdateState | null {
  * Saves update state to localStorage
  */
 function saveUpdateState(state: UpdateState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Storage unavailable or quota exceeded - proceed without persistence
+  }
 }
 
 /**
  * Clears update state from localStorage
  */
 function clearUpdateState(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage unavailable - proceed without clearing
+  }
 }
 
 /**

@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, type Variants } from "framer-motion";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AgentListItem, type DragHandleProps } from "./AgentListItem";
 
@@ -167,18 +167,27 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
   const [items, setItems] = useState<Agent[]>(agents);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Sync items only when agents are ADDED or REMOVED (not reordered)
-  // Compare as sets, not ordered lists
-  const agentIdSet = new Set(agents.map((a) => a.id));
-  const itemIdSet = new Set(items.map((a) => a.id));
-  const setsEqual =
-    agentIdSet.size === itemIdSet.size &&
-    [...agentIdSet].every((id) => itemIdSet.has(id));
+  // Track whether user is actively dragging to prevent sync during drag
+  const isDraggingRef = useRef(false);
 
-  if (!setsEqual) {
-    // Agents added or removed - reset to props
-    setItems(agents);
-  }
+  // Sync items when agents change (membership or order) - but not during drag
+  useEffect(() => {
+    // Don't sync during active drag operations
+    if (isDraggingRef.current) return;
+
+    // Compare as sets to detect membership changes
+    const agentIdSet = new Set(agents.map((a) => a.id));
+    const itemIdSet = new Set(items.map((a) => a.id));
+    const membershipChanged =
+      agentIdSet.size !== itemIdSet.size ||
+      ![...agentIdSet].every((id) => itemIdSet.has(id));
+
+    if (membershipChanged) {
+      // Agents added or removed - reset to props
+      setItems(agents);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `items` excluded intentionally to prevent infinite loop
+  }, [agents]);
 
   const displayAgents = sortable ? items : agents;
   const activeAgent = activeId
@@ -201,12 +210,14 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    isDraggingRef.current = true;
     setActiveId(event.active.id as string);
   }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
+      isDraggingRef.current = false;
       setActiveId(null);
 
       if (over && active.id !== over.id) {
@@ -226,6 +237,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
   );
 
   const handleDragCancel = useCallback(() => {
+    isDraggingRef.current = false;
     setActiveId(null);
   }, []);
 
