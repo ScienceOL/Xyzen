@@ -328,12 +328,11 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
           >
             {content}
           </SortableContext>
-          // NOTE: Render DragOverlay into document.body to avoid positioning
-          bugs when // this list is inside a transformed/animated container
-          (e.g. framer-motion). // CSS transforms create a new containing block,
-          which can cause @dnd-kit’s // fixed-position overlay to calculate
-          coordinates relative to that container // (often showing the dragged
-          item jumping to the bottom).
+          {/* NOTE: Render DragOverlay into document.body to avoid positioning bugs when
+              this list is inside a transformed/animated container (e.g. framer-motion).
+              CSS transforms create a new containing block, which can cause @dnd-kit's
+              fixed-position overlay to calculate coordinates relative to that container
+              (often showing the dragged item jumping to the bottom). */}
           {createPortal(
             <DragOverlay>{renderOverlayItem()}</DragOverlay>,
             document.body,
@@ -404,12 +403,11 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
         >
           {content}
         </SortableContext>
-        // NOTE: Render DragOverlay into document.body to avoid positioning bugs
-        when // this list is inside a transformed/animated container (e.g.
-        framer-motion). // CSS transforms create a new containing block, which
-        can cause @dnd-kit’s // fixed-position overlay to calculate coordinates
-        relative to that container // (often showing the dragged item jumping to
-        the bottom).
+        {/* NOTE: Render DragOverlay into document.body to avoid positioning bugs when
+            this list is inside a transformed/animated container (e.g. framer-motion).
+            CSS transforms create a new containing block, which can cause @dnd-kit's
+            fixed-position overlay to calculate coordinates relative to that container
+            (often showing the dragged item jumping to the bottom). */}
         {createPortal(
           <DragOverlay>{renderOverlayItem()}</DragOverlay>,
           document.body,
