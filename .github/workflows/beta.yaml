@@ -27,7 +27,7 @@ jobs:
         id: setup
         run: |
           echo "build_start=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          echo "beta_version=beta-$(date -u '+%Y%m%d%H%M%S')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "beta_version=$(grep -m1 '^version' service/pyproject.toml | sed 's/version = "\(.*\)"/\1/')" >> $GITHUB_OUTPUT
           echo "commit_author=$(git log -1 --pretty=format:'%an')" >> $GITHUB_OUTPUT
           echo "commit_email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
           echo "commit_message=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
