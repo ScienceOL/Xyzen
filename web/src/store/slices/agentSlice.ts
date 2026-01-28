@@ -38,6 +38,7 @@ export interface AgentSlice {
   fetchAgentStats: () => Promise<void>;
   fetchDailyActivity: () => Promise<void>;
   incrementLocalAgentMessageCount: (agentId: string) => void;
+  reorderAgents: (agentIds: string[]) => Promise<void>;
 
   isCreatingAgent: boolean;
   createAgent: (agent: Omit<Agent, "id">) => Promise<string | undefined>;
@@ -306,6 +307,55 @@ export const createAgentSlice: StateCreator<
         };
       }
     });
+  },
+
+  reorderAgents: async (agentIds: string[]) => {
+    // Store previous order for rollback
+    const previousAgents = [...get().agents];
+
+    // Optimistic update: reorder agents locally based on agentIds
+    set((state) => {
+      const agentMap = new Map(state.agents.map((a) => [a.id, a]));
+      const reorderedAgents: AgentWithLayout[] = [];
+
+      for (const id of agentIds) {
+        const agent = agentMap.get(id);
+        if (agent) {
+          reorderedAgents.push(agent);
+        }
+      }
+
+      // Add any agents not in the new order (shouldn't happen normally)
+      for (const agent of state.agents) {
+        if (!agentIds.includes(agent.id)) {
+          reorderedAgents.push(agent);
+        }
+      }
+
+      state.agents = reorderedAgents;
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/reorder`,
+        {
+          method: "PUT",
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ agent_ids: agentIds }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to reorder agents: ${errorText}`);
+      }
+    } catch (error) {
+      // Rollback on error
+      console.error("Failed to reorder agents:", error);
+      set({ agents: previousAgents });
+      throw error;
+    }
   },
 
   createAgent: async (agent) => {

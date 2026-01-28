@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/animate-ui/components/animate/tool
 import { AgentList } from "@/components/agents";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
@@ -35,6 +35,7 @@ export default function XyzenAgent({
     createDefaultChannel,
     deleteAgent,
     updateAgentAvatar,
+    reorderAgents,
 
     chatHistory,
     channels,
@@ -148,6 +149,17 @@ export default function XyzenAgent({
     setConfirmModalOpen(true);
   };
 
+  const handleReorder = useCallback(
+    async (agentIds: string[]) => {
+      try {
+        await reorderAgents(agentIds);
+      } catch (error) {
+        console.error("Failed to reorder agents:", error);
+      }
+    },
+    [reorderAgents],
+  );
+
   // Find system agents within the user's agents list using tags
   const filteredSystemAgents = agents.filter((agent) => {
     if (!agent.tags) return false;
@@ -179,11 +191,13 @@ export default function XyzenAgent({
         <AgentList
           agents={allAgents}
           variant="detailed"
+          sortable={true}
           publishedAgentIds={publishedAgentIds}
           lastConversationTimeByAgent={lastConversationTimeByAgent}
           onAgentClick={handleAgentClick}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
+          onReorder={handleReorder}
         />
         <button
           className="w-full rounded-sm border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"

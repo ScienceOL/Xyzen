@@ -1,2 +1,6 @@
 export { AgentList, type AgentListProps } from "./AgentList";
-export { AgentListItem, type AgentListItemProps } from "./AgentListItem";
+export {
+  AgentListItem,
+  type AgentListItemProps,
+  type DragHandleProps,
+} from "./AgentListItem";
