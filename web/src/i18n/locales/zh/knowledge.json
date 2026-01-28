@@ -1,8 +1,191 @@
 {
+  "titles": {
+    "recents": "最近",
+    "allFiles": "所有文件",
+    "myKnowledge": "我的知识库",
+    "knowledgeBase": "知识库",
+    "trash": "回收站"
+  },
+  "a11y": {
+    "navTitle": "导航菜单",
+    "navDescription": "浏览您的知识库"
+  },
+  "prompts": {
+    "folderName": "请输入文件夹名称：",
+    "knowledgeSetName": "请输入知识库名称：",
+    "knowledgeSetDescription": "请输入描述（可选）："
+  },
+  "errors": {
+    "createFolderFailed": "创建文件夹失败",
+    "createKnowledgeSetFailed": "创建知识库失败"
+  },
+  "upload": {
+    "dropHere": "将文件拖放到此处上传",
+    "dropToKnowledgeSet": "文件将添加到「{{name}}」",
+    "dropToFolder": "文件将添加到此文件夹",
+    "dropToUpload": "将上传文件",
+    "errors": {
+      "fileTooLarge": "文件「{{name}}」({{fileSizeMB}}MB) 超过最大文件大小限制 {{maxSizeMB}}MB",
+      "notEnoughStorage": "存储空间不足。文件大小：{{fileSizeMB}}MB，可用空间：{{availableMB}}MB。请先删除一些文件。",
+      "uploadFailed": "上传失败"
+    }
+  },
+  "uploadProgress": {
+    "uploading": "正在上传 {{count}} 个文件",
+    "complete": "上传完成",
+    "completed": "已完成",
+    "failed": "失败",
+    "cancelled": "已取消",
+    "cancelAll": "取消全部"
+  },
+  "toolbar": {
+    "home": "主页",
+    "searchFilesPlaceholder": "搜索文件...",
+    "searchPlaceholder": "搜索",
+    "listView": "列表视图",
+    "gridView": "网格视图",
+    "newFolder": "新建文件夹",
+    "emptyTrash": "清空回收站",
+    "empty": "清空",
+    "uploadFile": "上传文件",
+    "upload": "上传",
+    "refresh": "刷新"
+  },
   "sidebar": {
+    "groups": {
+      "favorites": "收藏",
+      "media": "媒体",
+      "locations": "位置"
+    },
+    "items": {
+      "images": "图片",
+      "documents": "文档"
+    },
+    "newKnowledgeSet": "新建知识库",
     "deleteKnowledgeSet": "删除知识库",
     "deleteTitle": "删除知识库",
     "deleteConfirm": "确定要删除「{{name}}」吗？文件不会被删除，仅删除知识库。",
-    "deleteConfirmButton": "删除"
+    "deleteConfirmButton": "删除",
+    "noKnowledgeSets": "暂无知识库"
+  },
+  "status": {
+    "items": "{{count}} 个项目",
+    "usedOfTotal": "已使用 {{used}} / {{total}}",
+    "available": "可用 {{available}}"
+  },
+  "contextMenu": {
+    "download": "下载",
+    "rename": "重命名",
+    "moveTo": "移动到...",
+    "addToKnowledgeSet": "添加到知识库",
+    "removeFromKnowledgeSet": "从知识库移除",
+    "delete": "删除"
+  },
+  "moveModal": {
+    "title": "移动「{{name}}」",
+    "home": "主页",
+    "noSubfolders": "没有子文件夹",
+    "moveHere": "移动到此处"
+  },
+  "fileList": {
+    "itemTypes": {
+      "file": "文件",
+      "folder": "文件夹"
+    },
+    "columns": {
+      "name": "名称",
+      "size": "大小",
+      "dateModified": "修改日期"
+    },
+    "empty": {
+      "trash": "回收站为空",
+      "noItems": "没有项目"
+    },
+    "actions": {
+      "preview": "预览",
+      "download": "下载",
+      "restore": "恢复",
+      "delete": "删除",
+      "deleteForever": "永久删除",
+      "moveToTrash": "移至回收站",
+      "deleteImmediately": "立即删除",
+      "deleteFailed": "删除失败",
+      "restoreFailed": "恢复失败",
+      "downloadFailed": "下载失败"
+    },
+    "deleteItem": {
+      "title": "删除{{itemType}}",
+      "message": "确定要删除此{{itemType}}吗？"
+    },
+    "bulkDelete": {
+      "message": "确定要删除 {{count}} 个选中的项目吗？"
+    },
+    "moveToTrash": {
+      "message": "确定要将此文件移至回收站吗？"
+    },
+    "deleteForever": {
+      "message": "确定要永久删除此文件吗？此操作无法撤销。"
+    },
+    "emptyTrash": {
+      "title": "清空回收站",
+      "message": "确定要永久删除 {{count}} 个项目吗？此操作无法撤销。",
+      "confirm": "清空回收站",
+      "failed": "无法完全清空回收站，部分项目可能仍然存在。"
+    },
+    "rename": {
+      "titleFile": "重命名文件",
+      "titleFolder": "重命名文件夹",
+      "placeholder": "输入新名称",
+      "confirm": "重命名",
+      "failed": "重命名失败"
+    },
+    "move": {
+      "failed": "移动失败"
+    },
+    "knowledgeSet": {
+      "add": {
+        "title": "添加到知识库",
+        "subtitle": "选择要添加「{{name}}」的知识库"
+      },
+      "none": "没有可用的知识库，请先创建一个。",
+      "fileCount": "{{count}} 个文件",
+      "added": "文件已成功添加到知识库",
+      "alreadyInSet": "此文件已在该知识库中。",
+      "addFailed": "添加文件到知识库失败",
+      "remove": {
+        "title": "从知识库移除",
+        "message": "确定要从此知识库中移除「{{name}}」吗？",
+        "confirm": "移除",
+        "failed": "从知识库移除文件失败"
+      }
+    },
+    "notifications": {
+      "successTitle": "成功",
+      "noticeTitle": "提示",
+      "errorTitle": "错误"
+    }
+  },
+  "createKnowledgeSetModal": {
+    "title": "创建知识库",
+    "fields": {
+      "name": {
+        "label": "名称",
+        "placeholder": "输入名称"
+      },
+      "description": {
+        "label": "描述（可选）",
+        "placeholder": "添加简短描述"
+      }
+    },
+    "actions": {
+      "create": "创建",
+      "creating": "创建中..."
+    },
+    "validation": {
+      "nameRequired": "名称为必填项"
+    },
+    "errors": {
+      "createFailed": "创建知识库失败"
+    }
   }
 }

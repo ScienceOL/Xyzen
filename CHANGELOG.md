@@ -2,6 +2,48 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.0.16](https://github.com/ScienceOL/Xyzen/compare/v1.0.15...v1.0.16) (2026-01-28)
+
+### 🐛 Bug Fixes
+
+* enhance development setup instructions and add auto-scroll for agent selection ([5212c29](https://github.com/ScienceOL/Xyzen/commit/5212c29c156412c447f0f3f73dbfd5683c2dadfa))
+
+## [1.0.15](https://github.com/ScienceOL/Xyzen/compare/v1.0.14...v1.0.15) (2026-01-26)
+
+### 🐛 Bug Fixes
+
+* improve Docker image sync retries and error handling ([fc77c81](https://github.com/ScienceOL/Xyzen/commit/fc77c81ba99ee384ec18e02fb8c1e85bdc1beb41))
+
+## [1.0.14](https://github.com/ScienceOL/Xyzen/compare/v1.0.13...v1.0.14) (2026-01-26)
+
+### 🐛 Bug Fixes
+
+* add GitHub Actions workflow for syncing base Docker images ([7b87b7a](https://github.com/ScienceOL/Xyzen/commit/7b87b7a4b81b52c4e2ddbd18258aaf7167d90a48))
+
+## [1.0.13](https://github.com/ScienceOL/Xyzen/compare/v1.0.12...v1.0.13) (2026-01-26)
+
+### 🐛 Bug Fixes
+
+* refactor GitHub Actions workflow for building and pushing Docker images ([20983b9](https://github.com/ScienceOL/Xyzen/commit/20983b947e7b601d0523567e654feadadcb95b77))
+
+## [1.0.12](https://github.com/ScienceOL/Xyzen/compare/v1.0.11...v1.0.12) (2026-01-26)
+
+### 🐛 Bug Fixes
+
+* add file upload progress tracking and UI component ([415731e](https://github.com/ScienceOL/Xyzen/commit/415731e5a6ad10e5c51afdfc847b5c2f8ec0a5f9))
+
+## [1.0.11](https://github.com/ScienceOL/Xyzen/compare/v1.0.10...v1.0.11) (2026-01-26)
+
+### 🐛 Bug Fixes
+
+* implement drag-and-drop file upload and multi-selection in FileList ([2298757](https://github.com/ScienceOL/Xyzen/commit/22987572b9eeb3dba2748cc1a05cfb36bc369cf9))
+
+## [1.0.10](https://github.com/ScienceOL/Xyzen/compare/v1.0.9...v1.0.10) (2026-01-26)
+
+### 🐛 Bug Fixes
+
+* move tool_costs outside the tier_rate computing ([#204](https://github.com/ScienceOL/Xyzen/issues/204)) ([f391ca9](https://github.com/ScienceOL/Xyzen/commit/f391ca9d2604b704737d949f0f29ccedadfcb167))
+
 ## [1.0.9](https://github.com/ScienceOL/Xyzen/compare/v1.0.8...v1.0.9) (2026-01-26)
 
 ### 🐛 Bug Fixes

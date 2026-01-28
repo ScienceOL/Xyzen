@@ -1,135 +1,191 @@
 name: Build and Push ghcr.io Images
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-    tags:
-      - "v*"
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0.12)'
+        required: false
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAMESPACE: scienceol
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build-and-push:
+  # Get release info
+  get-release-info:
+    name: Get Release Info
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    strategy:
-      matrix:
-        include:
-          - name: web
-            context: ./web
-            dockerfile: ./web/Dockerfile
-            image_name: xyzen-web
-          - name: service
-            context: ./service
-            dockerfile: ./service/Dockerfile
-            image_name: xyzen-service
-
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    outputs:
+      should_build: ${{ steps.info.outputs.should_build }}
+      version: ${{ steps.info.outputs.version }}
+      git_tag: ${{ steps.info.outputs.git_tag }}
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release info
+        id: info
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            # Manual trigger with version
+            VERSION="${{ github.event.inputs.version }}"
+            GIT_TAG="v$VERSION"
+            echo "Manual build for version: $VERSION"
+          else
+            # Get latest semver tag
+            GIT_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+            VERSION=${GIT_TAG#v}
+          fi
+
+          if [ -n "$GIT_TAG" ] && [ -n "$VERSION" ]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "git_tag=$GIT_TAG" >> $GITHUB_OUTPUT
+            echo "Building version: $VERSION (tag: $GIT_TAG)"
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "No version found"
+          fi
+
+  # Build Web image (multi-arch)
+  build-web:
+    name: Build Web
+    needs: get-release-info
+    if: needs.get-release-info.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.get-release-info.outputs.version }}
+      GIT_TAG: ${{ needs.get-release-info.outputs.git_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.get-release-info.outputs.git_tag }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image_name }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build (PR) with GHA cache
-        if: github.event_name == 'pull_request'
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
-          push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push (non-PR) with registry cache
-        if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
+          context: ./web
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image_name }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image_name }}:buildcache,mode=max
-          # build-args: |
-          #   VITE_XYZEN_BACKEND_URL=${{ secrets.VITE_XYZEN_BACKEND_URL }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.VERSION }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.GIT_TAG }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:buildcache,mode=max
 
-      - name: Verify multi-platform build
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "Verifying multi-platform build for ${{ matrix.image_name }}"
-          docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image_name }}:latest
-
-          # Extract platform information
-          platforms=$(docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image_name }}:latest | \
-            jq -r '.manifests[].platform | .os + "/" + .architecture' | sort | uniq)
-
-          echo "Supported platforms:"
-          echo "$platforms"
-
-          # Check for required platforms
-          if echo "$platforms" | grep -q "linux/amd64" && echo "$platforms" | grep -q "linux/arm64"; then
-            echo "✅ Multi-platform build verified (amd64 + arm64)"
-          else
-            echo "❌ Multi-platform build verification failed"
-            exit 1
-          fi
-
-  summary:
-    needs: build-and-push
+  # Build Service image (multi-arch)
+  build-service:
+    name: Build Service
+    needs: get-release-info
+    if: needs.get-release-info.outputs.should_build == 'true'
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    env:
+      VERSION: ${{ needs.get-release-info.outputs.version }}
+      GIT_TAG: ${{ needs.get-release-info.outputs.git_tag }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.get-release-info.outputs.git_tag }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Service image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./service
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            XYZEN_VERSION=${{ env.VERSION }}
+            XYZEN_COMMIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.VERSION }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.GIT_TAG }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:buildcache,mode=max
+
+  # Verify and Summary
+  summary:
+    name: Summary
+    needs: [get-release-info, build-web, build-service]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.get-release-info.outputs.version }}
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify multi-platform builds
+        run: |
+          echo "Verifying multi-platform builds..."
+
+          for IMAGE in xyzen-web xyzen-service; do
+            echo "Checking $IMAGE..."
+            docker manifest inspect ghcr.io/${{ env.IMAGE_NAMESPACE }}/$IMAGE:${{ env.VERSION }} | \
+              jq -r '.manifests[].platform | .os + "/" + .architecture'
+          done
+
       - name: Job summary
         run: |
-          echo "## 🎉 Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Docker Images Published to ghcr.io" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Images" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:latest\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:latest\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [View Packages](https://github.com/orgs/${{ env.IMAGE_NAMESPACE }}/packages)" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Images (amd64 + arm64)" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Tags |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Web | \`latest\`, \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | \`latest\`, \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📥 Pull Images" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:latest" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Packages](https://github.com/orgs/${{ env.IMAGE_NAMESPACE }}/packages)" >> $GITHUB_STEP_SUMMARY

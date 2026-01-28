@@ -530,6 +530,7 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
       <div
         ref={setNodeRef}
         style={style}
+        data-agent-id={agent.id}
         onClick={() => {
           if (isLongPress.current || isDragging) return;
           onClick?.(agent);

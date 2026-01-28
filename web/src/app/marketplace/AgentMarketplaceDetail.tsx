@@ -7,6 +7,7 @@ import {
   useToggleLike,
 } from "@/hooks/useMarketplace";
 import Markdown from "@/lib/Markdown";
+import { useXyzen } from "@/store";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
 import {
   ArrowLeftIcon,
@@ -75,6 +76,9 @@ export default function AgentMarketplaceDetail({
     "readme" | "config" | "requirements"
   >("readme");
 
+  // Get fetchAgents from store to refresh after fork
+  const fetchAgents = useXyzen((state) => state.fetchAgents);
+
   // Note: Unpublish and Edit README states removed as they moved to dedicated Manage view
 
   // Fetch listing data
@@ -106,10 +110,10 @@ export default function AgentMarketplaceDetail({
     setShowForkModal(true);
   };
 
-  const handleForkSuccess = (agentId: string) => {
-    // Navigate to agent editor or show success message
+  const handleForkSuccess = async (agentId: string) => {
+    // Refresh the agents list in the store so SpatialWorkspace sees the new agent
+    await fetchAgents();
     console.log("Agent forked successfully:", agentId);
-    // You might want to navigate to the agent detail page or show a notification
   };
 
   // Loading state

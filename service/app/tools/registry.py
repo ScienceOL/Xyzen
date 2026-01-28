@@ -175,6 +175,7 @@ def register_builtin_tools() -> None:
     """
     from app.tools.builtin.fetch import create_web_fetch_tool
     from app.tools.builtin.knowledge import create_knowledge_tools
+    from app.tools.builtin.literature import create_literature_search_tool
     from app.tools.builtin.search import create_web_search_tool
 
     # Register web search tool
@@ -200,6 +201,19 @@ def register_builtin_tools() -> None:
         display_name="Web Fetch",
         ui_toggleable=False,  # Bundled with web_search
         default_enabled=True,
+        requires_context=[],
+        cost=ToolCostConfig(base_cost=1),
+    )
+
+    # Register literature search tool
+    literature_tool = create_literature_search_tool()
+    BuiltinToolRegistry.register(
+        tool_id="literature_search",
+        tool=literature_tool,
+        category="search",
+        display_name="Literature Search",
+        ui_toggleable=True,
+        default_enabled=False,
         requires_context=[],
         cost=ToolCostConfig(base_cost=1),
     )

@@ -82,6 +82,7 @@ def _load_all_builtin_tools(
     Load all available builtin tools.
 
     - Web search + fetch: loaded if SearXNG is enabled
+    - Literature search: always loaded
     - Knowledge tools: loaded if effective knowledge_set_id exists and user_id is available
     - Image tools: loaded if image generation is enabled and user_id is available
     - Memory tools: loaded if agent and user_id are available (currently disabled)
@@ -109,6 +110,11 @@ def _load_all_builtin_tools(
         web_fetch = BuiltinToolRegistry.get("web_fetch")
         if web_fetch:
             tools.append(web_fetch)
+
+    # Load literature search tool if available
+    literature_search = BuiltinToolRegistry.get("literature_search")
+    if literature_search:
+        tools.append(literature_search)
 
     # Determine effective knowledge_set_id
     # Priority: session override > agent config

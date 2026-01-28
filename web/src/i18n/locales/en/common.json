@@ -3,5 +3,7 @@
   "cancel": "Cancel",
   "loading": "Loading...",
   "delete": "Delete",
-  "recommended": "Recommended"
+  "recommended": "Recommended",
+  "close": "Close",
+  "dismiss": "Dismiss"
 }

@@ -66,23 +66,39 @@ Xyzen is an AI lab server built with FastAPI + LangGraph on the backend and Reac
 
 4. Start the development environment:
 
-   ```bash
-   ./launch/dev.sh        # Start in foreground (shows logs)
-   ./launch/dev.sh -d     # Start in background (daemon mode)
-   ./launch/dev.sh -s     # Stop containers
-   ./launch/dev.sh -e     # Stop and remove containers
-   ```
+- macOS / Linux:
 
-   Or use the Makefile:
+  ```bash
+  ./launch/dev.sh        # Start in foreground (shows logs)
+  ./launch/dev.sh -d     # Start in background (daemon mode)
+  ./launch/dev.sh -s     # Stop containers
+  ./launch/dev.sh -e     # Stop and remove containers
+  ```
 
-   ```bash
-   make dev              # Start in foreground
-   make dev ARGS="-d"    # Start in background
-   ```
+- Windows (PowerShell):
+
+  ```powershell
+  .\launch\dev.ps1       # Start in foreground (shows logs)
+  .\launch\dev.ps1 -d    # Start in background (daemon mode)
+  .\launch\dev.ps1 -s    # Stop containers
+  .\launch\dev.ps1 -e    # Stop and remove containers
+  ```
 
 The script will automatically set up all infrastructure services (PostgreSQL, Redis, Mosquitto, Casdoor) and launch development containers with hot reloading.
 
 ## Development
+
+### Install IDE Configurations
+
+Run the IDE setup script to configure your IDE for Xyzen development:
+
+```bash
+cd service
+uv sync
+cd ../web
+corepack enable
+yarn install
+```
 
 ### Prerequisites for Contributing
 

@@ -1,14 +1,14 @@
 services:
   service:
-    image: registry.sciol.ac.cn/sciol/xyzen-service:test
+    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
     env_file:
       - .env.dev
-    build:
-      context: ../service
-      platforms:
-        - linux/amd64
-        - linux/arm64
-      dockerfile: Dockerfile
+    # build:
+    #   context: ../service
+    #   platforms:
+    #     - linux/amd64
+    #     - linux/arm64
+    #   dockerfile: Dockerfile
     volumes:
       - ../service:/app
       - /app/.venv
@@ -16,7 +16,7 @@ services:
     command: sh -c "uv sync && uv run python -m app.main"
 
   celery:
-    image: registry.sciol.ac.cn/sciol/xyzen-service:test
+    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
     env_file:
       - .env.dev
     volumes:
@@ -25,15 +25,15 @@ services:
     command: sh -c "uv sync && uv run celery -A app.worker worker --loglevel=info"
 
   web:
-    image: registry.sciol.ac.cn/sciol/xyzen-web:test
+    image: registry.sciol.ac.cn/sciol/xyzen-web:latest
     env_file:
       - .env.dev
-    build:
-      context: ../web
-      platforms:
-        - linux/amd64
-        - linux/arm64
-      dockerfile: Dockerfile
+    # build:
+    #   context: ../web
+    #   platforms:
+    #     - linux/amd64
+    #     - linux/arm64
+    #   dockerfile: Dockerfile
     volumes:
       - ../web:/app
       - /app/node_modules

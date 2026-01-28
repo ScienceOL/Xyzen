@@ -75,7 +75,82 @@ export interface UploadProgress {
   percentage: number;
 }
 
+export interface UploadHandle {
+  promise: Promise<FileUploadResponse>;
+  abort: () => void;
+}
+
 class FileService {
+  /**
+   * Upload a file to the server with progress and cancellation support
+   */
+  uploadFileWithProgress(
+    file: File,
+    scope: string = "private",
+    category?: string,
+    folderId?: string | null,
+    knowledgeSetId?: string | null,
+    onProgress?: (progress: UploadProgress) => void,
+  ): UploadHandle {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("scope", scope);
+    if (category) {
+      formData.append("category", category);
+    }
+    if (folderId) {
+      formData.append("folder_id", folderId);
+    }
+    if (knowledgeSetId) {
+      formData.append("knowledge_set_id", knowledgeSetId);
+    }
+
+    const xhr = new XMLHttpRequest();
+    const baseUrl = getBackendUrl();
+
+    const promise = new Promise<FileUploadResponse>((resolve, reject) => {
+      xhr.upload.addEventListener("progress", (e) => {
+        if (onProgress && e.lengthComputable) {
+          const percentage = Math.round((e.loaded * 100) / e.total);
+          onProgress({
+            loaded: e.loaded,
+            total: e.total,
+            percentage,
+          });
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText));
+        } else {
+          reject(new Error(`Upload failed: ${xhr.statusText}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("Upload failed"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new Error("Upload cancelled"));
+      });
+
+      xhr.open("POST", `${baseUrl}/xyzen/api/v1/files/upload`);
+      const headers = getAuthHeaders();
+      Object.entries(headers).forEach(([key, value]) => {
+        xhr.setRequestHeader(key, value);
+      });
+
+      xhr.send(formData);
+    });
+
+    return {
+      promise,
+      abort: () => xhr.abort(),
+    };
+  }
+
   /**
    * Upload a file to the server
    */

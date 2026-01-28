@@ -30,6 +30,7 @@ import React, {
 import { useTranslation } from "react-i18next";
 import { ContextMenu, type ContextMenuType } from "./ContextMenu";
 import { FileIcon } from "./FileIcon";
+import { ImageThumbnail } from "./ImageThumbnail";
 import { MoveToModal } from "./MoveToModal";
 import type { KnowledgeTab, ViewMode } from "./types";
 
@@ -56,6 +57,14 @@ const formatSize = (bytes: number) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
+const isImageFile = (mimeType: string, filename: string) => {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  return (
+    mimeType.startsWith("image/") ||
+    ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"].includes(ext)
+  );
+};
+
 export const FileList = React.memo(
   forwardRef<FileListHandle, FileListProps>(
     (
@@ -79,7 +88,171 @@ export const FileList = React.memo(
       // Preview State
       const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
       const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-      const [selectedId, setSelectedId] = useState<string | null>(null);
+      const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+      // Selection box state for drag select
+      const [selectionBox, setSelectionBox] = useState<{
+        startX: number;
+        startY: number;
+        currentX: number;
+        currentY: number;
+      } | null>(null);
+      const containerRef = useRef<HTMLDivElement>(null);
+      const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+      const didSelectionRef = useRef(false);
+      // Track potential selection start (before drag threshold is met)
+      const selectionStartRef = useRef<{
+        startX: number;
+        startY: number;
+        clientX: number;
+        clientY: number;
+        ctrlKey: boolean;
+        metaKey: boolean;
+      } | null>(null);
+      const DRAG_THRESHOLD = 5; // pixels to move before starting selection box
+
+      // Helper to handle item click with multi-select support
+      const handleItemClick = useCallback(
+        (e: React.MouseEvent, itemId: string) => {
+          e.stopPropagation();
+          if (didLongPressRef.current) {
+            didLongPressRef.current = false;
+            return;
+          }
+          // If we just finished a drag selection, don't change selection
+          if (didSelectionRef.current) {
+            didSelectionRef.current = false;
+            return;
+          }
+
+          // Ctrl/Cmd click to toggle selection
+          if (e.ctrlKey || e.metaKey) {
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(itemId)) {
+                next.delete(itemId);
+              } else {
+                next.add(itemId);
+              }
+              return next;
+            });
+          } else {
+            // Normal click - select only this item
+            setSelectedIds(new Set([itemId]));
+          }
+        },
+        [],
+      );
+
+      // Selection box handlers for drag select
+      const handleSelectionStart = useCallback((e: React.MouseEvent) => {
+        // Don't start selection on right-click
+        if (e.button !== 0) return;
+
+        const container = containerRef.current;
+        if (!container) return;
+
+        const rect = container.getBoundingClientRect();
+        const startX = e.clientX - rect.left + container.scrollLeft;
+        const startY = e.clientY - rect.top + container.scrollTop;
+
+        // Store the potential selection start point
+        selectionStartRef.current = {
+          startX,
+          startY,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+        };
+      }, []);
+
+      const handleSelectionMove = useCallback(
+        (e: React.MouseEvent) => {
+          const container = containerRef.current;
+          if (!container) return;
+
+          const rect = container.getBoundingClientRect();
+          const currentX = e.clientX - rect.left + container.scrollLeft;
+          const currentY = e.clientY - rect.top + container.scrollTop;
+
+          // Check if we should start the selection box (drag threshold)
+          if (selectionStartRef.current && !selectionBox) {
+            const dx = e.clientX - selectionStartRef.current.clientX;
+            const dy = e.clientY - selectionStartRef.current.clientY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance >= DRAG_THRESHOLD) {
+              // Start the selection box
+              setSelectionBox({
+                startX: selectionStartRef.current.startX,
+                startY: selectionStartRef.current.startY,
+                currentX,
+                currentY,
+              });
+
+              // Clear selection if not holding Ctrl/Cmd
+              if (
+                !selectionStartRef.current.ctrlKey &&
+                !selectionStartRef.current.metaKey
+              ) {
+                setSelectedIds(new Set());
+              }
+            }
+            return;
+          }
+
+          if (!selectionBox) return;
+
+          setSelectionBox((prev) =>
+            prev ? { ...prev, currentX, currentY } : null,
+          );
+
+          // Calculate selection box bounds
+          const boxLeft = Math.min(selectionBox.startX, currentX);
+          const boxRight = Math.max(selectionBox.startX, currentX);
+          const boxTop = Math.min(selectionBox.startY, currentY);
+          const boxBottom = Math.max(selectionBox.startY, currentY);
+
+          // Check which items are within the selection box
+          const newSelection = new Set<string>();
+          itemRefs.current.forEach((element, id) => {
+            const itemRect = element.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            const itemLeft =
+              itemRect.left - containerRect.left + container.scrollLeft;
+            const itemRight =
+              itemRect.right - containerRect.left + container.scrollLeft;
+            const itemTop =
+              itemRect.top - containerRect.top + container.scrollTop;
+            const itemBottom =
+              itemRect.bottom - containerRect.top + container.scrollTop;
+
+            // Check if item intersects with selection box
+            if (
+              itemLeft < boxRight &&
+              itemRight > boxLeft &&
+              itemTop < boxBottom &&
+              itemBottom > boxTop
+            ) {
+              newSelection.add(id);
+            }
+          });
+
+          setSelectedIds(newSelection);
+        },
+        [selectionBox],
+      );
+
+      const handleSelectionEnd = useCallback(() => {
+        // Mark that we just finished a selection to prevent onClick from clearing
+        if (selectionBox) {
+          didSelectionRef.current = true;
+        }
+        setSelectionBox(null);
+        selectionStartRef.current = null;
+      }, [selectionBox]);
 
       // Context Menu State
       const [contextMenu, setContextMenu] = useState<{
@@ -286,7 +459,11 @@ export const FileList = React.memo(
           item,
           position: { x: e.clientX, y: e.clientY },
         });
-        setSelectedId(item.id);
+        // Only change selection if clicked item is not already selected
+        // This preserves multi-selection when right-clicking on selected items
+        if (!selectedIds.has(item.id)) {
+          setSelectedIds(new Set([item.id]));
+        }
       };
 
       // Mobile: long-press to open context menu (touch only)
@@ -325,7 +502,10 @@ export const FileList = React.memo(
                 item,
                 position: { x: e.clientX, y: e.clientY },
               });
-              setSelectedId(item.id);
+              // Only change selection if item is not already selected
+              setSelectedIds((prev) =>
+                prev.has(item.id) ? prev : new Set([item.id]),
+              );
             }, 550);
           };
 
@@ -408,6 +588,67 @@ export const FileList = React.memo(
         item: Folder | FileUploadResponse,
         type: ContextMenuType,
       ) => {
+        // Check if we have multiple items selected and the clicked item is one of them
+        const hasMultipleSelected =
+          selectedIds.size > 1 && selectedIds.has(item.id);
+
+        if (hasMultipleSelected) {
+          // Bulk delete - separate files and folders
+          const selectedFileIds: string[] = [];
+          const selectedFolderIds: string[] = [];
+
+          selectedIds.forEach((id) => {
+            if (files.some((f) => f.id === id)) {
+              selectedFileIds.push(id);
+            } else if (folders.some((f) => f.id === id)) {
+              selectedFolderIds.push(id);
+            }
+          });
+
+          const totalCount = selectedFileIds.length + selectedFolderIds.length;
+          const isHardDelete = filter === "trash";
+
+          setConfirmation({
+            isOpen: true,
+            title: isHardDelete
+              ? t("knowledge.fileList.actions.deleteForever")
+              : t("knowledge.fileList.actions.delete"),
+            message: t("knowledge.fileList.bulkDelete.message", {
+              count: totalCount,
+            }),
+            confirmLabel: t("knowledge.fileList.actions.delete"),
+            destructive: true,
+            onConfirm: async () => {
+              try {
+                // Delete files one by one (more reliable than bulk API)
+                if (selectedFileIds.length > 0) {
+                  await Promise.all(
+                    selectedFileIds.map((id) =>
+                      fileService.deleteFile(id, isHardDelete),
+                    ),
+                  );
+                }
+                // Delete folders one by one
+                if (selectedFolderIds.length > 0) {
+                  await Promise.all(
+                    selectedFolderIds.map((id) =>
+                      folderService.deleteFolder(id, isHardDelete),
+                    ),
+                  );
+                }
+                setSelectedIds(new Set());
+                loadFiles();
+                if (onRefresh) onRefresh();
+              } catch (e) {
+                console.error("Bulk delete failed", e);
+                alert(t("knowledge.fileList.actions.deleteFailed"));
+              }
+            },
+          });
+          return;
+        }
+
+        // Single item delete
         const itemTypeLabel =
           type === "folder"
             ? t("knowledge.fileList.itemTypes.folder")
@@ -431,6 +672,7 @@ export const FileList = React.memo(
               } else {
                 await fileService.deleteFile(item.id, isHardDelete);
               }
+              setSelectedIds(new Set());
               loadFiles();
               if (onRefresh) onRefresh();
             } catch (e) {
@@ -641,16 +883,38 @@ export const FileList = React.memo(
 
       return (
         <div
-          className="h-full w-full"
+          ref={containerRef}
+          className="h-full w-full relative select-none"
           onClick={() => {
             // If a long-press just opened the menu, ignore the synthetic click.
             if (didLongPressRef.current) {
               didLongPressRef.current = false;
               return;
             }
-            setSelectedId(null);
+            // If we just finished a drag selection, don't clear the selection
+            if (didSelectionRef.current) {
+              didSelectionRef.current = false;
+              return;
+            }
+            setSelectedIds(new Set());
           }}
+          onMouseDown={handleSelectionStart}
+          onMouseMove={handleSelectionMove}
+          onMouseUp={handleSelectionEnd}
+          onMouseLeave={handleSelectionEnd}
         >
+          {/* Selection Box */}
+          {selectionBox && (
+            <div
+              className="absolute border-2 border-indigo-500 bg-indigo-500/10 pointer-events-none z-40"
+              style={{
+                left: Math.min(selectionBox.startX, selectionBox.currentX),
+                top: Math.min(selectionBox.startY, selectionBox.currentY),
+                width: Math.abs(selectionBox.currentX - selectionBox.startX),
+                height: Math.abs(selectionBox.currentY - selectionBox.startY),
+              }}
+            />
+          )}
           {viewMode === "list" ? (
             <div className="min-w-full inline-block align-middle">
               <div className="border-b border-neutral-200 dark:border-neutral-800">
@@ -671,21 +935,18 @@ export const FileList = React.memo(
                 {folders.map((folder) => (
                   <div
                     key={`folder-${folder.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (didLongPressRef.current) {
-                        didLongPressRef.current = false;
-                        return;
-                      }
-                      setSelectedId(folder.id);
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(folder.id, el);
+                      else itemRefs.current.delete(folder.id);
                     }}
+                    onClick={(e) => handleItemClick(e, folder.id)}
                     onDoubleClick={() => handleFolderClick(folder.id)}
                     onContextMenu={(e) =>
                       handleContextMenu(e, folder, "folder")
                     }
                     {...createLongPressHandlers(folder, "folder")}
                     className={`group grid grid-cols-12 gap-4 px-4 py-2 text-sm items-center cursor-default ${
-                      selectedId === folder.id
+                      selectedIds.has(folder.id)
                         ? "bg-indigo-600 text-white"
                         : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
                     }`}
@@ -707,7 +968,7 @@ export const FileList = React.memo(
                     <div className="col-span-4 md:col-span-1 flex justify-end">
                       {/* Folder Actions */}
                       <div
-                        className={`flex gap-2 ${selectedId === folder.id ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}
+                        className={`flex gap-2 ${selectedIds.has(folder.id) ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}
                       >
                         {filter === "trash" && (
                           <button
@@ -718,7 +979,7 @@ export const FileList = React.memo(
                             title={t("knowledge.fileList.actions.restore")}
                           >
                             <ArrowPathRoundedSquareIcon
-                              className={`h-4 w-4 ${selectedId === folder.id ? "hover:text-white" : "hover:text-green-600"}`}
+                              className={`h-4 w-4 ${selectedIds.has(folder.id) ? "hover:text-white" : "hover:text-green-600"}`}
                             />
                           </button>
                         )}
@@ -737,7 +998,7 @@ export const FileList = React.memo(
                           }
                         >
                           <TrashIcon
-                            className={`h-4 w-4 ${selectedId === folder.id ? "hover:text-red-200" : "hover:text-red-500"}`}
+                            className={`h-4 w-4 ${selectedIds.has(folder.id) ? "hover:text-red-200" : "hover:text-red-500"}`}
                           />
                         </button>
                       </div>
@@ -745,19 +1006,16 @@ export const FileList = React.memo(
                   </div>
                 ))}
                 {files.map((file) => {
-                  const isSelected = selectedId === file.id;
+                  const isSelected = selectedIds.has(file.id);
 
                   return (
                     <div
                       key={file.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (didLongPressRef.current) {
-                          didLongPressRef.current = false;
-                          return;
-                        }
-                        setSelectedId(file.id);
+                      ref={(el) => {
+                        if (el) itemRefs.current.set(file.id, el);
+                        else itemRefs.current.delete(file.id);
                       }}
+                      onClick={(e) => handleItemClick(e, file.id)}
                       onDoubleClick={() => handlePreview(file)}
                       onContextMenu={(e) => handleContextMenu(e, file, "file")}
                       {...createLongPressHandlers(file, "file")}
@@ -861,19 +1119,16 @@ export const FileList = React.memo(
               {folders.map((folder) => (
                 <div
                   key={`folder-${folder.id}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (didLongPressRef.current) {
-                      didLongPressRef.current = false;
-                      return;
-                    }
-                    setSelectedId(folder.id);
+                  ref={(el) => {
+                    if (el) itemRefs.current.set(folder.id, el);
+                    else itemRefs.current.delete(folder.id);
                   }}
+                  onClick={(e) => handleItemClick(e, folder.id)}
                   onDoubleClick={() => handleFolderClick(folder.id)}
                   onContextMenu={(e) => handleContextMenu(e, folder, "folder")}
                   {...createLongPressHandlers(folder, "folder")}
                   className={`group flex flex-col items-center gap-2 rounded-md p-3 text-center cursor-default ${
-                    selectedId === folder.id
+                    selectedIds.has(folder.id)
                       ? "bg-indigo-100 ring-2 ring-indigo-500 dark:bg-indigo-900/50"
                       : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   }`}
@@ -882,7 +1137,7 @@ export const FileList = React.memo(
                     <FolderIcon className="h-10 w-10 text-yellow-500" />
                   </div>
                   <span
-                    className={`w-full truncate text-xs font-medium ${selectedId === folder.id ? "text-indigo-700 dark:text-indigo-300" : "text-neutral-700 dark:text-neutral-300"}`}
+                    className={`w-full truncate text-xs font-medium ${selectedIds.has(folder.id) ? "text-indigo-700 dark:text-indigo-300" : "text-neutral-700 dark:text-neutral-300"}`}
                   >
                     {folder.name}
                   </span>
@@ -890,19 +1145,20 @@ export const FileList = React.memo(
               ))}
 
               {files.map((file) => {
-                const isSelected = selectedId === file.id;
+                const isSelected = selectedIds.has(file.id);
+                const isImage = isImageFile(
+                  file.content_type,
+                  file.original_filename,
+                );
 
                 return (
                   <div
                     key={file.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (didLongPressRef.current) {
-                        didLongPressRef.current = false;
-                        return;
-                      }
-                      setSelectedId(file.id);
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(file.id, el);
+                      else itemRefs.current.delete(file.id);
                     }}
+                    onClick={(e) => handleItemClick(e, file.id)}
                     onDoubleClick={() => handlePreview(file)}
                     onContextMenu={(e) => handleContextMenu(e, file, "file")}
                     {...createLongPressHandlers(file, "file")}
@@ -912,13 +1168,21 @@ export const FileList = React.memo(
                         : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
                     }`}
                   >
-                    <div className="flex h-12 w-12 items-center justify-center">
-                      <FileIcon
-                        filename={file.original_filename}
-                        mimeType={file.content_type}
-                        className="h-10 w-10"
+                    {isImage ? (
+                      <ImageThumbnail
+                        fileId={file.id}
+                        alt={file.original_filename}
+                        className="h-12 w-12 rounded"
                       />
-                    </div>
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center">
+                        <FileIcon
+                          filename={file.original_filename}
+                          mimeType={file.content_type}
+                          className="h-10 w-10"
+                        />
+                      </div>
+                    )}
                     <span
                       className={`w-full truncate text-xs font-medium ${isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-neutral-700 dark:text-neutral-300"}`}
                     >

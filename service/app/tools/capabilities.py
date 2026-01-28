@@ -54,6 +54,7 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     "bing_search": [ToolCapability.WEB_SEARCH],
     "tavily_search": [ToolCapability.WEB_SEARCH],
     "web_fetch": [ToolCapability.WEB_SEARCH],
+    "literature_search": [ToolCapability.WEB_SEARCH],
     # Knowledge tools
     "knowledge_list": [ToolCapability.KNOWLEDGE_RETRIEVAL],
     "knowledge_read": [ToolCapability.KNOWLEDGE_RETRIEVAL, ToolCapability.FILE_OPERATIONS],

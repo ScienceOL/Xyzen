@@ -60,6 +60,8 @@
     "noKnowledge": "None",
     "image": "Image",
     "imageDesc": "Generate and read images",
+    "literatureSearch": "Literature",
+    "literatureSearchDesc": "Search academic papers",
     "memory": "Memory",
     "memoryDesc": "Search conversation history"
   },

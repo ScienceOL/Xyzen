@@ -20,11 +20,23 @@
     "createKnowledgeSetFailed": "ナレッジセットの作成に失敗しました"
   },
   "upload": {
+    "dropHere": "ファイルをここにドロップしてアップロード",
+    "dropToKnowledgeSet": "ファイルは「{{name}}」に追加されます",
+    "dropToFolder": "ファイルはこのフォルダに追加されます",
+    "dropToUpload": "ファイルがアップロードされます",
     "errors": {
       "fileTooLarge": "ファイル「{{name}}」（{{fileSizeMB}}MB）が最大ファイルサイズ制限の{{maxSizeMB}}MBを超えています",
       "notEnoughStorage": "ストレージ容量が不足しています。ファイルサイズ：{{fileSizeMB}}MB、利用可能：{{availableMB}}MB。まずいくつかのファイルを削除してください。",
       "uploadFailed": "アップロードに失敗しました"
     }
+  },
+  "uploadProgress": {
+    "uploading": "{{count}}個のファイルをアップロード中",
+    "complete": "アップロード完了",
+    "completed": "完了",
+    "failed": "失敗",
+    "cancelled": "キャンセルされました",
+    "cancelAll": "すべてキャンセル"
   },
   "toolbar": {
     "home": "ホーム",
@@ -104,6 +116,9 @@
     "deleteItem": {
       "title": "{{itemType}}を削除",
       "message": "この{{itemType}}を削除してもよろしいですか？"
+    },
+    "bulkDelete": {
+      "message": "{{count}}個の選択したアイテムを削除してもよろしいですか？"
     },
     "moveToTrash": {
       "message": "このファイルをゴミ箱に移動してもよろしいですか？"
