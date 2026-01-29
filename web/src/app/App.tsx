@@ -15,7 +15,7 @@ import useTheme from "@/hooks/useTheme";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
-import AuthErrorScreen from "./auth/AuthErrorScreen";
+import { LandingPage } from "./landing/LandingPage";
 
 // 创建 React Query client
 const queryClient = new QueryClient({
@@ -221,7 +221,6 @@ export function Xyzen({
   const authFailed = status === "failed";
   // 手机阈值：512px 以下强制 Sidebar（不可拖拽，全宽）
   const isMobile = viewportWidth < MOBILE_BREAKPOINT;
-  const isSidebarLayout = isMobile || layoutStyle === LAYOUT_STYLE.Sidebar;
 
   if (!mounted) return null;
 
@@ -253,11 +252,7 @@ export function Xyzen({
   const gatedContent = isAuthenticating ? (
     <AuthLoadingScreen progress={progress} />
   ) : authFailed ? (
-    isSidebarLayout ? (
-      <>{mainLayout}</>
-    ) : (
-      <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />
-    )
+    <LandingPage />
   ) : (
     <>{mainLayout}</>
   );

@@ -74,6 +74,24 @@
     "enterToSend": "Send",
     "shiftEnterForNewline": "New line"
   },
+  "authStatus": {
+    "checking": "Checking authentication...",
+    "authInfoTitle": "Authentication Info",
+    "loggedIn": "Signed in",
+    "accountLabel": "Account",
+    "pointsBalance": "Points Balance",
+    "pointsInfo": "Points Info",
+    "credentialsLabel": "Credentials",
+    "accessTokenLabel": "access_token",
+    "copy": "Copy",
+    "openInApp": "Open in App",
+    "clickToCopy": "Click to copy",
+    "noAccessToken": "No access_token",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "unauthorized": "Unauthorized user",
+    "authError": "Authentication error or not configured"
+  },
   "modelCapabilities": {
     "vision": "Vision Support",
     "audioInput": "Audio Input",

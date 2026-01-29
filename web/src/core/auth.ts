@@ -105,7 +105,7 @@ export const logout = () => {
 
   setUser(null);
   setToken(null);
-  setStatus("idle");
+  setStatus("failed"); // Set to "failed" to show landing page instead of loading screen
 };
 
 /**

@@ -66,6 +66,24 @@
     "enterToSend": "送信",
     "shiftEnterForNewline": "新しい行"
   },
+  "authStatus": {
+    "checking": "認証状態を確認中...",
+    "authInfoTitle": "認証情報",
+    "loggedIn": "サインイン済み",
+    "accountLabel": "アカウント",
+    "pointsBalance": "ポイント残高",
+    "pointsInfo": "ポイント説明",
+    "credentialsLabel": "認証情報",
+    "accessTokenLabel": "access_token",
+    "copy": "コピー",
+    "openInApp": "アプリで開く",
+    "clickToCopy": "クリックしてコピー",
+    "noAccessToken": "access_token なし",
+    "settings": "設定",
+    "logout": "サインアウト",
+    "unauthorized": "未承認のユーザー",
+    "authError": "認証エラーまたは未設定"
+  },
   "modelCapabilities": {
     "vision": "ビジョンサポート",
     "audioInput": "オーディオ入力",

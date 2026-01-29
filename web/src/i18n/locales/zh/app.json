@@ -74,6 +74,24 @@
     "enterToSend": "发送",
     "shiftEnterForNewline": "换行"
   },
+  "authStatus": {
+    "checking": "检查认证状态...",
+    "authInfoTitle": "认证信息",
+    "loggedIn": "已登录",
+    "accountLabel": "账户",
+    "pointsBalance": "积分余额",
+    "pointsInfo": "积分说明",
+    "credentialsLabel": "凭证",
+    "accessTokenLabel": "access_token",
+    "copy": "复制",
+    "openInApp": "在 App 中打开",
+    "clickToCopy": "点击复制",
+    "noAccessToken": "暂无 access_token",
+    "settings": "设置",
+    "logout": "退出登录",
+    "unauthorized": "未授权的用户",
+    "authError": "认证错误或未配置"
+  },
   "modelCapabilities": {
     "vision": "视觉支持",
     "audioInput": "音频输入",

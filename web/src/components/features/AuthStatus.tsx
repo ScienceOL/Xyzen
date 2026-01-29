@@ -17,6 +17,7 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { TokenInputModal } from "@/components/features/TokenInputModal";
+import { logout } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserWallet } from "@/hooks/useUserWallet";
 import { useXyzen } from "@/store";
@@ -27,8 +28,10 @@ import {
   InformationCircleIcon,
   SparklesIcon,
   UserIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface AuthStatusProps {
   onTokenInput?: (token: string) => void;
@@ -37,6 +40,7 @@ export interface AuthStatusProps {
 
 export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   const auth = useAuth();
+  const { t } = useTranslation();
   const { openSettingsModal } = useXyzen();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -47,7 +51,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
 
   const maskedToken = (() => {
     const token = auth.token;
-    if (!token) return "暂无 access_token";
+    if (!token) return t("app.authStatus.noAccessToken");
     if (token.length <= 20) return "***";
     return `${token.slice(0, 10)}…${token.slice(-8)}`;
   })();
@@ -79,7 +83,9 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600 dark:border-neutral-700 dark:border-t-indigo-500" />
-        <span className="text-sm text-neutral-500">检查认证状态...</span>
+        <span className="text-sm text-neutral-500">
+          {t("app.authStatus.checking")}
+        </span>
       </div>
     );
   }
@@ -93,7 +99,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
             <button
               type="button"
               className={`flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${className}`}
-              title="认证信息"
+              title={t("app.authStatus.authInfoTitle")}
             >
               {auth.user?.avatar ? (
                 <img
@@ -108,13 +114,15 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
               )}
 
               <span className="text-sm font-medium max-w-32 truncate text-neutral-900 dark:text-neutral-100">
-                {auth.user?.username ?? "已登录"}
+                {auth.user?.username ?? t("app.authStatus.loggedIn")}
               </span>
             </button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="text-xs">账户</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs">
+              {t("app.authStatus.accountLabel")}
+            </DropdownMenuLabel>
 
             <div className="px-2 py-1.5">
               <div className="relative overflow-hidden rounded-lg border border-indigo-100 bg-linear-to-br from-indigo-50/80 to-white p-3 dark:border-indigo-500/20 dark:from-indigo-950/20 dark:to-neutral-900/20">
@@ -125,7 +133,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                     </div>
                     <div>
                       <div className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
-                        积分余额
+                        {t("app.authStatus.pointsBalance")}
                       </div>
                       <div className="font-bold text-indigo-900 dark:text-indigo-100">
                         {walletQuery.isLoading
@@ -141,7 +149,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                       setShowPointsInfo(true);
                     }}
                     className="rounded-full p-1 text-neutral-400 transition-colors hover:bg-white/50 hover:text-indigo-600 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-indigo-400"
-                    title="积分说明"
+                    title={t("app.authStatus.pointsInfo")}
                   >
                     <InformationCircleIcon className="h-5 w-5" />
                   </button>
@@ -151,11 +159,13 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuLabel className="text-xs">凭证</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs">
+              {t("app.authStatus.credentialsLabel")}
+            </DropdownMenuLabel>
             <div className="px-2 py-1.5">
               <div className="mb-1 flex items-center justify-between">
                 <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                  access_token
+                  {t("app.authStatus.accessTokenLabel")}
                 </div>
                 <div className="flex items-center gap-1">
                   <TooltipProvider>
@@ -169,7 +179,9 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                           className="text-neutral-500 hover:text-neutral-700 disabled:cursor-not-allowed disabled:opacity-60 dark:text-neutral-400 dark:hover:text-neutral-200"
                         />
                       </TooltipTrigger>
-                      <TooltipContent>复制</TooltipContent>
+                      <TooltipContent>
+                        {t("app.authStatus.copy")}
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
 
@@ -193,7 +205,9 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                           <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>在 App 中打开</TooltipContent>
+                      <TooltipContent>
+                        {t("app.authStatus.openInApp")}
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
@@ -204,7 +218,11 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                 disabled={!auth.token}
                 onClick={() => void copyTokenFallback()}
                 className="w-full rounded-md bg-neutral-100 px-2 py-1.5 text-left font-mono text-[11px] text-neutral-800 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-                title={auth.token ? "点击复制" : "暂无 access_token"}
+                title={
+                  auth.token
+                    ? t("app.authStatus.clickToCopy")
+                    : t("app.authStatus.noAccessToken")
+                }
               >
                 <span className="block truncate">{maskedToken}</span>
               </button>
@@ -221,7 +239,20 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                 className="flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
               >
                 <Cog6ToothIcon className="mr-2 h-4 w-4" />
-                设置
+                {t("app.authStatus.settings")}
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                onSelect={() => {
+                  setMenuOpen(false);
+                  logout();
+                }}
+                className="flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-red-50 focus:bg-red-50 text-red-600 dark:hover:bg-red-950/20 dark:focus:bg-red-950/20 dark:text-red-400"
+              >
+                <ArrowRightOnRectangleIcon className="mr-2 h-4 w-4" />
+                {t("app.authStatus.logout")}
               </DropdownMenuItem>
             </div>
           </DropdownMenuContent>
@@ -237,7 +268,9 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
 
   // 未登录或失败：显示感叹号，点击可输入 Token
   const tooltipMessage =
-    auth.status === "failed" ? "认证错误或未配置" : "未授权的用户";
+    auth.status === "failed"
+      ? t("app.authStatus.authError")
+      : t("app.authStatus.unauthorized");
   return (
     <>
       <div className={`flex items-center space-x-2 ${className}`}>
