@@ -8,10 +8,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 
 import { SecretCodePage } from "@/components/admin/SecretCodePage";
-import { CenteredInput, UpdateOverlay } from "@/components/features";
+import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
-import { useAutoUpdate } from "@/hooks/useAutoUpdate";
 import useTheme from "@/hooks/useTheme";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { AppFullscreen } from "./AppFullscreen";
@@ -260,7 +259,7 @@ export function Xyzen({
       <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />
     )
   ) : (
-    <AutoUpdateWrapper>{mainLayout}</AutoUpdateWrapper>
+    <>{mainLayout}</>
   );
 
   // Check if we're on the secret code page
@@ -277,20 +276,6 @@ export function Xyzen({
       {gatedContent}
     </QueryClientProvider>
   );
-}
-
-/**
- * Wrapper component that handles auto-update logic.
- * Must be rendered inside QueryClientProvider since it uses useBackendVersion.
- */
-function AutoUpdateWrapper({ children }: { children: React.ReactNode }) {
-  const { isUpdating, targetVersion } = useAutoUpdate();
-
-  if (isUpdating && targetVersion) {
-    return <UpdateOverlay targetVersion={targetVersion} />;
-  }
-
-  return <>{children}</>;
 }
 
 const LOADING_MESSAGES = [
