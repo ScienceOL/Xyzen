@@ -1,4 +1,8 @@
-import { generateClientId, groupToolMessagesWithAssistant } from "@/core/chat";
+import {
+  generateClientId,
+  groupToolMessagesWithAssistant,
+  isValidUuid,
+} from "@/core/chat";
 import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
 import { providerCore } from "@/core/provider";
 import { authService } from "@/service/authService";
@@ -688,6 +692,7 @@ export const createChatSlice: StateCreator<
                   // Content will be routed to phase.streamedContent in streaming_chunk
                   channel.messages[agentMsgIndex] = {
                     ...channel.messages[agentMsgIndex],
+                    ...(eventData.id ? { id: eventData.id } : {}),
                     isStreaming: true,
                   };
                   break;
@@ -2492,6 +2497,20 @@ export const createChatSlice: StateCreator<
 
       const channel = channels[activeChatChannel];
       if (!channel) return;
+
+      // Check if the message ID is a server-assigned UUID (not a client-generated temporary ID)
+      if (!isValidUuid(messageId)) {
+        // Find the message to provide contextual error
+        const message = channel.messages.find((m) => m.id === messageId);
+        const reason = message?.isStreaming
+          ? "Message is still streaming"
+          : "Message has not been saved to server yet";
+        console.error(
+          `Cannot delete message: ${reason} (id: ${messageId.slice(0, 20)}...)`,
+        );
+        get().showNotification("Cannot Delete", reason, "warning");
+        return;
+      }
 
       // Verify message belongs to the active channel before deleting
       const messageExists = channel.messages.some((m) => m.id === messageId);
