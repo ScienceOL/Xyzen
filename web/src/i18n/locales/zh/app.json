@@ -15,6 +15,15 @@
       "label": "思考中...",
       "showThinking": "显示思考过程",
       "hideThinking": "隐藏思考过程"
+    },
+    "toolCall": {
+      "arguments": "调用参数",
+      "result": "执行结果",
+      "error": "错误信息",
+      "executedAt": "执行时间",
+      "expandImage": "点击放大",
+      "imageAlt": "生成的图片",
+      "confirmExecute": "确认执行"
     }
   },
   "activityBar": {

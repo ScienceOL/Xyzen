@@ -15,6 +15,15 @@
       "label": "思考中...",
       "showThinking": "思考過程を表示",
       "hideThinking": "思考過程を非表示"
+    },
+    "toolCall": {
+      "arguments": "引数",
+      "result": "結果",
+      "error": "エラー",
+      "executedAt": "実行時刻",
+      "expandImage": "クリックで拡大",
+      "imageAlt": "生成画像",
+      "confirmExecute": "実行を確認"
     }
   },
   "activityBar": {

@@ -15,6 +15,15 @@
       "label": "Thinking...",
       "showThinking": "Show thinking",
       "hideThinking": "Hide thinking"
+    },
+    "toolCall": {
+      "arguments": "Arguments",
+      "result": "Result",
+      "error": "Error",
+      "executedAt": "Executed at",
+      "expandImage": "Click to expand",
+      "imageAlt": "Generated image",
+      "confirmExecute": "Confirm"
     }
   },
   "activityBar": {

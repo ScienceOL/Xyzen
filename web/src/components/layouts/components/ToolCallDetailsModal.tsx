@@ -4,6 +4,7 @@ import { zIndexClasses } from "@/constants/zIndex";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface ToolCallDetailsModalProps {
   toolCall: ToolCall;
@@ -20,6 +21,7 @@ export default function ToolCallDetailsModal({
   onConfirm,
   onCancel,
 }: ToolCallDetailsModalProps) {
+  const { t } = useTranslation();
   const isWaitingConfirmation = toolCall.status === "waiting_confirmation";
 
   return (
@@ -63,26 +65,17 @@ export default function ToolCallDetailsModal({
                       type="button"
                       onClick={onClose}
                       className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-                      title="Close"
+                      title={t("common.close", { defaultValue: "Close" })}
                     >
                       <XMarkIcon className="h-5 w-5" />
                     </button>
                   </div>
 
                   <div className="px-4 py-3">
-                    {isWaitingConfirmation &&
-                      Object.keys(toolCall.arguments || {}).length > 0 && (
-                        <div className="mb-3 rounded-md border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/30">
-                          <div className="mb-2 text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                            即将执行的参数:
-                          </div>
-                          <ToolCallDetails toolCall={toolCall} />
-                        </div>
-                      )}
-
-                    {!isWaitingConfirmation && (
-                      <ToolCallDetails toolCall={toolCall} />
-                    )}
+                    <ToolCallDetails
+                      toolCall={toolCall}
+                      showTimestamp={!isWaitingConfirmation}
+                    />
                   </div>
 
                   {isWaitingConfirmation && (
@@ -92,14 +85,16 @@ export default function ToolCallDetailsModal({
                         onClick={() => onCancel?.(toolCall.id)}
                         className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
                       >
-                        取消
+                        {t("common.cancel", { defaultValue: "Cancel" })}
                       </button>
                       <button
                         type="button"
                         onClick={() => onConfirm?.(toolCall.id)}
                         className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
                       >
-                        确认执行
+                        {t("app.chat.toolCall.confirmExecute", {
+                          defaultValue: "Confirm",
+                        })}
                       </button>
                     </div>
                   )}

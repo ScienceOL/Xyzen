@@ -43,7 +43,7 @@ function Typewriter({
   ...props
 }: TypewriterProps) {
   const [displayedText, setDisplayedText] = React.useState("");
-  const [isComplete, setIsComplete] = React.useState(false);
+  const [, setIsComplete] = React.useState(false);
   const onCompleteRef = React.useRef(onComplete);
 
   // Keep onComplete ref updated to avoid dependency issues
@@ -95,10 +95,7 @@ function Typewriter({
           data-slot="typewriter-cursor"
           variants={cursorVariants}
           animate="blinking"
-          className={cn(
-            "ml-1 inline-block font-light",
-            isComplete ? "opacity-100" : "opacity-100",
-          )}
+          className={cn("ml-1 inline-block font-light", "opacity-100")}
           aria-hidden="true"
         >
           {cursorChar}

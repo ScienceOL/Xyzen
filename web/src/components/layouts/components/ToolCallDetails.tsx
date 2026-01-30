@@ -4,10 +4,13 @@ import type { ToolCall } from "@/store/types";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import { ArrowsPointingOutIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ToolCallDetailsProps {
   toolCall: ToolCall;
+  showSectionTitles?: boolean;
+  showTimestamp?: boolean;
 }
 
 const getImageFromResult = (result: unknown): string | null => {
@@ -55,8 +58,23 @@ const parseToolResult = (result: ToolCall["result"]): unknown => {
   return result;
 };
 
-export default function ToolCallDetails({ toolCall }: ToolCallDetailsProps) {
+export default function ToolCallDetails({
+  toolCall,
+  showSectionTitles = true,
+  showTimestamp = true,
+}: ToolCallDetailsProps) {
+  const { t } = useTranslation();
   const [isImageLightboxOpen, setIsImageLightboxOpen] = useState(false);
+
+  const parsedResult = useMemo(() => {
+    if (!toolCall.result) return undefined;
+    return parseToolResult(toolCall.result);
+  }, [toolCall.result]);
+
+  const imageUrl = useMemo(() => {
+    if (parsedResult === undefined) return null;
+    return getImageFromResult(parsedResult);
+  }, [parsedResult]);
 
   const jsonVariant: "success" | "error" | "default" =
     toolCall.status === "completed"
@@ -70,9 +88,11 @@ export default function ToolCallDetails({ toolCall }: ToolCallDetailsProps) {
       {/* Arguments */}
       {Object.keys(toolCall.arguments || {}).length > 0 && (
         <div className="mb-3">
-          <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-            调用参数:
-          </h4>
+          {showSectionTitles && (
+            <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+              {t("app.chat.toolCall.arguments", { defaultValue: "Arguments" })}:
+            </h4>
+          )}
           <JsonDisplay
             data={toolCall.arguments}
             compact
@@ -85,114 +105,117 @@ export default function ToolCallDetails({ toolCall }: ToolCallDetailsProps) {
       {/* Result */}
       {toolCall.result && (
         <div className="mb-3">
-          <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-            执行结果:
-          </h4>
-          {(() => {
-            const parsedResult = parseToolResult(toolCall.result);
-            const imageUrl = getImageFromResult(parsedResult);
+          {showSectionTitles && (
+            <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+              {t("app.chat.toolCall.result", { defaultValue: "Result" })}:
+            </h4>
+          )}
 
-            if (imageUrl) {
-              return (
-                <div className="space-y-3">
-                  <div
-                    className="inline-block cursor-pointer group"
-                    onClick={() => setIsImageLightboxOpen(true)}
-                  >
-                    <div className="relative rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow">
-                      <img
-                        src={imageUrl}
-                        alt="Generated image"
-                        className="max-w-[280px] max-h-[280px] w-auto h-auto object-contain"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
-                          <ArrowsPointingOutIcon className="w-3 h-3" />
-                          Click to expand
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <AnimatePresence>
-                    {isImageLightboxOpen && (
-                      <Dialog
-                        static
-                        open={isImageLightboxOpen}
-                        onClose={() => setIsImageLightboxOpen(false)}
-                        className={`relative ${zIndexClasses.modal}`}
-                      >
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="fixed inset-0 bg-black/80 backdrop-blur-sm"
-                          aria-hidden="true"
-                        />
-
-                        <div
-                          className="fixed inset-0 flex items-center justify-center p-4"
-                          onClick={() => setIsImageLightboxOpen(false)}
-                        >
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.2 }}
-                            className="relative max-w-[90vw] max-h-[90vh]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <DialogPanel>
-                              <img
-                                src={imageUrl}
-                                alt="Generated image"
-                                className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                              />
-                              <button
-                                onClick={() => setIsImageLightboxOpen(false)}
-                                className="absolute -top-3 -right-3 rounded-full p-1.5 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 shadow-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-                                type="button"
-                              >
-                                <XMarkIcon className="h-5 w-5" />
-                              </button>
-                            </DialogPanel>
-                          </motion.div>
-                        </div>
-                      </Dialog>
-                    )}
-                  </AnimatePresence>
-
-                  <JsonDisplay
-                    data={parsedResult}
-                    compact
-                    variant={jsonVariant}
-                    hideHeader
+          {imageUrl && parsedResult !== undefined ? (
+            <div className="space-y-3">
+              <div
+                className="inline-block cursor-pointer group"
+                onClick={() => setIsImageLightboxOpen(true)}
+              >
+                <div className="relative rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow">
+                  <img
+                    src={imageUrl}
+                    alt={t("app.chat.toolCall.imageAlt", {
+                      defaultValue: "Generated image",
+                    })}
+                    className="max-w-[280px] max-h-[280px] w-auto h-auto object-contain"
+                    loading="lazy"
                   />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+                      <ArrowsPointingOutIcon className="w-3 h-3" />
+                      {t("app.chat.toolCall.expandImage", {
+                        defaultValue: "Click to expand",
+                      })}
+                    </span>
+                  </div>
                 </div>
-              );
-            }
+              </div>
 
-            return (
+              <AnimatePresence>
+                {isImageLightboxOpen && (
+                  <Dialog
+                    static
+                    open={isImageLightboxOpen}
+                    onClose={() => setIsImageLightboxOpen(false)}
+                    className={`relative ${zIndexClasses.modal}`}
+                  >
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+                      aria-hidden="true"
+                    />
+
+                    <div
+                      className="fixed inset-0 flex items-center justify-center p-4"
+                      onClick={() => setIsImageLightboxOpen(false)}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative max-w-[90vw] max-h-[90vh]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DialogPanel>
+                          <img
+                            src={imageUrl}
+                            alt={t("app.chat.toolCall.imageAlt", {
+                              defaultValue: "Generated image",
+                            })}
+                            className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                          />
+                          <button
+                            onClick={() => setIsImageLightboxOpen(false)}
+                            className="absolute -top-3 -right-3 rounded-full p-1.5 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 shadow-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                            type="button"
+                            title={t("common.close", { defaultValue: "Close" })}
+                          >
+                            <XMarkIcon className="h-5 w-5" />
+                          </button>
+                        </DialogPanel>
+                      </motion.div>
+                    </div>
+                  </Dialog>
+                )}
+              </AnimatePresence>
+
               <JsonDisplay
                 data={parsedResult}
                 compact
                 variant={jsonVariant}
                 hideHeader
-                enableCharts={true}
               />
-            );
-          })()}
+            </div>
+          ) : (
+            <JsonDisplay
+              data={parsedResult}
+              compact
+              variant={jsonVariant}
+              hideHeader
+              enableCharts={true}
+            />
+          )}
         </div>
       )}
 
       {/* Error */}
       {toolCall.error && (
         <div className="mb-3">
-          <h4 className="text-xs font-medium text-red-700 dark:text-red-300 mb-2">
-            错误信息:
-          </h4>
+          {showSectionTitles && (
+            <h4 className="text-xs font-medium text-red-700 dark:text-red-300 mb-2">
+              {t("app.chat.toolCall.error", { defaultValue: "Error" })}:
+            </h4>
+          )}
           <div className="rounded-sm bg-red-50 p-2 dark:bg-red-900/20">
             <pre className="text-xs text-red-800 dark:text-red-200 overflow-x-auto whitespace-pre-wrap">
               {toolCall.error}
@@ -201,9 +224,12 @@ export default function ToolCallDetails({ toolCall }: ToolCallDetailsProps) {
         </div>
       )}
 
-      <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-        执行时间: {new Date(toolCall.timestamp).toLocaleTimeString()}
-      </div>
+      {showTimestamp && (
+        <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+          {t("app.chat.toolCall.executedAt", { defaultValue: "Executed at" })}:{" "}
+          {new Date(toolCall.timestamp).toLocaleTimeString()}
+        </div>
+      )}
     </div>
   );
 }
