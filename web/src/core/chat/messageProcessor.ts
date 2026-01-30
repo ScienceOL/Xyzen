@@ -85,11 +85,24 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
     { toolCall: ToolCall; message: Message }
   >();
 
+  // Track the most recent assistant message that has an execution timeline.
+  // After refresh, tool messages should be attached to that timeline (not rendered as separate messages).
+  let lastAssistantWithExecution: Message | null = null;
+
   for (const msg of messages) {
     // Non-tool messages are cloned and added directly
     if (msg.role !== "tool") {
       const cloned = cloneMessage(msg);
       result.push(cloned);
+
+      // Track the last assistant message that has an execution timeline
+      if (
+        cloned.role === "assistant" &&
+        cloned.agentExecution &&
+        cloned.agentExecution.phases.length > 0
+      ) {
+        lastAssistantWithExecution = cloned;
+      }
 
       // Register any tool calls for later reference
       if (cloned.toolCalls) {
@@ -124,6 +137,26 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
           : msg.created_at,
       };
 
+      // If we have a reconstructed execution timeline, attach tool calls to it.
+      // This keeps the refreshed UI consistent with live streaming (tool calls shown inside the timeline/phase).
+      if (lastAssistantWithExecution?.agentExecution) {
+        const execution = lastAssistantWithExecution.agentExecution;
+        const targetPhase = execution.currentNode
+          ? execution.phases.find((p) => p.id === execution.currentNode) ||
+            execution.phases[execution.phases.length - 1]
+          : execution.phases[execution.phases.length - 1];
+
+        if (!targetPhase.toolCalls) {
+          targetPhase.toolCalls = [];
+        }
+        targetPhase.toolCalls.push(toolCall);
+        toolCallLookup.set(toolCallId, {
+          toolCall,
+          message: lastAssistantWithExecution,
+        });
+        continue;
+      }
+
       // Create an assistant message to hold this tool call
       const toolMessage: Message = {
         id: msg.id || `tool-call-${toolCallId}`,
@@ -145,7 +178,27 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
       continue;
     }
 
+    // If we have a reconstructed execution timeline, treat tool responses as updates to tool calls in phases.
+    // In this mode, toolCallLookup entries will already point at the phase-attached ToolCall.
+
     let existingEntry = toolCallLookup.get(toolCallId);
+    if (!existingEntry) {
+      // Attempt to find the tool call inside the reconstructed execution timeline
+      if (lastAssistantWithExecution?.agentExecution) {
+        for (const phase of lastAssistantWithExecution.agentExecution.phases) {
+          const found = phase.toolCalls?.find((tc) => tc.id === toolCallId);
+          if (found) {
+            existingEntry = {
+              toolCall: found,
+              message: lastAssistantWithExecution,
+            };
+            toolCallLookup.set(toolCallId, existingEntry);
+            break;
+          }
+        }
+      }
+    }
+
     if (!existingEntry) {
       // Create a placeholder if we received a response without seeing the request
       const toolCall: ToolCall = {

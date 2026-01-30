@@ -16,13 +16,7 @@ import { useXyzen } from "@/store";
 // Import types from separate file
 import type { Agent } from "@/types/agents";
 
-interface XyzenAgentProps {
-  systemAgentType?: "chat" | "all";
-}
-
-export default function XyzenAgent({
-  systemAgentType = "all",
-}: XyzenAgentProps) {
+export default function XyzenAgent() {
   const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -160,26 +154,6 @@ export default function XyzenAgent({
     [reorderAgents],
   );
 
-  // Find system agents within the user's agents list using tags
-  const filteredSystemAgents = agents.filter((agent) => {
-    if (!agent.tags) return false;
-
-    if (systemAgentType === "all") {
-      return agent.tags.some((tag) => tag.startsWith("default_"));
-    }
-    if (systemAgentType === "chat") {
-      return agent.tags.includes("default_chat");
-    }
-    return false;
-  });
-
-  // Regular agents (excluding the ones already identified as default)
-  const regularAgents = agents.filter(
-    (agent) => !agent.tags?.some((tag) => tag.startsWith("default_")),
-  );
-
-  const allAgents = [...filteredSystemAgents, ...regularAgents];
-
   // Clean sidebar with auto-loaded MCPs for system agents
   return (
     <TooltipProvider>
@@ -189,7 +163,7 @@ export default function XyzenAgent({
         animate={{ opacity: 1 }}
       >
         <AgentList
-          agents={allAgents}
+          agents={agents}
           variant="detailed"
           sortable={true}
           publishedAgentIds={publishedAgentIds}

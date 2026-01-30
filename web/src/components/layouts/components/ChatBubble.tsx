@@ -12,7 +12,8 @@ import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
 import ThinkingBubble from "./ThinkingBubble";
-import ToolCallCard from "./ToolCallCard";
+import ToolCallPill from "./ToolCallPill";
+import ToolCallDetailsModal from "./ToolCallDetailsModal";
 
 interface ChatBubbleProps {
   message: Message;
@@ -20,6 +21,9 @@ interface ChatBubbleProps {
 
 function ChatBubble({ message }: ChatBubbleProps) {
   const [isCopied, setIsCopied] = useState(false);
+  const [selectedToolCallId, setSelectedToolCallId] = useState<string | null>(
+    null,
+  );
   const confirmToolCall = useXyzen((state) => state.confirmToolCall);
   const cancelToolCall = useXyzen((state) => state.cancelToolCall);
   const activeChatChannel = useXyzen((state) => state.activeChatChannel);
@@ -56,6 +60,10 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   const isUserMessage = role === "user";
   const isToolMessage = toolCalls && toolCalls.length > 0;
+
+  const selectedToolCall = selectedToolCallId
+    ? toolCalls?.find((tc) => tc.id === selectedToolCallId) || null
+    : null;
 
   // Updated time format to include seconds
   const formattedTime = new Date(created_at).toLocaleTimeString([], {
@@ -164,7 +172,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     }
   };
 
-  // If this is a tool message from history, render as ToolCallCard
+  // Tool call messages (from history refresh) render as pills + modal
   if (isToolMessage) {
     return (
       <motion.div
@@ -173,20 +181,28 @@ function ChatBubble({ message }: ChatBubbleProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="group relative w-full pl-8"
       >
+        {selectedToolCall && (
+          <ToolCallDetailsModal
+            toolCall={selectedToolCall}
+            open={Boolean(selectedToolCall)}
+            onClose={() => setSelectedToolCallId(null)}
+            onConfirm={(toolCallId) =>
+              activeChatChannel &&
+              confirmToolCall(activeChatChannel, toolCallId)
+            }
+            onCancel={(toolCallId) =>
+              activeChatChannel && cancelToolCall(activeChatChannel, toolCallId)
+            }
+          />
+        )}
+
         {toolCalls && toolCalls.length > 0 && (
-          <div className="mt-1 space-y-3">
+          <div className="mt-1 flex flex-wrap gap-1.5">
             {toolCalls.map((toolCall) => (
-              <ToolCallCard
+              <ToolCallPill
                 key={toolCall.id}
                 toolCall={toolCall}
-                onConfirm={(toolCallId) =>
-                  activeChatChannel &&
-                  confirmToolCall(activeChatChannel, toolCallId)
-                }
-                onCancel={(toolCallId) =>
-                  activeChatChannel &&
-                  cancelToolCall(activeChatChannel, toolCallId)
-                }
+                onClick={() => setSelectedToolCallId(toolCall.id)}
               />
             ))}
           </div>
