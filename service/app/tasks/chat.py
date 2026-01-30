@@ -49,16 +49,14 @@ class RedisPublisher:
     async def check_abort(self) -> bool:
         """Check if abort signal has been set for this connection.
 
-        Uses a fresh Redis connection to ensure we get the latest value,
-        avoiding any potential caching issues with the persistent connection.
+        Uses the existing Redis client for a simple GET, which is not cached
+        at the client level and therefore still observes the latest value.
+        This avoids the overhead of creating a new Redis connection on each
+        abort check tick.
         """
         try:
-            fresh_client = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
-            try:
-                result = await fresh_client.get(self.abort_key)
-                return result is not None
-            finally:
-                await fresh_client.aclose()
+            result = await self.redis_client.get(self.abort_key)
+            return result is not None
         except Exception as e:
             logger.warning(f"Failed to check abort signal: {e}")
             return False

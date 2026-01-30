@@ -26,6 +26,10 @@ import type {
 // NOTE: groupToolMessagesWithAssistant and generateClientId have been moved to
 // @/core/chat/messageProcessor.ts as part of the frontend refactor.
 
+// Track abort timeout IDs per channel to allow cleanup
+// Using a module-level Map since NodeJS.Timeout is not serializable in store
+const abortTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
+
 export interface ChatSlice {
   // Chat panel state
   activeChatChannel: string | null;
@@ -1236,6 +1240,13 @@ export const createChatSlice: StateCreator<
 
                 console.log("Stream aborted:", abortData);
 
+                // Clear any pending abort timeout since backend responded
+                const pendingTimeout = abortTimeoutIds.get(channel.id);
+                if (pendingTimeout) {
+                  clearTimeout(pendingTimeout);
+                  abortTimeoutIds.delete(channel.id);
+                }
+
                 // Reset responding and aborting states
                 channel.responding = false;
                 channel.aborting = false;
@@ -2254,6 +2265,13 @@ export const createChatSlice: StateCreator<
       // Send abort signal to backend via WebSocket
       xyzenService.sendAbort();
 
+      // Clear any existing abort timeout for this channel to prevent stale timers
+      const existingTimeout = abortTimeoutIds.get(channelId);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+        abortTimeoutIds.delete(channelId);
+      }
+
       // Optimistically update UI state
       set((state: ChatSlice) => {
         if (state.channels[channelId]) {
@@ -2263,7 +2281,10 @@ export const createChatSlice: StateCreator<
 
       // Timeout fallback: if backend doesn't respond within 10 seconds, reset state
       // This prevents the UI from being stuck in aborting/responding state
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
+        // Clean up the timeout reference
+        abortTimeoutIds.delete(channelId);
+
         const currentState = get();
         const channel = currentState.channels[channelId];
         if (channel?.aborting) {
@@ -2317,6 +2338,9 @@ export const createChatSlice: StateCreator<
           });
         }
       }, 10000); // 10 second timeout
+
+      // Track the timeout ID for cleanup
+      abortTimeoutIds.set(channelId, timeoutId);
     },
 
     setKnowledgeContext: (channelId, context) => {
