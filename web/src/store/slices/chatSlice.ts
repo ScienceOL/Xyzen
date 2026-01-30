@@ -680,6 +680,7 @@ export const createChatSlice: StateCreator<
                   // Content will be routed to phase.streamedContent in streaming_chunk
                   channel.messages[agentMsgIndex] = {
                     ...channel.messages[agentMsgIndex],
+                    id: eventData.id,
                     isStreaming: true,
                   };
                   break;
@@ -2328,6 +2329,17 @@ export const createChatSlice: StateCreator<
 
       const channel = channels[activeChatChannel];
       if (!channel) return;
+
+      const isUuid = /^[0-9a-fA-F-]{36}$/u.test(messageId);
+      if (!isUuid) {
+        console.error("Message ID is not a valid UUID, skipping delete");
+        get().showNotification(
+          "Error",
+          "Message is not yet persisted and cannot be deleted",
+          "error",
+        );
+        return;
+      }
 
       // Verify message belongs to the active channel before deleting
       const messageExists = channel.messages.some((m) => m.id === messageId);
