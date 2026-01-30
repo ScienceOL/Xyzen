@@ -18,6 +18,19 @@ export function generateClientId(): string {
 }
 
 /**
+ * Check if a string is a valid UUID (v1-v5 format)
+ * Uses canonical UUID pattern: 8-4-4-4-12 hex characters
+ * This is used to distinguish server-assigned IDs from client-generated temporary IDs
+ */
+export function isValidUuid(id: string): boolean {
+  // Canonical UUID format: xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx
+  // M = version (1-5), N = variant (8, 9, a, b)
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
+/**
  * Deep clone a ToolCall object
  */
 function cloneToolCall(toolCall: ToolCall): ToolCall {

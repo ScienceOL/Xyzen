@@ -8,6 +8,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   generateClientId,
+  isValidUuid,
   groupToolMessagesWithAssistant,
   createLoadingMessage,
   convertToStreamingMessage,
@@ -36,6 +37,56 @@ describe("generateClientId", () => {
     const id1 = generateClientId();
     const id2 = generateClientId();
     expect(id1).not.toBe(id2);
+  });
+});
+
+describe("isValidUuid", () => {
+  it("returns true for valid UUID v4", () => {
+    expect(isValidUuid("550e8400-e29b-41d4-a716-446655440000")).toBe(true);
+    expect(isValidUuid("6ba7b810-9dad-11d1-80b4-00c04fd430c8")).toBe(true);
+    expect(isValidUuid("f47ac10b-58cc-4372-a567-0e02b2c3d479")).toBe(true);
+  });
+
+  it("returns true for valid UUIDs with uppercase letters", () => {
+    expect(isValidUuid("550E8400-E29B-41D4-A716-446655440000")).toBe(true);
+    expect(isValidUuid("F47AC10B-58CC-4372-A567-0E02B2C3D479")).toBe(true);
+  });
+
+  it("returns false for client-generated IDs", () => {
+    // Client IDs from generateClientId()
+    expect(isValidUuid("msg-1706745600000-abc123")).toBe(false);
+    expect(isValidUuid("loading-1706745600000")).toBe(false);
+  });
+
+  it("returns false for strings with wrong format", () => {
+    // All hyphens (36 chars but not valid UUID)
+    expect(isValidUuid("------------------------------------")).toBe(false);
+    // Wrong segment lengths
+    expect(isValidUuid("550e8400e29b-41d4-a716-446655440000")).toBe(false);
+    // Too short
+    expect(isValidUuid("550e8400-e29b-41d4-a716")).toBe(false);
+    // Too long
+    expect(isValidUuid("550e8400-e29b-41d4-a716-4466554400001")).toBe(false);
+  });
+
+  it("returns false for invalid version numbers", () => {
+    // Version 0 (invalid)
+    expect(isValidUuid("550e8400-e29b-01d4-a716-446655440000")).toBe(false);
+    // Version 6+ (invalid for standard UUIDs)
+    expect(isValidUuid("550e8400-e29b-61d4-a716-446655440000")).toBe(false);
+  });
+
+  it("returns false for invalid variant bits", () => {
+    // Variant 0-7 (not RFC 4122)
+    expect(isValidUuid("550e8400-e29b-41d4-0716-446655440000")).toBe(false);
+    expect(isValidUuid("550e8400-e29b-41d4-7716-446655440000")).toBe(false);
+    // Variant c-f (reserved)
+    expect(isValidUuid("550e8400-e29b-41d4-c716-446655440000")).toBe(false);
+  });
+
+  it("returns false for empty string and non-hex characters", () => {
+    expect(isValidUuid("")).toBe(false);
+    expect(isValidUuid("gggggggg-gggg-4ggg-8ggg-gggggggggggg")).toBe(false);
   });
 });
 

@@ -8,6 +8,7 @@
 // Message processing utilities
 export {
   generateClientId,
+  isValidUuid,
   groupToolMessagesWithAssistant,
   createLoadingMessage,
   convertToStreamingMessage,
