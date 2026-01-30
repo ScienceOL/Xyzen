@@ -83,6 +83,12 @@
     "enterToSend": "发送",
     "shiftEnterForNewline": "换行"
   },
+  "message": {
+    "edit": "编辑",
+    "editCancel": "取消",
+    "editSave": "保存并重新生成",
+    "delete": "删除"
+  },
   "authStatus": {
     "checking": "检查认证状态...",
     "authInfoTitle": "认证信息",

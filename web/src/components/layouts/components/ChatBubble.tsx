@@ -4,9 +4,15 @@ import ProfileIcon from "@/assets/ProfileIcon";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
-import { CheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import {
+  CheckIcon,
+  ClipboardDocumentIcon,
+  PencilIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useDeferredValue, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import AgentExecutionTimeline from "./AgentExecutionTimeline";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
@@ -20,6 +26,7 @@ interface ChatBubbleProps {
 }
 
 function ChatBubble({ message }: ChatBubbleProps) {
+  const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
   const [selectedToolCallId, setSelectedToolCallId] = useState<string | null>(
     null,
@@ -30,6 +37,16 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const channels = useXyzen((state) => state.channels);
   const agents = useXyzen((state) => state.agents);
   const user = useXyzen((state) => state.user);
+
+  // Edit state
+  const editingMessageId = useXyzen((state) => state.editingMessageId);
+  const editingContent = useXyzen((state) => state.editingContent);
+  const startEditMessage = useXyzen((state) => state.startEditMessage);
+  const cancelEditMessage = useXyzen((state) => state.cancelEditMessage);
+  const submitEditMessage = useXyzen((state) => state.submitEditMessage);
+
+  // Delete state
+  const deleteMessage = useXyzen((state) => state.deleteMessage);
 
   // Get current agent avatar from store
   const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
@@ -60,6 +77,38 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   const isUserMessage = role === "user";
   const isToolMessage = toolCalls && toolCalls.length > 0;
+
+  // Edit state
+  const isEditing = editingMessageId === message.id;
+  const channel = activeChatChannel ? channels[activeChatChannel] : null;
+  const canEdit =
+    isUserMessage && !channel?.responding && !isLoading && !isStreaming;
+
+  const handleEditClick = () => {
+    startEditMessage(message.id, content);
+  };
+
+  const handleEditContentChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    useXyzen.setState({ editingContent: e.target.value });
+  };
+
+  const handleEditSave = async () => {
+    await submitEditMessage();
+  };
+
+  const handleEditCancel = () => {
+    cancelEditMessage();
+  };
+
+  // Delete state - both user and assistant messages can be deleted
+  const canDelete =
+    !channel?.responding && !isLoading && !isStreaming && !isEditing;
+
+  const handleDeleteClick = async () => {
+    await deleteMessage(message.id);
+  };
 
   const selectedToolCall = selectedToolCallId
     ? toolCalls?.find((tc) => tc.id === selectedToolCallId) || null
@@ -227,132 +276,186 @@ function ChatBubble({ message }: ChatBubbleProps) {
         {/* Avatar - positioned to the left */}
         <div className="absolute left-0 top-1">{renderAvatar()}</div>
 
-        {/* Message content */}
-        <div
-          className={`relative w-full min-w-0 ${messageStyles} transition-all duration-200 hover:shadow-sm`}
-        >
-          <div className="px-4 py-3 min-w-0">
-            {/* File Attachments - shown before text for user messages */}
-            {isUserMessage && attachments && attachments.length > 0 && (
-              <div className="mb-3">
-                <MessageAttachments attachments={attachments} />
+        {/* Edit mode for user messages */}
+        {isEditing ? (
+          <div className={`relative w-full min-w-0 ${messageStyles}`}>
+            <div className="px-4 py-3">
+              <textarea
+                value={editingContent}
+                onChange={handleEditContentChange}
+                className="w-full min-h-[80px] bg-transparent resize-none focus:outline-none text-sm text-neutral-800 dark:text-neutral-200"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  onClick={handleEditCancel}
+                  className="px-3 py-1 text-sm text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
+                >
+                  {t("app.message.editCancel")}
+                </button>
+                <button
+                  onClick={handleEditSave}
+                  className="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50"
+                  disabled={!editingContent.trim()}
+                >
+                  {t("app.message.editSave")}
+                </button>
               </div>
-            )}
-
-            <div
-              className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto select-text ${
-                isUserMessage
-                  ? "text-sm text-neutral-800 dark:text-neutral-200"
-                  : "text-sm text-neutral-700 dark:text-neutral-300"
-              }`}
-            >
-              {/* Thinking content - shown before main response for assistant messages */}
-              {!isUserMessage && thinkingContent && (
-                <ThinkingBubble
-                  content={thinkingContent}
-                  isThinking={isThinking ?? false}
-                />
+            </div>
+          </div>
+        ) : (
+          /* Message content */
+          <div
+            className={`relative w-full min-w-0 ${messageStyles} transition-all duration-200 hover:shadow-sm`}
+          >
+            <div className="px-4 py-3 min-w-0">
+              {/* File Attachments - shown before text for user messages */}
+              {isUserMessage && attachments && attachments.length > 0 && (
+                <div className="mb-3">
+                  <MessageAttachments attachments={attachments} />
+                </div>
               )}
 
-              {/* Agent execution timeline - show for all agents with phases */}
-              {!isUserMessage &&
-                agentExecution &&
-                agentExecution.phases.length > 0 && (
-                  <AgentExecutionTimeline
-                    execution={agentExecution}
-                    isExecuting={agentExecution.status === "running"}
+              <div
+                className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto select-text ${
+                  isUserMessage
+                    ? "text-sm text-neutral-800 dark:text-neutral-200"
+                    : "text-sm text-neutral-700 dark:text-neutral-300"
+                }`}
+              >
+                {/* Thinking content - shown before main response for assistant messages */}
+                {!isUserMessage && thinkingContent && (
+                  <ThinkingBubble
+                    content={thinkingContent}
+                    isThinking={isThinking ?? false}
                   />
                 )}
 
-              {(() => {
-                // Explicit loading state - show inline loading dots
-                if (isLoading) {
-                  return (
-                    <span className="inline-flex items-center gap-1">
-                      <LoadingMessage size="small" />
-                    </span>
-                  );
-                }
+                {/* Agent execution timeline - show for all agents with phases */}
+                {!isUserMessage &&
+                  agentExecution &&
+                  agentExecution.phases.length > 0 && (
+                    <AgentExecutionTimeline
+                      execution={agentExecution}
+                      isExecuting={agentExecution.status === "running"}
+                    />
+                  )}
 
-                // No agent execution - regular chat
-                if (!agentExecution) {
-                  return markdownContent;
-                }
-
-                // Agent with phases - get content from phases
-                if (agentExecution.phases.length > 0) {
-                  const activePhase = agentExecution.phases.find(
-                    (p) => p.status === "running",
-                  );
-                  const lastPhase =
-                    agentExecution.phases[agentExecution.phases.length - 1];
-                  const phaseContent =
-                    activePhase?.streamedContent || lastPhase?.streamedContent;
-
-                  // Show final phase content below timeline when completed
-                  if (
-                    !isStreaming &&
-                    agentExecution.status !== "running" &&
-                    lastPhase?.streamedContent
-                  ) {
+                {(() => {
+                  // Explicit loading state - show inline loading dots
+                  if (isLoading) {
                     return (
-                      <div className="mt-4">
-                        <Markdown content={lastPhase.streamedContent} />
-                      </div>
+                      <span className="inline-flex items-center gap-1">
+                        <LoadingMessage size="small" />
+                      </span>
                     );
                   }
 
-                  // Still streaming - content shown in timeline
-                  if (phaseContent) {
-                    return null;
+                  // No agent execution - regular chat
+                  if (!agentExecution) {
+                    return markdownContent;
                   }
-                }
 
-                // Still waiting for content - show inline loading dots
-                if (
-                  agentExecution.status === "running" &&
-                  !content &&
-                  agentExecution.phases.length === 0
-                ) {
-                  return (
-                    <span className="inline-flex items-center gap-1">
-                      <LoadingMessage size="small" />
-                    </span>
-                  );
-                }
+                  // Agent with phases - get content from phases
+                  if (agentExecution.phases.length > 0) {
+                    const activePhase = agentExecution.phases.find(
+                      (p) => p.status === "running",
+                    );
+                    const lastPhase =
+                      agentExecution.phases[agentExecution.phases.length - 1];
+                    const phaseContent =
+                      activePhase?.streamedContent ||
+                      lastPhase?.streamedContent;
 
-                // Fallback to message.content
-                return markdownContent;
-              })()}
+                    // Show final phase content below timeline when completed
+                    if (
+                      !isStreaming &&
+                      agentExecution.status !== "running" &&
+                      lastPhase?.streamedContent
+                    ) {
+                      return (
+                        <div className="mt-4">
+                          <Markdown content={lastPhase.streamedContent} />
+                        </div>
+                      );
+                    }
 
-              {isStreaming && !isLoading && (
-                <motion.span
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  className="ml-1 inline-block h-4 w-0.5 bg-current"
-                />
+                    // Still streaming - content shown in timeline
+                    if (phaseContent) {
+                      return null;
+                    }
+                  }
+
+                  // Still waiting for content - show inline loading dots
+                  if (
+                    agentExecution.status === "running" &&
+                    !content &&
+                    agentExecution.phases.length === 0
+                  ) {
+                    return (
+                      <span className="inline-flex items-center gap-1">
+                        <LoadingMessage size="small" />
+                      </span>
+                    );
+                  }
+
+                  // Fallback to message.content
+                  return markdownContent;
+                })()}
+
+                {isStreaming && !isLoading && (
+                  <motion.span
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="ml-1 inline-block h-4 w-0.5 bg-current"
+                  />
+                )}
+              </div>
+
+              {/* File Attachments - shown after text for assistant messages */}
+              {!isUserMessage && attachments && attachments.length > 0 && (
+                <div className="mt-3">
+                  <MessageAttachments attachments={attachments} />
+                </div>
+              )}
+
+              {/* Search Citations - shown after attachments for assistant messages */}
+              {!isUserMessage && citations && citations.length > 0 && (
+                <div className="mt-3">
+                  <SearchCitations citations={citations} />
+                </div>
               )}
             </div>
+          </div>
+        )}
 
-            {/* File Attachments - shown after text for assistant messages */}
-            {!isUserMessage && attachments && attachments.length > 0 && (
-              <div className="mt-3">
-                <MessageAttachments attachments={attachments} />
-              </div>
+        {/* Edit and Delete buttons - shown for user messages on hover */}
+        {isUserMessage && !isEditing && (
+          <div className="absolute bottom-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {canEdit && (
+              <button
+                onClick={handleEditClick}
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                title={t("app.message.edit")}
+              >
+                <PencilIcon className="h-4 w-4" />
+              </button>
             )}
-
-            {/* Search Citations - shown after attachments for assistant messages */}
-            {!isUserMessage && citations && citations.length > 0 && (
-              <div className="mt-3">
-                <SearchCitations citations={citations} />
-              </div>
+            {canDelete && (
+              <button
+                onClick={handleDeleteClick}
+                className="rounded-md p-1 text-neutral-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                title={t("app.message.delete")}
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Copy button - shown for assistant messages */}
+        {/* Copy and Delete buttons - shown for assistant messages */}
         {!isUserMessage && !isLoading && (
-          <div className="absolute bottom-2 left-0 z-10 opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100">
+          <div className="absolute bottom-2 left-0 z-10 flex gap-1 opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100">
             <button
               onClick={handleCopy}
               className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
@@ -363,6 +466,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 <ClipboardDocumentIcon className="h-4 w-4" />
               )}
             </button>
+            {canDelete && (
+              <button
+                onClick={handleDeleteClick}
+                className="rounded-md p-1 text-neutral-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                title={t("app.message.delete")}
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
         )}
       </motion.div>

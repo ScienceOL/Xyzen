@@ -128,6 +128,88 @@ async def chat_websocket(
                     logger.warning(f"Received unused tool confirmation event: {message_type}")
                     continue
 
+                # Handle regeneration request (after message edit)
+                if message_type == ChatClientEventType.REGENERATE:
+                    # Get the last user message from the topic
+                    messages = await message_repo.get_messages_by_topic(topic_id, order_by_created=True)
+                    user_messages = [m for m in messages if m.role == "user"]
+                    if not user_messages:
+                        logger.warning(f"No user messages found for regeneration in topic {topic_id}")
+                        continue
+
+                    last_user_message = user_messages[-1]
+                    message_text = last_user_message.content
+
+                    # Note: Files attached to last_user_message are automatically included
+                    # during history loading in load_conversation_history()
+
+                    # Loading status
+                    loading_event = {"type": ChatEventType.LOADING, "data": {"message": "AI is thinking..."}}
+                    await websocket.send_text(json.dumps(loading_event))
+
+                    # Pre-deduction / Balance Check
+                    base_cost = 3
+                    pre_deducted_amount = 0.0
+                    pre_deduction_success = False
+                    try:
+                        access_key = None
+                        if auth_ctx.auth_provider.lower() == "bohr_app":
+                            access_key = auth_ctx.access_token
+
+                        await create_consume_for_chat(
+                            db=db,
+                            user_id=user,
+                            auth_provider=auth_ctx.auth_provider,
+                            amount=base_cost,
+                            access_key=access_key,
+                            session_id=session_id,
+                            topic_id=topic_id,
+                            message_id=last_user_message.id,
+                            description="Chat regeneration (pre-deduction)",
+                        )
+                        pre_deducted_amount = float(base_cost)
+                        pre_deduction_success = True
+
+                    except ErrCodeError as e:
+                        if e.code == ErrCode.INSUFFICIENT_BALANCE:
+                            insufficient_balance_event = {
+                                "type": "insufficient_balance",
+                                "data": {
+                                    "error_code": "INSUFFICIENT_BALANCE",
+                                    "message": "Insufficient photon balance",
+                                    "message_cn": "光子余额不足，请充值后继续使用",
+                                    "details": e.as_dict(),
+                                    "action_required": "recharge",
+                                },
+                            }
+                            await websocket.send_text(json.dumps(insufficient_balance_event, ensure_ascii=False))
+                        else:
+                            logger.error(f"Pre-deduction failed for regeneration (ErrCodeError): {e}")
+                        continue
+                    except Exception as e:
+                        logger.error(f"Pre-deduction failed for regeneration: {e}")
+                        continue
+
+                    if not pre_deduction_success:
+                        continue
+
+                    await db.commit()
+
+                    # Dispatch Celery Task for regeneration
+                    process_chat_message.delay(
+                        session_id_str=str(session_id),
+                        topic_id_str=str(topic_id),
+                        user_id_str=str(user),
+                        auth_provider=auth_ctx.auth_provider,
+                        message_text=message_text,
+                        context=None,
+                        pre_deducted_amount=pre_deducted_amount,
+                        access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
+                    )
+
+                    logger.info(f"Regeneration dispatched for topic {topic_id}, using message: {last_user_message.id}")
+                    continue
+
                 # Handle regular chat messages
                 message_text = data.get("message")
                 file_ids = data.get("file_ids", [])

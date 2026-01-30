@@ -81,6 +81,9 @@ class ChatClientEventType(StrEnum):
     TOOL_CALL_CONFIRM = "tool_call_confirm"
     TOOL_CALL_CANCEL = "tool_call_cancel"
 
+    # Regenerate response (after message edit)
+    REGENERATE = "regenerate"
+
 
 class ToolCallStatus(StrEnum):
     """Status values for tool call lifecycle."""

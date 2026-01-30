@@ -82,6 +82,19 @@ export interface ChatSlice {
     context: { folderId: string; folderName: string } | null,
   ) => void;
 
+  // Message editing state
+  editingMessageId: string | null;
+  editingContent: string;
+
+  // Message editing methods
+  startEditMessage: (messageId: string, content: string) => void;
+  cancelEditMessage: () => void;
+  submitEditMessage: () => Promise<void>;
+  triggerRegeneration: () => void;
+
+  // Message deletion
+  deleteMessage: (messageId: string) => Promise<void>;
+
   // Notification methods
   showNotification: (
     title: string,
@@ -125,6 +138,10 @@ export const createChatSlice: StateCreator<
 
     // Notification state
     notification: null,
+
+    // Message editing state
+    editingMessageId: null,
+    editingContent: "",
 
     setActiveChatChannel: (channelId) => set({ activeChatChannel: channelId }),
 
@@ -2182,6 +2199,179 @@ export const createChatSlice: StateCreator<
           state.channels[channelId].knowledgeContext = context || undefined;
         }
       });
+    },
+
+    // Message editing methods
+    startEditMessage: (messageId: string, content: string) => {
+      set({
+        editingMessageId: messageId,
+        editingContent: content,
+      });
+    },
+
+    cancelEditMessage: () => {
+      set({
+        editingMessageId: null,
+        editingContent: "",
+      });
+    },
+
+    submitEditMessage: async () => {
+      const {
+        editingMessageId,
+        editingContent,
+        activeChatChannel,
+        channels,
+        backendUrl,
+      } = get();
+      if (!editingMessageId || !activeChatChannel) return;
+
+      const channel = channels[activeChatChannel];
+      if (!channel) return;
+
+      // Verify message belongs to the active channel before editing
+      const messageExists = channel.messages.some(
+        (m) => m.id === editingMessageId,
+      );
+      if (!messageExists) {
+        console.error("Message not found in active channel, skipping edit");
+        get().cancelEditMessage();
+        return;
+      }
+
+      try {
+        const token = authService.getToken();
+        if (!token) {
+          console.error("No authentication token available");
+          return;
+        }
+
+        // Call API to edit message and truncate subsequent messages
+        const response = await fetch(
+          `${backendUrl}/xyzen/api/v1/messages/${editingMessageId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ content: editingContent }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Failed to edit message:", errorText);
+          get().showNotification("Error", "Failed to edit message", "error");
+          return;
+        }
+
+        const result = await response.json();
+
+        // Update local state: update message with server response and remove subsequent messages
+        set((state: ChatSlice) => {
+          const ch = state.channels[activeChatChannel];
+          if (!ch) return;
+
+          // Find the edited message index
+          const editedIndex = ch.messages.findIndex(
+            (m) => m.id === editingMessageId,
+          );
+          if (editedIndex === -1) return;
+
+          // Update the message with server response to stay in sync with any server-side normalization
+          ch.messages[editedIndex].content = result.message.content;
+          ch.messages[editedIndex].created_at = result.message.created_at;
+
+          // Remove all messages after the edited one
+          ch.messages = ch.messages.slice(0, editedIndex + 1);
+
+          // Reset responding state before regeneration to avoid stuck UI
+          ch.responding = false;
+
+          // Clear edit mode
+          state.editingMessageId = null;
+          state.editingContent = "";
+        });
+
+        // Trigger regeneration if needed
+        if (result.regenerate) {
+          get().triggerRegeneration();
+        }
+      } catch (error) {
+        console.error("Failed to edit message:", error);
+        get().showNotification("Error", "Failed to edit message", "error");
+      }
+    },
+
+    triggerRegeneration: () => {
+      const { activeChatChannel } = get();
+      if (!activeChatChannel) return;
+
+      // Send regeneration request via WebSocket
+      xyzenService.sendStructuredMessage({
+        type: "regenerate",
+      });
+
+      // Mark channel as responding
+      set((state: ChatSlice) => {
+        const channel = state.channels[activeChatChannel];
+        if (channel) {
+          channel.responding = true;
+        }
+      });
+    },
+
+    deleteMessage: async (messageId: string) => {
+      const { activeChatChannel, channels, backendUrl } = get();
+      if (!activeChatChannel) return;
+
+      const channel = channels[activeChatChannel];
+      if (!channel) return;
+
+      // Verify message belongs to the active channel before deleting
+      const messageExists = channel.messages.some((m) => m.id === messageId);
+      if (!messageExists) {
+        console.error("Message not found in active channel, skipping delete");
+        return;
+      }
+
+      try {
+        const token = authService.getToken();
+        if (!token) {
+          console.error("No authentication token available");
+          return;
+        }
+
+        // Call API to delete message
+        const response = await fetch(
+          `${backendUrl}/xyzen/api/v1/messages/${messageId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Failed to delete message:", errorText);
+          get().showNotification("Error", "Failed to delete message", "error");
+          return;
+        }
+
+        // Remove message from local state
+        set((state: ChatSlice) => {
+          const channel = state.channels[activeChatChannel];
+          if (!channel) return;
+
+          channel.messages = channel.messages.filter((m) => m.id !== messageId);
+        });
+      } catch (error) {
+        console.error("Failed to delete message:", error);
+        get().showNotification("Error", "Failed to delete message", "error");
+      }
     },
 
     showNotification: (
