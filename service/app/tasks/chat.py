@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from typing import Any
 from uuid import UUID
 
@@ -167,6 +168,11 @@ async def _process_chat_message_async(
 
     publisher = RedisPublisher(connection_id)
 
+    # Clear any stale abort signal from previous task (e.g., from disconnect)
+    # This prevents a race condition where a reconnected user's new task
+    # gets incorrectly aborted by a stale abort key from a previous disconnect
+    await publisher.clear_abort()
+
     logger.info(f"Starting async chat processing for {connection_id}")
 
     # Create a fresh engine and session factory for this event loop
@@ -177,6 +183,10 @@ async def _process_chat_message_async(
         class_=AsyncSession,
         expire_on_commit=False,
     )
+
+    # Agent run tracking - declared outside db context for error handling access
+    agent_run_id: UUID | None = None
+    agent_run_start_time: float | None = None
 
     try:
         async with TaskSessionLocal() as db:
@@ -207,13 +217,7 @@ async def _process_chat_message_async(
             tool_costs_total = 0
             tool_call_data: dict[str, dict[str, Any]] = {}  # tool_call_id -> {name, args}
 
-            # Agent run tracking (for new timeline-based persistence)
-            agent_run_id: UUID | None = None
-            agent_run_start_time: float | None = None
-
             # Incremental save tracking - save content every 3 seconds during streaming
-            import time
-
             last_save_time = time.time()
             INCREMENTAL_SAVE_INTERVAL = 3.0  # seconds
 
@@ -852,6 +856,22 @@ async def _process_chat_message_async(
         await publisher.publish(
             json.dumps({"type": ChatEventType.ERROR, "data": {"error": f"Internal system error: {str(e)}"}})
         )
+        # Finalize AgentRun with failed status on unhandled exceptions
+        # Use a fresh db session since the original may be in a bad state
+        if agent_run_id:
+            try:
+                async with TaskSessionLocal() as error_db:
+                    agent_run_repo = AgentRunRepository(error_db)
+                    await agent_run_repo.finalize(
+                        agent_run_id=agent_run_id,
+                        status="failed",
+                        ended_at=time.time(),
+                        duration_ms=int((time.time() - (agent_run_start_time or time.time())) * 1000),
+                    )
+                    await error_db.commit()
+                    logger.debug(f"Marked AgentRun {agent_run_id} as failed due to unhandled error")
+            except Exception as finalize_error:
+                logger.warning(f"Failed to finalize AgentRun on error: {finalize_error}")
     finally:
         await publisher.close()
         await task_engine.dispose()
