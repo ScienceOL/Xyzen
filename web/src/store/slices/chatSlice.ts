@@ -2268,7 +2268,7 @@ export const createChatSlice: StateCreator<
 
         const result = await response.json();
 
-        // Update local state: update message content and remove subsequent messages
+        // Update local state: update message with server response and remove subsequent messages
         set((state: ChatSlice) => {
           const ch = state.channels[activeChatChannel];
           if (!ch) return;
@@ -2279,8 +2279,9 @@ export const createChatSlice: StateCreator<
           );
           if (editedIndex === -1) return;
 
-          // Update the message content
-          ch.messages[editedIndex].content = editingContent;
+          // Update the message with server response to stay in sync with any server-side normalization
+          ch.messages[editedIndex].content = result.message.content;
+          ch.messages[editedIndex].created_at = result.message.created_at;
 
           // Remove all messages after the edited one
           ch.messages = ch.messages.slice(0, editedIndex + 1);

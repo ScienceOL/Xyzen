@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -175,6 +176,7 @@ class MessageRepository:
         """
         Deletes all messages in a topic created after a specific timestamp.
         Used for truncating conversation after an edited message.
+        Uses bulk operations for efficiency instead of per-message deletes.
         This function does NOT commit the transaction.
 
         Args:
@@ -185,23 +187,63 @@ class MessageRepository:
         Returns:
             Number of messages deleted.
         """
+        from app.models.agent_run import AgentRun
+        from app.models.citation import Citation
+        from app.models.file import File
+
         logger.debug(
             f"Deleting messages after {after_created_at} for topic_id: {topic_id}, cascade_files: {cascade_files}"
         )
+
+        # 1. Get all message IDs to delete in a single query
         statement = (
-            select(MessageModel)
+            select(MessageModel.id)
             .where(MessageModel.topic_id == topic_id)
             .where(col(MessageModel.created_at) > after_created_at)
-            .order_by(col(MessageModel.created_at))
         )
         result = await self.db.exec(statement)
-        messages = list(result.all())
+        message_ids = list(result.all())
 
-        count = 0
-        for message in messages:
-            if await self.delete_message(message.id, cascade_files=cascade_files):
-                count += 1
+        if not message_ids:
+            return 0
 
+        # 2. Bulk delete citations for all affected messages
+        citation_delete = sa_delete(Citation).where(col(Citation.message_id).in_(message_ids))
+        await self.db.exec(citation_delete)
+
+        # 3. Bulk delete agent runs for all affected messages
+        agent_run_delete = sa_delete(AgentRun).where(col(AgentRun.message_id).in_(message_ids))
+        await self.db.exec(agent_run_delete)
+
+        # 4. Handle file deletion if cascade is enabled
+        if cascade_files:
+            from app.core.storage import get_storage_service
+
+            # Get all files for affected messages
+            file_statement = select(File).where(col(File.message_id).in_(message_ids))
+            file_result = await self.db.exec(file_statement)
+            files = list(file_result.all())
+
+            if files:
+                # Delete from object storage
+                storage = get_storage_service()
+                storage_keys = [file.storage_key for file in files]
+                try:
+                    await storage.delete_files(storage_keys)
+                    logger.info(f"Deleted {len(storage_keys)} files from storage")
+                except Exception as e:
+                    logger.error(f"Failed to delete files from storage: {e}")
+                    # Continue with database deletion even if storage deletion fails
+
+                # Bulk delete file records
+                file_delete = sa_delete(File).where(col(File.message_id).in_(message_ids))
+                await self.db.exec(file_delete)
+
+        # 5. Bulk delete all messages
+        message_delete = sa_delete(MessageModel).where(col(MessageModel.id).in_(message_ids))
+        await self.db.exec(message_delete)
+
+        count = len(message_ids)
         logger.info(f"Deleted {count} messages after {after_created_at} for topic {topic_id}")
         return count
 
