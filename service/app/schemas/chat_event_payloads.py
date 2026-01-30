@@ -183,6 +183,14 @@ class ThinkingEndData(TypedDict):
     id: str
 
 
+class StreamAbortedData(TypedDict):
+    """Data payload for STREAM_ABORTED event."""
+
+    reason: str  # "user_requested", "timeout", "error"
+    partial_content_length: NotRequired[int]
+    tokens_consumed: NotRequired[int]
+
+
 # =============================================================================
 # Full Event Structures (type + data)
 # =============================================================================
@@ -307,6 +315,13 @@ class ThinkingEndEvent(TypedDict):
     data: ThinkingEndData
 
 
+class StreamAbortedEvent(TypedDict):
+    """Full event structure for stream aborted."""
+
+    type: Literal[ChatEventType.STREAM_ABORTED]
+    data: StreamAbortedData
+
+
 class AgentStartEvent(TypedDict):
     """Full event structure for agent start."""
 
@@ -386,6 +401,7 @@ StreamingEvent = (
     | ThinkingStartEvent
     | ThinkingChunkEvent
     | ThinkingEndEvent
+    | StreamAbortedEvent
     | AgentStartEvent
     | AgentEndEvent
     | AgentErrorEvent
@@ -430,6 +446,7 @@ __all__ = [
     "ThinkingStartData",
     "ThinkingChunkData",
     "ThinkingEndData",
+    "StreamAbortedData",
     # Event types
     "StreamingStartEvent",
     "StreamingChunkEvent",
@@ -448,6 +465,7 @@ __all__ = [
     "ThinkingStartEvent",
     "ThinkingChunkEvent",
     "ThinkingEndEvent",
+    "StreamAbortedEvent",
     "AgentStartData",
     "AgentEndData",
     "AgentErrorData",

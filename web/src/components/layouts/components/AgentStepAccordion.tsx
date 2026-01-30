@@ -34,8 +34,12 @@ export default function AgentStepAccordion({
   useEffect(() => {
     if (isActive) {
       setIsExpanded(true);
-    } else if (phase.status === "completed" || phase.status === "failed") {
-      // Auto-collapse when step completes
+    } else if (
+      phase.status === "completed" ||
+      phase.status === "failed" ||
+      phase.status === "cancelled"
+    ) {
+      // Auto-collapse when step completes or is cancelled
       setIsExpanded(false);
     }
   }, [isActive, phase.status]);
@@ -193,6 +197,14 @@ function StatusIndicator({ status }: { status: ExecutionStatus }) {
       return (
         <div className="flex h-4 w-4 items-center justify-center">
           <div className="h-2 w-2 rounded-full bg-red-500 dark:bg-red-400" />
+        </div>
+      );
+
+    case "cancelled":
+      return (
+        <div className="flex h-4 w-4 items-center justify-center">
+          {/* Stop/cancelled icon - orange square */}
+          <div className="h-2 w-2 rounded-sm bg-orange-500 dark:bg-orange-400" />
         </div>
       );
 

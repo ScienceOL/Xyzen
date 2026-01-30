@@ -1,6 +1,6 @@
 import type { AgentExecutionState } from "@/types/agentEvents";
 import { AnimatePresence, motion } from "framer-motion";
-import { XCircle } from "lucide-react";
+import { StopCircle, XCircle } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import AgentStepAccordion from "./AgentStepAccordion";
@@ -169,6 +169,28 @@ export default function AgentExecutionTimeline({
                   </div>
                 )}
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancelled/Stopped Display */}
+      <AnimatePresence>
+        {execution.status === "cancelled" && !execution.error && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 0.2 }}
+            className="rounded-lg border border-orange-200/60 bg-orange-50/50 px-3 py-2 dark:border-orange-800/40 dark:bg-orange-950/20"
+          >
+            <div className="flex items-center gap-2">
+              <StopCircle className="h-4 w-4 shrink-0 text-orange-500 dark:text-orange-400" />
+              <span className="text-[13px] text-orange-700 dark:text-orange-300">
+                {t("app.chat.agent.stopped", {
+                  defaultValue: "Generation stopped",
+                })}
+              </span>
             </div>
           </motion.div>
         )}

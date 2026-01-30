@@ -81,6 +81,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     connected,
     error,
     responding,
+    aborting,
 
     // Refs
     messagesEndRef,
@@ -95,6 +96,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     handleRetryConnection,
     handleScrollToBottom,
     handleScroll,
+    handleAbortGeneration,
 
     // Store values
     activeChatChannel,
@@ -309,6 +311,9 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             }
             height={inputHeight}
             initialValue={pendingInput}
+            responding={responding}
+            aborting={aborting}
+            onAbort={handleAbortGeneration}
           />
         </div>
       </div>
