@@ -719,6 +719,23 @@ async def _process_chat_message_async(
 
                 await db.commit()
 
+                # Send message_saved event to update frontend with real DB ID
+                if ai_message_obj and ai_message_id:
+                    await publisher.publish(
+                        json.dumps(
+                            {
+                                "type": ChatEventType.MESSAGE_SAVED,
+                                "data": {
+                                    "stream_id": ai_message_id,
+                                    "db_id": str(ai_message_obj.id),
+                                    "created_at": ai_message_obj.created_at.isoformat()
+                                    if ai_message_obj.created_at
+                                    else None,
+                                },
+                            }
+                        )
+                    )
+
                 # Send abort acknowledgment to frontend
                 await publisher.publish(
                     json.dumps(
