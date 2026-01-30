@@ -34,6 +34,7 @@ class RedisPublisher:
         self.connection_id = connection_id
         self.redis_client = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
         self.channel = f"chat:{connection_id}"
+        self.abort_key = f"abort:{connection_id}"
 
     async def publish(self, message: str) -> None:
         try:
@@ -43,6 +44,30 @@ class RedisPublisher:
 
     async def close(self) -> None:
         await self.redis_client.aclose()
+
+    async def check_abort(self) -> bool:
+        """Check if abort signal has been set for this connection.
+
+        Uses a fresh Redis connection to ensure we get the latest value,
+        avoiding any potential caching issues with the persistent connection.
+        """
+        try:
+            fresh_client = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+            try:
+                result = await fresh_client.get(self.abort_key)
+                return result is not None
+            finally:
+                await fresh_client.aclose()
+        except Exception as e:
+            logger.warning(f"Failed to check abort signal: {e}")
+            return False
+
+    async def clear_abort(self) -> None:
+        """Clear the abort signal after handling."""
+        try:
+            await self.redis_client.delete(self.abort_key)
+        except Exception as e:
+            logger.warning(f"Failed to clear abort signal: {e}")
 
     # Generic method to mimic ConnectionManager.send_personal_message for compatibility
     async def send_personal_message(self, message: str, connection_id: str) -> None:
@@ -192,6 +217,11 @@ async def _process_chat_message_async(
             last_save_time = time.time()
             INCREMENTAL_SAVE_INTERVAL = 3.0  # seconds
 
+            # Abort checking configuration - use time-based throttling for efficiency
+            ABORT_CHECK_INTERVAL_SEC = 0.5  # Check every N seconds (responsive but not too frequent)
+            last_abort_check_time = time.time()
+            is_aborted = False
+
             # Stream response
             async for stream_event in get_ai_response_stream(
                 db, message_text, topic, user_id, None, publisher, connection_id, context
@@ -200,8 +230,15 @@ async def _process_chat_message_async(
                 # Logic copied and adapted from chat.py
                 event_type = stream_event["type"]
 
-                # Debug: Log ALL events received
-                logger.info(f"[EVENT] Received event type: {event_type} (repr: {repr(event_type)})")
+                # Time-based abort check (check every ABORT_CHECK_INTERVAL_SEC seconds)
+                current_time = time.time()
+                if current_time - last_abort_check_time >= ABORT_CHECK_INTERVAL_SEC:
+                    abort_detected = await publisher.check_abort()
+                    last_abort_check_time = current_time
+                    if abort_detected:
+                        logger.info(f"Abort signal detected for {connection_id}")
+                        is_aborted = True
+                        break
 
                 if stream_event["type"] == ChatEventType.STREAMING_START:
                     ai_message_id = stream_event["data"]["id"]
@@ -415,6 +452,12 @@ async def _process_chat_message_async(
                         logger.warning(f"Failed to persist tool call response message: {e}")
                     await publisher.publish(json.dumps(stream_event))
 
+                    # Check for abort after tool completion (graceful abort point)
+                    if await publisher.check_abort():
+                        logger.info(f"Abort signal detected after tool completion for {connection_id}")
+                        is_aborted = True
+                        break
+
                 elif stream_event["type"] == ChatEventType.MESSAGE:
                     ai_message_id = stream_event["data"]["id"]
                     full_content = stream_event["data"]["content"]
@@ -602,6 +645,97 @@ async def _process_chat_message_async(
 
                 else:
                     await publisher.publish(json.dumps(stream_event))
+
+            # --- Handle Abort ---
+            if is_aborted:
+                logger.info(f"Processing abort for {connection_id}")
+
+                # Save partial content with interrupted marker
+                if ai_message_obj:
+                    ai_message_obj.content = full_content
+                    db.add(ai_message_obj)
+
+                    # Save thinking content if any
+                    if full_thinking_content:
+                        ai_message_obj.thinking_content = full_thinking_content
+                        db.add(ai_message_obj)
+
+                # Update AgentRun status to cancelled
+                if agent_run_id:
+                    try:
+                        agent_run_repo = AgentRunRepository(db)
+                        await agent_run_repo.finalize(
+                            agent_run_id=agent_run_id,
+                            status="cancelled",
+                            ended_at=time.time(),
+                            duration_ms=int((time.time() - (agent_run_start_time or time.time())) * 1000),
+                        )
+                        logger.debug(f"Marked AgentRun {agent_run_id} as cancelled")
+                    except Exception as e:
+                        logger.error(f"Failed to cancel AgentRun: {e}")
+
+                # Partial settlement - only charge for tokens actually consumed
+                if ai_message_obj:
+                    try:
+                        session_repo = SessionRepository(db)
+                        session = await session_repo.get_session_by_id(session_id)
+                        model_tier = session.model_tier if session else None
+
+                        consume_context = ConsumptionContext(
+                            model_tier=model_tier,
+                            input_tokens=input_tokens,
+                            output_tokens=output_tokens,
+                            total_tokens=total_tokens,
+                            content_length=len(full_content),
+                            tool_costs=tool_costs_total,
+                        )
+                        result = ConsumptionCalculator.calculate(consume_context)
+                        total_cost = result.amount
+
+                        remaining_amount = total_cost - pre_deducted_amount
+
+                        if remaining_amount > 0:
+                            await create_consume_for_chat(
+                                db=db,
+                                user_id=user_id,
+                                auth_provider=auth_provider,
+                                amount=int(remaining_amount),
+                                access_key=access_token,
+                                session_id=session_id,
+                                topic_id=topic_id,
+                                message_id=ai_message_obj.id,
+                                description=f"Chat message consume (aborted settlement): {remaining_amount} points",
+                                input_tokens=input_tokens if total_tokens > 0 else None,
+                                output_tokens=output_tokens if total_tokens > 0 else None,
+                                total_tokens=total_tokens if total_tokens > 0 else None,
+                                model_tier=model_tier.value if model_tier else None,
+                                tier_rate=result.breakdown.get("tier_rate"),
+                                calculation_breakdown=json.dumps(result.breakdown),
+                            )
+                    except Exception as e:
+                        logger.error(f"Partial settlement failed on abort: {e}")
+
+                await db.commit()
+
+                # Send abort acknowledgment to frontend
+                await publisher.publish(
+                    json.dumps(
+                        {
+                            "type": ChatEventType.STREAM_ABORTED,
+                            "data": {
+                                "reason": "user_requested",
+                                "partial_content_length": len(full_content),
+                                "tokens_consumed": total_tokens,
+                            },
+                        }
+                    )
+                )
+
+                # Clear the abort signal
+                await publisher.clear_abort()
+
+                # Skip normal finalization
+                return
 
             # --- Finalization (DB Updates & Settlement) ---
             if ai_message_obj:

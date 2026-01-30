@@ -54,6 +54,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
     pendingInput,
     setPendingInput,
     chatHistoryLoading,
+    abortGeneration,
   } = useXyzen();
 
   // Refs
@@ -89,6 +90,14 @@ export function useXyzenChat(config: XyzenChatConfig) {
   const connected = currentChannel?.connected || false;
   const error = currentChannel?.error || null;
   const responding = currentChannel?.responding || false;
+  const aborting = currentChannel?.aborting || false;
+
+  // Abort handler
+  const handleAbortGeneration = useCallback(() => {
+    if (activeChatChannel && responding && !aborting) {
+      abortGeneration(activeChatChannel);
+    }
+  }, [activeChatChannel, responding, aborting, abortGeneration]);
 
   // Scroll management
   const scrollToBottom = useCallback(
@@ -302,6 +311,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
     connected,
     error,
     responding,
+    aborting,
 
     // Refs
     messagesEndRef,
@@ -316,6 +326,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
     handleRetryConnection,
     handleScrollToBottom,
     handleScroll,
+    handleAbortGeneration,
 
     // Store values
     activeChatChannel,

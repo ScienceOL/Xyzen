@@ -76,6 +76,9 @@ export interface ChatSlice {
   confirmToolCall: (channelId: string, toolCallId: string) => void;
   cancelToolCall: (channelId: string, toolCallId: string) => void;
 
+  // Abort/interrupt generation
+  abortGeneration: (channelId: string) => void;
+
   // Knowledge Context
   setKnowledgeContext: (
     channelId: string,
@@ -1206,6 +1209,60 @@ export const createChatSlice: StateCreator<
                 break;
               }
 
+              case "stream_aborted": {
+                // Handle abort acknowledgment from backend
+                const abortData = event.data as {
+                  reason: string;
+                  partial_content_length?: number;
+                  tokens_consumed?: number;
+                };
+
+                console.log("Stream aborted:", abortData);
+
+                // Reset responding and aborting states
+                channel.responding = false;
+                channel.aborting = false;
+
+                // Find any streaming message and finalize it
+                const streamingIndex = channel.messages.findIndex(
+                  (m) => m.isStreaming,
+                );
+                if (streamingIndex !== -1) {
+                  channel.messages[streamingIndex].isStreaming = false;
+                }
+
+                // Handle running agent execution - mark as cancelled
+                const runningAgentIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.status === "running",
+                );
+                if (runningAgentIndex !== -1) {
+                  const execution =
+                    channel.messages[runningAgentIndex].agentExecution;
+                  if (execution) {
+                    execution.status = "cancelled";
+                    execution.endedAt = Date.now();
+                    // Mark any running phases as cancelled too
+                    execution.phases.forEach((phase) => {
+                      if (phase.status === "running") {
+                        phase.status = "cancelled";
+                      }
+                    });
+                  }
+                  // Also clear streaming flag on the agent message
+                  channel.messages[runningAgentIndex].isStreaming = false;
+                }
+
+                // Remove loading message if present
+                const loadingIndex = channel.messages.findIndex(
+                  (m) => m.isLoading,
+                );
+                if (loadingIndex !== -1) {
+                  channel.messages.splice(loadingIndex, 1);
+                }
+
+                break;
+              }
+
               case "thinking_start": {
                 // Start thinking mode - find or create the assistant message
                 channel.responding = true;
@@ -2174,6 +2231,75 @@ export const createChatSlice: StateCreator<
           });
         }
       });
+    },
+
+    abortGeneration: (channelId: string) => {
+      // Send abort signal to backend via WebSocket
+      xyzenService.sendAbort();
+
+      // Optimistically update UI state
+      set((state: ChatSlice) => {
+        if (state.channels[channelId]) {
+          state.channels[channelId].aborting = true;
+        }
+      });
+
+      // Timeout fallback: if backend doesn't respond within 10 seconds, reset state
+      // This prevents the UI from being stuck in aborting/responding state
+      setTimeout(() => {
+        const currentState = get();
+        const channel = currentState.channels[channelId];
+        if (channel?.aborting) {
+          console.warn(
+            "Abort timeout: Backend did not respond, resetting state",
+          );
+          set((state: ChatSlice) => {
+            if (state.channels[channelId]) {
+              state.channels[channelId].aborting = false;
+              state.channels[channelId].responding = false;
+
+              // Remove loading message if present
+              const loadingIndex = state.channels[channelId].messages.findIndex(
+                (m) => m.isLoading,
+              );
+              if (loadingIndex !== -1) {
+                state.channels[channelId].messages.splice(loadingIndex, 1);
+              }
+
+              // Finalize any streaming message
+              const streamingIndex = state.channels[
+                channelId
+              ].messages.findIndex((m) => m.isStreaming);
+              if (streamingIndex !== -1) {
+                state.channels[channelId].messages[streamingIndex].isStreaming =
+                  false;
+              }
+
+              // Mark running agent executions as cancelled
+              const agentMsgIndex = state.channels[
+                channelId
+              ].messages.findIndex(
+                (m) => m.agentExecution?.status === "running",
+              );
+              if (agentMsgIndex !== -1) {
+                const execution =
+                  state.channels[channelId].messages[agentMsgIndex]
+                    .agentExecution;
+                if (execution) {
+                  execution.status = "cancelled";
+                  execution.phases.forEach((phase) => {
+                    if (phase.status === "running") {
+                      phase.status = "cancelled";
+                    }
+                  });
+                }
+                state.channels[channelId].messages[agentMsgIndex].isStreaming =
+                  false;
+              }
+            }
+          });
+        }
+      }, 10000); // 10 second timeout
     },
 
     setKnowledgeContext: (channelId, context) => {

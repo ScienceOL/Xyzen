@@ -36,7 +36,9 @@ interface MessageEvent {
     | "progress_update"
     | "iteration_start"
     | "iteration_end"
-    | "state_update";
+    | "state_update"
+    // Abort events
+    | "stream_aborted";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: Message | Record<string, any>;
 }
@@ -213,6 +215,17 @@ class XyzenService {
       this.ws.send(JSON.stringify(data));
     } else {
       console.error("XyzenService: WebSocket is not connected.");
+    }
+  }
+
+  public sendAbort() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: "abort" }));
+      console.log("XyzenService: Abort signal sent");
+    } else {
+      console.error(
+        "XyzenService: WebSocket is not connected, cannot send abort.",
+      );
     }
   }
 
