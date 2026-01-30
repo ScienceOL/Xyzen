@@ -114,7 +114,8 @@ export type ExecutionStatus =
   | "running"
   | "completed"
   | "failed"
-  | "skipped";
+  | "skipped"
+  | "cancelled";
 
 export interface PhaseExecution {
   id: string;

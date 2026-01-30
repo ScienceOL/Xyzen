@@ -1,6 +1,7 @@
 import ProfileIcon from "@/assets/ProfileIcon";
 // import { TYPEWRITER_CONFIG } from "@/configs/typewriterConfig";
 // import { useStreamingTypewriter } from "@/hooks/useTypewriterEffect";
+import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
@@ -173,13 +174,21 @@ function ChatBubble({ message }: ChatBubbleProps) {
     );
   };
 
+  const copyText = useMemo(() => {
+    if (content) {
+      return content;
+    }
+
+    return getLastNonEmptyPhaseContent(agentExecution?.phases) ?? "";
+  }, [agentExecution?.phases, content]);
+
   const handleCopy = () => {
-    if (!content) return;
+    if (!copyText) return;
 
     // Fallback function for older browsers or restricted environments
     const fallbackCopy = () => {
       const textArea = document.createElement("textarea");
-      textArea.value = content;
+      textArea.value = copyText;
       textArea.style.position = "fixed"; // Prevent scrolling to bottom
       textArea.style.opacity = "0";
       document.body.appendChild(textArea);
@@ -206,7 +215,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
     // Use modern Clipboard API if available and in a secure context
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(content).then(
+      navigator.clipboard.writeText(copyText).then(
         () => {
           setIsCopied(true);
           setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds

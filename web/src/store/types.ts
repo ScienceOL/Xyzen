@@ -164,6 +164,8 @@ export interface ChatChannel {
   error: string | null;
   // Whether assistant is currently producing a reply (planning, tool calls, or generating tokens)
   responding?: boolean;
+  // Whether an abort request is in progress
+  aborting?: boolean;
 }
 
 export interface ChatHistoryItem {

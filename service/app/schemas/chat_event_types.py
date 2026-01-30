@@ -70,6 +70,9 @@ class ChatEventType(StrEnum):
     # Progress updates
     PROGRESS_UPDATE = "progress_update"
 
+    # Abort/Interrupt events
+    STREAM_ABORTED = "stream_aborted"
+
 
 class ChatClientEventType(StrEnum):
     """Client -> Server event types (messages coming from the frontend)."""
@@ -81,8 +84,11 @@ class ChatClientEventType(StrEnum):
     TOOL_CALL_CONFIRM = "tool_call_confirm"
     TOOL_CALL_CANCEL = "tool_call_cancel"
 
-    # Regenerate response (after message edit)
+    # Regenerate response after message edit
     REGENERATE = "regenerate"
+
+    # Abort/interrupt streaming generation
+    ABORT = "abort"
 
 
 class ToolCallStatus(StrEnum):

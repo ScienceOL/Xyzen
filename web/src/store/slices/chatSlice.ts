@@ -3,6 +3,7 @@ import {
   groupToolMessagesWithAssistant,
   isValidUuid,
 } from "@/core/chat";
+import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
 import { providerCore } from "@/core/provider";
 import { authService } from "@/service/authService";
 import { sessionService } from "@/service/sessionService";
@@ -29,6 +30,10 @@ import type {
 
 // NOTE: groupToolMessagesWithAssistant and generateClientId have been moved to
 // @/core/chat/messageProcessor.ts as part of the frontend refactor.
+
+// Track abort timeout IDs per channel to allow cleanup
+// Using a module-level Map since NodeJS.Timeout is not serializable in store
+const abortTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
 
 export interface ChatSlice {
   // Chat panel state
@@ -79,6 +84,9 @@ export interface ChatSlice {
   // Tool call confirmation methods
   confirmToolCall: (channelId: string, toolCallId: string) => void;
   cancelToolCall: (channelId: string, toolCallId: string) => void;
+
+  // Abort/interrupt generation
+  abortGeneration: (channelId: string) => void;
 
   // Knowledge Context
   setKnowledgeContext: (
@@ -818,6 +826,19 @@ export const createChatSlice: StateCreator<
                     isLoading?: boolean;
                     isStreaming?: boolean;
                   };
+
+                  if (
+                    !messageFinal.content &&
+                    messageFinal.agentExecution &&
+                    messageFinal.agentExecution.phases.length > 0
+                  ) {
+                    const phaseContent = getLastNonEmptyPhaseContent(
+                      messageFinal.agentExecution.phases,
+                    );
+                    if (phaseContent) {
+                      messageFinal.content = phaseContent;
+                    }
+                  }
                   // Remove transient flags
                   delete messageFinal.isLoading;
                   delete messageFinal.isStreaming;
@@ -1225,6 +1246,67 @@ export const createChatSlice: StateCreator<
                     );
                   },
                 };
+                break;
+              }
+
+              case "stream_aborted": {
+                // Handle abort acknowledgment from backend
+                const abortData = event.data as {
+                  reason: string;
+                  partial_content_length?: number;
+                  tokens_consumed?: number;
+                };
+
+                console.log("Stream aborted:", abortData);
+
+                // Clear any pending abort timeout since backend responded
+                const pendingTimeout = abortTimeoutIds.get(channel.id);
+                if (pendingTimeout) {
+                  clearTimeout(pendingTimeout);
+                  abortTimeoutIds.delete(channel.id);
+                }
+
+                // Reset responding and aborting states
+                channel.responding = false;
+                channel.aborting = false;
+
+                // Find any streaming message and finalize it
+                const streamingIndex = channel.messages.findIndex(
+                  (m) => m.isStreaming,
+                );
+                if (streamingIndex !== -1) {
+                  channel.messages[streamingIndex].isStreaming = false;
+                }
+
+                // Handle running agent execution - mark as cancelled
+                const runningAgentIndex = channel.messages.findIndex(
+                  (m) => m.agentExecution?.status === "running",
+                );
+                if (runningAgentIndex !== -1) {
+                  const execution =
+                    channel.messages[runningAgentIndex].agentExecution;
+                  if (execution) {
+                    execution.status = "cancelled";
+                    execution.endedAt = Date.now();
+                    // Mark any running phases as cancelled too
+                    execution.phases.forEach((phase) => {
+                      if (phase.status === "running") {
+                        phase.status = "cancelled";
+                      }
+                    });
+                  }
+                  // Also clear streaming flag on the agent message
+                  channel.messages[runningAgentIndex].isStreaming = false;
+                }
+
+                // Remove loading message if present
+                const loadingIndex = channel.messages.findIndex(
+                  (m) => m.isLoading,
+                );
+                if (loadingIndex !== -1) {
+                  channel.messages.splice(loadingIndex, 1);
+                }
+
                 break;
               }
 
@@ -2196,6 +2278,88 @@ export const createChatSlice: StateCreator<
           });
         }
       });
+    },
+
+    abortGeneration: (channelId: string) => {
+      // Send abort signal to backend via WebSocket
+      xyzenService.sendAbort();
+
+      // Clear any existing abort timeout for this channel to prevent stale timers
+      const existingTimeout = abortTimeoutIds.get(channelId);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+        abortTimeoutIds.delete(channelId);
+      }
+
+      // Optimistically update UI state
+      set((state: ChatSlice) => {
+        if (state.channels[channelId]) {
+          state.channels[channelId].aborting = true;
+        }
+      });
+
+      // Timeout fallback: if backend doesn't respond within 10 seconds, reset state
+      // This prevents the UI from being stuck in aborting/responding state
+      const timeoutId = setTimeout(() => {
+        // Clean up the timeout reference
+        abortTimeoutIds.delete(channelId);
+
+        const currentState = get();
+        const channel = currentState.channels[channelId];
+        if (channel?.aborting) {
+          console.warn(
+            "Abort timeout: Backend did not respond, resetting state",
+          );
+          set((state: ChatSlice) => {
+            if (state.channels[channelId]) {
+              state.channels[channelId].aborting = false;
+              state.channels[channelId].responding = false;
+
+              // Remove loading message if present
+              const loadingIndex = state.channels[channelId].messages.findIndex(
+                (m) => m.isLoading,
+              );
+              if (loadingIndex !== -1) {
+                state.channels[channelId].messages.splice(loadingIndex, 1);
+              }
+
+              // Finalize any streaming message
+              const streamingIndex = state.channels[
+                channelId
+              ].messages.findIndex((m) => m.isStreaming);
+              if (streamingIndex !== -1) {
+                state.channels[channelId].messages[streamingIndex].isStreaming =
+                  false;
+              }
+
+              // Mark running agent executions as cancelled
+              const agentMsgIndex = state.channels[
+                channelId
+              ].messages.findIndex(
+                (m) => m.agentExecution?.status === "running",
+              );
+              if (agentMsgIndex !== -1) {
+                const execution =
+                  state.channels[channelId].messages[agentMsgIndex]
+                    .agentExecution;
+                if (execution) {
+                  execution.status = "cancelled";
+                  execution.phases.forEach((phase) => {
+                    if (phase.status === "running") {
+                      phase.status = "cancelled";
+                    }
+                  });
+                }
+                state.channels[channelId].messages[agentMsgIndex].isStreaming =
+                  false;
+              }
+            }
+          });
+        }
+      }, 10000); // 10 second timeout
+
+      // Track the timeout ID for cleanup
+      abortTimeoutIds.set(channelId, timeoutId);
     },
 
     setKnowledgeContext: (channelId, context) => {

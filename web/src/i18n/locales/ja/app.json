@@ -24,6 +24,10 @@
       "expandImage": "クリックで拡大",
       "imageAlt": "生成画像",
       "confirmExecute": "実行を確認"
+    },
+    "agent": {
+      "stopped": "生成が停止されました",
+      "subagents": "サブエージェント"
     }
   },
   "activityBar": {
@@ -72,6 +76,9 @@
   "input": {
     "placeholder": "メッセージを送信...",
     "send": "送信",
+    "stop": "生成を停止",
+    "stopping": "停止中...",
+    "escToStop": "停止",
     "enterToSend": "送信",
     "shiftEnterForNewline": "新しい行"
   },

@@ -24,6 +24,10 @@
       "expandImage": "Click to expand",
       "imageAlt": "Generated image",
       "confirmExecute": "Confirm"
+    },
+    "agent": {
+      "stopped": "Generation stopped",
+      "subagents": "Subagents"
     }
   },
   "activityBar": {
@@ -80,6 +84,9 @@
   "input": {
     "placeholder": "Send a message...",
     "send": "Send",
+    "stop": "Stop generating",
+    "stopping": "Stopping...",
+    "escToStop": "Stop",
     "enterToSend": "Send",
     "shiftEnterForNewline": "New line"
   },

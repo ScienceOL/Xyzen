@@ -1,7 +1,11 @@
 import { DragDropOverlay } from "@/components/shared/DragDropOverlay";
 import { useFileDragDrop } from "@/hooks/useFileDragDrop";
 import { useXyzen } from "@/store";
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  PaperAirplaneIcon,
+  StopIcon,
+} from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +15,9 @@ interface ChatInputProps {
   placeholder?: string;
   height?: number; // Accept height from parent instead of managing internally
   initialValue?: string; // Add initial value prop
+  responding?: boolean; // Whether AI is currently generating a response
+  aborting?: boolean; // Whether an abort request is in progress
+  onAbort?: () => void; // Callback to abort generation
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -19,6 +26,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder,
   height = 100, // Default height if not provided
   initialValue = "",
+  responding = false,
+  aborting = false,
+  onAbort,
 }) => {
   const { t } = useTranslation();
   const [inputMessage, setInputMessage] = useState(initialValue);
@@ -54,6 +64,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       setInputMessage(initialValue);
     }
   }, [initialValue]);
+
+  // Global keyboard listener for Escape to abort generation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle Escape when responding and not already aborting
+      if (e.key === "Escape" && responding && !aborting && onAbort) {
+        e.preventDefault();
+        onAbort();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [responding, aborting, onAbort]);
 
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
@@ -167,32 +191,67 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <div className="flex items-center justify-end gap-3 pt-2">
           {/* 快捷键提示 - 淡色，移动端隐藏 */}
           <div className="hidden sm:flex items-center gap-2 text-[11px] text-neutral-400/60 dark:text-neutral-500/60">
-            <span className="flex items-center gap-1">
-              <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
-                Enter
-              </kbd>
-              <span>{t("app.input.enterToSend")}</span>
-            </span>
-            <span className="text-neutral-300/50 dark:text-neutral-700/50">
-              ·
-            </span>
-            <span className="flex items-center gap-1">
-              <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
-                Shift + Enter
-              </kbd>
-              <span>{t("app.input.shiftEnterForNewline")}</span>
-            </span>
+            {responding ? (
+              // Show Escape hint when responding
+              <span className="flex items-center gap-1">
+                <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
+                  Esc
+                </kbd>
+                <span>{t("app.input.escToStop")}</span>
+              </span>
+            ) : (
+              // Show normal hints when not responding
+              <>
+                <span className="flex items-center gap-1">
+                  <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
+                    Enter
+                  </kbd>
+                  <span>{t("app.input.enterToSend")}</span>
+                </span>
+                <span className="text-neutral-300/50 dark:text-neutral-700/50">
+                  ·
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="font-medium text-neutral-400/80 dark:text-neutral-500/80">
+                    Shift + Enter
+                  </kbd>
+                  <span>{t("app.input.shiftEnterForNewline")}</span>
+                </span>
+              </>
+            )}
           </div>
 
-          {/* 发送按钮 */}
-          <button
-            onClick={handleSendMessage}
-            disabled={disabled || !inputMessage.trim()}
-            className="rounded-full p-1.5 text-neutral-400 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed dark:text-neutral-500 dark:hover:bg-orange-900/20 dark:hover:text-orange-400"
-            aria-label={t("app.input.send")}
-          >
-            <PaperAirplaneIcon className="h-5 w-5" />
-          </button>
+          {/* 发送按钮 / 停止按钮 */}
+          {responding ? (
+            <button
+              onClick={onAbort}
+              disabled={aborting || !onAbort}
+              className={`rounded-full p-1.5 transition-all duration-200 ${
+                aborting
+                  ? "text-neutral-300 cursor-not-allowed dark:text-neutral-600"
+                  : "text-red-500 hover:bg-red-50 hover:text-red-600 active:scale-95 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"
+              }`}
+              aria-label={
+                aborting ? t("app.input.stopping") : t("app.input.stop")
+              }
+              title={aborting ? t("app.input.stopping") : t("app.input.stop")}
+            >
+              {aborting ? (
+                <ArrowPathIcon className="h-5 w-5 animate-spin" />
+              ) : (
+                <StopIcon className="h-5 w-5" />
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleSendMessage}
+              disabled={disabled || !inputMessage.trim()}
+              className="rounded-full p-1.5 text-neutral-400 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed dark:text-neutral-500 dark:hover:bg-orange-900/20 dark:hover:text-orange-400"
+              aria-label={t("app.input.send")}
+            >
+              <PaperAirplaneIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

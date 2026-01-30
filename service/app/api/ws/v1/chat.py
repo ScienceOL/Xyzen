@@ -128,6 +128,21 @@ async def chat_websocket(
                     logger.warning(f"Received unused tool confirmation event: {message_type}")
                     continue
 
+                # Handle abort request - set abort signal in Redis for the worker to check
+                if message_type == ChatClientEventType.ABORT:
+                    logger.info(f"Received abort request for {connection_id}")
+                    r = None
+                    try:
+                        r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+                        abort_key = f"abort:{connection_id}"
+                        await r.setex(abort_key, 60, "1")
+                    except Exception as e:
+                        logger.error(f"Failed to set abort signal: {e}")
+                    finally:
+                        if r:
+                            await r.aclose()
+                    continue
+
                 # Handle regeneration request (after message edit)
                 if message_type == ChatClientEventType.REGENERATE:
                     # Get the last user message from the topic
@@ -316,6 +331,17 @@ async def chat_websocket(
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {connection_id}")
+        # Set abort signal on disconnect to stop any running task
+        r = None
+        try:
+            r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+            await r.setex(f"abort:{connection_id}", 60, "1")
+            logger.info(f"Abort signal set on disconnect for {connection_id}")
+        except Exception as e:
+            logger.warning(f"Failed to set abort signal on disconnect: {e}")
+        finally:
+            if r:
+                await r.aclose()
     except Exception as e:
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
     finally:
