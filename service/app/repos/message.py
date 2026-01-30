@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from app.models.message import (
     MessageReadWithCitations,
     MessageReadWithFiles,
     MessageReadWithFilesAndCitations,
+    MessageUpdate,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,6 +141,69 @@ class MessageRepository:
         await self.db.delete(message)
         await self.db.flush()
         return True
+
+    async def update_message(self, message_id: UUID, message_update: MessageUpdate) -> MessageModel | None:
+        """
+        Updates a message's content.
+        This function does NOT commit the transaction.
+
+        Args:
+            message_id: The UUID of the message to update.
+            message_update: The Pydantic model containing the fields to update.
+
+        Returns:
+            The updated MessageModel, or None if not found.
+        """
+        logger.debug(f"Updating message with id: {message_id}")
+        message = await self.db.get(MessageModel, message_id)
+        if not message:
+            return None
+
+        # Apply updates from the update model
+        update_data = message_update.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(message, field, value)
+
+        self.db.add(message)
+        await self.db.flush()
+        await self.db.refresh(message)
+        return message
+
+    async def delete_messages_after(
+        self, topic_id: UUID, after_created_at: datetime, cascade_files: bool = True
+    ) -> int:
+        """
+        Deletes all messages in a topic created after a specific timestamp.
+        Used for truncating conversation after an edited message.
+        This function does NOT commit the transaction.
+
+        Args:
+            topic_id: The UUID of the topic.
+            after_created_at: Delete messages created strictly after this timestamp.
+            cascade_files: If True, also deletes associated files from storage and database (default: True)
+
+        Returns:
+            Number of messages deleted.
+        """
+        logger.debug(
+            f"Deleting messages after {after_created_at} for topic_id: {topic_id}, cascade_files: {cascade_files}"
+        )
+        statement = (
+            select(MessageModel)
+            .where(MessageModel.topic_id == topic_id)
+            .where(col(MessageModel.created_at) > after_created_at)
+            .order_by(col(MessageModel.created_at))
+        )
+        result = await self.db.exec(statement)
+        messages = list(result.all())
+
+        count = 0
+        for message in messages:
+            if await self.delete_message(message.id, cascade_files=cascade_files):
+                count += 1
+
+        logger.info(f"Deleted {count} messages after {after_created_at} for topic {topic_id}")
+        return count
 
     async def delete_messages_by_topic(self, topic_id: UUID, cascade_files: bool = True) -> int:
         """
