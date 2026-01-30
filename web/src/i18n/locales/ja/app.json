@@ -82,6 +82,12 @@
     "enterToSend": "送信",
     "shiftEnterForNewline": "新しい行"
   },
+  "message": {
+    "edit": "編集",
+    "editCancel": "キャンセル",
+    "editSave": "保存して再生成",
+    "delete": "削除"
+  },
   "authStatus": {
     "checking": "認証状態を確認中...",
     "authInfoTitle": "認証情報",

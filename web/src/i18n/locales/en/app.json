@@ -90,6 +90,12 @@
     "enterToSend": "Send",
     "shiftEnterForNewline": "New line"
   },
+  "message": {
+    "edit": "Edit",
+    "editCancel": "Cancel",
+    "editSave": "Save & Regenerate",
+    "delete": "Delete"
+  },
   "authStatus": {
     "checking": "Checking authentication...",
     "authInfoTitle": "Authentication Info",
