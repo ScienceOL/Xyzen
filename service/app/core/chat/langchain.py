@@ -340,7 +340,11 @@ async def _process_agent_stream(
     agent_error: Exception | None = None
 
     try:
-        async for chunk in agent.astream({"messages": history_messages}, stream_mode=["updates", "messages"]):
+        async for chunk in agent.astream(
+            {"messages": history_messages},
+            stream_mode=["updates", "messages"],
+            config={"recursion_limit": 50},
+        ):
             chunk_count += 1
             try:
                 mode, data = chunk

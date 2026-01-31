@@ -164,18 +164,16 @@ class ClarifyWithUserComponent(ExecutableComponent):
 
         async def clarify_node(state: ClarifyState) -> dict[str, Any]:
             """LLM node with structured output for clarification."""
-            # Get LLM configured for structured output
             llm = await llm_factory(temperature=0.3)
-            llm_with_struct = llm.with_structured_output(ClarifyWithUser)
 
-            # Format prompt - cast to list for type compatibility
+            # Format prompt
             messages_str = get_buffer_string(list(state.messages))
             date_str = get_today_str()
             prompt = CLARIFY_WITH_USER_PROMPT.format(messages=messages_str, date=date_str)
 
-            # Invoke with structured output
+            # Use function_calling method for structured output (works across all providers)
+            llm_with_struct = llm.with_structured_output(ClarifyWithUser, method="function_calling")
             response = await llm_with_struct.ainvoke([HumanMessage(content=prompt)])
-            # Ensure we have the right type
             result = response if isinstance(response, ClarifyWithUser) else ClarifyWithUser.model_validate(response)
 
             # Determine user-facing message
