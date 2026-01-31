@@ -1,7 +1,10 @@
 import ProfileIcon from "@/assets/ProfileIcon";
 // import { TYPEWRITER_CONFIG } from "@/configs/typewriterConfig";
 // import { useStreamingTypewriter } from "@/hooks/useTypewriterEffect";
-import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
+import {
+  resolveMessageContent,
+  getMessageDisplayMode,
+} from "@/core/chat/messageContent";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
@@ -214,15 +217,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
     );
   };
 
-  // Get the actual displayed content for copy and edit operations
-  // For streamed messages, content might be in agentExecution.phases instead of message.content
-  const displayedContent = useMemo(() => {
-    if (content) {
-      return content;
-    }
-
-    return getLastNonEmptyPhaseContent(agentExecution?.phases) ?? "";
-  }, [agentExecution?.phases, content]);
+  // Content resolution using unified utilities
+  // resolveMessageContent provides single source of truth for content display and copy/edit
+  // getMessageDisplayMode determines which rendering path to use
+  const resolvedContent = useMemo(
+    () => resolveMessageContent(message),
+    [message],
+  );
+  const displayedContent = resolvedContent.text;
+  const displayMode = useMemo(() => getMessageDisplayMode(message), [message]);
 
   const handleCopy = () => {
     if (!displayedContent) return;
@@ -395,71 +398,37 @@ function ChatBubble({ message }: ChatBubbleProps) {
                     />
                   )}
 
+                {/* Message content based on display mode */}
                 {(() => {
-                  // Explicit loading state - show inline loading dots
-                  if (isLoading) {
-                    return (
-                      <span className="inline-flex items-center gap-1">
-                        <LoadingMessage size="small" />
-                      </span>
-                    );
-                  }
-
-                  // No agent execution - regular chat
-                  if (!agentExecution) {
-                    return markdownContent;
-                  }
-
-                  // Agent with phases - get content from phases
-                  if (agentExecution.phases.length > 0) {
-                    const activePhase = agentExecution.phases.find(
-                      (p) => p.status === "running",
-                    );
-                    const lastPhase =
-                      agentExecution.phases[agentExecution.phases.length - 1];
-                    const phaseContent =
-                      activePhase?.streamedContent ||
-                      lastPhase?.streamedContent;
-
-                    // Show final phase content below timeline when completed
-                    // Prioritize message.content if it exists (e.g., after editing)
-                    if (
-                      !isStreaming &&
-                      agentExecution.status !== "running" &&
-                      (content || lastPhase?.streamedContent)
-                    ) {
+                  switch (displayMode) {
+                    case "loading":
+                    case "waiting":
                       return (
-                        <div className="mt-4">
-                          <Markdown
-                            content={
-                              content || lastPhase?.streamedContent || ""
-                            }
-                          />
-                        </div>
+                        <span className="inline-flex items-center gap-1">
+                          <LoadingMessage size="small" />
+                        </span>
                       );
-                    }
 
-                    // Still streaming - content shown in timeline
-                    if (phaseContent) {
+                    case "simple":
+                      return markdownContent;
+
+                    case "timeline_streaming":
+                      // Content is shown in AgentExecutionTimeline phases during streaming
                       return null;
-                    }
-                  }
 
-                  // Still waiting for content - show inline loading dots
-                  if (
-                    agentExecution.status === "running" &&
-                    !content &&
-                    agentExecution.phases.length === 0
-                  ) {
-                    return (
-                      <span className="inline-flex items-center gap-1">
-                        <LoadingMessage size="small" />
-                      </span>
-                    );
-                  }
+                    case "timeline_complete":
+                      // Show final content below timeline when completed
+                      // Guard against empty content to avoid rendering empty div with margin
+                      return resolvedContent.text ? (
+                        <div className="mt-4">
+                          <Markdown content={resolvedContent.text} />
+                        </div>
+                      ) : null;
 
-                  // Fallback to message.content
-                  return markdownContent;
+                    default:
+                      // Fallback for any unexpected display mode
+                      return markdownContent;
+                  }
                 })()}
 
                 {isStreaming && !isLoading && (

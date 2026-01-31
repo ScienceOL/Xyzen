@@ -35,3 +35,11 @@ export type {
   IWebSocketManager,
   XyzenServiceInterface,
 } from "./types";
+
+// Message content resolution utilities
+export {
+  getLastNonEmptyPhaseContent,
+  resolveMessageContent,
+  getMessageDisplayMode,
+} from "./messageContent";
+export type { ResolvedContent, MessageDisplayMode } from "./messageContent";

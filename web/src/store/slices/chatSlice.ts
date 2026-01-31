@@ -672,8 +672,20 @@ export const createChatSlice: StateCreator<
                   const execution =
                     channel.messages[agentMsgIndex].agentExecution;
 
-                  // Create default "Response" phase if no phases exist
-                  // This handles prebuilt agents (like ReAct) that don't emit node_start events
+                  /**
+                   * Create fallback "Response" phase for agents without node_start events.
+                   *
+                   * WHY: LangChain prebuilt agents (like create_react_agent) don't emit
+                   * node_start/node_end events - they stream content directly. To maintain
+                   * consistent UI state, we create a synthetic phase to hold the streamed content.
+                   *
+                   * EFFECT: This allows the same rendering path (phase.streamedContent → ChatBubble)
+                   * to work for both:
+                   * - Custom graph agents with explicit phases via node_start events
+                   * - Prebuilt agents that only stream content without phase events
+                   *
+                   * SEE ALSO: getMessageDisplayMode() in core/chat/messageContent.ts
+                   */
                   if (execution && execution.phases.length === 0) {
                     execution.phases.push({
                       id: "response",
