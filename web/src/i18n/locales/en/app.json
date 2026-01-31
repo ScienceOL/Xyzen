@@ -92,9 +92,13 @@
   },
   "message": {
     "edit": "Edit",
+    "editOnly": "Edit",
+    "editAndRegenerate": "Edit & Regenerate",
     "editCancel": "Cancel",
-    "editSave": "Save & Regenerate",
-    "delete": "Delete"
+    "editSave": "Save",
+    "editSaveRegenerate": "Save & Regenerate",
+    "delete": "Delete",
+    "copy": "Copy"
   },
   "authStatus": {
     "checking": "Checking authentication...",

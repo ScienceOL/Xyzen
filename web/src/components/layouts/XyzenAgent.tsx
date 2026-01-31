@@ -26,14 +26,13 @@ export default function XyzenAgent() {
   const {
     agents,
 
-    createDefaultChannel,
     deleteAgent,
     updateAgentAvatar,
     reorderAgents,
 
     chatHistory,
     channels,
-    activateChannel,
+    activateChannelForAgent,
 
     fetchMcpServers,
     fetchMyProviders,
@@ -101,7 +100,6 @@ export default function XyzenAgent() {
   }, [fetchMcpServers]);
 
   const handleAgentClick = async (agent: Agent) => {
-    // 使用实际的 agent ID（系统助手和普通助手都有真实的 ID）
     const agentId = agent.id;
 
     // Ensure providers are loaded before creating a channel
@@ -113,24 +111,8 @@ export default function XyzenAgent() {
       }
     }
 
-    // 1. 从 chatHistory 中找到该 agent 的所有 topics
-    const agentTopics = chatHistory.filter((topic) => {
-      const channel = channels[topic.id];
-      if (!channel) return false;
-
-      // 严格匹配 agentId
-      return channel.agentId === agentId;
-    });
-
-    if (agentTopics.length === 0) {
-      await createDefaultChannel(agentId);
-    } else {
-      const latestTopic = agentTopics.sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      )[0];
-      await activateChannel(latestTopic.id);
-    }
+    // Use unified logic that always fetches from backend and gets the latest topic
+    await activateChannelForAgent(agentId);
   };
 
   const handleEditClick = (agent: Agent) => {

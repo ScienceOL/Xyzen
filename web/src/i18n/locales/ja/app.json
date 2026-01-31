@@ -84,9 +84,13 @@
   },
   "message": {
     "edit": "編集",
+    "editOnly": "編集のみ",
+    "editAndRegenerate": "編集して再生成",
     "editCancel": "キャンセル",
-    "editSave": "保存して再生成",
-    "delete": "削除"
+    "editSave": "保存",
+    "editSaveRegenerate": "保存して再生成",
+    "delete": "削除",
+    "copy": "コピー"
   },
   "authStatus": {
     "checking": "認証状態を確認中...",

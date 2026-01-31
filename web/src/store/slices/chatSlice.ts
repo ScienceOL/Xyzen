@@ -97,9 +97,14 @@ export interface ChatSlice {
   // Message editing state
   editingMessageId: string | null;
   editingContent: string;
+  editingMode: "edit_only" | "edit_and_regenerate" | null;
 
   // Message editing methods
-  startEditMessage: (messageId: string, content: string) => void;
+  startEditMessage: (
+    messageId: string,
+    content: string,
+    mode: "edit_only" | "edit_and_regenerate",
+  ) => void;
   cancelEditMessage: () => void;
   submitEditMessage: () => Promise<void>;
   triggerRegeneration: () => void;
@@ -154,6 +159,7 @@ export const createChatSlice: StateCreator<
     // Message editing state
     editingMessageId: null,
     editingContent: "",
+    editingMode: null,
 
     setActiveChatChannel: (channelId) => set({ activeChatChannel: channelId }),
 
@@ -437,22 +443,14 @@ export const createChatSlice: StateCreator<
 
     /**
      * Activate or create a chat channel for a specific agent.
-     * This is used by the spatial workspace to open chat with an agent.
-     * - If user previously had an active topic for this agent, restore it
-     * - If no previous topic, activates the most recent topic
+     * This is used by both the sidebar and spatial workspace to open chat with an agent.
+     * Always activates the most recent topic (by updated_at) for the agent.
      * - If no session exists, creates one with a default topic
      */
     activateChannelForAgent: async (agentId: string) => {
-      const { backendUrl, activeTopicByAgent, channels } = get();
+      const { backendUrl } = get();
 
-      // First check if there's a previously active topic for this agent
-      const previousTopicId = activeTopicByAgent[agentId];
-      if (previousTopicId && channels[previousTopicId]) {
-        await get().activateChannel(previousTopicId);
-        return;
-      }
-
-      // No previous topic, fetch from backend to get the most recent topic
+      // Fetch from backend to get the most recent topic
       const token = authService.getToken();
       if (!token) {
         console.error("No authentication token available");
@@ -674,8 +672,20 @@ export const createChatSlice: StateCreator<
                   const execution =
                     channel.messages[agentMsgIndex].agentExecution;
 
-                  // Create default "Response" phase if no phases exist
-                  // This handles prebuilt agents (like ReAct) that don't emit node_start events
+                  /**
+                   * Create fallback "Response" phase for agents without node_start events.
+                   *
+                   * WHY: LangChain prebuilt agents (like create_react_agent) don't emit
+                   * node_start/node_end events - they stream content directly. To maintain
+                   * consistent UI state, we create a synthetic phase to hold the streamed content.
+                   *
+                   * EFFECT: This allows the same rendering path (phase.streamedContent → ChatBubble)
+                   * to work for both:
+                   * - Custom graph agents with explicit phases via node_start events
+                   * - Prebuilt agents that only stream content without phase events
+                   *
+                   * SEE ALSO: getMessageDisplayMode() in core/chat/messageContent.ts
+                   */
                   if (execution && execution.phases.length === 0) {
                     execution.phases.push({
                       id: "response",
@@ -2371,10 +2381,15 @@ export const createChatSlice: StateCreator<
     },
 
     // Message editing methods
-    startEditMessage: (messageId: string, content: string) => {
+    startEditMessage: (
+      messageId: string,
+      content: string,
+      mode: "edit_only" | "edit_and_regenerate",
+    ) => {
       set({
         editingMessageId: messageId,
         editingContent: content,
+        editingMode: mode,
       });
     },
 
@@ -2382,6 +2397,7 @@ export const createChatSlice: StateCreator<
       set({
         editingMessageId: null,
         editingContent: "",
+        editingMode: null,
       });
     },
 
@@ -2389,11 +2405,12 @@ export const createChatSlice: StateCreator<
       const {
         editingMessageId,
         editingContent,
+        editingMode,
         activeChatChannel,
         channels,
         backendUrl,
       } = get();
-      if (!editingMessageId || !activeChatChannel) return;
+      if (!editingMessageId || !activeChatChannel || !editingMode) return;
 
       const channel = channels[activeChatChannel];
       if (!channel) return;
@@ -2408,6 +2425,8 @@ export const createChatSlice: StateCreator<
         return;
       }
 
+      const truncateAndRegenerate = editingMode === "edit_and_regenerate";
+
       try {
         const token = authService.getToken();
         if (!token) {
@@ -2415,7 +2434,7 @@ export const createChatSlice: StateCreator<
           return;
         }
 
-        // Call API to edit message and truncate subsequent messages
+        // Call API to edit message
         const response = await fetch(
           `${backendUrl}/xyzen/api/v1/messages/${editingMessageId}`,
           {
@@ -2424,7 +2443,10 @@ export const createChatSlice: StateCreator<
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ content: editingContent }),
+            body: JSON.stringify({
+              content: editingContent,
+              truncate_and_regenerate: truncateAndRegenerate,
+            }),
           },
         );
 
@@ -2437,7 +2459,7 @@ export const createChatSlice: StateCreator<
 
         const result = await response.json();
 
-        // Update local state: update message with server response and remove subsequent messages
+        // Update local state based on edit mode
         set((state: ChatSlice) => {
           const ch = state.channels[activeChatChannel];
           if (!ch) return;
@@ -2448,19 +2470,21 @@ export const createChatSlice: StateCreator<
           );
           if (editedIndex === -1) return;
 
-          // Update the message with server response to stay in sync with any server-side normalization
+          // Update the message with server response
           ch.messages[editedIndex].content = result.message.content;
           ch.messages[editedIndex].created_at = result.message.created_at;
 
-          // Remove all messages after the edited one
-          ch.messages = ch.messages.slice(0, editedIndex + 1);
-
-          // Reset responding state before regeneration to avoid stuck UI
-          ch.responding = false;
+          // Only remove subsequent messages if truncate_and_regenerate was requested
+          if (truncateAndRegenerate) {
+            ch.messages = ch.messages.slice(0, editedIndex + 1);
+            // Reset responding state before regeneration to avoid stuck UI
+            ch.responding = false;
+          }
 
           // Clear edit mode
           state.editingMessageId = null;
           state.editingContent = "";
+          state.editingMode = null;
         });
 
         // Trigger regeneration if needed
