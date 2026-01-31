@@ -437,22 +437,14 @@ export const createChatSlice: StateCreator<
 
     /**
      * Activate or create a chat channel for a specific agent.
-     * This is used by the spatial workspace to open chat with an agent.
-     * - If user previously had an active topic for this agent, restore it
-     * - If no previous topic, activates the most recent topic
+     * This is used by both the sidebar and spatial workspace to open chat with an agent.
+     * Always activates the most recent topic (by updated_at) for the agent.
      * - If no session exists, creates one with a default topic
      */
     activateChannelForAgent: async (agentId: string) => {
-      const { backendUrl, activeTopicByAgent, channels } = get();
+      const { backendUrl } = get();
 
-      // First check if there's a previously active topic for this agent
-      const previousTopicId = activeTopicByAgent[agentId];
-      if (previousTopicId && channels[previousTopicId]) {
-        await get().activateChannel(previousTopicId);
-        return;
-      }
-
-      // No previous topic, fetch from backend to get the most recent topic
+      // Fetch from backend to get the most recent topic
       const token = authService.getToken();
       if (!token) {
         console.error("No authentication token available");
