@@ -92,9 +92,13 @@
   },
   "message": {
     "edit": "编辑",
+    "editOnly": "仅编辑",
+    "editAndRegenerate": "编辑并重新生成",
     "editCancel": "取消",
-    "editSave": "保存并重新生成",
-    "delete": "删除"
+    "editSave": "保存",
+    "editSaveRegenerate": "保存并重新生成",
+    "delete": "删除",
+    "copy": "复制"
   },
   "authStatus": {
     "checking": "检查认证状态...",

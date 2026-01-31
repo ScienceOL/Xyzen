@@ -97,9 +97,14 @@ export interface ChatSlice {
   // Message editing state
   editingMessageId: string | null;
   editingContent: string;
+  editingMode: "edit_only" | "edit_and_regenerate" | null;
 
   // Message editing methods
-  startEditMessage: (messageId: string, content: string) => void;
+  startEditMessage: (
+    messageId: string,
+    content: string,
+    mode: "edit_only" | "edit_and_regenerate",
+  ) => void;
   cancelEditMessage: () => void;
   submitEditMessage: () => Promise<void>;
   triggerRegeneration: () => void;
@@ -154,6 +159,7 @@ export const createChatSlice: StateCreator<
     // Message editing state
     editingMessageId: null,
     editingContent: "",
+    editingMode: null,
 
     setActiveChatChannel: (channelId) => set({ activeChatChannel: channelId }),
 
@@ -2363,10 +2369,15 @@ export const createChatSlice: StateCreator<
     },
 
     // Message editing methods
-    startEditMessage: (messageId: string, content: string) => {
+    startEditMessage: (
+      messageId: string,
+      content: string,
+      mode: "edit_only" | "edit_and_regenerate",
+    ) => {
       set({
         editingMessageId: messageId,
         editingContent: content,
+        editingMode: mode,
       });
     },
 
@@ -2374,6 +2385,7 @@ export const createChatSlice: StateCreator<
       set({
         editingMessageId: null,
         editingContent: "",
+        editingMode: null,
       });
     },
 
@@ -2381,11 +2393,12 @@ export const createChatSlice: StateCreator<
       const {
         editingMessageId,
         editingContent,
+        editingMode,
         activeChatChannel,
         channels,
         backendUrl,
       } = get();
-      if (!editingMessageId || !activeChatChannel) return;
+      if (!editingMessageId || !activeChatChannel || !editingMode) return;
 
       const channel = channels[activeChatChannel];
       if (!channel) return;
@@ -2400,6 +2413,8 @@ export const createChatSlice: StateCreator<
         return;
       }
 
+      const truncateAndRegenerate = editingMode === "edit_and_regenerate";
+
       try {
         const token = authService.getToken();
         if (!token) {
@@ -2407,7 +2422,7 @@ export const createChatSlice: StateCreator<
           return;
         }
 
-        // Call API to edit message and truncate subsequent messages
+        // Call API to edit message
         const response = await fetch(
           `${backendUrl}/xyzen/api/v1/messages/${editingMessageId}`,
           {
@@ -2416,7 +2431,10 @@ export const createChatSlice: StateCreator<
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ content: editingContent }),
+            body: JSON.stringify({
+              content: editingContent,
+              truncate_and_regenerate: truncateAndRegenerate,
+            }),
           },
         );
 
@@ -2429,7 +2447,7 @@ export const createChatSlice: StateCreator<
 
         const result = await response.json();
 
-        // Update local state: update message with server response and remove subsequent messages
+        // Update local state based on edit mode
         set((state: ChatSlice) => {
           const ch = state.channels[activeChatChannel];
           if (!ch) return;
@@ -2440,19 +2458,21 @@ export const createChatSlice: StateCreator<
           );
           if (editedIndex === -1) return;
 
-          // Update the message with server response to stay in sync with any server-side normalization
+          // Update the message with server response
           ch.messages[editedIndex].content = result.message.content;
           ch.messages[editedIndex].created_at = result.message.created_at;
 
-          // Remove all messages after the edited one
-          ch.messages = ch.messages.slice(0, editedIndex + 1);
-
-          // Reset responding state before regeneration to avoid stuck UI
-          ch.responding = false;
+          // Only remove subsequent messages if truncate_and_regenerate was requested
+          if (truncateAndRegenerate) {
+            ch.messages = ch.messages.slice(0, editedIndex + 1);
+            // Reset responding state before regeneration to avoid stuck UI
+            ch.responding = false;
+          }
 
           // Clear edit mode
           state.editingMessageId = null;
           state.editingContent = "";
+          state.editingMode = null;
         });
 
         // Trigger regeneration if needed

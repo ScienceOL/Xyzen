@@ -17,6 +17,11 @@ class MessageEditRequest(BaseModel):
     """Request model for editing a message."""
 
     content: str = Field(..., min_length=1, max_length=100000)
+    truncate_and_regenerate: bool = Field(
+        default=True,
+        description="If True, truncate subsequent messages and trigger regeneration. "
+        "If False, only update content (no truncation, no regeneration).",
+    )
 
 
 class MessageEditResponse(BaseModel):
@@ -72,18 +77,21 @@ async def edit_message(
     db: AsyncSession = Depends(get_session),
 ) -> MessageEditResponse:
     """
-    Edit a user message and truncate all subsequent messages.
+    Edit a message content, optionally truncating subsequent messages.
 
     This operation:
     1. Verifies the message exists and belongs to the authenticated user
-    2. Verifies the message is a user message (only user messages can be edited)
-    3. Updates the message content
-    4. Deletes all messages created after this message in the same topic
-    5. Returns info for the frontend to trigger agent regeneration
+    2. Updates the message content
+    3. If truncate_and_regenerate=True (only for user messages):
+       - Deletes all messages created after this message in the same topic
+       - Returns regenerate=True for frontend to trigger agent re-run
+    4. If truncate_and_regenerate=False (for both user and assistant messages):
+       - Only updates the message content
+       - Returns regenerate=False
 
     Args:
         message_id: UUID of the message to edit
-        edit_request: New content for the message
+        edit_request: New content and truncation option
         user: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
@@ -92,13 +100,16 @@ async def edit_message(
 
     Raises:
         HTTPException: 404 if message/topic/session not found, 403 if access denied,
-                       400 if trying to edit non-user message
+                       400 if trying to regenerate from non-user message
     """
     message, topic_id = await _verify_message_authorization(message_id, user, db)
 
-    # Only allow editing user messages
-    if message.role != "user":
-        raise HTTPException(status_code=400, detail="Only user messages can be edited")
+    # Regeneration is only allowed for user messages
+    if edit_request.truncate_and_regenerate and message.role != "user":
+        raise HTTPException(
+            status_code=400,
+            detail="Regeneration can only be triggered from user messages",
+        )
 
     message_repo = MessageRepository(db)
 
@@ -108,8 +119,15 @@ async def edit_message(
     if not updated_message:
         raise HTTPException(status_code=500, detail="Failed to update message")
 
-    # Delete all messages after this one (by created_at timestamp)
-    deleted_count = await message_repo.delete_messages_after(topic_id, updated_message.created_at, cascade_files=True)
+    deleted_count = 0
+    regenerate = False
+
+    # Only truncate and regenerate if requested (and message is from user)
+    if edit_request.truncate_and_regenerate:
+        deleted_count = await message_repo.delete_messages_after(
+            topic_id, updated_message.created_at, cascade_files=True
+        )
+        regenerate = True
 
     await db.commit()
 
@@ -124,7 +142,7 @@ async def edit_message(
             agent_metadata=updated_message.agent_metadata,
         ),
         deleted_count=deleted_count,
-        regenerate=True,  # Frontend should trigger agent re-run
+        regenerate=regenerate,
     )
 
 
