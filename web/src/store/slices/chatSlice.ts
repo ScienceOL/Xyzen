@@ -1413,7 +1413,8 @@ export const createChatSlice: StateCreator<
                 // (thinking may be attached to agent execution message)
                 if (endThinkingIndex === -1) {
                   endThinkingIndex = channel.messages.findLastIndex(
-                    (m) => m.isThinking && m.agentExecution,
+                    (m) =>
+                      m.isThinking && m.agentExecution?.status === "running",
                   );
                 }
 
