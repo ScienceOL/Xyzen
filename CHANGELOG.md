@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.1.0](https://github.com/ScienceOL/Xyzen/compare/v1.0.16...v1.1.0) (2026-02-01)
+
+### ✨ Features
+
+* add list order, chat cancel and message edit ([#217](https://github.com/ScienceOL/Xyzen/issues/217)) ([25ed84d](https://github.com/ScienceOL/Xyzen/commit/25ed84db05dc66a2f6cdb15a3afc6bc8d4a47dfc)), closes [#206](https://github.com/ScienceOL/Xyzen/issues/206)
+
 ## [1.0.16](https://github.com/ScienceOL/Xyzen/compare/v1.0.15...v1.0.16) (2026-01-28)
 
 ### 🐛 Bug Fixes
