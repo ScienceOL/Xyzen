@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.1.1](https://github.com/ScienceOL/Xyzen/compare/v1.1.0...v1.1.1) (2026-02-01)
+
+### 🐛 Bug Fixes
+
+* attach thinking content to agent execution message ([#218](https://github.com/ScienceOL/Xyzen/issues/218)) ([be5c6be](https://github.com/ScienceOL/Xyzen/commit/be5c6be54dafa64457645298ff939a0ddac40d4d)), closes [#206](https://github.com/ScienceOL/Xyzen/issues/206)
+
 ## [1.1.0](https://github.com/ScienceOL/Xyzen/compare/v1.0.16...v1.1.0) (2026-02-01)
 
 ### ✨ Features
