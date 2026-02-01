@@ -1324,6 +1324,8 @@ export const createChatSlice: StateCreator<
                 // Start thinking mode - find or create the assistant message
                 channel.responding = true;
                 const eventData = event.data as { id: string };
+
+                // First check for loading message
                 const loadingIndex = channel.messages.findIndex(
                   (m) => m.isLoading,
                 );
@@ -1339,28 +1341,56 @@ export const createChatSlice: StateCreator<
                     thinkingContent: "",
                     content: "",
                   };
-                } else {
-                  // No loading present, create a thinking message
-                  channel.messages.push({
-                    id: eventData.id,
-                    clientId: `thinking-${Date.now()}`,
-                    role: "assistant" as const,
-                    content: "",
-                    isNewMessage: true,
-                    created_at: new Date().toISOString(),
+                  break;
+                }
+
+                // Check for running agent execution message
+                // (agent_start may have already consumed the loading message)
+                const agentMsgIndex = channel.messages.findLastIndex(
+                  (m) => m.agentExecution?.status === "running",
+                );
+                if (agentMsgIndex !== -1) {
+                  // Attach thinking to the agent execution message
+                  channel.messages[agentMsgIndex] = {
+                    ...channel.messages[agentMsgIndex],
                     isThinking: true,
                     thinkingContent: "",
-                  });
+                  };
+                  break;
                 }
+
+                // Fallback: No loading or agent message, create a thinking message
+                channel.messages.push({
+                  id: eventData.id,
+                  clientId: `thinking-${Date.now()}`,
+                  role: "assistant" as const,
+                  content: "",
+                  isNewMessage: true,
+                  created_at: new Date().toISOString(),
+                  isThinking: true,
+                  thinkingContent: "",
+                });
                 break;
               }
 
               case "thinking_chunk": {
                 // Append to thinking content
                 const eventData = event.data as { id: string; content: string };
-                const thinkingIndex = channel.messages.findIndex(
+
+                // Try to find by ID first
+                let thinkingIndex = channel.messages.findIndex(
                   (m) => m.id === eventData.id,
                 );
+
+                // If not found by ID, check for agent message with isThinking
+                // (thinking may be attached to agent execution message)
+                if (thinkingIndex === -1) {
+                  thinkingIndex = channel.messages.findLastIndex(
+                    (m) =>
+                      m.isThinking && m.agentExecution?.status === "running",
+                  );
+                }
+
                 if (thinkingIndex !== -1) {
                   const currentThinking =
                     channel.messages[thinkingIndex].thinkingContent ?? "";
@@ -1373,9 +1403,21 @@ export const createChatSlice: StateCreator<
               case "thinking_end": {
                 // End thinking mode
                 const eventData = event.data as { id: string };
-                const endThinkingIndex = channel.messages.findIndex(
+
+                // Try to find by ID first
+                let endThinkingIndex = channel.messages.findIndex(
                   (m) => m.id === eventData.id,
                 );
+
+                // If not found by ID, check for agent message with isThinking
+                // (thinking may be attached to agent execution message)
+                if (endThinkingIndex === -1) {
+                  endThinkingIndex = channel.messages.findLastIndex(
+                    (m) =>
+                      m.isThinking && m.agentExecution?.status === "running",
+                  );
+                }
+
                 if (endThinkingIndex !== -1) {
                   channel.messages[endThinkingIndex].isThinking = false;
                 }
