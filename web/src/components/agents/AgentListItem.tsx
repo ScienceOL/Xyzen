@@ -139,10 +139,21 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   );
 };
 
+// Drag handle props type
+export interface DragHandleProps {
+  attributes: React.HTMLAttributes<HTMLElement>;
+  listeners: React.DOMAttributes<HTMLElement>;
+}
+
 // Shared props for both variants
 interface AgentListItemBaseProps {
   agent: Agent;
   onClick?: (agent: Agent) => void;
+  // Drag and drop support
+  isDragging?: boolean;
+  dragHandleProps?: DragHandleProps;
+  style?: React.CSSProperties;
+  setNodeRef?: (node: HTMLElement | null) => void;
 }
 
 // Props specific to detailed variant
@@ -182,6 +193,10 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   onClick,
   onEdit,
   onDelete,
+  isDragging = false,
+  dragHandleProps,
+  style,
+  setNodeRef,
 }) => {
   const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{
@@ -236,15 +251,119 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
     });
   };
 
+  // When sortable (dragHandleProps provided), use simple div to avoid motion conflicts
+  if (dragHandleProps) {
+    return (
+      <>
+        <div
+          ref={setNodeRef}
+          style={style}
+          onClick={() => {
+            if (isLongPress.current || isDragging) return;
+            onClick?.(agent);
+          }}
+          onContextMenu={handleContextMenu}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchMove={handleTouchMove}
+          className={`
+            group relative flex cursor-pointer items-start gap-4 rounded-sm border p-3
+            border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60
+            ${agent.id === "default-chat" ? "select-none" : ""}
+            ${isDragging ? "shadow-xl z-50 cursor-grabbing" : ""}
+          `}
+          {...dragHandleProps.attributes}
+          {...dragHandleProps.listeners}
+        >
+          {/* Avatar */}
+          <div className="h-10 w-10 shrink-0 avatar-glow">
+            <img
+              src={
+                agent.avatar ||
+                "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+              }
+              alt={agent.name}
+              className="h-10 w-10 rounded-full border border-neutral-200 object-cover dark:border-neutral-700"
+            />
+          </div>
+
+          {/* Content */}
+          <div className="flex flex-1 flex-col min-w-0 select-none">
+            <div className="flex items-center gap-2">
+              <h3
+                className="text-sm font-semibold text-neutral-800 dark:text-white truncate shrink"
+                title={agent.name}
+              >
+                {agent.name}
+              </h3>
+
+              {/* Marketplace published badge */}
+              {isMarketplacePublished && (
+                <Tooltip side="right">
+                  <TooltipTrigger asChild>
+                    <span className="shrink-0">
+                      <Badge
+                        variant="yellow"
+                        className="flex items-center justify-center px-1.5!"
+                      >
+                        <ShoppingBagIcon className="h-3.5 w-3.5" />
+                      </Badge>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("agents.badges.marketplace", {
+                      defaultValue: "Published to Marketplace",
+                    })}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+
+            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
+              {agent.description}
+            </p>
+
+            {/* Last conversation time */}
+            {lastConversationTime && (
+              <p className="mt-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+                {formatTime(lastConversationTime)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Context menu */}
+        {contextMenu &&
+          createPortal(
+            <ContextMenu
+              x={contextMenu.x}
+              y={contextMenu.y}
+              onEdit={() => onEdit?.(agent)}
+              onDelete={() => onDelete?.(agent)}
+              onClose={() => setContextMenu(null)}
+              isDefaultAgent={isDefaultAgent}
+              isMarketplacePublished={isMarketplacePublished}
+            />,
+            document.body,
+          )}
+      </>
+    );
+  }
+
+  // Non-sortable: use motion.div with animations
   return (
     <>
       <motion.div
-        layout
+        layout={!isDragging}
         variants={itemVariants}
-        whileHover={{ scale: 1.03, transition: { duration: 0.2 } }}
-        whileTap={{ scale: 0.98 }}
+        whileHover={
+          isDragging
+            ? undefined
+            : { scale: 1.02, transition: { duration: 0.2 } }
+        }
+        whileTap={isDragging ? undefined : { scale: 0.98 }}
         onClick={() => {
-          if (isLongPress.current) return;
+          if (isLongPress.current || isDragging) return;
           onClick?.(agent);
         }}
         onContextMenu={handleContextMenu}
@@ -252,10 +371,11 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
         className={`
-        group relative flex cursor-pointer items-start gap-4 rounded-sm border p-3
-        border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60
-        ${agent.id === "default-chat" ? "select-none" : ""}
-      `}
+            group relative flex cursor-pointer items-start gap-4 rounded-sm border p-3
+            border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60
+            ${agent.id === "default-chat" ? "select-none" : ""}
+            ${isDragging ? "shadow-xl z-50 cursor-grabbing" : ""}
+          `}
       >
         {/* Avatar */}
         <div className="h-10 w-10 shrink-0 avatar-glow">
@@ -350,6 +470,10 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
   onClick,
   onEdit,
   onDelete,
+  isDragging = false,
+  dragHandleProps,
+  style,
+  setNodeRef,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -403,21 +527,36 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
 
   return (
     <>
-      <button
+      <div
+        ref={setNodeRef}
+        style={style}
         data-agent-id={agent.id}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
         onClick={() => {
-          if (isLongPress.current) return;
+          if (isLongPress.current || isDragging) return;
           onClick?.(agent);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (!isLongPress.current && !isDragging) {
+              onClick?.(agent);
+            }
+          }
         }}
         onContextMenu={handleContextMenu}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
-        className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 ${
+        className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 group ${
           isSelected
             ? "bg-white/80 dark:bg-white/20 shadow-sm"
             : "hover:bg-white/40 dark:hover:bg-white/10"
-        }`}
+        } ${isDragging ? "shadow-xl z-50 cursor-grabbing" : "cursor-pointer"}`}
+        {...dragHandleProps?.attributes}
+        {...dragHandleProps?.listeners}
       >
         <div className="relative">
           <img
@@ -443,7 +582,7 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
             <div className="truncate text-[10px] text-neutral-500">{role}</div>
           )}
         </div>
-      </button>
+      </div>
 
       {/* Context menu - rendered via portal to escape overflow:hidden containers */}
       {contextMenu &&

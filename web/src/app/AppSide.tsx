@@ -347,7 +347,7 @@ export function AppSide({
                     </p>
                   </div>
                   <div className="flex-1 overflow-y-auto py-4">
-                    <XyzenAgent systemAgentType="chat" />
+                    <XyzenAgent />
                   </div>
                 </div>
               ))}

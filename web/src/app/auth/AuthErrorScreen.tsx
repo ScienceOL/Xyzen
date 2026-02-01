@@ -6,6 +6,7 @@ import {
   type AuthProviderConfig,
   type AuthStatus,
 } from "@/service/authService";
+import { buildAuthorizeUrl } from "@/utils/authFlow";
 import { InfoIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -39,33 +40,6 @@ function useAuthProvider() {
   }, []);
 
   return { status, config, loading, error };
-}
-
-function buildAuthorizeUrl(
-  provider: string,
-  cfg: AuthProviderConfig,
-  state?: string,
-): string | null {
-  if (!cfg.issuer) return null;
-  const redirectUri = encodeURIComponent(
-    `${window.location.origin}${window.location.pathname}`,
-  );
-  const audience = cfg.audience ? encodeURIComponent(cfg.audience) : "";
-
-  if (provider === "casdoor") {
-    // Casdoor OAuth2 Authorization Code Flow
-    const base = cfg.issuer
-      .replace(/\/$/, "")
-      .replace("host.docker.internal", "localhost");
-
-    return `${base}/login/oauth/authorize?client_id=${audience}&response_type=code&redirect_uri=${redirectUri}&scope=openid%20profile%20email&state=${state}`;
-  }
-  if (provider === "bohrium") {
-    // Best-effort: common authorize path; adjust if backend exposes a dedicated login endpoint
-    const base = cfg.issuer.replace(/\/$/, "");
-    return `${base}/oauth/authorize?client_id=${audience}&response_type=token&redirect_uri=${redirectUri}`;
-  }
-  return null;
 }
 
 interface AuthErrorScreenProps {

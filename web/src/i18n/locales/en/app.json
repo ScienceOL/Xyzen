@@ -1,5 +1,8 @@
 {
   "title": "Xyzen",
+  "update": {
+    "updating": "Updating to v{{version}}..."
+  },
   "pwa": {
     "installTitle": "Install App",
     "installDescription": "Click the install icon in your address bar for a better experience."
@@ -12,6 +15,19 @@
       "label": "Thinking...",
       "showThinking": "Show thinking",
       "hideThinking": "Hide thinking"
+    },
+    "toolCall": {
+      "arguments": "Arguments",
+      "result": "Result",
+      "error": "Error",
+      "executedAt": "Executed at",
+      "expandImage": "Click to expand",
+      "imageAlt": "Generated image",
+      "confirmExecute": "Confirm"
+    },
+    "agent": {
+      "stopped": "Generation stopped",
+      "subagents": "Subagents"
     }
   },
   "activityBar": {
@@ -68,8 +84,39 @@
   "input": {
     "placeholder": "Send a message...",
     "send": "Send",
+    "stop": "Stop generating",
+    "stopping": "Stopping...",
+    "escToStop": "Stop",
     "enterToSend": "Send",
     "shiftEnterForNewline": "New line"
+  },
+  "message": {
+    "edit": "Edit",
+    "editOnly": "Edit",
+    "editAndRegenerate": "Edit & Regenerate",
+    "editCancel": "Cancel",
+    "editSave": "Save",
+    "editSaveRegenerate": "Save & Regenerate",
+    "delete": "Delete",
+    "copy": "Copy"
+  },
+  "authStatus": {
+    "checking": "Checking authentication...",
+    "authInfoTitle": "Authentication Info",
+    "loggedIn": "Signed in",
+    "accountLabel": "Account",
+    "pointsBalance": "Points Balance",
+    "pointsInfo": "Points Info",
+    "credentialsLabel": "Credentials",
+    "accessTokenLabel": "access_token",
+    "copy": "Copy",
+    "openInApp": "Open in App",
+    "clickToCopy": "Click to copy",
+    "noAccessToken": "No access_token",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "unauthorized": "Unauthorized user",
+    "authError": "Authentication error or not configured"
   },
   "modelCapabilities": {
     "vision": "Vision Support",
@@ -86,6 +133,7 @@
     "free": "0.0x",
     "rateFormat": "{{rate}}x",
     "consumption": "Consumption",
+    "multiplier": "Multiplier",
     "infoModal": {
       "title": "Select Intelligence Mode",
       "subtitle": "Flexibly allocate AI computing power based on task difficulty",
@@ -94,6 +142,32 @@
       "availableModels": "Model Reference",
       "imageGen": "Image Generation",
       "disclaimer": "* Models listed are for capability reference only and do not guarantee the actual model used."
+    },
+    "speedLabels": {
+      "ultraFast": "Ultra Fast",
+      "fast": "Fast",
+      "moderate": "Moderate",
+      "thinking": "Thinking..."
+    },
+    "reasoningLabels": {
+      "basic": "Basic",
+      "standard": "Standard",
+      "excellent": "Excellent",
+      "max": "MAX"
+    },
+    "features": {
+      "quickTranslation": "Quick Translation",
+      "textSummary": "Text Summary",
+      "simpleQA": "Simple Q&A",
+      "dailyChat": "Daily Chat & Assistant",
+      "emailWriting": "Email Writing",
+      "knowledgeQA": "Knowledge Q&A",
+      "pdfAnalysis": "Deep PDF Analysis",
+      "codeWriting": "Code Writing & Debugging",
+      "taskPlanning": "Complex Task Planning",
+      "deepReasoning": "Deep Logic Reasoning",
+      "academicAnalysis": "Research-Level Analysis",
+      "mathSolving": "Complex Math & Algorithms"
     },
     "tiers": {
       "ultra": {

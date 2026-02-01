@@ -1,0 +1,46 @@
+{
+  "hero": {
+    "title": "Xyzen，构建科研 Agent 的开放平台",
+    "subtitle": "多智能体 LLM 编排，用于研究、自动化和智能工作流",
+    "cta_primary": "开始使用",
+    "cta_secondary": "了解更多"
+  },
+  "features": {
+    "title": "强大功能",
+    "multi_agent": {
+      "title": "多智能体编排",
+      "description": "使用 LangGraph 协调多个 AI 智能体，实现复杂工作流和协作问题解决"
+    },
+    "real_time": {
+      "title": "实时聊天",
+      "description": "基于 WebSocket 的流式传输，实现即时智能体响应和交互式对话"
+    },
+    "mcp": {
+      "title": "MCP 集成",
+      "description": "支持模型上下文协议，实现可扩展的工具集成和增强功能"
+    },
+    "spatial": {
+      "title": "空间工作区",
+      "description": "可视化智能体画布，用于直观的工作流设计和多智能体协作"
+    }
+  },
+  "demo": {
+    "title": "实际演示",
+    "description": "体验多智能体协作和智能自动化的强大功能"
+  },
+  "useCases": {
+    "title": "使用场景",
+    "research": {
+      "title": "深度研究",
+      "description": "多阶段研究，自动化信息收集、分析和综合"
+    },
+    "automation": {
+      "title": "工作流自动化",
+      "description": "使用智能 AI 智能体协同工作，自动化复杂的多步骤流程"
+    },
+    "analysis": {
+      "title": "文档分析",
+      "description": "使用专业智能体处理和分析文档，获得全面洞察"
+    }
+  }
+}

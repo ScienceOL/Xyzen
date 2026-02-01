@@ -1,31 +1,70 @@
 import ProfileIcon from "@/assets/ProfileIcon";
 // import { TYPEWRITER_CONFIG } from "@/configs/typewriterConfig";
 // import { useStreamingTypewriter } from "@/hooks/useTypewriterEffect";
+import {
+  resolveMessageContent,
+  getMessageDisplayMode,
+} from "@/core/chat/messageContent";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
-import { CheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import {
+  CheckIcon,
+  ClipboardDocumentIcon,
+  PencilIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { useDeferredValue, useMemo, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import AgentExecutionTimeline from "./AgentExecutionTimeline";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
 import ThinkingBubble from "./ThinkingBubble";
-import ToolCallCard from "./ToolCallCard";
+import ToolCallPill from "./ToolCallPill";
+import ToolCallDetailsModal from "./ToolCallDetailsModal";
 
 interface ChatBubbleProps {
   message: Message;
 }
 
 function ChatBubble({ message }: ChatBubbleProps) {
+  const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
+  const [selectedToolCallId, setSelectedToolCallId] = useState<string | null>(
+    null,
+  );
   const confirmToolCall = useXyzen((state) => state.confirmToolCall);
   const cancelToolCall = useXyzen((state) => state.cancelToolCall);
   const activeChatChannel = useXyzen((state) => state.activeChatChannel);
   const channels = useXyzen((state) => state.channels);
   const agents = useXyzen((state) => state.agents);
   const user = useXyzen((state) => state.user);
+
+  // Edit state
+  const editingMessageId = useXyzen((state) => state.editingMessageId);
+  const editingContent = useXyzen((state) => state.editingContent);
+  const editingMode = useXyzen((state) => state.editingMode);
+  const startEditMessage = useXyzen((state) => state.startEditMessage);
+  const cancelEditMessage = useXyzen((state) => state.cancelEditMessage);
+  const submitEditMessage = useXyzen((state) => state.submitEditMessage);
+
+  // Delete state
+  const deleteMessage = useXyzen((state) => state.deleteMessage);
 
   // Get current agent avatar from store
   const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
@@ -56,6 +95,68 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   const isUserMessage = role === "user";
   const isToolMessage = toolCalls && toolCalls.length > 0;
+
+  // Edit state
+  const isEditing = editingMessageId === message.id;
+  const channel = activeChatChannel ? channels[activeChatChannel] : null;
+  const canEditUser =
+    isUserMessage && !channel?.responding && !isLoading && !isStreaming;
+  const canEditAssistant =
+    !isUserMessage &&
+    !channel?.responding &&
+    !isLoading &&
+    !isStreaming &&
+    !isToolMessage;
+
+  const handleEditClick = (mode: "edit_only" | "edit_and_regenerate") => {
+    startEditMessage(message.id, displayedContent, mode);
+  };
+
+  const handleEditContentChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    useXyzen.setState({ editingContent: e.target.value });
+    // Auto-resize textarea
+    e.target.style.height = "auto";
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  };
+
+  // Ref for auto-resizing textarea
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea on mount and content change
+  const resizeTextarea = useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isEditing) {
+      resizeTextarea();
+    }
+  }, [isEditing, editingContent, resizeTextarea]);
+
+  const handleEditSave = async () => {
+    await submitEditMessage();
+  };
+
+  const handleEditCancel = () => {
+    cancelEditMessage();
+  };
+
+  // Delete state - both user and assistant messages can be deleted
+  const canDelete =
+    !channel?.responding && !isLoading && !isStreaming && !isEditing;
+
+  const handleDeleteClick = async () => {
+    await deleteMessage(message.id);
+  };
+
+  const selectedToolCall = selectedToolCallId
+    ? toolCalls?.find((tc) => tc.id === selectedToolCallId) || null
+    : null;
 
   // Updated time format to include seconds
   const formattedTime = new Date(created_at).toLocaleTimeString([], {
@@ -116,13 +217,23 @@ function ChatBubble({ message }: ChatBubbleProps) {
     );
   };
 
+  // Content resolution using unified utilities
+  // resolveMessageContent provides single source of truth for content display and copy/edit
+  // getMessageDisplayMode determines which rendering path to use
+  const resolvedContent = useMemo(
+    () => resolveMessageContent(message),
+    [message],
+  );
+  const displayedContent = resolvedContent.text;
+  const displayMode = useMemo(() => getMessageDisplayMode(message), [message]);
+
   const handleCopy = () => {
-    if (!content) return;
+    if (!displayedContent) return;
 
     // Fallback function for older browsers or restricted environments
     const fallbackCopy = () => {
       const textArea = document.createElement("textarea");
-      textArea.value = content;
+      textArea.value = displayedContent;
       textArea.style.position = "fixed"; // Prevent scrolling to bottom
       textArea.style.opacity = "0";
       document.body.appendChild(textArea);
@@ -149,7 +260,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
     // Use modern Clipboard API if available and in a secure context
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(content).then(
+      navigator.clipboard.writeText(displayedContent).then(
         () => {
           setIsCopied(true);
           setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
@@ -164,7 +275,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     }
   };
 
-  // If this is a tool message from history, render as ToolCallCard
+  // Tool call messages (from history refresh) render as pills + modal
   if (isToolMessage) {
     return (
       <motion.div
@@ -173,20 +284,28 @@ function ChatBubble({ message }: ChatBubbleProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="group relative w-full pl-8"
       >
+        {selectedToolCall && (
+          <ToolCallDetailsModal
+            toolCall={selectedToolCall}
+            open={Boolean(selectedToolCall)}
+            onClose={() => setSelectedToolCallId(null)}
+            onConfirm={(toolCallId) =>
+              activeChatChannel &&
+              confirmToolCall(activeChatChannel, toolCallId)
+            }
+            onCancel={(toolCallId) =>
+              activeChatChannel && cancelToolCall(activeChatChannel, toolCallId)
+            }
+          />
+        )}
+
         {toolCalls && toolCalls.length > 0 && (
-          <div className="mt-1 space-y-3">
+          <div className="mt-1 flex flex-wrap gap-1.5">
             {toolCalls.map((toolCall) => (
-              <ToolCallCard
+              <ToolCallPill
                 key={toolCall.id}
                 toolCall={toolCall}
-                onConfirm={(toolCallId) =>
-                  activeChatChannel &&
-                  confirmToolCall(activeChatChannel, toolCallId)
-                }
-                onCancel={(toolCallId) =>
-                  activeChatChannel &&
-                  cancelToolCall(activeChatChannel, toolCallId)
-                }
+                onClick={() => setSelectedToolCallId(toolCall.id)}
               />
             ))}
           </div>
@@ -211,135 +330,164 @@ function ChatBubble({ message }: ChatBubbleProps) {
         {/* Avatar - positioned to the left */}
         <div className="absolute left-0 top-1">{renderAvatar()}</div>
 
-        {/* Message content */}
-        <div
-          className={`relative w-full min-w-0 ${messageStyles} transition-all duration-200 hover:shadow-sm`}
-        >
-          <div className="px-4 py-3 min-w-0">
-            {/* File Attachments - shown before text for user messages */}
-            {isUserMessage && attachments && attachments.length > 0 && (
-              <div className="mb-3">
-                <MessageAttachments attachments={attachments} />
+        {/* Edit mode for messages */}
+        {isEditing ? (
+          <div className={`relative w-full min-w-0 ${messageStyles}`}>
+            <div className="px-4 py-3">
+              <textarea
+                ref={textareaRef}
+                value={editingContent}
+                onChange={handleEditContentChange}
+                className="w-full min-h-[80px] max-h-[60vh] overflow-y-auto bg-transparent resize-none focus:outline-none text-sm text-neutral-800 dark:text-neutral-200"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  onClick={handleEditCancel}
+                  className="px-3 py-1 text-sm text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
+                >
+                  {t("app.message.editCancel")}
+                </button>
+                <button
+                  onClick={handleEditSave}
+                  className="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50"
+                  disabled={!editingContent.trim()}
+                >
+                  {editingMode === "edit_and_regenerate"
+                    ? t("app.message.editSaveRegenerate")
+                    : t("app.message.editSave")}
+                </button>
               </div>
-            )}
-
-            <div
-              className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto select-text ${
-                isUserMessage
-                  ? "text-sm text-neutral-800 dark:text-neutral-200"
-                  : "text-sm text-neutral-700 dark:text-neutral-300"
-              }`}
-            >
-              {/* Thinking content - shown before main response for assistant messages */}
-              {!isUserMessage && thinkingContent && (
-                <ThinkingBubble
-                  content={thinkingContent}
-                  isThinking={isThinking ?? false}
-                />
+            </div>
+          </div>
+        ) : (
+          /* Message content */
+          <div
+            className={`relative w-full min-w-0 ${messageStyles} transition-all duration-200 hover:shadow-sm`}
+          >
+            <div className="px-4 py-3 min-w-0">
+              {/* File Attachments - shown before text for user messages */}
+              {isUserMessage && attachments && attachments.length > 0 && (
+                <div className="mb-3">
+                  <MessageAttachments attachments={attachments} />
+                </div>
               )}
 
-              {/* Agent execution timeline - show for all agents with phases */}
-              {!isUserMessage &&
-                agentExecution &&
-                agentExecution.phases.length > 0 && (
-                  <AgentExecutionTimeline
-                    execution={agentExecution}
-                    isExecuting={agentExecution.status === "running"}
+              <div
+                className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto select-text ${
+                  isUserMessage
+                    ? "text-sm text-neutral-800 dark:text-neutral-200"
+                    : "text-sm text-neutral-700 dark:text-neutral-300"
+                }`}
+              >
+                {/* Thinking content - shown before main response for assistant messages */}
+                {!isUserMessage && thinkingContent && (
+                  <ThinkingBubble
+                    content={thinkingContent}
+                    isThinking={isThinking ?? false}
                   />
                 )}
 
-              {(() => {
-                // Explicit loading state - show inline loading dots
-                if (isLoading) {
-                  return (
-                    <span className="inline-flex items-center gap-1">
-                      <LoadingMessage size="small" />
-                    </span>
-                  );
-                }
+                {/* Agent execution timeline - show for all agents with phases */}
+                {!isUserMessage &&
+                  agentExecution &&
+                  agentExecution.phases.length > 0 && (
+                    <AgentExecutionTimeline
+                      execution={agentExecution}
+                      isExecuting={agentExecution.status === "running"}
+                    />
+                  )}
 
-                // No agent execution - regular chat
-                if (!agentExecution) {
-                  return markdownContent;
-                }
+                {/* Message content based on display mode */}
+                {(() => {
+                  switch (displayMode) {
+                    case "loading":
+                    case "waiting":
+                      return (
+                        <span className="inline-flex items-center gap-1">
+                          <LoadingMessage size="small" />
+                        </span>
+                      );
 
-                // Agent with phases - get content from phases
-                if (agentExecution.phases.length > 0) {
-                  const activePhase = agentExecution.phases.find(
-                    (p) => p.status === "running",
-                  );
-                  const lastPhase =
-                    agentExecution.phases[agentExecution.phases.length - 1];
-                  const phaseContent =
-                    activePhase?.streamedContent || lastPhase?.streamedContent;
+                    case "simple":
+                      return markdownContent;
 
-                  // Show final phase content below timeline when completed
-                  if (
-                    !isStreaming &&
-                    agentExecution.status !== "running" &&
-                    lastPhase?.streamedContent
-                  ) {
-                    return (
-                      <div className="mt-4">
-                        <Markdown content={lastPhase.streamedContent} />
-                      </div>
-                    );
+                    case "timeline_streaming":
+                      // Content is shown in AgentExecutionTimeline phases during streaming
+                      return null;
+
+                    case "timeline_complete":
+                      // Show final content below timeline when completed
+                      // Guard against empty content to avoid rendering empty div with margin
+                      return resolvedContent.text ? (
+                        <div className="mt-4">
+                          <Markdown content={resolvedContent.text} />
+                        </div>
+                      ) : null;
+
+                    default:
+                      // Fallback for any unexpected display mode
+                      return markdownContent;
                   }
+                })()}
 
-                  // Still streaming - content shown in timeline
-                  if (phaseContent) {
-                    return null;
-                  }
-                }
+                {isStreaming && !isLoading && (
+                  <motion.span
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="ml-1 inline-block h-4 w-0.5 bg-current"
+                  />
+                )}
+              </div>
 
-                // Still waiting for content - show inline loading dots
-                if (
-                  agentExecution.status === "running" &&
-                  !content &&
-                  agentExecution.phases.length === 0
-                ) {
-                  return (
-                    <span className="inline-flex items-center gap-1">
-                      <LoadingMessage size="small" />
-                    </span>
-                  );
-                }
+              {/* File Attachments - shown after text for assistant messages */}
+              {!isUserMessage && attachments && attachments.length > 0 && (
+                <div className="mt-3">
+                  <MessageAttachments attachments={attachments} />
+                </div>
+              )}
 
-                // Fallback to message.content
-                return markdownContent;
-              })()}
-
-              {isStreaming && !isLoading && (
-                <motion.span
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  className="ml-1 inline-block h-4 w-0.5 bg-current"
-                />
+              {/* Search Citations - shown after attachments for assistant messages */}
+              {!isUserMessage && citations && citations.length > 0 && (
+                <div className="mt-3">
+                  <SearchCitations citations={citations} />
+                </div>
               )}
             </div>
-
-            {/* File Attachments - shown after text for assistant messages */}
-            {!isUserMessage && attachments && attachments.length > 0 && (
-              <div className="mt-3">
-                <MessageAttachments attachments={attachments} />
-              </div>
-            )}
-
-            {/* Search Citations - shown after attachments for assistant messages */}
-            {!isUserMessage && citations && citations.length > 0 && (
-              <div className="mt-3">
-                <SearchCitations citations={citations} />
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
-        {/* Copy button - shown for assistant messages */}
-        {!isUserMessage && !isLoading && (
-          <div className="absolute bottom-2 left-0 z-10 opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100">
+        {/* Edit, Copy, and Delete buttons - shown for user messages on hover */}
+        {isUserMessage && !isEditing && (
+          <div className="absolute bottom-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {canEditUser && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                    title={t("app.message.edit")}
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleEditClick("edit_only")}
+                  >
+                    {t("app.message.editOnly")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleEditClick("edit_and_regenerate")}
+                  >
+                    {t("app.message.editAndRegenerate")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <button
               onClick={handleCopy}
               className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+              title={t("app.message.copy")}
             >
               {isCopied ? (
                 <CheckIcon className="h-4 w-4 text-green-500" />
@@ -347,6 +495,50 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 <ClipboardDocumentIcon className="h-4 w-4" />
               )}
             </button>
+            {canDelete && (
+              <button
+                onClick={handleDeleteClick}
+                className="rounded-md p-1 text-neutral-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                title={t("app.message.delete")}
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Edit, Copy, and Delete buttons - shown for assistant messages at top-right */}
+        {!isUserMessage && !isLoading && !isEditing && (
+          <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {canEditAssistant && (
+              <button
+                onClick={() => handleEditClick("edit_only")}
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                title={t("app.message.edit")}
+              >
+                <PencilIcon className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              onClick={handleCopy}
+              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+              title={t("app.message.copy")}
+            >
+              {isCopied ? (
+                <CheckIcon className="h-4 w-4 text-green-500" />
+              ) : (
+                <ClipboardDocumentIcon className="h-4 w-4" />
+              )}
+            </button>
+            {canDelete && (
+              <button
+                onClick={handleDeleteClick}
+                className="rounded-md p-1 text-neutral-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                title={t("app.message.delete")}
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
         )}
       </motion.div>

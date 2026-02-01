@@ -7,6 +7,7 @@ import LoadingMessage from "./LoadingMessage";
 interface ToolCallPillProps {
   toolCall: ToolCall;
   className?: string;
+  onClick?: () => void;
 }
 
 /**
@@ -20,6 +21,7 @@ interface ToolCallPillProps {
 export default function ToolCallPill({
   toolCall,
   className = "",
+  onClick,
 }: ToolCallPillProps) {
   const { name, status } = toolCall;
 
@@ -69,12 +71,20 @@ export default function ToolCallPill({
     }
   };
 
+  const isClickable = Boolean(onClick);
+
   return (
-    <motion.div
+    <motion.button
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.15 }}
-      className={`${getPillStyle()} hover:bg-neutral-100/80 dark:hover:bg-neutral-700/30 ${className}`}
+      type="button"
+      onClick={onClick}
+      className={`${getPillStyle()} ${
+        isClickable
+          ? "cursor-pointer hover:bg-neutral-100/80 dark:hover:bg-neutral-700/30"
+          : "cursor-default"
+      } ${className}`}
       title={`Tool: ${name}\nStatus: ${status}`}
     >
       {/* Tool Icon */}
@@ -87,6 +97,6 @@ export default function ToolCallPill({
 
       {/* Status Indicator */}
       <StatusIndicator />
-    </motion.div>
+    </motion.button>
   );
 }

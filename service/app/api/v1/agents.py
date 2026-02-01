@@ -16,6 +16,7 @@ This module provides the following endpoints for agent management:
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.agents.types import SystemAgentInfo
@@ -224,6 +225,37 @@ async def create_agent_from_template(
 
     await db.commit()
     return AgentRead(**created_agent.model_dump())
+
+
+class AgentReorderRequest(BaseModel):
+    """Request body for reordering agents."""
+
+    agent_ids: list[UUID]
+
+
+@router.put("/reorder", status_code=204)
+async def reorder_agents(
+    request: AgentReorderRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    """
+    Reorder agents by providing a list of agent IDs in the desired order.
+
+    The sort_order of each agent will be updated based on its position in the list.
+    Only agents owned by the current user will be updated.
+
+    Args:
+        request: Request body containing ordered list of agent IDs
+        user_id: Authenticated user ID (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        None: Returns 204 No Content on success
+    """
+    agent_repo = AgentRepository(db)
+    await agent_repo.update_agents_sort_order(user_id, request.agent_ids)
+    await db.commit()
 
 
 @router.get("/stats", response_model=dict[str, AgentStatsAggregated])

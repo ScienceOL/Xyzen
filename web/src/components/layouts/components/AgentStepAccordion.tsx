@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import ToolCallPill from "./ToolCallPill";
+import ToolCallDetailsModal from "./ToolCallDetailsModal";
 
 interface AgentStepAccordionProps {
   phase: PhaseExecution;
@@ -25,13 +26,20 @@ export default function AgentStepAccordion({
 }: AgentStepAccordionProps) {
   // Auto-collapse completed, auto-expand running
   const [isExpanded, setIsExpanded] = useState(isActive);
+  const [selectedToolCallId, setSelectedToolCallId] = useState<string | null>(
+    null,
+  );
 
   // Auto-expand when phase becomes active, auto-collapse when completed
   useEffect(() => {
     if (isActive) {
       setIsExpanded(true);
-    } else if (phase.status === "completed" || phase.status === "failed") {
-      // Auto-collapse when step completes
+    } else if (
+      phase.status === "completed" ||
+      phase.status === "failed" ||
+      phase.status === "cancelled"
+    ) {
+      // Auto-collapse when step completes or is cancelled
       setIsExpanded(false);
     }
   }, [isActive, phase.status]);
@@ -40,6 +48,10 @@ export default function AgentStepAccordion({
     phase.streamedContent || phase.outputSummary || toolCalls.length > 0,
   );
   const canExpand = hasContent && phase.status !== "pending";
+
+  const selectedToolCall = selectedToolCallId
+    ? toolCalls.find((tc) => tc.id === selectedToolCallId) || null
+    : null;
 
   // Get custom renderer based on componentKey, or fall back to DefaultRenderer
   const CustomRenderer = getRenderer(phase.componentKey);
@@ -52,6 +64,14 @@ export default function AgentStepAccordion({
       transition={{ duration: 0.25 }}
       className={`relative ${className}`}
     >
+      {selectedToolCall && (
+        <ToolCallDetailsModal
+          toolCall={selectedToolCall}
+          open={Boolean(selectedToolCall)}
+          onClose={() => setSelectedToolCallId(null)}
+        />
+      )}
+
       {/* Header - Minimal design */}
       <button
         onClick={() => canExpand && setIsExpanded(!isExpanded)}
@@ -102,7 +122,11 @@ export default function AgentStepAccordion({
               {toolCalls.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2.5">
                   {toolCalls.map((toolCall) => (
-                    <ToolCallPill key={toolCall.id} toolCall={toolCall} />
+                    <ToolCallPill
+                      key={toolCall.id}
+                      toolCall={toolCall}
+                      onClick={() => setSelectedToolCallId(toolCall.id)}
+                    />
                   ))}
                 </div>
               )}
@@ -173,6 +197,14 @@ function StatusIndicator({ status }: { status: ExecutionStatus }) {
       return (
         <div className="flex h-4 w-4 items-center justify-center">
           <div className="h-2 w-2 rounded-full bg-red-500 dark:bg-red-400" />
+        </div>
+      );
+
+    case "cancelled":
+      return (
+        <div className="flex h-4 w-4 items-center justify-center">
+          {/* Stop/cancelled icon - orange square */}
+          <div className="h-2 w-2 rounded-sm bg-orange-500 dark:bg-orange-400" />
         </div>
       );
 

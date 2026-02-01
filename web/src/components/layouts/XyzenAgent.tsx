@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/animate-ui/components/animate/tool
 import { AgentList } from "@/components/agents";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
@@ -16,13 +16,7 @@ import { useXyzen } from "@/store";
 // Import types from separate file
 import type { Agent } from "@/types/agents";
 
-interface XyzenAgentProps {
-  systemAgentType?: "chat" | "all";
-}
-
-export default function XyzenAgent({
-  systemAgentType = "all",
-}: XyzenAgentProps) {
+export default function XyzenAgent() {
   const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -32,13 +26,13 @@ export default function XyzenAgent({
   const {
     agents,
 
-    createDefaultChannel,
     deleteAgent,
     updateAgentAvatar,
+    reorderAgents,
 
     chatHistory,
     channels,
-    activateChannel,
+    activateChannelForAgent,
 
     fetchMcpServers,
     fetchMyProviders,
@@ -106,7 +100,6 @@ export default function XyzenAgent({
   }, [fetchMcpServers]);
 
   const handleAgentClick = async (agent: Agent) => {
-    // 使用实际的 agent ID（系统助手和普通助手都有真实的 ID）
     const agentId = agent.id;
 
     // Ensure providers are loaded before creating a channel
@@ -118,24 +111,8 @@ export default function XyzenAgent({
       }
     }
 
-    // 1. 从 chatHistory 中找到该 agent 的所有 topics
-    const agentTopics = chatHistory.filter((topic) => {
-      const channel = channels[topic.id];
-      if (!channel) return false;
-
-      // 严格匹配 agentId
-      return channel.agentId === agentId;
-    });
-
-    if (agentTopics.length === 0) {
-      await createDefaultChannel(agentId);
-    } else {
-      const latestTopic = agentTopics.sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      )[0];
-      await activateChannel(latestTopic.id);
-    }
+    // Use unified logic that always fetches from backend and gets the latest topic
+    await activateChannelForAgent(agentId);
   };
 
   const handleEditClick = (agent: Agent) => {
@@ -148,25 +125,16 @@ export default function XyzenAgent({
     setConfirmModalOpen(true);
   };
 
-  // Find system agents within the user's agents list using tags
-  const filteredSystemAgents = agents.filter((agent) => {
-    if (!agent.tags) return false;
-
-    if (systemAgentType === "all") {
-      return agent.tags.some((tag) => tag.startsWith("default_"));
-    }
-    if (systemAgentType === "chat") {
-      return agent.tags.includes("default_chat");
-    }
-    return false;
-  });
-
-  // Regular agents (excluding the ones already identified as default)
-  const regularAgents = agents.filter(
-    (agent) => !agent.tags?.some((tag) => tag.startsWith("default_")),
+  const handleReorder = useCallback(
+    async (agentIds: string[]) => {
+      try {
+        await reorderAgents(agentIds);
+      } catch (error) {
+        console.error("Failed to reorder agents:", error);
+      }
+    },
+    [reorderAgents],
   );
-
-  const allAgents = [...filteredSystemAgents, ...regularAgents];
 
   // Clean sidebar with auto-loaded MCPs for system agents
   return (
@@ -177,13 +145,15 @@ export default function XyzenAgent({
         animate={{ opacity: 1 }}
       >
         <AgentList
-          agents={allAgents}
+          agents={agents}
           variant="detailed"
+          sortable={true}
           publishedAgentIds={publishedAgentIds}
           lastConversationTimeByAgent={lastConversationTimeByAgent}
           onAgentClick={handleAgentClick}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
+          onReorder={handleReorder}
         />
         <button
           className="w-full rounded-sm border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"

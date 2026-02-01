@@ -2,7 +2,7 @@ import logging
 from typing import Sequence
 from uuid import UUID
 
-from sqlmodel import col, select
+from sqlmodel import col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
@@ -32,7 +32,7 @@ class AgentRepository:
 
     async def get_agents_by_user(self, user_id: str) -> Sequence[Agent]:
         """
-        Fetches all agents for a given user.
+        Fetches all agents for a given user, ordered by sort_order.
 
         Args:
             user_id: The user ID.
@@ -41,7 +41,7 @@ class AgentRepository:
             List of Agent instances.
         """
         logger.debug(f"Fetching agents for user_id: {user_id}")
-        statement = select(Agent).where(Agent.user_id == user_id)
+        statement = select(Agent).where(Agent.user_id == user_id).order_by(col(Agent.sort_order))
         result = await self.db.exec(statement)
         return result.all()
 
@@ -203,6 +203,11 @@ class AgentRepository:
         # Extract MCP server IDs before creating agent
         mcp_server_ids = agent_data.mcp_server_ids
 
+        # Calculate next sort_order for this user
+        max_order_result = await self.db.exec(select(func.max(Agent.sort_order)).where(Agent.user_id == user_id))
+        max_order = max_order_result.one_or_none() or 0
+        next_sort_order = max_order + 1
+
         # Generate graph_config if not provided (single source of truth: builtin react config)
         graph_config = agent_data.graph_config
         if graph_config is None:
@@ -236,6 +241,7 @@ class AgentRepository:
         agent_dict = agent_data.model_dump(exclude={"mcp_server_ids"})
         agent_dict["user_id"] = user_id
         agent_dict["graph_config"] = graph_config  # Use generated or provided config
+        agent_dict["sort_order"] = next_sort_order
         agent = Agent(**agent_dict)
 
         self.db.add(agent)
@@ -393,5 +399,24 @@ class AgentRepository:
             if server_id not in existing_ids:
                 link = AgentMcpServerLink(agent_id=agent_id, mcp_server_id=server_id)
                 self.db.add(link)
+
+        await self.db.flush()
+
+    async def update_agents_sort_order(self, user_id: str, agent_ids: list[UUID]) -> None:
+        """
+        Updates the sort_order of multiple agents based on their position in the list.
+        This function does NOT commit the transaction.
+
+        Args:
+            user_id: The user ID (for authorization check).
+            agent_ids: Ordered list of agent UUIDs. The index becomes the new sort_order.
+        """
+        logger.debug(f"Updating sort order for {len(agent_ids)} agents")
+
+        for index, agent_id in enumerate(agent_ids):
+            agent = await self.db.get(Agent, agent_id)
+            if agent and agent.user_id == user_id:
+                agent.sort_order = index
+                self.db.add(agent)
 
         await self.db.flush()

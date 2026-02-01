@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 
+import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
 import { SecretCodePage } from "@/components/admin/SecretCodePage";
 import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
@@ -15,7 +16,7 @@ import useTheme from "@/hooks/useTheme";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
-import AuthErrorScreen from "./auth/AuthErrorScreen";
+import { LandingPage } from "./landing/LandingPage";
 
 // 创建 React Query client
 const queryClient = new QueryClient({
@@ -31,11 +32,14 @@ export interface XyzenProps {
   backendUrl?: string;
   showLlmProvider?: boolean;
   centeredInputPosition?: InputPosition;
+  /** Whether to show the landing page when not authenticated. Default: true */
+  showLandingPage?: boolean;
 }
 
 export function Xyzen({
   backendUrl = DEFAULT_BACKEND_URL,
   centeredInputPosition,
+  showLandingPage = true,
 }: XyzenProps) {
   const {
     isXyzenOpen,
@@ -61,6 +65,7 @@ export function Xyzen({
   const [currentHash, setCurrentHash] = useState(
     typeof window !== "undefined" ? window.location.hash : "",
   );
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -126,6 +131,9 @@ export function Xyzen({
   // Load initial data when auth succeeds
   useEffect(() => {
     if (status === "succeeded" && !initialLoadComplete) {
+      // Reset auth screen state when authentication succeeds
+      setShowAuthScreen(false);
+
       const loadData = async () => {
         try {
           // 1. Fetch all necessary data in parallel
@@ -214,6 +222,10 @@ export function Xyzen({
     void autoLogin();
   }, []);
 
+  const handleShowAuthScreen = useCallback(() => {
+    setShowAuthScreen(true);
+  }, []);
+
   const isAuthenticating =
     status === "idle" ||
     status === "loading" ||
@@ -221,7 +233,6 @@ export function Xyzen({
   const authFailed = status === "failed";
   // 手机阈值：512px 以下强制 Sidebar（不可拖拽，全宽）
   const isMobile = viewportWidth < MOBILE_BREAKPOINT;
-  const isSidebarLayout = isMobile || layoutStyle === LAYOUT_STYLE.Sidebar;
 
   if (!mounted) return null;
 
@@ -253,8 +264,8 @@ export function Xyzen({
   const gatedContent = isAuthenticating ? (
     <AuthLoadingScreen progress={progress} />
   ) : authFailed ? (
-    isSidebarLayout ? (
-      <>{mainLayout}</>
+    showLandingPage && !showAuthScreen ? (
+      <LandingPage onGetStarted={handleShowAuthScreen} />
     ) : (
       <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />
     )

@@ -46,6 +46,7 @@ class AgentBase(SQLModel):
     temperature: float | None = None
     prompt: str | None = None
     user_id: str | None = Field(index=True, default=None, nullable=True)
+    sort_order: int = Field(default=0, index=True)
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
     knowledge_set_id: UUID | None = Field(default=None, index=True)

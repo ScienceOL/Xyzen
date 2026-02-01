@@ -32,7 +32,7 @@ export function FocusedView({
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const t = useTranslation().t;
 
-  const { activateChannelForAgent } = useXyzen();
+  const { activateChannelForAgent, reorderAgents } = useXyzen();
 
   // Convert AgentData to Agent type for AgentList component
   const agentsForList: Agent[] = useMemo(
@@ -117,6 +117,25 @@ export function FocusedView({
       }
     },
     [agentDataMap, onDeleteAgent],
+  );
+
+  // Handle reorder - map node IDs back to real agent IDs
+  const handleReorder = useCallback(
+    async (nodeIds: string[]) => {
+      // Convert node IDs to actual agent IDs
+      const agentIds = nodeIds
+        .map((nodeId) => agentDataMap.get(nodeId)?.agentId)
+        .filter((id): id is string => !!id);
+
+      if (agentIds.length > 0) {
+        try {
+          await reorderAgents(agentIds);
+        } catch (error) {
+          console.error("Failed to reorder agents:", error);
+        }
+      }
+    },
+    [agentDataMap, reorderAgents],
   );
 
   // Activate the channel for the selected agent
@@ -228,12 +247,14 @@ export function FocusedView({
             <AgentList
               agents={agentsForList}
               variant="compact"
+              sortable={true}
               selectedAgentId={selectedAgentId}
               getAgentStatus={getAgentStatus}
               getAgentRole={getAgentRole}
               onAgentClick={handleAgentClick}
               onEdit={onEditAgent ? handleEditClick : undefined}
               onDelete={onDeleteAgent ? handleDeleteClick : undefined}
+              onReorder={handleReorder}
             />
           </div>
         </motion.div>

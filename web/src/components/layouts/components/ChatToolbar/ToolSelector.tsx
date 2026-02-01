@@ -122,7 +122,10 @@ export function ToolSelector({
 
   const handleToggleLiteratureSearch = async () => {
     if (!agent) return;
-    const newGraphConfig = updateLiteratureSearchEnabled(agent, !literatureSearchEnabled);
+    const newGraphConfig = updateLiteratureSearchEnabled(
+      agent,
+      !literatureSearchEnabled,
+    );
     await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
   };
 
@@ -352,7 +355,9 @@ export function ToolSelector({
               <AcademicCapIcon
                 className={cn(
                   "h-4 w-4",
-                  literatureSearchEnabled ? "text-amber-500" : "text-neutral-400",
+                  literatureSearchEnabled
+                    ? "text-amber-500"
+                    : "text-neutral-400",
                 )}
               />
               <div className="text-left">
@@ -360,11 +365,16 @@ export function ToolSelector({
                   {t("app.toolbar.literatureSearch", "Literature Search")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t("app.toolbar.literatureSearchDesc", "Search academic papers")}
+                  {t(
+                    "app.toolbar.literatureSearchDesc",
+                    "Search academic papers",
+                  )}
                 </div>
               </div>
             </div>
-            {literatureSearchEnabled && <CheckIcon className="h-4 w-4 text-amber-500" />}
+            {literatureSearchEnabled && (
+              <CheckIcon className="h-4 w-4 text-amber-500" />
+            )}
           </button>
 
           {/* Memory Search - Disabled: pending RAG/pgvector implementation */}

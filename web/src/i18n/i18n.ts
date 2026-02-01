@@ -6,6 +6,7 @@ import enAgents from "./locales/en/agents.json";
 import enApp from "./locales/en/app.json";
 import enCommon from "./locales/en/common.json";
 import enKnowledge from "./locales/en/knowledge.json";
+import enLanding from "./locales/en/landing.json";
 import enMarketplace from "./locales/en/marketplace.json";
 import enMcp from "./locales/en/mcp.json";
 import enSettings from "./locales/en/settings.json";
@@ -14,6 +15,7 @@ import jaAgents from "./locales/ja/agents.json";
 import jaApp from "./locales/ja/app.json";
 import jaCommon from "./locales/ja/common.json";
 import jaKnowledge from "./locales/ja/knowledge.json";
+import jaLanding from "./locales/ja/landing.json";
 import jaMarketplace from "./locales/ja/marketplace.json";
 import jaMcp from "./locales/ja/mcp.json";
 import jaSettings from "./locales/ja/settings.json";
@@ -22,6 +24,7 @@ import zhAgents from "./locales/zh/agents.json";
 import zhApp from "./locales/zh/app.json";
 import zhCommon from "./locales/zh/common.json";
 import zhKnowledge from "./locales/zh/knowledge.json";
+import zhLanding from "./locales/zh/landing.json";
 import zhMarketplace from "./locales/zh/marketplace.json";
 import zhMcp from "./locales/zh/mcp.json";
 import zhSettings from "./locales/zh/settings.json";
@@ -54,6 +57,7 @@ export function initI18n() {
             knowledge: enKnowledge,
             mcp: enMcp,
             agents: enAgents,
+            landing: enLanding,
           },
         },
         zh: {
@@ -65,6 +69,7 @@ export function initI18n() {
             knowledge: zhKnowledge,
             mcp: zhMcp,
             agents: zhAgents,
+            landing: zhLanding,
           },
         },
         ja: {
@@ -76,6 +81,7 @@ export function initI18n() {
             knowledge: jaKnowledge,
             mcp: jaMcp,
             agents: jaAgents,
+            landing: jaLanding,
           },
         },
       },

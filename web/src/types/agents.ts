@@ -113,6 +113,7 @@ export interface Agent {
   user_id: string;
   created_at: string;
   updated_at: string;
+  sort_order?: number;
 
   // Regular agent properties
   prompt?: string;

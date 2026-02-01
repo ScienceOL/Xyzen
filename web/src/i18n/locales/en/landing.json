@@ -1,0 +1,46 @@
+{
+  "hero": {
+    "title": "Xyzen, Open Platform for Building Research Agents",
+    "subtitle": "Multi-agent LLM orchestration for research, automation, and intelligent workflows",
+    "cta_primary": "Get Started",
+    "cta_secondary": "Learn More"
+  },
+  "features": {
+    "title": "Powerful Features",
+    "multi_agent": {
+      "title": "Multi-Agent Orchestration",
+      "description": "Coordinate multiple AI agents with LangGraph for complex workflows and collaborative problem-solving"
+    },
+    "real_time": {
+      "title": "Real-Time Chat",
+      "description": "WebSocket-based streaming for instant agent responses and interactive conversations"
+    },
+    "mcp": {
+      "title": "MCP Integration",
+      "description": "Model Context Protocol support for extensible tool integration and enhanced capabilities"
+    },
+    "spatial": {
+      "title": "Spatial Workspace",
+      "description": "Visual agent canvas for intuitive workflow design and multi-agent collaboration"
+    }
+  },
+  "demo": {
+    "title": "See It In Action",
+    "description": "Experience the power of multi-agent collaboration and intelligent automation"
+  },
+  "useCases": {
+    "title": "Use Cases",
+    "research": {
+      "title": "Deep Research",
+      "description": "Multi-phase research with automated information gathering, analysis, and synthesis"
+    },
+    "automation": {
+      "title": "Workflow Automation",
+      "description": "Automate complex multi-step processes with intelligent AI agents working together"
+    },
+    "analysis": {
+      "title": "Document Analysis",
+      "description": "Process and analyze documents with specialized agents for comprehensive insights"
+    }
+  }
+}
