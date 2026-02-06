@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.1.2](https://github.com/ScienceOL/Xyzen/compare/v1.1.1...v1.1.2) (2026-02-06)
+
+### 🐛 Bug Fixes
+
+* update Casdoor configuration and enhance OAuth handling ([1f2783d](https://github.com/ScienceOL/Xyzen/commit/1f2783db588bf4988ccf7d6193ecfed5530f31ce))
+
 ## [1.1.1](https://github.com/ScienceOL/Xyzen/compare/v1.1.0...v1.1.1) (2026-02-01)
 
 ### 🐛 Bug Fixes
