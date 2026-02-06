@@ -12,6 +12,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
+from pydantic import ValidationError
 
 from app.agents.components.base import BaseComponent
 
@@ -119,6 +120,55 @@ class ExecutableComponent(BaseComponent):
                 "required_capabilities": self.metadata.required_capabilities,
             },
         }
+
+    def validate_config_overrides(self, config_overrides: dict[str, Any] | None) -> dict[str, Any]:
+        """
+        Validate runtime config_overrides against the component contract.
+
+        Contract order:
+        1) If config_schema (Pydantic) is defined, use strict model validation.
+        2) Else if metadata.config_schema_json exists, enforce required/allowed keys.
+        3) Else accept raw overrides.
+        """
+        raw = config_overrides or {}
+        if not isinstance(raw, dict):
+            raise ValueError(
+                f"Component '{self.metadata.key}' config_overrides must be an object, got {type(raw).__name__}."
+            )
+
+        schema_model = self.config_schema
+        if schema_model is not None:
+            try:
+                validated = schema_model.model_validate(raw)
+            except ValidationError as exc:
+                raise ValueError(f"Invalid config_overrides for component '{self.metadata.key}': {exc}") from exc
+            return validated.model_dump(exclude_none=True)
+
+        schema_json = self.metadata.config_schema_json
+        if not isinstance(schema_json, dict):
+            return raw
+
+        required_raw = schema_json.get("required", [])
+        required_keys = [k for k in required_raw if isinstance(k, str)] if isinstance(required_raw, list) else []
+        missing_required = [k for k in required_keys if k not in raw]
+        if missing_required:
+            raise ValueError(
+                f"Invalid config_overrides for component '{self.metadata.key}': missing required keys "
+                f"{sorted(missing_required)}."
+            )
+
+        properties = schema_json.get("properties", {})
+        allow_additional = bool(schema_json.get("additionalProperties", False))
+        if isinstance(properties, dict) and not allow_additional:
+            allowed = {k for k in properties if isinstance(k, str)}
+            unknown = sorted([k for k in raw if k not in allowed])
+            if unknown:
+                raise ValueError(
+                    f"Invalid config_overrides for component '{self.metadata.key}': unknown keys {unknown}. "
+                    f"Allowed keys: {sorted(allowed)}."
+                )
+
+        return raw
 
     def validate(self) -> list[str]:
         """

@@ -70,14 +70,18 @@ def get_builtin_metadata(key: str) -> dict | None:
     if not config:
         return None
 
+    metadata = config.metadata.model_dump(exclude_none=True) if config.metadata else {}
+    ui = config.ui if isinstance(config.ui, dict) else {}
+    version = metadata.get("agent_version") or ui.get("version") or str(config.revision)
+
     return {
         "key": key,
-        "display_name": config.metadata.get("display_name", key),
-        "description": config.metadata.get("description", ""),
-        "icon": config.metadata.get("icon"),
-        "version": config.metadata.get("version", "1.0.0"),
-        "author": config.metadata.get("author", "Xyzen"),
-        "pattern": config.metadata.get("pattern"),
+        "display_name": metadata.get("display_name", key),
+        "description": metadata.get("description", ""),
+        "icon": ui.get("icon"),
+        "version": version,
+        "author": ui.get("author", "Xyzen"),
+        "pattern": ui.get("pattern"),
         "forkable": True,
     }
 

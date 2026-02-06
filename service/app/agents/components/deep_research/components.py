@@ -45,6 +45,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _compose_system_and_node_prompt(system_prompt: Any, node_prompt: str) -> str:
+    """Compose platform/agent prompt with component-specific prompt."""
+    system = system_prompt.strip() if isinstance(system_prompt, str) else ""
+    node = node_prompt.strip()
+    if system and node:
+        return f"{system}\n\n{node}"
+    if system:
+        return system
+    return node
+
+
 # --- Component State Schemas ---
 
 
@@ -120,7 +131,12 @@ class ClarifyWithUserComponent(ExecutableComponent):
             required_capabilities=[],  # No tools needed
             config_schema_json={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "system_prompt": {
+                        "type": "string",
+                        "description": "Platform/agent-level system instructions to prepend",
+                    }
+                },
             },
             input_schema={
                 "type": "object",
@@ -159,6 +175,8 @@ class ClarifyWithUserComponent(ExecutableComponent):
     ) -> "CompiledStateGraph":
         """Build clarification graph with structured output."""
         logger.info("Building ClarifyWithUserComponent graph")
+        cfg = config or {}
+        system_prompt = cfg.get("system_prompt")
 
         workflow: StateGraph[ClarifyState] = StateGraph(ClarifyState)
 
@@ -169,7 +187,8 @@ class ClarifyWithUserComponent(ExecutableComponent):
             # Format prompt
             messages_str = get_buffer_string(list(state.messages))
             date_str = get_today_str()
-            prompt = CLARIFY_WITH_USER_PROMPT.format(messages=messages_str, date=date_str)
+            node_prompt = CLARIFY_WITH_USER_PROMPT.format(messages=messages_str, date=date_str)
+            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Use function_calling method for structured output (works across all providers)
             llm_with_struct = llm.with_structured_output(ClarifyWithUser, method="function_calling")
@@ -224,7 +243,12 @@ class ResearchBriefComponent(ExecutableComponent):
             required_capabilities=[],  # No tools needed
             config_schema_json={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "system_prompt": {
+                        "type": "string",
+                        "description": "Platform/agent-level system instructions to prepend",
+                    }
+                },
             },
             input_schema={
                 "type": "object",
@@ -259,6 +283,8 @@ class ResearchBriefComponent(ExecutableComponent):
     ) -> "CompiledStateGraph":
         """Build research brief generation graph."""
         logger.info("Building ResearchBriefComponent graph")
+        cfg = config or {}
+        system_prompt = cfg.get("system_prompt")
 
         workflow: StateGraph[BriefState] = StateGraph(BriefState)
 
@@ -269,7 +295,8 @@ class ResearchBriefComponent(ExecutableComponent):
             # Format prompt - cast to list for type compatibility
             messages_str = get_buffer_string(list(state.messages))
             date_str = get_today_str()
-            prompt = RESEARCH_BRIEF_PROMPT.format(messages=messages_str, date=date_str)
+            node_prompt = RESEARCH_BRIEF_PROMPT.format(messages=messages_str, date=date_str)
+            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Invoke LLM
             response = await llm.ainvoke([HumanMessage(content=prompt)])
@@ -326,6 +353,10 @@ class ResearchSupervisorComponent(ExecutableComponent):
             config_schema_json={
                 "type": "object",
                 "properties": {
+                    "system_prompt": {
+                        "type": "string",
+                        "description": "Platform/agent-level system instructions to prepend",
+                    },
                     "max_iterations": {
                         "type": "integer",
                         "description": "Maximum iterations for research loop",
@@ -388,6 +419,7 @@ class ResearchSupervisorComponent(ExecutableComponent):
         from app.tools.builtin.research import get_research_tools
 
         cfg = config or {}
+        system_prompt = cfg.get("system_prompt")
         max_iterations = cfg.get("max_iterations", 6)
         max_concurrent_units = cfg.get("max_concurrent_units", 5)
 
@@ -430,12 +462,13 @@ class ResearchSupervisorComponent(ExecutableComponent):
 
             # Format prompt
             date_str = get_today_str()
-            prompt = LEAD_RESEARCHER_PROMPT.format(
+            node_prompt = LEAD_RESEARCHER_PROMPT.format(
                 date=date_str,
                 research_brief=state.research_brief,
                 max_researcher_iterations=max_iterations,
                 max_concurrent_research_units=max_concurrent_units,
             )
+            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Build messages - include system prompt and conversation
             messages = [SystemMessage(content=prompt)] + list(state.messages)
@@ -530,7 +563,12 @@ class FinalReportComponent(ExecutableComponent):
             required_capabilities=[],  # No tools needed
             config_schema_json={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "system_prompt": {
+                        "type": "string",
+                        "description": "Platform/agent-level system instructions to prepend",
+                    }
+                },
             },
             input_schema={
                 "type": "object",
@@ -574,6 +612,8 @@ class FinalReportComponent(ExecutableComponent):
     ) -> "CompiledStateGraph":
         """Build final report generation graph."""
         logger.info("Building FinalReportComponent graph")
+        cfg = config or {}
+        system_prompt = cfg.get("system_prompt")
 
         workflow: StateGraph[FinalReportState] = StateGraph(FinalReportState)
 
@@ -586,12 +626,13 @@ class FinalReportComponent(ExecutableComponent):
             date_str = get_today_str()
             findings = "\n\n".join(state.notes) if state.notes else "No research notes collected."
 
-            prompt = FINAL_REPORT_PROMPT.format(
+            node_prompt = FINAL_REPORT_PROMPT.format(
                 research_brief=state.research_brief,
                 messages=messages_str,
                 date=date_str,
                 findings=findings,
             )
+            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Invoke LLM
             response = await llm.ainvoke([HumanMessage(content=prompt)])

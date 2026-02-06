@@ -208,28 +208,32 @@ class ReActComponent(ExecutableComponent):
 # Using ReActComponent in a JSON graph config
 
 {
-    "version": "2.0",
-    "nodes": [
-        {
-            "id": "react_agent",
-            "name": "Research Agent",
-            "type": "component",
-            "component_config": {
-                "component_ref": {
-                    "key": "react",
-                    "version": "^1.0"
-                },
-                "config_overrides": {
-                    "system_prompt": "You are a research assistant.",
-                    "max_iterations": 5
+    "schema_version": "3.0",
+    "key": "my_react_agent",
+    "revision": 1,
+    "graph": {
+        "entrypoints": ["react_agent"],
+        "nodes": [
+            {
+                "id": "react_agent",
+                "name": "Research Agent",
+                "kind": "component",
+                "config": {
+                    "component_ref": {
+                        "key": "react",
+                        "version": "^1.0"
+                    },
+                    "config_overrides": {
+                        "system_prompt": "You are a research assistant.",
+                        "max_iterations": 5
+                    }
                 }
             }
-        }
-    ],
-    "edges": [
-        {"from_node": "START", "to_node": "react_agent"},
-        {"from_node": "react_agent", "to_node": "END"}
-    ]
+        ],
+        "edges": [
+            {"from_node": "react_agent", "to_node": "END"}
+        ]
+    }
 }
 
 # Or using it programmatically in Python:
