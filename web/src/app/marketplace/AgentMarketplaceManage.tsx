@@ -263,46 +263,55 @@ export default function AgentMarketplaceManage({
       setGraphConfig(parsed);
       setGraphConfigJson(JSON.stringify(config, null, 2));
     } else {
-      // Create a default ReAct config if none exists
-      // Must match backend's REACT_CONFIG structure for validation
+      // Create a default ReAct config in v3 canonical schema
       const defaultConfig: GraphConfig = {
-        version: "2.0",
-        metadata: {
-          builtin_key: "react",
-          pattern: "react",
-          display_name: "ReAct Agent",
+        schema_version: "3.0",
+        key: "react",
+        revision: 1,
+        graph: {
+          nodes: [
+            {
+              id: "agent",
+              name: "ReAct Agent",
+              kind: "llm",
+              reads: ["messages"],
+              writes: ["messages", "response"],
+              config: {
+                prompt_template: "",
+                output_key: "response",
+                tools_enabled: true,
+                max_iterations: 10,
+              },
+            },
+            {
+              id: "tools",
+              name: "Tool Executor",
+              kind: "tool",
+              reads: ["messages"],
+              writes: ["tool_results"],
+              config: {
+                execute_all: true,
+                output_key: "tool_results",
+                timeout_seconds: 60,
+              },
+            },
+          ],
+          edges: [
+            { from_node: "agent", to_node: "tools", when: "has_tool_calls" },
+            { from_node: "agent", to_node: "END", when: "no_tool_calls" },
+            { from_node: "tools", to_node: "agent" },
+          ],
+          entrypoints: ["agent"],
         },
-        // Prompt stored in prompt_config.custom_instructions (not llm_config.prompt_template)
+        state: {},
+        limits: { max_time_s: 300, max_steps: 128, max_concurrency: 10 },
         prompt_config: {
           custom_instructions: "You are a helpful assistant.",
         },
-        nodes: [
-          {
-            id: "agent",
-            name: "ReAct Agent",
-            type: "llm",
-            llm_config: {
-              prompt_template: "", // Backend will inject from prompt_config
-              tools_enabled: true,
-              output_key: "response",
-            },
-          },
-          {
-            id: "tools",
-            name: "Tool Executor",
-            type: "tool",
-            tool_config: {
-              execute_all: true,
-            },
-          },
-        ],
-        edges: [
-          { from_node: "START", to_node: "agent" },
-          { from_node: "agent", to_node: "tools", condition: "has_tool_calls" },
-          { from_node: "agent", to_node: "END", condition: "no_tool_calls" },
-          { from_node: "tools", to_node: "agent" },
-        ],
-        entry_point: "agent",
+        metadata: {
+          display_name: "ReAct Agent",
+          tags: ["react"],
+        },
       };
       setGraphConfig(defaultConfig);
       setGraphConfigJson(JSON.stringify(defaultConfig, null, 2));

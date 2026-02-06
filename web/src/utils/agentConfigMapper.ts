@@ -1,22 +1,14 @@
 /**
- * Agent Config Mapper v2
+ * Agent Config Mapper (v3 Canonical Schema)
  *
  * Provides bidirectional sync between simple agent configuration
- * (prompt, model, temperature, tools) and the full graph_config JSON.
+ * (prompt, model, temperature, tools) and the full v3 graph_config JSON.
  *
  * ARCHITECTURE NOTE:
+ * - Backend backfills all agents to v3 at startup and validates on read.
+ * - The frontend always receives and produces v3 configs.
  * - For NEW agents: Backend generates graph_config (single source of truth)
  * - For EDITING agents: Frontend uses these utilities to update existing graph_config
- * - For LEGACY agents (no graph_config): Frontend creates graph_config on first edit
- *
- * The backend's ReActAgent.export_graph_config() is the canonical source.
- * createGraphConfigFromSimple() here mirrors that v2 structure for legacy support.
- *
- * v2 Schema Changes:
- * - No separate router nodes (routing via conditional edges)
- * - Uses ConditionType enum ("has_tool_calls", "no_tool_calls")
- * - Simplified state schema (messages field is automatic)
- * - Tool nodes use execute_all instead of tool_name="__all__"
  */
 
 import type {
@@ -49,32 +41,29 @@ export const DEFAULT_SIMPLE_CONFIG: SimpleAgentConfig = {
 };
 
 /**
- * Find the main LLM node in a graph config.
+ * Find the main LLM node in a v3 graph config.
  * The main node is typically named "agent" or is the first LLM node.
  */
 function findMainLLMNode(graphConfig: GraphConfig): GraphNodeConfig | null {
-  if (!graphConfig.nodes) return null;
+  const nodes = graphConfig.graph?.nodes;
+  if (!nodes) return null;
 
-  // First try to find a node with id "agent" (standard react pattern)
-  const agentNode = graphConfig.nodes.find(
-    (n) => n.id === "agent" && n.type === "llm",
+  // First try to find a node with id "agent"
+  const agentNode = nodes.find(
+    (n) => n.id === "agent" && n.kind === "llm",
   );
   if (agentNode) return agentNode;
 
   // Fall back to first LLM node
-  return graphConfig.nodes.find((n) => n.type === "llm") || null;
+  return nodes.find((n) => n.kind === "llm") || null;
 }
 
 /**
- * Extract simple configuration from a graph_config.
+ * Extract simple configuration from a v3 graph_config.
  *
- * This reads the prompt from prompt_config.custom_instructions (preferred)
- * or falls back to llm_config.prompt_template (legacy).
+ * Reads the prompt from prompt_config.custom_instructions (preferred)
+ * or falls back to the LLM node's config.prompt_template.
  * Other settings come from the main LLM node.
- *
- * @param graphConfig - The full graph configuration (can be null)
- * @param fallbackPrompt - Fallback prompt if not found in graph_config
- * @returns Simple configuration for the form
  */
 export function extractSimpleConfig(
   graphConfig: GraphConfig | null,
@@ -88,10 +77,10 @@ export function extractSimpleConfig(
   }
 
   const llmNode = findMainLLMNode(graphConfig);
-  const llmConfig = llmNode?.llm_config;
+  const llmConfig = llmNode?.kind === "llm" ? llmNode.config : null;
 
   // Read prompt from prompt_config.custom_instructions (preferred)
-  // Fall back to llm_config.prompt_template for legacy configs
+  // Fall back to llm config.prompt_template
   const prompt =
     graphConfig.prompt_config?.custom_instructions ||
     llmConfig?.prompt_template ||
@@ -108,14 +97,10 @@ export function extractSimpleConfig(
 }
 
 /**
- * Update a graph_config with values from simple config.
+ * Update a v3 graph_config with values from simple config.
  *
- * This writes the prompt to prompt_config.custom_instructions (the correct location)
- * and updates the main LLM node's other settings (model, temperature, etc.)
- *
- * @param graphConfig - The existing graph configuration
- * @param simple - The simple configuration from the form
- * @returns Updated graph configuration
+ * Writes the prompt to prompt_config.custom_instructions and
+ * updates the main LLM node's config settings.
  */
 export function updateGraphConfigFromSimple(
   graphConfig: GraphConfig,
@@ -123,175 +108,134 @@ export function updateGraphConfigFromSimple(
 ): GraphConfig {
   return {
     ...graphConfig,
-    // Store prompt in prompt_config.custom_instructions
     prompt_config: {
       ...graphConfig.prompt_config,
       custom_instructions: simple.prompt,
     },
-    nodes: graphConfig.nodes.map((node) => {
-      // Only update the main LLM node
-      if (node.type === "llm" && node.id === "agent" && node.llm_config) {
+    graph: {
+      ...graphConfig.graph,
+      nodes: graphConfig.graph.nodes.map((node) => {
+        if (node.kind !== "llm") return node;
+
+        // Only update the main LLM node
+        const mainNode = findMainLLMNode(graphConfig);
+        if (mainNode?.id !== node.id) return node;
+
         return {
           ...node,
-          llm_config: {
-            ...node.llm_config,
-            // Don't store prompt here - it goes in prompt_config
+          config: {
+            ...node.config,
             model_override: simple.model,
             temperature_override: simple.temperature,
             tools_enabled: simple.toolsEnabled,
             max_iterations: simple.maxIterations,
           } satisfies LLMNodeConfig,
         };
-      }
-      // For other LLM nodes (if any), just update the first one found
-      if (node.type === "llm" && node.llm_config && node.id !== "agent") {
-        const mainNode = findMainLLMNode(graphConfig);
-        if (mainNode?.id === node.id) {
-          return {
-            ...node,
-            llm_config: {
-              ...node.llm_config,
-              // Don't store prompt here - it goes in prompt_config
-              model_override: simple.model,
-              temperature_override: simple.temperature,
-              tools_enabled: simple.toolsEnabled,
-              max_iterations: simple.maxIterations,
-            } satisfies LLMNodeConfig,
-          };
-        }
-      }
-      return node;
-    }),
+      }),
+    },
   };
 }
 
 /**
- * Create a default ReAct-style graph config from simple settings.
+ * Create a default ReAct-style v3 graph config from simple settings.
  *
  * NOTE: This is primarily for LEGACY agents that don't have graph_config.
- * For NEW agents, the backend generates graph_config using ReActAgent.export_graph_config().
- *
- * This function mirrors the v2 structure produced by the backend's ReActAgent
- * to ensure consistency when editing legacy agents.
- *
- * v2 Changes:
- * - No router node (routing via conditional edges)
- * - No state_schema (messages field is automatic)
- * - Tool node uses execute_all instead of tool_name="__all__"
- * - Edges use condition type strings instead of EdgeCondition objects
- * - Prompt stored in prompt_config.custom_instructions (NOT llm_config.prompt_template)
- *
- * @param simple - Simple configuration from the form
- * @returns Complete v2 graph configuration matching ReActAgent structure
+ * For NEW agents, the backend generates graph_config.
  */
 export function createGraphConfigFromSimple(
   simple: SimpleAgentConfig,
 ): GraphConfig {
   return {
-    version: "2.0",
-    // Store prompt in prompt_config.custom_instructions
+    schema_version: "3.0",
+    key: "react",
+    revision: 1,
+    graph: {
+      nodes: [
+        {
+          id: "agent",
+          name: "Agent",
+          kind: "llm",
+          description:
+            "Reasons about the task and decides whether to use tools or respond",
+          reads: ["messages"],
+          writes: ["messages", "response"],
+          config: {
+            prompt_template: "",
+            output_key: "response",
+            tools_enabled: simple.toolsEnabled,
+            model_override: simple.model,
+            temperature_override: simple.temperature,
+            max_iterations: simple.maxIterations,
+          },
+        },
+        {
+          id: "tools",
+          name: "Execute Tools",
+          kind: "tool",
+          description: "Executes tool calls from the agent",
+          reads: ["messages"],
+          writes: ["tool_results"],
+          config: {
+            execute_all: true,
+            output_key: "tool_results",
+            timeout_seconds: 60,
+          },
+        },
+      ],
+      edges: [
+        {
+          from_node: "agent",
+          to_node: "tools",
+          when: "has_tool_calls",
+        },
+        {
+          from_node: "agent",
+          to_node: "END",
+          when: "no_tool_calls",
+        },
+        { from_node: "tools", to_node: "agent" },
+      ],
+      entrypoints: ["agent"],
+    },
+    state: {},
+    limits: { max_time_s: 300, max_steps: 128, max_concurrency: 10 },
     prompt_config: {
       custom_instructions: simple.prompt,
     },
-    nodes: [
-      {
-        id: "agent",
-        name: "Agent",
-        type: "llm",
-        description:
-          "Reasons about the task and decides whether to use tools or respond",
-        llm_config: {
-          // prompt_template is intentionally omitted - backend will inject from prompt_config
-          prompt_template: "",
-          output_key: "response",
-          tools_enabled: simple.toolsEnabled,
-          model_override: simple.model,
-          temperature_override: simple.temperature,
-          max_iterations: simple.maxIterations,
-        },
-        position: { x: 250, y: 100 },
-      },
-      {
-        id: "tools",
-        name: "Execute Tools",
-        type: "tool",
-        description: "Executes tool calls from the agent",
-        tool_config: {
-          execute_all: true,
-          output_key: "tool_results",
-        },
-        position: { x: 450, y: 250 },
-      },
-    ],
-    edges: [
-      { from_node: "START", to_node: "agent" },
-      {
-        from_node: "agent",
-        to_node: "tools",
-        condition: "has_tool_calls",
-      },
-      {
-        from_node: "agent",
-        to_node: "END",
-        condition: "no_tool_calls",
-      },
-      { from_node: "tools", to_node: "agent" },
-    ],
-    entry_point: "agent",
     metadata: {
-      pattern: "react",
+      tags: ["react"],
       description: "ReAct agent with tool-calling loop",
-      generated_from: "simple_config",
     },
   };
 }
 
 /**
- * Check if a graph_config uses the standard ReAct pattern.
+ * Check if a v3 graph_config uses the standard ReAct pattern.
  *
- * This helps determine if we can safely use the simple form
+ * Helps determine if we can safely use the simple form
  * or if the user has customized the graph structure.
- *
- * Supports both v1 and v2 configs:
- * - v1: Has agent, tools, should_continue nodes
- * - v2: Has agent, tools nodes (no router node)
- *
- * @param graphConfig - The graph configuration to check
- * @returns true if it's a standard ReAct pattern
  */
 export function isStandardReactPattern(
   graphConfig: GraphConfig | null,
 ): boolean {
   if (!graphConfig) return true; // No config = can use simple form
 
-  const version = graphConfig.version || "1.0";
-  const nodeIds = new Set(graphConfig.nodes?.map((n) => n.id) || []);
+  // Check key or metadata tags
+  if (graphConfig.key === "react") return true;
+  if (graphConfig.metadata?.tags?.includes("react")) return true;
 
-  if (version.startsWith("2.")) {
-    // v2 pattern: agent + tools (no router)
-    const hasV2StandardNodes = nodeIds.has("agent") && nodeIds.has("tools");
-    const extraNodes = graphConfig.nodes?.filter(
-      (n) => !["agent", "tools"].includes(n.id),
-    );
-    const hasExtraNodes = extraNodes && extraNodes.length > 0;
-    const isMarkedAsReact = graphConfig.metadata?.pattern === "react";
+  // Check node structure
+  const nodes = graphConfig.graph?.nodes;
+  if (!nodes) return true;
 
-    return (hasV2StandardNodes && !hasExtraNodes) || isMarkedAsReact;
-  }
-
-  // v1 pattern: agent + tools + should_continue
-  const hasStandardNodes =
-    nodeIds.has("agent") &&
-    nodeIds.has("tools") &&
-    nodeIds.has("should_continue");
-
-  const extraNodes = graphConfig.nodes?.filter(
-    (n) => !["agent", "tools", "should_continue"].includes(n.id),
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const hasStandardNodes = nodeIds.has("agent") && nodeIds.has("tools");
+  const extraNodes = nodes.filter(
+    (n) => !["agent", "tools"].includes(n.id),
   );
-  const hasExtraNodes = extraNodes && extraNodes.length > 0;
-  const isMarkedAsReact = graphConfig.metadata?.pattern === "react";
+  const hasExtraNodes = extraNodes.length > 0;
 
-  return (hasStandardNodes && !hasExtraNodes) || isMarkedAsReact;
+  return hasStandardNodes && !hasExtraNodes;
 }
 
 /**
@@ -299,20 +243,13 @@ export function isStandardReactPattern(
  *
  * If the agent has no graph_config, creates one.
  * If it has one, updates the relevant fields.
- *
- * @param existingGraphConfig - Current graph_config (may be null)
- * @param simple - New simple configuration
- * @returns Updated or new graph configuration
  */
 export function mergeSimpleConfigToGraphConfig(
   existingGraphConfig: GraphConfig | null,
   simple: SimpleAgentConfig,
 ): GraphConfig {
   if (!existingGraphConfig) {
-    // Create new graph_config from simple settings
     return createGraphConfigFromSimple(simple);
   }
-
-  // Update existing graph_config
   return updateGraphConfigFromSimple(existingGraphConfig, simple);
 }
