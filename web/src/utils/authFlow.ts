@@ -16,9 +16,7 @@ export function buildAuthorizeUrl(
 
   if (provider === "casdoor") {
     // Casdoor OAuth2 Authorization Code Flow
-    const base = cfg.issuer
-      .replace(/\/$/, "")
-      .replace("host.docker.internal", "localhost");
+    const base = cfg.issuer.replace(/\/$/, "");
 
     return `${base}/login/oauth/authorize?client_id=${audience}&response_type=code&redirect_uri=${redirectUri}&scope=openid%20profile%20email&state=${state}`;
   }

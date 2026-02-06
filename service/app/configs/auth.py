@@ -14,7 +14,12 @@ class AuthProviderConfigBase(BaseModel):
 
     Issuer: str = Field(
         default="",
-        description="Authentication service address or user info endpoint",
+        description="Public-facing authentication service address (used by frontend for OAuth redirects)",
+    )
+
+    Endpoint: str | None = Field(
+        default=None,
+        description="Internal endpoint for backend API calls (e.g. token exchange, userinfo). Falls back to Issuer if not set.",
     )
 
     JwksUri: str | None = Field(
@@ -43,8 +48,12 @@ MIIE3TCCAsWgAwIBAgIDAeJAMA0GCSqGSIb3DQEBCwUAMCgxDjAMBgNVBAoTBWFkbWluMRYwFAYDVQQD
         description="Casdoor public key for JWT signature verification",
     )
     Issuer: str = Field(
+        default="http://localhost:8000",
+        description="Casdoor public-facing address (used by frontend for OAuth redirects)",
+    )
+    Endpoint: str | None = Field(
         default="http://host.docker.internal:8000",
-        description="Casdoor service address",
+        description="Casdoor internal endpoint for backend API calls (token exchange, userinfo)",
     )
     JwksUri: str | None = Field(
         default="http://host.docker.internal:8000/.well-known/jwks",

@@ -35,8 +35,8 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
         logger.debug("Casdoor: 认证服务已配置，开始通过 API 验证token...")
         try:
-            # 使用 Casdoor 的 userinfo 接口获取用户信息
-            userinfo_url = f"{self.issuer}/api/user"
+            # 使用 Casdoor 的 userinfo 接口获取用户信息 (走内网 endpoint)
+            userinfo_url = f"{self.api_base}/api/user"
             logger.debug(f"Casdoor: 调用用户信息接口: {userinfo_url}")
 
             headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
@@ -118,7 +118,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
             logger.error("Casdoor Client Secret not configured")
             raise Exception("Server configuration error: Client Secret missing")
 
-        url = f"{self.issuer.rstrip('/')}/api/login/oauth/access_token"
+        url = f"{self.api_base}/api/login/oauth/access_token"
 
         payload = {
             "grant_type": "authorization_code",

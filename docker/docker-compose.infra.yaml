@@ -176,7 +176,7 @@ services:
       replicas: ${REDIS_REPLICAS:-1}
 
   casdoor:
-    image: casbin/casdoor:v2.43.0
+    image: casbin/casdoor:2.285.0
     container_name: sciol-casdoor
     network_mode: "service:network-service"
     depends_on:

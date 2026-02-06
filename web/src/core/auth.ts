@@ -3,6 +3,44 @@ import { authService } from "@/service/authService";
 import { useXyzen } from "@/store";
 import { syncTokenFromCookie } from "@/utils/auth";
 
+/**
+ * Handle OAuth authorization code callback (e.g. Casdoor code flow).
+ * Returns the access_token if code exchange succeeds, or null.
+ */
+const handleOAuthCodeCallback = async (): Promise<string | null> => {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code) return null;
+
+  const state = params.get("state");
+
+  // Verify state matches what we stored (CSRF protection)
+  const storedState = sessionStorage.getItem("auth_state");
+  if (state && storedState && state !== storedState) {
+    console.error("[Auth] State mismatch during OAuth callback");
+    // Clean up URL anyway
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return null;
+  }
+
+  // Clean up URL immediately to avoid re-processing on refresh
+  window.history.replaceState({}, document.title, window.location.pathname);
+  sessionStorage.removeItem("auth_state");
+
+  try {
+    const response = await authService.loginWithCasdoor(
+      code,
+      state || undefined,
+    );
+    return response.access_token;
+  } catch (err) {
+    console.error("[Auth] Failed to exchange code for token:", err);
+    return null;
+  }
+};
+
 // 辅助函数：将API返回的用户信息映射为Store中的用户格式
 const mapUserInfo = (userInfo: UserInfo) => ({
   id: userInfo.id,
@@ -110,9 +148,22 @@ export const logout = () => {
 
 /**
  * 应用启动时执行的自动登录检查
+ *
+ * Priority order:
+ * 1. OAuth authorization code callback (?code=xxx) → exchange for token
+ * 2. Token passed via query string (?access_token=xxx)
+ * 3. Existing token in localStorage / cookie
  */
 export const autoLogin = async () => {
   if (typeof window !== "undefined") {
+    // 1) Handle OAuth code callback (e.g. Casdoor redirect with ?code=)
+    const tokenFromCode = await handleOAuthCodeCallback();
+    if (tokenFromCode) {
+      await login(tokenFromCode);
+      return;
+    }
+
+    // 2) Handle token passed directly in query string
     const params = new URLSearchParams(window.location.search);
     const tokenFromQuery =
       params.get("access_token") ?? params.get("access_toekn");
@@ -131,5 +182,6 @@ export const autoLogin = async () => {
     }
   }
 
+  // 3) Check existing token in localStorage / cookie
   await checkAuthState(true);
 };

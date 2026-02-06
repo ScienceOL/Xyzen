@@ -55,52 +55,9 @@ function AuthErrorScreen({
   const { status, config, loading } = useAuthProvider();
   const [appAccessKey, setAppAccessKey] = useState("");
 
-  // Handle Authorization Code Flow callback
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const state = params.get("state");
-
-    if (code) {
-      // Optional: Verify state matches what we stored
-      const storedState = sessionStorage.getItem("auth_state");
-      if (state && storedState && state !== storedState) {
-        console.error("State mismatch during authentication");
-        return;
-      }
-
-      // Clear query params to look cleaner
-      window.history.replaceState({}, document.title, window.location.pathname);
-
-      // Exchange code for token
-      authService
-        .loginWithCasdoor(code, state || undefined)
-        .then((response) => {
-          void login(response.access_token);
-        })
-        .catch((err) => {
-          console.error("Failed to exchange code for token:", err);
-        });
-    }
-  }, [login]);
-
-  // Legacy Implicit Flow handling (optional, can be removed if strictly code flow)
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.includes("access_token=")) {
-      const params = new URLSearchParams(hash.replace(/^#/, ""));
-      const token = params.get("access_token");
-      if (token) {
-        // Clear hash to avoid repeated parsing
-        history.replaceState(
-          null,
-          "",
-          window.location.pathname + window.location.search,
-        );
-        void login(token); // will validate and set store
-      }
-    }
-  }, [login]);
+  // NOTE: OAuth code callback (?code=xxx) and implicit flow (#access_token=xxx)
+  // are now handled in core/auth.ts autoLogin() before this component mounts.
+  // No duplicate handling needed here.
 
   const provider = config?.provider ?? status?.provider ?? undefined;
 

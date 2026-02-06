@@ -53,9 +53,15 @@ class BaseAuthProvider(ABC):
         self.config = config
         self.public_key: str | None = config.PublicKey
         self.issuer: str = config.Issuer
+        self.endpoint: str | None = config.Endpoint
         self.jwks_uri: str | None = config.JwksUri
         self.algorithm: str = config.Algorithm
         self.audience: str = config.Audience
+
+    @property
+    def api_base(self) -> str:
+        """Internal base URL for backend API calls. Falls back to issuer if endpoint is not set."""
+        return (self.endpoint or self.issuer).rstrip("/")
 
     @abstractmethod
     def get_provider_name(self) -> str:
