@@ -32,7 +32,7 @@ from app.agents.types import (
     StateDict,
 )
 from app.agents.utils import extract_text_from_content
-from app.schemas.graph_config import (
+from app.schemas.graph_config_legacy import (
     ConditionType,
     CustomCondition,
     GraphConfig,
@@ -514,12 +514,13 @@ class GraphBuilder:
 
         # Filter tools by component's required capabilities
         filtered_tools = self._filter_tools_by_capabilities(component.metadata.required_capabilities)
+        validated_overrides = component.validate_config_overrides(comp_config.config_overrides)
 
         # Build the component's subgraph (async to create LLM before compilation)
         subgraph = await component.build_graph(
             llm_factory=self.llm_factory,
             tools=filtered_tools,
-            config=comp_config.config_overrides,
+            config=validated_overrides,
         )
 
         logger.info(

@@ -12,7 +12,7 @@ All agents (builtin and user-defined) go through the same path:
 
 Config Resolution Order:
 1. agent_config.graph_config exists → use it as the source of truth
-   (builtin_key in metadata is ONLY used for analytics/UI, not to replace the config)
+   (builtin provenance metadata is ONLY used for analytics/UI, not to replace the config)
 2. No config → fall back to "react" builtin
 
 IMPORTANT: The graph_config is always the single source of truth. This ensures
@@ -160,8 +160,8 @@ def _resolve_agent_config(
     1. agent_config has graph_config → use it (graph_config is the source of truth)
     2. agent_config is None or has no graph_config → use default builtin (react)
 
-    The builtin_key in metadata is ONLY used for analytics/UI purposes, NOT to replace
-    the agent's actual graph_config. This ensures forked agents retain their customizations.
+    Builtin provenance metadata is ONLY used for analytics/UI purposes, NOT to replace the
+    agent's actual graph_config. This ensures forked agents retain their customizations.
 
     Args:
         agent_config: Agent configuration from database (may be None)
@@ -169,19 +169,33 @@ def _resolve_agent_config(
 
     Returns:
         Tuple of (raw_config_dict, agent_type_key)
-        - raw_config_dict: GraphConfig as dict (for version detection)
+        - raw_config_dict: GraphConfig as dict
         - agent_type_key: Agent type for events (e.g., "react", "deep_research", "graph")
     """
-    from app.agents.builtin import get_builtin_config
+    from app.agents.builtin import get_builtin_config, list_builtin_keys
 
     if agent_config and agent_config.graph_config:
         # Agent has a graph_config - use it as the source of truth
         raw_config = agent_config.graph_config
-        metadata = raw_config.get("metadata", {})
+        builtin_keys = set(list_builtin_keys())
+        ui = raw_config.get("ui")
 
-        # Extract agent type key for analytics/UI, but DON'T replace the config
-        # This fixes the bug where forked agents lost their customizations
-        agent_type_key = metadata.get("builtin_key") or metadata.get("system_agent_key") or "graph"
+        # Extract agent type key for analytics/UI, but DON'T replace the config.
+        # Prefer canonical key, then explicit UI builtin provenance.
+        candidate_keys: list[str] = []
+        raw_key = raw_config.get("key")
+        if isinstance(raw_key, str) and raw_key.strip():
+            candidate_keys.append(raw_key.strip())
+        if isinstance(ui, dict):
+            ui_value = ui.get("builtin_key")
+            if isinstance(ui_value, str) and ui_value.strip():
+                candidate_keys.append(ui_value.strip())
+
+        agent_type_key = "graph"
+        for candidate in candidate_keys:
+            if candidate in builtin_keys:
+                agent_type_key = candidate
+                break
 
         # Inject system_prompt into the agent's actual config (not a builtin replacement)
         if system_prompt:
@@ -207,7 +221,7 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
 
     Handles ALL nodes that support system_prompt:
     1. Component nodes - updates config_overrides.system_prompt
-    2. LLM nodes - updates llm_config.prompt_template
+    2. LLM nodes - merges into llm_config.prompt_template
 
     This injects into ALL matching nodes (not just the first), ensuring
     forked agents with multiple components all receive the custom prompt.
@@ -221,34 +235,86 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
     """
     import copy
 
-    config = copy.deepcopy(config_dict)
+    def merge_layered_prompt(base_prompt: str, node_prompt: Any) -> str:
+        base = base_prompt.strip()
+        node = node_prompt.strip() if isinstance(node_prompt, str) else ""
+        if base and node:
+            return f"{base}\n\n<NODE_PROMPT>\n{node}\n</NODE_PROMPT>"
+        if base:
+            return base
+        return node
 
-    for node in config.get("nodes", []):
-        # Inject into ALL component nodes that support system_prompt
+    config = copy.deepcopy(config_dict)
+    merged_llm_nodes = 0
+    merged_component_nodes = 0
+    llm_nodes_with_node_prompt = 0
+    component_nodes_with_node_prompt = 0
+
+    node_list = config.get("nodes")
+    if not isinstance(node_list, list):
+        graph = config.get("graph")
+        if isinstance(graph, dict):
+            candidate_nodes = graph.get("nodes")
+            if isinstance(candidate_nodes, list):
+                node_list = candidate_nodes
+
+    for node in node_list or []:
+        if not isinstance(node, dict):
+            continue
+
+        # v2 shape
         if node.get("type") == "component":
             comp_config = node.setdefault("component_config", {})
-            overrides = comp_config.setdefault("config_overrides", {})
-            overrides["system_prompt"] = system_prompt
-            # Continue - don't break (inject into all components)
-
-        # Inject into ALL LLM nodes
-        elif node.get("type") == "llm":
+            if isinstance(comp_config, dict):
+                overrides = comp_config.setdefault("config_overrides", {})
+                if isinstance(overrides, dict):
+                    existing_component_prompt = overrides.get("system_prompt")
+                    if isinstance(existing_component_prompt, str) and existing_component_prompt.strip():
+                        component_nodes_with_node_prompt += 1
+                    overrides["system_prompt"] = merge_layered_prompt(system_prompt, existing_component_prompt)
+                    merged_component_nodes += 1
+            continue
+        if node.get("type") == "llm":
             llm_config = node.setdefault("llm_config", {})
-            llm_config["prompt_template"] = system_prompt
-            # Continue - don't break (inject into all LLM nodes)
+            if isinstance(llm_config, dict):
+                existing_prompt = llm_config.get("prompt_template")
+                if isinstance(existing_prompt, str) and existing_prompt.strip():
+                    llm_nodes_with_node_prompt += 1
+                llm_config["prompt_template"] = merge_layered_prompt(system_prompt, existing_prompt)
+                merged_llm_nodes += 1
+            continue
+
+        # canonical shape
+        if node.get("kind") == "component":
+            comp_config = node.setdefault("config", {})
+            if isinstance(comp_config, dict):
+                overrides = comp_config.setdefault("config_overrides", {})
+                if isinstance(overrides, dict):
+                    existing_component_prompt = overrides.get("system_prompt")
+                    if isinstance(existing_component_prompt, str) and existing_component_prompt.strip():
+                        component_nodes_with_node_prompt += 1
+                    overrides["system_prompt"] = merge_layered_prompt(system_prompt, existing_component_prompt)
+                    merged_component_nodes += 1
+            continue
+        if node.get("kind") == "llm":
+            llm_config = node.setdefault("config", {})
+            if isinstance(llm_config, dict):
+                existing_prompt = llm_config.get("prompt_template")
+                if isinstance(existing_prompt, str) and existing_prompt.strip():
+                    llm_nodes_with_node_prompt += 1
+                llm_config["prompt_template"] = merge_layered_prompt(system_prompt, existing_prompt)
+                merged_llm_nodes += 1
+            continue
+
+    logger.info(
+        "Prompt layering injected: llm_nodes=%d (with_node_prompt=%d), component_nodes=%d (with_node_prompt=%d)",
+        merged_llm_nodes,
+        llm_nodes_with_node_prompt,
+        merged_component_nodes,
+        component_nodes_with_node_prompt,
+    )
 
     return config
-
-
-def _detect_config_version(config: dict) -> str:
-    """
-    Detect the version of a graph config.
-
-    Returns:
-        Version string (e.g., "1.0", "2.0")
-    """
-    version = config.get("version", "1.0")
-    return version
 
 
 async def _build_graph_agent(
@@ -258,13 +324,10 @@ async def _build_graph_agent(
     system_prompt: str,
 ) -> tuple[DynamicCompiledGraph, dict[str, str]]:
     """
-    Build a graph agent from configuration using GraphBuilder.
-
-    This is the unified build path for all agents (builtin and user-defined).
-    All configs are migrated to v2 format if needed.
+    Build a graph agent from a canonical configuration.
 
     Args:
-        raw_config: GraphConfig as dict (may be v1 or v2)
+        raw_config: GraphConfig as dict
         llm_factory: Factory function to create LLM instances
         tools: List of tools available to the agent
         system_prompt: System prompt (already injected into config)
@@ -273,9 +336,9 @@ async def _build_graph_agent(
         Tuple of (CompiledStateGraph, node_component_keys)
     """
     from app.agents.components import ensure_components_registered
-    from app.agents.graph_builder import GraphBuilder
-    from app.schemas.graph_config import GraphConfig as GraphConfigV2
-    from app.schemas.graph_config import migrate_graph_config
+    from app.agents.graph.canonicalizer import parse_and_canonicalize_graph_config
+    from app.agents.graph.compiler import GraphCompiler
+    from app.agents.graph.validator import ensure_valid_graph_config
 
     # Ensure components are registered before building
     ensure_components_registered()
@@ -283,30 +346,22 @@ async def _build_graph_agent(
     # Build tool registry
     tool_registry = {t.name: t for t in tools}
 
-    # Detect version and migrate if needed
-    version = _detect_config_version(raw_config)
+    graph_config = parse_and_canonicalize_graph_config(raw_config)
+    ensure_valid_graph_config(graph_config)
 
-    if version.startswith("2."):
-        # Already v2, just validate
-        graph_config = GraphConfigV2.model_validate(raw_config)
-        logger.debug("Using v2 config")
-    else:
-        # Auto-migrate v1 to v2
-        logger.info("Migrating v1 config to v2")
-        graph_config = migrate_graph_config(raw_config)
-        logger.info(f"Migration complete: {len(graph_config.nodes)} nodes, {len(graph_config.edges)} edges")
-
-    # Build using GraphBuilder
-    builder = GraphBuilder(
+    compiler = GraphCompiler(
         config=graph_config,
         llm_factory=llm_factory,
         tool_registry=tool_registry,
     )
-
-    compiled_graph = await builder.build()
-    node_component_keys = builder.get_node_component_keys()
-
-    logger.info(f"Built graph agent with {len(graph_config.nodes)} nodes")
+    compiled_graph = await compiler.build()
+    node_component_keys = compiler.get_node_component_keys()
+    logger.info(
+        "Built graph agent (schema=%s, key=%s) with %d nodes",
+        graph_config.schema_version,
+        graph_config.key,
+        len(graph_config.graph.nodes),
+    )
     return compiled_graph, node_component_keys
 
 
@@ -374,7 +429,7 @@ async def create_agent_from_builtin(
 
         event_ctx = AgentEventContext(
             agent_id=builtin_key,
-            agent_name=config.metadata.get("display_name", builtin_key),
+            agent_name=(config.metadata.display_name if config.metadata else None) or builtin_key,
             agent_type=builtin_key,
         )
 
