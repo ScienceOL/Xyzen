@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from app.agents.graph_builder import GraphBuilder
+from app.agents.graph.builder import GraphBuilder
 from app.agents.types import DynamicCompiledGraph, LLMFactory
 from app.agents.graph.canonicalizer import canonicalize_graph_config
 from app.agents.graph.validator import ensure_valid_graph_config

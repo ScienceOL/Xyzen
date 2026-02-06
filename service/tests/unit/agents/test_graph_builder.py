@@ -11,8 +11,8 @@ from pydantic import BaseModel, ConfigDict
 from typing_extensions import override
 
 from app.agents.components import ComponentMetadata, ComponentType, component_registry
-from app.agents.components.executable import ExecutableComponent
-from app.agents.graph_builder import GraphBuilder, build_state_class
+from app.agents.components.component import ExecutableComponent
+from app.agents.graph.builder import GraphBuilder, build_state_class
 from app.schemas.graph_config_legacy import (
     ComponentNodeConfig,
     ComponentReference,
@@ -373,7 +373,7 @@ class TestComponentOverrideContract:
             with pytest.raises(ValueError, match="Invalid config_overrides"):
                 await builder.build()
         finally:
-            component_registry.unregister(component.metadata.key)
+            component_registry._components.pop(component.metadata.key, None)
 
     @pytest.mark.asyncio
     async def test_component_override_accepts_declared_keys(self) -> None:
@@ -409,4 +409,4 @@ class TestComponentOverrideContract:
             result = await graph.ainvoke({"messages": [HumanMessage(content="hello")]})  # type: ignore[arg-type]
             assert "messages" in result
         finally:
-            component_registry.unregister(component.metadata.key)
+            component_registry._components.pop(component.metadata.key, None)

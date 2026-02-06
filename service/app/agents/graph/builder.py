@@ -1,15 +1,11 @@
 """
-Graph Builder v2 - Compiles v2 GraphConfig into LangGraph CompiledStateGraph.
+Legacy Graph Builder - Compiles v2 GraphConfig into LangGraph CompiledStateGraph.
 
-This module uses LangGraph's native primitives:
-- ToolNode for tool execution (instead of custom _execute_pending_tool_calls)
-- tools_condition for routing (instead of manual has_tool_calls checking)
-- add_messages reducer (instead of custom messages_reducer)
-
-Key differences from v1:
-- No router nodes (routing is done via conditional edges)
-- Simplified state schema
-- Uses LangGraph's battle-tested components
+This module is used internally by GraphCompiler as the v2 bridge layer.
+It uses LangGraph's native primitives:
+- ToolNode for tool execution
+- tools_condition for routing
+- add_messages reducer
 """
 
 from __future__ import annotations
@@ -492,7 +488,7 @@ class GraphBuilder:
         LangGraph can properly propagate streaming through the subgraph.
         """
         from app.agents.components import component_registry
-        from app.agents.components.executable import ExecutableComponent
+        from app.agents.components.component import ExecutableComponent
 
         comp_config = config.component_config
         if not comp_config:
