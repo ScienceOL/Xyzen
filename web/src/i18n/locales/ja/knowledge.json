@@ -70,6 +70,7 @@
   },
   "status": {
     "items": "{{count}}個のアイテム",
+    "used": "{{used}}使用中",
     "usedOfTotal": "{{used}} / {{total}}使用中",
     "available": "{{available}}利用可能"
   },

@@ -130,6 +130,26 @@ export const KnowledgeLayout = () => {
     }
   };
 
+  // Optimistic update for stats when files are deleted
+  const handleStatsUpdate = useCallback(
+    (deletedBytes: number, deletedFileCount: number) => {
+      setStats((prev) => {
+        const newUsed = Math.max(0, prev.used - deletedBytes);
+        const newFileCount = Math.max(0, prev.fileCount - deletedFileCount);
+        const newAvailable = prev.total - newUsed;
+        const newPercentage = prev.total > 0 ? (newUsed / prev.total) * 100 : 0;
+        return {
+          ...prev,
+          used: newUsed,
+          fileCount: newFileCount,
+          availableBytes: newAvailable,
+          usagePercentage: newPercentage,
+        };
+      });
+    },
+    [],
+  );
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -475,6 +495,7 @@ export const KnowledgeLayout = () => {
             refreshTrigger={refreshKey}
             onRefresh={() => setRefreshKey((k) => k + 1)}
             onFileCountChange={setCurrentFileCount}
+            onStatsUpdate={handleStatsUpdate}
             currentFolderId={currentFolderId}
             currentKnowledgeSetId={currentKnowledgeSetId}
             onFolderChange={(id) => handleNavigate("folders", id)}
@@ -482,7 +503,11 @@ export const KnowledgeLayout = () => {
         </div>
         {/* Status Bar */}
         <StatusBar
-          itemCount={currentFileCount}
+          itemCount={
+            activeTab === "folders" || activeTab === "knowledge"
+              ? currentFileCount
+              : stats.fileCount
+          }
           stats={{
             used: stats.used,
             total: stats.total,

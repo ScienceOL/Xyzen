@@ -70,6 +70,7 @@
   },
   "status": {
     "items": "{{count}} items",
+    "used": "{{used}} used",
     "usedOfTotal": "{{used}} of {{total}} used",
     "available": "{{available}} available"
   },

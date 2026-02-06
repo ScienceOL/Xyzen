@@ -14,6 +14,12 @@ const formatSize = (bytes: number) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
+// Format size in MB with 2 decimal places
+const formatSizeInMB = (bytes: number) => {
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(2)} MB`;
+};
+
 export const StatusBar = ({ itemCount, stats }: StatusBarProps) => {
   const { t } = useTranslation();
   const available =
@@ -41,9 +47,8 @@ export const StatusBar = ({ itemCount, stats }: StatusBarProps) => {
         <span>{t("knowledge.status.items", { count: itemCount })}</span>
         <span className="text-neutral-300 dark:text-neutral-700">|</span>
         <span className={getUsageColor()}>
-          {t("knowledge.status.usedOfTotal", {
-            used: formatSize(stats.used),
-            total: formatSize(stats.total),
+          {t("knowledge.status.used", {
+            used: formatSizeInMB(stats.used),
           })}
         </span>
         <span className="text-neutral-300 dark:text-neutral-700">|</span>
