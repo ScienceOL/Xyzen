@@ -2,7 +2,7 @@
 Deep Research ExecutableComponents - Runnable components for the Deep Research agent.
 
 These components implement the Deep Research workflow phases as ExecutableComponents
-that can be composed via GraphConfig v2. Each component builds its own subgraph.
+that can be composed via GraphConfig. Each component builds its own subgraph.
 
 Components:
 - ClarifyWithUserComponent: Determines if clarification/follow-up is needed
@@ -23,8 +23,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.agents.components import ComponentMetadata, ComponentType
-from app.agents.components.executable import ExecutableComponent
+from app.agents.components.component import ComponentMetadata, ComponentType, ExecutableComponent
 from app.agents.components.deep_research.prompts import (
     CLARIFY_WITH_USER_PROMPT,
     FINAL_REPORT_PROMPT,

@@ -19,8 +19,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from app.agents.components import ComponentMetadata, ComponentType
-from app.agents.components.executable import ExecutableComponent
+from app.agents.components.component import ComponentMetadata, ComponentType, ExecutableComponent
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool

@@ -1,20 +1,18 @@
 """
-Executable Component Module - Components that can be instantiated as runnable graphs.
+Component Module - Base class for reusable agent components.
 
-This module provides the ExecutableComponent base class that extends BaseComponent
-to add execution capability. Components can declare tool capabilities they require,
-and the graph builder will inject only the relevant tools.
+Provides ExecutableComponent, the single base class for all agent components
+that can be registered in the ComponentRegistry and referenced in GraphConfig
+as "component" nodes.
 """
 
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
-from pydantic import ValidationError
-
-from app.agents.components.base import BaseComponent
+from pydantic import BaseModel, Field, ValidationError
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
@@ -23,34 +21,65 @@ if TYPE_CHECKING:
     from app.agents.types import LLMFactory
 
 
-class ExecutableComponent(BaseComponent):
+class ComponentType(StrEnum):
+    """Types of reusable components."""
+
+    SUBGRAPH = "subgraph"  # Complete subgraph that can be embedded
+
+
+class ComponentMetadata(BaseModel):
+    """Metadata describing a registered component."""
+
+    key: str = Field(description="Unique identifier")
+    name: str = Field(description="Human-readable name")
+    description: str = Field(description="Detailed description")
+    component_type: ComponentType = Field(description="Type of component")
+    version: str = Field(default="1.0.0")
+    author: str = Field(default="Xyzen")
+    tags: list[str] = Field(default_factory=list)
+    input_schema: dict[str, Any] | None = Field(default=None)
+    output_schema: dict[str, Any] | None = Field(default=None)
+    required_tools: list[str] = Field(default_factory=list)
+    required_components: list[str] = Field(default_factory=list)
+    required_capabilities: list[str] = Field(default_factory=list)
+    config_schema_json: dict[str, Any] | None = Field(default=None)
+
+
+class ExecutableComponent(ABC):
     """
-    Component that can be instantiated as a runnable graph.
+    Base class for all reusable agent components.
 
-    This extends BaseComponent to add execution capability:
-    - build_graph() returns a CompiledStateGraph
-    - config_schema defines runtime configuration options
-    - required_capabilities declares tool dependencies (via metadata)
+    Components are subgraphs that can be:
+    - Referenced in GraphConfig as "component" nodes
+    - Composed into larger workflows
+    - Filtered by tool capabilities
+    - Versioned with SemVer constraints
 
-    ExecutableComponents can be referenced in GraphConfig as "component" nodes,
-    allowing reuse of complex workflows across different agents.
+    Subclasses must implement:
+    - metadata (property): Return ComponentMetadata describing the component
+    - build_graph(): Build and return a CompiledStateGraph
 
     Example:
         class MyComponent(ExecutableComponent):
             @property
             def metadata(self) -> ComponentMetadata:
                 return ComponentMetadata(
-                    key="system:my_agent:processor",
-                    name="Processor",
+                    key="my_component",
+                    name="My Component",
                     component_type=ComponentType.SUBGRAPH,
-                    required_capabilities=["web_search"],
                     ...
                 )
 
-            def build_graph(self, llm_factory, tools, config):
+            async def build_graph(self, llm_factory, tools, config):
                 # Build and return a compiled StateGraph
                 ...
     """
+
+    @property
+    @abstractmethod
+    def metadata(self) -> ComponentMetadata:
+        """Return component metadata."""
+        ...
 
     @property
     def config_schema(self) -> type[BaseModel] | None:
@@ -99,15 +128,12 @@ class ExecutableComponent(BaseComponent):
         """
         Export component as JSON-serializable configuration.
 
-        For ExecutableComponents, this returns a component node config
-        that can be used in GraphConfig to reference this component.
-
-        Returns:
-            Dictionary containing the component reference configuration
+        Returns a canonical component node config that can be used in
+        GraphConfig to reference this component.
         """
         return {
-            "type": "component",
-            "component_config": {
+            "kind": "component",
+            "config": {
                 "component_ref": {
                     "key": self.metadata.key,
                     "version": self.metadata.version,
@@ -171,27 +197,25 @@ class ExecutableComponent(BaseComponent):
         return raw
 
     def validate(self) -> list[str]:
-        """
-        Validate component configuration.
-
-        Checks that required metadata fields are set and validates
-        any additional component-specific requirements.
-
-        Returns:
-            List of validation errors (empty if valid)
-        """
-        errors = super().validate()
-
-        # Validate metadata has key
+        """Validate component configuration. Returns list of errors (empty if valid)."""
+        errors: list[str] = []
         if not self.metadata.key:
             errors.append("Component key is required")
-
-        # Validate required_capabilities is a list
         if not isinstance(self.metadata.required_capabilities, list):
             errors.append("required_capabilities must be a list")
-
         return errors
 
+    def get_example_usage(self) -> str | None:
+        """Return an example of how to use this component."""
+        return None
 
-# Export
-__all__ = ["ExecutableComponent"]
+
+# Backward compatibility alias
+BaseComponent = ExecutableComponent
+
+__all__ = [
+    "ComponentType",
+    "ComponentMetadata",
+    "ExecutableComponent",
+    "BaseComponent",
+]
