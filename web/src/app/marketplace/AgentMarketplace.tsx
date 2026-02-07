@@ -3,7 +3,7 @@
 import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
-  useMarketplaceListings,
+  useInfiniteMarketplaceListings,
   usePrefetchMarketplaceListing,
   useStarredListings,
   useToggleLike,
@@ -14,7 +14,8 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useInView } from "react-intersection-observer";
 import { useTranslation } from "react-i18next";
 
 import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
@@ -57,11 +58,14 @@ export default function AgentMarketplace() {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const {
-    data: allListings,
+    listings: allListings,
     isLoading: isLoadingAll,
+    isFetchingNextPage: isFetchingNextPageAll,
+    hasNextPage: hasNextPageAll,
+    fetchNextPage: fetchNextPageAll,
     error: errorAll,
     refetch: refetchAll,
-  } = useMarketplaceListings({
+  } = useInfiniteMarketplaceListings({
     query: debouncedSearch,
     tags: selectedTag ? [selectedTag] : undefined,
     sort_by: sortBy,
@@ -80,6 +84,26 @@ export default function AgentMarketplace() {
   const refetch = activeTab === "starred" ? refetchStarred : refetchAll;
 
   const prefetchListing = usePrefetchMarketplaceListing();
+  const { ref: loadMoreRef, inView: isLoadMoreInView } = useInView({
+    rootMargin: "280px 0px",
+    threshold: 0,
+    skip: activeTab !== "all" || !hasNextPageAll,
+  });
+
+  useEffect(() => {
+    if (activeTab !== "all") return;
+    if (!isLoadMoreInView) return;
+    if (!hasNextPageAll) return;
+    if (isFetchingNextPageAll) return;
+
+    void fetchNextPageAll();
+  }, [
+    activeTab,
+    isLoadMoreInView,
+    hasNextPageAll,
+    isFetchingNextPageAll,
+    fetchNextPageAll,
+  ]);
 
   const handleSelectListing = (id: string) => {
     setSelectedMarketplaceId(id);
@@ -334,15 +358,32 @@ export default function AgentMarketplace() {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {listings.map((listing) => (
-                    <AgentListingCard
-                      key={listing.id}
-                      listing={listing}
-                      onClick={() => handleSelectListing(listing.id)}
-                      onMouseEnter={() => handleMouseEnter(listing.id)}
-                    />
-                  ))}
+                <div>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {listings.map((listing) => (
+                      <AgentListingCard
+                        key={listing.id}
+                        listing={listing}
+                        onClick={() => handleSelectListing(listing.id)}
+                        onMouseEnter={() => handleMouseEnter(listing.id)}
+                      />
+                    ))}
+                  </div>
+
+                  {activeTab === "all" && hasNextPageAll && (
+                    <div ref={loadMoreRef} className="mt-8 flex justify-center py-3">
+                      {isFetchingNextPageAll ? (
+                        <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
+                          <span>{t("marketplace.infinite.loadingMore")}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                          {t("marketplace.infinite.scrollHint")}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>

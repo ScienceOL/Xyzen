@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Literal, Sequence
 from uuid import UUID
 
@@ -100,6 +101,7 @@ class AgentMarketplaceRepository:
             if hasattr(listing, key):
                 setattr(listing, key, value)
 
+        listing.updated_at = datetime.now(timezone.utc)
         self.db.add(listing)
         await self.db.flush()
         await self.db.refresh(listing)

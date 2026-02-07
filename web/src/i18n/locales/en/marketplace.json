@@ -213,5 +213,9 @@
     "lockedAgent": "Locked Agent",
     "lockedAgentDescription": "This agent will be forked in locked mode. You can use it, but the configuration will be hidden and cannot be modified.",
     "editableDescription": "Your forked agent will be completely independent. Changes won't affect the original."
+  },
+  "infinite": {
+    "loadingMore": "Loading more...",
+    "scrollHint": "Scroll to load more"
   }
 }

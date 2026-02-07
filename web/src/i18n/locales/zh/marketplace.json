@@ -213,5 +213,9 @@
     "lockedAgent": "锁定的助手",
     "lockedAgentDescription": "此助手将以锁定模式复刻。你可以使用它，但配置将被隐藏且无法修改。",
     "editableDescription": "你复刻的助手将完全独立。修改不会影响原始助手。"
+  },
+  "infinite": {
+    "loadingMore": "正在加载更多...",
+    "scrollHint": "滚动以加载更多"
   }
 }

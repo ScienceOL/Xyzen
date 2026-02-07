@@ -213,5 +213,9 @@
     "lockedAgent": "ロックされたエージェント",
     "lockedAgentDescription": "このエージェントはロックモードでフォークされます。使用はできますが、設定は非表示で変更できません。",
     "editableDescription": "フォークしたエージェントは完全に独立しています。変更は元のエージェントに影響しません。"
+  },
+  "infinite": {
+    "loadingMore": "さらに読み込み中...",
+    "scrollHint": "スクロールしてさらに読み込む"
   }
 }
