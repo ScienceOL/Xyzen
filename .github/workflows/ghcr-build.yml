@@ -2,7 +2,7 @@ name: Build and Push ghcr.io Images
 
 on:
   workflow_run:
-    workflows: ["Release"]
+    workflows: ['Release']
     types:
       - completed
   workflow_dispatch:
@@ -87,7 +87,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
 
       - name: Build and push Web image
         uses: docker/build-push-action@v6
@@ -128,7 +128,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
 
       - name: Build and push Service image
         uses: docker/build-push-action@v6
@@ -159,7 +159,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
 
       - name: Verify multi-platform builds
         run: |

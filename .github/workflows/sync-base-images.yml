@@ -38,8 +38,8 @@ jobs:
           - source: docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
             target: minio:RELEASE.2025-04-22T22-12-26Z
           # Casdoor
-          - source: docker.io/casbin/casdoor:v2.285.0
-            target: casdoor:v2.285.0
+          - source: docker.io/casbin/casdoor:2.285.0
+            target: casdoor:2.285.0
 
     steps:
       - name: Set up Docker Buildx
