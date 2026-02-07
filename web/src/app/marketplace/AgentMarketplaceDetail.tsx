@@ -193,6 +193,11 @@ export default function AgentMarketplaceDetail({
                       <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
                         {listing.name}
                       </h1>
+                      {listing.scope === "official" && (
+                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                          {t("marketplace.badge.official")}
+                        </span>
+                      )}
                       {listing.fork_mode === "locked" && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
                           <LockClosedIcon className="h-3 w-3" />
@@ -203,7 +208,9 @@ export default function AgentMarketplaceDetail({
                     <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.detail.publishedBy")}{" "}
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
-                        {listing.user_id.split("@")[0] || listing.user_id}
+                        {listing.scope === "official"
+                          ? "Xyzen"
+                          : (listing.user_id ?? "").split("@")[0] || listing.user_id}
                       </span>
                     </p>
                     <p className="mt-3 text-base leading-relaxed text-neutral-700 dark:text-neutral-300">
@@ -632,8 +639,8 @@ export default function AgentMarketplaceDetail({
                     </div>
                   </button>
 
-                  {/* Manage Button - Only visible to owner */}
-                  {isOwner && onManage && (
+                  {/* Manage Button - Only visible to owner, hidden for official listings */}
+                  {isOwner && onManage && listing.scope !== "official" && (
                     <button
                       onClick={onManage}
                       className="w-full rounded-xl border-2 border-indigo-300 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-50 hover:scale-[1.02] dark:border-indigo-800 dark:bg-neutral-900 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
@@ -654,7 +661,7 @@ export default function AgentMarketplaceDetail({
                     {t("marketplace.detail.meta.publishedBy")}
                   </h3>
                   <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                    {listing.user_id}
+                    {listing.scope === "official" ? "Xyzen" : listing.user_id}
                   </p>
                 </div>
 

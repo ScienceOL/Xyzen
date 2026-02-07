@@ -11,7 +11,6 @@ from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.providers import SYSTEM_USER_ID
 from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
 from app.models.provider import Provider
 from app.repos.agent import AgentRepository
@@ -175,7 +174,7 @@ class SystemAgentManager:
                         model=None,
                         temperature=0.7,
                     )
-                    agent = await self.agent_repo.create_agent(agent_data, SYSTEM_USER_ID)
+                    agent = await self.agent_repo.create_agent(agent_data, None)
 
                 created_agents[agent_key] = agent
             except Exception as e:

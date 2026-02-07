@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -12,6 +13,11 @@ if TYPE_CHECKING:
     from .agent_snapshot import AgentSnapshotRead
 
 
+class MarketplaceScope(StrEnum):
+    OFFICIAL = "official"
+    COMMUNITY = "community"
+
+
 class AgentMarketplace(SQLModel, table=True):
     """Public listing of community agents"""
 
@@ -20,7 +26,19 @@ class AgentMarketplace(SQLModel, table=True):
     # Ownership & versioning
     agent_id: UUID = Field(index=True, description="The source agent (owner's working copy)")
     active_snapshot_id: UUID = Field(index=True, description="Currently published version")
-    user_id: str = Field(index=True, description="Publisher")
+    user_id: str | None = Field(index=True, default=None, nullable=True, description="Publisher")
+
+    # Scope & builtin tracking
+    scope: MarketplaceScope = Field(
+        default=MarketplaceScope.COMMUNITY,
+        sa_column=sa.Column(
+            sa.Enum(*(v.value for v in MarketplaceScope), name="marketplacescope", native_enum=True),
+            nullable=False,
+            index=True,
+            server_default="community",
+        ),
+    )
+    builtin_key: str | None = Field(default=None, index=True, description="Stable key for builtin agent configs")
 
     # Denormalized for search & display
     name: str = Field(index=True)
@@ -68,13 +86,15 @@ class AgentMarketplaceCreate(SQLModel):
 
     agent_id: UUID
     active_snapshot_id: UUID
-    user_id: str
+    user_id: str | None = None
     name: str
     description: str | None = None
     avatar: str | None = None
     tags: list[str] = []
     readme: str | None = None
     fork_mode: ForkMode = ForkMode.EDITABLE
+    scope: MarketplaceScope = MarketplaceScope.COMMUNITY
+    builtin_key: str | None = None
 
 
 class AgentMarketplaceRead(SQLModel):
@@ -83,7 +103,7 @@ class AgentMarketplaceRead(SQLModel):
     id: UUID
     agent_id: UUID
     active_snapshot_id: UUID
-    user_id: str
+    user_id: str | None
     name: str
     description: str | None
     avatar: str | None
@@ -94,6 +114,7 @@ class AgentMarketplaceRead(SQLModel):
     views_count: int
     is_published: bool
     fork_mode: ForkMode
+    scope: MarketplaceScope
     created_at: datetime
     updated_at: datetime
     first_published_at: datetime | None

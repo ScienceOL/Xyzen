@@ -283,7 +283,7 @@ class AgentRepository:
         mcp_result = await self.db.exec(statement)
         return mcp_result.all()
 
-    async def create_agent(self, agent_data: AgentCreate, user_id: str) -> Agent:
+    async def create_agent(self, agent_data: AgentCreate, user_id: str | None) -> Agent:
         """
         Creates a new agent with associated MCP servers.
         This function does NOT commit the transaction, but it does flush the session
@@ -302,7 +302,7 @@ class AgentRepository:
         logger.debug(f"Creating new agent for user_id: {user_id}")
 
         # Validate knowledge_set_id if provided
-        if agent_data.knowledge_set_id:
+        if agent_data.knowledge_set_id and user_id:
             knowledge_set = await self.validate_knowledge_set_access(agent_data.knowledge_set_id, user_id)
             if not knowledge_set:
                 raise ValueError("Knowledge set not found or access denied")

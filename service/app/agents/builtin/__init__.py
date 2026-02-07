@@ -83,6 +83,7 @@ def get_builtin_metadata(key: str) -> dict | None:
         "author": ui.get("author", "Xyzen"),
         "pattern": ui.get("pattern"),
         "forkable": True,
+        "publishable": ui.get("publishable", True),
     }
 
 

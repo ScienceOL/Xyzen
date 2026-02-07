@@ -74,37 +74,6 @@ export const calculateGrowthScale = (messageCount: number): number => {
   return Math.min(scale, 2.0);
 };
 
-// Metadata for a system agent template
-export interface SystemAgentMetadata {
-  name: string;
-  description: string;
-  version: string;
-  capabilities: string[];
-  tags: string[];
-  author?: string | null;
-  license?: string | null;
-}
-
-// Component metadata for exported agent components
-export interface ComponentMetadata {
-  key: string;
-  name: string;
-  description: string;
-  component_type: string;
-  version: string;
-  author?: string | null;
-  tags?: string[];
-}
-
-// System agent template returned by GET /templates/system
-export interface SystemAgentTemplate {
-  key: string;
-  metadata: SystemAgentMetadata;
-  forkable: boolean;
-  components: ComponentMetadata[];
-  error?: string;
-}
-
 // Universal agent type that can represent any agent
 export interface Agent {
   id: string;
