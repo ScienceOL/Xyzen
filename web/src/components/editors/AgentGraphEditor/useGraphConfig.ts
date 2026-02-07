@@ -24,21 +24,13 @@ import {
 
 /**
  * Create a stable hash of graph config for comparison.
- * Only compares structural elements (nodes, edges, entrypoints) to avoid
- * unnecessary re-syncs from metadata changes.
+ * Compares full node configurations to ensure all changes are synced.
  */
 function getConfigHash(config: GraphConfig | null): string {
   if (!config) return "";
   return JSON.stringify({
-    nodes: config.graph?.nodes?.map((n) => ({
-      id: n.id,
-      kind: n.kind,
-      name: n.name,
-    })),
-    edges: config.graph?.edges?.map((e) => ({
-      from: e.from_node,
-      to: e.to_node,
-    })),
+    nodes: config.graph?.nodes,
+    edges: config.graph?.edges,
     entrypoints: config.graph?.entrypoints,
   });
 }

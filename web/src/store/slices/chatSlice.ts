@@ -1233,7 +1233,7 @@ export const createChatSlice: StateCreator<
                 if (balanceLoadingIndex !== -1) {
                   channel.messages[balanceLoadingIndex] = {
                     ...channel.messages[balanceLoadingIndex],
-                    content: `⚠️ ${balanceData.message_cn || "光子余额不足，请充值后继续使用"}`,
+                    content: `⚠️ ${balanceData.message_cn || "积分余额不足，请充值后继续使用"}`,
                     isLoading: false,
                     isStreaming: false,
                   };
@@ -1246,7 +1246,7 @@ export const createChatSlice: StateCreator<
                   message:
                     balanceData.message_cn ||
                     balanceData.message ||
-                    "Your photon balance is insufficient. Please recharge to continue.",
+                    "积分余额不足，请充值后继续使用",
                   type: "warning",
                   actionLabel: "去充值",
                   onAction: () => {

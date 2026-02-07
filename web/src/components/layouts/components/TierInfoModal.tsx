@@ -105,7 +105,6 @@ const TIERS: TierInfo[] = [
       { name: "Claude Haiku 4.5", provider: "anthropic" },
       { name: "DeepSeek V3.2", provider: "deepseek" },
       { name: "Gemini 3 Flash", provider: "google" },
-      { name: "GPT-5 Mini", provider: "openai" },
     ],
   },
   {

@@ -1,25 +1,219 @@
 import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { Input } from "@/components/base/Input";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
-import type { Agent, SystemAgentTemplate } from "@/types/agents";
-import {
-  Button,
-  Field,
-  Label,
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
-} from "@headlessui/react";
-import {
-  BeakerIcon,
-  PlusIcon,
-  SparklesIcon,
-} from "@heroicons/react/24/outline";
-import React, { useEffect, useState } from "react";
+import type { Agent } from "@/types/agents";
+import { Field, Button as HeadlessButton, Label } from "@headlessui/react";
+import { CheckIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { AnimatePresence, motion } from "framer-motion";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { McpServerItem } from "./McpServerItem";
+
+// ============ Constants ============
+
+// Preset DiceBear styles for avatar selection
+const DICEBEAR_STYLES = [
+  "adventurer",
+  "avataaars",
+  "bottts",
+  "fun-emoji",
+  "lorelei",
+  "micah",
+  "miniavs",
+  "notionists",
+  "open-peeps",
+  "personas",
+  "pixel-art",
+  "shapes",
+  "thumbs",
+] as const;
+
+/**
+ * Build avatar URL - uses backend proxy if available for better China access.
+ */
+const buildAvatarUrl = (
+  style: string,
+  seed: string,
+  backendUrl?: string,
+): string => {
+  if (backendUrl) {
+    return `${backendUrl}/xyzen/api/v1/avatar/${style}/svg?seed=${encodeURIComponent(seed)}`;
+  }
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}`;
+};
+
+// Generate preset avatars
+const generatePresetAvatars = (backendUrl?: string) => {
+  const avatars: { url: string; seed: string; style: string }[] = [];
+  DICEBEAR_STYLES.forEach((style) => {
+    for (let i = 0; i < 3; i++) {
+      const seed = `${style}_${i}_preset`;
+      avatars.push({
+        url: buildAvatarUrl(style, seed, backendUrl),
+        seed,
+        style,
+      });
+    }
+  });
+  return avatars;
+};
+
+// ============ Avatar Selector Component ============
+
+interface AvatarSelectorProps {
+  currentAvatar?: string;
+  onSelect: (avatarUrl: string) => void;
+  backendUrl?: string;
+}
+
+function AvatarSelector({
+  currentAvatar,
+  onSelect,
+  backendUrl,
+}: AvatarSelectorProps) {
+  const { t } = useTranslation();
+  const [selectedStyle, setSelectedStyle] =
+    useState<(typeof DICEBEAR_STYLES)[number]>("avataaars");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const presetAvatars = useMemo(
+    () => generatePresetAvatars(backendUrl),
+    [backendUrl],
+  );
+
+  const filteredAvatars = presetAvatars.filter(
+    (a) => a.style === selectedStyle,
+  );
+
+  const generateRandom = useCallback(async () => {
+    setIsLoading(true);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const seed = Math.random().toString(36).slice(2, 10);
+    const url = buildAvatarUrl(selectedStyle, seed, backendUrl);
+    onSelect(url);
+    setIsLoading(false);
+  }, [selectedStyle, onSelect, backendUrl]);
+
+  const handlePresetSelect = useCallback(
+    async (avatarUrl: string) => {
+      setIsLoading(true);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      onSelect(avatarUrl);
+      setIsLoading(false);
+    },
+    [onSelect],
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Current Avatar Preview */}
+      <div className="flex items-center justify-center py-3">
+        <motion.div
+          className="relative group"
+          whileHover={{ scale: 1.05 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <div className="absolute -inset-1.5 bg-linear-to-tr from-indigo-500 via-purple-500 to-pink-500 rounded-full opacity-40 group-hover:opacity-70 blur-lg transition-opacity duration-500" />
+
+          <AnimatePresence>
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 dark:bg-black/50 rounded-full"
+              >
+                <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <img
+            src={
+              currentAvatar ||
+              buildAvatarUrl("avataaars", "default", backendUrl)
+            }
+            alt="Avatar"
+            className="relative w-20 h-20 rounded-full bg-white dark:bg-neutral-800 border-3 border-white dark:border-neutral-700 shadow-xl"
+          />
+          {currentAvatar && !isLoading && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-2 border-white dark:border-neutral-800 rounded-full flex items-center justify-center shadow-lg"
+            >
+              <CheckIcon className="w-3 h-3 text-white" />
+            </motion.div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Style Selector */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          {t("agents.sessionSettings.avatar.style")}
+        </label>
+        <div className="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto p-0.5 scrollbar-thin">
+          {DICEBEAR_STYLES.map((style) => (
+            <Button
+              key={style}
+              type="button"
+              variant={selectedStyle === style ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "h-6 text-xs px-2 rounded-full transition-all duration-300",
+                selectedStyle === style
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent shadow-sm"
+                  : "text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700",
+              )}
+              onClick={() => setSelectedStyle(style)}
+            >
+              {style}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Preset Avatars */}
+      <div className="flex items-center gap-2">
+        {filteredAvatars.map((avatar, i) => (
+          <motion.button
+            key={i}
+            type="button"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handlePresetSelect(avatar.url)}
+            className={cn(
+              "w-12 h-12 rounded-full overflow-hidden border-2 transition-colors duration-200 shadow-sm",
+              currentAvatar === avatar.url
+                ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-900"
+                : "border-transparent hover:border-neutral-300 dark:hover:border-neutral-600 bg-neutral-50 dark:bg-neutral-800",
+            )}
+          >
+            <img
+              src={avatar.url}
+              alt={`Avatar ${i + 1}`}
+              className="w-full h-full object-cover"
+            />
+          </motion.button>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={generateRandom}
+          disabled={isLoading}
+          className="h-12 px-3 rounded-full"
+        >
+          <SparklesIcon className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ============ Main Component ============
 
 interface AddAgentModalProps {
   isOpen: boolean;
@@ -27,27 +221,9 @@ interface AddAgentModalProps {
   onCreated?: (agentId: string) => void;
 }
 
-type TabMode = "custom" | "system";
-
 function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
   const { t } = useTranslation();
-  const {
-    createAgent,
-    createAgentFromTemplate,
-    isCreatingAgent,
-    mcpServers,
-    fetchMcpServers,
-    openAddMcpServerModal,
-    systemAgentTemplates,
-    templatesLoading,
-    fetchSystemAgentTemplates,
-  } = useXyzen();
-
-  const [tabMode, setTabMode] = useState<TabMode>("custom");
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(
-    null,
-  );
-  const [customName, setCustomName] = useState<string>("");
+  const { createAgent, isCreatingAgent, backendUrl } = useXyzen();
 
   const [agent, setAgent] = useState<
     Omit<
@@ -64,16 +240,16 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
     description: "",
     prompt: "",
   });
-  const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
+  const [avatar, setAvatar] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch MCP servers and system agent templates when modal opens
+  // Generate random avatar on open
   useEffect(() => {
-    if (isOpen) {
-      fetchMcpServers();
-      fetchSystemAgentTemplates();
+    if (isOpen && !avatar) {
+      const seed = Math.random().toString(36).slice(2, 10);
+      setAvatar(buildAvatarUrl("avataaars", seed, backendUrl));
     }
-  }, [isOpen, fetchMcpServers, fetchSystemAgentTemplates]);
+  }, [isOpen, avatar, backendUrl]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -82,60 +258,27 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
     setAgent((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleMcpServerChange = (serverId: string) => {
-    setMcpServerIds((prevIds) =>
-      prevIds.includes(serverId)
-        ? prevIds.filter((id) => id !== serverId)
-        : [...prevIds, serverId],
-    );
-  };
-
-  const handleTemplateSelect = (template: SystemAgentTemplate) => {
-    setSelectedTemplateKey(template.key);
-    // Pre-fill name with template name if custom name is empty
-    if (!customName) {
-      setCustomName(template.metadata.name);
-    }
-  };
-
-  // Build payload for custom agent - backend will generate graph_config
-  const buildCustomAgentPayload = () => ({
-    ...agent,
-    mcp_server_ids: mcpServerIds,
-    // Note: graph_config is NOT sent - backend generates it using ReActAgent
-    // This ensures single source of truth for the ReAct pattern
-    user_id: "temp", // Backend will get this from auth token
-    mcp_servers: [], // Backend will handle associations
-    created_at: new Date().toISOString(), // Will be overridden by backend
-    updated_at: new Date().toISOString(), // Will be overridden by backend
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (isSubmitting) return;
+    if (!agent.name) {
+      alert(t("agents.errors.nameRequired"));
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      let newAgentId: string | undefined;
-      if (tabMode === "custom") {
-        if (!agent.name) {
-          alert(t("agents.errors.nameRequired"));
-          return;
-        }
-        newAgentId = await createAgent(buildCustomAgentPayload());
-      } else {
-        if (!selectedTemplateKey) {
-          alert(t("agents.errors.templateRequired"));
-          return;
-        }
-        // Use the new from-template endpoint
-        newAgentId = await createAgentFromTemplate(
-          selectedTemplateKey,
-          customName || undefined,
-        );
-      }
+      const newAgentId = await createAgent({
+        ...agent,
+        avatar,
+        mcp_server_ids: [],
+        user_id: "temp",
+        mcp_servers: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
       handleClose();
-      // Notify parent about the created agent
       if (newAgentId && onCreated) {
         onCreated(newAgentId);
       }
@@ -147,15 +290,7 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
     }
   };
 
-  const submitDisabled =
-    tabMode === "custom"
-      ? isSubmitting || isCreatingAgent || !agent.name
-      : isSubmitting || isCreatingAgent || !selectedTemplateKey;
-
-  const submitLabel =
-    isSubmitting || isCreatingAgent
-      ? t("agents.actions.creating")
-      : t("agents.actions.create");
+  const submitDisabled = isSubmitting || isCreatingAgent || !agent.name;
 
   const handleClose = () => {
     setAgent({
@@ -163,15 +298,8 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
       description: "",
       prompt: "",
     });
-    setMcpServerIds([]);
-    setSelectedTemplateKey(null);
-    setCustomName("");
-    setTabMode("custom");
+    setAvatar("");
     onClose();
-  };
-
-  const handleTabChange = (index: number) => {
-    setTabMode(index === 0 ? "custom" : "system");
   };
 
   return (
@@ -180,320 +308,72 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
       onClose={handleClose}
       title={t("agents.createTitle")}
     >
-      <TabGroup onChange={handleTabChange}>
-        <TabList className="flex space-x-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-md py-2 text-sm font-medium leading-5 transition-colors
-            ${
-              selected
-                ? "bg-white text-indigo-600 shadow dark:bg-neutral-700 dark:text-indigo-400"
-                : "text-neutral-600 hover:bg-white/50 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700/50 dark:hover:text-neutral-200"
-            }`
-            }
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Avatar */}
+        <AvatarSelector
+          currentAvatar={avatar}
+          onSelect={setAvatar}
+          backendUrl={backendUrl}
+        />
+
+        {/* Divider */}
+        <div className="border-t border-neutral-200 dark:border-neutral-700" />
+
+        {/* Name */}
+        <Field>
+          <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            {t("agents.fields.name.required")}
+          </Label>
+          <Input
+            name="name"
+            value={agent.name}
+            onChange={handleChange}
+            placeholder={t("agents.fields.name.placeholder")}
+            className="mt-1"
+            required
+          />
+        </Field>
+
+        {/* Description */}
+        <Field>
+          <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            {t("agents.fields.description.label")}
+          </Label>
+          <Input
+            name="description"
+            value={agent.description}
+            onChange={handleChange}
+            placeholder={t("agents.fields.description.placeholder")}
+            className="mt-1"
+          />
+        </Field>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+          <HeadlessButton
+            type="button"
+            onClick={handleClose}
+            className="inline-flex items-center gap-2 rounded-md bg-neutral-100 py-2 px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 transition-colors"
           >
-            <span className="flex items-center justify-center gap-2">
-              <SparklesIcon className="h-4 w-4" />
-              {t("agents.tabs.custom")}
-            </span>
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-md py-2 text-sm font-medium leading-5 transition-colors
-            ${
-              selected
-                ? "bg-white text-indigo-600 shadow dark:bg-neutral-700 dark:text-indigo-400"
-                : "text-neutral-600 hover:bg-white/50 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700/50 dark:hover:text-neutral-200"
-            }`
-            }
+            {t("agents.actions.cancel")}
+          </HeadlessButton>
+          <HeadlessButton
+            type="submit"
+            disabled={submitDisabled}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-md py-2 px-4 text-sm font-medium transition-colors",
+              submitDisabled
+                ? "bg-neutral-400 text-white cursor-not-allowed"
+                : "bg-indigo-600 text-white hover:bg-indigo-500",
+            )}
           >
-            <span className="flex items-center justify-center gap-2">
-              <BeakerIcon className="h-4 w-4" />
-              {t("agents.tabs.system")}
-            </span>
-          </Tab>
-        </TabList>
-
-        <TabPanels className="mt-4">
-          {/* Custom Agent Tab */}
-          <TabPanel>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-              {t("agents.createDescription")}
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Field>
-                <Label className="text-sm/6 font-medium text-neutral-700 dark:text-white">
-                  {t("agents.fields.name.required")}
-                </Label>
-                <Input
-                  name="name"
-                  value={agent.name}
-                  onChange={handleChange}
-                  placeholder={t("agents.fields.name.placeholder")}
-                  className="mt-1"
-                  required
-                />
-              </Field>
-
-              <Field>
-                <Label className="text-sm/6 font-medium text-neutral-700 dark:text-white">
-                  {t("agents.fields.description.label")}
-                </Label>
-                <Input
-                  name="description"
-                  value={agent.description}
-                  onChange={handleChange}
-                  placeholder={t("agents.fields.description.placeholder")}
-                  className="mt-1"
-                />
-              </Field>
-
-              <Field>
-                <Label className="text-sm/6 font-medium text-neutral-700 dark:text-white">
-                  {t("agents.fields.prompt.label")}
-                </Label>
-                <textarea
-                  name="prompt"
-                  value={agent.prompt}
-                  onChange={handleChange}
-                  placeholder={t("agents.fields.prompt.placeholder")}
-                  rows={4}
-                  className="mt-1 block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
-                />
-              </Field>
-
-              <Field>
-                <Label className="text-sm/6 font-medium text-neutral-700 dark:text-white">
-                  {t("agents.fields.mcpServers.label")}
-                </Label>
-                <div className="mt-2 space-y-2">
-                  {mcpServers.length === 0 ? (
-                    <div className="rounded-sm border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center dark:border-neutral-700 dark:bg-neutral-800/50">
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                        {t("agents.fields.mcpServers.emptyDescription")}
-                      </p>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          handleClose(); // Close current modal with cleanup
-                          openAddMcpServerModal(); // Open add server modal
-                        }}
-                        className="mt-2 inline-flex items-center gap-2 rounded-sm bg-indigo-100 py-1.5 px-3 text-sm/6 font-semibold text-indigo-600 focus:outline-none data-[hover]:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:data-[hover]:bg-indigo-900"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        {t("agents.fields.mcpServers.createButton")}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="max-h-60 overflow-y-auto space-y-2 rounded-sm border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
-                      {mcpServers.map((server) => (
-                        <McpServerItem
-                          key={server.id}
-                          mcp={server}
-                          isSelected={mcpServerIds.includes(server.id)}
-                          onSelectionChange={() =>
-                            handleMcpServerChange(server.id)
-                          }
-                        />
-                      ))}
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          handleClose(); // Close current modal with cleanup
-                          openAddMcpServerModal(); // Open add server modal
-                        }}
-                        className="mt-2 inline-flex items-center gap-2 rounded-sm bg-indigo-100 py-1.5 px-3 text-sm/6 font-semibold text-indigo-600 focus:outline-none data-[hover]:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:data-[hover]:bg-indigo-900"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        {t("agents.fields.mcpServers.createButton")}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </Field>
-
-              <div className="mt-6 flex justify-end gap-4">
-                <Button
-                  type="button"
-                  onClick={handleClose}
-                  className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
-                >
-                  {t("agents.actions.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitDisabled}
-                  className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
-                    submitDisabled
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
-                      : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
-                  }`}
-                >
-                  {submitLabel}
-                </Button>
-              </div>
-            </form>
-          </TabPanel>
-
-          {/* System Agent Tab */}
-          <TabPanel>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-              {t("agents.systemDescription")}
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Field>
-                <Label className="text-sm/6 font-medium text-neutral-700 dark:text-white">
-                  {t("agents.fields.selectSystemAgent")}
-                </Label>
-                <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
-                  {templatesLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-                      <span className="ml-2 text-sm text-neutral-500">
-                        {t("common.loading")}
-                      </span>
-                    </div>
-                  ) : systemAgentTemplates.length === 0 ? (
-                    <div className="rounded-sm border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center dark:border-neutral-700 dark:bg-neutral-800/50">
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                        {t("agents.noSystemAgents")}
-                      </p>
-                    </div>
-                  ) : (
-                    systemAgentTemplates.map((template) => (
-                      <SystemAgentCard
-                        key={template.key}
-                        template={template}
-                        isSelected={selectedTemplateKey === template.key}
-                        onSelect={() => handleTemplateSelect(template)}
-                      />
-                    ))
-                  )}
-                </div>
-              </Field>
-
-              {selectedTemplateKey && (
-                <Field>
-                  <Label className="text-sm/6 font-medium text-neutral-700 dark:text-white">
-                    {t("agents.fields.customName")}
-                  </Label>
-                  <Input
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder={
-                      systemAgentTemplates.find(
-                        (t) => t.key === selectedTemplateKey,
-                      )?.metadata.name
-                    }
-                    className="mt-1"
-                  />
-                </Field>
-              )}
-
-              <div className="mt-6 flex justify-end gap-4">
-                <Button
-                  type="button"
-                  onClick={handleClose}
-                  className="inline-flex items-center gap-2 rounded-sm bg-neutral-100 py-1.5 px-3 text-sm/6 font-semibold text-neutral-700 shadow-sm focus:outline-none data-[hover]:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:data-[hover]:bg-neutral-700"
-                >
-                  {t("agents.actions.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitDisabled}
-                  className={`inline-flex items-center gap-2 rounded-sm py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10 focus:outline-none ${
-                    submitDisabled
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
-                      : "bg-indigo-600 text-white data-[hover]:bg-indigo-500 data-[open]:bg-indigo-700 data-[focus]:outline-1 data-[focus]:outline-white dark:bg-indigo-500 dark:data-[hover]:bg-indigo-400"
-                  }`}
-                >
-                  {submitLabel}
-                </Button>
-              </div>
-            </form>
-          </TabPanel>
-        </TabPanels>
-      </TabGroup>
+            {isSubmitting || isCreatingAgent
+              ? t("agents.actions.creating")
+              : t("agents.actions.create")}
+          </HeadlessButton>
+        </div>
+      </form>
     </Modal>
-  );
-}
-
-// System Agent Card Component
-interface SystemAgentCardProps {
-  template: SystemAgentTemplate;
-  isSelected: boolean;
-  onSelect: () => void;
-}
-
-function SystemAgentCard({
-  template,
-  isSelected,
-  onSelect,
-}: SystemAgentCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`w-full text-left rounded-lg border-2 p-4 transition-all ${
-        isSelected
-          ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20"
-          : "border-neutral-200 bg-white hover:border-indigo-300 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-indigo-600 dark:hover:bg-neutral-750"
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        <div
-          className={`flex-shrink-0 rounded-lg p-2 ${
-            isSelected
-              ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-800 dark:text-indigo-300"
-              : "bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300"
-          }`}
-        >
-          <BeakerIcon className="h-5 w-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-medium text-neutral-900 dark:text-white">
-              {template.metadata.name}
-            </h3>
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              v{template.metadata.version}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
-            {template.metadata.description}
-          </p>
-          {template.metadata.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {template.metadata.tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        {isSelected && (
-          <div className="flex-shrink-0">
-            <svg
-              className="h-5 w-5 text-indigo-600 dark:text-indigo-400"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-        )}
-      </div>
-    </button>
   );
 }
 
