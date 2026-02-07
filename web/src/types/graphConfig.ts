@@ -1,84 +1,100 @@
 /**
- * GraphConfig TypeScript Types
+ * GraphConfig TypeScript Types (v3 Canonical Schema)
  *
- * These types mirror the backend GraphConfig schema defined in:
+ * These types mirror the backend canonical schema defined in:
  * service/app/schemas/graph_config.py
  *
- * They define the JSON structure for configuring agent workflows.
+ * The backend backfills all agents to v3 at startup and validates on read,
+ * so the frontend always receives and produces v3 configs.
  */
 
 // =============================================================================
 // Enums
 // =============================================================================
 
-export type NodeType =
-  | "llm"
-  | "tool"
-  | "router"
-  | "subagent"
-  | "transform"
-  | "parallel"
-  | "human"
-  | "component";
+/** Supported executable node kinds. Matches backend GraphNodeKind. */
+export type GraphNodeKind = "llm" | "tool" | "transform" | "component";
 
-// Matches backend ConditionOperator enum values
-export type ConditionOperator =
-  | "eq" // EQUALS
-  | "neq" // NOT_EQUALS
-  | "contains"
-  | "not_contains"
-  | "gt" // GREATER_THAN
-  | "gte" // GREATER_THAN_OR_EQUAL
-  | "lt" // LESS_THAN
-  | "lte" // LESS_THAN_OR_EQUAL
-  | "in"
-  | "not_in"
-  | "truthy"
-  | "falsy"
-  | "matches";
+/** Supported state field types. */
+export type StateFieldType =
+  | "string"
+  | "int"
+  | "float"
+  | "bool"
+  | "list"
+  | "dict"
+  | "any";
 
-export type ReducerType = "replace" | "append" | "merge" | "add" | "messages";
+/** Supported state reducers. */
+export type StateReducerType = "replace" | "add_messages";
 
-export type RoutingStrategy = "condition" | "llm" | "state_check";
+/** Built-in edge conditions. */
+export type BuiltinEdgeCondition = "has_tool_calls" | "no_tool_calls";
 
-export type JoinStrategy = "wait_all" | "wait_any" | "wait_n";
-
-export type MergeStrategy = "merge_dicts" | "list" | "first" | "custom";
-
-export type HumanInputType = "text" | "choice" | "confirm" | "form";
-
-export type ErrorHandling = "raise" | "continue" | "retry" | "fallback";
+/** Supported custom predicate operators. */
+export type PredicateOperator = "eq" | "neq" | "truthy" | "falsy";
 
 // =============================================================================
 // State Schema Types
 // =============================================================================
 
 export interface StateFieldSchema {
-  type: string; // 'string', 'int', 'float', 'bool', 'list', 'dict', 'messages', 'any'
-  description?: string;
+  type: StateFieldType;
+  description?: string | null;
   default?: unknown;
-  reducer?: ReducerType;
-  required?: boolean;
 }
 
-export interface GraphStateSchema {
-  fields: Record<string, StateFieldSchema>;
+export interface GraphStateConfig {
+  schema?: Record<string, StateFieldSchema>;
+  reducers?: Record<string, StateReducerType>;
 }
 
 // =============================================================================
-// Structured Output Types
+// Execution Limits
 // =============================================================================
 
-export interface StructuredOutputField {
-  type: string; // 'string', 'bool', 'int', 'float', 'list', 'dict'
-  description?: string;
-  default?: unknown;
-  required?: boolean;
+export interface GraphExecutionLimits {
+  max_time_s: number;
+  max_steps: number;
+  max_concurrency: number;
 }
 
-export interface StructuredOutputSchema {
-  fields: Record<string, StructuredOutputField>;
-  description?: string;
+// =============================================================================
+// Dependencies
+// =============================================================================
+
+export interface ModelDependencyRef {
+  key: string;
+  provider?: string | null;
+  version?: string | null;
+}
+
+export interface PromptDependencyRef {
+  key: string;
+  version?: string | null;
+}
+
+export interface ComponentDependencyRef {
+  key: string;
+  version?: string;
+}
+
+export interface GraphDeps {
+  models?: ModelDependencyRef[];
+  tools?: string[];
+  prompts?: PromptDependencyRef[];
+  components?: ComponentDependencyRef[];
+}
+
+// =============================================================================
+// Metadata
+// =============================================================================
+
+export interface GraphMetadata {
+  display_name?: string | null;
+  description?: string | null;
+  tags?: string[];
+  agent_version?: string | null;
 }
 
 // =============================================================================
@@ -87,130 +103,103 @@ export interface StructuredOutputSchema {
 
 export interface LLMNodeConfig {
   prompt_template: string;
-  output_key?: string;
+  output_key: string;
   model_override?: string | null;
   temperature_override?: number | null;
   max_tokens?: number | null;
-  tools_enabled?: boolean;
+  tools_enabled: boolean;
   tool_filter?: string[] | null;
-  max_iterations?: number;
-  stop_sequences?: string[] | null;
-  structured_output?: StructuredOutputSchema | null;
+  max_iterations: number;
   message_key?: string | null;
-  message_key_condition?: {
-    condition_field: string;
-    true_key: string;
-    false_key: string;
-  } | null;
 }
 
 export interface ToolNodeConfig {
-  // v1 fields
-  tool_name?: string;
-  arguments_template?: Record<string, string>;
-  // v2 fields
-  execute_all?: boolean;
+  execute_all: boolean;
   tool_filter?: string[] | null;
-  // Common fields
-  output_key?: string;
-  timeout_seconds?: number;
-  retry_count?: number;
-}
-
-export interface EdgeCondition {
-  state_key: string;
-  operator: ConditionOperator;
-  value?: unknown;
-  target: string;
-}
-
-export interface RouterNodeConfig {
-  strategy?: RoutingStrategy;
-  conditions?: EdgeCondition[];
-  llm_prompt?: string | null;
-  routes?: string[];
-  default_route?: string;
-}
-
-export interface SubagentNodeConfig {
-  agent_ref: string;
-  input_mapping?: Record<string, string>;
-  output_mapping?: Record<string, string>;
-  inherit_context?: boolean;
-  inherit_tools?: boolean;
-  timeout_seconds?: number;
-}
-
-export interface ParallelNodeConfig {
-  branches: string[];
-  join_strategy?: JoinStrategy;
-  wait_count?: number | null;
-  merge_strategy?: MergeStrategy;
-  merge_key?: string;
-  timeout_seconds?: number;
+  output_key: string;
+  timeout_seconds: number;
 }
 
 export interface TransformNodeConfig {
-  expression?: string | null;
-  template?: string | null;
+  template: string;
   output_key: string;
-  input_keys?: string[];
+  input_keys: string[];
 }
 
-export interface HumanNodeConfig {
-  prompt_template: string;
-  input_type?: HumanInputType;
-  choices?: string[] | null;
-  form_schema?: Record<string, unknown> | null;
-  output_key?: string;
-  timeout_seconds?: number | null;
+export interface ComponentReference {
+  key: string;
+  version: string;
+}
+
+export interface ComponentNodeConfig {
+  component_ref: ComponentReference;
+  config_overrides: Record<string, unknown>;
 }
 
 // =============================================================================
-// Graph Node Definition
+// Graph Node Definitions (Discriminated Union)
 // =============================================================================
 
-export interface GraphNodeConfig {
+export interface GraphNodeBase {
   id: string;
   name: string;
-  type: NodeType;
   description?: string | null;
-
-  // Type-specific configurations (exactly one should be set based on type)
-  llm_config?: LLMNodeConfig | null;
-  tool_config?: ToolNodeConfig | null;
-  router_config?: RouterNodeConfig | null;
-  subagent_config?: SubagentNodeConfig | null;
-  parallel_config?: ParallelNodeConfig | null;
-  transform_config?: TransformNodeConfig | null;
-  human_config?: HumanNodeConfig | null;
-
-  // UI positioning for visual editor
-  position?: { x: number; y: number } | null;
-
-  // Error handling
-  on_error?: ErrorHandling;
-  retry_count?: number;
-  fallback_node?: string | null;
-
-  // Metadata
-  tags?: string[];
+  reads: string[];
+  writes: string[];
 }
+
+export interface LLMGraphNode extends GraphNodeBase {
+  kind: "llm";
+  config: LLMNodeConfig;
+}
+
+export interface ToolGraphNode extends GraphNodeBase {
+  kind: "tool";
+  config: ToolNodeConfig;
+}
+
+export interface TransformGraphNode extends GraphNodeBase {
+  kind: "transform";
+  config: TransformNodeConfig;
+}
+
+export interface ComponentGraphNode extends GraphNodeBase {
+  kind: "component";
+  config: ComponentNodeConfig;
+}
+
+export type GraphNodeConfig =
+  | LLMGraphNode
+  | ToolGraphNode
+  | TransformGraphNode
+  | ComponentGraphNode;
 
 // =============================================================================
 // Graph Edge Definition
 // =============================================================================
 
-// v2 condition types (string-based)
-export type ConditionType = "has_tool_calls" | "no_tool_calls";
+export interface EdgePredicate {
+  state_path: string;
+  operator: PredicateOperator;
+  value?: unknown;
+}
 
 export interface GraphEdgeConfig {
-  from_node: string; // 'START' for entry point
-  to_node: string; // 'END' for exit point
-  // v1: EdgeCondition object, v2: ConditionType string or CustomCondition
-  condition?: EdgeCondition | ConditionType | null;
-  label?: string | null;
+  from_node: string; // Node ID, "START" is NOT stored in v3 edges
+  to_node: string; // Node ID or "END"
+  when?: BuiltinEdgeCondition | EdgePredicate | null;
   priority?: number;
+  label?: string | null;
+}
+
+// =============================================================================
+// Graph IR (Executable Body)
+// =============================================================================
+
+export interface GraphIR {
+  nodes: GraphNodeConfig[];
+  edges: GraphEdgeConfig[];
+  entrypoints: string[];
 }
 
 // =============================================================================
@@ -281,48 +270,21 @@ export interface PromptConfig {
 }
 
 // =============================================================================
-// Complete Graph Configuration
+// Complete Graph Configuration (v3 Canonical)
 // =============================================================================
 
 export interface GraphConfig {
-  version?: string; // "1.0" or "2.0"
-
-  // v1: State definition
-  state_schema?: GraphStateSchema;
-
-  // v2: Custom state fields (messages field is automatic)
-  custom_state_fields?: Record<string, StateFieldSchema>;
-
-  // Graph structure
-  nodes: GraphNodeConfig[];
-  edges: GraphEdgeConfig[];
-
-  // Entry and exit
-  entry_point?: string;
-  exit_points?: string[];
-
-  // v2: Tool configuration
-  tool_config?: {
-    tool_filter?: string[] | null;
-    timeout_seconds?: number;
-    max_parallel?: number;
-  };
-
-  // Prompt configuration (system prompt settings)
-  prompt_config?: PromptConfig;
-
-  // Reusable prompt templates
-  prompt_templates?: Record<string, string>;
-
-  // Component references
-  imported_components?: string[];
-
-  // Metadata
-  metadata?: Record<string, unknown>;
-
-  // Execution settings
-  max_execution_time_seconds?: number;
-  enable_checkpoints?: boolean;
+  schema_version: "3.0";
+  key: string;
+  revision: number;
+  graph: GraphIR;
+  state: GraphStateConfig;
+  deps?: GraphDeps | null;
+  limits: GraphExecutionLimits;
+  prompt_config?: PromptConfig | null;
+  metadata?: GraphMetadata | null;
+  /** UI-only metadata ignored by the compiler (e.g., node positions). */
+  ui?: Record<string, unknown> | null;
 }
 
 // =============================================================================
@@ -330,106 +292,131 @@ export interface GraphConfig {
 // =============================================================================
 
 /**
- * Create a default empty GraphConfig (v2)
+ * Create a default empty GraphConfig (v3 canonical).
  */
-export function createEmptyGraphConfig(): GraphConfig {
+export function createEmptyGraphConfig(key: string = "custom_graph"): GraphConfig {
   return {
-    version: "2.0",
-    nodes: [],
-    edges: [],
-    entry_point: "",
-    metadata: {},
+    schema_version: "3.0",
+    key,
+    revision: 1,
+    graph: {
+      nodes: [],
+      edges: [],
+      entrypoints: [],
+    },
+    state: {},
+    limits: { max_time_s: 300, max_steps: 128, max_concurrency: 10 },
   };
 }
 
 /**
- * Create a default empty GraphConfig (v1 - legacy)
- */
-export function createEmptyGraphConfigV1(): GraphConfig {
-  return {
-    version: "1.0",
-    state_schema: { fields: {} },
-    nodes: [],
-    edges: [],
-    entry_point: "",
-    exit_points: ["END"],
-    prompt_templates: {},
-    metadata: {},
-  };
-}
-
-/**
- * Create a default LLM node
+ * Create a default LLM node.
  */
 export function createDefaultLLMNode(
   id: string,
   name: string = "LLM Node",
-): GraphNodeConfig {
+): LLMGraphNode {
   return {
     id,
     name,
-    type: "llm",
-    llm_config: {
-      prompt_template: "{{ state.messages }}",
+    kind: "llm",
+    reads: ["messages"],
+    writes: ["messages", "response"],
+    config: {
+      prompt_template: "",
       output_key: "response",
       tools_enabled: true,
+      max_iterations: 10,
     },
   };
 }
 
 /**
- * Create a default Tool node
+ * Create a default Tool node.
  */
 export function createDefaultToolNode(
   id: string,
   name: string = "Tool Node",
-): GraphNodeConfig {
+): ToolGraphNode {
   return {
     id,
     name,
-    type: "tool",
-    tool_config: {
-      tool_name: "",
-      output_key: "tool_result",
+    kind: "tool",
+    reads: ["messages"],
+    writes: ["tool_results"],
+    config: {
+      execute_all: true,
+      output_key: "tool_results",
+      timeout_seconds: 60,
     },
   };
 }
 
 /**
- * Create a default Router node
+ * Create a default Transform node.
  */
-export function createDefaultRouterNode(
+export function createDefaultTransformNode(
   id: string,
-  name: string = "Router",
-): GraphNodeConfig {
+  name: string = "Transform Node",
+): TransformGraphNode {
   return {
     id,
     name,
-    type: "router",
-    router_config: {
-      strategy: "condition",
-      conditions: [],
-      default_route: "END",
+    kind: "transform",
+    reads: [],
+    writes: ["output"],
+    config: {
+      template: "",
+      output_key: "output",
+      input_keys: [],
     },
   };
 }
 
 /**
- * Validate a GraphConfig and return errors
+ * Create a default Component node.
+ */
+export function createDefaultComponentNode(
+  id: string,
+  name: string = "Component Node",
+): ComponentGraphNode {
+  return {
+    id,
+    name,
+    kind: "component",
+    reads: [],
+    writes: [],
+    config: {
+      component_ref: { key: "", version: "*" },
+      config_overrides: {},
+    },
+  };
+}
+
+/**
+ * Validate a GraphConfig and return errors.
  */
 export function validateGraphConfig(config: GraphConfig): string[] {
   const errors: string[] = [];
 
-  // Check that entry_point exists
-  const nodeIds = new Set(config.nodes.map((n) => n.id));
-  if (config.entry_point && !nodeIds.has(config.entry_point)) {
-    errors.push(`Entry point '${config.entry_point}' not found in nodes`);
+  if (!config.graph) {
+    errors.push("Missing 'graph' field");
+    return errors;
   }
 
-  // Check that all edge references are valid
-  const validRefs = new Set([...nodeIds, "START", "END"]);
-  for (const edge of config.edges) {
-    if (!validRefs.has(edge.from_node)) {
+  const nodeIds = new Set(config.graph.nodes.map((n) => n.id));
+
+  // Check entrypoints exist
+  for (const ep of config.graph.entrypoints) {
+    if (!nodeIds.has(ep)) {
+      errors.push(`Entrypoint '${ep}' not found in nodes`);
+    }
+  }
+
+  // Check edge references are valid
+  const validRefs = new Set([...nodeIds, "END"]);
+  for (const edge of config.graph.edges) {
+    if (!nodeIds.has(edge.from_node)) {
       errors.push(`Edge from_node '${edge.from_node}' not found`);
     }
     if (!validRefs.has(edge.to_node)) {
@@ -437,54 +424,11 @@ export function validateGraphConfig(config: GraphConfig): string[] {
     }
   }
 
-  // Check that each node has the correct config for its type
-  for (const node of config.nodes) {
-    switch (node.type) {
-      case "llm":
-        if (!node.llm_config) {
-          errors.push(`Node '${node.id}' is type LLM but missing llm_config`);
-        }
-        break;
-      case "tool":
-        if (!node.tool_config) {
-          errors.push(`Node '${node.id}' is type TOOL but missing tool_config`);
-        }
-        break;
-      case "router":
-        if (!node.router_config) {
-          errors.push(
-            `Node '${node.id}' is type ROUTER but missing router_config`,
-          );
-        }
-        break;
-      case "subagent":
-        if (!node.subagent_config) {
-          errors.push(
-            `Node '${node.id}' is type SUBAGENT but missing subagent_config`,
-          );
-        }
-        break;
-      case "parallel":
-        if (!node.parallel_config) {
-          errors.push(
-            `Node '${node.id}' is type PARALLEL but missing parallel_config`,
-          );
-        }
-        break;
-      case "transform":
-        if (!node.transform_config) {
-          errors.push(
-            `Node '${node.id}' is type TRANSFORM but missing transform_config`,
-          );
-        }
-        break;
-      case "human":
-        if (!node.human_config) {
-          errors.push(
-            `Node '${node.id}' is type HUMAN but missing human_config`,
-          );
-        }
-        break;
+  // Check each node has a valid kind
+  const validKinds = new Set<string>(["llm", "tool", "transform", "component"]);
+  for (const node of config.graph.nodes) {
+    if (!validKinds.has(node.kind)) {
+      errors.push(`Node '${node.id}' has invalid kind '${node.kind}'`);
     }
   }
 
@@ -492,16 +436,16 @@ export function validateGraphConfig(config: GraphConfig): string[] {
 }
 
 /**
- * Get node type display info
+ * Get node kind display info.
  */
-export function getNodeTypeInfo(type: NodeType): {
+export function getNodeTypeInfo(kind: GraphNodeKind): {
   label: string;
   description: string;
   color: string;
   icon: string;
 } {
   const info: Record<
-    NodeType,
+    GraphNodeKind,
     { label: string; description: string; color: string; icon: string }
   > = {
     llm: {
@@ -516,35 +460,11 @@ export function getNodeTypeInfo(type: NodeType): {
       color: "#3b82f6", // blue
       icon: "wrench",
     },
-    router: {
-      label: "Router",
-      description: "Conditional branching",
-      color: "#f59e0b", // amber
-      icon: "arrows-split",
-    },
-    subagent: {
-      label: "Subagent",
-      description: "Invoke nested agent",
-      color: "#10b981", // emerald
-      icon: "user-group",
-    },
     transform: {
       label: "Transform",
       description: "Data transformation",
       color: "#6366f1", // indigo
       icon: "arrows-exchange",
-    },
-    parallel: {
-      label: "Parallel",
-      description: "Parallel execution",
-      color: "#ec4899", // pink
-      icon: "arrows-parallel",
-    },
-    human: {
-      label: "Human",
-      description: "Human-in-the-loop",
-      color: "#14b8a6", // teal
-      icon: "user",
     },
     component: {
       label: "Component",
@@ -554,5 +474,5 @@ export function getNodeTypeInfo(type: NodeType): {
     },
   };
 
-  return info[type];
+  return info[kind];
 }

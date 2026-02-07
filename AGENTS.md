@@ -8,13 +8,26 @@ Xyzen is an AI Laboratory Server for multi-agent LLM orchestration, real-time ch
 
 ```
 agents/
-  ├── system/                    # Built-in system agents
-  │   ├── react/                 # Default ReAct agent (LangChain create_agent)
-  │   └── deep_research/         # Multi-phase research agent
-  ├── base_graph_agent.py        # Abstract base for graph agents
   ├── factory.py                 # Agent creation and routing
-  ├── graph_builder.py           # Dynamic graph construction from config
-  └── types.py                   # Agent type definitions
+  ├── types.py                   # Agent type definitions
+  ├── utils.py                   # Shared utilities
+  ├── builtin/                   # Builtin agent configs (JSON-based, v3 schema)
+  │   ├── react.py               # Default ReAct agent config
+  │   └── deep_research.py       # Multi-phase research agent config
+  ├── components/                # Reusable ExecutableComponents
+  │   ├── component.py           # ExecutableComponent base class
+  │   ├── react.py               # ReAct component (tool-calling loop)
+  │   └── deep_research/         # Deep research workflow components
+  │       ├── components.py      # 4 components: clarify, brief, supervisor, report
+  │       ├── prompts.py         # Prompt templates
+  │       ├── state.py           # Structured output models
+  │       └── utils.py           # Helpers
+  └── graph/                     # GraphConfig compilation pipeline
+      ├── builder.py             # Legacy v2 builder (used by compiler bridge)
+      ├── canonicalizer.py       # Deterministic config normalization
+      ├── compiler.py            # Canonical → v2 bridge → LangGraph
+      ├── validator.py           # Structural validation
+      └── upgrader.py            # v1/v2 → canonical migration
 api/
   ├── v1/                        # REST API endpoints
   │   ├── agents.py              # Agent CRUD
@@ -33,6 +46,8 @@ core/
 models/                          # SQLModel definitions (no foreign keys)
 repos/                           # Repository pattern for data access
 schemas/
+  ├── graph_config.py            # Canonical GraphConfig schema (the source of truth)
+  ├── graph_config_legacy.py     # Legacy v2 schema (retained for bridge layer)
   ├── chat_event_types.py        # ChatEventType enum
   └── chat_event_payloads.py     # Event payload TypedDicts
 mcp/                             # Model Context Protocol integration
@@ -90,34 +105,49 @@ types/
 
 ### Agent Types
 
-| Type          | Key             | Description                                             |
-| ------------- | --------------- | ------------------------------------------------------- |
-| ReAct         | `react`         | Default agent using LangChain's prebuilt `create_agent` |
-| Deep Research | `deep_research` | Multi-phase research with explicit graph nodes          |
-| Custom        | `graph`         | User-defined graph configuration                        |
+| Type          | Key             | Description                                      |
+| ------------- | --------------- | ------------------------------------------------ |
+| ReAct         | `react`         | Default tool-calling agent (LLM + tool loop)     |
+| Deep Research | `deep_research` | Multi-phase research with 4 component nodes      |
+| Custom        | `graph`         | User-defined graph configuration                 |
 
-### Creating a System Agent
+### Architecture
 
-```python
-# service/app/agents/system/my_agent/agent.py
-class MyAgent(BaseBuiltinGraphAgent):
-    key = "my_agent"
-    name = "My Agent"
-    description = "Does something useful"
+All agents (builtin and user-defined) follow the same unified path:
 
-    def build_graph(self) -> CompiledStateGraph:
-        workflow = StateGraph(MyState)
-        workflow.add_node("process", self._process)
-        workflow.add_edge(START, "process")
-        workflow.add_edge("process", END)
-        return workflow.compile()
+1. Resolve GraphConfig (from DB `agent.graph_config` or builtin registry)
+2. Parse and canonicalize to canonical schema (`schemas/graph_config.py`)
+3. Validate graph structure (`graph/validator.py`)
+4. Compile via bridge: canonical → v2 → LangGraph (`graph/compiler.py` → `graph/builder.py`)
+5. Return `(CompiledStateGraph, AgentEventContext)` for streaming execution
+
+```
+factory.create_chat_agent()
+  → _resolve_agent_config()            # DB config or builtin fallback
+  → _inject_system_prompt()            # Merge platform + node prompts
+  → _build_graph_agent()
+      → GraphCompiler                  # canonical → v2 bridge
+          → GraphBuilder               # v2 → LangGraph
+              → CompiledStateGraph     # Ready to stream
 ```
 
-### Agent Factory Flow
+### Builtin Agents
 
-1. `factory.py:create_chat_agent()` resolves agent type from config
-2. For system agents: looks up `system_agent_registry.get_instance(key)`
-3. Returns `(CompiledStateGraph, AgentEventContext)` for streaming execution
+Agents are defined as JSON configs using the canonical GraphConfig schema, not as Python classes.
+Configs live in `agents/builtin/` and reference ExecutableComponents from `agents/components/`.
+
+### Components
+
+Components are reusable subgraphs registered in a global `ComponentRegistry`.
+They declare `required_capabilities` for automatic tool filtering.
+GraphBuilder resolves component references at compile time via `component_registry.resolve(key, version)`.
+
+### Adding a New Builtin Agent
+
+1. Create config in `agents/builtin/my_agent.py` using `parse_graph_config({...})`
+2. Register in `agents/builtin/__init__.py` via `_register_builtin("my_agent", config)`
+3. If the agent needs custom components, add them under `agents/components/`
+4. Register components in `agents/components/__init__.py` → `ensure_components_registered()`
 
 ## Streaming Event System
 
@@ -294,3 +324,12 @@ Examples:
 - `XYZEN_SEARXNG_Base_Url=...` (incorrect: extra underscore splits a new level)
 - `XYZEN_LLM_AZUREOPENAI_KEY=...` (provider segment is single camelCase token)
 - `XYZEN_LLM_PROVIDERS=azure_openai,google_vertex` (values may use underscores)
+
+## Git Commit Rules
+
+This project has pre-commit hooks (pyright, ruff) that can fail on partially-staged files. Follow this workflow for multi-file refactors:
+
+1. **Verify final state first**: Run `just lint-backend`, `just type-backend`, and `just test-backend` on the full working tree before committing.
+2. **Commit without verify**: Use `git commit --no-verify` to bypass pre-commit hooks that would fail on partial staging.
+3. **Logical split**: Group changes into separate logical commits (e.g., schema renames, import updates, test updates).
+4. **Conventional commits**: Use `feat:`, `fix:`, `refactor:`, `chore:` prefixes matching the existing commit history.

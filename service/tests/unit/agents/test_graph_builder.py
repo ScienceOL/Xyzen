@@ -5,10 +5,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import MessagesState
+from pydantic import BaseModel, ConfigDict
+from typing_extensions import override
 
-from app.agents.graph_builder import GraphBuilder, build_state_class
-from app.schemas.graph_config import (
+from app.agents.components import ComponentMetadata, ComponentType, component_registry
+from app.agents.components.component import ExecutableComponent
+from app.agents.graph.builder import GraphBuilder, build_state_class
+from app.schemas.graph_config_legacy import (
+    ComponentNodeConfig,
+    ComponentReference,
     GraphConfig,
     GraphEdgeConfig,
     GraphNodeConfig,
@@ -17,6 +24,50 @@ from app.schemas.graph_config import (
     StateFieldSchema,
     create_react_config,
 )
+
+
+class _StrictComponentConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    allowed: int = 1
+
+
+class _StrictTestComponent(ExecutableComponent):
+    @property
+    @override
+    def metadata(self) -> ComponentMetadata:
+        return ComponentMetadata(
+            key="test:strict_component",
+            name="Strict Test Component",
+            description="Component for override validation tests",
+            component_type=ComponentType.SUBGRAPH,
+            version="1.0.0",
+            config_schema_json={
+                "type": "object",
+                "properties": {
+                    "allowed": {"type": "integer"},
+                },
+            },
+        )
+
+    @property
+    @override
+    def config_schema(self) -> type[BaseModel]:
+        return _StrictComponentConfig
+
+    @override
+    async def build_graph(self, llm_factory: Any, tools: list[Any], config: dict[str, Any] | None = None) -> Any:
+        _ = (llm_factory, tools, config)
+        workflow: StateGraph[MessagesState] = StateGraph(MessagesState)
+
+        async def passthrough(state: MessagesState) -> dict[str, Any]:
+            _ = state
+            return {"messages": []}
+
+        workflow.add_node("passthrough", passthrough)
+        workflow.add_edge(START, "passthrough")
+        workflow.add_edge("passthrough", END)
+        return workflow.compile()
 
 
 class TestBuildStateClass:
@@ -284,3 +335,78 @@ class TestPromptTemplateAsSystemMessage:
         assert system_messages[0].content == "New system prompt"
         assert isinstance(captured_messages[0], SystemMessage)
         assert isinstance(captured_messages[1], HumanMessage)
+
+
+class TestComponentOverrideContract:
+    """Test component override validation contract."""
+
+    @pytest.mark.asyncio
+    async def test_component_override_rejects_unknown_keys(self) -> None:
+        component = _StrictTestComponent()
+        component_registry.register(component, override=True)
+        try:
+            config = GraphConfig(
+                nodes=[
+                    GraphNodeConfig(
+                        id="comp",
+                        name="Component",
+                        type=NodeType.COMPONENT,
+                        component_config=ComponentNodeConfig(
+                            component_ref=ComponentReference(key=component.metadata.key, version="*"),
+                            config_overrides={"unknown_key": 123},
+                        ),
+                    )
+                ],
+                edges=[
+                    GraphEdgeConfig(from_node="START", to_node="comp"),
+                    GraphEdgeConfig(from_node="comp", to_node="END"),
+                ],
+                entry_point="comp",
+            )
+
+            builder = GraphBuilder(
+                config=config,
+                llm_factory=AsyncMock(),
+                tool_registry={},
+            )
+
+            with pytest.raises(ValueError, match="Invalid config_overrides"):
+                await builder.build()
+        finally:
+            component_registry._components.pop(component.metadata.key, None)
+
+    @pytest.mark.asyncio
+    async def test_component_override_accepts_declared_keys(self) -> None:
+        component = _StrictTestComponent()
+        component_registry.register(component, override=True)
+        try:
+            config = GraphConfig(
+                nodes=[
+                    GraphNodeConfig(
+                        id="comp",
+                        name="Component",
+                        type=NodeType.COMPONENT,
+                        component_config=ComponentNodeConfig(
+                            component_ref=ComponentReference(key=component.metadata.key, version="*"),
+                            config_overrides={"allowed": 3},
+                        ),
+                    )
+                ],
+                edges=[
+                    GraphEdgeConfig(from_node="START", to_node="comp"),
+                    GraphEdgeConfig(from_node="comp", to_node="END"),
+                ],
+                entry_point="comp",
+            )
+
+            builder = GraphBuilder(
+                config=config,
+                llm_factory=AsyncMock(),
+                tool_registry={},
+            )
+
+            graph = await builder.build()
+            result = await graph.ainvoke({"messages": [HumanMessage(content="hello")]})  # type: ignore[arg-type]
+            assert "messages" in result
+        finally:
+            component_registry._components.pop(component.metadata.key, None)

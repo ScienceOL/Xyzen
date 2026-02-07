@@ -45,7 +45,8 @@ class AgentPolicy(ResourcePolicyBase[Agent]):
         raise ErrCode.AGENT_NOT_OWNED.with_messages(f"Agent with ID {resource_id} now owned by user")
 
     async def authorize_delete(self, resource_id: UUID, user_id: str) -> Agent:
-        agent = await self.agent_repo.get_agent_by_id(resource_id)
+        # Delete should still work for malformed/legacy rows so users can clean up.
+        agent = await self.agent_repo.get_agent_by_id_raw(resource_id)
         if not agent:
             raise ErrCode.AGENT_NOT_FOUND.with_messages(f"Agent with ID {resource_id} not found")
         if agent.user_id == user_id:

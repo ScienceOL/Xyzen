@@ -12,37 +12,41 @@ import type {
   GraphConfig,
   GraphNodeConfig,
   GraphEdgeConfig,
-  NodeType,
-  EdgeCondition,
+  GraphNodeKind,
+  EdgePredicate,
 } from "@/types/graphConfig";
 import {
   createDefaultLLMNode,
   createDefaultToolNode,
-  createDefaultRouterNode,
+  createDefaultTransformNode,
+  createDefaultComponentNode,
 } from "@/types/graphConfig";
 
 /**
  * Create a stable hash of graph config for comparison.
- * Only compares structural elements (nodes, edges, entry_point) to avoid
+ * Only compares structural elements (nodes, edges, entrypoints) to avoid
  * unnecessary re-syncs from metadata changes.
  */
 function getConfigHash(config: GraphConfig | null): string {
   if (!config) return "";
-  // Only hash the structural parts that affect the visual representation
   return JSON.stringify({
-    nodes: config.nodes?.map((n) => ({ id: n.id, type: n.type, name: n.name })),
-    edges: config.edges?.map((e) => ({
+    nodes: config.graph?.nodes?.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      name: n.name,
+    })),
+    edges: config.graph?.edges?.map((e) => ({
       from: e.from_node,
       to: e.to_node,
     })),
-    entry: config.entry_point,
+    entrypoints: config.graph?.entrypoints,
   });
 }
 
 // React Flow node data structure with index signature for compatibility
 export interface AgentNodeData {
   label: string;
-  nodeType: NodeType;
+  nodeType: GraphNodeKind;
   config: GraphNodeConfig;
   [key: string]: unknown;
 }
@@ -63,15 +67,21 @@ const START_NODE_ID = "__START__";
 const END_NODE_ID = "__END__";
 
 /**
- * Convert GraphConfig to React Flow nodes and edges
+ * Convert v3 GraphConfig to React Flow nodes and edges.
  */
 export function graphConfigToFlow(config: GraphConfig | null): {
   nodes: AgentNode[];
   edges: AgentEdge[];
 } {
-  if (!config || !config.nodes || !config.edges) {
+  if (!config?.graph?.nodes || !config?.graph?.edges) {
     return { nodes: createDefaultNodes(), edges: [] };
   }
+
+  // Read positions from ui.positions
+  const positions = (config.ui?.positions ?? {}) as Record<
+    string,
+    { x: number; y: number }
+  >;
 
   const nodes: AgentNode[] = [
     // START node (always present)
@@ -81,7 +91,7 @@ export function graphConfigToFlow(config: GraphConfig | null): {
       position: { x: 50, y: 200 },
       data: {
         label: "START",
-        nodeType: "llm" as NodeType, // placeholder
+        nodeType: "llm" as GraphNodeKind, // placeholder
         config: {} as GraphNodeConfig,
       },
       deletable: false,
@@ -93,7 +103,7 @@ export function graphConfigToFlow(config: GraphConfig | null): {
       position: { x: 600, y: 200 },
       data: {
         label: "END",
-        nodeType: "llm" as NodeType, // placeholder
+        nodeType: "llm" as GraphNodeKind, // placeholder
         config: {} as GraphNodeConfig,
       },
       deletable: false,
@@ -102,56 +112,71 @@ export function graphConfigToFlow(config: GraphConfig | null): {
 
   // Add user-defined nodes
   let xOffset = 200;
-  for (const nodeConfig of config.nodes) {
-    const position = nodeConfig.position || { x: xOffset, y: 200 };
+  for (const nodeConfig of config.graph.nodes) {
+    const position = positions[nodeConfig.id] || { x: xOffset, y: 200 };
     nodes.push({
       id: nodeConfig.id,
       type: "agentNode",
       position,
       data: {
         label: nodeConfig.name,
-        nodeType: nodeConfig.type,
+        nodeType: nodeConfig.kind,
         config: nodeConfig,
       },
     });
     xOffset += 180;
   }
 
-  // Convert edges
-  const edges: AgentEdge[] = config.edges.map((edgeConfig, index) => {
-    // Get label from condition - handle both EdgeCondition objects and ConditionType strings
+  // Create edges from entrypoints (START → entrypoint nodes)
+  const edges: AgentEdge[] = [];
+  for (const ep of config.graph.entrypoints) {
+    edges.push({
+      id: `edge-start-${ep}`,
+      source: START_NODE_ID,
+      target: ep,
+      type: "default",
+      data: {
+        hasCondition: false,
+        config: {
+          from_node: ep, // placeholder — START edges don't exist in v3
+          to_node: ep,
+        },
+      },
+    });
+  }
+
+  // Convert graph edges
+  config.graph.edges.forEach((edgeConfig, index) => {
     let conditionLabel: string | undefined;
-    if (edgeConfig.condition) {
-      if (typeof edgeConfig.condition === "string") {
-        // ConditionType string (e.g., "has_tool_calls", "no_tool_calls")
-        conditionLabel = edgeConfig.condition;
+    if (edgeConfig.when) {
+      if (typeof edgeConfig.when === "string") {
+        conditionLabel = edgeConfig.when;
       } else {
-        // EdgeCondition object with target property
-        conditionLabel = (edgeConfig.condition as EdgeCondition).target;
+        const pred = edgeConfig.when as EdgePredicate;
+        conditionLabel = `${pred.state_path} ${pred.operator}`;
       }
     }
 
-    return {
+    edges.push({
       id: `edge-${index}`,
-      source:
-        edgeConfig.from_node === "START" ? START_NODE_ID : edgeConfig.from_node,
+      source: edgeConfig.from_node,
       target: edgeConfig.to_node === "END" ? END_NODE_ID : edgeConfig.to_node,
-      type: edgeConfig.condition ? "conditionalEdge" : "default",
-      animated: !!edgeConfig.condition,
+      type: edgeConfig.when ? "conditionalEdge" : "default",
+      animated: !!edgeConfig.when,
       label: edgeConfig.label || conditionLabel,
       data: {
         label: edgeConfig.label || undefined,
-        hasCondition: !!edgeConfig.condition,
+        hasCondition: !!edgeConfig.when,
         config: edgeConfig,
       },
-    };
+    });
   });
 
   return { nodes, edges };
 }
 
 /**
- * Convert React Flow nodes and edges back to GraphConfig
+ * Convert React Flow nodes and edges back to v3 GraphConfig.
  *
  * IMPORTANT: If the visual editor hasn't been properly initialized (no user nodes),
  * but existingConfig has nodes, we preserve the existing config to avoid data loss.
@@ -167,63 +192,76 @@ export function flowToGraphConfig(
   );
 
   // SAFETY CHECK: If visual editor has no user nodes but existingConfig has nodes,
-  // the editor hasn't been properly initialized yet. Return existingConfig unchanged
-  // to avoid accidentally wiping out the graph configuration.
-  if (userNodes.length === 0 && existingConfig?.nodes?.length) {
+  // the editor hasn't been properly initialized yet. Return existingConfig unchanged.
+  if (userNodes.length === 0 && existingConfig?.graph?.nodes?.length) {
     return existingConfig;
   }
 
-  // Convert nodes
-  const graphNodes: GraphNodeConfig[] = userNodes.map((node) => ({
-    ...node.data.config,
-    id: node.id,
-    name: node.data.label,
-    type: node.data.nodeType,
-    position: { x: node.position.x, y: node.position.y },
-  }));
+  // Collect positions for ui.positions
+  const uiPositions: Record<string, { x: number; y: number }> = {};
 
-  // Convert edges (only if we have user edges, otherwise preserve existing)
-  // Filter out only the direct START→END edge (both conditions must be true)
-  const userEdges = edges.filter(
-    (e) => !(e.source === START_NODE_ID && e.target === END_NODE_ID),
-  );
-  const graphEdges: GraphEdgeConfig[] =
-    userEdges.length > 0 || !existingConfig?.edges?.length
-      ? userEdges.map((edge) => ({
-          from_node: edge.source === START_NODE_ID ? "START" : edge.source,
-          to_node: edge.target === END_NODE_ID ? "END" : edge.target,
-          condition: edge.data?.config?.condition || null,
-          label: edge.data?.label || null,
-          priority: edge.data?.config?.priority || 0,
-        }))
-      : existingConfig.edges;
+  // Convert nodes (they're already v3 GraphNodeConfig in the data)
+  const graphNodes: GraphNodeConfig[] = userNodes.map((node) => {
+    uiPositions[node.id] = { x: node.position.x, y: node.position.y };
+    // Rebuild the node with potentially updated name
+    return {
+      ...node.data.config,
+      id: node.id,
+      name: node.data.label,
+    } as GraphNodeConfig;
+  });
 
-  // Find entry point (first node connected from START)
-  // Preserve existingConfig.entry_point as fallback to avoid losing it during sync
-  const startEdge = graphEdges.find((e) => e.from_node === "START");
-  const entryPoint =
-    startEdge?.to_node ||
-    existingConfig?.entry_point ||
-    graphNodes[0]?.id ||
-    "agent"; // Default to "agent" as last resort (standard ReAct pattern)
+  // Separate START edges (for entrypoints) from regular edges
+  const startEdges = edges.filter((e) => e.source === START_NODE_ID);
+
+  // Derive entrypoints from START edges
+  const entrypoints = startEdges.map((e) => e.target);
+
+  // Convert regular edges to v3 format
+  const graphEdges: GraphEdgeConfig[] = [];
+  for (const edge of edges) {
+    // Skip START edges — they become entrypoints
+    if (edge.source === START_NODE_ID) continue;
+
+    graphEdges.push({
+      from_node: edge.source,
+      to_node: edge.target === END_NODE_ID ? "END" : edge.target,
+      when: edge.data?.config?.when || null,
+      label: edge.data?.label || null,
+      priority: edge.data?.config?.priority || 0,
+    });
+  }
+
+  // Fallback entrypoint
+  const finalEntrypoints =
+    entrypoints.length > 0
+      ? entrypoints
+      : existingConfig?.graph?.entrypoints || [graphNodes[0]?.id || "agent"];
 
   return {
-    version: existingConfig?.version || "1.0",
-    state_schema: existingConfig?.state_schema || { fields: {} },
-    nodes: graphNodes,
-    edges: graphEdges,
-    entry_point: entryPoint,
-    exit_points: existingConfig?.exit_points || ["END"],
-    prompt_templates: existingConfig?.prompt_templates || {},
-    metadata: existingConfig?.metadata || {},
-    max_execution_time_seconds:
-      existingConfig?.max_execution_time_seconds || 300,
-    enable_checkpoints: existingConfig?.enable_checkpoints ?? true,
+    schema_version: "3.0",
+    key: existingConfig?.key || "custom_graph",
+    revision: existingConfig?.revision || 1,
+    graph: {
+      nodes: graphNodes,
+      edges: graphEdges,
+      entrypoints: finalEntrypoints,
+    },
+    state: existingConfig?.state || {},
+    limits: existingConfig?.limits || {
+      max_time_s: 300,
+      max_steps: 128,
+      max_concurrency: 10,
+    },
+    prompt_config: existingConfig?.prompt_config || null,
+    metadata: existingConfig?.metadata || null,
+    deps: existingConfig?.deps || null,
+    ui: { ...(existingConfig?.ui || {}), positions: uiPositions },
   };
 }
 
 /**
- * Create default START and END nodes
+ * Create default START and END nodes.
  */
 function createDefaultNodes(): AgentNode[] {
   return [
@@ -233,7 +271,7 @@ function createDefaultNodes(): AgentNode[] {
       position: { x: 50, y: 200 },
       data: {
         label: "START",
-        nodeType: "llm" as NodeType,
+        nodeType: "llm" as GraphNodeKind,
         config: {} as GraphNodeConfig,
       },
       deletable: false,
@@ -244,7 +282,7 @@ function createDefaultNodes(): AgentNode[] {
       position: { x: 400, y: 200 },
       data: {
         label: "END",
-        nodeType: "llm" as NodeType,
+        nodeType: "llm" as GraphNodeKind,
         config: {} as GraphNodeConfig,
       },
       deletable: false,
@@ -253,7 +291,7 @@ function createDefaultNodes(): AgentNode[] {
 }
 
 /**
- * Hook to manage graph state and sync with GraphConfig JSON
+ * Hook to manage graph state and sync with v3 GraphConfig JSON.
  *
  * This hook handles bidirectional sync between:
  * - External config (from parent/JSON editor)
@@ -266,7 +304,6 @@ export function useGraphConfig(
   onChange?: (config: GraphConfig) => void,
 ) {
   // Track the last config hash we synced FROM external to prevent loops
-  // When external config changes, we compare hashes to detect genuine changes
   const lastExternalHashRef = useRef<string>("");
 
   // Track the last config hash we pushed TO parent to detect our own updates bouncing back
@@ -289,13 +326,9 @@ export function useGraphConfig(
   );
 
   // Sync FROM external config (e.g., JSON editor) TO internal state
-  // Only syncs when external config structurally differs from what we last saw
   useEffect(() => {
     const externalHash = getConfigHash(initialConfig);
 
-    // Skip if:
-    // 1. This is the same external config we already processed
-    // 2. This is our own update bouncing back from parent
     if (
       externalHash === lastExternalHashRef.current ||
       externalHash === lastPushedHashRef.current
@@ -303,17 +336,13 @@ export function useGraphConfig(
       return;
     }
 
-    // Mark that we're syncing from external
     isSyncingFromExternalRef.current = true;
     lastExternalHashRef.current = externalHash;
 
-    // Actually sync the state
     const flow = graphConfigToFlow(initialConfig);
     setNodes(flow.nodes);
     setEdges(flow.edges);
 
-    // Reset the flag after React processes the state updates
-    // Using setTimeout to ensure it happens after the state updates propagate
     setTimeout(() => {
       isSyncingFromExternalRef.current = false;
     }, 0);
@@ -321,29 +350,13 @@ export function useGraphConfig(
 
   // Sync TO parent when internal state changes (but not during external sync)
   useEffect(() => {
-    // Skip if we're currently syncing from external (prevents echo)
-    if (isSyncingFromExternalRef.current) {
-      return;
-    }
+    if (isSyncingFromExternalRef.current) return;
+    if (!onChange) return;
+    if (!initialConfig) return;
 
-    // Skip if no onChange handler
-    if (!onChange) {
-      return;
-    }
-
-    // Skip if we haven't received a valid external config yet.
-    // This prevents pushing empty/broken config before initialization.
-    if (!initialConfig) {
-      return;
-    }
-
-    // Generate config from current state
     const config = flowToGraphConfig(nodes, edges, initialConfig);
     const configHash = getConfigHash(config);
 
-    // Skip if:
-    // 1. This would be the same as what we last pushed
-    // 2. This matches what we received from external (no internal changes)
     if (
       configHash === lastPushedHashRef.current ||
       configHash === lastExternalHashRef.current
@@ -351,7 +364,6 @@ export function useGraphConfig(
       return;
     }
 
-    // Track what we're pushing and notify parent
     lastPushedHashRef.current = configHash;
     onChange(config);
   }, [nodes, edges, initialConfig, onChange]);
@@ -391,27 +403,24 @@ export function useGraphConfig(
 
   // Add a new node
   const addNode = useCallback(
-    (type: NodeType, position?: { x: number; y: number }) => {
+    (kind: GraphNodeKind, position?: { x: number; y: number }) => {
       const id = `node_${Date.now()}`;
       const pos = position || { x: 250, y: 200 };
 
       let config: GraphNodeConfig;
-      switch (type) {
+      switch (kind) {
         case "llm":
           config = createDefaultLLMNode(id, "New LLM Node");
           break;
         case "tool":
           config = createDefaultToolNode(id, "New Tool Node");
           break;
-        case "router":
-          config = createDefaultRouterNode(id, "New Router");
+        case "transform":
+          config = createDefaultTransformNode(id, "New Transform Node");
           break;
-        default:
-          config = {
-            id,
-            name: `New ${type} Node`,
-            type,
-          };
+        case "component":
+          config = createDefaultComponentNode(id, "New Component");
+          break;
       }
 
       const newNode: AgentNode = {
@@ -420,7 +429,7 @@ export function useGraphConfig(
         position: pos,
         data: {
           label: config.name,
-          nodeType: type,
+          nodeType: kind,
           config,
         },
       };
@@ -433,16 +442,38 @@ export function useGraphConfig(
 
   // Update a node's configuration
   const updateNode = useCallback(
-    (nodeId: string, updates: Partial<GraphNodeConfig>) => {
+    (
+      nodeId: string,
+      updates: {
+        name?: string;
+        description?: string | null;
+        config?: Record<string, unknown>;
+      },
+    ) => {
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === nodeId) {
+            const currentConfig = node.data.config;
+            const newConfig = updates.config
+              ? ({
+                  ...currentConfig,
+                  config: { ...currentConfig.config, ...updates.config },
+                } as GraphNodeConfig)
+              : currentConfig;
+
             return {
               ...node,
               data: {
                 ...node.data,
                 label: updates.name || node.data.label,
-                config: { ...node.data.config, ...updates },
+                config: {
+                  ...newConfig,
+                  name: updates.name || newConfig.name,
+                  description:
+                    updates.description !== undefined
+                      ? updates.description
+                      : newConfig.description,
+                },
               },
             };
           }
@@ -457,7 +488,7 @@ export function useGraphConfig(
   const deleteNode = useCallback(
     (nodeId: string) => {
       if (nodeId === START_NODE_ID || nodeId === END_NODE_ID) {
-        return; // Can't delete START or END
+        return;
       }
       setNodes((nds) => nds.filter((n) => n.id !== nodeId));
       setEdges((eds) =>

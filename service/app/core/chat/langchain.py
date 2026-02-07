@@ -27,7 +27,7 @@ from app.core.chat.stream_handlers import (
     ToolEventHandler,
 )
 from app.core.chat.tracer import LangGraphTracer
-from app.core.prompts import build_system_prompt
+from app.core.prompts import build_system_prompt_with_provenance
 from app.core.providers import get_user_provider_manager
 from app.models.topic import Topic as TopicModel
 from app.schemas.chat_event_payloads import StreamingEvent
@@ -92,8 +92,9 @@ async def get_ai_response_stream_langchain_legacy(
     )
 
     # Build system prompt
-    system_prompt = await build_system_prompt(db, agent, model_name)
-    logger.info(f"System prompt: {system_prompt}")
+    prompt_build = await build_system_prompt_with_provenance(db, agent, model_name)
+    system_prompt = prompt_build.prompt
+    logger.info("System prompt provenance: %s", prompt_build.provenance)
 
     # Emit processing status
     yield StreamingEventHandler.create_processing_event()
