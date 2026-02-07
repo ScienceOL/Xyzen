@@ -318,15 +318,8 @@ function ChatBubble({ message }: ChatBubbleProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="group relative w-full pl-8 my-2"
+        className="group relative w-full pl-8 my-10 first:mt-2"
       >
-        {/* Timestamp - hidden by default, shown on hover */}
-        <div className="absolute -top-6 left-8 z-10 transform opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          <span className="rounded px-2 py-1 text-xs text-neutral-500  dark:text-neutral-400">
-            {formattedTime}
-          </span>
-        </div>
-
         {/* Avatar - positioned to the left */}
         <div className="absolute left-0 top-1">{renderAvatar()}</div>
 
@@ -457,17 +450,25 @@ function ChatBubble({ message }: ChatBubbleProps) {
           </div>
         )}
 
-        {/* Edit, Copy, and Delete buttons - shown for user messages on hover */}
+        {/* Toolbar with timestamp - shown for user messages on hover */}
         {isUserMessage && !isEditing && (
-          <div className="absolute bottom-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <div className="absolute -bottom-7 left-8 z-10 flex items-center gap-1 px-2 py-1 rounded-[12px] bg-neutral-900/90 dark:bg-neutral-900/95 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:opacity-100">
+            {/* Timestamp */}
+            <span className="text-[10px] text-neutral-400 px-0.5">
+              {formattedTime}
+            </span>
+
+            {/* Divider */}
+            <div className="w-px h-3.5 bg-neutral-700" />
+
             {canEditUser && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                    className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
                     title={t("app.message.edit")}
                   >
-                    <PencilIcon className="h-4 w-4" />
+                    <PencilIcon className="h-3.5 w-3.5" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -486,57 +487,65 @@ function ChatBubble({ message }: ChatBubbleProps) {
             )}
             <button
               onClick={handleCopy}
-              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+              className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
               title={t("app.message.copy")}
             >
               {isCopied ? (
-                <CheckIcon className="h-4 w-4 text-green-500" />
+                <CheckIcon className="h-3.5 w-3.5 text-green-400" />
               ) : (
-                <ClipboardDocumentIcon className="h-4 w-4" />
+                <ClipboardDocumentIcon className="h-3.5 w-3.5" />
               )}
             </button>
             {canDelete && (
               <button
                 onClick={handleDeleteClick}
-                className="rounded-md p-1 text-neutral-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                className="rounded p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
                 title={t("app.message.delete")}
               >
-                <TrashIcon className="h-4 w-4" />
+                <TrashIcon className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
         )}
 
-        {/* Edit, Copy, and Delete buttons - shown for assistant messages at top-right */}
+        {/* Toolbar with timestamp - shown for assistant messages on hover */}
         {!isUserMessage && !isLoading && !isEditing && (
-          <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <div className="absolute -bottom-7 left-8 z-10 flex items-center gap-1 px-2 py-1 rounded-[12px] bg-neutral-900/90 dark:bg-neutral-900/95 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:opacity-100">
+            {/* Timestamp */}
+            <span className="text-[10px] text-neutral-400 px-0.5">
+              {formattedTime}
+            </span>
+
+            {/* Divider */}
+            <div className="w-px h-3.5 bg-neutral-700" />
+
             {canEditAssistant && (
               <button
                 onClick={() => handleEditClick("edit_only")}
-                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
                 title={t("app.message.edit")}
               >
-                <PencilIcon className="h-4 w-4" />
+                <PencilIcon className="h-3.5 w-3.5" />
               </button>
             )}
             <button
               onClick={handleCopy}
-              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+              className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
               title={t("app.message.copy")}
             >
               {isCopied ? (
-                <CheckIcon className="h-4 w-4 text-green-500" />
+                <CheckIcon className="h-3.5 w-3.5 text-green-400" />
               ) : (
-                <ClipboardDocumentIcon className="h-4 w-4" />
+                <ClipboardDocumentIcon className="h-3.5 w-3.5" />
               )}
             </button>
             {canDelete && (
               <button
                 onClick={handleDeleteClick}
-                className="rounded-md p-1 text-neutral-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                className="rounded p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
                 title={t("app.message.delete")}
               >
-                <TrashIcon className="h-4 w-4" />
+                <TrashIcon className="h-3.5 w-3.5" />
               </button>
             )}
           </div>

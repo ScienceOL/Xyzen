@@ -14,6 +14,7 @@ import React, { Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
@@ -834,7 +835,12 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
     >
       <ReactMarkdown
         components={MarkdownComponents}
-        remarkPlugins={[remarkMath, remarkGfm, remarkStrongQuotedText]}
+        remarkPlugins={[
+          remarkMath,
+          remarkGfm,
+          remarkBreaks,
+          remarkStrongQuotedText,
+        ]}
         rehypePlugins={[rehypeKatex]}
       >
         {content}

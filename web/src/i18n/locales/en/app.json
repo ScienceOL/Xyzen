@@ -83,6 +83,7 @@
   },
   "input": {
     "placeholder": "Send a message...",
+    "respondingPlaceholder": "AI is responding...",
     "send": "Send",
     "stop": "Stop generating",
     "stopping": "Stopping...",

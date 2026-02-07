@@ -37,8 +37,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen();
 
-  // Use translated placeholder if not provided
-  const finalPlaceholder = placeholder || t("app.input.placeholder");
+  // Use translated placeholder - different when AI is responding
+  const finalPlaceholder = responding
+    ? t("app.input.respondingPlaceholder")
+    : placeholder || t("app.input.placeholder");
 
   // Drag and drop functionality
   const { isDragging, dragProps } = useFileDragDrop({
@@ -226,7 +228,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <button
               onClick={onAbort}
               disabled={aborting || !onAbort}
-              className={`rounded-full p-1.5 transition-all duration-200 ${
+              className={`relative rounded-full p-1 transition-all duration-200 ${
                 aborting
                   ? "text-neutral-300 cursor-not-allowed dark:text-neutral-600"
                   : "text-red-500 hover:bg-red-50 hover:text-red-600 active:scale-95 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"
@@ -236,10 +238,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               }
               title={aborting ? t("app.input.stopping") : t("app.input.stop")}
             >
+              {/* Spinning ring animation */}
+              {!aborting && (
+                <span className="absolute inset-[-2px] rounded-full border border-transparent border-t-red-500 dark:border-t-red-400 animate-spin" />
+              )}
               {aborting ? (
-                <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                <ArrowPathIcon className="h-4 w-4 animate-spin" />
               ) : (
-                <StopIcon className="h-5 w-5" />
+                <StopIcon className="h-4 w-4" />
               )}
             </button>
           ) : (
