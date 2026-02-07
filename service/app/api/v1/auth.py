@@ -4,7 +4,6 @@ from typing import Optional
 from fastapi import APIRouter, File, Header, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 
-from app.configs import configs
 from app.core.auth.authentication import authentication_service
 from app.middleware.auth import AuthProvider
 from app.middleware.auth.casdoor import CasdoorAuthProvider
@@ -280,7 +279,7 @@ async def get_linked_accounts(
             LinkedAccountResponse(
                 provider_name=acc.provider_name,
                 provider_display_name=acc.provider_display_name,
-                provider_icon_url=configs.OAuth.get_icon_url(acc.provider_name),
+                provider_icon_url=acc.provider_icon_url,
                 user_id=acc.user_id,
                 username=acc.username,
                 email=acc.email,

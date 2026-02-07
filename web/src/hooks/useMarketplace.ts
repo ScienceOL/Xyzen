@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { marketplaceService } from "@/service/marketplaceService";
 import type {
   ForkRequest,
@@ -20,6 +26,10 @@ export const marketplaceKeys = {
   listings: () => [...marketplaceKeys.all, "listings"] as const,
   listingsWithParams: (params: SearchParams) =>
     [...marketplaceKeys.listings(), params] as const,
+  listingsInfinite: (
+    params: Omit<SearchParams, "limit" | "offset">,
+    pageSize: number,
+  ) => [...marketplaceKeys.listings(), "infinite", { ...params, pageSize }] as const,
   listing: (id: string) => [...marketplaceKeys.all, "listing", id] as const,
   requirements: (id: string) =>
     [...marketplaceKeys.all, "requirements", id] as const,
@@ -27,6 +37,8 @@ export const marketplaceKeys = {
   starredListings: () => [...marketplaceKeys.all, "starred"] as const,
   history: (id: string) => [...marketplaceKeys.all, "history", id] as const,
 };
+
+const DEFAULT_MARKETPLACE_PAGE_SIZE = 20;
 
 /**
  * Hook to search marketplace listings
@@ -45,6 +57,41 @@ export function useMarketplaceListings(params: SearchParams = {}) {
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
   });
+}
+
+/**
+ * Hook to search marketplace listings with pagination support.
+ */
+export function useInfiniteMarketplaceListings(
+  params: Omit<SearchParams, "limit" | "offset"> = {},
+  pageSize: number = DEFAULT_MARKETPLACE_PAGE_SIZE,
+) {
+  const query = useInfiniteQuery({
+    queryKey: marketplaceKeys.listingsInfinite(params, pageSize),
+    queryFn: async ({ pageParam }) => {
+      return marketplaceService.searchListings({
+        ...params,
+        limit: pageSize,
+        offset: pageParam,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < pageSize) {
+        return undefined;
+      }
+      return allPages.length * pageSize;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+
+  const listings = query.data?.pages.flatMap((page) => page) ?? [];
+
+  return {
+    ...query,
+    listings,
+  };
 }
 
 /**
@@ -264,7 +311,27 @@ export function usePullListingUpdate() {
 /**
  * Hook to toggle like on a marketplace listing
  */
-// ... existing imports
+type MarketplaceListingsCache =
+  | MarketplaceListing[]
+  | InfiniteData<MarketplaceListing[], number>;
+
+function updateListingsCache(
+  cacheData: MarketplaceListingsCache | undefined,
+  updater: (listing: MarketplaceListing) => MarketplaceListing,
+): MarketplaceListingsCache | undefined {
+  if (!cacheData) {
+    return cacheData;
+  }
+
+  if (Array.isArray(cacheData)) {
+    return cacheData.map(updater);
+  }
+
+  return {
+    ...cacheData,
+    pages: cacheData.pages.map((page) => page.map(updater)),
+  };
+}
 
 export function useToggleLike() {
   const queryClient = useQueryClient();
@@ -289,11 +356,11 @@ export function useToggleLike() {
 
       // Snapshot list queries
       // We find all queries that look like listing lists
-      const previousListQueries = queryClient.getQueriesData<
-        MarketplaceListing[]
-      >({
+      const previousListQueries = queryClient.getQueriesData<MarketplaceListingsCache>(
+        {
         queryKey: marketplaceKeys.listings(),
-      });
+        },
+      );
 
       // Snapshot starred listings
       const previousStarredListings = queryClient.getQueryData<
@@ -318,19 +385,20 @@ export function useToggleLike() {
       previousListQueries.forEach(([queryKey, oldData]) => {
         if (!oldData) return;
 
-        queryClient.setQueryData(
+        queryClient.setQueryData<MarketplaceListingsCache>(
           queryKey,
-          oldData.map((listing) => {
-            if (listing.id === marketplaceId) {
-              return {
-                ...listing,
-                has_liked: !listing.has_liked,
-                likes_count: listing.has_liked
-                  ? listing.likes_count - 1
-                  : listing.likes_count + 1,
-              };
+          updateListingsCache(oldData, (listing) => {
+            if (listing.id !== marketplaceId) {
+              return listing;
             }
-            return listing;
+
+            return {
+              ...listing,
+              has_liked: !listing.has_liked,
+              likes_count: listing.has_liked
+                ? listing.likes_count - 1
+                : listing.likes_count + 1,
+            };
           }),
         );
       });
@@ -407,23 +475,24 @@ export function useToggleLike() {
 
       // Update Lists (to ensure consistency without full refetch if possible)
       // This prevents the UI from flickering back to old state if invalidation is slow
-      const listQueries = queryClient.getQueriesData<MarketplaceListing[]>({
+      const listQueries = queryClient.getQueriesData<MarketplaceListingsCache>({
         queryKey: marketplaceKeys.listings(),
       });
 
       listQueries.forEach(([queryKey, oldData]) => {
         if (!oldData) return;
-        queryClient.setQueryData(
+        queryClient.setQueryData<MarketplaceListingsCache>(
           queryKey,
-          oldData.map((listing) => {
-            if (listing.id === marketplaceId) {
-              return {
-                ...listing,
-                has_liked: data.is_liked,
-                likes_count: data.likes_count,
-              };
+          updateListingsCache(oldData, (listing) => {
+            if (listing.id !== marketplaceId) {
+              return listing;
             }
-            return listing;
+
+            return {
+              ...listing,
+              has_liked: data.is_liked,
+              likes_count: data.likes_count,
+            };
           }),
         );
       });

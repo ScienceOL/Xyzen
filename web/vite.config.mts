@@ -10,7 +10,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // https://vite.dev/config/
 export default defineConfig(() => {
   const isLibBuild = process.env.BUILD_MODE === "library";
-  const isIframeBuild = process.env.BUILD_MODE === "iframe";
+  // const isIframeBuild = process.env.BUILD_MODE === "iframe";
 
   // Build version info
   let version = "0.0.0";
@@ -34,56 +34,43 @@ export default defineConfig(() => {
 
   // PWA 仅用于站点构建；库构建会生成很大的 UMD 包，不应进入 Workbox precache
   if (!isLibBuild) {
-    // 在 Bohrium App 内嵌模式下禁用 PWA 功能，并且自毁 Service Worker
-    if (isIframeBuild) {
-      plugins.push(
-        VitePWA({
-          selfDestroying: true,
-          registerType: "autoUpdate",
-          devOptions: { enabled: false },
-        }),
-      );
-    } else {
-      plugins.push(
-        VitePWA({
-          registerType: "autoUpdate",
-          includeAssets: ["icon.png", "icon-512.png"],
-          manifest: {
-            name: "Xyzen",
-            short_name: "Xyzen",
-            description: "Xyzen Application",
-            display: "standalone",
-            display_override: ["window-controls-overlay"],
-            // background_color: "#000000",
-            // theme_color: "#000000",
-            icons: [
-              // {
-              //   src: "icon.png",
-              //   sizes: "256x256",
-              //   type: "image/png",
-              // },
-              {
-                src: "icon-512.png",
-                sizes: "512x512",
-                type: "image/png",
-                // purpose: "maskable",
-              },
-            ],
-          },
-          devOptions: {
-            enabled: true,
-          },
-          workbox: {
-            maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB
-            // 排除 /api 和 /xyzen 开头的请求，避免 Service Worker 拦截后端接口
-            navigateFallbackDenylist: [/^\/api/, /^\/xyzen/],
-          },
-        }),
-      );
-    }
-  }
-
-  if (isLibBuild) {
+    plugins.push(
+      VitePWA({
+        registerType: "autoUpdate",
+        includeAssets: ["icon.png", "icon-512.png"],
+        manifest: {
+          name: "Xyzen",
+          short_name: "Xyzen",
+          description: "Xyzen Application",
+          display: "standalone",
+          display_override: ["window-controls-overlay"],
+          // background_color: "#000000",
+          // theme_color: "#000000",
+          icons: [
+            // {
+            //   src: "icon.png",
+            //   sizes: "256x256",
+            //   type: "image/png",
+            // },
+            {
+              src: "icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              // purpose: "maskable",
+            },
+          ],
+        },
+        devOptions: {
+          enabled: true,
+        },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB
+          // 排除 /api 和 /xyzen 开头的请求，避免 Service Worker 拦截后端接口
+          navigateFallbackDenylist: [/^\/api/, /^\/xyzen/],
+        },
+      }),
+    );
+  } else {
     plugins.push(
       dts({
         insertTypesEntry: true,

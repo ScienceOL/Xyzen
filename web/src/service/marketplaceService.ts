@@ -8,12 +8,13 @@ import { useXyzen } from "@/store";
  */
 
 export type ForkMode = "editable" | "locked";
+export type MarketplaceScope = "official" | "community";
 
 export interface MarketplaceListing {
   id: string;
   agent_id: string;
   active_snapshot_id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   description: string | null;
   avatar: string | null;
@@ -23,6 +24,7 @@ export interface MarketplaceListing {
   views_count: number;
   is_published: boolean;
   fork_mode: ForkMode;
+  scope: MarketplaceScope;
   created_at: string;
   updated_at: string;
   first_published_at: string | null;
@@ -130,6 +132,7 @@ export interface RequirementsResponse {
 export interface SearchParams {
   query?: string;
   tags?: string[];
+  scope?: MarketplaceScope;
   sort_by?: "likes" | "forks" | "views" | "recent" | "oldest";
   limit?: number;
   offset?: number;
@@ -260,6 +263,10 @@ class MarketplaceService {
 
     if (params.tags && params.tags.length > 0) {
       params.tags.forEach((tag) => searchParams.append("tags", tag));
+    }
+
+    if (params.scope) {
+      searchParams.append("scope", params.scope);
     }
 
     if (params.sort_by) {

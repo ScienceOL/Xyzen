@@ -6,7 +6,6 @@ from uuid import UUID
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.providers import SYSTEM_USER_ID
 from app.models.mcp import McpServer, McpServerCreate, McpServerUpdate
 
 logger = logging.getLogger(__name__)
@@ -195,13 +194,13 @@ class McpRepository:
     async def get_system_mcp_servers(self) -> list[McpServer]:
         """
         Get list of system (global) MCP servers.
-        These are servers where user_id is SYSTEM_USER_ID.
+        These are servers where user_id is NULL (no owner).
 
         Returns:
             List of McpServer instances.
         """
         logger.debug("Fetching system MCP servers")
-        result = await self.db.exec(select(McpServer).where(McpServer.user_id == SYSTEM_USER_ID))
+        result = await self.db.exec(select(McpServer).where(col(McpServer.user_id).is_(None)))
         servers = list(result.all())
         logger.debug(f"Found {len(servers)} system MCP servers")
         return servers
