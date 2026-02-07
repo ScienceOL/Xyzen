@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface AdminAuthFormProps {
   onAuthenticated: (secretKey: string) => void;
@@ -40,19 +41,12 @@ export function AdminAuthForm({ onAuthenticated }: AdminAuthFormProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="admin-secret"
-              className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-            >
-              Admin Secret Key
-            </label>
-            <input
+            <Input
               id="admin-secret"
               type="password"
-              placeholder="Enter admin secret key"
+              placeholder="Admin Secret Key"
               value={secretKey}
               onChange={(e) => setSecretKey(e.target.value)}
-              className="w-full rounded-sm border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               disabled={isVerifying}
             />
           </div>

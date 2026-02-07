@@ -1,4 +1,5 @@
 import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { Input } from "@/components/ui/input";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -65,23 +66,16 @@ export function CreateKnowledgeSetModal({
       maxWidth="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <label
-            htmlFor="knowledge-set-name"
-            className="text-sm font-medium text-neutral-800 dark:text-neutral-200"
-          >
-            {t("knowledge.createKnowledgeSetModal.fields.name.label")}
-          </label>
-          <input
+        <div>
+          <Input
             id="knowledge-set-name"
+            placeholder={t(
+              "knowledge.createKnowledgeSetModal.fields.name.label",
+            )}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={t(
-              "knowledge.createKnowledgeSetModal.fields.name.placeholder",
-            )}
             disabled={isSubmitting}
             autoFocus
-            className="h-9 w-full rounded-md border border-neutral-200 bg-white px-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
           />
         </div>
 

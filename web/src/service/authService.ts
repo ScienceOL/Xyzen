@@ -41,6 +41,38 @@ export interface AuthValidationResponse {
   error_code?: string;
 }
 
+export interface LinkedAccount {
+  provider_name: string; // e.g., "custom", "github"
+  provider_display_name: string; // e.g., "Bohrium", "GitHub"
+  provider_icon_url?: string; // Provider icon URL from backend config
+  user_id: string;
+  username?: string;
+  email?: string;
+  avatar_url?: string;
+  is_valid?: boolean; // Token validation status (null = not checked)
+}
+
+export interface LinkedAccountsResponse {
+  accounts: LinkedAccount[];
+}
+
+export interface LinkUrlResponse {
+  url: string;
+  provider_type: string;
+}
+
+export interface AvatarUpdateResponse {
+  success: boolean;
+  avatar_url?: string;
+  message?: string;
+}
+
+export interface DisplayNameUpdateResponse {
+  success: boolean;
+  display_name?: string;
+  message?: string;
+}
+
 class AuthService {
   private static readonly TOKEN_KEY = "access_token";
 
@@ -136,6 +168,106 @@ class AuthService {
 
   logout(): void {
     this.removeToken();
+  }
+
+  async getLinkedAccounts(validate = false): Promise<LinkedAccountsResponse> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error("No access token available");
+    }
+
+    const url = new URL(`${getBackendUrl()}/xyzen/api/v1/auth/linked-accounts`);
+    if (validate) {
+      url.searchParams.set("validate", "true");
+    }
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async getLinkUrl(
+    providerType: string,
+    redirectUri: string,
+  ): Promise<LinkUrlResponse> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error("No access token available");
+    }
+
+    const url = new URL(`${getBackendUrl()}/xyzen/api/v1/auth/link-url`);
+    url.searchParams.set("provider_type", providerType);
+    url.searchParams.set("redirect_uri", redirectUri);
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async uploadAvatar(file: File): Promise<AvatarUpdateResponse> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error("No access token available");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/auth/avatar`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async updateDisplayName(
+    displayName: string,
+  ): Promise<DisplayNameUpdateResponse> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error("No access token available");
+    }
+
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/auth/display-name`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ display_name: displayName }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
   }
 }
 

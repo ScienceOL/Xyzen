@@ -5,6 +5,7 @@
   },
   "categories": {
     "provider": "模型供应商",
+    "account": "账户",
     "ui": "界面设置",
     "region": "服务与地区",
     "redemption": "兑换码",
@@ -239,5 +240,31 @@
     "frontend": "前端",
     "backend": "后端",
     "versionMismatch": "检测到版本不匹配，请尝试刷新页面。"
+  },
+  "account": {
+    "title": "账户",
+    "subtitle": "管理个人资料和已绑定账户",
+    "validateAll": "验证全部",
+    "noAccounts": "暂无已绑定的账户",
+    "valid": "有效",
+    "expired": "已过期",
+    "reauthorize": "重新授权",
+    "note": "第三方授权可能会过期。如果授权已过期，请点击「重新授权」以刷新连接。",
+    "avatar": {
+      "title": "个人头像",
+      "hint": "点击相机图标上传新头像",
+      "success": "头像更新成功",
+      "uploadFailed": "头像上传失败",
+      "invalidType": "文件格式无效。请使用 PNG、JPG、GIF 或 WebP。",
+      "tooLarge": "文件大小超过 5MB 限制。"
+    },
+    "displayName": {
+      "edit": "编辑显示名称",
+      "empty": "显示名称不能为空",
+      "tooLong": "显示名称不能超过 50 个字符",
+      "updateFailed": "显示名称更新失败",
+      "success": "显示名称更新成功"
+    },
+    "linkedTitle": "已绑定账户"
   }
 }

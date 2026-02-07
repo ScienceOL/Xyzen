@@ -4,6 +4,39 @@ import { useXyzen } from "@/store";
 import { syncTokenFromCookie } from "@/utils/auth";
 
 /**
+ * Handle OAuth link callback in popup window.
+ * If we're in a popup at /auth/link-callback, notify parent and close.
+ * Returns true if handled (in popup), false otherwise.
+ */
+export const handleLinkCallback = (): boolean => {
+  if (typeof window === "undefined") return false;
+
+  // Check if we're at the link-callback path
+  if (!window.location.pathname.includes("/auth/link-callback")) return false;
+
+  // Check if we're in a popup (has opener)
+  if (!window.opener) {
+    // Not in popup, redirect to home
+    window.location.href = "/";
+    return true;
+  }
+
+  // Notify parent window
+  try {
+    window.opener.postMessage(
+      { type: "oauth_link_complete" },
+      window.location.origin,
+    );
+  } catch (e) {
+    console.error("[Auth] Failed to notify parent window:", e);
+  }
+
+  // Close popup
+  window.close();
+  return true;
+};
+
+/**
  * Handle OAuth authorization code callback (e.g. Casdoor code flow).
  * Returns the access_token if code exchange succeeds, or null.
  */
@@ -42,13 +75,23 @@ const handleOAuthCodeCallback = async (): Promise<string | null> => {
 };
 
 // 辅助函数：将API返回的用户信息映射为Store中的用户格式
-const mapUserInfo = (userInfo: UserInfo) => ({
-  id: userInfo.id,
-  username: userInfo.display_name || userInfo.username || "Unknown",
-  avatar:
-    userInfo.avatar_url ||
-    `https://storage.sciol.ac.cn/library/default_avatar.png`,
-});
+const mapUserInfo = (userInfo: UserInfo) => {
+  console.log(
+    "[Auth] Raw userInfo from API:",
+    JSON.stringify(userInfo, null, 2),
+  );
+  console.log("[Auth] avatar_url field:", userInfo.avatar_url);
+  const mapped = {
+    id: userInfo.id,
+    username: userInfo.display_name || userInfo.username || "Unknown",
+    avatar:
+      userInfo.avatar_url ||
+      `https://storage.sciol.ac.cn/library/default_avatar.png`,
+  };
+  console.log("[Auth] Mapped user:", JSON.stringify(mapped, null, 2));
+  console.log("[Auth] Final avatar value:", mapped.avatar);
+  return mapped;
+};
 
 /**
  * 检查并同步认证状态到Zustand Store

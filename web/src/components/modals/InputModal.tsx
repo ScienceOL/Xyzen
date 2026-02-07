@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
@@ -81,10 +82,9 @@ export function InputModal({
         </DialogHeader>
 
         <div className="py-2">
-          <input
+          <Input
             type="text"
-            className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
-            placeholder={placeholder}
+            placeholder={placeholder || "Input"}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
