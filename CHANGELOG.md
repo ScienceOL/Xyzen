@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.1.4](https://github.com/ScienceOL/Xyzen/compare/v1.1.3...v1.1.4) (2026-02-07)
+
+### 🐛 Bug Fixes
+
+* add account settings management with avatar upload and display name editing ([7495d4d](https://github.com/ScienceOL/Xyzen/commit/7495d4d2982c6c04d9a289e5ab8960cd5c1c28fb))
+
 ## [1.1.3](https://github.com/ScienceOL/Xyzen/compare/v1.1.2...v1.1.3) (2026-02-07)
 
 ### 🐛 Bug Fixes
