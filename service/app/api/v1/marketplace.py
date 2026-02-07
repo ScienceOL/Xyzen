@@ -28,6 +28,7 @@ from app.models.agent_marketplace import (
     AgentMarketplaceRead,
     AgentMarketplaceReadWithSnapshot,
     AgentMarketplaceUpdate,
+    MarketplaceScope,
 )
 from app.models.agent_snapshot import AgentSnapshotRead
 from app.repos import AgentMarketplaceRepository, AgentSnapshotRepository
@@ -211,6 +212,9 @@ async def update_listing(
     if not listing:
         raise HTTPException(status_code=404, detail="Marketplace listing not found")
 
+    if listing.scope == MarketplaceScope.OFFICIAL:
+        raise HTTPException(status_code=403, detail="Cannot modify official marketplace listings")
+
     if listing.user_id != user_id:
         raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
 
@@ -256,6 +260,9 @@ async def unpublish_agent(
     if not listing:
         raise HTTPException(status_code=404, detail="Marketplace listing not found")
 
+    if listing.scope == MarketplaceScope.OFFICIAL:
+        raise HTTPException(status_code=403, detail="Cannot unpublish official marketplace listings")
+
     if listing.user_id != user_id:
         raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
 
@@ -289,6 +296,9 @@ async def delete_listing(
 
     if not listing:
         raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    if listing.scope == MarketplaceScope.OFFICIAL:
+        raise HTTPException(status_code=403, detail="Cannot delete official marketplace listings")
 
     if listing.user_id != user_id:
         raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
@@ -346,6 +356,7 @@ async def fork_agent(
 async def search_marketplace(
     query: str | None = Query(None, description="Search query for name/description"),
     tags: list[str] | None = Query(None, description="Filter by tags"),
+    scope: MarketplaceScope | None = Query(None, description="Filter by scope (official/community)"),
     sort_by: Literal["likes", "forks", "views", "recent", "oldest"] = Query("recent", description="Sort order"),
     limit: int = Query(20, ge=1, le=100, description="Number of results per page"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
@@ -374,6 +385,7 @@ async def search_marketplace(
         query=query,
         tags=tags,
         only_published=True,
+        scope=scope,
         sort_by=sort_by,
         limit=limit,
         offset=offset,
@@ -451,11 +463,12 @@ async def get_marketplace_listing(
     listing, snapshot = result
 
     # Check if published (unless it's the owner viewing it)
-    if not listing.is_published and listing.user_id != user_id:
+    is_owner = listing.user_id is not None and listing.user_id == user_id
+    if not listing.is_published and not is_owner:
         raise HTTPException(status_code=404, detail="Marketplace listing not found")
 
     # Increment views if not the owner
-    if user_id and listing.user_id != user_id:
+    if user_id and not is_owner:
         marketplace_repo = AgentMarketplaceRepository(db)
         await marketplace_repo.increment_views(marketplace_id)
         await db.commit()
@@ -593,6 +606,9 @@ async def publish_version(
     if not listing:
         raise HTTPException(status_code=404, detail="Marketplace listing not found")
 
+    if listing.scope == MarketplaceScope.OFFICIAL:
+        raise HTTPException(status_code=403, detail="Cannot modify official marketplace listings")
+
     if listing.user_id != user_id:
         raise HTTPException(status_code=403, detail="You don't own this marketplace listing")
 
@@ -630,6 +646,9 @@ async def update_agent_and_listing(
 
     if not listing:
         raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    if listing.scope == MarketplaceScope.OFFICIAL:
+        raise HTTPException(status_code=403, detail="Cannot modify official marketplace listings")
 
     if listing.user_id != user_id:
         raise HTTPException(status_code=403, detail="You don't own this marketplace listing")

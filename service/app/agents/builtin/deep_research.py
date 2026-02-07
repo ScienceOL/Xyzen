@@ -194,6 +194,7 @@ def create_deep_research_config(
                 "author": "Xyzen",
                 "pattern": "multi-phase-research",
                 "builtin_key": "deep_research",
+                "publishable": True,
                 "config": {
                     "allow_clarification": allow_clarification,
                     "max_iterations": max_iterations,
