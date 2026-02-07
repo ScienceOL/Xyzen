@@ -42,17 +42,17 @@ export const StatusBar = ({ itemCount, stats }: StatusBarProps) => {
   };
 
   return (
-    <div className="flex h-8 select-none items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 text-xs font-medium text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="flex items-center gap-4">
+    <div className="flex h-10 select-none items-center justify-between border-t border-white/20 dark:border-neutral-700/30 px-4 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+      <div className="flex items-center gap-3">
         <span>{t("knowledge.status.items", { count: itemCount })}</span>
-        <span className="text-neutral-300 dark:text-neutral-700">|</span>
+        <span className="h-3 w-px bg-neutral-300/50 dark:bg-neutral-600/50" />
         <span className={getUsageColor()}>
           {t("knowledge.status.used", {
             used: formatSizeInMB(stats.used),
           })}
         </span>
-        <span className="text-neutral-300 dark:text-neutral-700">|</span>
-        <span className=" hidden sm:inline">
+        <span className="hidden sm:inline h-3 w-px bg-neutral-300/50 dark:bg-neutral-600/50" />
+        <span className="hidden sm:inline">
           {t("knowledge.status.available", {
             available: formatSize(available),
           })}
@@ -60,14 +60,14 @@ export const StatusBar = ({ itemCount, stats }: StatusBarProps) => {
       </div>
       <div className="flex items-center gap-3">
         {/* Progress bar */}
-        <div className="w-24 sm:w-32 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+        <div className="w-20 sm:w-28 h-1.5 bg-neutral-200/50 dark:bg-neutral-700/50 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-300 ${getProgressBarColor()}`}
             style={{ width: `${Math.min(usagePercentage, 100)}%` }}
           />
         </div>
         {usagePercentage > 0 && (
-          <span className={getUsageColor()}>{usagePercentage.toFixed(1)}%</span>
+          <span className={getUsageColor()}>{usagePercentage.toFixed(0)}%</span>
         )}
       </div>
     </div>

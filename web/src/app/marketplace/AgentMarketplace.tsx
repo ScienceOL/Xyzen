@@ -1,5 +1,6 @@
 "use client";
 
+import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   useMarketplaceListings,
@@ -125,7 +126,10 @@ export default function AgentMarketplace() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-neutral-50 dark:bg-black">
+    <div
+      className="flex h-full flex-col bg-neutral-50 dark:bg-black"
+      style={{ paddingBottom: DOCK_SAFE_AREA }}
+    >
       {/* Header Section */}
       <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/80 px-6 py-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
         <div className="mx-auto max-w-7xl">

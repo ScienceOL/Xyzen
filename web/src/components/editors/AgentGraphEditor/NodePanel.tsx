@@ -27,12 +27,7 @@ const iconMap: Record<string, React.ComponentType<IconProps>> = {
   puzzle: PuzzlePieceIcon,
 };
 
-const nodeKinds: GraphNodeKind[] = [
-  "llm",
-  "tool",
-  "transform",
-  "component",
-];
+const nodeKinds: GraphNodeKind[] = ["llm", "tool", "transform", "component"];
 
 interface NodePanelItemProps {
   type: GraphNodeKind;

@@ -1,4 +1,8 @@
 import { AgentList } from "@/components/agents";
+import {
+  DOCK_HORIZONTAL_MARGIN,
+  DOCK_SAFE_AREA,
+} from "@/components/layouts/BottomDock";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
@@ -223,7 +227,14 @@ export function FocusedView({
   }, [onClose, onCanvasClick]);
 
   return (
-    <div className="absolute inset-0 z-40 flex items-stretch p-4 gap-4 pointer-events-none">
+    <div
+      className="absolute inset-0 z-40 flex items-stretch pt-4 gap-4 pointer-events-none"
+      style={{
+        paddingBottom: DOCK_SAFE_AREA,
+        paddingLeft: DOCK_HORIZONTAL_MARGIN,
+        paddingRight: DOCK_HORIZONTAL_MARGIN,
+      }}
+    >
       {/* 1. Left Column: Top (Empty for Node visibility) + Bottom (Switcher) */}
       <div className="w-80 flex flex-col justify-end relative z-10 pointer-events-none">
         {/* Agent Switcher List */}

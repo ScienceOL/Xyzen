@@ -10,6 +10,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -624,7 +625,10 @@ function InnerWorkspace() {
 
       <SaveStatusIndicator status={saveStatus} onRetry={handleRetrySave} />
 
-      <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
+      <div
+        className="absolute right-6 z-10 flex items-center gap-2"
+        style={{ bottom: DOCK_SAFE_AREA }}
+      >
         {!focusedAgentId && (
           <FitViewButton
             onClick={() => {

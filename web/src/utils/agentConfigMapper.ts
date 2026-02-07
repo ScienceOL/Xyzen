@@ -49,9 +49,7 @@ function findMainLLMNode(graphConfig: GraphConfig): GraphNodeConfig | null {
   if (!nodes) return null;
 
   // First try to find a node with id "agent"
-  const agentNode = nodes.find(
-    (n) => n.id === "agent" && n.kind === "llm",
-  );
+  const agentNode = nodes.find((n) => n.id === "agent" && n.kind === "llm");
   if (agentNode) return agentNode;
 
   // Fall back to first LLM node
@@ -230,9 +228,7 @@ export function isStandardReactPattern(
 
   const nodeIds = new Set(nodes.map((n) => n.id));
   const hasStandardNodes = nodeIds.has("agent") && nodeIds.has("tools");
-  const extraNodes = nodes.filter(
-    (n) => !["agent", "tools"].includes(n.id),
-  );
+  const extraNodes = nodes.filter((n) => !["agent", "tools"].includes(n.id));
   const hasExtraNodes = extraNodes.length > 0;
 
   return hasStandardNodes && !hasExtraNodes;

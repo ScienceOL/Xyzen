@@ -294,7 +294,9 @@ export interface GraphConfig {
 /**
  * Create a default empty GraphConfig (v3 canonical).
  */
-export function createEmptyGraphConfig(key: string = "custom_graph"): GraphConfig {
+export function createEmptyGraphConfig(
+  key: string = "custom_graph",
+): GraphConfig {
   return {
     schema_version: "3.0",
     key,

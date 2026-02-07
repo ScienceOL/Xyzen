@@ -109,13 +109,13 @@ const SidebarComp = ({
   ];
 
   return (
-    <div className="flex h-full w-56 flex-col border-r border-neutral-200 bg-neutral-100/80 pt-4 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950">
+    <div className="flex h-full w-56 flex-col pt-4">
       {/* Navigation */}
       <nav className="flex-1 space-y-6 px-3 overflow-y-auto custom-scrollbar">
         {/* Static Groups */}
         {navGroups.map((group, groupIdx) => (
           <div key={groupIdx}>
-            <h3 className="mb-1 px-2 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">
+            <h3 className="mb-1.5 px-2 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
               {group.title}
             </h3>
             <div className="space-y-0.5">
@@ -127,10 +127,10 @@ const SidebarComp = ({
                   <button
                     key={item.id}
                     onClick={() => onTabChange(item.id as KnowledgeTab)}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? "bg-neutral-300/50 text-neutral-900 dark:bg-white/10 dark:text-white"
-                        : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-neutral-200"
+                        ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
+                        : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                     }`}
                   >
                     <Icon
@@ -146,8 +146,8 @@ const SidebarComp = ({
 
         {/* Dynamic Knowledge Section */}
         <div>
-          <div className="mb-1 flex items-center justify-between px-2 pr-1">
-            <h3 className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">
+          <div className="mb-1.5 flex items-center justify-between px-2 pr-1">
+            <h3 className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
               {t("knowledge.titles.knowledgeBase")}
             </h3>
             <button
@@ -155,7 +155,7 @@ const SidebarComp = ({
                 e.stopPropagation();
                 onCreateKnowledgeSet();
               }}
-              className="rounded p-0.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              className="rounded-lg p-1 hover:bg-white/50 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
               title={t("knowledge.sidebar.newKnowledgeSet")}
             >
               <PlusIcon className="h-3.5 w-3.5" />
@@ -172,10 +172,10 @@ const SidebarComp = ({
                 <button
                   key={knowledgeSet.id}
                   onClick={() => onTabChange("knowledge", knowledgeSet.id)}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors group ${
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 group ${
                     isActive
-                      ? "bg-neutral-300/50 text-neutral-900 dark:bg-white/10 dark:text-white"
-                      : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-neutral-200"
+                      ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
+                      : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
                   <FolderIcon
@@ -189,7 +189,7 @@ const SidebarComp = ({
                   </span>
                   <span
                     onClick={(e) => handleDeleteClick(e, knowledgeSet)}
-                    className="hidden group-hover:flex shrink-0 p-0.5 rounded hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-400 hover:text-red-500"
+                    className="hidden group-hover:flex shrink-0 p-1 rounded-lg hover:bg-white/80 dark:hover:bg-neutral-700 text-neutral-400 hover:text-red-500 transition-colors"
                     title={t("knowledge.sidebar.deleteKnowledgeSet")}
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
@@ -198,7 +198,7 @@ const SidebarComp = ({
               );
             })}
             {knowledgeSets.length === 0 && (
-              <div className="px-2 py-1 text-xs text-neutral-400 italic">
+              <div className="px-3 py-2 text-xs text-neutral-400 italic">
                 {t("knowledge.sidebar.noKnowledgeSets")}
               </div>
             )}
@@ -207,16 +207,16 @@ const SidebarComp = ({
 
         {/* Locations */}
         <div>
-          <h3 className="mb-1 px-2 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">
+          <h3 className="mb-1.5 px-2 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
             {t("knowledge.sidebar.groups.locations")}
           </h3>
           <div className="space-y-0.5">
             <button
               onClick={() => onTabChange("trash")}
-              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
                 activeTab === "trash"
-                  ? "bg-neutral-300/50 text-neutral-900 dark:bg-white/10 dark:text-white"
-                  : "text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-neutral-200"
+                  ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
+                  : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
               }`}
             >
               <TrashIcon

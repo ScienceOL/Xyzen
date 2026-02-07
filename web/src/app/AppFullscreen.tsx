@@ -7,8 +7,7 @@ import { createPortal } from "react-dom";
 
 import { SpatialWorkspace } from "@/app/chat/SpatialWorkspace";
 import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
-import { ActivityBar } from "@/components/layouts/ActivityBar";
-import { AppHeader } from "@/components/layouts/AppHeader";
+import { BottomDock } from "@/components/layouts/BottomDock";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 
 import { PwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
@@ -62,38 +61,32 @@ export function AppFullscreen({
         modifiers={[restrictToVerticalAxis]}
       >
         <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-black">
-          {/* Header Bar */}
-          <AppHeader />
-          {/* Main Content Layout */}
-          <main className="flex flex-1 overflow-hidden">
-            {/* Activity Bar */}
-            <ActivityBar
-              activePanel={activePanel}
-              onPanelChange={setActivePanel}
-              isMobile={false}
-            />
+          {/* Main Content - Full screen canvas */}
+          <main className="flex-1 overflow-hidden">
+            {activePanel === "chat" && (
+              <div className="h-full w-full">
+                <SpatialWorkspace />
+              </div>
+            )}
 
-            {/* Panel Content */}
-            <div className="flex flex-1 overflow-hidden bg-white dark:bg-neutral-950">
-              {activePanel === "chat" && (
-                <div className="h-full w-full">
-                  <SpatialWorkspace />
-                </div>
-              )}
+            {activePanel === "knowledge" && (
+              <div className="h-full w-full bg-white dark:bg-neutral-950">
+                <KnowledgeBase />
+              </div>
+            )}
 
-              {activePanel === "knowledge" && (
-                <div className="h-full w-full">
-                  <KnowledgeBase />
-                </div>
-              )}
-
-              {activePanel === "marketplace" && (
-                <div className="h-full w-full">
-                  <AgentMarketplace />
-                </div>
-              )}
-            </div>
+            {activePanel === "marketplace" && (
+              <div className="h-full w-full bg-white dark:bg-neutral-950">
+                <AgentMarketplace />
+              </div>
+            )}
           </main>
+
+          {/* Bottom Dock - Floating on top of canvas */}
+          <BottomDock
+            activePanel={activePanel}
+            onPanelChange={setActivePanel}
+          />
         </div>
       </DndContext>
 
