@@ -23,6 +23,7 @@ class LinkedAccount:
     username: str | None = None
     email: str | None = None
     avatar_url: str | None = None
+    provider_icon_url: str | None = None  # Provider icon/logo URL
     is_valid: bool | None = None  # Token validation status (None = not checked)
 
 
@@ -442,24 +443,27 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
         logger.debug(f"get_linked_accounts: account_info keys: {list(account_info.keys())}")
 
+        # 一次性获取所有 OAuth providers 的配置
+        providers_by_type = self.get_all_oauth_providers()
+
         linked_accounts: list[LinkedAccount] = []
 
-        # Provider field mappings: casdoor_field -> display_name
+        # Provider field mappings: casdoor_field -> (default_display_name, provider_type)
         provider_mappings = {
-            "custom": "Bohrium",
-            "github": "GitHub",
-            "google": "Google",
-            "wechat": "WeChat",
-            "qq": "QQ",
-            "dingtalk": "DingTalk",
-            "weibo": "Weibo",
-            "gitlab": "GitLab",
-            "gitee": "Gitee",
-            "linkedin": "LinkedIn",
-            "facebook": "Facebook",
-            "twitter": "Twitter",
-            "apple": "Apple",
-            "microsoft": "Microsoft",
+            "custom": ("Bohrium", "Custom"),
+            "github": ("GitHub", "GitHub"),
+            "google": ("Google", "Google"),
+            "wechat": ("WeChat", "WeChat"),
+            "qq": ("QQ", "QQ"),
+            "dingtalk": ("DingTalk", "DingTalk"),
+            "weibo": ("Weibo", "Weibo"),
+            "gitlab": ("GitLab", "GitLab"),
+            "gitee": ("Gitee", "Gitee"),
+            "linkedin": ("LinkedIn", "LinkedIn"),
+            "facebook": ("Facebook", "Facebook"),
+            "twitter": ("Twitter", "Twitter"),
+            "apple": ("Apple", "Apple"),
+            "microsoft": ("Microsoft", "Microsoft"),
         }
 
         # Properties may contain additional OAuth info
@@ -469,10 +473,19 @@ class CasdoorAuthProvider(BaseAuthProvider):
         # 主账户头像（可能是从第三方同步过来的）
         main_avatar = account_info.get("avatar")
 
-        for field, display_name in provider_mappings.items():
+        for field, (default_display_name, provider_type) in provider_mappings.items():
             value = account_info.get(field)
             if value:  # Has linked account
                 logger.debug(f"get_linked_accounts: found linked account for {field}: {value}")
+
+                # 从 providers 配置获取显示名称和图标
+                provider_config = providers_by_type.get(provider_type.lower())
+                display_name = (
+                    provider_config.display_name
+                    if provider_config and provider_config.display_name
+                    else default_display_name
+                )
+                icon_url = provider_config.icon_url if provider_config else None
 
                 # Try to get additional info from properties
                 # Casdoor 可能使用不同的命名约定：Custom vs custom
@@ -505,10 +518,68 @@ class CasdoorAuthProvider(BaseAuthProvider):
                         username=username,
                         email=email,
                         avatar_url=avatar,
+                        provider_icon_url=icon_url,
                     )
                 )
 
         return linked_accounts
+
+    def get_all_oauth_providers(self) -> dict[str, ProviderConfig]:
+        """获取所有 OAuth 类型的 Provider 配置
+
+        Returns:
+            dict mapping provider type (lowercase) to ProviderConfig
+        """
+        organization = getattr(self.config, "Organization", "scienceol")
+        client_id = self.audience
+        client_secret = getattr(self.config, "ClientSecret", None)
+
+        if not client_secret:
+            logger.warning("get_all_oauth_providers: ClientSecret not configured, cannot query Casdoor API")
+            return {}
+
+        providers_by_type: dict[str, ProviderConfig] = {}
+
+        for owner in ["admin", organization]:
+            url = f"{self.api_base}/api/get-providers"
+            params = {
+                "owner": owner,
+                "clientId": client_id,
+                "clientSecret": client_secret,
+            }
+
+            try:
+                response = requests.get(url, params=params, timeout=10)
+                if response.ok:
+                    data = response.json()
+                    if data.get("status") == "error":
+                        logger.debug(f"get_all_oauth_providers: API error for owner {owner}: {data.get('msg')}")
+                        continue
+                    providers = data.get("data") or []
+                    for provider_data in providers:
+                        # 只处理 OAuth 类型的 provider
+                        if provider_data.get("category") != "OAuth":
+                            continue
+                        provider_type = provider_data.get("type", "").lower()
+                        if provider_type and provider_type not in providers_by_type:
+                            providers_by_type[provider_type] = ProviderConfig(
+                                name=provider_data.get("name", ""),
+                                display_name=provider_data.get("displayName", ""),
+                                type=provider_data.get("type", ""),
+                                category=provider_data.get("category", ""),
+                                custom_user_info_url=provider_data.get("customUserInfoUrl"),
+                                client_id=provider_data.get("clientId"),
+                                icon_url=provider_data.get("customLogo"),
+                            )
+                    # 找到 providers 后就返回，不再查询下一个 owner
+                    if providers_by_type:
+                        break
+            except Exception as e:
+                logger.debug(f"get_all_oauth_providers: Failed to get providers for owner {owner}: {e}")
+                continue
+
+        logger.debug(f"get_all_oauth_providers: Found {len(providers_by_type)} OAuth providers")
+        return providers_by_type
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig | None:
         """从 Casdoor 获取 OAuth Provider 配置
@@ -729,18 +800,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
         """
         provider_config = self.get_provider_by_type(provider_type)
         return provider_config.custom_user_info_url if provider_config else None
-
-    def get_provider_icon_url(self, provider_type: str) -> str | None:
-        """根据 provider 类型获取 icon URL
-
-        Args:
-            provider_type: Provider 类型 (e.g., "custom", "github")
-
-        Returns:
-            Icon URL if found, None otherwise
-        """
-        provider_config = self.get_provider_by_type(provider_type)
-        return provider_config.icon_url if provider_config else None
 
     def get_link_url(self, provider_type: str, redirect_uri: str) -> str:
         """生成第三方账户重新授权 URL
