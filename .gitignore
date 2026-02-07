@@ -59,6 +59,10 @@ dist/
 # ===== Next.js 项目 =====
 next-env.d.ts
 
+# ===== infra 配置 =====
+
+**/*/init_data.json
+
 # ===== 开发环境配置 =====
 .env
 **.env.*

@@ -71,7 +71,21 @@ check_basics() {
     echo -e "${BRIGHT_YELLOW}未找到 .env.dev 文件，正在从 .env.example 创建...${RESET}"
     cp "${PROJECT_DIR}/docker/.env.example" "${ENV_FILE}"
   fi
-  echo -e "${BRIGHT_GREEN}✓ Docker 和 .env 文件已就绪。${RESET}"
+
+  # Casdoor init_data.json check
+  CASDOOR_INIT_DATA="${PROJECT_DIR}/infra/casdoor/init_data.json"
+  CASDOOR_INIT_EXAMPLE="${PROJECT_DIR}/infra/casdoor/init_data.example.json"
+  if [ ! -f "${CASDOOR_INIT_DATA}" ]; then
+    if [ -f "${CASDOOR_INIT_EXAMPLE}" ]; then
+      echo -e "${BRIGHT_YELLOW}未找到 Casdoor init_data.json，正在从 init_data.example.json 创建...${RESET}"
+      cp "${CASDOOR_INIT_EXAMPLE}" "${CASDOOR_INIT_DATA}"
+    else
+      echo -e "${BRIGHT_RED}❌ 错误：未找到 Casdoor init_data.example.json${RESET}"
+      exit 1
+    fi
+  fi
+
+  echo -e "${BRIGHT_GREEN}✓ Docker 和配置文件已就绪。${RESET}"
 }
 
 # 步骤 2: 配置 Sciol 虚拟环境和 pre-commit

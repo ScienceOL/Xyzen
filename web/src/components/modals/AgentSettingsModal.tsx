@@ -345,9 +345,9 @@ function AvatarSelector({
         <div className="flex-1 flex gap-2">
           <Input
             type="text"
+            placeholder={t("agents.sessionSettings.avatar.seedPlaceholder")}
             value={customSeed}
             onChange={(e) => setCustomSeed(e.target.value)}
-            placeholder={t("agents.sessionSettings.avatar.seedPlaceholder")}
             className="flex-1 h-10 text-sm bg-neutral-50 dark:bg-neutral-800/50"
             onKeyDown={(e) => e.key === "Enter" && generateFromSeed()}
           />

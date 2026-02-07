@@ -3,6 +3,7 @@
 import EditableTitle from "@/components/base/EditableTitle";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { Input } from "@/components/ui/input";
 import { formatTime } from "@/lib/formatDate";
 import { useXyzen } from "@/store";
 import type { ChatHistoryItem } from "@/store/types";
@@ -211,13 +212,11 @@ function SessionHistory({
         <div className="flex items-center gap-2">
           {/* Search Input */}
           <div className="relative flex-1">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-            <input
+            <Input
               type="text"
-              placeholder="搜索对话..."
+              placeholder="搜索对话"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-sm border border-neutral-200 bg-white py-2 pl-9 pr-3 text-sm text-neutral-800 placeholder-neutral-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:placeholder-neutral-500"
             />
             {searchQuery && (
               <button

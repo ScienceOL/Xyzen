@@ -79,7 +79,7 @@ export const createUiSlice: StateCreator<
   isAddMcpServerModalOpen: false,
   isAddLlmProviderModalOpen: false,
   isSettingsModalOpen: false,
-  activeSettingsCategory: "provider",
+  activeSettingsCategory: "account",
   activeUiSetting: "theme",
   selectedProviderId: null,
   pendingInput: "",
@@ -123,7 +123,7 @@ export const createUiSlice: StateCreator<
   closeAddMcpServerModal: () => set({ isAddMcpServerModalOpen: false }),
   openAddLlmProviderModal: () => set({ isAddLlmProviderModalOpen: true }),
   closeAddLlmProviderModal: () => set({ isAddLlmProviderModalOpen: false }),
-  openSettingsModal: (category = "provider") =>
+  openSettingsModal: (category = "account") =>
     set({ isSettingsModalOpen: true, activeSettingsCategory: category }),
   closeSettingsModal: () =>
     set({ isSettingsModalOpen: false, selectedProviderId: null }),

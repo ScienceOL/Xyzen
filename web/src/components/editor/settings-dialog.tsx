@@ -264,17 +264,11 @@ export function SettingsDialog() {
   const renderApiKeyInput = (service: string, label: string) => (
     <div className="group relative">
       <div className="flex items-center justify-between">
-        <label
-          className="-translate-y-1/2 absolute top-1/2 block cursor-text px-1 text-muted-foreground/70 text-sm transition-all group-focus-within:pointer-events-none group-focus-within:top-0 group-focus-within:cursor-default group-focus-within:font-medium group-focus-within:text-foreground group-focus-within:text-xs has-[+input:not(:placeholder-shown)]:pointer-events-none has-[+input:not(:placeholder-shown)]:top-0 has-[+input:not(:placeholder-shown)]:cursor-default has-[+input:not(:placeholder-shown)]:font-medium has-[+input:not(:placeholder-shown)]:text-foreground has-[+input:not(:placeholder-shown)]:text-xs"
-          htmlFor={label}
-        >
-          <span className="inline-flex bg-background px-2">{label}</span>
-        </label>
         <Button
           asChild
           size="icon"
           variant="ghost"
-          className="absolute top-0 right-[28px] h-full"
+          className="absolute top-0 right-[28px] h-full z-10"
         >
           <a
             className="flex items-center"
@@ -294,12 +288,12 @@ export function SettingsDialog() {
 
       <Input
         id={label}
+        placeholder={label}
         className="pr-10"
         value={tempKeys[service]}
         onChange={(e) =>
           setTempKeys((prev) => ({ ...prev, [service]: e.target.value }))
         }
-        placeholder=""
         data-1p-ignore
         type={showKey[service] ? "text" : "password"}
       />

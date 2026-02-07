@@ -7,6 +7,7 @@ import {
   GlobeAltIcon,
   InformationCircleIcon,
   ServerStackIcon,
+  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -14,6 +15,7 @@ import { useTranslation } from "react-i18next";
 
 import {
   AboutSettings,
+  AccountSettings,
   LanguageSettings,
   RedemptionSettings,
   RegionSettings,
@@ -40,6 +42,11 @@ export function SettingsModal() {
   const [showUiDetail, setShowUiDetail] = useState(false);
 
   const categories = [
+    {
+      id: "account",
+      label: t("settings.categories.account"),
+      icon: UserCircleIcon,
+    },
     {
       id: "ui",
       label: t("settings.categories.ui"),
@@ -146,6 +153,8 @@ export function SettingsModal() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-0 md:p-0">
+              {activeSettingsCategory === "account" && <AccountSettings />}
+
               {activeSettingsCategory === "mcp" && <McpSettings />}
 
               {activeSettingsCategory === "region" && <RegionSettings />}

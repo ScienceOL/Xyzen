@@ -1,5 +1,5 @@
 import { Progress } from "@/components/animate-ui/components/radix/progress";
-import { autoLogin } from "@/core/auth";
+import { autoLogin, handleLinkCallback } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
@@ -35,6 +35,10 @@ export interface XyzenProps {
   /** Whether to show the landing page when not authenticated. Default: true */
   showLandingPage?: boolean;
 }
+
+// Handle OAuth link callback in popup - check at module level
+// If we're in a popup at /auth/link-callback, it will close the window
+handleLinkCallback();
 
 export function Xyzen({
   backendUrl = DEFAULT_BACKEND_URL,
