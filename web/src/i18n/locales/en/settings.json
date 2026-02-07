@@ -5,6 +5,7 @@
   },
   "categories": {
     "provider": "Model Providers",
+    "account": "Account",
     "ui": "UI Settings",
     "region": "Service & Region",
     "redemption": "Redemption",
@@ -260,5 +261,31 @@
     "frontend": "Frontend",
     "backend": "Backend",
     "versionMismatch": "Version mismatch detected. Try refreshing the page."
+  },
+  "account": {
+    "title": "Account",
+    "subtitle": "Manage your profile and linked accounts",
+    "avatar": {
+      "title": "Profile Avatar",
+      "hint": "Click the camera icon to upload a new avatar",
+      "success": "Avatar updated successfully",
+      "uploadFailed": "Failed to upload avatar",
+      "invalidType": "Invalid file type. Please use PNG, JPG, GIF, or WebP.",
+      "tooLarge": "File size exceeds 5MB limit."
+    },
+    "displayName": {
+      "edit": "Edit display name",
+      "empty": "Display name cannot be empty",
+      "tooLong": "Display name cannot exceed 50 characters",
+      "updateFailed": "Failed to update display name",
+      "success": "Display name updated successfully"
+    },
+    "linkedTitle": "Linked Accounts",
+    "validateAll": "Validate All",
+    "noAccounts": "No linked accounts found",
+    "valid": "Valid",
+    "expired": "Expired",
+    "reauthorize": "Re-authorize",
+    "note": "Third-party tokens may expire. If a token is expired, click 'Re-authorize' to refresh the connection."
   }
 }

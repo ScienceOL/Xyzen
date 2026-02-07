@@ -5,6 +5,7 @@
   },
   "categories": {
     "provider": "モデルプロバイダー",
+    "account": "アカウント",
     "ui": "UI 設定",
     "region": "サービスと地域",
     "redemption": "引き換え",
@@ -260,5 +261,31 @@
     "frontend": "フロントエンド",
     "backend": "バックエンド",
     "versionMismatch": "バージョンの不一致が検出されました。ページを更新してください。"
+  },
+  "account": {
+    "title": "アカウント",
+    "subtitle": "プロフィールと連携アカウントを管理",
+    "avatar": {
+      "title": "プロフィール画像",
+      "hint": "カメラアイコンをクリックして新しいアバターをアップロード",
+      "success": "アバターを更新しました",
+      "uploadFailed": "アバターのアップロードに失敗しました",
+      "invalidType": "ファイル形式が無効です。PNG、JPG、GIF、またはWebPを使用してください。",
+      "tooLarge": "ファイルサイズが5MBの制限を超えています。"
+    },
+    "displayName": {
+      "edit": "表示名を編集",
+      "empty": "表示名を空にすることはできません",
+      "tooLong": "表示名は50文字を超えることはできません",
+      "updateFailed": "表示名の更新に失敗しました",
+      "success": "表示名を更新しました"
+    },
+    "linkedTitle": "連携アカウント",
+    "validateAll": "すべて検証",
+    "noAccounts": "連携アカウントが見つかりません",
+    "valid": "有効",
+    "expired": "期限切れ",
+    "reauthorize": "再認証",
+    "note": "サードパーティトークンは期限切れになる場合があります。期限切れの場合は、「再認証」をクリックして接続を更新してください。"
   }
 }

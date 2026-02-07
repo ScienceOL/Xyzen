@@ -1,5 +1,5 @@
 import { Progress } from "@/components/animate-ui/components/radix/progress";
-import { autoLogin } from "@/core/auth";
+import { autoLogin, handleRelinkCallback } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
@@ -17,6 +17,9 @@ import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { LandingPage } from "./landing/LandingPage";
+
+// Handle relink callback in popup - check at module level
+handleRelinkCallback();
 
 // 创建 React Query client
 const queryClient = new QueryClient({

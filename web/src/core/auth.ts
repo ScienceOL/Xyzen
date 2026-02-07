@@ -4,11 +4,61 @@ import { useXyzen } from "@/store";
 import { syncTokenFromCookie } from "@/utils/auth";
 
 /**
+ * Handle relink callback in popup window.
+ * Completes the OAuth flow to refresh the third-party token.
+ * Returns true if handled (in popup), false otherwise.
+ */
+export const handleRelinkCallback = async (): Promise<boolean> => {
+  if (typeof window === "undefined") return false;
+
+  // Check if we're at the relink-callback path
+  if (!window.location.pathname.includes("/auth/relink-callback")) return false;
+
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const state = params.get("state");
+
+  // Clean up URL
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  if (code) {
+    try {
+      // Exchange code for token to complete the OAuth flow
+      // This will update the original_token in Casdoor
+      await authService.loginWithCasdoor(code, state || undefined);
+    } catch (err) {
+      console.error("[Auth] Failed to complete relink:", err);
+    }
+  }
+
+  // If we're in a popup, notify parent and close
+  if (window.opener) {
+    try {
+      window.opener.postMessage(
+        { type: "relink_complete" },
+        window.location.origin,
+      );
+    } catch (e) {
+      console.error("[Auth] Failed to notify parent window:", e);
+    }
+    window.close();
+    return true;
+  }
+
+  // Not in popup, redirect to home
+  window.location.href = "/";
+  return true;
+};
+
+/**
  * Handle OAuth authorization code callback (e.g. Casdoor code flow).
  * Returns the access_token if code exchange succeeds, or null.
  */
 const handleOAuthCodeCallback = async (): Promise<string | null> => {
   if (typeof window === "undefined") return null;
+
+  // Skip if this is a relink callback (handled separately)
+  if (window.location.pathname.includes("/auth/relink-callback")) return null;
 
   const params = new URLSearchParams(window.location.search);
   const code = params.get("code");
@@ -42,13 +92,23 @@ const handleOAuthCodeCallback = async (): Promise<string | null> => {
 };
 
 // 辅助函数：将API返回的用户信息映射为Store中的用户格式
-const mapUserInfo = (userInfo: UserInfo) => ({
-  id: userInfo.id,
-  username: userInfo.display_name || userInfo.username || "Unknown",
-  avatar:
-    userInfo.avatar_url ||
-    `https://storage.sciol.ac.cn/library/default_avatar.png`,
-});
+const mapUserInfo = (userInfo: UserInfo) => {
+  console.log(
+    "[Auth] Raw userInfo from API:",
+    JSON.stringify(userInfo, null, 2),
+  );
+  console.log("[Auth] avatar_url field:", userInfo.avatar_url);
+  const mapped = {
+    id: userInfo.id,
+    username: userInfo.display_name || userInfo.username || "Unknown",
+    avatar:
+      userInfo.avatar_url ||
+      `https://storage.sciol.ac.cn/library/default_avatar.png`,
+  };
+  console.log("[Auth] Mapped user:", JSON.stringify(mapped, null, 2));
+  console.log("[Auth] Final avatar value:", mapped.avatar);
+  return mapped;
+};
 
 /**
  * 检查并同步认证状态到Zustand Store

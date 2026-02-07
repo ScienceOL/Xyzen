@@ -1,4 +1,5 @@
 import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 
 export interface TokenInputModalProps {
@@ -35,19 +36,12 @@ export function TokenInputModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label
-            htmlFor="token-input"
-            className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
-          >
-            访问令牌
-          </label>
-          <input
+          <Input
             id="token-input"
             type="password"
+            placeholder="访问令牌"
             value={tokenInput}
             onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="请输入您的访问令牌"
-            className="w-full rounded-sm border border-neutral-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
             autoFocus
             required
           />
