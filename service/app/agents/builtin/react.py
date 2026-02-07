@@ -74,6 +74,7 @@ REACT_CONFIG: GraphConfig = parse_graph_config(
             "author": "Xyzen",
             "pattern": "react",
             "builtin_key": "react",
+            "publishable": False,
         },
     }
 )

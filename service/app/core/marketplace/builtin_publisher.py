@@ -2,12 +2,14 @@ import json
 import logging
 from uuid import UUID
 
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.agents.builtin import get_builtin_config, get_builtin_metadata, list_builtin_keys
 from app.core.marketplace.agent_marketplace_service import AgentMarketplaceService
 from app.models.agent import Agent, AgentCreate, AgentScope, ForkMode
 from app.models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate, MarketplaceScope
+from app.models.agent_snapshot import AgentSnapshot
 from app.repos import AgentMarketplaceRepository, AgentRepository, AgentSnapshotRepository
 from app.schemas.graph_config import GraphConfig
 
@@ -26,12 +28,14 @@ class BuiltinMarketplacePublisher:
 
     async def ensure_builtin_listings(self) -> dict[str, UUID]:
         """
-        Ensure each builtin agent has an OFFICIAL marketplace listing.
+        Ensure each publishable builtin agent has an OFFICIAL marketplace listing.
 
         For each builtin key:
-        - If no listing exists: create Agent, Snapshot, and Marketplace listing.
-        - If listing exists and config changed: update Agent, create new Snapshot, update listing.
-        - If listing exists and config unchanged: no-op.
+        - If not publishable and listing exists: delete listing, backing agent, and snapshots.
+        - If not publishable and no listing: skip.
+        - If publishable and no listing exists: create Agent, Snapshot, and Marketplace listing.
+        - If publishable and listing exists and config changed: update Agent, create new Snapshot, update listing.
+        - If publishable and listing exists and config unchanged: no-op.
 
         Returns:
             Mapping of builtin key to marketplace listing UUID.
@@ -45,7 +49,13 @@ class BuiltinMarketplacePublisher:
                 logger.warning(f"Skipping builtin key '{key}': missing config or metadata")
                 continue
 
+            publishable = metadata.get("publishable", True)
             listing = await self.marketplace_repo.get_by_builtin_key(key)
+
+            if not publishable:
+                if listing is not None:
+                    await self._remove_listing(key, listing)
+                continue
 
             if listing is None:
                 listing = await self._create_listing(key, config, metadata)
@@ -104,6 +114,25 @@ class BuiltinMarketplacePublisher:
         await self.db.flush()
 
         return listing
+
+    async def _remove_listing(self, key: str, listing: AgentMarketplace) -> None:
+        """Remove a stale marketplace listing and its backing agent/snapshots."""
+        agent_id = listing.agent_id
+
+        # Delete marketplace listing first (references snapshot + agent)
+        await self.marketplace_repo.delete_listing(listing.id)
+
+        # Delete snapshots for the backing agent
+        snapshots = await self.db.exec(
+            select(AgentSnapshot).where(AgentSnapshot.agent_id == agent_id)
+        )
+        for snap in snapshots.all():
+            await self.db.delete(snap)
+
+        # Delete backing agent
+        await self.agent_repo.delete_agent(agent_id)
+
+        logger.info(f"Removed stale marketplace listing for non-publishable builtin '{key}'")
 
     async def _update_if_changed(
         self, key: str, config: GraphConfig, metadata: dict[str, str], listing: AgentMarketplace
