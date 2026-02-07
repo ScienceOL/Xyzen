@@ -4,35 +4,49 @@ import { useXyzen } from "@/store";
 import { syncTokenFromCookie } from "@/utils/auth";
 
 /**
- * Handle OAuth link callback in popup window.
- * If we're in a popup at /auth/link-callback, notify parent and close.
+ * Handle relink callback in popup window.
+ * Completes the OAuth flow to refresh the third-party token.
  * Returns true if handled (in popup), false otherwise.
  */
-export const handleLinkCallback = (): boolean => {
+export const handleRelinkCallback = async (): Promise<boolean> => {
   if (typeof window === "undefined") return false;
 
-  // Check if we're at the link-callback path
-  if (!window.location.pathname.includes("/auth/link-callback")) return false;
+  // Check if we're at the relink-callback path
+  if (!window.location.pathname.includes("/auth/relink-callback")) return false;
 
-  // Check if we're in a popup (has opener)
-  if (!window.opener) {
-    // Not in popup, redirect to home
-    window.location.href = "/";
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const state = params.get("state");
+
+  // Clean up URL
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  if (code) {
+    try {
+      // Exchange code for token to complete the OAuth flow
+      // This will update the original_token in Casdoor
+      await authService.loginWithCasdoor(code, state || undefined);
+    } catch (err) {
+      console.error("[Auth] Failed to complete relink:", err);
+    }
+  }
+
+  // If we're in a popup, notify parent and close
+  if (window.opener) {
+    try {
+      window.opener.postMessage(
+        { type: "relink_complete" },
+        window.location.origin,
+      );
+    } catch (e) {
+      console.error("[Auth] Failed to notify parent window:", e);
+    }
+    window.close();
     return true;
   }
 
-  // Notify parent window
-  try {
-    window.opener.postMessage(
-      { type: "oauth_link_complete" },
-      window.location.origin,
-    );
-  } catch (e) {
-    console.error("[Auth] Failed to notify parent window:", e);
-  }
-
-  // Close popup
-  window.close();
+  // Not in popup, redirect to home
+  window.location.href = "/";
   return true;
 };
 
@@ -42,6 +56,9 @@ export const handleLinkCallback = (): boolean => {
  */
 const handleOAuthCodeCallback = async (): Promise<string | null> => {
   if (typeof window === "undefined") return null;
+
+  // Skip if this is a relink callback (handled separately)
+  if (window.location.pathname.includes("/auth/relink-callback")) return null;
 
   const params = new URLSearchParams(window.location.search);
   const code = params.get("code");

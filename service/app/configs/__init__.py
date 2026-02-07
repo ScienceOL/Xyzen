@@ -9,7 +9,6 @@ from .lab import LabConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
 from .mcps import McpProviderConfig
-from .oauth import OAuthProvidersConfig
 from .oss import OSSConfig
 from .redemption import AdminConfig
 from .redis import RedisConfig
@@ -101,11 +100,6 @@ class AppConfig(BaseSettings):
     Image: ImageConfig = Field(
         default_factory=lambda: ImageConfig(),
         description="Image generation configuration",
-    )
-
-    OAuth: OAuthProvidersConfig = Field(
-        default_factory=lambda: OAuthProvidersConfig(),
-        description="OAuth providers configuration for third-party token validation",
     )
 
 
