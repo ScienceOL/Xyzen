@@ -81,6 +81,7 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
         TierModelCandidate(
             model="Vendor2/Claude-4.5-Sonnet",
             provider_type=ProviderType.GPUGEEK,
+            is_fallback=True,
             priority=98,
             # capabilities=["reasoning", "creative", "coding"],
             description="Just use this for detail report generation tasks, such as business reports, market analysis or research papers, never use this for other tasks.",
@@ -138,7 +139,7 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             model="gemini-2.5-flash-lite",
             provider_type=ProviderType.GOOGLE_VERTEX,
             is_fallback=True,
-            priority=1,
+            priority=99,
             capabilities=["fast", "efficient"],
             description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
         ),
