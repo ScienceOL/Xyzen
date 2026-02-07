@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.1.3](https://github.com/ScienceOL/Xyzen/compare/v1.1.2...v1.1.3) (2026-02-07)
+
+### 🐛 Bug Fixes
+
+* knowledgebase list, Trash actions, Stream Stop, Agent Config, Version Name, Region, UI optimized ([e7fbca0](https://github.com/ScienceOL/Xyzen/commit/e7fbca0ef6396b97ab3bbf0cbc1f6cfdbd62b23f)), closes [#221](https://github.com/ScienceOL/Xyzen/issues/221)
+
 ## [1.1.2](https://github.com/ScienceOL/Xyzen/compare/v1.1.1...v1.1.2) (2026-02-06)
 
 ### 🐛 Bug Fixes
