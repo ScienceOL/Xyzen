@@ -1,5 +1,5 @@
 import { Progress } from "@/components/animate-ui/components/radix/progress";
-import { autoLogin, handleLinkCallback } from "@/core/auth";
+import { autoLogin, handleRelinkCallback } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
@@ -18,6 +18,9 @@ import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { LandingPage } from "./landing/LandingPage";
 
+// Handle relink callback in popup - check at module level
+handleRelinkCallback();
+
 // 创建 React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,10 +38,6 @@ export interface XyzenProps {
   /** Whether to show the landing page when not authenticated. Default: true */
   showLandingPage?: boolean;
 }
-
-// Handle OAuth link callback in popup - check at module level
-// If we're in a popup at /auth/link-callback, it will close the window
-handleLinkCallback();
 
 export function Xyzen({
   backendUrl = DEFAULT_BACKEND_URL,

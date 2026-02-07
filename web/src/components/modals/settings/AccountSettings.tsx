@@ -74,7 +74,6 @@ export const AccountSettings = () => {
 
   const handleRelink = async (providerName: string) => {
     try {
-      // Map provider_name to provider_type for Casdoor
       const providerTypeMap: Record<string, string> = {
         custom: "Custom",
         github: "GitHub",
@@ -83,33 +82,33 @@ export const AccountSettings = () => {
       };
       const providerType = providerTypeMap[providerName] || providerName;
 
-      // 使用专门的 popup callback 路径
-      const redirectUri = window.location.origin + "/auth/link-callback";
+      // 回调地址 - 登录完成后会带着 code 回到这里
+      const redirectUri = window.location.origin + "/auth/relink-callback";
 
       const response = await authService.getLinkUrl(providerType, redirectUri);
 
       // 打开 popup 窗口
       const width = 500;
-      const height = 600;
+      const height = 650;
       const left = window.screenX + (window.outerWidth - width) / 2;
       const top = window.screenY + (window.outerHeight - height) / 2;
 
       const popup = window.open(
         response.url,
-        "oauth_popup",
+        "relink_popup",
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
       );
 
       if (!popup) {
-        // Popup 被阻止，回退到页面跳转
-        window.location.href = response.url;
+        setError("Popup blocked. Please allow popups for this site.");
         return;
       }
 
-      // 监听 popup 关闭或消息
+      // 监听 popup 关闭
       const checkPopup = setInterval(() => {
         if (popup.closed) {
           clearInterval(checkPopup);
+          window.removeEventListener("message", handleMessage);
           // 刷新账户列表
           fetchAccounts(true);
         }
@@ -118,7 +117,7 @@ export const AccountSettings = () => {
       // 监听来自 popup 的消息
       const handleMessage = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
-        if (event.data?.type === "oauth_link_complete") {
+        if (event.data?.type === "relink_complete") {
           clearInterval(checkPopup);
           popup.close();
           window.removeEventListener("message", handleMessage);
@@ -129,6 +128,7 @@ export const AccountSettings = () => {
       window.addEventListener("message", handleMessage);
     } catch (err) {
       console.error("Failed to get link URL:", err);
+      setError("Failed to initiate re-authorization");
     }
   };
 
