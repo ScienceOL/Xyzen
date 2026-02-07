@@ -80,7 +80,9 @@
     "moveTo": "移動先...",
     "addToKnowledgeSet": "ナレッジセットに追加",
     "removeFromKnowledgeSet": "ナレッジセットから削除",
-    "delete": "削除"
+    "delete": "削除",
+    "restore": "復元",
+    "deleteForever": "完全に削除"
   },
   "moveModal": {
     "title": "「{{name}}」を移動",

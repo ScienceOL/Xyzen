@@ -88,6 +88,19 @@ export const FileList = React.memo(
       const [folders, setFolders] = useState<Folder[]>([]);
       const [isLoading, setIsLoading] = useState(false);
 
+      // Refs to track current files/folders for imperative handle
+      const filesRef = useRef<FileUploadResponse[]>([]);
+      const foldersRef = useRef<Folder[]>([]);
+
+      // Keep refs in sync with state
+      useEffect(() => {
+        filesRef.current = files;
+      }, [files]);
+
+      useEffect(() => {
+        foldersRef.current = folders;
+      }, [folders]);
+
       // Pagination state for infinite scroll
       const PAGE_SIZE = 100;
       const [hasMoreFiles, setHasMoreFiles] = useState(true);
@@ -327,8 +340,17 @@ export const FileList = React.memo(
         ref,
         () => ({
           emptyTrash: async () => {
-            if (files.length === 0 && folders.length === 0) return;
-            const count = files.length + folders.length;
+            // Use refs to get the latest values (avoid stale closure issues)
+            const currentFiles = filesRef.current;
+            const currentFolders = foldersRef.current;
+
+            if (currentFiles.length === 0 && currentFolders.length === 0)
+              return;
+            const count = currentFiles.length + currentFolders.length;
+
+            // Create copies to use in the confirmation callback
+            const filesToDelete = [...currentFiles];
+            const foldersToDelete = [...currentFolders];
 
             setConfirmation({
               isOpen: true,
@@ -342,19 +364,23 @@ export const FileList = React.memo(
                 try {
                   setIsLoading(true);
                   // Calculate total size before deletion for optimistic update
-                  const totalDeletedBytes = files.reduce(
+                  const totalDeletedBytes = filesToDelete.reduce(
                     (sum, f) => sum + f.file_size,
                     0,
                   );
-                  const totalDeletedFiles = files.length;
+                  const totalDeletedFiles = filesToDelete.length;
 
                   // Hard delete all currently listed files
                   await Promise.all(
-                    files.map((f) => fileService.deleteFile(f.id, true)),
+                    filesToDelete.map((f) =>
+                      fileService.deleteFile(f.id, true),
+                    ),
                   );
                   // Hard delete all currently listed folders
                   await Promise.all(
-                    folders.map((f) => folderService.deleteFolder(f.id, true)),
+                    foldersToDelete.map((f) =>
+                      folderService.deleteFolder(f.id, true),
+                    ),
                   );
 
                   // Optimistic update
@@ -376,7 +402,7 @@ export const FileList = React.memo(
             });
           },
         }),
-        [files, folders, onFileCountChange, onRefresh, onStatsUpdate, t],
+        [onFileCountChange, onRefresh, onStatsUpdate, t],
       );
 
       // Load knowledge sets for the modal
@@ -1405,7 +1431,9 @@ export const FileList = React.memo(
                   ? handleRemoveFromKnowledgeSet
                   : undefined
               }
+              onRestore={(item, type) => handleRestore(item.id, type)}
               isInKnowledgeSetView={filter === "knowledge"}
+              isTrashView={filter === "trash"}
             />
           )}
 

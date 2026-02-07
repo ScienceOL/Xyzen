@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmLabel?: string;
@@ -90,8 +90,8 @@ function ConfirmationModal({
           </AlertDialogCancel>
           <AlertDialogAction
             autoFocus
-            onClick={() => {
-              onConfirm();
+            onClick={async () => {
+              await onConfirm();
               onClose();
             }}
             className={cn(
