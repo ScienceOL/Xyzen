@@ -6,6 +6,7 @@ import {
   DOCK_HORIZONTAL_MARGIN,
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
 import { fileService, type UploadHandle } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
 import { knowledgeSetService } from "@/service/knowledgeSetService";
@@ -406,16 +407,21 @@ export const KnowledgeLayout = () => {
 
   return (
     <div
-      className="flex h-full w-full overflow-hidden bg-[#f2ede4] dark:bg-neutral-950 text-neutral-900 dark:text-white pt-4 gap-4"
-      style={{
-        paddingBottom: DOCK_SAFE_AREA,
-        paddingLeft: DOCK_HORIZONTAL_MARGIN,
-        paddingRight: DOCK_HORIZONTAL_MARGIN,
-      }}
+      className="flex h-full w-full overflow-hidden bg-[#f2ede4] dark:bg-neutral-950 text-neutral-900 dark:text-white gap-4"
+      style={
+        window.innerWidth < MOBILE_BREAKPOINT
+          ? {}
+          : {
+              paddingTop: 16,
+              paddingBottom: DOCK_SAFE_AREA,
+              paddingLeft: DOCK_HORIZONTAL_MARGIN,
+              paddingRight: DOCK_HORIZONTAL_MARGIN,
+            }
+      }
     >
       {/* Desktop Sidebar - Frosted Glass */}
       <div className="hidden md:flex h-full">
-        <div className="h-full rounded-2xl overflow-hidden bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-white/30 dark:border-neutral-700/50 shadow-lg">
+        <div className="h-full sm:rounded-2xl overflow-hidden bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-white/30 dark:border-neutral-700/50 shadow-lg">
           <Sidebar
             activeTab={activeTab}
             currentKnowledgeSetId={currentKnowledgeSetId}
@@ -451,7 +457,7 @@ export const KnowledgeLayout = () => {
 
       {/* Main Area - Frosted Glass */}
       <div
-        className="flex flex-1 flex-col min-w-0 rounded-2xl overflow-hidden bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-white/30 dark:border-neutral-700/50 shadow-lg relative"
+        className="flex flex-1 flex-col min-w-0 sm:rounded-2xl overflow-hidden bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-white/30 dark:border-neutral-700/50 shadow-lg relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useVersion } from "@/hooks/useVersion";
 import { useXyzen } from "@/store";
 import {
   CalendarDaysIcon,
@@ -19,6 +20,7 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
+import { Github, Globe } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -342,6 +344,82 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// Version info component (GitHub + Version + Region)
+const GITHUB_REPO = "https://github.com/ScienceOL/Xyzen";
+
+function VersionInfo() {
+  const { backend } = useVersion();
+  const [hovered, setHovered] = useState(false);
+
+  // Current region - hardcoded as international for now
+  const isInternational = true;
+
+  return (
+    <div
+      className="relative flex items-center gap-1.5"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* GitHub Link */}
+      <a
+        href={GITHUB_REPO}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center h-7 w-7 rounded-md transition-colors hover:bg-white/50 dark:hover:bg-neutral-700/50"
+      >
+        <Github className="h-4 w-4 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" />
+      </a>
+
+      {/* Version + Region */}
+      <div className="flex items-center gap-1">
+        {/* Version Number */}
+        <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+          {backend.version || "..."}
+        </span>
+
+        {/* Region Indicator - subtle globe icon */}
+        <div
+          className="flex items-center justify-center h-4 w-4 rounded-sm"
+          title={isInternational ? "International" : "China Mainland"}
+        >
+          <Globe
+            className={cn(
+              "h-3 w-3 transition-colors",
+              isInternational
+                ? "text-indigo-400/60 dark:text-indigo-500/60"
+                : "text-emerald-400/60 dark:text-emerald-500/60",
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Tooltip on hover */}
+      <AnimatePresence>
+        {hovered && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-1.5 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-medium">
+                {isInternational ? "International" : "China"}
+              </span>
+              <span className="text-neutral-400 dark:text-neutral-500">•</span>
+              <span className="text-neutral-300 dark:text-neutral-600">
+                {backend.versionName || backend.version}
+              </span>
+            </div>
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-100" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // Status bar item (right side)
 function StatusBarItem({
   icon: Icon,
@@ -495,6 +573,12 @@ export function BottomDock({
 
             {/* Right Section: Status Bar */}
             <div className="flex items-center gap-2">
+              {/* Version Info - GitHub + Version + Region */}
+              <VersionInfo />
+
+              {/* Divider */}
+              <div className="h-6 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
+
               {/* Check-in Button (only for authenticated users) */}
               {isAuthedForUi && (
                 <StatusBarItem

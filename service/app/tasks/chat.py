@@ -652,18 +652,25 @@ async def _process_chat_message_async(
             if is_aborted:
                 logger.info(f"Processing abort for {connection_id}")
 
-                # Save partial content with interrupted marker
-                if ai_message_obj:
-                    ai_message_obj.content = full_content
+                # Ensure we have a message object to save the abort state
+                if not ai_message_obj:
+                    ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
+                    ai_message_obj = await message_repo.create_message(ai_message_create)
+                    ai_message_id = str(ai_message_obj.id)
+                    logger.info(f"Created message {ai_message_id} for abort state")
+
+                # Save partial content
+                ai_message_obj.content = full_content
+                db.add(ai_message_obj)
+
+                # Save thinking content if any
+                if full_thinking_content:
+                    ai_message_obj.thinking_content = full_thinking_content
                     db.add(ai_message_obj)
 
-                    # Save thinking content if any
-                    if full_thinking_content:
-                        ai_message_obj.thinking_content = full_thinking_content
-                        db.add(ai_message_obj)
-
-                # Update AgentRun status to cancelled
+                # Handle AgentRun - create if not exists, or update existing
                 if agent_run_id:
+                    # Update existing AgentRun to cancelled
                     try:
                         agent_run_repo = AgentRunRepository(db)
                         await agent_run_repo.finalize(
@@ -675,6 +682,43 @@ async def _process_chat_message_async(
                         logger.debug(f"Marked AgentRun {agent_run_id} as cancelled")
                     except Exception as e:
                         logger.error(f"Failed to cancel AgentRun: {e}")
+                else:
+                    # Create a new AgentRun with cancelled status so the abort indicator shows on refresh
+                    try:
+                        agent_run_repo = AgentRunRepository(db)
+                        abort_time = time.time()
+                        agent_run_create = AgentRunCreate(
+                            message_id=ai_message_obj.id,
+                            execution_id=f"aborted_{int(abort_time)}",
+                            agent_id="",
+                            agent_name="",
+                            agent_type="react",
+                            status="cancelled",
+                            started_at=abort_time,
+                            ended_at=abort_time,
+                            duration_ms=0,
+                            node_data={
+                                "timeline": [
+                                    {
+                                        "event_type": "agent_start",
+                                        "timestamp": abort_time,
+                                    },
+                                    {
+                                        "event_type": "agent_end",
+                                        "timestamp": abort_time,
+                                        "status": "cancelled",
+                                    },
+                                ],
+                                "node_outputs": {},
+                                "node_order": [],
+                                "node_names": {},
+                            },
+                        )
+                        agent_run = await agent_run_repo.create(agent_run_create)
+                        agent_run_id = agent_run.id
+                        logger.info(f"Created cancelled AgentRun {agent_run_id} for early abort")
+                    except Exception as e:
+                        logger.error(f"Failed to create cancelled AgentRun: {e}")
 
                 # Partial settlement - only charge for tokens actually consumed
                 if ai_message_obj:

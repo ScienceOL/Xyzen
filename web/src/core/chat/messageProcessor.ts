@@ -516,14 +516,51 @@ export function reconstructAgentExecutionFromMetadata(
     }
   }
 
-  if (phases.length === 0) return undefined;
+  if (phases.length === 0) {
+    // Even with no phases, create an execution state for cancelled status
+    // This allows the abort indicator to show on refresh
+    const status = (agent_metadata.status as string) || "completed";
+    if (status === "cancelled") {
+      return {
+        agentId: (agent_metadata.agent_id as string) || "unknown",
+        agentName: (agent_metadata.agent_name as string) || "Agent",
+        agentType: (agent_metadata.agent_type as string) || "react",
+        executionId: (agent_metadata.execution_id as string) || "unknown",
+        status: "cancelled",
+        startedAt: Date.now(),
+        phases: [],
+        subagents: [],
+      };
+    }
+    return undefined;
+  }
+
+  // Determine status from metadata - check timeline for agent_end status
+  let executionStatus: "completed" | "cancelled" | "failed" = "completed";
+  if (timeline) {
+    const agentEndEntry = timeline.find(
+      (entry) => entry.event_type === "agent_end",
+    ) as { event_type: string; status?: string } | undefined;
+    if (agentEndEntry?.status === "cancelled") {
+      executionStatus = "cancelled";
+    } else if (agentEndEntry?.status === "failed") {
+      executionStatus = "failed";
+    }
+  }
+  // Also check direct status field from metadata
+  const directStatus = agent_metadata.status as string | undefined;
+  if (directStatus === "cancelled") {
+    executionStatus = "cancelled";
+  } else if (directStatus === "failed") {
+    executionStatus = "failed";
+  }
 
   return {
     agentId: (agent_metadata.agent_id as string) || "unknown",
     agentName: (agent_metadata.agent_name as string) || "Agent",
     agentType: (agent_metadata.agent_type as string) || "graph",
     executionId: (agent_metadata.execution_id as string) || "unknown",
-    status: "completed",
+    status: executionStatus,
     startedAt: Date.now(),
     phases,
     subagents: [],

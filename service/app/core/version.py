@@ -15,18 +15,85 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
+class VersionCodename:
+    """Version codename with name and bilingual descriptions."""
+
+    name: str
+    description_zh: str
+    description_en: str
+
+
+# Version codename mapping: major version -> (codename, zh_description, en_description)
+# Using Chinese scenic locations as codenames (similar to macOS using California locations)
+# All releases within a major version share the same codename (e.g., 1.0, 1.1, 1.2 are all "Wumeng")
+VERSION_CODENAMES: dict[str, VersionCodename] = {
+    "1": VersionCodename(
+        "Wumeng",
+        "乌蒙山，地跨云贵两省，磅礴万里，雄奇险峻。毛泽东词《七律·长征》赞曰：“乌蒙磅礴走泥丸”。",
+        "Wumeng Mountains span Yunnan and Guizhou provinces, majestic and precipitous. Mao Zedong's poemerta praised: 'The China Wumeng range, peaks of mud rolled underfoot.'",
+    ),
+    "2": VersionCodename(
+        "Yushe",
+        "玉舍国家森林公园，林海雪原，南方罕见的高山滑雪胜地。",
+        "Yushe National Forest Park, a sea of forests and snowy plains, one of the rare alpine ski resorts in southern China.",
+    ),
+    "3": VersionCodename(
+        "Jiucai",
+        "韭菜坪，贵州屋脊，海拔2900米，秋季野韭菜花海磅礴壮观。",
+        "Jiucai Peak, the roof of Guizhou at 2900m elevation, featuring magnificent wild chive flower seas in autumn.",
+    ),
+    "4": VersionCodename(
+        "Zangke",
+        "牂牁江，夜郎故地，峡谷湖泊，山水相依。",
+        "Zangke River, ancient land of Yelang Kingdom, where canyon lakes meet mountains in harmony.",
+    ),
+    "5": VersionCodename(
+        "Tuole",
+        "妥乐银杏村，千年古树，金秋满村金黄，如诗如画。",
+        "Tuole Ginkgo Village, home to thousand-year-old trees, painted golden in autumn like a living poem.",
+    ),
+}
+
+
+def _get_version_codename(version: str) -> VersionCodename:
+    """
+    Get codename for a version.
+
+    Extracts major version from version string and looks up the codename.
+    All minor/patch versions within the same major version share the same codename.
+    Falls back to unknown if not found.
+    """
+    try:
+        parts = version.lstrip("v").split(".")
+        if len(parts) >= 1:
+            major = parts[0]
+            codename = VERSION_CODENAMES.get(major)
+            if codename:
+                return codename
+    except Exception:
+        pass
+    return VersionCodename("Unknown", "未知版本", "Unknown version")
+
+
+@dataclass(frozen=True)
 class VersionInfo:
     """Immutable version information container."""
 
     version: str
     commit: str
     build_time: str
+    version_name: str = ""
+    version_description_zh: str = ""
+    version_description_en: str = ""
     backend: str = "fastapi"
 
     def to_dict(self) -> dict[str, str]:
         """Convert to dictionary for JSON serialization."""
         return {
             "version": self.version,
+            "version_name": self.version_name,
+            "version_description_zh": self.version_description_zh,
+            "version_description_en": self.version_description_en,
             "commit": self.commit,
             "build_time": self.build_time,
             "backend": self.backend,
@@ -118,8 +185,13 @@ def get_version_info() -> VersionInfo:
     Returns:
         VersionInfo: Immutable version information object
     """
+    version = _get_version()
+    codename = _get_version_codename(version)
     return VersionInfo(
-        version=_get_version(),
+        version=version,
         commit=_get_commit(),
         build_time=_get_build_time(),
+        version_name=codename.name,
+        version_description_zh=codename.description_zh,
+        version_description_en=codename.description_en,
     )

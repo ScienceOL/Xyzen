@@ -6,9 +6,45 @@
   "categories": {
     "provider": "模型供应商",
     "ui": "界面设置",
+    "region": "服务与地区",
     "redemption": "兑换码",
     "mcp": "MCP服务器",
     "about": "关于"
+  },
+  "region": {
+    "title": "服务与地区",
+    "subtitle": "选择适合您所在地区的服务版本",
+    "currentRegion": "当前版本",
+    "comingSoon": "即将推出",
+    "synced": "同步",
+    "notSynced": "独立",
+    "paymentMethods": "支付方式",
+    "internationalCard": "国际信用卡",
+    "wechatPay": "微信支付",
+    "alipay": "支付宝",
+    "international": {
+      "title": "国际版",
+      "subtitle": "面向全球用户的服务"
+    },
+    "china": {
+      "title": "中国大陆版",
+      "subtitle": "针对中国大陆优化的服务"
+    },
+    "features": {
+      "account": "账号系统",
+      "community": "社区内容",
+      "models": "AI 模型",
+      "modelsNote": "全球旗舰模型",
+      "chinaModelsNote": "国产旗舰模型",
+      "subscription": "订阅服务",
+      "subscriptionNote": "价格与方案独立",
+      "chinaSubscriptionNote": "人民币定价",
+      "chatData": "聊天数据"
+    },
+    "note": {
+      "title": "关于数据同步",
+      "description": "账号和社区内容在两个版本之间同步，但聊天数据、订阅和 AI 模型配置是独立的，以确保最佳的本地化体验和数据合规性。"
+    }
   },
   "provider": {
     "emptyHint": "请选择或添加一个模型服务商"

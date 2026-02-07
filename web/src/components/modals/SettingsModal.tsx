@@ -4,6 +4,7 @@ import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
   GiftIcon,
+  GlobeAltIcon,
   InformationCircleIcon,
   ServerStackIcon,
 } from "@heroicons/react/24/outline";
@@ -15,6 +16,7 @@ import {
   AboutSettings,
   LanguageSettings,
   RedemptionSettings,
+  RegionSettings,
   StyleSettings,
   ThemeSettings,
   UiSettings,
@@ -52,6 +54,11 @@ export function SettingsModal() {
       id: "redemption",
       label: t("settings.categories.redemption"),
       icon: GiftIcon,
+    },
+    {
+      id: "region",
+      label: t("settings.categories.region"),
+      icon: GlobeAltIcon,
     },
     {
       id: "about",
@@ -140,6 +147,8 @@ export function SettingsModal() {
 
             <div className="flex-1 overflow-y-auto p-0 md:p-0">
               {activeSettingsCategory === "mcp" && <McpSettings />}
+
+              {activeSettingsCategory === "region" && <RegionSettings />}
 
               {activeSettingsCategory === "ui" && (
                 <div className="flex h-full flex-col md:flex-row">

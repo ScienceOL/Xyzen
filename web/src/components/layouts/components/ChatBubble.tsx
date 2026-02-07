@@ -318,7 +318,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="group relative w-full pl-8 my-10 first:mt-2"
+        className="group relative w-full pl-8 my-6 first:mt-2"
       >
         {/* Avatar - positioned to the left */}
         <div className="absolute left-0 top-1">{renderAvatar()}</div>
@@ -381,10 +381,11 @@ function ChatBubble({ message }: ChatBubbleProps) {
                   />
                 )}
 
-                {/* Agent execution timeline - show for all agents with phases */}
+                {/* Agent execution timeline - show for all agents with phases or cancelled status */}
                 {!isUserMessage &&
                   agentExecution &&
-                  agentExecution.phases.length > 0 && (
+                  (agentExecution.phases.length > 0 ||
+                    agentExecution.status === "cancelled") && (
                     <AgentExecutionTimeline
                       execution={agentExecution}
                       isExecuting={agentExecution.status === "running"}

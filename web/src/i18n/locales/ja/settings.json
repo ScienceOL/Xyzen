@@ -6,9 +6,45 @@
   "categories": {
     "provider": "モデルプロバイダー",
     "ui": "UI 設定",
+    "region": "サービスと地域",
     "redemption": "引き換え",
     "mcp": "MCPサーバー",
     "about": "このアプリについて"
+  },
+  "region": {
+    "title": "サービスと地域",
+    "subtitle": "お住まいの地域に適したサービスバージョンを選択",
+    "currentRegion": "現在",
+    "comingSoon": "近日公開",
+    "synced": "同期",
+    "notSynced": "独立",
+    "paymentMethods": "支払い方法",
+    "internationalCard": "クレジットカード",
+    "wechatPay": "WeChat Pay",
+    "alipay": "Alipay",
+    "international": {
+      "title": "国際版",
+      "subtitle": "世界中のユーザー向けサービス"
+    },
+    "china": {
+      "title": "中国大陸版",
+      "subtitle": "中国向けに最適化されたサービス"
+    },
+    "features": {
+      "account": "アカウントシステム",
+      "community": "コミュニティコンテンツ",
+      "models": "AIモデル",
+      "modelsNote": "ティアごとに異なるモデル",
+      "chinaModelsNote": "国内モデル",
+      "subscription": "サブスクリプション",
+      "subscriptionNote": "独立した価格設定",
+      "chinaSubscriptionNote": "人民元価格",
+      "chatData": "チャットデータ"
+    },
+    "note": {
+      "title": "データ同期について",
+      "description": "アカウントとコミュニティコンテンツはバージョン間で同期されますが、チャットデータ、サブスクリプション、AIモデル設定は、最適なローカライズ体験とデータコンプライアンスを確保するために独立しています。"
+    }
   },
   "provider": {
     "emptyHint": "モデルプロバイダーを選択または追加してください"

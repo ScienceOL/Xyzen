@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import { Github } from "lucide-react";
 import { StarsBackground } from "@/components/animate-ui/components/backgrounds/stars";
 import { RippleButton } from "@/components/animate-ui/components/buttons/ripple";
 import { Typewriter } from "@/components/animate-ui/components/texts/typewriter";
@@ -65,7 +66,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               onClick={handleLearnMore}
               className="px-8 py-4 text-lg font-semibold rounded-lg border border-white/30 text-white bg-transparent hover:bg-white/10 transition-colors"
             >
-              {t("landing.hero.cta_secondary")}
+              <Github className="w-5 h-5 mr-2" />
+              GitHub
             </RippleButton>
           </motion.div>
         </div>
