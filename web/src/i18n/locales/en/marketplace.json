@@ -46,8 +46,12 @@
   },
   "card": {
     "by": "by {{author}}",
+    "byOfficial": "Xyzen",
     "noDescription": "No description provided",
     "tagsMore": "+{{count}} more"
+  },
+  "badge": {
+    "official": "Official"
   },
   "detail": {
     "loading": "Loading agent details...",

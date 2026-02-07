@@ -46,8 +46,12 @@
   },
   "card": {
     "by": "作成者：{{author}}",
+    "byOfficial": "Xyzen",
     "noDescription": "説明はありません",
     "tagsMore": "他{{count}}件"
+  },
+  "badge": {
+    "official": "公式"
   },
   "detail": {
     "loading": "エージェント詳細を読み込み中...",

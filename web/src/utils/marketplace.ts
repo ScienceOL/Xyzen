@@ -14,6 +14,9 @@ export const useIsMarketplaceOwner = (
 
   if (!listing || !user?.username) return false;
 
+  // OFFICIAL listings have no owner
+  if (!listing.user_id) return false;
+
   // Handle multiple ID formats for flexible ownership comparison
   return (
     listing.user_id === user.username ||

@@ -75,6 +75,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Don't fail startup if system agents can't be created
             pass
 
+    # Publish builtin agents to marketplace
+    from app.core.marketplace import BuiltinMarketplacePublisher
+
+    async with AsyncSessionLocal() as db:
+        try:
+            publisher = BuiltinMarketplacePublisher(db)
+            listings = await publisher.ensure_builtin_listings()
+            await db.commit()
+            logger.info(f"Builtin marketplace listings ensured: {list(listings.keys())}")
+        except Exception as e:
+            logger.error(f"Failed to publish builtin agents to marketplace: {e}")
+            await db.rollback()
+
     # 自动创建和管理所有 MCP 服务器
     from app.mcp import registry
 

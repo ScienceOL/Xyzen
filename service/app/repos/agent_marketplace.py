@@ -7,7 +7,12 @@ from sqlmodel import asc, case, col, desc, func, or_, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.agent_like import AgentLike
-from app.models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate
+from app.models.agent_marketplace import (
+    AgentMarketplace,
+    AgentMarketplaceCreate,
+    AgentMarketplaceUpdate,
+    MarketplaceScope,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,8 @@ class AgentMarketplaceRepository:
             avatar=listing_data.avatar,
             tags=listing_data.tags,
             readme=listing_data.readme,
+            scope=listing_data.scope,
+            builtin_key=listing_data.builtin_key,
         )
 
         self.db.add(listing)
@@ -74,6 +81,21 @@ class AgentMarketplaceRepository:
         """
         logger.debug(f"Fetching marketplace listing for agent_id: {agent_id}")
         statement = select(AgentMarketplace).where(AgentMarketplace.agent_id == agent_id)
+        result = await self.db.exec(statement)
+        return result.first()
+
+    async def get_by_builtin_key(self, builtin_key: str) -> AgentMarketplace | None:
+        """
+        Fetches a marketplace listing by its builtin agent key.
+
+        Args:
+            builtin_key: The builtin agent key (e.g., "react", "deep_research").
+
+        Returns:
+            The AgentMarketplace, or None if not found.
+        """
+        logger.debug(f"Fetching marketplace listing for builtin_key: {builtin_key}")
+        statement = select(AgentMarketplace).where(AgentMarketplace.builtin_key == builtin_key)
         result = await self.db.exec(statement)
         return result.first()
 
@@ -134,6 +156,7 @@ class AgentMarketplaceRepository:
         tags: list[str] | None = None,
         user_id: str | None = None,
         only_published: bool = True,
+        scope: MarketplaceScope | None = None,
         sort_by: Literal["likes", "forks", "views", "recent", "oldest"] = "recent",
         limit: int = 20,
         offset: int = 0,
@@ -161,6 +184,10 @@ class AgentMarketplaceRepository:
         if only_published:
             statement = statement.where(col(AgentMarketplace.is_published).is_(True))
 
+        # Filter by scope
+        if scope:
+            statement = statement.where(AgentMarketplace.scope == scope)
+
         # Filter by user
         if user_id:
             statement = statement.where(AgentMarketplace.user_id == user_id)
@@ -183,16 +210,21 @@ class AgentMarketplaceRepository:
             statement = statement.where(or_(*tag_conditions))
 
         # Sorting
+        # For all sort modes, put OFFICIAL listings first as a secondary sort
+        official_first = case(
+            (AgentMarketplace.scope == MarketplaceScope.OFFICIAL, 0),
+            else_=1,
+        )
         if sort_by == "likes":
-            statement = statement.order_by(desc(AgentMarketplace.likes_count))
+            statement = statement.order_by(official_first, desc(AgentMarketplace.likes_count))
         elif sort_by == "forks":
-            statement = statement.order_by(desc(AgentMarketplace.forks_count))
+            statement = statement.order_by(official_first, desc(AgentMarketplace.forks_count))
         elif sort_by == "views":
-            statement = statement.order_by(desc(AgentMarketplace.views_count))
+            statement = statement.order_by(official_first, desc(AgentMarketplace.views_count))
         elif sort_by == "recent":
-            statement = statement.order_by(desc(AgentMarketplace.updated_at))
+            statement = statement.order_by(official_first, desc(AgentMarketplace.updated_at))
         elif sort_by == "oldest":
-            statement = statement.order_by(asc(AgentMarketplace.created_at))
+            statement = statement.order_by(official_first, asc(AgentMarketplace.created_at))
 
         # Pagination
         statement = statement.limit(limit).offset(offset)
@@ -342,6 +374,7 @@ class AgentMarketplaceRepository:
         tags: list[str] | None = None,
         user_id: str | None = None,
         only_published: bool = True,
+        scope: MarketplaceScope | None = None,
     ) -> int:
         """
         Counts marketplace listings matching the filters.
@@ -359,6 +392,9 @@ class AgentMarketplaceRepository:
 
         if only_published:
             statement = statement.where(col(AgentMarketplace.is_published).is_(True))
+
+        if scope:
+            statement = statement.where(AgentMarketplace.scope == scope)
 
         if user_id:
             statement = statement.where(AgentMarketplace.user_id == user_id)

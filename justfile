@@ -116,23 +116,23 @@ check: check-backend check-web
 
 # Generate a new migration
 migrate message:
-    docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic revision --autogenerate -m '{{ message }}'"
+    docker exec sciol-xyzen-service-1 sh -c "uv run alembic revision --autogenerate -m '{{ message }}'"
 
 # Apply all pending migrations
 migrate-up:
-    docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic upgrade head"
+    docker exec sciol-xyzen-service-1 sh -c "uv run alembic upgrade head"
 
 # Rollback one migration
 migrate-down:
-    docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic downgrade -1"
+    docker exec sciol-xyzen-service-1 sh -c "uv run alembic downgrade -1"
 
 # Show migration history
 migrate-history:
-    docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic history"
+    docker exec sciol-xyzen-service-1 sh -c "uv run alembic history"
 
 # Show current migration version
 migrate-current:
-    docker exec -it sciol-xyzen-service-1 sh -c "uv run alembic current"
+    docker exec sciol-xyzen-service-1 sh -c "uv run alembic current"
 
 # List all database tables
 db-tables:

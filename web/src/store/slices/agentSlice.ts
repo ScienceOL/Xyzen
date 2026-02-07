@@ -6,7 +6,6 @@ import type {
   AgentStatsAggregated,
   AgentWithLayout,
   DailyStatsResponse,
-  SystemAgentTemplate,
   YesterdaySummary,
 } from "@/types/agents";
 import type { StateCreator } from "zustand";
@@ -29,11 +28,6 @@ export interface AgentSlice {
   // Yesterday summary for each agent
   yesterdaySummary: Record<string, YesterdaySummary>;
 
-  // System agent templates
-  systemAgentTemplates: SystemAgentTemplate[];
-  templatesLoading: boolean;
-  fetchSystemAgentTemplates: () => Promise<void>;
-
   fetchAgents: () => Promise<void>;
   fetchAgentStats: () => Promise<void>;
   fetchDailyActivity: () => Promise<void>;
@@ -42,10 +36,6 @@ export interface AgentSlice {
 
   isCreatingAgent: boolean;
   createAgent: (agent: Omit<Agent, "id">) => Promise<string | undefined>;
-  createAgentFromTemplate: (
-    systemKey: string,
-    customName?: string,
-  ) => Promise<string | undefined>;
   updateAgent: (agent: Agent | AgentWithLayout) => Promise<void>;
   updateAgentLayout: (
     agentId: string,
@@ -107,34 +97,7 @@ export const createAgentSlice: StateCreator<
   dailyActivity: {},
   yesterdaySummary: {},
 
-  // System agent templates state
-  systemAgentTemplates: [],
-  templatesLoading: false,
-
   isCreatingAgent: false,
-
-  fetchSystemAgentTemplates: async () => {
-    set({ templatesLoading: true });
-    try {
-      const response = await fetch(
-        `${get().backendUrl}/xyzen/api/v1/agents/templates/system`,
-        {
-          headers: createAuthHeaders(),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch system agent templates");
-      }
-
-      const templates: SystemAgentTemplate[] = await response.json();
-      set({ systemAgentTemplates: templates, templatesLoading: false });
-    } catch (error) {
-      console.error("Failed to fetch system agent templates:", error);
-      set({ templatesLoading: false });
-      throw error;
-    }
-  },
 
   fetchAgents: async () => {
     set({ agentsLoading: true });
@@ -377,59 +340,6 @@ export const createAgentSlice: StateCreator<
         throw new Error(`Failed to create agent: ${errorText}`);
       }
       const createdAgent = await response.json();
-
-      // Directly add to local state instead of refetching all agents
-      const existingAgents = get().agents;
-      const newAgent: AgentWithLayout = {
-        ...createdAgent,
-        spatial_layout: defaultSpatialLayoutForIndex(existingAgents.length),
-      };
-      set({ agents: [...existingAgents, newAgent] });
-
-      return createdAgent.id as string;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    } finally {
-      set({ isCreatingAgent: false });
-    }
-  },
-
-  createAgentFromTemplate: async (systemKey: string, customName?: string) => {
-    const { isCreatingAgent } = get();
-    if (isCreatingAgent) {
-      console.log("Agent creation already in progress");
-      return undefined;
-    }
-
-    set({ isCreatingAgent: true });
-    try {
-      const url = `${get().backendUrl}/xyzen/api/v1/agents/from-template/${systemKey}`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: createAuthHeaders(),
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to create agent from template: ${errorText}`);
-      }
-
-      let createdAgent = await response.json();
-
-      // If custom name provided, update the agent
-      if (customName) {
-        const updateResponse = await fetch(
-          `${get().backendUrl}/xyzen/api/v1/agents/${createdAgent.id}`,
-          {
-            method: "PATCH",
-            headers: createAuthHeaders(),
-            body: JSON.stringify({ name: customName }),
-          },
-        );
-        if (updateResponse.ok) {
-          createdAgent = { ...createdAgent, name: customName };
-        }
-      }
 
       // Directly add to local state instead of refetching all agents
       const existingAgents = get().agents;

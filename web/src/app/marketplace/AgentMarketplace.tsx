@@ -458,13 +458,22 @@ function AgentListingCard({
               </div>
             )}
             <div className="flex flex-col">
-              <h3 className="line-clamp-1 text-lg font-bold text-neutral-900 dark:text-neutral-100">
-                {listing.name}
-              </h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="line-clamp-1 text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                  {listing.name}
+                </h3>
+                {listing.scope === "official" && (
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                    {t("marketplace.badge.official")}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {t("marketplace.card.by", {
-                  author: listing.user_id.split("@")[0] || listing.user_id,
-                })}
+                {listing.scope === "official"
+                  ? t("marketplace.card.byOfficial", { defaultValue: "Xyzen" })
+                  : t("marketplace.card.by", {
+                      author: (listing.user_id ?? "").split("@")[0] || listing.user_id,
+                    })}
               </p>
             </div>
           </div>

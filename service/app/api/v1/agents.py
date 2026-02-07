@@ -19,7 +19,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.agents.types import SystemAgentInfo
 from app.common.code import ErrCodeError, handle_auth_error
 from app.core.auth import AuthorizationService, get_auth_service
 from app.core.system_agent import SystemAgentManager
@@ -136,95 +135,6 @@ async def get_agents(
         agents_with_details.append(AgentReadWithDetails(**agent_dict))
 
     return agents_with_details
-
-
-@router.get("/templates/system", response_model=list[SystemAgentInfo])
-async def get_system_agent_templates(
-    user: str = Depends(get_current_user),
-) -> list[SystemAgentInfo]:
-    """
-    Get all available system agent templates that users can add.
-
-    Returns a list of system agents (like ReAct, Deep Research) that users
-    can create instances of. Each template includes metadata about the agent's
-    capabilities and purpose.
-
-    Args:
-        user: Authenticated user ID (injected by dependency)
-
-    Returns:
-        list[SystemAgentInfo]: List of available system agent templates
-    """
-    # Lazy import to avoid circular dependency
-    from app.agents.factory import list_available_system_agents
-
-    return list_available_system_agents()
-
-
-@router.post("/from-template/{system_key}", response_model=AgentRead)
-async def create_agent_from_template(
-    system_key: str,
-    user_id: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-) -> AgentRead:
-    """
-    Create a new agent from a system agent template.
-
-    This creates a user agent with the system agent's graph_config pre-populated,
-    allowing users to use or customize system agents like Deep Research.
-
-    Args:
-        system_key: Key of the system agent template (e.g., "react", "deep_research")
-        user_id: Authenticated user ID (injected by dependency)
-        db: Database session (injected by dependency)
-
-    Returns:
-        AgentRead: The newly created agent with graph_config from the template
-
-    Raises:
-        HTTPException: 404 if system agent template not found
-    """
-    from app.agents.builtin import get_builtin_config, get_builtin_metadata
-
-    # Get the builtin config
-    builtin_config = get_builtin_config(system_key)
-    if not builtin_config:
-        raise HTTPException(status_code=404, detail=f"System agent template '{system_key}' not found")
-
-    # Get metadata for display info
-    metadata = get_builtin_metadata(system_key)
-    display_name = metadata.get("display_name", system_key) if metadata else system_key
-    description = metadata.get("description", "") if metadata else ""
-
-    # Export config for forking
-    graph_config_dict = builtin_config.model_dump()
-
-    # Simplify prompt_config to only show custom_instructions
-    # (hide verbose PromptConfig defaults from user)
-    if graph_config_dict.get("prompt_config"):
-        graph_config_dict["prompt_config"] = {
-            "custom_instructions": graph_config_dict["prompt_config"].get("custom_instructions", "")
-        }
-
-    # Track builtin provenance in UI metadata (metadata is strict and execution-agnostic).
-    if not isinstance(graph_config_dict.get("ui"), dict):
-        graph_config_dict["ui"] = {}
-    graph_config_dict["ui"]["builtin_key"] = system_key
-
-    # Create the agent with the exported graph_config
-    agent_data = AgentCreate(
-        scope=AgentScope.USER,
-        name=f"{display_name} (Custom)",
-        description=description,
-        tags=["forked", f"from:{system_key}"],
-        graph_config=graph_config_dict,
-    )
-
-    agent_repo = AgentRepository(db)
-    created_agent = await agent_repo.create_agent(agent_data, user_id)
-
-    await db.commit()
-    return AgentRead(**created_agent.model_dump())
 
 
 class AgentReorderRequest(BaseModel):

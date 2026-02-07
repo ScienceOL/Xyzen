@@ -46,8 +46,12 @@
   },
   "card": {
     "by": "来自 {{author}}",
+    "byOfficial": "Xyzen",
     "noDescription": "暂无描述",
     "tagsMore": "+{{count}} 更多"
+  },
+  "badge": {
+    "official": "官方"
   },
   "detail": {
     "loading": "正在加载助手详情...",

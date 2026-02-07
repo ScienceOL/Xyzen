@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any
 from langgraph.graph.state import CompiledStateGraph
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.agents.types import DynamicCompiledGraph, LLMFactory, SystemAgentInfo
+from app.agents.types import DynamicCompiledGraph, LLMFactory
 from app.core.chat.agent_event_handler import AgentEventContext
 
 if TYPE_CHECKING:
@@ -442,35 +442,3 @@ async def create_agent_from_builtin(
     except Exception as e:
         logger.error(f"Failed to build builtin agent '{builtin_key}': {e}")
         return None
-
-
-def list_available_system_agents() -> list[SystemAgentInfo]:
-    """
-    List all available system/builtin agents.
-
-    Returns:
-        List of system agent metadata dictionaries
-    """
-    from app.agents.builtin import list_builtin_metadata
-
-    result: list[SystemAgentInfo] = []
-
-    for metadata in list_builtin_metadata():
-        result.append(
-            {
-                "key": metadata["key"],
-                "metadata": {
-                    "name": metadata["display_name"],
-                    "description": metadata.get("description", ""),
-                    "version": metadata.get("version", "1.0.0"),
-                    "capabilities": [],
-                    "tags": [],
-                    "author": metadata.get("author"),
-                    "license": None,
-                },
-                "forkable": metadata.get("forkable", True),
-                "components": [],  # Components are now registered globally
-            }
-        )
-
-    return result
