@@ -70,6 +70,7 @@
   },
   "status": {
     "items": "{{count}} items",
+    "used": "{{used}} used",
     "usedOfTotal": "{{used}} of {{total}} used",
     "available": "{{available}} available"
   },
@@ -79,7 +80,9 @@
     "moveTo": "Move to...",
     "addToKnowledgeSet": "Add to Knowledge Set",
     "removeFromKnowledgeSet": "Remove from Knowledge Set",
-    "delete": "Delete"
+    "delete": "Delete",
+    "restore": "Restore",
+    "deleteForever": "Delete Forever"
   },
   "moveModal": {
     "title": "Move \"{{name}}\"",

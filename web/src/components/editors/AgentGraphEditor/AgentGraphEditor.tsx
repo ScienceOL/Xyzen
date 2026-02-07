@@ -46,7 +46,7 @@ const reactFlowDarkModeStyles = `
   }
 `;
 
-import type { GraphConfig, NodeType } from "@/types/graphConfig";
+import type { GraphConfig, GraphNodeKind } from "@/types/graphConfig";
 import FloatingConfigPanel from "./FloatingConfigPanel";
 import NodePanel from "./NodePanel";
 import { nodeTypes } from "./nodes";
@@ -193,7 +193,7 @@ function AgentGraphEditorInner({
 
       const type = event.dataTransfer.getData(
         "application/agentnode",
-      ) as NodeType;
+      ) as GraphNodeKind;
       if (!type || !reactFlowInstance || !reactFlowWrapper.current) {
         return;
       }

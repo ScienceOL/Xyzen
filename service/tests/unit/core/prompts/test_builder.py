@@ -12,7 +12,12 @@ from app.core.prompts.blocks import (
     PersonaBlock,
     ToolInstructionBlock,
 )
-from app.core.prompts.builder import ImageModelPromptBuilder, TextModelPromptBuilder, build_system_prompt
+from app.core.prompts.builder import (
+    ImageModelPromptBuilder,
+    TextModelPromptBuilder,
+    build_system_prompt,
+    build_system_prompt_with_provenance,
+)
 from app.core.prompts.defaults import DEFAULT_PROMPT_CONFIG, get_prompt_config_from_graph_config
 from app.models.agent import Agent
 from app.schemas.prompt_config import PromptConfig
@@ -189,6 +194,28 @@ async def test_build_system_prompt_with_graph_config():
     assert "You are CustomBot" in prompt
     assert "a custom assistant" in prompt
     assert "Be helpful and concise." in prompt
+
+
+@pytest.mark.asyncio
+async def test_build_system_prompt_with_provenance():
+    db = MagicMock()
+    agent = MagicMock(spec=Agent)
+    agent.prompt = None
+    agent.knowledge_set_id = "knowledge_base_123"
+    agent.graph_config = {
+        "prompt_config": {
+            "custom_instructions": "Focus on concise answers.",
+        }
+    }
+
+    result = await build_system_prompt_with_provenance(db, agent, "gpt-4")
+
+    assert "Focus on concise answers." in result.prompt
+    assert result.provenance["layer_order"] == ["platform_policy_prompt", "agent_prompt", "node_prompt"]
+    assert result.provenance["has_platform_policy_prompt"] is True
+    assert result.provenance["has_agent_prompt"] is True
+    assert result.provenance["agent_prompt_source"] == "graph_config.prompt_config"
+    assert "Focus on concise answers." not in str(result.provenance)
 
 
 @pytest.mark.asyncio

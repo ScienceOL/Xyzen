@@ -68,9 +68,9 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
   const title = assistant
     ? `Start a conversation with ${assistant.title}`
     : "欢迎使用自由对话";
-  const description =
-    assistant?.description ||
-    "您现在可以自由提问任何问题。无需选择特定助手，系统将根据您的问题提供合适的回复。";
+  const description = assistant
+    ? assistant.description || "此助手没有任何描述"
+    : "您现在可以自由提问任何问题。无需选择特定助手，系统将根据您的问题提供合适的回复。";
 
   return (
     <motion.div

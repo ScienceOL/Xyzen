@@ -167,7 +167,32 @@ class ConsumeService:
                 update_data = ConsumeRecordUpdate(consume_state=record.consume_state)
                 await self.consume_repo.update_consume_record(record.id, update_data)
             else:
-                logger.info(f"Non-bohr_app provider ({auth_provider}), skipping remote consume")
+                # Non-bohr_app provider: virtual balance is the only source
+                # If virtual balance couldn't cover the cost, reject the request
+                logger.warning(
+                    f"Non-bohr_app provider ({auth_provider}), insufficient virtual balance. "
+                    f"Required: {amount_from_remote}, available: 0"
+                )
+
+                # Refund any virtual balance that was already deducted
+                if amount_from_virtual > 0:
+                    await self.redemption_repo.credit_wallet(user_id, amount_from_virtual)
+                    logger.info(
+                        f"Refunded {amount_from_virtual} to user {user_id} virtual balance due to insufficient balance"
+                    )
+
+                # Update record state to failed
+                update_data = ConsumeRecordUpdate(
+                    consume_state="failed",
+                    remote_error=f"Insufficient virtual balance for {auth_provider} user",
+                )
+                await self.consume_repo.update_consume_record(record.id, update_data)
+                record.consume_state = "failed"
+                record.remote_error = f"Insufficient virtual balance for {auth_provider} user"
+
+                raise ErrCode.INSUFFICIENT_BALANCE.with_messages(
+                    f"积分余额不足，当前余额: {virtual_balance}，需要: {amount}"
+                )
         else:
             logger.info("Consumption fully covered by virtual balance, no remote billing needed")
 

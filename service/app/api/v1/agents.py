@@ -206,10 +206,10 @@ async def create_agent_from_template(
             "custom_instructions": graph_config_dict["prompt_config"].get("custom_instructions", "")
         }
 
-    # Add builtin_key to metadata so the agent can reference the builtin at runtime
-    if "metadata" not in graph_config_dict:
-        graph_config_dict["metadata"] = {}
-    graph_config_dict["metadata"]["builtin_key"] = system_key
+    # Track builtin provenance in UI metadata (metadata is strict and execution-agnostic).
+    if not isinstance(graph_config_dict.get("ui"), dict):
+        graph_config_dict["ui"] = {}
+    graph_config_dict["ui"]["builtin_key"] = system_key
 
     # Create the agent with the exported graph_config
     agent_data = AgentCreate(

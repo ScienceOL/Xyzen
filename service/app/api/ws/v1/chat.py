@@ -192,7 +192,7 @@ async def chat_websocket(
                                 "data": {
                                     "error_code": "INSUFFICIENT_BALANCE",
                                     "message": "Insufficient photon balance",
-                                    "message_cn": "光子余额不足，请充值后继续使用",
+                                    "message_cn": "积分余额不足，请充值后继续使用",
                                     "details": e.as_dict(),
                                     "action_required": "recharge",
                                 },
@@ -286,7 +286,7 @@ async def chat_websocket(
                             "data": {
                                 "error_code": "INSUFFICIENT_BALANCE",
                                 "message": "Insufficient photon balance",
-                                "message_cn": "光子余额不足，请充值后继续使用",
+                                "message_cn": "积分余额不足，请充值后继续使用",
                                 "details": e.as_dict(),
                                 "action_required": "recharge",
                             },

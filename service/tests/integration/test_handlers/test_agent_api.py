@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.agent import AgentScope
+from app.models.agent import Agent, AgentScope
 from app.models.sessions import SessionCreate
 from app.repos.session import SessionRepository
 from tests.factories.agent import AgentCreateFactory
@@ -95,3 +95,36 @@ class TestAgentAPI:
         response = await async_client.get("/xyzen/api/v1/agents/")
         agents = response.json()
         assert not any(a["name"] == "随便聊聊" for a in agents)
+
+    async def test_delete_legacy_graph_config_agent(self, async_client: AsyncClient, db_session: AsyncSession):
+        """Delete should work even if agent graph_config is legacy/non-v3."""
+        legacy_agent = Agent(
+            scope=AgentScope.USER,
+            user_id="test-user-id",
+            name="legacy-delete",
+            graph_config={
+                "version": "2.0",
+                "nodes": [
+                    {
+                        "id": "agent",
+                        "name": "Legacy Agent",
+                        "type": "llm",
+                        "llm_config": {"prompt_template": "legacy"},
+                    }
+                ],
+                "edges": [
+                    {"from_node": "START", "to_node": "agent"},
+                    {"from_node": "agent", "to_node": "END"},
+                ],
+                "entry_point": "agent",
+            },
+        )
+        db_session.add(legacy_agent)
+        await db_session.commit()
+        await db_session.refresh(legacy_agent)
+
+        response = await async_client.delete(f"/xyzen/api/v1/agents/{legacy_agent.id}")
+        assert response.status_code == 204
+
+        deleted = await db_session.get(Agent, legacy_agent.id)
+        assert deleted is None

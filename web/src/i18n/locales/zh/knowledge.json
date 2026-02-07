@@ -70,6 +70,7 @@
   },
   "status": {
     "items": "{{count}} 个项目",
+    "used": "已使用 {{used}}",
     "usedOfTotal": "已使用 {{used}} / {{total}}",
     "available": "可用 {{available}}"
   },
@@ -79,7 +80,9 @@
     "moveTo": "移动到...",
     "addToKnowledgeSet": "添加到知识库",
     "removeFromKnowledgeSet": "从知识库移除",
-    "delete": "删除"
+    "delete": "删除",
+    "restore": "恢复",
+    "deleteForever": "永久删除"
   },
   "moveModal": {
     "title": "移动「{{name}}」",

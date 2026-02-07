@@ -14,6 +14,7 @@ import React, { Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
@@ -366,7 +367,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
                   </pre>
                 ) : (
                   <div
-                    className="shiki-container [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 [&_pre]:!overflow-visible [&_pre]:!whitespace-pre-wrap [&_pre]:!break-all [&_code]:!bg-transparent [&_code]:!font-mono [&_code]:!text-sm [&_code>span:first-child]:!pl-[2px]"
+                    className="shiki-container [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 [&_pre]:!overflow-visible [&_pre]:!whitespace-pre-wrap [&_pre]:!break-all [&_code]:!bg-transparent [&_code]:!font-mono [&_code]:!text-sm [&_code>span:first-child]:!pl-[2px] [&_code:hover]:![color:inherit] [&_code:hover]:![background-color:transparent]"
                     dangerouslySetInnerHTML={{ __html: highlightedHtml }}
                   />
                 )}
@@ -834,7 +835,12 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
     >
       <ReactMarkdown
         components={MarkdownComponents}
-        remarkPlugins={[remarkMath, remarkGfm, remarkStrongQuotedText]}
+        remarkPlugins={[
+          remarkMath,
+          remarkGfm,
+          remarkBreaks,
+          remarkStrongQuotedText,
+        ]}
         rehypePlugins={[rehypeKatex]}
       >
         {content}

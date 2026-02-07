@@ -70,6 +70,7 @@
   },
   "status": {
     "items": "{{count}}個のアイテム",
+    "used": "{{used}}使用中",
     "usedOfTotal": "{{used}} / {{total}}使用中",
     "available": "{{available}}利用可能"
   },
@@ -79,7 +80,9 @@
     "moveTo": "移動先...",
     "addToKnowledgeSet": "ナレッジセットに追加",
     "removeFromKnowledgeSet": "ナレッジセットから削除",
-    "delete": "削除"
+    "delete": "削除",
+    "restore": "復元",
+    "deleteForever": "完全に削除"
   },
   "moveModal": {
     "title": "「{{name}}」を移動",

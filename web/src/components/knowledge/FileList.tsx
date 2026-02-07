@@ -28,6 +28,7 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useInView } from "react-intersection-observer";
 import { ContextMenu, type ContextMenuType } from "./ContextMenu";
 import { FileIcon } from "./FileIcon";
 import { ImageThumbnail } from "./ImageThumbnail";
@@ -40,6 +41,7 @@ interface FileListProps {
   refreshTrigger: number;
   onRefresh?: () => void;
   onFileCountChange?: (count: number) => void;
+  onStatsUpdate?: (deletedBytes: number, deletedFileCount: number) => void;
   currentFolderId: string | null;
   onFolderChange?: (folderId: string | null) => void;
   currentKnowledgeSetId?: string | null;
@@ -74,6 +76,7 @@ export const FileList = React.memo(
         refreshTrigger,
         onRefresh,
         onFileCountChange,
+        onStatsUpdate,
         currentFolderId,
         onFolderChange,
         currentKnowledgeSetId,
@@ -84,6 +87,37 @@ export const FileList = React.memo(
       const [files, setFiles] = useState<FileUploadResponse[]>([]);
       const [folders, setFolders] = useState<Folder[]>([]);
       const [isLoading, setIsLoading] = useState(false);
+
+      // Refs to track current files/folders for imperative handle
+      const filesRef = useRef<FileUploadResponse[]>([]);
+      const foldersRef = useRef<Folder[]>([]);
+
+      // Keep refs in sync with state
+      useEffect(() => {
+        filesRef.current = files;
+      }, [files]);
+
+      useEffect(() => {
+        foldersRef.current = folders;
+      }, [folders]);
+
+      // Pagination state for infinite scroll
+      const PAGE_SIZE = 100;
+      const [hasMoreFiles, setHasMoreFiles] = useState(true);
+      const [isLoadingMore, setIsLoadingMore] = useState(false);
+      const filesOffsetRef = useRef(0);
+
+      // useInView for infinite scroll trigger
+      const { ref: loadMoreRef, inView } = useInView({
+        threshold: 0,
+        rootMargin: "200px",
+      });
+
+      // Track inView state in a ref for use in loadFiles callback
+      const inViewRef = useRef(inView);
+      useEffect(() => {
+        inViewRef.current = inView;
+      }, [inView]);
 
       // Preview State
       const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
@@ -306,8 +340,17 @@ export const FileList = React.memo(
         ref,
         () => ({
           emptyTrash: async () => {
-            if (files.length === 0 && folders.length === 0) return;
-            const count = files.length + folders.length;
+            // Use refs to get the latest values (avoid stale closure issues)
+            const currentFiles = filesRef.current;
+            const currentFolders = foldersRef.current;
+
+            if (currentFiles.length === 0 && currentFolders.length === 0)
+              return;
+            const count = currentFiles.length + currentFolders.length;
+
+            // Create copies to use in the confirmation callback
+            const filesToDelete = [...currentFiles];
+            const foldersToDelete = [...currentFolders];
 
             setConfirmation({
               isOpen: true,
@@ -320,14 +363,30 @@ export const FileList = React.memo(
               onConfirm: async () => {
                 try {
                   setIsLoading(true);
+                  // Calculate total size before deletion for optimistic update
+                  const totalDeletedBytes = filesToDelete.reduce(
+                    (sum, f) => sum + f.file_size,
+                    0,
+                  );
+                  const totalDeletedFiles = filesToDelete.length;
+
                   // Hard delete all currently listed files
                   await Promise.all(
-                    files.map((f) => fileService.deleteFile(f.id, true)),
+                    filesToDelete.map((f) =>
+                      fileService.deleteFile(f.id, true),
+                    ),
                   );
                   // Hard delete all currently listed folders
                   await Promise.all(
-                    folders.map((f) => folderService.deleteFolder(f.id, true)),
+                    foldersToDelete.map((f) =>
+                      folderService.deleteFolder(f.id, true),
+                    ),
                   );
+
+                  // Optimistic update
+                  if (onStatsUpdate) {
+                    onStatsUpdate(totalDeletedBytes, totalDeletedFiles);
+                  }
 
                   setFiles([]);
                   setFolders([]);
@@ -343,7 +402,7 @@ export const FileList = React.memo(
             });
           },
         }),
-        [files, folders, onFileCountChange, onRefresh, t],
+        [onFileCountChange, onRefresh, onStatsUpdate, t],
       );
 
       // Load knowledge sets for the modal
@@ -359,93 +418,192 @@ export const FileList = React.memo(
         loadKnowledgeSets();
       }, [refreshTrigger]);
 
-      const loadFiles = useCallback(async () => {
-        setIsLoading(true);
-        try {
-          // Handle Knowledge Set view
-          if (filter === "knowledge" && currentKnowledgeSetId) {
-            // Get file IDs linked to this knowledge set
-            const fileIds = await knowledgeSetService.getFilesInKnowledgeSet(
-              currentKnowledgeSetId,
-            );
-
-            // Fetch file details for each ID
-            if (fileIds.length > 0) {
-              const filePromises = fileIds.map((id) =>
-                fileService.getFile(id).catch(() => null),
-              );
-              const filesData = await Promise.all(filePromises);
-              const validFiles = filesData.filter(
-                (f) => f !== null && !f.is_deleted,
-              ) as FileUploadResponse[];
-              setFiles(validFiles);
-              setFolders([]);
-              if (onFileCountChange) onFileCountChange(validFiles.length);
-            } else {
-              setFiles([]);
-              setFolders([]);
-              if (onFileCountChange) onFileCountChange(0);
-            }
-            return;
-          }
-
-          if (filter === "folders") {
-            // ... (existing logic)
-            const folderData = await folderService.listFolders(
-              currentFolderId || null,
-            );
-            setFolders(folderData);
-            const fileData = await fileService.listFiles({
-              folder_id: currentFolderId || null,
-              filter_by_folder: true,
-            });
-            setFiles(fileData);
-            if (onFileCountChange)
-              onFileCountChange(fileData.length + folderData.length);
-            return;
-          }
-
-          const params: { category?: string; include_deleted: boolean } = {
-            include_deleted: filter === "trash",
-          };
-
-          if (["images", "audio", "documents"].includes(filter)) {
-            params.category = filter;
-          }
-
-          const data = await fileService.listFiles(params);
-
-          let filteredData = data;
-
-          if (filter === "trash") {
-            filteredData = data.filter((f) => f.is_deleted);
-            // Also fetch deleted folders for Trash view (Root only for now)
-            const deletedFolders = await folderService.listFolders(null, true);
-            // Filter to show only deleted ones (backend might return all if include_deleted is just a flag)
-            // Backend `get_folders_by_user`: `if not include_deleted: statement = statement.where(Folder.is_deleted == False)`
-            // So if include_deleted=True, it returns BOTH active and deleted.
-            // We need to filter client side for Trash view.
-            setFolders(deletedFolders.filter((f) => f.is_deleted));
+      const loadFiles = useCallback(
+        async (append: boolean = false) => {
+          if (append) {
+            setIsLoadingMore(true);
           } else {
-            filteredData = data.filter((f) => !f.is_deleted);
-            setFolders([]);
+            setIsLoading(true);
+            filesOffsetRef.current = 0;
+            setHasMoreFiles(true);
           }
 
-          setFiles(filteredData);
+          try {
+            // Handle Knowledge Set view (no pagination for now)
+            if (filter === "knowledge" && currentKnowledgeSetId) {
+              const fileIds = await knowledgeSetService.getFilesInKnowledgeSet(
+                currentKnowledgeSetId,
+              );
 
-          if (onFileCountChange) {
-            onFileCountChange(filteredData.length); // + folders?
+              if (fileIds.length > 0) {
+                const filePromises = fileIds.map((id) =>
+                  fileService.getFile(id).catch(() => null),
+                );
+                const filesData = await Promise.all(filePromises);
+                const validFiles = filesData.filter(
+                  (f) => f !== null && !f.is_deleted,
+                ) as FileUploadResponse[];
+                setFiles(validFiles);
+                setFolders([]);
+                setHasMoreFiles(false);
+                if (onFileCountChange) onFileCountChange(validFiles.length);
+              } else {
+                setFiles([]);
+                setFolders([]);
+                setHasMoreFiles(false);
+                if (onFileCountChange) onFileCountChange(0);
+              }
+              return;
+            }
+
+            // Handle Folders view with pagination
+            if (filter === "folders") {
+              let folderCount = folders.length;
+              if (!append) {
+                const folderData = await folderService.listFolders(
+                  currentFolderId || null,
+                );
+                setFolders(folderData);
+                folderCount = folderData.length;
+              }
+
+              const fileData = await fileService.listFiles({
+                folder_id: currentFolderId || null,
+                filter_by_folder: true,
+                limit: PAGE_SIZE,
+                offset: filesOffsetRef.current,
+              });
+
+              if (append) {
+                setFiles((prev) => {
+                  const newFiles = [...prev, ...fileData];
+                  if (onFileCountChange) {
+                    setTimeout(
+                      () => onFileCountChange(newFiles.length + folderCount),
+                      0,
+                    );
+                  }
+                  return newFiles;
+                });
+              } else {
+                setFiles(fileData);
+                if (onFileCountChange) {
+                  onFileCountChange(fileData.length + folderCount);
+                }
+              }
+
+              filesOffsetRef.current += fileData.length;
+              setHasMoreFiles(fileData.length === PAGE_SIZE);
+              return;
+            }
+
+            // Handle other views (home, all, trash, etc.) with pagination
+            const params: {
+              category?: string;
+              include_deleted: boolean;
+              limit: number;
+              offset: number;
+            } = {
+              include_deleted: filter === "trash",
+              limit: PAGE_SIZE,
+              offset: filesOffsetRef.current,
+            };
+
+            if (["images", "audio", "documents"].includes(filter)) {
+              params.category = filter;
+            }
+
+            const data = await fileService.listFiles(params);
+
+            let filteredData = data;
+
+            if (filter === "trash") {
+              filteredData = data.filter((f) => f.is_deleted);
+              if (!append) {
+                const deletedFolders = await folderService.listFolders(
+                  null,
+                  true,
+                );
+                setFolders(deletedFolders.filter((f) => f.is_deleted));
+              }
+            } else {
+              filteredData = data.filter((f) => !f.is_deleted);
+              if (!append) {
+                setFolders([]);
+              }
+            }
+
+            if (append) {
+              setFiles((prev) => {
+                const newFiles = [...prev, ...filteredData];
+                if (onFileCountChange) {
+                  setTimeout(() => onFileCountChange(newFiles.length), 0);
+                }
+                return newFiles;
+              });
+            } else {
+              setFiles(filteredData);
+              if (onFileCountChange) {
+                onFileCountChange(filteredData.length);
+              }
+            }
+
+            // offset 应该增加 API 返回的原始数量，而不是过滤后的数量
+            filesOffsetRef.current += data.length;
+            setHasMoreFiles(data.length === PAGE_SIZE);
+          } catch (error) {
+            console.error("Failed to load files", error);
+          } finally {
+            setIsLoading(false);
+            setIsLoadingMore(false);
           }
-        } catch (error) {
-          console.error("Failed to load files", error);
-        } finally {
-          setIsLoading(false);
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [filter, currentFolderId, currentKnowledgeSetId, onFileCountChange],
+      );
+
+      // Load more files when scrolling to bottom
+      const loadMoreFiles = useCallback(() => {
+        if (!isLoadingMore && hasMoreFiles) {
+          loadFiles(true);
         }
-      }, [filter, currentFolderId, currentKnowledgeSetId, onFileCountChange]);
+      }, [isLoadingMore, hasMoreFiles, loadFiles]);
 
       useEffect(() => {
         loadFiles();
       }, [loadFiles, refreshTrigger]);
+
+      // Trigger load more when scrolling into view
+      // Key insight: we need to trigger not just when inView changes to true,
+      // but also when loading finishes while still in view
+      useEffect(() => {
+        if (inView && hasMoreFiles && !isLoadingMore && !isLoading) {
+          loadMoreFiles();
+        }
+      }, [inView, hasMoreFiles, isLoadingMore, isLoading, loadMoreFiles]);
+
+      // Additional check: when loading finishes and still in view, continue loading
+      // This handles the case where the trigger element stays in view after loading
+      const prevLoadingMoreRef = useRef(isLoadingMore);
+      useEffect(() => {
+        const wasLoading = prevLoadingMoreRef.current;
+        prevLoadingMoreRef.current = isLoadingMore;
+
+        // If we just finished loading and are still in view with more data available
+        if (
+          wasLoading &&
+          !isLoadingMore &&
+          inViewRef.current &&
+          hasMoreFiles &&
+          !isLoading
+        ) {
+          // Use setTimeout to allow React to settle before triggering next load
+          const timer = setTimeout(() => {
+            loadMoreFiles();
+          }, 50);
+          return () => clearTimeout(timer);
+        }
+      }, [isLoadingMore, hasMoreFiles, isLoading, loadMoreFiles]);
 
       const handleContextMenu = (
         e: React.MouseEvent,
@@ -608,6 +766,15 @@ export const FileList = React.memo(
           const totalCount = selectedFileIds.length + selectedFolderIds.length;
           const isHardDelete = filter === "trash";
 
+          // Calculate total size of selected files for optimistic update
+          const selectedFiles = files.filter((f) =>
+            selectedFileIds.includes(f.id),
+          );
+          const totalDeletedBytes = selectedFiles.reduce(
+            (sum, f) => sum + f.file_size,
+            0,
+          );
+
           setConfirmation({
             isOpen: true,
             title: isHardDelete
@@ -636,6 +803,12 @@ export const FileList = React.memo(
                     ),
                   );
                 }
+
+                // Optimistic update - only for hard delete (permanent deletion releases space)
+                if (isHardDelete && onStatsUpdate) {
+                  onStatsUpdate(totalDeletedBytes, selectedFileIds.length);
+                }
+
                 setSelectedIds(new Set());
                 loadFiles();
                 if (onRefresh) onRefresh();
@@ -653,6 +826,10 @@ export const FileList = React.memo(
           type === "folder"
             ? t("knowledge.fileList.itemTypes.folder")
             : t("knowledge.fileList.itemTypes.file");
+
+        // Get file size for optimistic update
+        const fileSize =
+          type === "file" ? (item as FileUploadResponse).file_size : 0;
 
         setConfirmation({
           isOpen: true,
@@ -672,6 +849,12 @@ export const FileList = React.memo(
               } else {
                 await fileService.deleteFile(item.id, isHardDelete);
               }
+
+              // Optimistic update - only for hard delete (permanent deletion releases space)
+              if (isHardDelete && type === "file" && onStatsUpdate) {
+                onStatsUpdate(fileSize, 1);
+              }
+
               setSelectedIds(new Set());
               loadFiles();
               if (onRefresh) onRefresh();
@@ -690,6 +873,10 @@ export const FileList = React.memo(
           ? t("knowledge.fileList.deleteForever.message")
           : t("knowledge.fileList.moveToTrash.message");
 
+        // Get file size for optimistic update
+        const fileToDelete = files.find((f) => f.id === fileId);
+        const fileSize = fileToDelete?.file_size || 0;
+
         setConfirmation({
           isOpen: true,
           title: isHardDelete
@@ -703,6 +890,12 @@ export const FileList = React.memo(
           onConfirm: async () => {
             try {
               await fileService.deleteFile(fileId, isHardDelete);
+
+              // Optimistic update - only for hard delete (permanent deletion releases space)
+              if (isHardDelete && onStatsUpdate) {
+                onStatsUpdate(fileSize, 1);
+              }
+
               setFiles((prev) => {
                 const next = prev.filter((f) => f.id !== fileId);
                 if (onFileCountChange) onFileCountChange(next.length);
@@ -1194,6 +1387,20 @@ export const FileList = React.memo(
             </div>
           )}
 
+          {/* Load more trigger for infinite scroll */}
+          {hasMoreFiles && (
+            <div
+              ref={loadMoreRef}
+              className="flex items-center justify-center py-4"
+            >
+              {isLoadingMore && (
+                <span className="text-sm text-neutral-500">
+                  {t("common.loading")}
+                </span>
+              )}
+            </div>
+          )}
+
           {contextMenu && (
             <ContextMenu
               type={contextMenu.type}
@@ -1224,7 +1431,9 @@ export const FileList = React.memo(
                   ? handleRemoveFromKnowledgeSet
                   : undefined
               }
+              onRestore={(item, type) => handleRestore(item.id, type)}
               isInKnowledgeSetView={filter === "knowledge"}
+              isTrashView={filter === "trash"}
             />
           )}
 

@@ -6,9 +6,45 @@
   "categories": {
     "provider": "Model Providers",
     "ui": "UI Settings",
+    "region": "Service & Region",
     "redemption": "Redemption",
     "mcp": "MCP Servers",
     "about": "About"
+  },
+  "region": {
+    "title": "Service & Region",
+    "subtitle": "Choose the service version for your region",
+    "currentRegion": "Current",
+    "comingSoon": "Coming Soon",
+    "synced": "Synced",
+    "notSynced": "Separate",
+    "paymentMethods": "Payment Methods",
+    "internationalCard": "Credit Card",
+    "wechatPay": "WeChat Pay",
+    "alipay": "Alipay",
+    "international": {
+      "title": "International",
+      "subtitle": "Global service for worldwide users"
+    },
+    "china": {
+      "title": "China Mainland",
+      "subtitle": "Optimized service for China"
+    },
+    "features": {
+      "account": "Account System",
+      "community": "Community Content",
+      "models": "AI Models",
+      "modelsNote": "Different models per tier",
+      "chinaModelsNote": "Domestic models",
+      "subscription": "Subscription",
+      "subscriptionNote": "Independent pricing",
+      "chinaSubscriptionNote": "CNY pricing",
+      "chatData": "Chat Data"
+    },
+    "note": {
+      "title": "About Data Sync",
+      "description": "Account and community content sync between versions, but chat data, subscriptions, and AI model configurations are separate to ensure the best localized experience and data compliance."
+    }
   },
   "provider": {
     "emptyHint": "Select or add a model provider"

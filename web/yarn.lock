@@ -5407,7 +5407,7 @@ __metadata:
     "@radix-ui/react-slot": "npm:^1.2.4"
     "@radix-ui/react-toolbar": "npm:^1.1.11"
     "@radix-ui/react-tooltip": "npm:^1.2.8"
-    "@tabler/icons-react": "npm:^3.35.0"
+    "@tabler/icons-react": "npm:^3.36.1"
     "@tailwindcss/vite": "npm:^4.1.11"
     "@tanstack/react-query": "npm:^5.83.0"
     "@types/jsdom": "npm:^27"
@@ -5448,11 +5448,11 @@ __metadata:
     little-date: "npm:^1.2.1"
     lodash: "npm:^4.17.21"
     lowlight: "npm:^3.3.0"
-    lucide-react: "npm:^0.562.0"
+    lucide-react: "npm:^0.563.0"
     mermaid: "npm:^11.12.2"
     mini-svg-data-uri: "npm:^1.4.4"
     monaco-editor: "npm:^0.55.1"
-    motion: "npm:^12.26.2"
+    motion: "npm:^12.33.0"
     next-themes: "npm:^0.4.6"
     pdf-lib: "npm:^1.17.1"
     pdfjs-dist: "npm:^5.4.449"
@@ -5466,6 +5466,7 @@ __metadata:
     react-dom: "npm:^19.1.0"
     react-i18next: "npm:^16.5.0"
     react-icons: "npm:^5.5.0"
+    react-intersection-observer: "npm:^10.0.2"
     react-lite-youtube-embed: "npm:^3.3.3"
     react-markdown: "npm:^10.1.0"
     react-player: "npm:3.3.1"
@@ -5473,6 +5474,7 @@ __metadata:
     react-tweet: "npm:^3.3.0"
     react-use-measure: "npm:^2.1.7"
     rehype-katex: "npm:^7.0.1"
+    remark-breaks: "npm:^4.0.0"
     remark-gfm: "npm:^4.0.1"
     remark-math: "npm:^6.0.0"
     rimraf: "npm:^6.0.1"
@@ -5805,21 +5807,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tabler/icons-react@npm:^3.35.0":
-  version: 3.36.0
-  resolution: "@tabler/icons-react@npm:3.36.0"
+"@tabler/icons-react@npm:^3.36.1":
+  version: 3.36.1
+  resolution: "@tabler/icons-react@npm:3.36.1"
   dependencies:
-    "@tabler/icons": "npm:3.36.0"
+    "@tabler/icons": "npm:"
   peerDependencies:
     react: ">= 16"
-  checksum: 10c0/db567c11ee4f7ab769ab80360509000b986f28ecaec8fdabe33a968731d8cab9018250961857ca1e823fa3dd73f618364224ef3f4e7ad71be792ed857123837b
+  checksum: 10c0/325dd0c7a780ec4713a93790b15517dc176af5778c36c49e1fe586113040d2e71330aa85aa9f5900cbae0fe0b78f69016ba73b4b490783c9b7292215f29c686a
   languageName: node
   linkType: hard
 
-"@tabler/icons@npm:3.36.0":
-  version: 3.36.0
-  resolution: "@tabler/icons@npm:3.36.0"
-  checksum: 10c0/4637add3f1326c3542cf2ebb9fcde162f34b3bfc2a716b103cc7acef666edeeac581504ea9f847946183c3eea81abb1ec5c91389f984064f50e2bad370b3e8dc
+"@tabler/icons@npm:":
+  version: 3.36.1
+  resolution: "@tabler/icons@npm:3.36.1"
+  checksum: 10c0/3201b3ccace5756ba9e840ece3922718165b820f760b7bc01bcab21bf7d6fed5da6e876ea9e1155ed498d8eb008e3ac3308b270c402d744014dafad20d99534c
   languageName: node
   linkType: hard
 
@@ -9579,12 +9581,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"framer-motion@npm:^12.26.2":
-  version: 12.26.2
-  resolution: "framer-motion@npm:12.26.2"
+"framer-motion@npm:^12.33.0":
+  version: 12.33.0
+  resolution: "framer-motion@npm:12.33.0"
   dependencies:
-    motion-dom: "npm:^12.26.2"
-    motion-utils: "npm:^12.24.10"
+    motion-dom: "npm:^12.33.0"
+    motion-utils: "npm:^12.29.2"
     tslib: "npm:^2.4.0"
   peerDependencies:
     "@emotion/is-prop-valid": "*"
@@ -9597,7 +9599,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/f2950155c982a95c423d6349cf26b2add58ef7e9633dc1629d2e8506b453699cddaf4c8ad9d8f220c53ce4f6af77740422d4f1c27f2033aeadfee5b941e1b59d
+  checksum: 10c0/c8b1d628c98763f784a039897727709a1bccfad53d1cf2d58656c3bd2b79934b66d8b41981b0109799cf5c5953812f32027e6bc5748637648e360b1d647583ad
   languageName: node
   linkType: hard
 
@@ -11375,12 +11377,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lucide-react@npm:^0.562.0":
-  version: 0.562.0
-  resolution: "lucide-react@npm:0.562.0"
+"lucide-react@npm:^0.563.0":
+  version: 0.563.0
+  resolution: "lucide-react@npm:0.563.0"
   peerDependencies:
     react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-  checksum: 10c0/c713a2490916e42c678b9df0d7309d8cdb715af1d7139c7eb49c45547901b276a7cf722548012a668dc0e337eeadf5141d5af8c8fcda6721fc58fb2d288efcba
+  checksum: 10c0/4a2027be255755d64ce18040062426dec07a5da920c000d9cd330e383fa10716a584c927dc03e91daccc6e05f6f486d4f49d1bd009e5f7763aa6fcf704806554
   languageName: node
   linkType: hard
 
@@ -11664,6 +11666,16 @@ __metadata:
     mdast-util-from-markdown: "npm:^2.0.0"
     mdast-util-to-markdown: "npm:^2.0.0"
   checksum: 10c0/5bda92fc154141705af2b804a534d891f28dac6273186edf1a4c5e3f045d5b01dbcac7400d27aaf91b7e76e8dce007c7b2fdf136c11ea78206ad00bdf9db46bc
+  languageName: node
+  linkType: hard
+
+"mdast-util-newline-to-break@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "mdast-util-newline-to-break@npm:2.0.0"
+  dependencies:
+    "@types/mdast": "npm:^4.0.0"
+    mdast-util-find-and-replace: "npm:^3.0.0"
+  checksum: 10c0/756a5660b0a821e0d6d6a0b2d9b13ac32e41cc028c485a91bccf6300977e2557236c6cc93dbd55c68b785f1ed6eae69209a4ffe182533cd1cdfda369021bebd2
   languageName: node
   linkType: hard
 
@@ -12682,12 +12694,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion-dom@npm:^12.26.2":
-  version: 12.26.2
-  resolution: "motion-dom@npm:12.26.2"
+"motion-dom@npm:^12.33.0":
+  version: 12.33.0
+  resolution: "motion-dom@npm:12.33.0"
   dependencies:
-    motion-utils: "npm:^12.24.10"
-  checksum: 10c0/9ec544749008b5f53eb3e3140ac720d8a2e0c1f41178ecb29f5fb7629d92c4b92657bd8449a051baa852090a2ea9eacd0fa3c4c7e64bbaea3504c35fc610d430
+    motion-utils: "npm:^12.29.2"
+  checksum: 10c0/1155014069e92fd3e975b47a8d3ec5dd63c4ef095561fdc12127890548101c41ee93b1fc3498948a7ee6035b46e3ac7244d66acd3c45899b9e0a85aea92ea0e9
   languageName: node
   linkType: hard
 
@@ -12698,18 +12710,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion-utils@npm:^12.24.10":
-  version: 12.24.10
-  resolution: "motion-utils@npm:12.24.10"
-  checksum: 10c0/b73e2e414480b0b162a5cbc9195856d113b5e7c23a055b1613143176694fdfabe87a6a41c3c2f205549e368ca541b609455344bd774d7d836f09a551562042e2
+"motion-utils@npm:^12.29.2":
+  version: 12.29.2
+  resolution: "motion-utils@npm:12.29.2"
+  checksum: 10c0/8058fbb3467602e8263a8a6df0e5d318d00d30d7148415d2ebc13c78a3c7a1b0cbec0808bb62e82c34714979ecbed15b9fffb91bde654dbf3602c84b7d66a5b6
   languageName: node
   linkType: hard
 
-"motion@npm:^12.26.2":
-  version: 12.26.2
-  resolution: "motion@npm:12.26.2"
+"motion@npm:^12.33.0":
+  version: 12.33.0
+  resolution: "motion@npm:12.33.0"
   dependencies:
-    framer-motion: "npm:^12.26.2"
+    framer-motion: "npm:^12.33.0"
     tslib: "npm:^2.4.0"
   peerDependencies:
     "@emotion/is-prop-valid": "*"
@@ -12722,7 +12734,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/855058938628350f1f8b3accbdfedf538abcb748f92f8f788dcbb1d986528816c7173457e85a53dd36ad48ace8c84d13b0f8eb94e5eb58d4f1bf6884a7cc6739
+  checksum: 10c0/a858cc2961ab6d402967b758958395bbc841e136aa10b8e5136252ec01a95cc986a2894a034b708a9e01f83c9d876e14739067e209edbe860b342c96e9877990
   languageName: node
   linkType: hard
 
@@ -13731,6 +13743,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-intersection-observer@npm:^10.0.2":
+  version: 10.0.2
+  resolution: "react-intersection-observer@npm:10.0.2"
+  peerDependencies:
+    react: ^17.0.0 || ^18.0.0 || ^19.0.0
+    react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    react-dom:
+      optional: true
+  checksum: 10c0/6a71956dcad43699a3d3ea9e9d311c85525de88074d2b7869b4315a7778cd0edfda41cdb63733711a17fd30094a8effae7ab2932728448b4e56eed0b51a3c4d3
+  languageName: node
+  linkType: hard
+
 "react-is@npm:^16.13.1, react-is@npm:^16.7.0":
   version: 16.13.1
   resolution: "react-is@npm:16.13.1"
@@ -14043,6 +14068,17 @@ __metadata:
     unist-util-visit-parents: "npm:^6.0.0"
     vfile: "npm:^6.0.0"
   checksum: 10c0/73c770319536128b75055d904d06951789d00a0552c11724c0dac2e244dcb21041630552d118a11cc42233fdcd1bfee525e78a0020fde635bd916cceb281dfb1
+  languageName: node
+  linkType: hard
+
+"remark-breaks@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "remark-breaks@npm:4.0.0"
+  dependencies:
+    "@types/mdast": "npm:^4.0.0"
+    mdast-util-newline-to-break: "npm:^2.0.0"
+    unified: "npm:^11.0.0"
+  checksum: 10c0/d7b319a7993b54c5d574e9255080c5de68cfa24f993873b0ee296af13f478521c41d4b7ae0fc14b4607ea70c8f6967e998ab7a467de13139141e66a1a34cb6be
   languageName: node
   linkType: hard
 

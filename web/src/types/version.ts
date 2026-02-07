@@ -16,6 +16,12 @@ export interface VersionInfo {
 export interface BackendVersionInfo {
   /** Semantic version string */
   version: string;
+  /** Version codename (e.g., "Wumeng", "Jiucai") */
+  version_name: string;
+  /** Version description in Chinese */
+  version_description_zh: string;
+  /** Version description in English */
+  version_description_en: string;
   /** Git commit SHA (short hash) */
   commit: string;
   /** ISO 8601 build timestamp (snake_case from backend) */
@@ -29,6 +35,9 @@ export interface BackendVersionInfo {
  */
 export interface NormalizedVersionInfo {
   version: string;
+  versionName: string;
+  versionDescriptionZh: string;
+  versionDescriptionEn: string;
   commit: string;
   buildTime: string;
   isLoaded: boolean;
@@ -61,6 +70,9 @@ export function normalizeBackendVersion(
 ): NormalizedVersionInfo {
   return {
     version: data?.version ?? "unknown",
+    versionName: data?.version_name ?? "Unknown",
+    versionDescriptionZh: data?.version_description_zh ?? "",
+    versionDescriptionEn: data?.version_description_en ?? "",
     commit: data?.commit ?? "unknown",
     buildTime: data?.build_time ?? "unknown",
     isLoaded: !isLoading && data !== null,

@@ -1,10 +1,13 @@
 import logging
-from typing import Sequence
+from typing import Any, Sequence
 from uuid import UUID
 
 from sqlmodel import col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.agents.graph.canonicalizer import parse_and_canonicalize_graph_config
+from app.agents.graph.upgrader import GraphConfigMigrationError, upgrade_or_create_default_graph_config
+from app.agents.graph.validator import ensure_valid_graph_config
 from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
 from app.models.knowledge_set import KnowledgeSet
 from app.models.links import AgentMcpServerLink
@@ -17,6 +20,87 @@ class AgentRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    def _validate_agent_graph_config(self, agent: Agent) -> None:
+        raw = agent.graph_config
+        if not isinstance(raw, dict):
+            raise ValueError(f"Agent {agent.id} has missing graph_config; expected GraphConfig dict.")
+
+        try:
+            config = parse_and_canonicalize_graph_config(raw)
+            ensure_valid_graph_config(config)
+        except Exception as exc:
+            raise ValueError(f"Agent {agent.id} has invalid graph_config; expected canonical GraphConfig.") from exc
+
+    def _canonicalize_graph_config(self, raw_config: dict[str, Any]) -> dict[str, Any]:
+        config = parse_and_canonicalize_graph_config(raw_config)
+        ensure_valid_graph_config(config)
+        return config.model_dump(exclude_none=True)
+
+    async def backfill_graph_configs(self, *, batch_size: int = 100) -> dict[str, int]:
+        """
+        Auto-upgrade persisted graph_config rows to canonical GraphConfig.
+
+        This is intended to run during startup before serving requests.
+        """
+
+        if batch_size < 1:
+            raise ValueError("batch_size must be >= 1")
+
+        statement = select(Agent)
+        result = await self.db.exec(statement)
+        agents = result.all()
+
+        changed_rows = 0
+        migrated_rows = 0
+        fallback_defaults = 0
+        pending = 0
+
+        for agent in agents:
+            source_config = agent.graph_config if isinstance(agent.graph_config, dict) else None
+
+            try:
+                migration_result = upgrade_or_create_default_graph_config(
+                    source_config,
+                    agent_prompt=agent.prompt,
+                )
+            except GraphConfigMigrationError as exc:
+                logger.warning(
+                    "Agent %s graph_config failed migration (%s at %s); replacing with default config",
+                    agent.id,
+                    exc.code,
+                    exc.path,
+                )
+                migration_result = upgrade_or_create_default_graph_config(
+                    None,
+                    agent_prompt=agent.prompt,
+                )
+                fallback_defaults += 1
+
+            normalized = migration_result.config.model_dump(exclude_none=True)
+
+            if not migration_result.source_version.startswith("3."):
+                migrated_rows += 1
+
+            if normalized != agent.graph_config:
+                agent.graph_config = normalized
+                self.db.add(agent)
+                changed_rows += 1
+                pending += 1
+
+            if pending >= batch_size:
+                await self.db.flush()
+                pending = 0
+
+        if pending > 0:
+            await self.db.flush()
+
+        return {
+            "total_agents": len(agents),
+            "changed_rows": changed_rows,
+            "migrated_rows": migrated_rows,
+            "fallback_defaults": fallback_defaults,
+        }
+
     async def get_agent_by_id(self, agent_id: UUID) -> Agent | None:
         """
         Fetches an agent by its ID.
@@ -28,6 +112,14 @@ class AgentRepository:
             The Agent, or None if not found.
         """
         logger.debug(f"Fetching agent with id: {agent_id}")
+        agent = await self.db.get(Agent, agent_id)
+        if agent:
+            self._validate_agent_graph_config(agent)
+        return agent
+
+    async def get_agent_by_id_raw(self, agent_id: UUID) -> Agent | None:
+        """Fetch an agent by id without graph_config validation."""
+
         return await self.db.get(Agent, agent_id)
 
     async def get_agents_by_user(self, user_id: str) -> Sequence[Agent]:
@@ -43,7 +135,10 @@ class AgentRepository:
         logger.debug(f"Fetching agents for user_id: {user_id}")
         statement = select(Agent).where(Agent.user_id == user_id).order_by(col(Agent.sort_order))
         result = await self.db.exec(statement)
-        return result.all()
+        agents = result.all()
+        for agent in agents:
+            self._validate_agent_graph_config(agent)
+        return agents
 
     async def get_system_agents(self) -> Sequence[Agent]:
         """
@@ -55,7 +150,10 @@ class AgentRepository:
         logger.debug("Fetching all system agents")
         statement = select(Agent).where(Agent.scope == AgentScope.SYSTEM)
         result = await self.db.exec(statement)
-        return result.all()
+        agents = result.all()
+        for agent in agents:
+            self._validate_agent_graph_config(agent)
+        return agents
 
     async def get_agent_by_name_and_scope(self, name: str, scope: AgentScope) -> Agent | None:
         """
@@ -71,7 +169,10 @@ class AgentRepository:
         logger.debug(f"Fetching agent with name: {name} and scope: {scope}")
         statement = select(Agent).where(Agent.name == name, Agent.scope == scope)
         result = await self.db.exec(statement)
-        return result.first()
+        agent = result.first()
+        if agent:
+            self._validate_agent_graph_config(agent)
+        return agent
 
     async def get_agent_by_user_and_name(self, user_id: str, name: str) -> Agent | None:
         """
@@ -87,7 +188,10 @@ class AgentRepository:
         logger.debug(f"Fetching agent with name: {name} for user: {user_id}")
         statement = select(Agent).where(Agent.user_id == user_id, Agent.name == name)
         result = await self.db.exec(statement)
-        return result.first()
+        agent = result.first()
+        if agent:
+            self._validate_agent_graph_config(agent)
+        return agent
 
     async def get_agents_by_knowledge_set(self, knowledge_set_id: UUID) -> Sequence[Agent]:
         """
@@ -102,7 +206,10 @@ class AgentRepository:
         logger.debug(f"Fetching agents for knowledge_set_id: {knowledge_set_id}")
         statement = select(Agent).where(Agent.knowledge_set_id == knowledge_set_id)
         result = await self.db.exec(statement)
-        return result.all()
+        agents = result.all()
+        for agent in agents:
+            self._validate_agent_graph_config(agent)
+        return agents
 
     async def validate_knowledge_set_access(self, knowledge_set_id: UUID, user_id: str) -> KnowledgeSet | None:
         """
@@ -142,6 +249,7 @@ class AgentRepository:
         agent = await self.db.get(Agent, agent_id)
         if not agent:
             return None
+        self._validate_agent_graph_config(agent)
 
         join_condition = col(McpServer.id) == col(AgentMcpServerLink.mcp_server_id)
         statement = (
@@ -153,7 +261,6 @@ class AgentRepository:
         # Manually attach MCP servers to agent
         # Note: This creates a transient attribute, not a database relationship
         setattr(agent, "mcp_servers", mcp_servers)
-
         return agent
 
     async def get_agent_mcp_servers(self, agent_id: UUID) -> Sequence[McpServer]:
@@ -229,13 +336,16 @@ class AgentRepository:
                 }
                 logger.info(f"After simplification: {graph_config['prompt_config']}")
 
-            # Add builtin_key to metadata so the agent uses the builtin at runtime
-            # This ensures consistent behavior between custom agents and template-based agents
-            if "metadata" not in graph_config:
-                graph_config["metadata"] = {}
-            graph_config["metadata"]["builtin_key"] = "react"
+            # Track builtin provenance in UI metadata (metadata is strict and execution-agnostic).
+            if not isinstance(graph_config.get("ui"), dict):
+                graph_config["ui"] = {}
+            graph_config["ui"]["builtin_key"] = "react"
 
             logger.debug("Generated default ReAct graph_config for agent with builtin_key")
+
+        if not isinstance(graph_config, dict):
+            raise ValueError("graph_config must be an object that conforms to GraphConfig.")
+        graph_config = self._canonicalize_graph_config(graph_config)
 
         # Create agent without mcp_server_ids (which isn't a model field)
         agent_dict = agent_data.model_dump(exclude={"mcp_server_ids"})
@@ -283,6 +393,13 @@ class AgentRepository:
         mcp_server_ids = agent_data.mcp_server_ids
         # Use safe update pattern to avoid null constraint violations
         update_data = agent_data.model_dump(exclude_unset=True, exclude_none=True, exclude={"mcp_server_ids"})
+
+        if "graph_config" in update_data:
+            raw_graph_config = update_data.get("graph_config")
+            if not isinstance(raw_graph_config, dict):
+                raise ValueError("graph_config must be an object that conforms to GraphConfig.")
+            update_data["graph_config"] = self._canonicalize_graph_config(raw_graph_config)
+
         for key, value in update_data.items():
             if hasattr(agent, key):
                 setattr(agent, key, value)

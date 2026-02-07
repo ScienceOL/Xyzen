@@ -2,6 +2,11 @@ import {
   Sheet,
   SheetContent,
 } from "@/components/animate-ui/components/radix/sheet";
+import {
+  DOCK_HORIZONTAL_MARGIN,
+  DOCK_SAFE_AREA,
+} from "@/components/layouts/BottomDock";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
 import { fileService, type UploadHandle } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
 import { knowledgeSetService } from "@/service/knowledgeSetService";
@@ -129,6 +134,26 @@ export const KnowledgeLayout = () => {
       console.error("Stats fetch failed", error);
     }
   };
+
+  // Optimistic update for stats when files are deleted
+  const handleStatsUpdate = useCallback(
+    (deletedBytes: number, deletedFileCount: number) => {
+      setStats((prev) => {
+        const newUsed = Math.max(0, prev.used - deletedBytes);
+        const newFileCount = Math.max(0, prev.fileCount - deletedFileCount);
+        const newAvailable = prev.total - newUsed;
+        const newPercentage = prev.total > 0 ? (newUsed / prev.total) * 100 : 0;
+        return {
+          ...prev,
+          used: newUsed,
+          fileCount: newFileCount,
+          availableBytes: newAvailable,
+          usagePercentage: newPercentage,
+        };
+      });
+    },
+    [],
+  );
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -381,16 +406,30 @@ export const KnowledgeLayout = () => {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden border-t bg-white dark:bg-black text-neutral-900 dark:text-white">
-      {/* Desktop Sidebar */}
+    <div
+      className="flex h-full w-full overflow-hidden bg-[#f2ede4] dark:bg-neutral-950 text-neutral-900 dark:text-white gap-4"
+      style={
+        window.innerWidth < MOBILE_BREAKPOINT
+          ? {}
+          : {
+              paddingTop: 16,
+              paddingBottom: DOCK_SAFE_AREA,
+              paddingLeft: DOCK_HORIZONTAL_MARGIN,
+              paddingRight: DOCK_HORIZONTAL_MARGIN,
+            }
+      }
+    >
+      {/* Desktop Sidebar - Frosted Glass */}
       <div className="hidden md:flex h-full">
-        <Sidebar
-          activeTab={activeTab}
-          currentKnowledgeSetId={currentKnowledgeSetId}
-          onTabChange={handleNavigate}
-          refreshTrigger={refreshKey}
-          onCreateKnowledgeSet={handleCreateKnowledgeSet}
-        />
+        <div className="h-full sm:rounded-2xl overflow-hidden bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-white/30 dark:border-neutral-700/50 shadow-lg">
+          <Sidebar
+            activeTab={activeTab}
+            currentKnowledgeSetId={currentKnowledgeSetId}
+            onTabChange={handleNavigate}
+            refreshTrigger={refreshKey}
+            onCreateKnowledgeSet={handleCreateKnowledgeSet}
+          />
+        </div>
       </div>
 
       {/* Mobile Sidebar Sheet */}
@@ -416,9 +455,9 @@ export const KnowledgeLayout = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Main Area */}
+      {/* Main Area - Frosted Glass */}
       <div
-        className="flex flex-1 flex-col min-w-0 bg-white dark:bg-black relative"
+        className="flex flex-1 flex-col min-w-0 sm:rounded-2xl overflow-hidden bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-white/30 dark:border-neutral-700/50 shadow-lg relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -463,7 +502,7 @@ export const KnowledgeLayout = () => {
 
         {/* File Content */}
         <div
-          className="flex-1 overflow-y-auto bg-white dark:bg-black custom-scrollbar"
+          className="flex-1 overflow-y-auto custom-scrollbar"
           onClick={() => {
             /* Deselect */
           }}
@@ -475,6 +514,7 @@ export const KnowledgeLayout = () => {
             refreshTrigger={refreshKey}
             onRefresh={() => setRefreshKey((k) => k + 1)}
             onFileCountChange={setCurrentFileCount}
+            onStatsUpdate={handleStatsUpdate}
             currentFolderId={currentFolderId}
             currentKnowledgeSetId={currentKnowledgeSetId}
             onFolderChange={(id) => handleNavigate("folders", id)}
@@ -482,13 +522,29 @@ export const KnowledgeLayout = () => {
         </div>
         {/* Status Bar */}
         <StatusBar
-          itemCount={currentFileCount}
+          itemCount={
+            activeTab === "folders" || activeTab === "knowledge"
+              ? currentFileCount
+              : stats.fileCount
+          }
           stats={{
             used: stats.used,
             total: stats.total,
             fileCount: stats.fileCount,
           }}
         />
+
+        {/* Upload Progress Floating Panel - inside main area for relative positioning */}
+        <AnimatePresence>
+          {uploads.length > 0 && (
+            <UploadProgress
+              uploads={uploads}
+              onCancel={handleCancelUpload}
+              onDismiss={handleDismissUpload}
+              onDismissAll={handleDismissAllUploads}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Hidden Upload Input */}
@@ -505,18 +561,6 @@ export const KnowledgeLayout = () => {
         onClose={() => setIsCreateKnowledgeSetOpen(false)}
         onCreate={handleSubmitCreateKnowledgeSet}
       />
-
-      {/* Upload Progress Floating Panel */}
-      <AnimatePresence>
-        {uploads.length > 0 && (
-          <UploadProgress
-            uploads={uploads}
-            onCancel={handleCancelUpload}
-            onDismiss={handleDismissUpload}
-            onDismissAll={handleDismissAllUploads}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 };

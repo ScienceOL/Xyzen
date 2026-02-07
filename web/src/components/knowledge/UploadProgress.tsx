@@ -46,10 +46,10 @@ export const UploadProgress = ({
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
-      className="fixed bottom-4 right-4 z-50 w-80 rounded-lg border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900"
+      className="absolute bottom-4 right-4 z-50 w-80 rounded-xl border border-white/30 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-xl"
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+      <div className="flex items-center justify-between border-b border-white/20 dark:border-neutral-700/30 px-4 py-3">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
             {activeUploads.length > 0
@@ -81,7 +81,7 @@ export const UploadProgress = ({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="border-b border-neutral-100 px-4 py-3 last:border-b-0 dark:border-neutral-800/50"
+              className="border-b border-white/10 dark:border-neutral-700/20 px-4 py-3 last:border-b-0"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -148,7 +148,7 @@ export const UploadProgress = ({
 
       {/* Footer - Cancel All button when multiple uploads */}
       {activeUploads.length > 1 && (
-        <div className="border-t border-neutral-200 px-4 py-2 dark:border-neutral-800">
+        <div className="border-t border-white/20 dark:border-neutral-700/30 px-4 py-2">
           <button
             onClick={() => activeUploads.forEach((u) => onCancel(u.id))}
             className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"

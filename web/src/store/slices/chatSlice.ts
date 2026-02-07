@@ -1233,7 +1233,7 @@ export const createChatSlice: StateCreator<
                 if (balanceLoadingIndex !== -1) {
                   channel.messages[balanceLoadingIndex] = {
                     ...channel.messages[balanceLoadingIndex],
-                    content: `⚠️ ${balanceData.message_cn || "光子余额不足，请充值后继续使用"}`,
+                    content: `⚠️ ${balanceData.message_cn || "积分余额不足，请充值后继续使用"}`,
                     isLoading: false,
                     isStreaming: false,
                   };
@@ -1246,7 +1246,7 @@ export const createChatSlice: StateCreator<
                   message:
                     balanceData.message_cn ||
                     balanceData.message ||
-                    "Your photon balance is insufficient. Please recharge to continue.",
+                    "积分余额不足，请充值后继续使用",
                   type: "warning",
                   actionLabel: "去充值",
                   onAction: () => {
@@ -1309,12 +1309,31 @@ export const createChatSlice: StateCreator<
                   channel.messages[runningAgentIndex].isStreaming = false;
                 }
 
-                // Remove loading message if present
+                // Handle loading message - convert to cancelled message instead of removing
+                // This ensures the abort indicator shows even when streaming hasn't started
                 const loadingIndex = channel.messages.findIndex(
                   (m) => m.isLoading,
                 );
                 if (loadingIndex !== -1) {
-                  channel.messages.splice(loadingIndex, 1);
+                  // Convert loading message to a cancelled agent execution message
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { isLoading: _, ...messageWithoutLoading } =
+                    channel.messages[loadingIndex];
+                  channel.messages[loadingIndex] = {
+                    ...messageWithoutLoading,
+                    id: `aborted-${Date.now()}`,
+                    agentExecution: {
+                      agentId: "",
+                      agentName: "",
+                      agentType: "react",
+                      executionId: `aborted-${Date.now()}`,
+                      status: "cancelled",
+                      startedAt: Date.now(),
+                      endedAt: Date.now(),
+                      phases: [],
+                      subagents: [],
+                    },
+                  };
                 }
 
                 break;
@@ -2367,12 +2386,29 @@ export const createChatSlice: StateCreator<
               state.channels[channelId].aborting = false;
               state.channels[channelId].responding = false;
 
-              // Remove loading message if present
+              // Handle loading message - convert to cancelled message instead of removing
               const loadingIndex = state.channels[channelId].messages.findIndex(
                 (m) => m.isLoading,
               );
               if (loadingIndex !== -1) {
-                state.channels[channelId].messages.splice(loadingIndex, 1);
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { isLoading: _, ...messageWithoutLoading } =
+                  state.channels[channelId].messages[loadingIndex];
+                state.channels[channelId].messages[loadingIndex] = {
+                  ...messageWithoutLoading,
+                  id: `aborted-${Date.now()}`,
+                  agentExecution: {
+                    agentId: "",
+                    agentName: "",
+                    agentType: "react",
+                    executionId: `aborted-${Date.now()}`,
+                    status: "cancelled",
+                    startedAt: Date.now(),
+                    endedAt: Date.now(),
+                    phases: [],
+                    subagents: [],
+                  },
+                };
               }
 
               // Finalize any streaming message

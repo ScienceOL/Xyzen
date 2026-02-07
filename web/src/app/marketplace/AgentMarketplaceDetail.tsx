@@ -26,16 +26,23 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentSnapshot } from "@/service/marketplaceService";
 
-// Helper to detect agent type from graph_config
+// Helper to detect agent type from graph_config (v3 canonical schema)
 function getAgentType(
   graphConfig: Record<string, unknown> | null | undefined,
 ): string {
   if (!graphConfig) return "ReAct";
+  // v3: metadata.tags or key
   const metadata = graphConfig.metadata as Record<string, unknown> | undefined;
-  if (metadata?.builtin_key) return String(metadata.builtin_key);
-  if (metadata?.pattern) return String(metadata.pattern);
-  // Check if it has custom nodes beyond the standard react pattern
-  const nodes = graphConfig.nodes as Array<unknown> | undefined;
+  if (metadata?.tags) {
+    const tags = metadata.tags as string[];
+    if (tags.includes("deep_research")) return "deep_research";
+    if (tags.includes("react")) return "react";
+  }
+  const key = graphConfig.key as string | undefined;
+  if (key) return key;
+  // v3: check graph.nodes for custom structure
+  const graph = graphConfig.graph as Record<string, unknown> | undefined;
+  const nodes = graph?.nodes as Array<unknown> | undefined;
   if (nodes && nodes.length > 2) return "Custom Graph";
   return "ReAct";
 }

@@ -1,12 +1,8 @@
 import { getNodeTypeInfo } from "@/types/graphConfig";
 import {
   ArrowPathIcon,
-  ArrowsRightLeftIcon,
-  SparklesIcon,
-  Squares2X2Icon,
-  UserGroupIcon,
-  UserIcon,
   PuzzlePieceIcon,
+  SparklesIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
@@ -16,11 +12,7 @@ import type { AgentNode } from "../useGraphConfig";
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   sparkles: SparklesIcon,
   wrench: WrenchScrewdriverIcon,
-  "arrows-split": ArrowsRightLeftIcon,
-  "user-group": UserGroupIcon,
   "arrows-exchange": ArrowPathIcon,
-  "arrows-parallel": Squares2X2Icon,
-  user: UserIcon,
   puzzle: PuzzlePieceIcon,
 };
 

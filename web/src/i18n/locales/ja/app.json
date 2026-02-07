@@ -75,6 +75,7 @@
   },
   "input": {
     "placeholder": "メッセージを送信...",
+    "respondingPlaceholder": "AIが応答中...",
     "send": "送信",
     "stop": "生成を停止",
     "stopping": "停止中...",

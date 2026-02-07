@@ -28,7 +28,7 @@ export function SaveStatusIndicator({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.2 }}
-        className="fixed top-20 right-4 z-50"
+        className="fixed top-4 right-4 z-50"
       >
         {status === "saving" && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm">

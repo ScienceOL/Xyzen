@@ -1,4 +1,4 @@
-import type { NodeType } from "@/types/graphConfig";
+import type { GraphNodeKind } from "@/types/graphConfig";
 import { getNodeTypeInfo } from "@/types/graphConfig";
 import {
   Popover,
@@ -8,12 +8,9 @@ import {
 } from "@headlessui/react";
 import {
   ArrowPathIcon,
-  ArrowsRightLeftIcon,
   PlusIcon,
+  PuzzlePieceIcon,
   SparklesIcon,
-  Squares2X2Icon,
-  UserGroupIcon,
-  UserIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { Fragment, memo, type DragEvent } from "react";
@@ -26,23 +23,14 @@ interface IconProps {
 const iconMap: Record<string, React.ComponentType<IconProps>> = {
   sparkles: SparklesIcon,
   wrench: WrenchScrewdriverIcon,
-  "arrows-split": ArrowsRightLeftIcon,
-  "user-group": UserGroupIcon,
   "arrows-exchange": ArrowPathIcon,
-  "arrows-parallel": Squares2X2Icon,
-  user: UserIcon,
+  puzzle: PuzzlePieceIcon,
 };
 
-const nodeTypes: NodeType[] = [
-  "llm",
-  "tool",
-  "router",
-  "subagent",
-  "transform",
-];
+const nodeKinds: GraphNodeKind[] = ["llm", "tool", "transform", "component"];
 
 interface NodePanelItemProps {
-  type: NodeType;
+  type: GraphNodeKind;
 }
 
 function NodePanelItem({ type }: NodePanelItemProps) {
@@ -132,7 +120,7 @@ function NodePanel({ className = "" }: NodePanelProps) {
                 Drag to canvas
               </p>
               <div className="flex flex-col gap-1">
-                {nodeTypes.map((type) => (
+                {nodeKinds.map((type) => (
                   <NodePanelItem key={type} type={type} />
                 ))}
               </div>

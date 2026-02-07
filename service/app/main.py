@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
+import logging
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -15,6 +16,8 @@ from app.core.logger import LOGGING_CONFIG
 # from app.middleware.auth.casdoor import casdoor_mcp_auth
 from app.infra.database import create_db_and_tables
 from app.mcp import setup_mcp_routes
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -32,9 +35,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     register_builtin_tools()
 
+    # Temporary bootstrap migration for legacy graph configs.
+    # Remove this block after all environments are guaranteed to have canonical configs.
+    from app.infra.database import AsyncSessionLocal
+    from app.repos.agent import AgentRepository
+
+    async with AsyncSessionLocal() as db:
+        try:
+            agent_repo = AgentRepository(db)
+            summary = await agent_repo.backfill_graph_configs()
+            await db.commit()
+            logger.info(
+                "GraphConfig backfill completed: total=%d changed=%d migrated=%d fallback_defaults=%d",
+                summary["total_agents"],
+                summary["changed_rows"],
+                summary["migrated_rows"],
+                summary["fallback_defaults"],
+            )
+        except Exception as e:
+            logger.error(f"Failed to backfill graph_config at startup: {e}")
+            await db.rollback()
+            raise
+
     # Initialize system agents (Chat agent)
     from app.core.system_agent import SystemAgentManager
-    from app.infra.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         try:
@@ -43,15 +67,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await db.commit()
 
             agent_names = [agent.name for agent in system_agents.values()]
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.info(f"System agents initialized: {', '.join(agent_names)}")
 
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f"Failed to initialize system agents: {e}")
             await db.rollback()
             # Don't fail startup if system agents can't be created
@@ -82,9 +100,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 setattr(app.state, f"{server_name}_app", mcp_app)
 
             except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to create MCP app for {server_name}: {e}")
 
         # 启动所有 MCP 应用的生命周期
@@ -95,9 +110,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             yield
 
     except Exception as e:
-        import logging
-
-        logger = logging.getLogger(__name__)
         logger.error(f"Error in MCP lifespan management: {e}")
         yield  # 确保服务能够启动
 

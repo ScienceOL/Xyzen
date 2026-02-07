@@ -18,3 +18,4 @@ class AgentCreateFactory(ModelFactory[AgentCreate]):
     scope = Use(lambda: AgentScope.USER)
     knowledge_set_id = None
     provider_id = None
+    graph_config = None

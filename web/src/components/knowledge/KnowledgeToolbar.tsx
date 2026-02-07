@@ -50,10 +50,10 @@ export const KnowledgeToolbar = ({
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   return (
-    <div className="relative flex h-12 items-center justify-between border-b border-neutral-200 bg-white/80 px-2 md:px-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
+    <div className="relative flex h-14 items-center justify-between border-b border-white/20 dark:border-neutral-700/30 px-3 md:px-4">
       {/* Mobile Search Overlay */}
       {isMobileSearchOpen && (
-        <div className="absolute inset-0 z-10 flex items-center bg-white px-2 dark:bg-neutral-900">
+        <div className="absolute inset-0 z-10 flex items-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl px-3 rounded-t-2xl">
           <MagnifyingGlassIcon className="mr-2 h-5 w-5 text-neutral-400" />
           <input
             type="text"
@@ -67,7 +67,7 @@ export const KnowledgeToolbar = ({
               setIsMobileSearchOpen(false);
               onSearch("");
             }}
-            className="p-2 text-neutral-500"
+            className="p-2 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 rounded-lg hover:bg-white/50 dark:hover:bg-white/10 transition-colors"
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
@@ -138,13 +138,13 @@ export const KnowledgeToolbar = ({
         </button>
 
         {/* View Toggle */}
-        <div className="flex items-center rounded-md bg-neutral-100 p-0.5 dark:bg-neutral-800">
+        <div className="flex items-center rounded-xl bg-white/50 dark:bg-neutral-800/50 p-1 border border-white/20 dark:border-neutral-700/30">
           <button
             onClick={() => onViewModeChange("list")}
-            className={`rounded p-1 ${
+            className={`rounded-lg p-1.5 transition-all duration-200 ${
               viewMode === "list"
-                ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
-                : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400"
+                ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
             }`}
             title={t("knowledge.toolbar.listView")}
           >
@@ -152,10 +152,10 @@ export const KnowledgeToolbar = ({
           </button>
           <button
             onClick={() => onViewModeChange("grid")}
-            className={`rounded p-1 ${
+            className={`rounded-lg p-1.5 transition-all duration-200 ${
               viewMode === "grid"
-                ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
-                : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400"
+                ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
             }`}
             title={t("knowledge.toolbar.gridView")}
           >
@@ -165,25 +165,25 @@ export const KnowledgeToolbar = ({
 
         {/* Desktop Search Input */}
         <div className="relative hidden md:block">
-          <MagnifyingGlassIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
             placeholder={t("knowledge.toolbar.searchPlaceholder")}
             onChange={(e) => onSearch(e.target.value)}
-            className="h-8 w-48 rounded-md border-0 bg-neutral-100 pl-8 pr-4 text-xs text-neutral-900 focus:ring-1 focus:ring-indigo-500 dark:bg-neutral-800 dark:text-white"
+            className="h-9 w-48 rounded-xl border border-white/20 dark:border-neutral-700/30 bg-white/50 dark:bg-neutral-800/50 pl-9 pr-4 text-xs text-neutral-900 placeholder-neutral-400 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 dark:text-white transition-all"
           />
         </div>
 
-        <div className="hidden h-4 w-px bg-neutral-200 dark:bg-neutral-700 md:block" />
+        <div className="hidden h-6 w-px bg-neutral-300/50 dark:bg-neutral-600/30 md:block" />
 
         {/* Action Buttons */}
         {showCreateFolder && onCreateFolder && (
           <button
             onClick={onCreateFolder}
-            className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 md:px-3"
+            className="flex items-center gap-1.5 rounded-xl bg-white/50 dark:bg-neutral-800/50 px-3 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-200 border border-white/20 dark:border-neutral-700/30 hover:bg-white/80 dark:hover:bg-neutral-700/60 transition-all duration-200"
             title={t("knowledge.toolbar.newFolder")}
           >
-            <FolderIcon className="h-4 w-4 md:h-3 md:w-3" />
+            <FolderIcon className="h-4 w-4" />
             <span className="hidden md:inline">
               {t("knowledge.toolbar.newFolder")}
             </span>
@@ -193,10 +193,10 @@ export const KnowledgeToolbar = ({
         {isTrash && onEmptyTrash ? (
           <button
             onClick={onEmptyTrash}
-            className="flex items-center gap-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 md:px-3"
+            className="flex items-center gap-1.5 rounded-xl bg-red-500/90 hover:bg-red-500 px-3 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200"
             title={t("knowledge.toolbar.emptyTrash")}
           >
-            <TrashIcon className="h-4 w-4 md:h-3 md:w-3" />
+            <TrashIcon className="h-4 w-4" />
             <span className="hidden md:inline">
               {t("knowledge.toolbar.empty")}
             </span>
@@ -204,10 +204,10 @@ export const KnowledgeToolbar = ({
         ) : (
           <button
             onClick={onUpload}
-            className="flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 md:px-3"
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-500/90 hover:bg-indigo-500 px-3 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200"
             title={t("knowledge.toolbar.uploadFile")}
           >
-            <PlusIcon className="h-4 w-4 md:h-3 md:w-3" />
+            <PlusIcon className="h-4 w-4" />
             <span className="hidden md:inline">
               {t("knowledge.toolbar.upload")}
             </span>
@@ -216,7 +216,7 @@ export const KnowledgeToolbar = ({
 
         <button
           onClick={onRefresh}
-          className="hidden rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 md:block"
+          className="hidden rounded-xl p-2 text-neutral-500 hover:bg-white/50 dark:hover:bg-white/10 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-all duration-200 md:block"
           title={t("knowledge.toolbar.refresh")}
         >
           <ArrowPathIcon className="h-4 w-4" />
