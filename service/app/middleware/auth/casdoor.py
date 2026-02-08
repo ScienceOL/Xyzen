@@ -76,13 +76,13 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
                 # 如果没有 avatar 且用户有 Bohrium 绑定，尝试从 Bohrium 直接获取
                 if not user_info.avatar_url and account_info.get("custom"):
-                    logger.info("Casdoor: avatar_url 为空，尝试从 Bohrium 获取头像...")
+                    logger.debug("Casdoor: avatar_url 为空，尝试从 Bohrium 获取头像...")
                     bohrium_avatar = self._fetch_avatar_from_bohrium(access_token, account_info)
                     if bohrium_avatar:
                         user_info.avatar_url = bohrium_avatar
-                        logger.info(f"Casdoor: 从 Bohrium 获取到 avatar: {bohrium_avatar}")
+                        logger.debug(f"Casdoor: 从 Bohrium 获取到 avatar: {bohrium_avatar}")
 
-                logger.info(
+                logger.debug(
                     f"Casdoor: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}, 头像: {user_info.avatar_url}"
                 )
                 return AuthResult(success=True, user_info=user_info)
@@ -175,7 +175,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 user_data = data["data"]
                 avatar_url = user_data.get("avatarUrl") or user_data.get("avatar_url") or user_data.get("avatar")
                 if avatar_url:
-                    logger.info(f"Casdoor: 从 Bohrium 获取到 avatar: {avatar_url}")
+                    logger.debug(f"Casdoor: 从 Bohrium 获取到 avatar: {avatar_url}")
                     return avatar_url
 
             return None
@@ -211,8 +211,8 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
         get-account 返回完整的用户数据，包括 avatar 字段
         """
-        logger.info("Casdoor: 解析 get-account 响应中的用户信息")
-        logger.info(f"Casdoor: account_info 全部字段: {list(account_info.keys())}")
+        logger.debug("Casdoor: 解析 get-account 响应中的用户信息")
+        logger.debug(f"Casdoor: account_info 全部字段: {list(account_info.keys())}")
 
         # Casdoor 用户数据结构
         user_id = account_info.get("id") or account_info.get("name") or ""
@@ -221,12 +221,12 @@ class CasdoorAuthProvider(BaseAuthProvider):
         email = account_info.get("email")
         avatar_url = account_info.get("avatar")  # Casdoor 使用 avatar 字段
 
-        logger.info(f"Casdoor: 直接从 account_info 获取的 avatar: '{avatar_url}'")
+        logger.debug(f"Casdoor: 直接从 account_info 获取的 avatar: '{avatar_url}'")
 
         # 如果没有 avatar，尝试从 properties 中获取（可能是第三方登录保存的）
         if not avatar_url:
             properties = account_info.get("properties") or {}
-            logger.info(f"Casdoor: properties 全部字段: {list(properties.keys())}")
+            logger.debug(f"Casdoor: properties 全部字段: {list(properties.keys())}")
 
             # 尝试各种可能的第三方 avatar 字段 (Casdoor 可能使用不同的命名约定)
             avatar_keys = [
@@ -240,7 +240,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
             for key in avatar_keys:
                 if properties.get(key):
                     avatar_url = properties[key]
-                    logger.info(f"Casdoor: 从 properties['{key}'] 获取到 avatar: '{avatar_url}'")
+                    logger.debug(f"Casdoor: 从 properties['{key}'] 获取到 avatar: '{avatar_url}'")
                     break
 
             if not avatar_url:
@@ -249,10 +249,10 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 for key, value in properties.items():
                     if "avatar" in key.lower() and value:
                         avatar_url = value
-                        logger.info(f"Casdoor: 从 properties['{key}'] 获取到 avatar: '{avatar_url}'")
+                        logger.debug(f"Casdoor: 从 properties['{key}'] 获取到 avatar: '{avatar_url}'")
                         break
 
-        logger.info(f"Casdoor: 最终解析的 avatar_url: '{avatar_url}'")
+        logger.debug(f"Casdoor: 最终解析的 avatar_url: '{avatar_url}'")
 
         user_info = UserInfo(
             id=user_id,
@@ -268,7 +268,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
             },
         )
 
-        logger.info(
+        logger.debug(
             f"Casdoor: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, display_name: {user_info.display_name}, 头像: {user_info.avatar_url}"
         )
         return user_info
@@ -406,7 +406,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 return None
 
             data = response.json()
-            logger.info(f"Casdoor get-account 原始响应 keys: {list(data.keys())}")
+            logger.debug(f"Casdoor get-account 原始响应 keys: {list(data.keys())}")
 
             if data.get("status") == "error":
                 logger.error(f"Casdoor get-account error: {data.get('msg')}")
@@ -415,18 +415,18 @@ class CasdoorAuthProvider(BaseAuthProvider):
             account_data = data.get("data")
             if account_data:
                 # 详细记录 avatar 相关字段
-                logger.info("Casdoor get-account 成功:")
-                logger.info(f"  - avatar: '{account_data.get('avatar')}'")
-                logger.info(f"  - displayName: '{account_data.get('displayName')}'")
-                logger.info(f"  - custom (Bohrium ID): '{account_data.get('custom')}'")
+                logger.debug("Casdoor get-account 成功:")
+                logger.debug(f"  - avatar: '{account_data.get('avatar')}'")
+                logger.debug(f"  - displayName: '{account_data.get('displayName')}'")
+                logger.debug(f"  - custom (Bohrium ID): '{account_data.get('custom')}'")
 
                 # 记录 properties 中的 avatar 相关字段
                 properties = account_data.get("properties") or {}
                 avatar_props = {k: v for k, v in properties.items() if "avatar" in k.lower()}
                 if avatar_props:
-                    logger.info(f"  - properties 中 avatar 相关: {avatar_props}")
+                    logger.debug(f"  - properties 中 avatar 相关: {avatar_props}")
                 else:
-                    logger.info("  - properties 中没有 avatar 相关字段")
+                    logger.debug("  - properties 中没有 avatar 相关字段")
             else:
                 logger.warning("Casdoor get-account: data 字段为空")
 
@@ -659,7 +659,9 @@ class CasdoorAuthProvider(BaseAuthProvider):
             response = requests.get(userinfo_url, headers=headers, timeout=10)
 
             if not response.ok:
-                logger.info(f"validate_third_party_token: {provider_name} token 验证失败 (HTTP {response.status_code})")
+                logger.debug(
+                    f"validate_third_party_token: {provider_name} token 验证失败 (HTTP {response.status_code})"
+                )
                 logger.debug(f"validate_third_party_token: 响应内容: {response.text[:200]}")
                 return False
 
@@ -669,16 +671,16 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 # Bohrium 格式: {"code": 0, "data": {...}}
                 if "code" in data:
                     is_valid = data.get("code") == 0
-                    logger.info(
+                    logger.debug(
                         f"validate_third_party_token: {provider_name} token 验证结果: {is_valid} (code: {data.get('code')})"
                     )
                     return is_valid
                 # 其他格式：HTTP 200 即为成功
-                logger.info(f"validate_third_party_token: {provider_name} token 验证成功 (HTTP 200)")
+                logger.debug(f"validate_third_party_token: {provider_name} token 验证成功 (HTTP 200)")
                 return True
             except Exception:
                 # 无法解析 JSON，但 HTTP 200 也算成功
-                logger.info(f"validate_third_party_token: {provider_name} token 验证成功 (HTTP 200, non-JSON)")
+                logger.debug(f"validate_third_party_token: {provider_name} token 验证成功 (HTTP 200, non-JSON)")
                 return True
 
         except Exception as e:
@@ -705,7 +707,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
         logger.debug(f"get_original_tokens: originalToken 存在: {bool(original_token)}")
 
         if not original_token:
-            logger.info("get_original_tokens: Casdoor 没有存储 originalToken，尝试从 properties 获取")
+            logger.debug("get_original_tokens: Casdoor 没有存储 originalToken，尝试从 properties 获取")
             # 尝试从 properties 中获取（某些 Casdoor 版本可能存储在这里）
             properties = account_info.get("properties") or {}
             for provider in ["custom", "github", "google", "wechat"]:
@@ -724,7 +726,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
         for provider in provider_fields:
             if account_info.get(provider):
                 tokens[provider] = original_token
-                logger.info(
+                logger.debug(
                     f"get_original_tokens: 找到 {provider} 的 originalToken (用户ID: {account_info.get(provider)})"
                 )
 
@@ -770,7 +772,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
                     for provider_data in providers:
                         # Match by type (case-insensitive)
                         if provider_data.get("type", "").lower() == provider_type.lower():
-                            logger.info(
+                            logger.debug(
                                 f"get_provider_by_type: Found provider for type '{provider_type}': name='{provider_data.get('name')}'"
                             )
                             return ProviderConfig(
@@ -819,7 +821,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
         provider_config = self.get_provider_by_type(provider_type)
         if provider_config and provider_config.name:
             provider_name = provider_config.name
-            logger.info(f"get_link_url: Resolved provider type '{provider_type}' to name '{provider_name}'")
+            logger.debug(f"get_link_url: Resolved provider type '{provider_type}' to name '{provider_name}'")
         else:
             logger.warning(f"get_link_url: Could not resolve provider type '{provider_type}', using as-is")
 
@@ -893,7 +895,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
             # 返回上传后的 URL
             file_url = result.get("data")
             if file_url:
-                logger.info(f"Avatar uploaded successfully: {file_url}")
+                logger.debug(f"Avatar uploaded successfully: {file_url}")
                 return file_url
 
             # 有些版本的 Casdoor 返回格式不同
@@ -948,7 +950,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 logger.error(f"Casdoor update user error: {result.get('msg')}")
                 return False
 
-            logger.info("User avatar updated successfully")
+            logger.debug("User avatar updated successfully")
             return True
 
         except Exception as e:
@@ -997,7 +999,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 logger.error(f"Casdoor update display name error: {result.get('msg')}")
                 return False
 
-            logger.info(f"User display name updated successfully to: {display_name}")
+            logger.debug(f"User display name updated successfully to: {display_name}")
             return True
 
         except Exception as e:

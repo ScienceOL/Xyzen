@@ -367,7 +367,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
             <motion.div
               layout
               transition={{ type: "spring", stiffness: 220, damping: 28 }}
-              className="flex-1 rounded-xl border border-neutral-200/60 bg-white/80 p-2 shadow-sm backdrop-blur-sm sm:p-4 dark:border-neutral-700/60 dark:bg-neutral-800/80 overflow-hidden flex flex-col min-h-[320px]"
+              className="flex-1 rounded-sm border border-neutral-200/60 bg-white/80 p-2 shadow-sm backdrop-blur-sm sm:p-4 dark:border-neutral-700/60 dark:bg-neutral-800/80 overflow-hidden flex flex-col min-h-[320px]"
             >
               <AnimatePresence mode="wait" custom={direction}>
                 <motion.div
@@ -527,7 +527,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                 className="mb-5 flex items-center justify-between shrink-0"
               >
                 <div className="flex items-center gap-3">
-                  <div className="rounded-xl border border-white/20 bg-white/70 p-2 shadow-sm backdrop-blur-sm dark:border-neutral-700/40 dark:bg-neutral-900/50">
+                  <div className="rounded-sm border border-white/20 bg-white/70 p-2 shadow-sm backdrop-blur-sm dark:border-neutral-700/40 dark:bg-neutral-900/50">
                     <ChartBarIcon className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
                   </div>
                   <div>
@@ -551,7 +551,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
               <div className="space-y-4 flex-1 flex flex-col">
                 {checkInRecord && (
-                  <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-xl border border-indigo-200/60 bg-linear-to-br from-indigo-50/90 to-purple-50/90 p-5 shadow-sm transition-all hover:shadow-md dark:border-indigo-700/60 dark:from-indigo-950/50 dark:to-purple-950/50 shrink-0">
+                  <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-sm border border-indigo-200/60 bg-linear-to-br from-indigo-50/90 to-purple-50/90 p-5 shadow-sm transition-all hover:shadow-md dark:border-indigo-700/60 dark:from-indigo-950/50 dark:to-purple-950/50 shrink-0">
                     <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-linear-to-b from-indigo-500 to-purple-600 shadow-sm transition-all group-hover:w-1.5" />
                     <div className="pl-4">
                       <div className="flex items-center gap-2">
@@ -576,7 +576,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                 )}
 
                 {consumption && (
-                  <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-xl border border-neutral-200/60 bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
+                  <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-sm border border-neutral-200/60 bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
                     <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-linear-to-b from-neutral-400 to-neutral-500 shadow-sm transition-all group-hover:w-1.5 dark:from-neutral-600 dark:to-neutral-700" />
                     <div className="pl-4">
                       <div className="font-bold text-neutral-900 dark:text-neutral-100">
@@ -630,7 +630,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                 {!checkInRecord &&
                   !consumption &&
                   dayConsumptionQuery.isLoading && (
-                    <div className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200/60 bg-white/90 py-12 backdrop-blur-sm dark:border-neutral-700/60 dark:bg-neutral-800/90">
+                    <div className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-neutral-200/60 bg-white/90 py-12 backdrop-blur-sm dark:border-neutral-700/60 dark:bg-neutral-800/90">
                       <div className="h-2 w-2 animate-bounce rounded-full bg-indigo-600 [animation-delay:-0.3s] dark:bg-indigo-400" />
                       <div className="h-2 w-2 animate-bounce rounded-full bg-purple-600 [animation-delay:-0.15s] dark:bg-purple-400" />
                       <div className="h-2 w-2 animate-bounce rounded-full bg-pink-600 dark:bg-pink-400" />
@@ -641,7 +641,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                   !consumption &&
                   !dayConsumptionQuery.isLoading &&
                   selectedDate && (
-                    <div className="flex-1 flex items-center justify-center animate-in fade-in duration-500 rounded-xl border border-dashed border-neutral-300/60 bg-neutral-50/90 p-8 text-center backdrop-blur-sm dark:border-neutral-600/60 dark:bg-neutral-800/90">
+                    <div className="flex-1 flex items-center justify-center animate-in fade-in duration-500 rounded-sm border border-dashed border-neutral-300/60 bg-neutral-50/90 p-8 text-center backdrop-blur-sm dark:border-neutral-600/60 dark:bg-neutral-800/90">
                       <div className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                         {formatDateForAPI(selectedDate) ===
                         formatDateForAPI(today)

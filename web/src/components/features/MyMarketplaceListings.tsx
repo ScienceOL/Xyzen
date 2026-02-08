@@ -235,7 +235,7 @@ function MyMarketplaceListingCard({
 
   return (
     <div
-      className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+      className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-sm border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
       onMouseEnter={onMouseEnter}
       onClick={handleCardClick}
     >
@@ -265,10 +265,10 @@ function MyMarketplaceListingCard({
               <img
                 src={listing.avatar}
                 alt={listing.name}
-                className="h-14 w-14 rounded-xl object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
+                className="h-14 w-14 rounded-sm object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
               />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
+              <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
                 {listing.name.charAt(0).toUpperCase()}
               </div>
             )}

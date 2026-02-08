@@ -43,7 +43,9 @@ describe("deriveTopicStatus", () => {
   });
 
   it("returns running when responding is true", () => {
-    expect(deriveTopicStatus(makeChannel({ responding: true }))).toBe("running");
+    expect(deriveTopicStatus(makeChannel({ responding: true }))).toBe(
+      "running",
+    );
   });
 
   it("returns running when a message is streaming", () => {
@@ -55,7 +57,10 @@ describe("deriveTopicStatus", () => {
 
   it("returns running when latest execution is running", () => {
     const channel = makeChannel({
-      messages: [makeAssistantMessage("completed"), makeAssistantMessage("running")],
+      messages: [
+        makeAssistantMessage("completed"),
+        makeAssistantMessage("running"),
+      ],
     });
     expect(deriveTopicStatus(channel)).toBe("running");
   });

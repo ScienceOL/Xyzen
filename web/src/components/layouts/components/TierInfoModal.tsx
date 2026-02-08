@@ -155,7 +155,7 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
       <DialogContent className="sm:max-w-[1400px] w-[95vw] h-[90vh] p-0 gap-0 overflow-hidden bg-white/90 dark:bg-black/80 border border-zinc-200 dark:border-white/10 shadow-2xl backdrop-blur-3xl">
         <HoleBackground className="absolute inset-0 z-0 opacity-20 dark:opacity-80 pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col h-full bg-white/40 dark:bg-black/40 backdrop-blur-sm rounded-xl overflow-hidden">
+        <div className="relative z-10 flex flex-col h-full bg-white/40 dark:bg-black/40 backdrop-blur-sm rounded-sm overflow-hidden">
           {/* Header */}
           <div className="px-8 py-6 border-b border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/5 backdrop-blur-md z-20 sticky top-0">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
@@ -225,7 +225,7 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                   </div>
 
                   {/* Stats */}
-                  <div className="space-y-4 mb-6 bg-zinc-100/50 dark:bg-black/20 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                  <div className="space-y-4 mb-6 bg-zinc-100/50 dark:bg-black/20 p-3 rounded-sm border border-zinc-200 dark:border-white/5">
                     {/* Speed */}
                     <div className="group/stat">
                       <div className="flex justify-between text-[11px] text-zinc-500 dark:text-white/60 mb-1.5">

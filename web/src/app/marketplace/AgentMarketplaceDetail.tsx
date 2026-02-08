@@ -7,6 +7,7 @@ import {
   useToggleLike,
 } from "@/hooks/useMarketplace";
 import Markdown from "@/lib/Markdown";
+import { AgentSnapshot } from "@/service/marketplaceService";
 import { useXyzen } from "@/store";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
 import {
@@ -24,7 +25,6 @@ import {
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AgentSnapshot } from "@/service/marketplaceService";
 
 // Helper to detect agent type from graph_config (v3 canonical schema)
 function getAgentType(
@@ -597,7 +597,7 @@ export default function AgentMarketplaceDetail({
                 <div className="space-y-3">
                   <button
                     onClick={handleFork}
-                    className="group relative w-full overflow-hidden rounded-xl bg-linear-to-r from-purple-600 via-pink-600 to-indigo-600 px-4 py-4 text-base font-bold text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02]"
+                    className="group relative w-full overflow-hidden rounded-sm bg-linear-to-r from-purple-600 via-pink-600 to-indigo-600 px-4 py-4 text-base font-bold text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02]"
                   >
                     <div className="absolute inset-0 bg-linear-to-r from-purple-700 via-pink-700 to-indigo-700 opacity-0 transition-opacity group-hover:opacity-100"></div>
                     <div className="relative flex items-center justify-center gap-2">
@@ -620,7 +620,7 @@ export default function AgentMarketplaceDetail({
                   <button
                     onClick={handleLike}
                     disabled={toggleLike.isPending}
-                    className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-50 ${
+                    className={`w-full rounded-sm border-2 px-4 py-3 text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-50 ${
                       listing.has_liked
                         ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
                         : "border-neutral-300 bg-white text-neutral-700 hover:border-red-300 hover:bg-red-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-red-800 dark:hover:bg-red-950/30"
@@ -644,7 +644,7 @@ export default function AgentMarketplaceDetail({
                   {isOwner && onManage && listing.scope !== "official" && (
                     <button
                       onClick={onManage}
-                      className="w-full rounded-xl border-2 border-indigo-300 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-50 hover:scale-[1.02] dark:border-indigo-800 dark:bg-neutral-900 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
+                      className="w-full rounded-sm border-2 border-indigo-300 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-50 hover:scale-[1.02] dark:border-indigo-800 dark:bg-neutral-900 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
                     >
                       <div className="flex items-center justify-center gap-2">
                         <PencilIcon className="h-5 w-5" />
@@ -694,7 +694,7 @@ export default function AgentMarketplaceDetail({
             {/* Info Card */}
             <div className="rounded-2xl border border-blue-200 bg-linear-to-br from-blue-50 to-indigo-50 p-6 shadow-lg dark:border-blue-900/50 dark:from-blue-950/30 dark:to-indigo-950/30">
               <div className="flex gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500 text-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-blue-500 text-white">
                   <InformationCircleIcon className="h-6 w-6" />
                 </div>
                 <div>

@@ -5,7 +5,6 @@ import { PlateReadmeViewer } from "@/components/editor/PlateReadmeViewer";
 import { AgentGraphEditor } from "@/components/editors/AgentGraphEditor";
 import { JsonEditor } from "@/components/editors/JsonEditor";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
-import { toast } from "sonner";
 import {
   useListingHistory,
   useMarketplaceListing,
@@ -18,6 +17,7 @@ import {
   type ForkMode,
 } from "@/service/marketplaceService";
 import type { GraphConfig } from "@/types/graphConfig";
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -35,10 +35,10 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 interface AgentMarketplaceManageProps {
   marketplaceId: string;
@@ -430,10 +430,10 @@ export default function AgentMarketplaceManage({
                 <img
                   src={listing.avatar}
                   alt={listing.name}
-                  className="h-20 w-20 rounded-xl object-cover ring-2 ring-neutral-100 dark:ring-neutral-800"
+                  className="h-20 w-20 rounded-sm object-cover ring-2 ring-neutral-100 dark:ring-neutral-800"
                 />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-2xl font-bold text-white shadow-md">
+                <div className="flex h-20 w-20 items-center justify-center rounded-sm bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-2xl font-bold text-white shadow-md">
                   {listing.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -719,7 +719,7 @@ export default function AgentMarketplaceManage({
                   history.map((snapshot: AgentSnapshot) => (
                     <div
                       key={snapshot.id}
-                      className={`relative flex items-start gap-4 rounded-xl border p-4 transition-all ${
+                      className={`relative flex items-start gap-4 rounded-sm border p-4 transition-all ${
                         listing.active_snapshot_id === snapshot.id
                           ? "border-indigo-200 bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-900/10"
                           : "border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700"
@@ -784,7 +784,7 @@ export default function AgentMarketplaceManage({
           {/* Right Column - Stats & Actions */}
           <div className="space-y-6">
             {/* Stats Card */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="rounded-sm border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                 Performance
               </h3>
@@ -820,7 +820,7 @@ export default function AgentMarketplaceManage({
             </div>
 
             {/* Actions Card */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="rounded-sm border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                 Actions
               </h3>
@@ -854,7 +854,7 @@ export default function AgentMarketplaceManage({
             </div>
 
             {/* Fork Mode Settings Card */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="rounded-sm border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                 {t("marketplace.manage.forkMode.title")}
               </h3>
@@ -934,7 +934,7 @@ export default function AgentMarketplaceManage({
             </div>
 
             {/* Metadata Card */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="rounded-sm border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                 Metadata
               </h3>

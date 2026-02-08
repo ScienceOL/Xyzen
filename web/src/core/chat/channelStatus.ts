@@ -19,7 +19,9 @@ function getLatestAssistantExecutionStatus(
   return undefined;
 }
 
-export function deriveTopicStatus(channel: ChatChannel | undefined): TopicStatus {
+export function deriveTopicStatus(
+  channel: ChatChannel | undefined,
+): TopicStatus {
   if (!channel) {
     return "idle";
   }

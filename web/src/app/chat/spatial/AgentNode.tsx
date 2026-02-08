@@ -92,7 +92,7 @@ function YesterdayBubble({
   return (
     <div
       className={cn(
-        "rounded-xl px-3 py-2 text-xs",
+        "rounded-sm px-3 py-2 text-xs",
         hasActivity
           ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
           : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300",
@@ -420,12 +420,24 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
         )}
 
         {/* IsFocused Glow - BEHIND CARD */}
-        {data.isFocused && (
+        {data.isFocused && !data.isRunning && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="absolute -inset-2 -z-20 rounded-[35px] bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-30 blur-xl pointer-events-none"
           />
+        )}
+
+        {/* Running Border - Rotating yellow conic gradient */}
+        {data.isRunning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute -inset-0.5 -z-15 rounded-[26px] overflow-hidden pointer-events-none"
+          >
+            <div className="agent-running-border absolute inset-0" />
+            <div className="absolute inset-0.5 rounded-3xl bg-[#fdfcf8] dark:bg-neutral-900" />
+          </motion.div>
         )}
 
         {/* Card Background Layer - Acts as the solid surface */}
@@ -496,14 +508,7 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 bg-[#f4f1ea] dark:bg-white/5 rounded-xl relative overflow-hidden group-hover:bg-[#efece5] dark:group-hover:bg-white/10 transition-colors">
-            {data.status === "busy" && (
-              <div className="absolute top-2 right-2 flex items-center gap-1 bg-white/90 dark:bg-black/60 px-2 py-1 rounded-full text-[10px] font-medium text-amber-600 dark:text-amber-400 shadow-sm z-10 transition-colors">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                Processing
-              </div>
-            )}
-
+          <div className="flex-1 min-h-0 bg-[#f4f1ea] dark:bg-white/5 rounded-sm relative overflow-hidden group-hover:bg-[#efece5] dark:group-hover:bg-white/10 transition-colors">
             <div className="absolute inset-0 opacity-30 bg-linear-to-br from-transparent to-black/5 dark:to-black/30 pointer-events-none" />
 
             {/* Stats Display - Responsive to grid size */}

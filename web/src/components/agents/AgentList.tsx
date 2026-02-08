@@ -198,17 +198,16 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
     ? displayAgents.find((a) => a.id === activeId)
     : null;
 
-  // Sensors for mouse and touch
+  // Sensors for mouse and touch - no delay needed since we use a dedicated drag handle
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 10,
+        distance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        distance: 5,
       },
     }),
   );

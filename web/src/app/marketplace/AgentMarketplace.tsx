@@ -15,10 +15,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { useEffect, useState } from "react";
-import { useInView } from "react-intersection-observer";
 import { useTranslation } from "react-i18next";
+import { useInView } from "react-intersection-observer";
 
 import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
 import type { MarketplaceListing } from "@/service/marketplaceService";
 import AgentMarketplaceDetail from "./AgentMarketplaceDetail";
 import AgentMarketplaceManage from "./AgentMarketplaceManage";
@@ -152,7 +153,11 @@ export default function AgentMarketplace() {
   return (
     <div
       className="flex h-full flex-col bg-neutral-50 dark:bg-black"
-      style={{ paddingBottom: DOCK_SAFE_AREA }}
+      style={
+        window.innerWidth <= MOBILE_BREAKPOINT
+          ? {}
+          : { paddingBottom: DOCK_SAFE_AREA }
+      }
     >
       {/* Header Section */}
       <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/80 px-6 py-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
@@ -439,7 +444,7 @@ function AgentListingCard({
 
   return (
     <div
-      className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+      className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-sm border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
       onMouseEnter={onMouseEnter}
       onClick={handleCardClick}
     >
@@ -453,10 +458,10 @@ function AgentListingCard({
               <img
                 src={listing.avatar}
                 alt={listing.name}
-                className="h-14 w-14 rounded-xl object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
+                className="h-14 w-14 rounded-sm object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
               />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
+              <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
                 {listing.name.charAt(0).toUpperCase()}
               </div>
             )}

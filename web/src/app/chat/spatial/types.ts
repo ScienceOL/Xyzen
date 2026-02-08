@@ -62,6 +62,8 @@ export interface AgentData {
   lastConversationTime?: string;
   /** Whether the agent is published to marketplace */
   isMarketplacePublished?: boolean;
+  /** Whether the agent currently has running/active topics */
+  isRunning?: boolean;
 }
 
 /** Runtime-only fields injected by the workspace. */
