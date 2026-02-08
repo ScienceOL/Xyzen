@@ -15,7 +15,9 @@ services:
     ports:
       - '${DAYTONA_API_PORT:-13000}:3000'
       - '${DAYTONA_PROXY_PORT:-14000}:4000'
-      - '${DAYTONA_DEX_PORT:-15556}:5556'
+      # Dex OIDC — uncomment only if you need Dashboard login.
+      # With DAYTONA_ADMIN_API_KEY set, Dashboard login is not required.
+      # - '${DAYTONA_DEX_PORT:-15556}:5556'
       # - '${DAYTONA_RUNNER_PORT:-13003}:3003'
       # - '${DAYTONA_SSH_PORT:-12222}:2222'
       # - '${DAYTONA_REGISTRY_PORT:-16000}:6000'
@@ -28,6 +30,16 @@ services:
     image: daytonaio/daytona-api
     network_mode: 'service:daytona-network-service'
     environment:
+      - ADMIN_API_KEY=${DAYTONA_ADMIN_API_KEY:-}
+      - ADMIN_TOTAL_CPU_QUOTA=10000
+      - ADMIN_TOTAL_MEMORY_QUOTA=10000
+      - ADMIN_TOTAL_DISK_QUOTA=100000
+      - ADMIN_MAX_CPU_PER_SANDBOX=100
+      - ADMIN_MAX_MEMORY_PER_SANDBOX=100
+      - ADMIN_MAX_DISK_PER_SANDBOX=1000
+      - ADMIN_SNAPSHOT_QUOTA=1000
+      - ADMIN_MAX_SNAPSHOT_SIZE=1000
+      - ADMIN_VOLUME_QUOTA=10000
       - OTEL_ENABLED=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
       - DEFAULT_SNAPSHOT=daytonaio/sandbox:0.5.0-slim
@@ -79,12 +91,12 @@ services:
       - MAINTENANCE_MODE=false
       - PROXY_DOMAIN=host.docker.internal:${DAYTONA_PROXY_PORT:-14000}
       - PROXY_PROTOCOL=http
-      - PROXY_API_KEY=super_secret_key
+      - PROXY_API_KEY=${DAYTONA_PROXY_SECRET:-super_secret_key}
       - PROXY_TEMPLATE_URL=http://{{PORT}}-{{sandboxId}}.host.docker.internal:${DAYTONA_PROXY_PORT:-14000}
       - DEFAULT_RUNNER_DOMAIN=localhost:3003
       - DEFAULT_RUNNER_API_URL=http://localhost:3003
       - DEFAULT_RUNNER_PROXY_URL=http://localhost:3003
-      - DEFAULT_RUNNER_API_KEY=secret_api_token
+      - DEFAULT_RUNNER_API_KEY=${DAYTONA_RUNNER_SECRET:-secret_api_token}
       - DEFAULT_RUNNER_CPU=4
       - DEFAULT_RUNNER_MEMORY=8
       - DEFAULT_RUNNER_DISK=50
@@ -101,7 +113,7 @@ services:
       - DEFAULT_ORG_QUOTA_SNAPSHOT_QUOTA=1000
       - DEFAULT_ORG_QUOTA_MAX_SNAPSHOT_SIZE=1000
       - DEFAULT_ORG_QUOTA_VOLUME_QUOTA=10000
-      - SSH_GATEWAY_API_KEY=ssh_secret_api_token
+      - SSH_GATEWAY_API_KEY=${DAYTONA_SSH_SECRET:-ssh_secret_api_token}
       - SSH_GATEWAY_COMMAND=ssh -p 2222 {{TOKEN}}@localhost
       - SSH_GATEWAY_PUBLIC_KEY=
       - SSH_GATEWAY_URL=localhost:2222
@@ -122,7 +134,7 @@ services:
     environment:
       - DAYTONA_API_URL=http://localhost:3000/api
       - PROXY_PORT=4000
-      - PROXY_API_KEY=super_secret_key
+      - PROXY_API_KEY=${DAYTONA_PROXY_SECRET:-super_secret_key}
       - PROXY_PROTOCOL=http
       - OIDC_CLIENT_ID=daytona
       - OIDC_CLIENT_SECRET=
@@ -143,7 +155,7 @@ services:
     environment:
       - ENVIRONMENT=development
       - API_PORT=3003
-      - DAYTONA_RUNNER_TOKEN=secret_api_token
+      - DAYTONA_RUNNER_TOKEN=${DAYTONA_RUNNER_SECRET:-secret_api_token}
       - LOG_FILE_PATH=/home/daytona/runner/runner.log
       - RESOURCE_LIMITS_DISABLED=true
       - AWS_ENDPOINT_URL=http://localhost:9000
@@ -168,7 +180,7 @@ services:
       replicas: 0
     environment:
       - API_URL=http://localhost:3000/api
-      - API_KEY=ssh_secret_api_token
+      - API_KEY=${DAYTONA_SSH_SECRET:-ssh_secret_api_token}
       - SSH_PRIVATE_KEY=
       - SSH_HOST_KEY=
       - SSH_GATEWAY_PORT=2222
