@@ -91,7 +91,8 @@ export function FocusedView({
 
       const hasActiveTopic = Object.values(channels).some(
         (channel) =>
-          channel.agentId === realAgentId && deriveTopicStatus(channel) === "running",
+          channel.agentId === realAgentId &&
+          deriveTopicStatus(channel) === "running",
       );
 
       return hasActiveTopic ? "busy" : "idle";

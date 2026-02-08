@@ -279,7 +279,7 @@ async def get_linked_accounts(
             LinkedAccountResponse(
                 provider_name=acc.provider_name,
                 provider_display_name=acc.provider_display_name,
-                provider_icon_url=provider.get_provider_icon_url(acc.provider_name),
+                provider_icon_url=acc.provider_icon_url,
                 user_id=acc.user_id,
                 username=acc.username,
                 email=acc.email,

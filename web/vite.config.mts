@@ -10,7 +10,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // https://vite.dev/config/
 export default defineConfig(() => {
   const isLibBuild = process.env.BUILD_MODE === "library";
-  const isIframeBuild = process.env.BUILD_MODE === "iframe";
+  // const isIframeBuild = process.env.BUILD_MODE === "iframe";
 
   // Build version info
   let version = "0.0.0";

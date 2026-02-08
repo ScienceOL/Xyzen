@@ -371,7 +371,10 @@ export default function AgentMarketplace() {
                   </div>
 
                   {activeTab === "all" && hasNextPageAll && (
-                    <div ref={loadMoreRef} className="mt-8 flex justify-center py-3">
+                    <div
+                      ref={loadMoreRef}
+                      className="mt-8 flex justify-center py-3"
+                    >
                       {isFetchingNextPageAll ? (
                         <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
@@ -472,7 +475,9 @@ function AgentListingCard({
                 {listing.scope === "official"
                   ? t("marketplace.card.byOfficial", { defaultValue: "Xyzen" })
                   : t("marketplace.card.by", {
-                      author: (listing.user_id ?? "").split("@")[0] || listing.user_id,
+                      author:
+                        (listing.user_id ?? "").split("@")[0] ||
+                        listing.user_id,
                     })}
               </p>
             </div>

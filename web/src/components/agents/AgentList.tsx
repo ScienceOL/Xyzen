@@ -258,7 +258,11 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
           variant="detailed"
           isMarketplacePublished={publishedAgentIds?.has(activeAgent.id)}
           lastConversationTime={lastConversationTimeByAgent?.[activeAgent.id]}
-          activeTopicCount={(props as DetailedAgentListProps).activeTopicCountByAgent?.[activeAgent.id]}
+          activeTopicCount={
+            (props as DetailedAgentListProps).activeTopicCountByAgent?.[
+              activeAgent.id
+            ]
+          }
           isDragging={true}
         />
       );
@@ -286,8 +290,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
       activeTopicCountByAgent,
       onEdit,
       onDelete,
-    } =
-      props as DetailedAgentListProps;
+    } = props as DetailedAgentListProps;
 
     const content = (
       <motion.div

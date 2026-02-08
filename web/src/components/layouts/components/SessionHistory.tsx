@@ -282,7 +282,9 @@ function SessionHistory({
                       <div className="flex items-center gap-1.5">
                         <EditableTitle
                           title={chat.title}
-                          onSave={(newTitle) => updateTopicFn(chat.id, newTitle)}
+                          onSave={(newTitle) =>
+                            updateTopicFn(chat.id, newTitle)
+                          }
                           className="w-full"
                           textClassName={`truncate text-sm font-medium ${
                             chat.id === activeChannel
