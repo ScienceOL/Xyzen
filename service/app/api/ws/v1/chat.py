@@ -44,6 +44,20 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def set_abort_signal(connection_id: str, ttl_seconds: int = 60) -> None:
+    """Set abort signal for a specific chat connection."""
+    r = None
+    try:
+        r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+        abort_key = f"abort:{connection_id}"
+        await r.setex(abort_key, ttl_seconds, "1")
+    except Exception as e:
+        logger.error(f"Failed to set abort signal for {connection_id}: {e}")
+    finally:
+        if r:
+            await r.aclose()
+
+
 async def redis_listener(websocket: WebSocket, connection_id: str):
     """
     Listens to Redis channel and forwards messages to WebSocket.
@@ -131,16 +145,7 @@ async def chat_websocket(
                 # Handle abort request - set abort signal in Redis for the worker to check
                 if message_type == ChatClientEventType.ABORT:
                     logger.info(f"Received abort request for {connection_id}")
-                    r = None
-                    try:
-                        r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
-                        abort_key = f"abort:{connection_id}"
-                        await r.setex(abort_key, 60, "1")
-                    except Exception as e:
-                        logger.error(f"Failed to set abort signal: {e}")
-                    finally:
-                        if r:
-                            await r.aclose()
+                    await set_abort_signal(connection_id)
                     continue
 
                 # Handle regeneration request (after message edit)
@@ -331,17 +336,6 @@ async def chat_websocket(
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {connection_id}")
-        # Set abort signal on disconnect to stop any running task
-        r = None
-        try:
-            r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
-            await r.setex(f"abort:{connection_id}", 60, "1")
-            logger.info(f"Abort signal set on disconnect for {connection_id}")
-        except Exception as e:
-            logger.warning(f"Failed to set abort signal on disconnect: {e}")
-        finally:
-            if r:
-                await r.aclose()
     except Exception as e:
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
     finally:
