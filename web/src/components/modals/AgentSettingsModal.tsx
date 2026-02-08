@@ -141,7 +141,7 @@ function GridResizer({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className={cn(
-                  "h-14 w-14 cursor-pointer rounded-xl border-2 transition-colors duration-200 shadow-sm",
+                  "h-14 w-14 cursor-pointer rounded-sm border-2 transition-colors duration-200 shadow-sm",
                   isHovered || isSelected
                     ? "border-indigo-500 bg-indigo-500/20 dark:border-indigo-400 dark:bg-indigo-400/20 shadow-indigo-500/30 shadow-lg"
                     : "border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600",
@@ -670,7 +670,7 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
                 key={item.id}
                 onClick={() => handleTabClick(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-left",
+                  "w-full flex items-center gap-4 px-4 py-4 rounded-sm transition-all text-left",
                   "bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800",
                   item.color,
                 )}
@@ -715,7 +715,7 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
     >
       {/* Left sidebar with vertical tabs */}
       <div className="w-44 shrink-0">
-        <TabsList className="flex items-start flex-col w-full h-auto bg-neutral-50 dark:bg-neutral-900 rounded-xl p-1.5">
+        <TabsList className="flex items-start flex-col w-full h-auto bg-neutral-50 dark:bg-neutral-900 rounded-sm p-1.5">
           {filteredNavItems.map((item) => (
             <TabsTrigger
               key={item.id}

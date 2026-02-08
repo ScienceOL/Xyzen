@@ -1,8 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useVersion } from "@/hooks/useVersion";
+import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import {
   CalendarDaysIcon,
@@ -42,6 +42,7 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 // Dock height constant - use this for bottom margin calculations in other components
 export const DOCK_HEIGHT = 64;
@@ -121,7 +122,7 @@ function DockIcon({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={cn(
-        "relative flex flex-col items-center justify-center gap-0.5 rounded-xl transition-colors duration-200",
+        "relative flex flex-col items-center justify-center gap-0.5 rounded-sm transition-colors duration-200",
         "bg-white/60 dark:bg-neutral-800/60",
         "hover:bg-white/90 dark:hover:bg-neutral-700/80",
         "border border-white/20 dark:border-neutral-700/30",
@@ -346,6 +347,8 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
 
 // Version info component (GitHub + Version + Region)
 const GITHUB_REPO = "https://github.com/ScienceOL/Xyzen";
+const BETA_SURVEY_URL =
+  "https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb";
 
 function VersionInfo() {
   const { backend } = useVersion();
@@ -355,11 +358,10 @@ function VersionInfo() {
   const isInternational = true;
 
   return (
-    <div
-      className="relative flex items-center gap-1.5"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+    <div className="relative flex items-center gap-1.5">
+      {/* Beta Survey Button */}
+      <GradientButton href={BETA_SURVEY_URL}>加入内测</GradientButton>
+
       {/* GitHub Link */}
       <a
         href={GITHUB_REPO}
@@ -371,7 +373,11 @@ function VersionInfo() {
       </a>
 
       {/* Version + Region */}
-      <div className="flex items-center gap-1">
+      <div
+        className="relative flex items-center gap-1 cursor-default"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
         {/* Version Number */}
         <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
           {backend.version || "..."}
@@ -391,31 +397,33 @@ function VersionInfo() {
             )}
           />
         </div>
-      </div>
 
-      {/* Tooltip on hover */}
-      <AnimatePresence>
-        {hovered && (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-1.5 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-medium">
-                {isInternational ? "International" : "China"}
-              </span>
-              <span className="text-neutral-400 dark:text-neutral-500">•</span>
-              <span className="text-neutral-300 dark:text-neutral-600">
-                {backend.versionName || backend.version}
-              </span>
-            </div>
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-100" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Tooltip on hover */}
+        <AnimatePresence>
+          {hovered && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-1.5 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-medium">
+                  {isInternational ? "International" : "China"}
+                </span>
+                <span className="text-neutral-400 dark:text-neutral-500">
+                  •
+                </span>
+                <span className="text-neutral-300 dark:text-neutral-600">
+                  {backend.versionName || backend.version}
+                </span>
+              </div>
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-100" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -546,11 +554,7 @@ export function BottomDock({
         >
           <div className="flex items-center justify-between h-14 px-4">
             {/* Left Section: Avatar + Navigation */}
-            <div
-              className="flex items-center gap-3"
-              onMouseMove={(e) => mouseX.set(e.pageX)}
-              onMouseLeave={() => mouseX.set(Infinity)}
-            >
+            <div className="flex items-center gap-3">
               {/* User Avatar */}
               <UserAvatar compact />
 
@@ -558,7 +562,11 @@ export function BottomDock({
               <div className="h-8 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
 
               {/* Navigation Tabs */}
-              <div className="flex items-end gap-1.5">
+              <div
+                className="flex items-end gap-1.5"
+                onMouseMove={(e) => mouseX.set(e.pageX)}
+                onMouseLeave={() => mouseX.set(Infinity)}
+              >
                 {dockItems.map((item) => (
                   <DockIcon
                     key={item.id}

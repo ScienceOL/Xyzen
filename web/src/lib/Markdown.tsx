@@ -268,7 +268,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
     <>
       <div
         className={clsx(
-          "group relative my-5 w-full min-w-0 overflow-hidden rounded-xl border shadow",
+          "group relative my-5 w-full min-w-0 overflow-hidden rounded-sm border shadow",
           "border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#1a1a1b]",
           "flex flex-col",
           "not-prose",

@@ -140,7 +140,7 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
           >
             <div className="flex items-start justify-between">
               <div className="flex gap-4">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800">
                   {detail.cover ? (
                     <img
                       src={detail.cover}

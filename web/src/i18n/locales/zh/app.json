@@ -28,6 +28,12 @@
     "agent": {
       "stopped": "生成已停止",
       "subagents": "子代理"
+    },
+    "status": {
+      "idle": "空闲",
+      "running": "运行中",
+      "stopping": "停止中",
+      "failed": "失败"
     }
   },
   "activityBar": {

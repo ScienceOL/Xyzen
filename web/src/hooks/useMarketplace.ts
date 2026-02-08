@@ -29,7 +29,12 @@ export const marketplaceKeys = {
   listingsInfinite: (
     params: Omit<SearchParams, "limit" | "offset">,
     pageSize: number,
-  ) => [...marketplaceKeys.listings(), "infinite", { ...params, pageSize }] as const,
+  ) =>
+    [
+      ...marketplaceKeys.listings(),
+      "infinite",
+      { ...params, pageSize },
+    ] as const,
   listing: (id: string) => [...marketplaceKeys.all, "listing", id] as const,
   requirements: (id: string) =>
     [...marketplaceKeys.all, "requirements", id] as const,
@@ -356,11 +361,10 @@ export function useToggleLike() {
 
       // Snapshot list queries
       // We find all queries that look like listing lists
-      const previousListQueries = queryClient.getQueriesData<MarketplaceListingsCache>(
-        {
-        queryKey: marketplaceKeys.listings(),
-        },
-      );
+      const previousListQueries =
+        queryClient.getQueriesData<MarketplaceListingsCache>({
+          queryKey: marketplaceKeys.listings(),
+        });
 
       // Snapshot starred listings
       const previousStarredListings = queryClient.getQueryData<

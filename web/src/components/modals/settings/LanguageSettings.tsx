@@ -49,7 +49,7 @@ export function LanguageSettings() {
               <motion.button
                 key={lang.code}
                 onClick={() => i18n.changeLanguage(lang.code)}
-                className={`group relative flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all ${
+                className={`group relative flex w-full items-center justify-between rounded-sm border p-4 text-left transition-all ${
                   isActive
                     ? "border-indigo-600 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/20"
                     : "border-neutral-200 bg-white hover:border-indigo-200 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800"

@@ -1,6 +1,7 @@
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { authService, type LinkedAccount } from "@/service/authService";
 import { useXyzen } from "@/store";
-import { Input } from "@/components/ui/input";
 import {
   ArrowPathIcon,
   CameraIcon,
@@ -12,7 +13,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
 
 // Allowed image types
 const ALLOWED_TYPES = [
@@ -328,7 +328,7 @@ export const AccountSettings = () => {
               onClick={handleAvatarClick}
               disabled={isUploadingAvatar}
               className={cn(
-                "absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl",
+                "absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-sm",
                 "bg-white shadow-lg ring-2 ring-white transition-all duration-200",
                 "hover:bg-indigo-50 hover:ring-indigo-500 hover:scale-110",
                 "dark:bg-neutral-700 dark:ring-neutral-600 dark:hover:bg-neutral-600",
@@ -474,7 +474,7 @@ export const AccountSettings = () => {
 
         {/* Error State */}
         {error && (
-          <div className="animate-in fade-in slide-in-from-top-2 duration-300 rounded-xl bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300 rounded-sm bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
             {error}
           </div>
         )}
@@ -516,7 +516,7 @@ export const AccountSettings = () => {
         )}
 
         {/* Info Note */}
-        <div className="rounded-xl bg-neutral-50 p-4 dark:bg-neutral-800/40">
+        <div className="rounded-sm bg-neutral-50 p-4 dark:bg-neutral-800/40">
           <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
             {t(
               "settings.account.note",
@@ -552,7 +552,7 @@ const AccountCard = ({
     <div
       className={cn(
         "animate-in fade-in slide-in-from-bottom-2 duration-300",
-        "rounded-xl transition-all",
+        "rounded-sm transition-all",
         "bg-white shadow-sm ring-1 ring-neutral-200/50 hover:shadow-md hover:ring-neutral-300/50",
         "dark:bg-neutral-800/60 dark:ring-neutral-700/50 dark:hover:ring-neutral-600/50",
       )}
@@ -563,7 +563,7 @@ const AccountCard = ({
           {/* User Avatar */}
           <div
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden transition-all",
+              "flex h-12 w-12 items-center justify-center rounded-sm overflow-hidden transition-all",
               "bg-gradient-to-br from-neutral-50 to-neutral-100 shadow-inner",
               "dark:from-neutral-700 dark:to-neutral-800",
             )}

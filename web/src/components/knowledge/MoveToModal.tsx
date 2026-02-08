@@ -81,7 +81,7 @@ export const MoveToModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-96 rounded-xl bg-white p-4 shadow-xl dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+      <div className="w-96 rounded-sm bg-white p-4 shadow-xl dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
         <h3 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-white">
           {title}
         </h3>

@@ -2,6 +2,7 @@ import {
   generateClientId,
   groupToolMessagesWithAssistant,
   isValidUuid,
+  mergeChannelPreservingRuntime,
 } from "@/core/chat";
 import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
 import { providerCore } from "@/core/provider";
@@ -492,7 +493,11 @@ export const createChatSlice: StateCreator<
             };
 
             set((state) => {
-              state.channels[latestTopic.id] = channel;
+              const existingChannel = state.channels[latestTopic.id];
+              state.channels[latestTopic.id] = mergeChannelPreservingRuntime(
+                existingChannel,
+                channel,
+              );
             });
 
             await get().activateChannel(latestTopic.id);
@@ -1233,7 +1238,8 @@ export const createChatSlice: StateCreator<
                 if (balanceLoadingIndex !== -1) {
                   channel.messages[balanceLoadingIndex] = {
                     ...channel.messages[balanceLoadingIndex],
-                    content: `⚠️ ${balanceData.message_cn || "积分余额不足，请充值后继续使用"}`,
+                    content:
+                      "⚠️ 积分已用尽，欢迎填写问卷参与内测获取更多额度。",
                     isLoading: false,
                     isStreaming: false,
                   };
@@ -1242,16 +1248,14 @@ export const createChatSlice: StateCreator<
                 // Show notification to user
                 state.notification = {
                   isOpen: true,
-                  title: "余额不足",
+                  title: "积分用尽",
                   message:
-                    balanceData.message_cn ||
-                    balanceData.message ||
-                    "积分余额不足，请充值后继续使用",
+                    "您的积分已用尽。目前产品处于内测阶段，欢迎填写问卷参与内测，获取更多使用额度。",
                   type: "warning",
-                  actionLabel: "去充值",
+                  actionLabel: "填写问卷",
                   onAction: () => {
                     window.open(
-                      "https://bohrium.dp.tech/personal/center/recharge",
+                      "https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb",
                       "_blank",
                     );
                   },

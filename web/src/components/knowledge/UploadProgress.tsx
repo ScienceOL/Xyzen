@@ -46,7 +46,7 @@ export const UploadProgress = ({
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
-      className="absolute bottom-4 right-4 z-50 w-80 rounded-xl border border-white/30 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-xl"
+      className="absolute bottom-4 right-4 z-50 w-80 rounded-sm border border-white/30 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-xl"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/20 dark:border-neutral-700/30 px-4 py-3">

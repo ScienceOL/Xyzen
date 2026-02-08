@@ -38,13 +38,15 @@ import {
   TextApi,
 } from "platejs";
 import {
+  type PlateEditor,
   useEditorPlugin,
+  useEditorRef,
   useFocusedLast,
   useHotkeys,
   usePluginOption,
 } from "platejs/react";
-import { type PlateEditor, useEditorRef } from "platejs/react";
 
+import { commentPlugin } from "@/components/editor/plugins/comment-kit";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -58,7 +60,6 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { commentPlugin } from "@/components/editor/plugins/comment-kit";
 
 import { AIChatEditor } from "./ai-chat-editor";
 
@@ -687,7 +688,7 @@ export function AILoadingBar() {
     return (
       <div
         className={cn(
-          "-translate-x-1/2 absolute bottom-4 left-1/2 z-50 flex flex-col items-center gap-0 rounded-xl border border-border/50 bg-popover p-1 text-muted-foreground text-sm shadow-xl backdrop-blur-sm",
+          "-translate-x-1/2 absolute bottom-4 left-1/2 z-50 flex flex-col items-center gap-0 rounded-sm border border-border/50 bg-popover p-1 text-muted-foreground text-sm shadow-xl backdrop-blur-sm",
           "p-3",
         )}
       >

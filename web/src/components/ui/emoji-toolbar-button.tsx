@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ToolbarButton } from "@/components/ui/toolbar";
 import {
   Tooltip,
   TooltipContent,
@@ -38,7 +39,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ToolbarButton } from "@/components/ui/toolbar";
 
 export function EmojiToolbarButton({
   options,
@@ -118,7 +118,7 @@ export function EmojiPicker({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl bg-popover text-popover-foreground",
+        "flex flex-col rounded-sm bg-popover text-popover-foreground",
         "h-[23rem] w-80 border shadow-md",
       )}
     >

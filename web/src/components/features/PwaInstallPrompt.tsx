@@ -42,7 +42,7 @@ export function PwaInstallPrompt() {
           animate={{ opacity: 1, y: 0, x: "-50%" }}
           exit={{ opacity: 0, y: -20, x: "-50%" }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed top-4 left-1/2 z-50 flex w-[90%] max-w-md items-center gap-4 rounded-xl border border-neutral-200 bg-white/80 p-4 shadow-lg backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80"
+          className="fixed top-4 left-1/2 z-50 flex w-[90%] max-w-md items-center gap-4 rounded-sm border border-neutral-200 bg-white/80 p-4 shadow-lg backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Download className="h-5 w-5" />

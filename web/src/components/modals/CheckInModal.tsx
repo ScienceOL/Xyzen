@@ -16,7 +16,7 @@ export function CheckInModal({
 }: CheckInModalProps) {
   return (
     <ModalTitleLess isOpen={isOpen} onClose={onClose} maxWidth="max-w-5xl">
-      <div className="relative h-180 max-h-[90vh] w-full overflow-hidden rounded-xl bg-white/50 flex flex-col dark:bg-black/50">
+      <div className="relative h-180 max-h-[90vh] w-full overflow-hidden rounded-sm bg-white/50 flex flex-col dark:bg-black/50">
         <BubbleBackground
           className="absolute inset-0 opacity-30 dark:opacity-20"
           colors={{
