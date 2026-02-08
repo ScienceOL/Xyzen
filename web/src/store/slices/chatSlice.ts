@@ -537,14 +537,13 @@ export const createChatSlice: StateCreator<
       }
 
       if (channel) {
-        const hasUnresolvedRuntimeState = channel.messages.some(
-          (m) =>
-            Boolean(
-              m.isLoading ||
-                m.isStreaming ||
-                m.isThinking ||
-                m.agentExecution?.status === "running",
-            ),
+        const hasUnresolvedRuntimeState = channel.messages.some((m) =>
+          Boolean(
+            m.isLoading ||
+            m.isStreaming ||
+            m.isThinking ||
+            m.agentExecution?.status === "running",
+          ),
         );
 
         // Always reconcile with backend when no messages OR when runtime flags may be stale
@@ -826,7 +825,9 @@ export const createChatSlice: StateCreator<
                 }
 
                 if (targetIndex !== -1) {
-                  const targetMessage = channel.messages[targetIndex] as ChatMessage & {
+                  const targetMessage = channel.messages[
+                    targetIndex
+                  ] as ChatMessage & {
                     isLoading?: boolean;
                   };
                   delete targetMessage.isLoading;
@@ -961,7 +962,9 @@ export const createChatSlice: StateCreator<
                 }
 
                 if (endingIndex !== -1) {
-                  const messageFinal = channel.messages[endingIndex] as ChatMessage & {
+                  const messageFinal = channel.messages[
+                    endingIndex
+                  ] as ChatMessage & {
                     isLoading?: boolean;
                     isStreaming?: boolean;
                   };
@@ -1134,7 +1137,8 @@ export const createChatSlice: StateCreator<
                 };
                 const messageIndex = channel.messages.findIndex(
                   (m) =>
-                    m.id === eventData.stream_id || m.streamId === eventData.stream_id,
+                    m.id === eventData.stream_id ||
+                    m.streamId === eventData.stream_id,
                 );
                 if (messageIndex !== -1) {
                   const savedMessage = channel.messages[messageIndex];

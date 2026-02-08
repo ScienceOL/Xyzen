@@ -420,7 +420,7 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
         )}
 
         {/* IsFocused Glow - BEHIND CARD */}
-        {data.isFocused && !data.isRunning && (
+        {data.isFocused && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
