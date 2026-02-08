@@ -59,7 +59,7 @@ async def prepare_tools(
     langchain_tools: list[BaseTool] = []
 
     # 1. Load all available builtin tools
-    builtin_tools = _load_all_builtin_tools(agent, user_id, session_knowledge_set_id, topic_id)
+    builtin_tools = _load_all_builtin_tools(agent, user_id, session_knowledge_set_id, topic_id, session_id)
     langchain_tools.extend(builtin_tools)
 
     # 2. Load MCP tools (custom user MCPs)
@@ -77,6 +77,7 @@ def _load_all_builtin_tools(
     user_id: str | None = None,
     session_knowledge_set_id: "UUID | None" = None,
     topic_id: "UUID | None" = None,
+    session_id: "UUID | None" = None,
 ) -> list[BaseTool]:
     """
     Load all available builtin tools.
@@ -86,6 +87,7 @@ def _load_all_builtin_tools(
     - Knowledge tools: loaded if effective knowledge_set_id exists and user_id is available
     - Image tools: loaded if image generation is enabled and user_id is available
     - Memory tools: loaded if agent and user_id are available (currently disabled)
+    - Sandbox tools: loaded if sandbox is enabled and session_id is available
 
     Args:
         agent: Agent instance (for knowledge_set_id fallback and memory tools)
@@ -94,6 +96,7 @@ def _load_all_builtin_tools(
             If provided, takes priority over agent.knowledge_set_id.
         topic_id: Current topic ID for memory tools (optional).
             Used to exclude current conversation from memory search results.
+        session_id: Session UUID for sandbox tools (optional).
 
     Returns:
         List of available builtin BaseTool instances
@@ -149,6 +152,16 @@ def _load_all_builtin_tools(
     #         current_topic_id=topic_id,
     #     )
     #     tools.extend(memory_tools)
+
+    # Load sandbox tools if enabled and session_id is available
+    if session_id:
+        from app.configs import configs as app_configs
+
+        if app_configs.Sandbox.Enable:
+            from app.tools.builtin.sandbox import create_sandbox_tools_for_session
+
+            sandbox_tools = create_sandbox_tools_for_session(session_id=str(session_id))
+            tools.extend(sandbox_tools)
 
     return tools
 
