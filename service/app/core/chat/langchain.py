@@ -564,8 +564,15 @@ async def _handle_updates_mode(
                 # Emit the content as if it was streamed (single chunk for the whole message)
                 if not ctx.is_streaming:
                     ctx.is_streaming = True
-                    yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
-                yield StreamingEventHandler.create_streaming_chunk(ctx.stream_id, content)
+                    yield StreamingEventHandler.create_streaming_start(
+                        ctx.stream_id,
+                        execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+                    )
+                yield StreamingEventHandler.create_streaming_chunk(
+                    ctx.stream_id,
+                    content,
+                    execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+                )
 
         # Final model response (from 'model' or 'agent' step)
         elif (
@@ -721,10 +728,17 @@ async def _handle_messages_mode(
 
         logger.debug(f"Emitting streaming_start for stream_id={ctx.stream_id}")
         ctx.is_streaming = True
-        yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
+        yield StreamingEventHandler.create_streaming_start(
+            ctx.stream_id,
+            execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+        )
 
     ctx.assistant_buffer.append(token_text)
-    yield StreamingEventHandler.create_streaming_chunk(ctx.stream_id, token_text)
+    yield StreamingEventHandler.create_streaming_chunk(
+        ctx.stream_id,
+        token_text,
+        execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+    )
 
 
 async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> AsyncGenerator[StreamingEvent, None]:
@@ -750,7 +764,11 @@ async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> As
             ctx.token_count,
             bool(agent_state),
         )
-        yield StreamingEventHandler.create_streaming_end(ctx.stream_id, agent_state or None)
+        yield StreamingEventHandler.create_streaming_end(
+            ctx.stream_id,
+            agent_state or None,
+            execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+        )
 
         # Emit token usage
         if ctx.total_tokens > 0 or ctx.total_input_tokens > 0 or ctx.total_output_tokens > 0:
