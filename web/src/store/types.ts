@@ -49,6 +49,8 @@ export interface SearchCitation {
 
 export interface Message {
   id: string;
+  // Transient stream id used to route streaming events even after id is replaced by db_id.
+  streamId?: string;
   clientId?: string;
   content: string;
   role: "user" | "assistant" | "system" | "tool";

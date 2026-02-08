@@ -138,24 +138,38 @@ class StreamingEventHandler:
     """Handle streaming token events."""
 
     @staticmethod
-    def create_streaming_start(stream_id: str) -> StreamingEvent:
+    def create_streaming_start(
+        stream_id: str, execution_id: str | None = None
+    ) -> StreamingEvent:
         """Create streaming start event."""
         data: StreamingStartData = {"id": stream_id}
+        if execution_id:
+            data["execution_id"] = execution_id
         return {"type": ChatEventType.STREAMING_START, "data": data}
 
     @staticmethod
-    def create_streaming_chunk(stream_id: str, content: str) -> StreamingEvent:
+    def create_streaming_chunk(
+        stream_id: str, content: str, execution_id: str | None = None
+    ) -> StreamingEvent:
         """Create streaming chunk event."""
         data: StreamingChunkData = {"id": stream_id, "content": content}
+        if execution_id:
+            data["execution_id"] = execution_id
         return {"type": ChatEventType.STREAMING_CHUNK, "data": data}
 
     @staticmethod
-    def create_streaming_end(stream_id: str, agent_state: dict[str, Any] | None = None) -> StreamingEvent:
+    def create_streaming_end(
+        stream_id: str,
+        agent_state: dict[str, Any] | None = None,
+        execution_id: str | None = None,
+    ) -> StreamingEvent:
         """Create streaming end event."""
         data: StreamingEndData = {
             "id": stream_id,
             "created_at": asyncio.get_event_loop().time(),
         }
+        if execution_id:
+            data["execution_id"] = execution_id
         if agent_state:
             data["agent_state"] = agent_state
         return {"type": ChatEventType.STREAMING_END, "data": data}

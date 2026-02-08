@@ -23,11 +23,17 @@ import type {
 export type WebSocketMessageEvent =
   | { type: "processing" }
   | { type: "loading" }
-  | { type: "streaming_start"; data: { id: string } }
-  | { type: "streaming_chunk"; data: { id: string; content: string } }
+  | {
+      type: "streaming_start";
+      data: { id: string; execution_id?: string };
+    }
+  | {
+      type: "streaming_chunk";
+      data: { id: string; content: string; execution_id?: string };
+    }
   | {
       type: "streaming_end";
-      data: { id: string; created_at?: string };
+      data: { id: string; created_at?: string; execution_id?: string };
     }
   | { type: "thinking_start"; data: { id: string } }
   | { type: "thinking_chunk"; data: { id: string; content: string } }
