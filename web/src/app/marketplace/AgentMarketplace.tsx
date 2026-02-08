@@ -15,10 +15,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { useEffect, useState } from "react";
-import { useInView } from "react-intersection-observer";
 import { useTranslation } from "react-i18next";
+import { useInView } from "react-intersection-observer";
 
 import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
 import type { MarketplaceListing } from "@/service/marketplaceService";
 import AgentMarketplaceDetail from "./AgentMarketplaceDetail";
 import AgentMarketplaceManage from "./AgentMarketplaceManage";
@@ -152,7 +153,11 @@ export default function AgentMarketplace() {
   return (
     <div
       className="flex h-full flex-col bg-neutral-50 dark:bg-black"
-      style={{ paddingBottom: DOCK_SAFE_AREA }}
+      style={
+        window.innerWidth <= MOBILE_BREAKPOINT
+          ? {}
+          : { paddingBottom: DOCK_SAFE_AREA }
+      }
     >
       {/* Header Section */}
       <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/80 px-6 py-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">

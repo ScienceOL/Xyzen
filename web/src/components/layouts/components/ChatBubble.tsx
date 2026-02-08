@@ -170,7 +170,8 @@ function ChatBubble({ message }: ChatBubbleProps) {
     "rounded-[12px] bg-neutral-50/50 dark:bg-neutral-800/30";
   const toolbarStyles =
     "absolute -bottom-7 left-8 z-10 flex items-center gap-1 rounded-[12px] border border-neutral-200/80 bg-white/95 px-2 py-1 shadow-sm backdrop-blur-sm opacity-0 transition-all duration-200 group-hover:opacity-100 hover:opacity-100 dark:border-neutral-700/60 dark:bg-neutral-900/95";
-  const toolbarTimestampStyles = "px-0.5 text-[10px] text-neutral-500 dark:text-neutral-400";
+  const toolbarTimestampStyles =
+    "px-0.5 text-[10px] text-neutral-500 dark:text-neutral-400";
   const toolbarDividerStyles = "h-3.5 w-px bg-neutral-200 dark:bg-neutral-700";
   const toolbarButtonStyles =
     "rounded p-1.5 text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white";
@@ -463,9 +464,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
         {isUserMessage && !isEditing && (
           <div className={toolbarStyles}>
             {/* Timestamp */}
-            <span className={toolbarTimestampStyles}>
-              {formattedTime}
-            </span>
+            <span className={toolbarTimestampStyles}>{formattedTime}</span>
 
             {/* Divider */}
             <div className={toolbarDividerStyles} />
@@ -521,9 +520,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
         {!isUserMessage && !isLoading && !isEditing && (
           <div className={toolbarStyles}>
             {/* Timestamp */}
-            <span className={toolbarTimestampStyles}>
-              {formattedTime}
-            </span>
+            <span className={toolbarTimestampStyles}>{formattedTime}</span>
 
             {/* Divider */}
             <div className={toolbarDividerStyles} />

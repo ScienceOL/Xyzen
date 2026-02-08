@@ -17,7 +17,9 @@ describe("mergeChannelPreservingRuntime", () => {
       error: null,
     };
 
-    expect(mergeChannelPreservingRuntime(undefined, incoming)).toEqual(incoming);
+    expect(mergeChannelPreservingRuntime(undefined, incoming)).toEqual(
+      incoming,
+    );
   });
 
   it("preserves runtime state while updating backend metadata", () => {
