@@ -55,7 +55,7 @@ TOPIC_RENAME_PROVIDER = ProviderType.QWEN
 TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
     ModelTier.ULTRA: [
         TierModelCandidate(
-            model="Vendor2/Claude-4.5-Opus",
+            model="Vendor2/Claude-4.6-Opus",
             provider_type=ProviderType.GPUGEEK,
             is_fallback=True,
             priority=99,
