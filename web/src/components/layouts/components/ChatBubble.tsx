@@ -168,6 +168,14 @@ function ChatBubble({ message }: ChatBubbleProps) {
   // Unified neutral/transparent styling for all messages
   const messageStyles =
     "rounded-[12px] bg-neutral-50/50 dark:bg-neutral-800/30";
+  const toolbarStyles =
+    "absolute -bottom-7 left-8 z-10 flex items-center gap-1 rounded-[12px] border border-neutral-200/80 bg-white/95 px-2 py-1 shadow-sm backdrop-blur-sm opacity-0 transition-all duration-200 group-hover:opacity-100 hover:opacity-100 dark:border-neutral-700/60 dark:bg-neutral-900/95";
+  const toolbarTimestampStyles = "px-0.5 text-[10px] text-neutral-500 dark:text-neutral-400";
+  const toolbarDividerStyles = "h-3.5 w-px bg-neutral-200 dark:bg-neutral-700";
+  const toolbarButtonStyles =
+    "rounded p-1.5 text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white";
+  const toolbarDeleteButtonStyles =
+    "rounded p-1.5 text-neutral-500 transition-colors hover:text-red-600 dark:text-neutral-400 dark:hover:text-red-400";
 
   // 渲染头像
   const renderAvatar = () => {
@@ -453,20 +461,20 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
         {/* Toolbar with timestamp - shown for user messages on hover */}
         {isUserMessage && !isEditing && (
-          <div className="absolute -bottom-7 left-8 z-10 flex items-center gap-1 px-2 py-1 rounded-[12px] bg-neutral-900/90 dark:bg-neutral-900/95 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:opacity-100">
+          <div className={toolbarStyles}>
             {/* Timestamp */}
-            <span className="text-[10px] text-neutral-400 px-0.5">
+            <span className={toolbarTimestampStyles}>
               {formattedTime}
             </span>
 
             {/* Divider */}
-            <div className="w-px h-3.5 bg-neutral-700" />
+            <div className={toolbarDividerStyles} />
 
             {canEditUser && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
+                    className={toolbarButtonStyles}
                     title={t("app.message.edit")}
                   >
                     <PencilIcon className="h-3.5 w-3.5" />
@@ -488,7 +496,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
             )}
             <button
               onClick={handleCopy}
-              className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
+              className={toolbarButtonStyles}
               title={t("app.message.copy")}
             >
               {isCopied ? (
@@ -500,7 +508,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
             {canDelete && (
               <button
                 onClick={handleDeleteClick}
-                className="rounded p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
+                className={toolbarDeleteButtonStyles}
                 title={t("app.message.delete")}
               >
                 <TrashIcon className="h-3.5 w-3.5" />
@@ -511,19 +519,19 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
         {/* Toolbar with timestamp - shown for assistant messages on hover */}
         {!isUserMessage && !isLoading && !isEditing && (
-          <div className="absolute -bottom-7 left-8 z-10 flex items-center gap-1 px-2 py-1 rounded-[12px] bg-neutral-900/90 dark:bg-neutral-900/95 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:opacity-100">
+          <div className={toolbarStyles}>
             {/* Timestamp */}
-            <span className="text-[10px] text-neutral-400 px-0.5">
+            <span className={toolbarTimestampStyles}>
               {formattedTime}
             </span>
 
             {/* Divider */}
-            <div className="w-px h-3.5 bg-neutral-700" />
+            <div className={toolbarDividerStyles} />
 
             {canEditAssistant && (
               <button
                 onClick={() => handleEditClick("edit_only")}
-                className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
+                className={toolbarButtonStyles}
                 title={t("app.message.edit")}
               >
                 <PencilIcon className="h-3.5 w-3.5" />
@@ -531,7 +539,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
             )}
             <button
               onClick={handleCopy}
-              className="rounded p-1.5 text-neutral-400 hover:text-white transition-colors"
+              className={toolbarButtonStyles}
               title={t("app.message.copy")}
             >
               {isCopied ? (
@@ -543,7 +551,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
             {canDelete && (
               <button
                 onClick={handleDeleteClick}
-                className="rounded p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
+                className={toolbarDeleteButtonStyles}
                 title={t("app.message.delete")}
               >
                 <TrashIcon className="h-3.5 w-3.5" />
