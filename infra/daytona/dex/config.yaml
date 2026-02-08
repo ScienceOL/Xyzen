@@ -1,3 +1,8 @@
+# WARNING: LOCAL DEV ONLY — static credentials below must NOT be used in production.
+# For k8s, either:
+#   1. Replace Dex with your organization's OIDC provider, or
+#   2. Use DAYTONA_ADMIN_API_KEY env var (no Dashboard/Dex login needed)
+#
 # Dex OIDC config for Daytona (self-hosted)
 # Based on daytona/docker/dex/config.yaml
 issuer: http://localhost:15556/dex
