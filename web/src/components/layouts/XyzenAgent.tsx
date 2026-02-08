@@ -3,6 +3,7 @@
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { AgentList } from "@/components/agents";
 import { useAuth } from "@/hooks/useAuth";
+import { deriveTopicStatus } from "@/core/chat";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -68,6 +69,18 @@ export default function XyzenAgent() {
     }
     return timeMap;
   }, [chatHistory, channels]);
+
+  const activeTopicCountByAgent = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const channel of Object.values(channels)) {
+      if (!channel.agentId) continue;
+      const status = deriveTopicStatus(channel);
+      if (status === "running") {
+        counts[channel.agentId] = (counts[channel.agentId] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [channels]);
 
   // Note: fetchAgents is called in App.tsx during initial load
   // No need to fetch again here - agents are already in the store
@@ -150,6 +163,7 @@ export default function XyzenAgent() {
           sortable={true}
           publishedAgentIds={publishedAgentIds}
           lastConversationTimeByAgent={lastConversationTimeByAgent}
+          activeTopicCountByAgent={activeTopicCountByAgent}
           onAgentClick={handleAgentClick}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}

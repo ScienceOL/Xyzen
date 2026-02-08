@@ -4,6 +4,7 @@ import {
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import XyzenChat from "@/components/layouts/XyzenChat";
+import { deriveTopicStatus } from "@/core/chat";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { motion } from "framer-motion";
@@ -36,7 +37,7 @@ export function FocusedView({
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const t = useTranslation().t;
 
-  const { activateChannelForAgent, reorderAgents } = useXyzen();
+  const { activateChannelForAgent, reorderAgents, channels } = useXyzen();
 
   // Convert AgentData to Agent type for AgentList component
   const agentsForList: Agent[] = useMemo(
@@ -85,11 +86,17 @@ export function FocusedView({
   // Callbacks to get status and role from original AgentData
   const getAgentStatus = useCallback(
     (a: Agent) => {
-      const status = agentDataMap.get(a.id)?.status;
-      // Map "offline" to "idle" since compact variant only supports "idle" | "busy"
-      return status === "busy" ? "busy" : "idle";
+      const realAgentId = agentDataMap.get(a.id)?.agentId;
+      if (!realAgentId) return "idle";
+
+      const hasActiveTopic = Object.values(channels).some(
+        (channel) =>
+          channel.agentId === realAgentId && deriveTopicStatus(channel) === "running",
+      );
+
+      return hasActiveTopic ? "busy" : "idle";
     },
-    [agentDataMap],
+    [agentDataMap, channels],
   );
 
   const getAgentRole = useCallback(
