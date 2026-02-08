@@ -391,14 +391,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
           )}
 
           {activeTopicCount > 0 && (
-            <div className="shrink-0 flex items-center gap-1">
-              <ChatStatusBadge status="running" size="xs" />
-              {activeTopicCount > 1 && (
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                  {activeTopicCount}
-                </span>
-              )}
-            </div>
+            <ChatStatusBadge status="running" size="xs" className="shrink-0" />
           )}
         </div>
 

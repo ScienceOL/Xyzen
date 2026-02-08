@@ -1,10 +1,5 @@
 import { Modal } from "@/components/animate-ui/components/animate/modal";
-import {
-  BoltIcon,
-  CurrencyYenIcon,
-  FireIcon,
-  SparklesIcon,
-} from "@heroicons/react/24/outline";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 
 interface PointsInfoModalProps {
@@ -16,226 +11,67 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="积分与充值说明"
-      maxWidth="max-w-lg"
+      title="积分用尽"
+      maxWidth="max-w-md"
     >
-      <div className="relative space-y-6 text-[15px] text-neutral-700 dark:text-neutral-200 mx-3 my-2">
-        {/* 装饰性背景光晕 - 仅深色模式 */}
-        <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-500/20" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl dark:bg-purple-500/20" />
-
-        {/* 核心机制说明 */}
+      <div className="relative space-y-5 text-[15px] text-neutral-700 dark:text-neutral-200 mx-3 my-2">
+        {/* 说明文字 */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="relative overflow-hidden rounded-sm border border-neutral-200 bg-neutral-50/80 p-[17px] backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/60"
+          className="text-neutral-600 dark:text-neutral-300 leading-relaxed"
         >
-          <div className="flex items-start gap-3">
-            <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
-              <BoltIcon className="size-5" />
-            </div>
-            <p className="leading-relaxed text-neutral-600 dark:text-neutral-300">
-              在 Bohrium 平台使用时，将自动使用
-              <span className="mx-1 font-bold text-indigo-600 dark:text-indigo-400">
-                光子
-              </span>
-              兑换等量积分。
-            </p>
-          </div>
+          <p>
+            您的积分已用尽。目前产品处于内测阶段，欢迎填写问卷参与内测，获取更多使用额度。
+          </p>
         </motion.div>
 
-        {/* 价格对比卡片 */}
-        <motion.div
+        {/* 问卷链接卡片 */}
+        <motion.a
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-linear-to-br from-white to-indigo-50/30 p-1 dark:border-indigo-500/30 dark:from-neutral-900 dark:to-neutral-800"
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          href="https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center gap-4 rounded-sm border border-indigo-200 bg-indigo-50/50 p-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:hover:border-indigo-400/50 dark:hover:bg-indigo-500/20"
         >
-          {/* 流光边框效果 */}
-          <div className="absolute inset-0 bg-linear-to-r from-transparent via-indigo-500/10 to-transparent opacity-0 transition-opacity duration-1000 group-hover:animate-shimmer group-hover:opacity-100 dark:via-indigo-400/20" />
-
-          <div className="relative rounded-sm bg-white/50 p-[22px] dark:bg-neutral-900/80">
-            <div className="mb-[22px] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-orange-100 p-[6.5px] text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
-                  <FireIcon className="h-[22px] w-[22px]" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-neutral-900 dark:text-white">
-                    限时特惠活动
-                  </h3>
-                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                    Limited Time Offer
-                  </p>
-                </div>
-              </div>
-              <span className="rounded-full bg-linear-to-r from-orange-500 to-red-500 px-[13px] py-1 text-[13px] font-bold text-white shadow-lg shadow-orange-500/30">
-                5 折
-              </span>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+            <DocumentTextIcon className="h-6 w-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-indigo-900 dark:text-indigo-100">
+              填写内测问卷
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* 官方定价 */}
-              <div className="flex flex-col justify-between rounded-sm border border-neutral-100 bg-neutral-50 p-[13px] dark:border-neutral-800 dark:bg-neutral-800/50">
-                <div className="mb-2 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-                  官方定价
-                </div>
-                <div>
-                  <div className="flex items-baseline gap-1">
-                    {/* 添加约等于符号 */}
-                    <span className="text-[19px] text-neutral-400">≈</span>
-                    <span className="text-[19px] font-bold text-neutral-400 line-through decoration-neutral-400/50">
-                      $4
-                    </span>
-                    <span className="text-[11px] text-neutral-400">
-                      /百万 tokens
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[11px] text-neutral-400">
-                    (约 ¥30)
-                  </div>
-                </div>
-              </div>
-
-              {/* 当前特惠 */}
-              <div className="relative flex flex-col justify-between overflow-hidden rounded-sm bg-indigo-600 p-[13px] text-white shadow-lg shadow-indigo-500/30 dark:bg-indigo-600 dark:shadow-indigo-900/50">
-                <div className="absolute -right-4 -top-4 h-[70px] w-[70px] rounded-full bg-white/10 blur-xl" />
-                <div className="relative">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[13px] font-medium text-indigo-100">
-                      当前特惠
-                    </span>
-                    <SparklesIcon className="size-4 text-yellow-300" />
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-[26px] text-white">≈</span>
-                    <span className="text-[26px] font-bold tracking-tight">
-                      ¥15
-                    </span>
-                    <span className="text-[11px] text-indigo-100/80">
-                      /百万 tokens
-                    </span>
-                  </div>
-                  <div className="mt-1 rounded-full bg-white/20 px-[7px] py-0.5 text-center text-[11px] font-medium text-white backdrop-blur-sm">
-                    超高性价比
-                  </div>
-                </div>
-              </div>
+            <div className="text-[13px] text-indigo-600/70 dark:text-indigo-300/70">
+              参与内测获取更多额度
             </div>
           </div>
-        </motion.div>
+          <svg
+            className="h-5 w-5 text-indigo-400 opacity-0 transition-opacity group-hover:opacity-100"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
+          </svg>
+        </motion.a>
 
-        {/* 充值引导 */}
-        <div className="space-y-3">
-          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-            获取光子方式
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <motion.a
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              href="https://scimaster.bohrium.com/chat/recharge"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative flex flex-col justify-between overflow-hidden rounded-sm border border-indigo-200 bg-indigo-50/50 p-[17px] transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-md dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:hover:border-indigo-400/50 dark:hover:bg-indigo-500/20"
-            >
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-500/20 dark:text-indigo-300">
-                  <CurrencyYenIcon className="h-[26px] w-[26px]" />
-                </div>
-                <div>
-                  <span className="block font-bold text-indigo-900 dark:text-indigo-100">
-                    直接充值
-                  </span>
-                  <span className="text-[11px] text-indigo-600/80 dark:text-indigo-300/80">
-                    推荐方式
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-[13px] font-medium text-indigo-900 dark:text-indigo-200">
-                  ¥19.8 兑换 1200 光子
-                </div>
-                <div className="flex items-center gap-1 text-[11px] text-indigo-600/80 dark:text-indigo-400/80">
-                  <span className="inline-block h-1 w-1 rounded-full bg-indigo-400" />
-                  请在新页面登陆并选择“三天体验”
-                </div>
-              </div>
-              {/* 装饰性箭头 */}
-              <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
-                <svg
-                  className="h-[17px] w-[17px] text-indigo-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-              </div>
-            </motion.a>
-
-            <motion.a
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              href="https://www.bohrium.com/assets/?menu=upgrade"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative flex flex-col justify-between overflow-hidden rounded-sm border border-neutral-200 bg-white p-[17px] transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600 dark:hover:bg-neutral-700"
-            >
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-neutral-100 text-neutral-600 shadow-sm dark:bg-neutral-700 dark:text-neutral-300">
-                  <SparklesIcon className="h-[26px] w-[26px]" />
-                </div>
-                <div>
-                  <span className="block font-bold text-neutral-900 dark:text-neutral-100">
-                    会员订阅
-                  </span>
-                  <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                    长期使用
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                  Bohrium 会员权益
-                </div>
-                <div className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-                  <span className="inline-block h-1 w-1 rounded-full bg-neutral-400" />
-                  每月赠送光子
-                </div>
-              </div>
-              <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
-                <svg
-                  className="h-[17px] w-[17px] text-neutral-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-              </div>
-            </motion.a>
-          </div>
-        </div>
-
-        <div className="mt-[34px] flex justify-end border-t border-neutral-100 pt-[17px] dark:border-neutral-800">
+        <div className="flex justify-end border-t border-neutral-100 pt-4 dark:border-neutral-800">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-neutral-900 px-[26px] py-[8.5px] text-[15px] font-medium text-white shadow-lg shadow-neutral-500/20 transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:text-white dark:shadow-indigo-500/30 dark:hover:bg-indigo-500"
+            className="rounded-sm bg-neutral-900 px-5 py-2 text-[14px] font-medium text-white transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:hover:bg-indigo-500"
           >
             知道了
           </motion.button>

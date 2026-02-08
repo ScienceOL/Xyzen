@@ -14,6 +14,7 @@ import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { deriveTopicStatus } from "@/core/chat";
 import { useMyMarketplaceListings } from "@/hooks/useMarketplace";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
@@ -94,6 +95,19 @@ function InnerWorkspace() {
     }
     return timeMap;
   }, [chatHistory, channelAgentIdMap]);
+
+  // Compute which agents have active (running) topics
+  const activeAgentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const channel of Object.values(channels)) {
+      if (!channel.agentId) continue;
+      const status = deriveTopicStatus(channel);
+      if (status === "running" || status === "stopping") {
+        ids.add(channel.agentId);
+      }
+    }
+    return ids;
+  }, [channels]);
 
   // State
   const [nodes, setNodes, onNodesChange] = useNodesState<AgentFlowNode>([]);
@@ -206,6 +220,9 @@ function InnerWorkspace() {
         isMarketplacePublished,
       );
 
+      // Inject running state
+      node.data.isRunning = activeAgentIds.has(agent.id);
+
       if (overridePosition) {
         node.position = overridePosition;
       }
@@ -219,6 +236,7 @@ function InnerWorkspace() {
       yesterdaySummary,
       lastConversationTimeByAgent,
       publishedAgentIds,
+      activeAgentIds,
     ],
   );
 
@@ -355,6 +373,7 @@ function InnerWorkspace() {
             yesterdaySummary: agentYesterdaySummary,
             lastConversationTime,
             isMarketplacePublished,
+            isRunning: activeAgentIds.has(agent.id),
           },
         };
       }),
@@ -367,6 +386,7 @@ function InnerWorkspace() {
     yesterdaySummary,
     lastConversationTimeByAgent,
     publishedAgentIds,
+    activeAgentIds,
     nodes.length,
     setNodes,
   ]);

@@ -15,7 +15,6 @@ import ChatBubble from "./components/ChatBubble";
 import ChatInput from "./components/ChatInput";
 import ChatToolbar from "./components/ChatToolbar";
 import EmptyChat from "./components/EmptyChat";
-import ResponseSpinner from "./components/ResponseSpinner";
 import WelcomeMessage from "./components/WelcomeMessage";
 
 interface BaseChatProps {
@@ -28,8 +27,6 @@ const getThemeStyles = () => {
   return {
     agentBorder: "border-indigo-100 dark:border-indigo-900",
     agentName: "text-indigo-600 dark:text-indigo-400",
-    responseSpinner:
-      "bg-indigo-50 text-indigo-600 ring-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:ring-indigo-800/40",
     scrollButton: "bg-indigo-600 hover:bg-indigo-700",
   };
 };
@@ -136,15 +133,24 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         {currentAgent ? (
           <div className="relative shrink-0 sm:border-y border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
             <div className="flex items-start gap-3">
-              <div className="mt-1 h-8 w-8 shrink-0 avatar-glow">
-                <img
-                  src={
-                    currentAgent.avatar ||
-                    "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
-                  }
-                  alt={currentAgent.name}
-                  className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
-                />
+              <div className="relative mt-1 h-8 w-8 shrink-0">
+                <div className="avatar-glow">
+                  <img
+                    src={
+                      currentAgent.avatar ||
+                      "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                    }
+                    alt={currentAgent.name}
+                    className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
+                  />
+                </div>
+                {responding && (
+                  <div className="typing-bubble">
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="mb-1 flex items-center gap-2">
@@ -167,13 +173,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                     className="min-w-0"
                     textClassName="text-sm text-neutral-600 dark:text-neutral-400 truncate block"
                   />
-                  {responding && (
-                    <ResponseSpinner
-                      text={config.responseMessages.generating}
-                      className="absolute bottom-0 right-0 mb-1 ml-2"
-                      themeStyles={themeStyles.responseSpinner}
-                    />
-                  )}
                 </div>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
                   {currentAgent.description}
@@ -206,13 +205,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
               {config.welcomeMessage?.description ||
                 config.emptyState.description}
             </p>
-            {responding && (
-              <ResponseSpinner
-                text={config.responseMessages.creating}
-                className="absolute right-0 bottom-0 mb-1"
-                themeStyles={themeStyles.responseSpinner}
-              />
-            )}
           </div>
         )}
 

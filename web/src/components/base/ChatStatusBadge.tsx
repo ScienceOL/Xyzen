@@ -19,8 +19,8 @@ const STATUS_STYLES: Record<
     fallback: "Idle",
   },
   running: {
-    dot: "bg-emerald-500 dark:bg-emerald-400",
-    tone: "text-emerald-700 dark:text-emerald-300",
+    dot: "",
+    tone: "text-amber-600 dark:text-amber-400",
     key: "app.chat.status.running",
     fallback: "Running",
   },
@@ -41,12 +41,41 @@ const STATUS_STYLES: Record<
 export default function ChatStatusBadge({
   status,
   size = "sm",
-  showLabel = true,
+  showLabel = false,
   className = "",
 }: ChatStatusBadgeProps) {
   const { t } = useTranslation();
   const styles = STATUS_STYLES[status];
   const label = t(styles.key, { defaultValue: styles.fallback });
+  const spinnerSize = size === "xs" ? "h-3 w-3" : "h-3.5 w-3.5";
+
+  // Running status: yellow spinner only, no text
+  if (status === "running") {
+    return (
+      <span className={`inline-flex items-center ${className}`} title={label}>
+        <svg
+          className={`${spinnerSize} animate-spin text-amber-500 dark:text-amber-400`}
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle
+            className="opacity-20"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="3"
+          />
+          <path
+            className="opacity-90"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"
+          />
+        </svg>
+      </span>
+    );
+  }
+
   const dotSize = size === "xs" ? "h-1.5 w-1.5" : "h-2 w-2";
   const textSize = size === "xs" ? "text-[10px]" : "text-xs";
   const padding = showLabel ? "px-2 py-0.5" : "px-1.5 py-1";
