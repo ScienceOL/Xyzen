@@ -12,6 +12,7 @@ from .mcps import McpProviderConfig
 from .oss import OSSConfig
 from .redemption import AdminConfig
 from .redis import RedisConfig
+from .sandbox import SandboxConfig
 from .searxng import SearXNGConfig
 
 
@@ -100,6 +101,11 @@ class AppConfig(BaseSettings):
     Image: ImageConfig = Field(
         default_factory=lambda: ImageConfig(),
         description="Image generation configuration",
+    )
+
+    Sandbox: SandboxConfig = Field(
+        default_factory=lambda: SandboxConfig(),
+        description="Sandbox code execution configuration",
     )
 
 
