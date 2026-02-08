@@ -215,6 +215,10 @@ MID_CMD_ARGS=(
   -f "${PROJECT_DIR}/docker/docker-compose.infra.yaml"
   --env-file "${ENV_FILE}"
 )
+# Conditionally include Daytona sandbox overlay on infra
+if [ -f "${PROJECT_DIR}/docker/docker-compose.daytona.yaml" ]; then
+  MID_CMD_ARGS+=(-f "${PROJECT_DIR}/docker/docker-compose.daytona.yaml")
+fi
 
 # 处理关闭并移除容器的命令
 if [ "${EXIT_COMMAND}" -eq 1 ]; then
