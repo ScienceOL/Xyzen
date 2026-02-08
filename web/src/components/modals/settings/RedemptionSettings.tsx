@@ -37,7 +37,7 @@ export function RedemptionSettings() {
   };
 
   return (
-    <div className="relative h-full min-h-125 w-full overflow-hidden rounded-xl">
+    <div className="relative h-full min-h-125 w-full overflow-hidden rounded-sm">
       <BubbleBackground className="absolute inset-0" />
 
       <div className="relative z-10 flex h-full w-full flex-col items-center justify-center p-4 md:p-8">
@@ -76,7 +76,7 @@ export function RedemptionSettings() {
                   }
                 }}
                 autoComplete="off"
-                className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 backdrop-blur-sm transition-all focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:opacity-50"
+                className="w-full rounded-sm border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 backdrop-blur-sm transition-all focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:opacity-50"
                 disabled={redeemMutation.isPending}
               />
             </div>
@@ -84,7 +84,7 @@ export function RedemptionSettings() {
             <Button
               onClick={handleRedeem}
               disabled={redeemMutation.isPending || !code.trim()}
-              className="h-12 w-full rounded-xl bg-white text-base font-semibold text-violet-900 shadow-lg transition-all hover:bg-white/90 active:scale-95 disabled:opacity-70"
+              className="h-12 w-full rounded-sm bg-white text-base font-semibold text-violet-900 shadow-lg transition-all hover:bg-white/90 active:scale-95 disabled:opacity-70"
             >
               {redeemMutation.isPending
                 ? t("settings.redemption.form.redeeming")
@@ -92,14 +92,14 @@ export function RedemptionSettings() {
             </Button>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-red-500/20 p-3 text-sm text-red-100 backdrop-blur-sm border border-red-500/30">
+              <div className="flex items-center gap-2 rounded-sm bg-red-500/20 p-3 text-sm text-red-100 backdrop-blur-sm border border-red-500/30">
                 <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="flex items-center gap-2 rounded-xl bg-green-500/20 p-3 text-sm text-green-100 backdrop-blur-sm border border-green-500/30">
+              <div className="flex items-center gap-2 rounded-sm bg-green-500/20 p-3 text-sm text-green-100 backdrop-blur-sm border border-green-500/30">
                 <CheckCircleIcon className="h-5 w-5 shrink-0 text-green-400" />
                 {success}
               </div>

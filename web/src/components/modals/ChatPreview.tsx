@@ -169,7 +169,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({
             </div>
             {/* 二维码 */}
             <div className="flex flex-col items-center gap-1">
-              <div className="rounded-xl bg-white p-2 shadow-sm">
+              <div className="rounded-sm bg-white p-2 shadow-sm">
                 <img
                   src={qrCodeUrl}
                   alt="扫码体验"

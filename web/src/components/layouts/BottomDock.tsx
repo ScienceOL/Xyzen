@@ -1,8 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useVersion } from "@/hooks/useVersion";
+import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import {
   CalendarDaysIcon,
@@ -121,7 +121,7 @@ function DockIcon({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={cn(
-        "relative flex flex-col items-center justify-center gap-0.5 rounded-xl transition-colors duration-200",
+        "relative flex flex-col items-center justify-center gap-0.5 rounded-sm transition-colors duration-200",
         "bg-white/60 dark:bg-neutral-800/60",
         "hover:bg-white/90 dark:hover:bg-neutral-700/80",
         "border border-white/20 dark:border-neutral-700/30",

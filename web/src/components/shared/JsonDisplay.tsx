@@ -1,8 +1,8 @@
+import useTheme from "@/hooks/useTheme";
 import { CheckIcon, ClipboardIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import React, { useState } from "react";
 import { createHighlighter, type Highlighter } from "shiki";
-import useTheme from "@/hooks/useTheme";
 
 // Singleton to avoid re-initializing shiki multiple times
 let highlighterPromise: Promise<Highlighter> | null = null;
@@ -103,7 +103,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
         return {
           container: compact
             ? "rounded-sm bg-white dark:bg-green-900/10 border border-green-300 dark:border-green-700/60"
-            : "w-full min-w-0 overflow-hidden rounded-xl border border-green-300 dark:border-green-700/60 bg-white dark:bg-green-900/10 shadow flex flex-col not-prose",
+            : "w-full min-w-0 overflow-hidden rounded-sm border border-green-300 dark:border-green-700/60 bg-white dark:bg-green-900/10 shadow flex flex-col not-prose",
           header: compact
             ? "flex items-center justify-between px-2 py-1 bg-green-50 dark:bg-green-800/30 border-b border-green-300 dark:border-green-600/60 rounded-t-md"
             : "flex h-10 items-center justify-between px-4 border-b border-green-300 dark:border-green-600/60 bg-green-50 dark:bg-green-800/30",
@@ -115,7 +115,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
         return {
           container: compact
             ? "rounded-sm bg-white dark:bg-red-900/20 border border-red-300 dark:border-red-700"
-            : "w-full min-w-0 overflow-hidden rounded-xl border border-red-300 dark:border-red-700 bg-white dark:bg-red-900/20 shadow flex flex-col not-prose",
+            : "w-full min-w-0 overflow-hidden rounded-sm border border-red-300 dark:border-red-700 bg-white dark:bg-red-900/20 shadow flex flex-col not-prose",
           header: compact
             ? "flex items-center justify-between px-2 py-1 bg-red-50 dark:bg-red-800/50 border-b border-red-300 dark:border-red-600 rounded-t-md"
             : "flex h-10 items-center justify-between px-4 border-b border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-800/50",
@@ -127,7 +127,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
         return {
           container: compact
             ? "rounded-sm bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700"
-            : "w-full min-w-0 overflow-hidden rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#1a1a1b] shadow flex flex-col not-prose",
+            : "w-full min-w-0 overflow-hidden rounded-sm border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#1a1a1b] shadow flex flex-col not-prose",
           header: compact
             ? "flex items-center justify-between px-2 py-1 bg-neutral-50 dark:bg-neutral-700/50 border-b border-neutral-200 dark:border-neutral-600 rounded-t-md"
             : "flex h-10 items-center justify-between px-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5",

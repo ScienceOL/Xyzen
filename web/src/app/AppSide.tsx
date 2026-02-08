@@ -239,7 +239,7 @@ export function AppSide({
     <>
       <div
         className={`flex flex-col bg-white dark:bg-black overflow-visible ${
-          !isMobile ? "rounded-xl" : ""
+          !isMobile ? "rounded-sm" : ""
         }`}
         style={isMobile ? mobileStyle : desktopStyle}
       >

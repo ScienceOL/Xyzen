@@ -92,7 +92,7 @@ function YesterdayBubble({
   return (
     <div
       className={cn(
-        "rounded-xl px-3 py-2 text-xs",
+        "rounded-sm px-3 py-2 text-xs",
         hasActivity
           ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
           : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300",
@@ -496,7 +496,7 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 bg-[#f4f1ea] dark:bg-white/5 rounded-xl relative overflow-hidden group-hover:bg-[#efece5] dark:group-hover:bg-white/10 transition-colors">
+          <div className="flex-1 min-h-0 bg-[#f4f1ea] dark:bg-white/5 rounded-sm relative overflow-hidden group-hover:bg-[#efece5] dark:group-hover:bg-white/10 transition-colors">
             {data.status === "busy" && (
               <div className="absolute top-2 right-2 flex items-center gap-1 bg-white/90 dark:bg-black/60 px-2 py-1 rounded-full text-[10px] font-medium text-amber-600 dark:text-amber-400 shadow-sm z-10 transition-colors">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />

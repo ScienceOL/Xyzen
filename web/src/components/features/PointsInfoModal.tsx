@@ -29,7 +29,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50/80 p-[17px] backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/60"
+          className="relative overflow-hidden rounded-sm border border-neutral-200 bg-neutral-50/80 p-[17px] backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/60"
         >
           <div className="flex items-start gap-3">
             <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
@@ -55,7 +55,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
           {/* 流光边框效果 */}
           <div className="absolute inset-0 bg-linear-to-r from-transparent via-indigo-500/10 to-transparent opacity-0 transition-opacity duration-1000 group-hover:animate-shimmer group-hover:opacity-100 dark:via-indigo-400/20" />
 
-          <div className="relative rounded-xl bg-white/50 p-[22px] dark:bg-neutral-900/80">
+          <div className="relative rounded-sm bg-white/50 p-[22px] dark:bg-neutral-900/80">
             <div className="mb-[22px] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="rounded-lg bg-orange-100 p-[6.5px] text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
@@ -77,7 +77,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
 
             <div className="grid grid-cols-2 gap-4">
               {/* 官方定价 */}
-              <div className="flex flex-col justify-between rounded-xl border border-neutral-100 bg-neutral-50 p-[13px] dark:border-neutral-800 dark:bg-neutral-800/50">
+              <div className="flex flex-col justify-between rounded-sm border border-neutral-100 bg-neutral-50 p-[13px] dark:border-neutral-800 dark:bg-neutral-800/50">
                 <div className="mb-2 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
                   官方定价
                 </div>
@@ -99,7 +99,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
               </div>
 
               {/* 当前特惠 */}
-              <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-indigo-600 p-[13px] text-white shadow-lg shadow-indigo-500/30 dark:bg-indigo-600 dark:shadow-indigo-900/50">
+              <div className="relative flex flex-col justify-between overflow-hidden rounded-sm bg-indigo-600 p-[13px] text-white shadow-lg shadow-indigo-500/30 dark:bg-indigo-600 dark:shadow-indigo-900/50">
                 <div className="absolute -right-4 -top-4 h-[70px] w-[70px] rounded-full bg-white/10 blur-xl" />
                 <div className="relative">
                   <div className="mb-2 flex items-center justify-between">
@@ -138,7 +138,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
               href="https://scimaster.bohrium.com/chat/recharge"
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-indigo-200 bg-indigo-50/50 p-[17px] transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-md dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:hover:border-indigo-400/50 dark:hover:bg-indigo-500/20"
+              className="group relative flex flex-col justify-between overflow-hidden rounded-sm border border-indigo-200 bg-indigo-50/50 p-[17px] transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-md dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:hover:border-indigo-400/50 dark:hover:bg-indigo-500/20"
             >
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-500/20 dark:text-indigo-300">
@@ -186,7 +186,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
               href="https://www.bohrium.com/assets/?menu=upgrade"
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white p-[17px] transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600 dark:hover:bg-neutral-700"
+              className="group relative flex flex-col justify-between overflow-hidden rounded-sm border border-neutral-200 bg-white p-[17px] transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600 dark:hover:bg-neutral-700"
             >
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-neutral-100 text-neutral-600 shadow-sm dark:bg-neutral-700 dark:text-neutral-300">

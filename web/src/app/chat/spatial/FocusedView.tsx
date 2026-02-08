@@ -251,7 +251,7 @@ export function FocusedView({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 20, opacity: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-xl rounded-2xl overflow-hidden pointer-events-auto max-h-[50vh] flex flex-col"
+          className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-xl rounded-xl overflow-hidden pointer-events-auto max-h-[50vh] flex flex-col"
           ref={switcherRef}
         >
           <div className="px-4 py-3 border-b border-black/5 dark:border-white/5 bg-white/40 dark:bg-white/5">
@@ -285,7 +285,7 @@ export function FocusedView({
         animate={{ x: 0, opacity: 1, scale: 1 }}
         exit={{ x: 50, opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-        className="spatial-chat-frosted relative z-10 flex flex-1 flex-col overflow-hidden rounded-2xl border border-black/5 bg-white/60 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
+        className="spatial-chat-frosted relative z-10 flex flex-1 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/60 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
         ref={chatRef}
       >
         {/* XyzenChat Component - No modifications, just wrapped */}

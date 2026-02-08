@@ -127,7 +127,7 @@ const SidebarComp = ({
                   <button
                     key={item.id}
                     onClick={() => onTabChange(item.id as KnowledgeTab)}
-                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    className={`flex w-full items-center gap-2.5 rounded-sm px-3 py-2 text-sm font-medium transition-all duration-200 ${
                       isActive
                         ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
                         : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
@@ -172,7 +172,7 @@ const SidebarComp = ({
                 <button
                   key={knowledgeSet.id}
                   onClick={() => onTabChange("knowledge", knowledgeSet.id)}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 group ${
+                  className={`flex w-full items-center gap-2.5 rounded-sm px-3 py-2 text-sm font-medium transition-all duration-200 group ${
                     isActive
                       ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
                       : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
@@ -213,7 +213,7 @@ const SidebarComp = ({
           <div className="space-y-0.5">
             <button
               onClick={() => onTabChange("trash")}
-              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
+              className={`flex w-full items-center gap-2.5 rounded-sm px-3 py-2 text-sm font-medium transition-all duration-200 ${
                 activeTab === "trash"
                   ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
                   : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"

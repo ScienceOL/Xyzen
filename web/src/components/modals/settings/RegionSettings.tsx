@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
 import {
   Check,
-  X,
-  Globe,
   CreditCard,
+  Globe,
   MessageSquare,
-  Users,
   Sparkles,
+  Users,
   Wallet,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -293,7 +293,7 @@ export function RegionSettings() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="mt-8 rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20"
+        className="mt-8 rounded-sm border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20"
       >
         <div className="flex gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">

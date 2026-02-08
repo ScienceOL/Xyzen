@@ -105,7 +105,7 @@ function FloatingConfigPanel({
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="
             absolute right-3 top-3 bottom-3 z-50 w-80
-            bg-white rounded-xl shadow-2xl border border-neutral-200
+            bg-white rounded-sm shadow-2xl border border-neutral-200
             dark:bg-neutral-800 dark:border-neutral-600 dark:shadow-neutral-900/50
             overflow-hidden flex flex-col
           "

@@ -56,7 +56,7 @@ export const AboutSettings = () => {
 
       {/* Version Display - Using Accordion */}
       <div className="w-full">
-        <div className="overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800/60">
+        <div className="overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800/60">
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="version" className="border-none">
               <AccordionTrigger className="px-4 py-3.5 hover:no-underline">
@@ -149,7 +149,7 @@ export const AboutSettings = () => {
         </div>
 
         {/* Links */}
-        <div className="mt-6 overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800/60">
+        <div className="mt-6 overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800/60">
           <LinkRow href={GITHUB_REPO} label="GitHub" />
           <div className="mx-4 h-px bg-neutral-200 dark:bg-neutral-700" />
           <LinkRow href={`${GITHUB_REPO}/releases`} label="Releases" />
