@@ -36,6 +36,8 @@ import type {
 // Track abort timeout IDs per channel to allow cleanup
 // Using a module-level Map since NodeJS.Timeout is not serializable in store
 const abortTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
+const CHANNEL_CONNECT_TIMEOUT_MS = 5000;
+const CHANNEL_CONNECT_POLL_INTERVAL_MS = 100;
 
 export interface ChatSlice {
   // Chat panel state
@@ -189,6 +191,94 @@ export const createChatSlice: StateCreator<
       .map((m, index) => (m.agentExecution?.status === "running" ? index : -1))
       .filter((index) => index !== -1);
     return runningAgentIndices.length === 1 ? runningAgentIndices[0] : -1;
+  };
+
+  const clearMessageTransientState = (message: ChatMessage): void => {
+    delete message.isLoading;
+    delete message.isStreaming;
+    delete message.streamId;
+    message.isThinking = false;
+  };
+
+  const finalizeExecutionPhases = (
+    message: ChatMessage,
+    status: "completed" | "failed" | "cancelled",
+    endedAt: number,
+  ): void => {
+    const execution = message.agentExecution;
+    if (!execution) {
+      return;
+    }
+
+    execution.phases.forEach((phase) => {
+      if (phase.status === "running") {
+        phase.status = status;
+        phase.endedAt = endedAt;
+        if (phase.startedAt) {
+          phase.durationMs = endedAt - phase.startedAt;
+        }
+      }
+    });
+  };
+
+  const finalizeMessageExecution = (
+    message: ChatMessage,
+    {
+      status,
+      durationMs,
+      onlyIfRunning = false,
+    }: {
+      status: "completed" | "failed" | "cancelled";
+      durationMs?: number;
+      onlyIfRunning?: boolean;
+    },
+  ): void => {
+    const execution = message.agentExecution;
+    const endedAt = Date.now();
+
+    if (execution) {
+      if (!onlyIfRunning || execution.status === "running") {
+        execution.status = status;
+        execution.endedAt = endedAt;
+        if (durationMs !== undefined) {
+          execution.durationMs = durationMs;
+        }
+        finalizeExecutionPhases(message, status, endedAt);
+      }
+    }
+
+    clearMessageTransientState(message);
+  };
+
+  const waitForChannelConnection = async (
+    topicId: string,
+    options?: { logFailure?: boolean },
+  ): Promise<boolean> => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt <= CHANNEL_CONNECT_TIMEOUT_MS) {
+      const currentChannel = get().channels[topicId];
+      if (currentChannel?.connected) {
+        return true;
+      }
+      if (currentChannel?.error) {
+        if (options?.logFailure) {
+          console.warn(
+            `Connection failed for topic ${topicId}: ${currentChannel.error}`,
+          );
+        }
+        return false;
+      }
+
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, CHANNEL_CONNECT_POLL_INTERVAL_MS);
+      });
+    }
+
+    if (options?.logFailure) {
+      console.warn(`Connection timeout for topic ${topicId}`);
+    }
+    return false;
   };
 
   const syncChannelResponding = (channel: ChatChannel): void => {
@@ -511,29 +601,8 @@ export const createChatSlice: StateCreator<
         }
         connectToChannel(channel.sessionId, channel.id);
 
-        // Wait for connection to be established
-        await new Promise<void>((resolve) => {
-          const checkConnection = () => {
-            const currentChannel = get().channels[topicId];
-            if (currentChannel?.connected) {
-              resolve();
-            } else if (currentChannel?.error) {
-              // Resolve on error too to avoid hanging the UI
-              console.warn(
-                `Connection failed for topic ${topicId}: ${currentChannel.error}`,
-              );
-              resolve();
-            } else {
-              setTimeout(checkConnection, 100);
-            }
-          };
-          // Timeout after 5 seconds to prevent infinite loading
-          setTimeout(() => {
-            console.warn(`Connection timeout for topic ${topicId}`);
-            resolve();
-          }, 5000);
-          checkConnection();
-        });
+        // Wait for connection to be established.
+        await waitForChannelConnection(topicId, { logFailure: true });
       }
     },
 
@@ -911,25 +980,10 @@ export const createChatSlice: StateCreator<
                   }
 
                   // Fallback finalization when terminal agent event is delayed/missed.
-                  if (messageFinal.agentExecution?.status === "running") {
-                    messageFinal.agentExecution.status = "completed";
-                    messageFinal.agentExecution.endedAt = Date.now();
-                    messageFinal.agentExecution.phases.forEach((phase) => {
-                      if (phase.status === "running") {
-                        phase.status = "completed";
-                        phase.endedAt = Date.now();
-                        if (phase.startedAt) {
-                          phase.durationMs = Date.now() - phase.startedAt;
-                        }
-                      }
-                    });
-                  }
-
-                  // Remove transient flags
-                  delete messageFinal.isLoading;
-                  delete messageFinal.isStreaming;
-                  delete messageFinal.streamId;
-                  messageFinal.isThinking = false;
+                  finalizeMessageExecution(messageFinal, {
+                    status: "completed",
+                    onlyIfRunning: true,
+                  });
                   messageFinal.created_at =
                     eventData.created_at || new Date().toISOString();
                   console.debug(
@@ -1089,23 +1143,10 @@ export const createChatSlice: StateCreator<
 
                   // message_saved is emitted after persistence/finalization.
                   // If we missed terminal stream events, clear stale runtime flags here.
-                  delete savedMessage.isLoading;
-                  delete savedMessage.isStreaming;
-                  savedMessage.isThinking = false;
-
-                  if (savedMessage.agentExecution?.status === "running") {
-                    savedMessage.agentExecution.status = "completed";
-                    savedMessage.agentExecution.endedAt = Date.now();
-                    savedMessage.agentExecution.phases.forEach((phase) => {
-                      if (phase.status === "running") {
-                        phase.status = "completed";
-                        phase.endedAt = Date.now();
-                        if (phase.startedAt) {
-                          phase.durationMs = Date.now() - phase.startedAt;
-                        }
-                      }
-                    });
-                  }
+                  finalizeMessageExecution(savedMessage, {
+                    status: "completed",
+                    onlyIfRunning: true,
+                  });
                 }
                 break;
               }
@@ -1616,28 +1657,18 @@ export const createChatSlice: StateCreator<
                   const targetMessage = channel.messages[msgIndex];
                   const execution = targetMessage.agentExecution;
                   if (execution) {
-                    execution.status =
-                      data.status === "completed"
-                        ? "completed"
-                        : data.status === "cancelled"
-                          ? "cancelled"
-                          : "failed";
-                    execution.endedAt = Date.now();
-                    execution.durationMs = data.duration_ms;
-                    execution.phases.forEach((phase) => {
-                      if (phase.status === "running") {
-                        phase.status =
-                          data.status === "cancelled" ? "cancelled" : "completed";
-                        phase.endedAt = Date.now();
-                        if (phase.startedAt) {
-                          phase.durationMs = Date.now() - phase.startedAt;
-                        }
-                      }
+                    finalizeMessageExecution(targetMessage, {
+                      status:
+                        data.status === "completed"
+                          ? "completed"
+                          : data.status === "cancelled"
+                            ? "cancelled"
+                            : "failed",
+                      durationMs: data.duration_ms,
                     });
+                  } else {
+                    clearMessageTransientState(targetMessage);
                   }
-                  delete targetMessage.isStreaming;
-                  targetMessage.isThinking = false;
-                  delete targetMessage.streamId;
                 }
                 break;
               }
@@ -1656,27 +1687,18 @@ export const createChatSlice: StateCreator<
                   const targetMessage = channel.messages[msgIndex];
                   const execution = targetMessage.agentExecution;
                   if (execution) {
-                    execution.status = "failed";
-                    execution.endedAt = Date.now();
                     execution.error = {
                       type: data.error_type,
                       message: data.error_message,
                       recoverable: data.recoverable,
                       nodeId: data.node_id,
                     };
-                    execution.phases.forEach((phase) => {
-                      if (phase.status === "running") {
-                        phase.status = "failed";
-                        phase.endedAt = Date.now();
-                        if (phase.startedAt) {
-                          phase.durationMs = Date.now() - phase.startedAt;
-                        }
-                      }
+                    finalizeMessageExecution(targetMessage, {
+                      status: "failed",
                     });
+                  } else {
+                    clearMessageTransientState(targetMessage);
                   }
-                  delete targetMessage.isStreaming;
-                  targetMessage.isThinking = false;
-                  delete targetMessage.streamId;
                 }
                 break;
               }
@@ -1887,25 +1909,7 @@ export const createChatSlice: StateCreator<
       // Ensure websocket is connected to the active topic before sending.
       if (!activeChannel.connected) {
         connectToChannel(activeChannel.sessionId, activeChannel.id);
-
-        await new Promise<void>((resolve) => {
-          const startedAt = Date.now();
-
-          const checkConnection = () => {
-            const current = get().channels[activeChatChannel];
-            if (current?.connected || current?.error) {
-              resolve();
-              return;
-            }
-            if (Date.now() - startedAt > 5000) {
-              resolve();
-              return;
-            }
-            setTimeout(checkConnection, 100);
-          };
-
-          checkConnection();
-        });
+        await waitForChannelConnection(activeChatChannel);
       }
 
       const recheckedChannel = get().channels[activeChatChannel];
