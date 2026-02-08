@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.2.0](https://github.com/ScienceOL/Xyzen/compare/v1.1.5...v1.2.0) (2026-02-08)
+
+### ✨ Features
+
+* add runtime animation, add beta survey and subscription plans instrument. ([#228](https://github.com/ScienceOL/Xyzen/issues/228)) ([37493f9](https://github.com/ScienceOL/Xyzen/commit/37493f97d2e508d84a8962c265bcc495c2c1fead)), closes [#227](https://github.com/ScienceOL/Xyzen/issues/227) [#223](https://github.com/ScienceOL/Xyzen/issues/223)
+
 ## [1.1.5](https://github.com/ScienceOL/Xyzen/compare/v1.1.4...v1.1.5) (2026-02-07)
 
 ### 🐛 Bug Fixes
