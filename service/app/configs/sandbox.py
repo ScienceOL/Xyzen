@@ -15,7 +15,7 @@ class SandboxConfig(BaseModel):
         description="Sandbox backend provider (daytona, e2b)",
     )
     DaytonaApiUrl: str = Field(
-        default="http://localhost:3000/api",
+        default="http://host.docker.internal:13000/api",
         description="Daytona API server URL",
     )
     DaytonaApiKey: str = Field(
