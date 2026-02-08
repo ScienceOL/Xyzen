@@ -76,6 +76,13 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     # Think tool (component-internal)
     "think_tool": [ToolCapability.THINK, ToolCapability.RESEARCH],
     "think": [ToolCapability.THINK],
+    # Sandbox tools
+    "sandbox_bash": [ToolCapability.CODE_EXECUTION],
+    "sandbox_read": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
+    "sandbox_write": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
+    "sandbox_edit": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
+    "sandbox_glob": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
+    "sandbox_grep": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
 }
 
 

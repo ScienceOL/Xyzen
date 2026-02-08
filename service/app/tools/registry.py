@@ -276,6 +276,24 @@ def register_builtin_tools() -> None:
             cost=image_tool_costs.get(tool_id, ToolCostConfig()),
         )
 
+    # Register sandbox tools (guarded by config flag)
+    from app.configs import configs as app_configs
+
+    if app_configs.Sandbox.Enable:
+        from app.tools.builtin.sandbox import create_sandbox_tools
+
+        sandbox_tools = create_sandbox_tools()
+        for tool_id, tool in sandbox_tools.items():
+            BuiltinToolRegistry.register(
+                tool_id=tool_id,
+                tool=tool,
+                category="sandbox",
+                display_name=tool.name.replace("_", " ").title(),
+                ui_toggleable=True,
+                default_enabled=False,
+                requires_context=["session_id"],
+            )
+
     logger.info(f"Registered {BuiltinToolRegistry.count()} builtin tools")
 
 
