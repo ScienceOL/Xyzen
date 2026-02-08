@@ -274,20 +274,19 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const messageStyles = "rounded-sm bg-neutral-50/50 dark:bg-neutral-800/30";
   // Base toolbar styles (opacity controlled separately for mobile/desktop)
   const toolbarBaseStyles =
-    "absolute -bottom-7 left-8 z-10 flex items-center gap-0.5 rounded-sm bg-neutral-100/90 dark:bg-neutral-800/90 px-1.5 py-0.5 transition-all duration-200";
+    "absolute -bottom-7 left-8 z-10 flex items-center gap-2 py-0.5 transition-all duration-200";
   // Toolbar visibility: desktop uses group-hover, mobile uses showMobileToolbar state
   const toolbarVisibilityStyles = showMobileToolbar
     ? "opacity-100 translate-y-0"
     : "opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0";
   const toolbarStyles = `${toolbarBaseStyles} ${toolbarVisibilityStyles}`;
   const toolbarTimestampStyles =
-    "px-1 text-[10px] text-neutral-400 dark:text-neutral-500";
-  const toolbarDividerStyles =
-    "h-3 w-px bg-neutral-300/60 dark:bg-neutral-600/60";
+    "text-xs text-neutral-400 dark:text-neutral-500 tabular-nums";
+  const toolbarDividerStyles = "h-3 w-px bg-neutral-300 dark:bg-neutral-600";
   const toolbarButtonStyles =
-    "rounded p-1 text-neutral-400 transition-colors hover:text-neutral-700 hover:bg-neutral-200/50 dark:text-neutral-500 dark:hover:text-neutral-200 dark:hover:bg-neutral-700/50";
+    "p-0.5 text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100";
   const toolbarDeleteButtonStyles =
-    "rounded p-1 text-neutral-400 transition-colors hover:text-red-500 hover:bg-red-50 dark:text-neutral-500 dark:hover:text-red-400 dark:hover:bg-red-900/30";
+    "p-0.5 text-neutral-500 transition-colors hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400";
 
   // 渲染头像
   const renderAvatar = () => {
