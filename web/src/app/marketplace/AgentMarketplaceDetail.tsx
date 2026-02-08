@@ -210,7 +210,8 @@ export default function AgentMarketplaceDetail({
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
                         {listing.scope === "official"
                           ? "Xyzen"
-                          : (listing.user_id ?? "").split("@")[0] || listing.user_id}
+                          : (listing.user_id ?? "").split("@")[0] ||
+                            listing.user_id}
                       </span>
                     </p>
                     <p className="mt-3 text-base leading-relaxed text-neutral-700 dark:text-neutral-300">

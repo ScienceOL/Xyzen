@@ -43,3 +43,10 @@ export {
   getMessageDisplayMode,
 } from "./messageContent";
 export type { ResolvedContent, MessageDisplayMode } from "./messageContent";
+
+// Channel state merge utilities
+export { mergeChannelPreservingRuntime } from "./channelState";
+
+// Channel/topic status utilities
+export { deriveTopicStatus, isActiveTopicStatus } from "./channelStatus";
+export type { TopicStatus } from "./channelStatus";

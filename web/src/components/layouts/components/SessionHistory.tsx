@@ -1,9 +1,11 @@
 "use client";
 
 import EditableTitle from "@/components/base/EditableTitle";
+import ChatStatusBadge from "@/components/base/ChatStatusBadge";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { Input } from "@/components/ui/input";
+import { deriveTopicStatus } from "@/core/chat";
 import { formatTime } from "@/lib/formatDate";
 import { useXyzen } from "@/store";
 import type { ChatHistoryItem } from "@/store/types";
@@ -42,6 +44,7 @@ function SessionHistory({
   const user = useXyzen((s) => s.user);
   const history = useXyzen((s) => s.chatHistory);
   const historyLoading = useXyzen((s) => s.chatHistoryLoading);
+  const channels = useXyzen((s) => s.channels);
 
   const activateChannelFn = useXyzen((s) => s.activateChannel);
   const togglePinFn = useXyzen((s) => s.togglePinChat);
@@ -276,18 +279,25 @@ function SessionHistory({
                       <MapPinIcon className="mr-2 h-3.5 w-3.5 rotate-45 text-indigo-500 dark:text-indigo-400" />
                     )}
                     <div className="flex-1">
-                      <EditableTitle
-                        title={chat.title}
-                        onSave={(newTitle) => updateTopicFn(chat.id, newTitle)}
-                        className="w-full"
-                        textClassName={`truncate text-sm font-medium ${
-                          chat.id === activeChannel
-                            ? "text-indigo-700 dark:text-indigo-300"
-                            : chat.isPinned
-                              ? "text-indigo-700 dark:text-indigo-400"
-                              : "text-neutral-800 dark:text-white"
-                        }`}
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <EditableTitle
+                          title={chat.title}
+                          onSave={(newTitle) =>
+                            updateTopicFn(chat.id, newTitle)
+                          }
+                          className="w-full"
+                          textClassName={`truncate text-sm font-medium ${
+                            chat.id === activeChannel
+                              ? "text-indigo-700 dark:text-indigo-300"
+                              : chat.isPinned
+                                ? "text-indigo-700 dark:text-indigo-400"
+                                : "text-neutral-800 dark:text-white"
+                          }`}
+                        />
+                        {deriveTopicStatus(channels[chat.id]) === "running" && (
+                          <ChatStatusBadge status="running" size="xs" />
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-1 flex items-center text-xs text-neutral-500 dark:text-neutral-400">

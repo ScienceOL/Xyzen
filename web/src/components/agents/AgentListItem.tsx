@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/animate-ui/components/animate/tooltip";
 import { Badge } from "@/components/base/Badge";
+import ChatStatusBadge from "@/components/base/ChatStatusBadge";
 import { formatTime } from "@/lib/formatDate";
 import type { Agent } from "@/types/agents";
 import {
@@ -161,6 +162,7 @@ interface DetailedVariantProps extends AgentListItemBaseProps {
   variant: "detailed";
   isMarketplacePublished?: boolean;
   lastConversationTime?: string;
+  activeTopicCount?: number;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
   // Compact variant props not used
@@ -190,6 +192,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   agent,
   isMarketplacePublished = false,
   lastConversationTime,
+  activeTopicCount = 0,
   onClick,
   onEdit,
   onDelete,
@@ -317,6 +320,17 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
                   </TooltipContent>
                 </Tooltip>
               )}
+
+              {activeTopicCount > 0 && (
+                <div className="shrink-0 flex items-center gap-1">
+                  <ChatStatusBadge status="running" size="xs" />
+                  {activeTopicCount > 1 && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                      {activeTopicCount}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
@@ -426,6 +440,17 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
                   })}
                 </TooltipContent>
               </Tooltip>
+            )}
+
+            {activeTopicCount > 0 && (
+              <div className="shrink-0 flex items-center gap-1">
+                <ChatStatusBadge status="running" size="xs" />
+                {activeTopicCount > 1 && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                    {activeTopicCount}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -567,16 +592,20 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
             alt={agent.name}
             className="w-10 h-10 rounded-full border border-white/50 object-cover"
           />
-          {status === "busy" && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500"></span>
-            </span>
-          )}
         </div>
         <div className="min-w-0 flex-1 text-left">
-          <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-            {agent.name}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+              {agent.name}
+            </div>
+            {status === "busy" && (
+              <ChatStatusBadge
+                status="running"
+                size="xs"
+                showLabel={false}
+                className="shrink-0"
+              />
+            )}
           </div>
           {role && (
             <div className="truncate text-[10px] text-neutral-500">{role}</div>

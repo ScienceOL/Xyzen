@@ -28,6 +28,12 @@
     "agent": {
       "stopped": "生成が停止されました",
       "subagents": "サブエージェント"
+    },
+    "status": {
+      "idle": "待機中",
+      "running": "実行中",
+      "stopping": "停止中",
+      "failed": "失敗"
     }
   },
   "activityBar": {

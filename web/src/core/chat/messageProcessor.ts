@@ -535,8 +535,20 @@ export function reconstructAgentExecutionFromMetadata(
     return undefined;
   }
 
-  // Determine status from metadata - check timeline for agent_end status
-  let executionStatus: "completed" | "cancelled" | "failed" = "completed";
+  // Determine status from metadata.
+  // Prefer direct persisted status first, then let terminal agent_end events override.
+  let executionStatus: "running" | "completed" | "cancelled" | "failed" =
+    "completed";
+  const directStatus = agent_metadata.status as string | undefined;
+  if (
+    directStatus === "running" ||
+    directStatus === "completed" ||
+    directStatus === "cancelled" ||
+    directStatus === "failed"
+  ) {
+    executionStatus = directStatus;
+  }
+
   if (timeline) {
     const agentEndEntry = timeline.find(
       (entry) => entry.event_type === "agent_end",
@@ -545,14 +557,9 @@ export function reconstructAgentExecutionFromMetadata(
       executionStatus = "cancelled";
     } else if (agentEndEntry?.status === "failed") {
       executionStatus = "failed";
+    } else if (agentEndEntry?.status === "completed") {
+      executionStatus = "completed";
     }
-  }
-  // Also check direct status field from metadata
-  const directStatus = agent_metadata.status as string | undefined;
-  if (directStatus === "cancelled") {
-    executionStatus = "cancelled";
-  } else if (directStatus === "failed") {
-    executionStatus = "failed";
   }
 
   return {

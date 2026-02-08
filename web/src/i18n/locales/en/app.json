@@ -28,6 +28,12 @@
     "agent": {
       "stopped": "Generation stopped",
       "subagents": "Subagents"
+    },
+    "status": {
+      "idle": "Idle",
+      "running": "Running",
+      "stopping": "Stopping",
+      "failed": "Failed"
     }
   },
   "activityBar": {

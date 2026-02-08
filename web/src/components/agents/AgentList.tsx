@@ -43,6 +43,7 @@ interface SortableItemProps {
   // Detailed variant props
   isMarketplacePublished?: boolean;
   lastConversationTime?: string;
+  activeTopicCount?: number;
   // Compact variant props
   isSelected?: boolean;
   status?: "idle" | "busy";
@@ -58,6 +59,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
   variant,
   isMarketplacePublished,
   lastConversationTime,
+  activeTopicCount,
   isSelected,
   status,
   role,
@@ -92,6 +94,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
         variant="detailed"
         isMarketplacePublished={isMarketplacePublished}
         lastConversationTime={lastConversationTime}
+        activeTopicCount={activeTopicCount}
         onClick={onClick}
         onEdit={onEdit}
         onDelete={onDelete}
@@ -136,6 +139,7 @@ interface DetailedAgentListProps extends AgentListBaseProps {
   variant: "detailed";
   publishedAgentIds?: Set<string>;
   lastConversationTimeByAgent?: Record<string, string>;
+  activeTopicCountByAgent?: Record<string, number>;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
   // Compact variant props not used
@@ -254,6 +258,11 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
           variant="detailed"
           isMarketplacePublished={publishedAgentIds?.has(activeAgent.id)}
           lastConversationTime={lastConversationTimeByAgent?.[activeAgent.id]}
+          activeTopicCount={
+            (props as DetailedAgentListProps).activeTopicCountByAgent?.[
+              activeAgent.id
+            ]
+          }
           isDragging={true}
         />
       );
@@ -275,8 +284,13 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
   };
 
   if (variant === "detailed") {
-    const { publishedAgentIds, lastConversationTimeByAgent, onEdit, onDelete } =
-      props as DetailedAgentListProps;
+    const {
+      publishedAgentIds,
+      lastConversationTimeByAgent,
+      activeTopicCountByAgent,
+      onEdit,
+      onDelete,
+    } = props as DetailedAgentListProps;
 
     const content = (
       <motion.div
@@ -293,6 +307,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
               variant="detailed"
               isMarketplacePublished={publishedAgentIds?.has(agent.id)}
               lastConversationTime={lastConversationTimeByAgent?.[agent.id]}
+              activeTopicCount={activeTopicCountByAgent?.[agent.id]}
               onClick={onAgentClick}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -304,6 +319,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
               variant="detailed"
               isMarketplacePublished={publishedAgentIds?.has(agent.id)}
               lastConversationTime={lastConversationTimeByAgent?.[agent.id]}
+              activeTopicCount={activeTopicCountByAgent?.[agent.id]}
               onClick={onAgentClick}
               onEdit={onEdit}
               onDelete={onDelete}

@@ -13,6 +13,7 @@ import {
   createLoadingMessage,
   convertToStreamingMessage,
   finalizeStreamingMessage,
+  reconstructAgentExecutionFromMetadata,
 } from "../messageProcessor";
 import type { Message } from "@/store/types";
 
@@ -380,5 +381,53 @@ describe("finalizeStreamingMessage", () => {
 
     expect(result.created_at >= before).toBe(true);
     expect(result.created_at <= after).toBe(true);
+  });
+});
+
+describe("reconstructAgentExecutionFromMetadata", () => {
+  it("preserves running status from persisted metadata", () => {
+    const result = reconstructAgentExecutionFromMetadata({
+      execution_id: "exec-running",
+      agent_id: "agent-1",
+      agent_name: "Agent",
+      agent_type: "react",
+      status: "running",
+      node_outputs: {
+        response: "Partial response",
+      },
+      node_order: ["response"],
+      node_names: {
+        response: "Response",
+      },
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.status).toBe("running");
+  });
+
+  it("uses terminal agent_end status over direct status", () => {
+    const result = reconstructAgentExecutionFromMetadata({
+      execution_id: "exec-ended",
+      agent_id: "agent-1",
+      agent_name: "Agent",
+      agent_type: "react",
+      status: "running",
+      timeline: [
+        {
+          event_type: "agent_end",
+          status: "completed",
+        },
+      ],
+      node_outputs: {
+        response: "Final response",
+      },
+      node_order: ["response"],
+      node_names: {
+        response: "Response",
+      },
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.status).toBe("completed");
   });
 });

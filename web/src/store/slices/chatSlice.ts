@@ -2,6 +2,7 @@ import {
   generateClientId,
   groupToolMessagesWithAssistant,
   isValidUuid,
+  mergeChannelPreservingRuntime,
 } from "@/core/chat";
 import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
 import { providerCore } from "@/core/provider";
@@ -492,7 +493,11 @@ export const createChatSlice: StateCreator<
             };
 
             set((state) => {
-              state.channels[latestTopic.id] = channel;
+              const existingChannel = state.channels[latestTopic.id];
+              state.channels[latestTopic.id] = mergeChannelPreservingRuntime(
+                existingChannel,
+                channel,
+              );
             });
 
             await get().activateChannel(latestTopic.id);
