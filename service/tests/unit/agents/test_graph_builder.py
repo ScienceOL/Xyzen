@@ -56,7 +56,7 @@ class _StrictTestComponent(ExecutableComponent):
         return _StrictComponentConfig
 
     @override
-    async def build_graph(self, llm_factory: Any, tools: list[Any], config: dict[str, Any] | None = None) -> Any:
+    async def build_graph(self, llm_factory: Any, tools: list[Any], config: dict[str, Any] | None = None, store: Any = None) -> Any:
         _ = (llm_factory, tools, config)
         workflow: StateGraph[MessagesState] = StateGraph(MessagesState)
 

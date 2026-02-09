@@ -240,19 +240,20 @@ def register_builtin_tools() -> None:
             cost=knowledge_tool_costs.get(tool_id, ToolCostConfig()),
         )
 
-    # Register memory tools (disabled due to performance issues)
-    # from app.tools.builtin.memory import create_memory_tools
-    # memory_tools = create_memory_tools()
-    # for tool_id, tool in memory_tools.items():
-    #     BuiltinToolRegistry.register(
-    #         tool_id=tool_id,
-    #         tool=tool,
-    #         category="memory",
-    #         display_name="Memory Search",
-    #         ui_toggleable=True,
-    #         default_enabled=False,
-    #         requires_context=["user_id", "agent_id"],
-    #     )
+    # Register memory tools (langmem-backed)
+    from app.tools.builtin.memory import create_memory_tools
+
+    memory_tools = create_memory_tools()
+    for tool_id, tool in memory_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="memory",
+            display_name="Manage Memory" if tool_id == "manage_memory" else "Search Memory",
+            ui_toggleable=True,
+            default_enabled=True,
+            requires_context=["user_id", "store"],
+        )
 
     # Tool cost configs for image tools
     image_tool_costs = {

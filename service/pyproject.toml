@@ -49,6 +49,7 @@ dependencies = [
     "celery-types>=0.24.0",
     "trafilatura>=1.12.0",
     "daytona>=0.139.0",
+    "langmem>=0.0.30",
 ]
 
 [dependency-groups]

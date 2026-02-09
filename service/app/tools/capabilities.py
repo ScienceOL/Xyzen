@@ -62,9 +62,9 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     "knowledge_search": [ToolCapability.KNOWLEDGE_RETRIEVAL],
     "knowledge_query": [ToolCapability.KNOWLEDGE_RETRIEVAL],
     "rag_query": [ToolCapability.KNOWLEDGE_RETRIEVAL],
-    # Memory tools
-    "memory_search": [ToolCapability.MEMORY],
-    "memory_store": [ToolCapability.MEMORY],
+    # Memory tools (langmem)
+    "manage_memory": [ToolCapability.MEMORY],
+    "search_memory": [ToolCapability.MEMORY],
     # Image tools
     "generate_image": [ToolCapability.IMAGE_GENERATION],
     "read_image": [ToolCapability.IMAGE_ANALYSIS],

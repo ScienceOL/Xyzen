@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, ValidationError
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
     from langgraph.graph.state import CompiledStateGraph
+    from langgraph.store.base import BaseStore
 
     from app.agents.types import LLMFactory
 
@@ -100,6 +101,7 @@ class ExecutableComponent(ABC):
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
         config: dict[str, Any] | None = None,
+        store: "BaseStore | None" = None,
     ) -> "CompiledStateGraph":
         """
         Build the component's executable graph.
@@ -118,6 +120,7 @@ class ExecutableComponent(ABC):
                    are passed in.
             config: Runtime configuration overrides. Values are validated
                    against config_schema if provided.
+            store: Optional LangGraph BaseStore for cross-thread memory.
 
         Returns:
             Compiled StateGraph ready for execution

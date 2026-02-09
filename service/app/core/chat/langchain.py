@@ -269,6 +269,11 @@ async def _create_langchain_agent(
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """Create and configure the LangChain agent using the agent factory."""
     from app.agents.factory import create_chat_agent
+    from app.core.memory import get_or_initialize_memory_service
+
+    # Ensure memory service is available (lazy init for Celery workers)
+    memory_svc = await get_or_initialize_memory_service()
+    store = memory_svc.store if memory_svc else None
 
     graph, event_ctx = await create_chat_agent(
         db=db,
@@ -278,6 +283,7 @@ async def _create_langchain_agent(
         provider_id=provider_id,
         model_name=model_name,
         system_prompt=system_prompt,
+        store=store,
     )
     return graph, event_ctx
 
@@ -344,7 +350,10 @@ async def _process_agent_stream(
         async for chunk in agent.astream(
             {"messages": history_messages},
             stream_mode=["updates", "messages"],
-            config={"recursion_limit": 50},
+            config={
+                "recursion_limit": 50,
+                "configurable": {"user_id": ctx.user_id},
+            },
         ):
             chunk_count += 1
             try:
