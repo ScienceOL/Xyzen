@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.0](https://github.com/ScienceOL/Xyzen/compare/v1.2.0...v1.3.0) (2026-02-09)
+
+### ✨ Features
+
+* add sandbox, optimize streaming, support long term memory  ([606a47c](https://github.com/ScienceOL/Xyzen/commit/606a47ceba42709e635989397c8cc265808264c3)), closes [#229](https://github.com/ScienceOL/Xyzen/issues/229) [#227](https://github.com/ScienceOL/Xyzen/issues/227) [#223](https://github.com/ScienceOL/Xyzen/issues/223)
+
 ## [1.2.0](https://github.com/ScienceOL/Xyzen/compare/v1.1.5...v1.2.0) (2026-02-08)
 
 ### ✨ Features
