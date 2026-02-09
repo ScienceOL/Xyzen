@@ -2,17 +2,16 @@ import type { ChatChannel, Message } from "@/store/types";
 
 export type TopicStatus = "idle" | "running" | "stopping" | "failed";
 
-function getLatestAssistantExecutionStatus(
+function getLatestAssistantMessage(
   messages: Message[] | undefined,
-): "running" | "completed" | "failed" | "cancelled" | undefined {
+): Message | undefined {
   if (!messages || messages.length === 0) {
     return undefined;
   }
 
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const executionStatus = messages[i]?.agentExecution?.status;
-    if (executionStatus) {
-      return executionStatus;
+    if (messages[i]?.role === "assistant") {
+      return messages[i];
     }
   }
 
@@ -34,21 +33,32 @@ export function deriveTopicStatus(
     return "running";
   }
 
-  const hasStreamingMessage = channel.messages.some(
-    (msg) => msg.isStreaming || msg.isThinking,
-  );
-  if (hasStreamingMessage) {
+  const latestAssistant = getLatestAssistantMessage(channel.messages);
+  if (!latestAssistant) {
+    return "idle";
+  }
+
+  if (latestAssistant.isStreaming || latestAssistant.isThinking) {
     return "running";
   }
 
-  const latestExecutionStatus = getLatestAssistantExecutionStatus(
-    channel.messages,
-  );
-  if (latestExecutionStatus === "running") {
+  if (latestAssistant.agentExecution?.status === "running") {
     return "running";
   }
-  if (latestExecutionStatus === "failed") {
+  if (latestAssistant.agentExecution?.status === "failed") {
     return "failed";
+  }
+
+  const hasActiveToolCall = Boolean(
+    latestAssistant.toolCalls?.some(
+      (toolCall) =>
+        toolCall.status === "executing" ||
+        toolCall.status === "pending" ||
+        toolCall.status === "waiting_confirmation",
+    ),
+  );
+  if (hasActiveToolCall) {
+    return "running";
   }
 
   return "idle";

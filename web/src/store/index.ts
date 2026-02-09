@@ -1,6 +1,10 @@
+import { enableMapSet } from "immer";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
+
+// Enable Immer support for Set/Map (used by derived state in ChatSlice)
+enableMapSet();
 import {
   createAgentSlice,
   createAuthSlice,

@@ -1,0 +1,57 @@
+name: Auto-fill PR body with commits
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  update-pr-body:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate commit summary
+        id: commits
+        run: |
+          COMMITS=$(git log --reverse --format="- %s" origin/main..HEAD)
+          # Escape for GitHub Actions output
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "list<<$EOF" >> "$GITHUB_OUTPUT"
+          echo "$COMMITS" >> "$GITHUB_OUTPUT"
+          echo "$EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Update PR description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commits = `${{ steps.commits.outputs.list }}`;
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const marker = '<!-- auto-commits -->';
+            const markerEnd = '<!-- /auto-commits -->';
+            const commitSection = `${marker}\n## Commits\n\n${commits}\n${markerEnd}`;
+
+            let body = pr.body || '';
+            const regex = new RegExp(`${marker}[\\s\\S]*?${markerEnd}`);
+            if (regex.test(body)) {
+              body = body.replace(regex, commitSection);
+            } else {
+              body = body ? `${body}\n\n${commitSection}` : commitSection;
+            }
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body,
+            });

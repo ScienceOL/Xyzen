@@ -4,6 +4,7 @@ import {
   isValidUuid,
   mergeChannelPreservingRuntime,
 } from "@/core/chat";
+import { deriveTopicStatus } from "@/core/chat/channelStatus";
 import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
 import { providerCore } from "@/core/provider";
 import { authService } from "@/service/authService";
@@ -24,6 +25,7 @@ import type { StateCreator } from "zustand";
 import type {
   ChatChannel,
   ChatHistoryItem,
+  Message as ChatMessage,
   SessionResponse,
   TopicResponse,
   XyzenState,
@@ -35,6 +37,8 @@ import type {
 // Track abort timeout IDs per channel to allow cleanup
 // Using a module-level Map since NodeJS.Timeout is not serializable in store
 const abortTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
+const CHANNEL_CONNECT_TIMEOUT_MS = 5000;
+const CHANNEL_CONNECT_POLL_INTERVAL_MS = 100;
 
 export interface ChatSlice {
   // Chat panel state
@@ -43,6 +47,11 @@ export interface ChatSlice {
   chatHistory: ChatHistoryItem[];
   chatHistoryLoading: boolean;
   channels: Record<string, ChatChannel>;
+
+  // Derived state — updated on state transitions only (NOT on streaming_chunk)
+  respondingChannelIds: Set<string>;
+  runningAgentIds: Set<string>;
+  activeTopicCountByAgent: Record<string, number>;
 
   // Notification state
   notification: {
@@ -146,6 +155,202 @@ export const createChatSlice: StateCreator<
     return nodeId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
+  const ensureFallbackResponsePhase = (message: ChatMessage): void => {
+    const execution = message.agentExecution;
+    if (!execution || execution.phases.length > 0) {
+      return;
+    }
+
+    execution.phases.push({
+      id: "response",
+      name: "Response",
+      status: "running",
+      startedAt: Date.now(),
+      nodes: [],
+      streamedContent: "",
+    });
+    execution.currentNode = "response";
+  };
+
+  const findMessageIndexByStream = (
+    channel: ChatChannel,
+    streamId: string,
+    executionId?: string,
+  ): number => {
+    const byStreamId = channel.messages.findLastIndex(
+      (m) => m.id === streamId || m.streamId === streamId,
+    );
+    if (byStreamId !== -1) {
+      return byStreamId;
+    }
+
+    if (executionId) {
+      const byExecution = channel.messages.findLastIndex(
+        (m) => m.agentExecution?.executionId === executionId,
+      );
+      if (byExecution !== -1) {
+        return byExecution;
+      }
+    }
+
+    const runningAgentIndices = channel.messages
+      .map((m, index) => (m.agentExecution?.status === "running" ? index : -1))
+      .filter((index) => index !== -1);
+    return runningAgentIndices.length === 1 ? runningAgentIndices[0] : -1;
+  };
+
+  const clearMessageTransientState = (message: ChatMessage): void => {
+    delete message.isLoading;
+    delete message.isStreaming;
+    delete message.streamId;
+    message.isThinking = false;
+  };
+
+  const finalizeExecutionPhases = (
+    message: ChatMessage,
+    status: "completed" | "failed" | "cancelled",
+    endedAt: number,
+  ): void => {
+    const execution = message.agentExecution;
+    if (!execution) {
+      return;
+    }
+
+    execution.phases.forEach((phase) => {
+      if (phase.status === "running") {
+        phase.status = status;
+        phase.endedAt = endedAt;
+        if (phase.startedAt) {
+          phase.durationMs = endedAt - phase.startedAt;
+        }
+      }
+    });
+  };
+
+  const finalizeMessageExecution = (
+    message: ChatMessage,
+    {
+      status,
+      durationMs,
+      onlyIfRunning = false,
+    }: {
+      status: "completed" | "failed" | "cancelled";
+      durationMs?: number;
+      onlyIfRunning?: boolean;
+    },
+  ): void => {
+    const execution = message.agentExecution;
+    const endedAt = Date.now();
+
+    if (execution) {
+      if (!onlyIfRunning || execution.status === "running") {
+        execution.status = status;
+        execution.endedAt = endedAt;
+        if (durationMs !== undefined) {
+          execution.durationMs = durationMs;
+        }
+        finalizeExecutionPhases(message, status, endedAt);
+      }
+    }
+
+    clearMessageTransientState(message);
+  };
+
+  const waitForChannelConnection = async (
+    topicId: string,
+    options?: { logFailure?: boolean },
+  ): Promise<boolean> => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt <= CHANNEL_CONNECT_TIMEOUT_MS) {
+      const currentChannel = get().channels[topicId];
+      if (currentChannel?.connected) {
+        return true;
+      }
+      if (currentChannel?.error) {
+        if (options?.logFailure) {
+          console.warn(
+            `Connection failed for topic ${topicId}: ${currentChannel.error}`,
+          );
+        }
+        return false;
+      }
+
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, CHANNEL_CONNECT_POLL_INTERVAL_MS);
+      });
+    }
+
+    if (options?.logFailure) {
+      console.warn(`Connection timeout for topic ${topicId}`);
+    }
+    return false;
+  };
+
+  const syncChannelResponding = (channel: ChatChannel): void => {
+    const latestAssistant = [...channel.messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+
+    if (!latestAssistant) {
+      channel.responding = false;
+      return;
+    }
+
+    // Runtime/transient flags are only considered on the latest assistant message.
+    // Old stale flags from previous turns should not keep the topic running forever.
+    if (
+      latestAssistant.isLoading ||
+      latestAssistant.isStreaming ||
+      latestAssistant.isThinking
+    ) {
+      channel.responding = true;
+      return;
+    }
+
+    if (latestAssistant.agentExecution?.status === "running") {
+      channel.responding = true;
+      return;
+    }
+
+    const hasActiveToolCall = Boolean(
+      latestAssistant.toolCalls?.some(
+        (toolCall) =>
+          toolCall.status === "executing" ||
+          toolCall.status === "pending" ||
+          toolCall.status === "waiting_confirmation",
+      ),
+    );
+    channel.responding = hasActiveToolCall;
+  };
+
+  /** Recompute derived status fields from all channels. Call on state transitions only. */
+  const updateDerivedStatus = (): void => {
+    set((state: ChatSlice) => {
+      const respondingIds = new Set<string>();
+      const runningIds = new Set<string>();
+      const topicCounts: Record<string, number> = {};
+
+      for (const channel of Object.values(state.channels)) {
+        const status = deriveTopicStatus(channel);
+        if (status === "running" || status === "stopping") {
+          respondingIds.add(channel.id);
+          if (channel.agentId) {
+            runningIds.add(channel.agentId);
+          }
+        }
+        if (status === "running" && channel.agentId) {
+          topicCounts[channel.agentId] =
+            (topicCounts[channel.agentId] || 0) + 1;
+        }
+      }
+
+      state.respondingChannelIds = respondingIds;
+      state.runningAgentIds = runningIds;
+      state.activeTopicCountByAgent = topicCounts;
+    });
+  };
+
   return {
     // Chat panel state
     activeChatChannel: null,
@@ -153,6 +358,11 @@ export const createChatSlice: StateCreator<
     chatHistory: [],
     chatHistoryLoading: true,
     channels: {},
+
+    // Derived state
+    respondingChannelIds: new Set<string>(),
+    runningAgentIds: new Set<string>(),
+    activeTopicCountByAgent: {},
 
     // Notification state
     notification: null,
@@ -365,7 +575,18 @@ export const createChatSlice: StateCreator<
       }
 
       if (channel) {
-        if (channel.messages.length === 0) {
+        const hasUnresolvedRuntimeState = channel.messages.some((m) =>
+          Boolean(
+            m.isLoading ||
+            m.isStreaming ||
+            m.isThinking ||
+            m.agentExecution?.status === "running",
+          ),
+        );
+
+        // Always reconcile with backend when no messages OR when runtime flags may be stale
+        // (e.g. switched topic during streaming and missed terminal events).
+        if (channel.messages.length === 0 || hasUnresolvedRuntimeState) {
           const { setLoading } = get();
           const loadingKey = `topicMessages-${topicId}`;
           setLoading(loadingKey, true);
@@ -394,6 +615,7 @@ export const createChatSlice: StateCreator<
               set((state: ChatSlice) => {
                 if (state.channels[topicId]) {
                   state.channels[topicId].messages = processedMessages;
+                  syncChannelResponding(state.channels[topicId]);
                 }
               });
             } else {
@@ -416,29 +638,8 @@ export const createChatSlice: StateCreator<
         }
         connectToChannel(channel.sessionId, channel.id);
 
-        // Wait for connection to be established
-        await new Promise<void>((resolve) => {
-          const checkConnection = () => {
-            const currentChannel = get().channels[topicId];
-            if (currentChannel?.connected) {
-              resolve();
-            } else if (currentChannel?.error) {
-              // Resolve on error too to avoid hanging the UI
-              console.warn(
-                `Connection failed for topic ${topicId}: ${currentChannel.error}`,
-              );
-              resolve();
-            } else {
-              setTimeout(checkConnection, 100);
-            }
-          };
-          // Timeout after 5 seconds to prevent infinite loading
-          setTimeout(() => {
-            console.warn(`Connection timeout for topic ${topicId}`);
-            resolve();
-          }, 5000);
-          checkConnection();
-        });
+        // Wait for connection to be established.
+        await waitForChannelConnection(topicId, { logFailure: true });
       }
     },
 
@@ -550,6 +751,132 @@ export const createChatSlice: StateCreator<
     },
 
     connectToChannel: (sessionId: string, topicId: string) => {
+      // Single websocket connection is shared across topics.
+      // Mark all channels disconnected first to avoid stale "connected" state.
+      set((state: ChatSlice) => {
+        Object.values(state.channels).forEach((ch) => {
+          ch.connected = false;
+        });
+        if (state.channels[topicId]) {
+          state.channels[topicId].error = null;
+        }
+      });
+
+      // --- Chunk buffering: batch streaming_chunk and thinking_chunk at rAF cadence ---
+      type ChunkEntry = {
+        type: "streaming" | "thinking";
+        id: string;
+        content: string;
+        execution_id?: string;
+      };
+      let chunkBuffer: ChunkEntry[] = [];
+      let rafId: number | null = null;
+
+      const flushChunks = () => {
+        rafId = null;
+        if (chunkBuffer.length === 0) return;
+        const batch = chunkBuffer;
+        chunkBuffer = [];
+
+        set((state: ChatSlice) => {
+          const channel = state.channels[topicId];
+          if (!channel) return;
+
+          for (const chunk of batch) {
+            if (chunk.type === "streaming") {
+              const streamingIndex = findMessageIndexByStream(
+                channel,
+                chunk.id,
+                chunk.execution_id,
+              );
+
+              if (streamingIndex === -1) {
+                channel.messages.push({
+                  id: chunk.id,
+                  streamId: chunk.id,
+                  clientId: generateClientId(),
+                  role: "assistant" as const,
+                  content: chunk.content,
+                  created_at: new Date().toISOString(),
+                  isStreaming: true,
+                });
+              } else {
+                const msg = channel.messages[streamingIndex];
+                msg.streamId = chunk.id;
+                msg.isStreaming = true;
+                msg.isThinking = false;
+
+                if (msg.agentExecution) {
+                  ensureFallbackResponsePhase(msg);
+                  const execution = msg.agentExecution;
+                  if (!execution || execution.phases.length === 0) {
+                    continue;
+                  }
+
+                  let targetPhase = execution.currentNode
+                    ? execution.phases.find(
+                        (p) => p.id === execution.currentNode,
+                      )
+                    : null;
+
+                  if (!targetPhase) {
+                    targetPhase = execution.phases.find(
+                      (p) => p.status === "running",
+                    );
+                  }
+
+                  if (!targetPhase) {
+                    targetPhase = execution.phases[execution.phases.length - 1];
+                  }
+
+                  const existingContent = targetPhase.streamedContent || "";
+                  if (
+                    existingContent.length > 100 &&
+                    chunk.content.length > existingContent.length &&
+                    chunk.content.startsWith(existingContent.slice(0, 100))
+                  ) {
+                    targetPhase.streamedContent = chunk.content;
+                  } else {
+                    targetPhase.streamedContent =
+                      existingContent + chunk.content;
+                  }
+                } else {
+                  const currentContent = msg.content;
+                  channel.messages[streamingIndex].content =
+                    currentContent + chunk.content;
+                }
+              }
+            } else {
+              // thinking chunk
+              let thinkingIndex = channel.messages.findIndex(
+                (m) => m.id === chunk.id,
+              );
+
+              if (thinkingIndex === -1) {
+                thinkingIndex = channel.messages.findLastIndex(
+                  (m) => m.isThinking && m.agentExecution?.status === "running",
+                );
+              }
+
+              if (thinkingIndex !== -1) {
+                const currentThinking =
+                  channel.messages[thinkingIndex].thinkingContent ?? "";
+                channel.messages[thinkingIndex].thinkingContent =
+                  currentThinking + chunk.content;
+              }
+            }
+          }
+
+          syncChannelResponding(channel);
+        });
+      };
+
+      const scheduleFlush = () => {
+        if (rafId === null) {
+          rafId = requestAnimationFrame(flushChunks);
+        }
+      };
+
       xyzenService.disconnect();
       xyzenService.connect(
         sessionId,
@@ -579,6 +906,43 @@ export const createChatSlice: StateCreator<
         },
         // Message event handler for loading and streaming
         (event) => {
+          // --- Hot-path: buffer chunk events and flush at rAF cadence ---
+          if (event.type === "streaming_chunk") {
+            const eventData = event.data as {
+              id: string;
+              content: string;
+              execution_id?: string;
+            };
+            chunkBuffer.push({
+              type: "streaming",
+              id: eventData.id,
+              content: eventData.content,
+              execution_id: eventData.execution_id,
+            });
+            scheduleFlush();
+            return;
+          }
+
+          if (event.type === "thinking_chunk") {
+            const eventData = event.data as { id: string; content: string };
+            chunkBuffer.push({
+              type: "thinking",
+              id: eventData.id,
+              content: eventData.content,
+            });
+            scheduleFlush();
+            return;
+          }
+
+          // --- Non-chunk events: flush any pending chunks first, then process synchronously ---
+          if (chunkBuffer.length > 0) {
+            if (rafId !== null) {
+              cancelAnimationFrame(rafId);
+              rafId = null;
+            }
+            flushChunks();
+          }
+
           set((state: ChatSlice) => {
             const channel = state.channels[topicId];
             if (!channel) return;
@@ -633,89 +997,45 @@ export const createChatSlice: StateCreator<
               case "streaming_start": {
                 // Convert loading or thinking message to streaming message
                 channel.responding = true;
-                const eventData = event.data as { id: string };
+                const eventData = event.data as {
+                  id: string;
+                  execution_id?: string;
+                };
 
-                // First check for loading message
-                const loadingIndex = channel.messages.findIndex(
-                  (m) => m.isLoading,
+                // First try deterministic stream/execution lookup (handles concurrent streams correctly)
+                let targetIndex = findMessageIndexByStream(
+                  channel,
+                  eventData.id,
+                  eventData.execution_id,
                 );
-                if (loadingIndex !== -1) {
-                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  const { isLoading: _, ...messageWithoutLoading } =
-                    channel.messages[loadingIndex];
-                  channel.messages[loadingIndex] = {
-                    ...messageWithoutLoading,
-                    id: eventData.id,
-                    isStreaming: true,
-                    content: "",
-                  };
-                  break;
+
+                // Then fallback to loading message conversion
+                if (targetIndex === -1) {
+                  targetIndex = channel.messages.findIndex((m) => m.isLoading);
                 }
 
-                // Check for existing message with same ID (e.g., after thinking_end set isThinking=false)
-                const existingIndex = channel.messages.findIndex(
-                  (m) => m.id === eventData.id,
-                );
-                if (existingIndex !== -1) {
-                  // Convert existing message to streaming - keep thinking content if present
-                  channel.messages[existingIndex] = {
-                    ...channel.messages[existingIndex],
-                    isThinking: false,
-                    isStreaming: true,
+                if (targetIndex !== -1) {
+                  const targetMessage = channel.messages[
+                    targetIndex
+                  ] as ChatMessage & {
+                    isLoading?: boolean;
                   };
-                  break;
-                }
-
-                // Check for agent execution message (streaming goes into phases, not a new message)
-                // Use findLastIndex to get the MOST RECENT running agent execution
-                // to avoid routing to old completed messages from previous conversations
-                const agentMsgIndex = channel.messages.findLastIndex(
-                  (m) => m.agentExecution?.status === "running",
-                );
-
-                if (agentMsgIndex !== -1) {
-                  const execution =
-                    channel.messages[agentMsgIndex].agentExecution;
-
-                  /**
-                   * Create fallback "Response" phase for agents without node_start events.
-                   *
-                   * WHY: LangChain prebuilt agents (like create_react_agent) don't emit
-                   * node_start/node_end events - they stream content directly. To maintain
-                   * consistent UI state, we create a synthetic phase to hold the streamed content.
-                   *
-                   * EFFECT: This allows the same rendering path (phase.streamedContent → ChatBubble)
-                   * to work for both:
-                   * - Custom graph agents with explicit phases via node_start events
-                   * - Prebuilt agents that only stream content without phase events
-                   *
-                   * SEE ALSO: getMessageDisplayMode() in core/chat/messageContent.ts
-                   */
-                  if (execution && execution.phases.length === 0) {
-                    execution.phases.push({
-                      id: "response",
-                      name: "Response",
-                      status: "running",
-                      startedAt: Date.now(),
-                      nodes: [],
-                      streamedContent: "",
-                    });
-                    execution.currentNode = "response";
+                  delete targetMessage.isLoading;
+                  targetMessage.id = eventData.id;
+                  targetMessage.streamId = eventData.id;
+                  targetMessage.isThinking = false;
+                  targetMessage.isStreaming = true;
+                  if (!targetMessage.content) {
+                    targetMessage.content = "";
                   }
-
-                  // Agent execution exists, mark it as streaming but don't create a new message
-                  // Content will be routed to phase.streamedContent in streaming_chunk
-                  channel.messages[agentMsgIndex] = {
-                    ...channel.messages[agentMsgIndex],
-                    ...(eventData.id ? { id: eventData.id } : {}),
-                    isStreaming: true,
-                  };
+                  ensureFallbackResponsePhase(targetMessage);
                   break;
                 }
 
-                // No loading, existing, or agent message found, create a streaming message now
+                // No message found, create a streaming message now
                 channel.messages.push({
                   id: eventData.id,
+                  streamId: eventData.id,
                   clientId: generateClientId(),
                   role: "assistant" as const,
                   content: "",
@@ -726,118 +1046,32 @@ export const createChatSlice: StateCreator<
                 break;
               }
 
-              case "streaming_chunk": {
-                // Update streaming message content
-                const eventData = event.data as { id: string; content: string };
-
-                // Check for RUNNING agent execution message (most recent)
-                // Use findLastIndex to avoid routing to old completed messages
-                const agentMsgIndex = channel.messages.findLastIndex(
-                  (m) => m.agentExecution?.status === "running",
-                );
-
-                if (agentMsgIndex !== -1) {
-                  const execution =
-                    channel.messages[agentMsgIndex].agentExecution;
-                  if (execution && execution.phases.length > 0) {
-                    // Use currentNode to find the correct phase (more reliable than status)
-                    let targetPhase = execution.currentNode
-                      ? execution.phases.find(
-                          (p) => p.id === execution.currentNode,
-                        )
-                      : null;
-
-                    // Fallback to running phase if currentNode doesn't match
-                    if (!targetPhase) {
-                      targetPhase = execution.phases.find(
-                        (p) => p.status === "running",
-                      );
-                    }
-
-                    // Final fallback: last phase (for late chunks after agent_end)
-                    if (!targetPhase) {
-                      targetPhase =
-                        execution.phases[execution.phases.length - 1];
-                    }
-
-                    // Fix: Detect and handle duplicate full-content chunks
-                    // The backend sometimes sends the complete content as a final chunk
-                    // after already streaming it incrementally. Detect this by checking
-                    // if the NEW chunk starts with the EXISTING accumulated content.
-                    const existingContent = targetPhase.streamedContent || "";
-                    if (
-                      existingContent.length > 100 &&
-                      eventData.content.length > existingContent.length &&
-                      eventData.content.startsWith(
-                        existingContent.slice(0, 100),
-                      )
-                    ) {
-                      // New chunk contains all existing content - it's a full-content chunk
-                      // Replace instead of append to avoid duplication
-                      targetPhase.streamedContent = eventData.content;
-                    } else {
-                      targetPhase.streamedContent =
-                        existingContent + eventData.content;
-                    }
-                    break; // Don't fall through to other handling
-                  }
-                }
-
-                // Fallback: try to find message by ID (for non-agent messages only)
-                const streamingIndex = channel.messages.findIndex(
-                  (m) => m.id === eventData.id,
-                );
-
-                if (streamingIndex === -1) {
-                  // If we somehow missed streaming_start, create the message on first chunk
-                  channel.messages.push({
-                    id: eventData.id,
-                    clientId: generateClientId(),
-                    role: "assistant" as const,
-                    content: eventData.content,
-                    created_at: new Date().toISOString(),
-                    isStreaming: true,
-                  });
-                } else {
-                  const msg = channel.messages[streamingIndex];
-
-                  // Skip agent messages here - they're handled above
-                  if (msg.agentExecution) {
-                    break;
-                  }
-
-                  // Append to message.content (for non-agent messages only)
-                  const currentContent = msg.content;
-                  channel.messages[streamingIndex].content =
-                    currentContent + eventData.content;
-                }
-                break;
-              }
-
               case "streaming_end": {
                 // Finalize streaming message
-                channel.responding = false;
                 const eventData = event.data as {
                   id: string;
                   created_at?: string;
+                  execution_id?: string;
                 };
 
-                // First try to find by ID
-                let endingIndex = channel.messages.findIndex(
-                  (m) => m.id === eventData.id,
+                let endingIndex = findMessageIndexByStream(
+                  channel,
+                  eventData.id,
+                  eventData.execution_id,
                 );
 
-                // If not found, check for agent execution message that's streaming
                 if (endingIndex === -1) {
-                  endingIndex = channel.messages.findIndex(
-                    (m) => m.agentExecution && m.isStreaming,
-                  );
+                  const streamingIndices = channel.messages
+                    .map((m, idx) => (m.isStreaming ? idx : -1))
+                    .filter((idx) => idx !== -1);
+                  endingIndex =
+                    streamingIndices.length === 1 ? streamingIndices[0] : -1;
                 }
 
                 if (endingIndex !== -1) {
-                  const messageFinal = {
-                    ...channel.messages[endingIndex],
-                  } as Omit<import("../types").Message, never> & {
+                  const messageFinal = channel.messages[
+                    endingIndex
+                  ] as ChatMessage & {
                     isLoading?: boolean;
                     isStreaming?: boolean;
                   };
@@ -854,14 +1088,14 @@ export const createChatSlice: StateCreator<
                       messageFinal.content = phaseContent;
                     }
                   }
-                  // Remove transient flags
-                  delete messageFinal.isLoading;
-                  delete messageFinal.isStreaming;
-                  channel.messages[endingIndex] = {
-                    ...messageFinal,
-                    created_at:
-                      eventData.created_at || new Date().toISOString(),
-                  } as import("../types").Message;
+
+                  // Fallback finalization when terminal agent event is delayed/missed.
+                  finalizeMessageExecution(messageFinal, {
+                    status: "completed",
+                    onlyIfRunning: true,
+                  });
+                  messageFinal.created_at =
+                    eventData.created_at || new Date().toISOString();
                   console.debug(
                     "[ChatSlice] streaming_end: finalized message at index",
                     endingIndex,
@@ -1009,14 +1243,21 @@ export const createChatSlice: StateCreator<
                   created_at: string;
                 };
                 const messageIndex = channel.messages.findIndex(
-                  (m) => m.id === eventData.stream_id,
+                  (m) =>
+                    m.id === eventData.stream_id ||
+                    m.streamId === eventData.stream_id,
                 );
                 if (messageIndex !== -1) {
-                  channel.messages[messageIndex] = {
-                    ...channel.messages[messageIndex],
-                    id: eventData.db_id,
-                    created_at: eventData.created_at,
-                  };
+                  const savedMessage = channel.messages[messageIndex];
+                  savedMessage.id = eventData.db_id;
+                  savedMessage.created_at = eventData.created_at;
+
+                  // message_saved is emitted after persistence/finalization.
+                  // If we missed terminal stream events, clear stale runtime flags here.
+                  finalizeMessageExecution(savedMessage, {
+                    status: "completed",
+                    onlyIfRunning: true,
+                  });
                 }
                 break;
               }
@@ -1396,33 +1637,6 @@ export const createChatSlice: StateCreator<
                 break;
               }
 
-              case "thinking_chunk": {
-                // Append to thinking content
-                const eventData = event.data as { id: string; content: string };
-
-                // Try to find by ID first
-                let thinkingIndex = channel.messages.findIndex(
-                  (m) => m.id === eventData.id,
-                );
-
-                // If not found by ID, check for agent message with isThinking
-                // (thinking may be attached to agent execution message)
-                if (thinkingIndex === -1) {
-                  thinkingIndex = channel.messages.findLastIndex(
-                    (m) =>
-                      m.isThinking && m.agentExecution?.status === "running",
-                  );
-                }
-
-                if (thinkingIndex !== -1) {
-                  const currentThinking =
-                    channel.messages[thinkingIndex].thinkingContent ?? "";
-                  channel.messages[thinkingIndex].thinkingContent =
-                    currentThinking + eventData.content;
-                }
-                break;
-              }
-
               case "thinking_end": {
                 // End thinking mode
                 const eventData = event.data as { id: string };
@@ -1524,16 +1738,20 @@ export const createChatSlice: StateCreator<
                 );
 
                 if (msgIndex !== -1) {
-                  const execution = channel.messages[msgIndex].agentExecution;
+                  const targetMessage = channel.messages[msgIndex];
+                  const execution = targetMessage.agentExecution;
                   if (execution) {
-                    execution.status =
-                      data.status === "completed"
-                        ? "completed"
-                        : data.status === "cancelled"
-                          ? "cancelled"
-                          : "failed";
-                    execution.endedAt = Date.now();
-                    execution.durationMs = data.duration_ms;
+                    finalizeMessageExecution(targetMessage, {
+                      status:
+                        data.status === "completed"
+                          ? "completed"
+                          : data.status === "cancelled"
+                            ? "cancelled"
+                            : "failed",
+                      durationMs: data.duration_ms,
+                    });
+                  } else {
+                    clearMessageTransientState(targetMessage);
                   }
                 }
                 break;
@@ -1550,16 +1768,20 @@ export const createChatSlice: StateCreator<
                 );
 
                 if (msgIndex !== -1) {
-                  const execution = channel.messages[msgIndex].agentExecution;
+                  const targetMessage = channel.messages[msgIndex];
+                  const execution = targetMessage.agentExecution;
                   if (execution) {
-                    execution.status = "failed";
-                    execution.endedAt = Date.now();
                     execution.error = {
                       type: data.error_type,
                       message: data.error_message,
                       recoverable: data.recoverable,
                       nodeId: data.node_id,
                     };
+                    finalizeMessageExecution(targetMessage, {
+                      status: "failed",
+                    });
+                  } else {
+                    clearMessageTransientState(targetMessage);
                   }
                 }
                 break;
@@ -1734,7 +1956,13 @@ export const createChatSlice: StateCreator<
                 break;
               }
             }
+
+            // Keep channel-level responding state consistent even with concurrent streams.
+            syncChannelResponding(channel);
           });
+
+          // Chunk events return early above, so all events reaching here are state transitions
+          updateDerivedStatus();
         },
       );
     },
@@ -1750,6 +1978,8 @@ export const createChatSlice: StateCreator<
         clearFiles,
         isUploading,
         channels,
+        connectToChannel,
+        showNotification,
       } = get();
 
       if (!activeChatChannel) return;
@@ -1760,11 +1990,31 @@ export const createChatSlice: StateCreator<
         return;
       }
 
+      const activeChannel = channels[activeChatChannel];
+      if (!activeChannel) return;
+
+      // Ensure websocket is connected to the active topic before sending.
+      if (!activeChannel.connected) {
+        connectToChannel(activeChannel.sessionId, activeChannel.id);
+        await waitForChannelConnection(activeChatChannel);
+      }
+
+      const recheckedChannel = get().channels[activeChatChannel];
+      if (!recheckedChannel?.connected) {
+        showNotification(
+          "Connection not ready",
+          "Please wait for chat connection and try again.",
+          "warning",
+        );
+        return;
+      }
+
       // Mark the channel as responding immediately for snappier UX
       set((state: ChatSlice) => {
         const channel = state.channels[activeChatChannel];
         if (channel) channel.responding = true;
       });
+      updateDerivedStatus();
 
       // Collect completed file IDs
       const completedFiles = uploadedFiles.filter(
@@ -1776,7 +2026,7 @@ export const createChatSlice: StateCreator<
         payload.file_ids = completedFiles.map((f) => f.uploadedId!);
       }
 
-      const channel = channels[activeChatChannel];
+      const channel = recheckedChannel;
       if (channel?.knowledgeContext) {
         payload.context = channel.knowledgeContext;
       }
@@ -2372,6 +2622,7 @@ export const createChatSlice: StateCreator<
           state.channels[channelId].aborting = true;
         }
       });
+      updateDerivedStatus();
 
       // Timeout fallback: if backend doesn't respond within 10 seconds, reset state
       // This prevents the UI from being stuck in aborting/responding state
@@ -2447,6 +2698,7 @@ export const createChatSlice: StateCreator<
               }
             }
           });
+          updateDerivedStatus();
         }
       }, 10000); // 10 second timeout
 

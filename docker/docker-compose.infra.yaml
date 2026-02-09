@@ -62,7 +62,7 @@ services:
   #   attach: false
 
   postgresql:
-    image: postgres:16.8-alpine
+    image: pgvector/pgvector:pg16
     pull_policy: if_not_present
     network_mode: "service:network-service"
     restart: always

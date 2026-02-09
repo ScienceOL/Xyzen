@@ -1,7 +1,12 @@
 import { useAuth } from "@/hooks/useAuth";
+import {
+  useActiveChannelMessages,
+  useActiveChannelStatus,
+} from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 export interface XyzenChatConfig {
   theme: "indigo";
@@ -38,24 +43,58 @@ export interface XyzenChatConfig {
 }
 
 export function useXyzenChat(config: XyzenChatConfig) {
+  // --- Fine-grained store subscriptions ---
+
+  // Scalar channel status (no messages — stable between chunks)
+  const channelStatus = useActiveChannelStatus();
+  const { channelId: activeChatChannel, responding, aborting } = channelStatus;
+
+  // Messages (hot data — changes every chunk, but ChatBubble is memoized)
+  const messages: Message[] = useActiveChannelMessages();
+
+  // Scalar error selector (avoids subscribing to full channel object)
+  const error = useXyzen((s) => {
+    const id = s.activeChatChannel;
+    return id ? (s.channels[id]?.error ?? null) : null;
+  });
+
+  // Actions via useShallow (stable references)
   const {
-    activeChatChannel,
-    channels,
-    agents,
     sendMessage,
     connectToChannel,
     updateTopicName,
     fetchMyProviders,
     createDefaultChannel,
     activateChannel,
-    llmProviders,
-    notification,
-    closeNotification,
-    pendingInput,
-    setPendingInput,
-    chatHistoryLoading,
     abortGeneration,
-  } = useXyzen();
+    closeNotification,
+    setPendingInput,
+  } = useXyzen(
+    useShallow((s) => ({
+      sendMessage: s.sendMessage,
+      connectToChannel: s.connectToChannel,
+      updateTopicName: s.updateTopicName,
+      fetchMyProviders: s.fetchMyProviders,
+      createDefaultChannel: s.createDefaultChannel,
+      activateChannel: s.activateChannel,
+      abortGeneration: s.abortGeneration,
+      closeNotification: s.closeNotification,
+      setPendingInput: s.setPendingInput,
+    })),
+  );
+
+  // Individual scalar selectors
+  const agents = useXyzen((s) => s.agents);
+  const llmProviders = useXyzen((s) => s.llmProviders);
+  const notification = useXyzen((s) => s.notification);
+  const pendingInput = useXyzen((s) => s.pendingInput);
+  const chatHistoryLoading = useXyzen((s) => s.chatHistoryLoading);
+
+  // Computed from channel status
+  const connected = channelStatus.connected;
+  const currentAgent = channelStatus.agentId
+    ? agents.find((a) => a.id === channelStatus.agentId)
+    : null;
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,18 +118,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
     return savedHeight ? parseInt(savedHeight, 10) : 170;
   });
   const [sendBlocked, setSendBlocked] = useState(false);
-
-  // Computed values
-  const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
-  const currentAgent = currentChannel?.agentId
-    ? agents.find((a) => a.id === currentChannel.agentId)
-    : null;
-
-  const messages: Message[] = currentChannel?.messages || [];
-  const connected = currentChannel?.connected || false;
-  const error = currentChannel?.error || null;
-  const responding = currentChannel?.responding || false;
-  const aborting = currentChannel?.aborting || false;
 
   // Abort handler
   const handleAbortGeneration = useCallback(() => {
@@ -182,13 +209,14 @@ export function useXyzenChat(config: XyzenChatConfig) {
   );
 
   const handleRetryConnection = useCallback(() => {
-    if (!currentChannel) return;
+    const sessionId = channelStatus.sessionId;
+    if (!activeChatChannel || !sessionId) return;
     setIsRetrying(true);
-    connectToChannel(currentChannel.sessionId, currentChannel.id);
+    connectToChannel(sessionId, activeChatChannel);
     setTimeout(() => {
       setIsRetrying(false);
     }, 2000);
-  }, [currentChannel, connectToChannel]);
+  }, [activeChatChannel, channelStatus.sessionId, connectToChannel]);
 
   const handleScrollToBottom = useCallback(() => {
     setAutoScroll(true);
@@ -223,18 +251,24 @@ export function useXyzenChat(config: XyzenChatConfig) {
         agent.tags?.includes(config.systemAgentTag),
       );
       if (targetSystemAgent) {
+        // Read channels from getState() to avoid subscribing to every channel change
+        const currentChannelObj = activeChatChannel
+          ? useXyzen.getState().channels[activeChatChannel]
+          : null;
+
         // Check if we need to create/switch to the correct channel for this panel
         const needsCorrectChannel =
           !activeChatChannel ||
-          (currentChannel &&
-            currentChannel.agentId !== targetSystemAgent.id &&
+          (currentChannelObj &&
+            currentChannelObj.agentId !== targetSystemAgent.id &&
             // Only switch if current agent is a default system agent clone
             agents
-              .find((a) => a.id === currentChannel.agentId)
+              .find((a) => a.id === currentChannelObj.agentId)
               ?.tags?.some((t) => t.startsWith("default_")));
 
         if (needsCorrectChannel) {
           // Look for existing channel with this system agent first
+          const channels = useXyzen.getState().channels;
           const existingChannel = Object.values(channels).find(
             (channel) => channel.agentId === targetSystemAgent.id,
           );
@@ -273,8 +307,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
     config.systemAgentTag,
     createDefaultChannel,
     activeChatChannel,
-    currentChannel,
-    channels,
     activateChannel,
     chatHistoryLoading,
   ]);
@@ -305,7 +337,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
     sendBlocked,
 
     // Computed
-    currentChannel,
+    channelTitle: channelStatus.title,
     currentAgent,
     messages,
     connected,

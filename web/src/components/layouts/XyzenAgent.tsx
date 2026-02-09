@@ -3,7 +3,10 @@
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { AgentList } from "@/components/agents";
 import { useAuth } from "@/hooks/useAuth";
-import { deriveTopicStatus } from "@/core/chat";
+import {
+  useActiveTopicCountByAgent,
+  useChannelAgentIdMap,
+} from "@/hooks/useChannelSelectors";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -32,7 +35,6 @@ export default function XyzenAgent() {
     reorderAgents,
 
     chatHistory,
-    channels,
     activateChannelForAgent,
 
     fetchMcpServers,
@@ -40,6 +42,10 @@ export default function XyzenAgent() {
     llmProviders,
     llmProvidersLoading,
   } = useXyzen();
+
+  // Derived state from store (stable across streaming chunks)
+  const activeTopicCountByAgent = useActiveTopicCountByAgent();
+  const channelAgentIdMap = useChannelAgentIdMap();
 
   // Get auth state
   const { isAuthenticated } = useAuth();
@@ -59,28 +65,15 @@ export default function XyzenAgent() {
   const lastConversationTimeByAgent = useMemo(() => {
     const timeMap: Record<string, string> = {};
     for (const topic of chatHistory) {
-      const channel = channels[topic.id];
-      if (!channel?.agentId) continue;
-      const agentId = channel.agentId;
+      const agentId = channelAgentIdMap[topic.id];
+      if (!agentId) continue;
       const existing = timeMap[agentId];
       if (!existing || topic.updatedAt > existing) {
         timeMap[agentId] = topic.updatedAt;
       }
     }
     return timeMap;
-  }, [chatHistory, channels]);
-
-  const activeTopicCountByAgent = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const channel of Object.values(channels)) {
-      if (!channel.agentId) continue;
-      const status = deriveTopicStatus(channel);
-      if (status === "running") {
-        counts[channel.agentId] = (counts[channel.agentId] || 0) + 1;
-      }
-    }
-    return counts;
-  }, [channels]);
+  }, [chatHistory, channelAgentIdMap]);
 
   // Note: fetchAgents is called in App.tsx during initial load
   // No need to fetch again here - agents are already in the store

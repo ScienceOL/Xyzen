@@ -6,12 +6,14 @@ from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
 from .image import ImageConfig
 from .lab import LabConfig
+from .memory import MemoryConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
 from .mcps import McpProviderConfig
 from .oss import OSSConfig
 from .redemption import AdminConfig
 from .redis import RedisConfig
+from .sandbox import SandboxConfig
 from .searxng import SearXNGConfig
 
 
@@ -100,6 +102,16 @@ class AppConfig(BaseSettings):
     Image: ImageConfig = Field(
         default_factory=lambda: ImageConfig(),
         description="Image generation configuration",
+    )
+
+    Sandbox: SandboxConfig = Field(
+        default_factory=lambda: SandboxConfig(),
+        description="Sandbox code execution configuration",
+    )
+
+    Memory: MemoryConfig = Field(
+        default_factory=lambda: MemoryConfig(),
+        description="Cross-thread memory store configuration",
     )
 
 

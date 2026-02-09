@@ -5,7 +5,7 @@ import ChatStatusBadge from "@/components/base/ChatStatusBadge";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { Input } from "@/components/ui/input";
-import { deriveTopicStatus } from "@/core/chat";
+import { useRespondingChannelIds } from "@/hooks/useChannelSelectors";
 import { formatTime } from "@/lib/formatDate";
 import { useXyzen } from "@/store";
 import type { ChatHistoryItem } from "@/store/types";
@@ -44,7 +44,9 @@ function SessionHistory({
   const user = useXyzen((s) => s.user);
   const history = useXyzen((s) => s.chatHistory);
   const historyLoading = useXyzen((s) => s.chatHistoryLoading);
-  const channels = useXyzen((s) => s.channels);
+
+  // Use derived state instead of subscribing to entire channels object
+  const respondingChannelIds = useRespondingChannelIds();
 
   const activateChannelFn = useXyzen((s) => s.activateChannel);
   const togglePinFn = useXyzen((s) => s.togglePinChat);
@@ -294,7 +296,7 @@ function SessionHistory({
                                 : "text-neutral-800 dark:text-white"
                           }`}
                         />
-                        {deriveTopicStatus(channels[chat.id]) === "running" && (
+                        {respondingChannelIds.has(chat.id) && (
                           <ChatStatusBadge status="running" size="xs" />
                         )}
                       </div>

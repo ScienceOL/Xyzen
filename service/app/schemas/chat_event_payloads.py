@@ -40,6 +40,7 @@ class StreamingStartData(TypedDict):
     """Data payload for STREAMING_START event."""
 
     id: str
+    execution_id: NotRequired[str]
 
 
 class StreamingChunkData(TypedDict):
@@ -47,6 +48,7 @@ class StreamingChunkData(TypedDict):
 
     id: str
     content: str
+    execution_id: NotRequired[str]
 
 
 class StreamingEndData(TypedDict):
@@ -54,6 +56,7 @@ class StreamingEndData(TypedDict):
 
     id: str
     created_at: float
+    execution_id: NotRequired[str]
     content: NotRequired[str]  # Optional content for final streaming result
     agent_state: NotRequired[dict[str, Any]]  # Agent state metadata for persistence
 

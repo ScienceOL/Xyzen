@@ -38,6 +38,7 @@ from app.tools.capabilities import ToolCapability
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
     from langgraph.graph.state import CompiledStateGraph
+    from langgraph.store.base import BaseStore
 
     from app.agents.types import LLMFactory
 
@@ -171,6 +172,7 @@ class ClarifyWithUserComponent(ExecutableComponent):
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
         config: dict[str, Any] | None = None,
+        store: "BaseStore | None" = None,
     ) -> "CompiledStateGraph":
         """Build clarification graph with structured output."""
         logger.info("Building ClarifyWithUserComponent graph")
@@ -211,7 +213,7 @@ class ClarifyWithUserComponent(ExecutableComponent):
         workflow.add_edge(START, "clarify")
         workflow.add_edge("clarify", END)
 
-        compiled = workflow.compile()
+        compiled = workflow.compile(store=store)
         logger.info("ClarifyWithUserComponent graph compiled")
         return compiled
 
@@ -279,6 +281,7 @@ class ResearchBriefComponent(ExecutableComponent):
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
         config: dict[str, Any] | None = None,
+        store: "BaseStore | None" = None,
     ) -> "CompiledStateGraph":
         """Build research brief generation graph."""
         logger.info("Building ResearchBriefComponent graph")
@@ -312,7 +315,7 @@ class ResearchBriefComponent(ExecutableComponent):
         workflow.add_edge(START, "brief")
         workflow.add_edge("brief", END)
 
-        compiled = workflow.compile()
+        compiled = workflow.compile(store=store)
         logger.info("ResearchBriefComponent graph compiled")
         return compiled
 
@@ -407,6 +410,7 @@ class ResearchSupervisorComponent(ExecutableComponent):
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
         config: dict[str, Any] | None = None,
+        store: "BaseStore | None" = None,
     ) -> "CompiledStateGraph":
         """Build supervisor ReAct loop graph.
 
@@ -414,6 +418,7 @@ class ResearchSupervisorComponent(ExecutableComponent):
             llm_factory: Factory to create LLM instances
             tools: Session tools (web_search, etc.) - research tools are created internally
             config: Optional configuration overrides
+            store: Optional LangGraph BaseStore for cross-thread memory
         """
         from app.tools.builtin.research import get_research_tools
 
@@ -531,7 +536,7 @@ class ResearchSupervisorComponent(ExecutableComponent):
         workflow.add_conditional_edges("supervisor", tools_condition)
         workflow.add_edge("tools", "supervisor")
 
-        compiled = workflow.compile()
+        compiled = workflow.compile(store=store)
         logger.info("ResearchSupervisorComponent graph compiled")
         return compiled
 
@@ -608,6 +613,7 @@ class FinalReportComponent(ExecutableComponent):
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
         config: dict[str, Any] | None = None,
+        store: "BaseStore | None" = None,
     ) -> "CompiledStateGraph":
         """Build final report generation graph."""
         logger.info("Building FinalReportComponent graph")
@@ -648,7 +654,7 @@ class FinalReportComponent(ExecutableComponent):
         workflow.add_edge(START, "report")
         workflow.add_edge("report", END)
 
-        compiled = workflow.compile()
+        compiled = workflow.compile(store=store)
         logger.info("FinalReportComponent graph compiled")
         return compiled
 

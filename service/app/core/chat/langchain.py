@@ -269,6 +269,11 @@ async def _create_langchain_agent(
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """Create and configure the LangChain agent using the agent factory."""
     from app.agents.factory import create_chat_agent
+    from app.core.memory import get_or_initialize_memory_service
+
+    # Ensure memory service is available (lazy init for Celery workers)
+    memory_svc = await get_or_initialize_memory_service()
+    store = memory_svc.store if memory_svc else None
 
     graph, event_ctx = await create_chat_agent(
         db=db,
@@ -278,6 +283,7 @@ async def _create_langchain_agent(
         provider_id=provider_id,
         model_name=model_name,
         system_prompt=system_prompt,
+        store=store,
     )
     return graph, event_ctx
 
@@ -344,7 +350,10 @@ async def _process_agent_stream(
         async for chunk in agent.astream(
             {"messages": history_messages},
             stream_mode=["updates", "messages"],
-            config={"recursion_limit": 50},
+            config={
+                "recursion_limit": 50,
+                "configurable": {"user_id": ctx.user_id},
+            },
         ):
             chunk_count += 1
             try:
@@ -564,8 +573,15 @@ async def _handle_updates_mode(
                 # Emit the content as if it was streamed (single chunk for the whole message)
                 if not ctx.is_streaming:
                     ctx.is_streaming = True
-                    yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
-                yield StreamingEventHandler.create_streaming_chunk(ctx.stream_id, content)
+                    yield StreamingEventHandler.create_streaming_start(
+                        ctx.stream_id,
+                        execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+                    )
+                yield StreamingEventHandler.create_streaming_chunk(
+                    ctx.stream_id,
+                    content,
+                    execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+                )
 
         # Final model response (from 'model' or 'agent' step)
         elif (
@@ -721,10 +737,17 @@ async def _handle_messages_mode(
 
         logger.debug(f"Emitting streaming_start for stream_id={ctx.stream_id}")
         ctx.is_streaming = True
-        yield StreamingEventHandler.create_streaming_start(ctx.stream_id)
+        yield StreamingEventHandler.create_streaming_start(
+            ctx.stream_id,
+            execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+        )
 
     ctx.assistant_buffer.append(token_text)
-    yield StreamingEventHandler.create_streaming_chunk(ctx.stream_id, token_text)
+    yield StreamingEventHandler.create_streaming_chunk(
+        ctx.stream_id,
+        token_text,
+        execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+    )
 
 
 async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> AsyncGenerator[StreamingEvent, None]:
@@ -750,7 +773,11 @@ async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> As
             ctx.token_count,
             bool(agent_state),
         )
-        yield StreamingEventHandler.create_streaming_end(ctx.stream_id, agent_state or None)
+        yield StreamingEventHandler.create_streaming_end(
+            ctx.stream_id,
+            agent_state or None,
+            execution_id=ctx.event_ctx.execution_id if ctx.event_ctx else None,
+        )
 
         # Emit token usage
         if ctx.total_tokens > 0 or ctx.total_input_tokens > 0 or ctx.total_output_tokens > 0:

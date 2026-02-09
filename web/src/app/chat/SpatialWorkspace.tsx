@@ -14,7 +14,10 @@ import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
-import { deriveTopicStatus } from "@/core/chat";
+import {
+  useRunningAgentIds,
+  useChannelAgentIdMap,
+} from "@/hooks/useChannelSelectors";
 import { useMyMarketplaceListings } from "@/hooks/useMarketplace";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
@@ -51,8 +54,11 @@ function InnerWorkspace() {
     dailyActivity,
     yesterdaySummary,
     chatHistory,
-    channels,
   } = useXyzen();
+
+  // Derived state from store (only updates on state transitions, not streaming_chunk)
+  const activeAgentIds = useRunningAgentIds();
+  const channelAgentIdMap = useChannelAgentIdMap();
 
   // Marketplace hook to track published agents
   const { data: myListings } = useMyMarketplaceListings();
@@ -63,24 +69,6 @@ function InnerWorkspace() {
     }
     return ids;
   }, [myListings]);
-
-  // Extract stable agentId mapping from channels
-  const channelAgentIds = Object.entries(channels)
-    .filter(([, ch]) => ch.agentId)
-    .map(([topicId, ch]) => `${topicId}:${ch.agentId}`)
-    .sort()
-    .join(",");
-
-  const channelAgentIdMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const [topicId, channel] of Object.entries(channels)) {
-      if (channel.agentId) {
-        map[topicId] = channel.agentId;
-      }
-    }
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelAgentIds]);
 
   // Compute last conversation time per agent
   const lastConversationTimeByAgent = useMemo(() => {
@@ -95,19 +83,6 @@ function InnerWorkspace() {
     }
     return timeMap;
   }, [chatHistory, channelAgentIdMap]);
-
-  // Compute which agents have active (running) topics
-  const activeAgentIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const channel of Object.values(channels)) {
-      if (!channel.agentId) continue;
-      const status = deriveTopicStatus(channel);
-      if (status === "running" || status === "stopping") {
-        ids.add(channel.agentId);
-      }
-    }
-    return ids;
-  }, [channels]);
 
   // State
   const [nodes, setNodes, onNodesChange] = useNodesState<AgentFlowNode>([]);

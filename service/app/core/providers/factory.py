@@ -1,9 +1,10 @@
 import logging
 from typing import Any
 
+from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings, ChatOpenAI, OpenAIEmbeddings
 from langchain_qwq import ChatQwen
 
 from app.common.code import ErrCode
@@ -190,3 +191,41 @@ class ChatModelFactory:
         )
 
         return llm
+
+    def create_embedding(
+        self, model: str, provider: ProviderType, credentials: LLMCredentials,
+    ) -> Embeddings:
+        """Create a LangChain Embeddings instance for the given provider.
+
+        Uses the same credential resolution as chat models.
+        """
+        match provider:
+            case ProviderType.OPENAI:
+                return OpenAIEmbeddings(model=model, api_key=credentials["api_key"])
+            case ProviderType.AZURE_OPENAI:
+                # TODO: use azure_deployment param instead of model, align with _create_azure_openai() pattern
+                azure_endpoint = credentials.get("azure_endpoint") or credentials.get("api_endpoint", "")
+                return AzureOpenAIEmbeddings(
+                    model=model,
+                    api_key=credentials["api_key"],
+                    azure_endpoint=azure_endpoint,
+                    api_version=credentials.get("azure_version", "2024-02-15-preview"),
+                )
+            case ProviderType.GPUGEEK:
+                base_url = credentials.get("api_endpoint", "https://api.gpugeek.com/v1")
+                return OpenAIEmbeddings(
+                    model=model,
+                    api_key=credentials["api_key"],
+                    base_url=base_url,
+                    check_embedding_ctx_length=False,
+                )
+            case ProviderType.QWEN:
+                base_url = credentials.get("api_endpoint", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+                return OpenAIEmbeddings(
+                    model=model,
+                    api_key=credentials["api_key"],
+                    base_url=base_url,
+                    check_embedding_ctx_length=False,
+                )
+            case _:
+                raise ValueError(f"Unsupported embedding provider: {provider}")

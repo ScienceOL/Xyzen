@@ -28,6 +28,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.store.base import BaseStore
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.agents.types import DynamicCompiledGraph, LLMFactory
@@ -58,6 +59,7 @@ async def create_chat_agent(
     provider_id: str | None,
     model_name: str | None,
     system_prompt: str,
+    store: BaseStore | None = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """
     Create the appropriate agent for a chat session.
@@ -75,6 +77,7 @@ async def create_chat_agent(
         provider_id: Provider ID to use
         model_name: Model name to use
         system_prompt: System prompt for the agent
+        store: Optional LangGraph BaseStore for cross-thread memory
 
     Returns:
         Tuple of (CompiledStateGraph, AgentEventContext) for streaming execution
@@ -138,6 +141,7 @@ async def create_chat_agent(
         create_llm,
         tools,
         system_prompt,
+        store=store,
     )
 
     # Populate node->component mapping for frontend rendering
@@ -322,6 +326,7 @@ async def _build_graph_agent(
     llm_factory: LLMFactory,
     tools: list["BaseTool"],
     system_prompt: str,
+    store: BaseStore | None = None,
 ) -> tuple[DynamicCompiledGraph, dict[str, str]]:
     """
     Build a graph agent from a canonical configuration.
@@ -353,6 +358,7 @@ async def _build_graph_agent(
         config=graph_config,
         llm_factory=llm_factory,
         tool_registry=tool_registry,
+        store=store,
     )
     compiled_graph = await compiler.build()
     node_component_keys = compiler.get_node_component_keys()
