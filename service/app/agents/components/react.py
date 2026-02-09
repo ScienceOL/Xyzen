@@ -24,6 +24,7 @@ from app.agents.components.component import ComponentMetadata, ComponentType, Ex
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
     from langgraph.graph.state import CompiledStateGraph
+    from langgraph.store.base import BaseStore
 
     from app.agents.types import LLMFactory
 
@@ -121,6 +122,7 @@ class ReActComponent(ExecutableComponent):
         llm_factory: "LLMFactory",
         tools: list["BaseTool"],
         config: dict[str, Any] | None = None,
+        store: "BaseStore | None" = None,
     ) -> "CompiledStateGraph":
         """
         Build ReAct agent graph using LangGraph primitives.
@@ -129,6 +131,7 @@ class ReActComponent(ExecutableComponent):
             llm_factory: Factory to create LLM instances
             tools: All tools to make available (no filtering, uses all)
             config: Runtime configuration (system_prompt, max_iterations)
+            store: Optional LangGraph BaseStore for cross-thread memory
 
         Returns:
             Compiled StateGraph implementing the ReAct pattern
@@ -198,7 +201,7 @@ class ReActComponent(ExecutableComponent):
             workflow.add_edge("agent", END)
 
         # Compile and return
-        compiled = workflow.compile()
+        compiled = workflow.compile(store=store)
         logger.info("ReActComponent graph compiled successfully")
         return compiled
 
@@ -248,7 +251,6 @@ graph = component.build_graph(
 
 result = await graph.ainvoke({"messages": [HumanMessage(content="Hello")]})
 """
-
 
 # Export
 __all__ = ["ReActComponent"]

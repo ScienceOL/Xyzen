@@ -42,6 +42,7 @@ from app.schemas.graph_config_legacy import (
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
+    from langgraph.store.base import BaseStore
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,7 @@ class GraphBuilder:
     state_class: type[BaseModel]
     _template_cache: dict[str, Template]
     _tool_node: ToolNode | None
+    _store: "BaseStore | None"
 
     def __init__(
         self,
@@ -135,6 +137,7 @@ class GraphBuilder:
         llm_factory: LLMFactory,
         tool_registry: dict[str, "BaseTool"],
         context: dict[str, Any] | None = None,
+        store: "BaseStore | None" = None,
     ) -> None:
         """
         Initialize the GraphBuilder.
@@ -149,6 +152,7 @@ class GraphBuilder:
         self.llm_factory = llm_factory
         self.tool_registry = tool_registry
         self.context = context or {}
+        self._store = store
 
         # Validate configuration
         errors = validate_graph_config(config)
@@ -194,7 +198,7 @@ class GraphBuilder:
         self._add_edges(graph)
 
         # Compile and return
-        compiled: DynamicCompiledGraph = graph.compile()
+        compiled: DynamicCompiledGraph = graph.compile(store=self._store)
         logger.info("Graph v2 compiled successfully")
         return compiled
 
@@ -517,6 +521,7 @@ class GraphBuilder:
             llm_factory=self.llm_factory,
             tools=filtered_tools,
             config=validated_overrides,
+            store=self._store,
         )
 
         logger.info(

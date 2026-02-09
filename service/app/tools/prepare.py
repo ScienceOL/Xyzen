@@ -140,18 +140,22 @@ def _load_all_builtin_tools(
         image_tools = create_image_tools_for_agent(user_id=user_id)
         tools.extend(image_tools)
 
-    # Load memory tools if agent and user_id are available
-    # Memory tools allow agents to search their conversation history
-    # Disabled: ILIKE '%query%' causes full table scans, pending RAG/pgvector implementation
-    # if agent and user_id:
-    #     from app.tools.builtin.memory import create_memory_tools_for_agent
-    #
-    #     memory_tools = create_memory_tools_for_agent(
-    #         user_id=user_id,
-    #         agent_id=agent.id,
-    #         current_topic_id=topic_id,
-    #     )
-    #     tools.extend(memory_tools)
+    # Load memory tools if user_id is available and memory is enabled
+    if user_id:
+        from app.configs import configs as app_configs
+        from app.core.memory import get_memory_service
+
+        if app_configs.Memory.Enabled:
+            memory_svc = get_memory_service()
+            store = memory_svc.store if memory_svc else None
+            if store:
+                from app.tools.builtin.memory import create_memory_tools_for_agent
+
+                memory_tools = create_memory_tools_for_agent(
+                    user_id=user_id,
+                    store=store,
+                )
+                tools.extend(memory_tools)
 
     # Load sandbox tools if enabled and session_id is available
     if session_id:

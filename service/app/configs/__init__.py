@@ -6,6 +6,7 @@ from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
 from .image import ImageConfig
 from .lab import LabConfig
+from .memory import MemoryConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
 from .mcps import McpProviderConfig
@@ -106,6 +107,11 @@ class AppConfig(BaseSettings):
     Sandbox: SandboxConfig = Field(
         default_factory=lambda: SandboxConfig(),
         description="Sandbox code execution configuration",
+    )
+
+    Memory: MemoryConfig = Field(
+        default_factory=lambda: MemoryConfig(),
+        description="Cross-thread memory store configuration",
     )
 
 

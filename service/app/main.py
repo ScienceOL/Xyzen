@@ -25,6 +25,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Create database tables
     await create_db_and_tables()
 
+    # Initialize cross-thread memory store
+    from app.core.memory import initialize_memory_service
+
+    await initialize_memory_service()
+
     # Initialize system provider from environment config
     from app.core.providers import initialize_providers_on_startup
 
@@ -127,7 +132,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         yield  # 确保服务能够启动
 
     # Disconnect from the database, if needed (SQLModel manages sessions)
-    pass
+    from app.core.memory import shutdown_memory_service
+
+    await shutdown_memory_service()
 
 
 app = FastAPI(
