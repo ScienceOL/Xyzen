@@ -13,7 +13,7 @@ services:
       - xyzen-network
 
   postgresql:
-    image: pgvector/pgvector:pg17
+    image: pgvector/pgvector:pg16
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped
