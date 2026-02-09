@@ -18,6 +18,7 @@ export default {
         'revert', // Revert previous commit
       ],
     ],
+    'header-max-length': [2, 'always', 200], // Increase header max length
     'subject-case': [0], // Disable subject case check
     'body-max-line-length': [0], // Disable body line length limit
   },
