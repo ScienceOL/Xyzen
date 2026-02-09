@@ -8,7 +8,6 @@ import { useXyzenChat } from "@/hooks/useXyzenChat";
 import type { Agent } from "@/types/agents";
 import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 
-import { AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 import ChatBubble from "./components/ChatBubble";
@@ -72,7 +71,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     sendBlocked,
 
     // Computed
-    currentChannel,
+    channelTitle,
     currentAgent,
     messages,
     connected,
@@ -163,7 +162,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                     •
                   </span>
                   <EditableTitle
-                    title={currentChannel?.title || config.defaultTitle}
+                    title={channelTitle || config.defaultTitle}
                     onSave={(newTitle) => {
                       if (activeChatChannel) {
                         return updateTopicName(activeChatChannel, newTitle);
@@ -191,7 +190,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         ) : (
           <div className="relative shrink-0 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
             <EditableTitle
-              title={currentChannel?.title || config.defaultTitle}
+              title={channelTitle || config.defaultTitle}
               onSave={(newTitle) => {
                 if (activeChatChannel) {
                   return updateTopicName(activeChatChannel, newTitle);
@@ -242,11 +241,9 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                 />
               ) : (
                 <div className="space-y-0.5">
-                  <AnimatePresence>
-                    {messages.map((msg) => (
-                      <ChatBubble key={msg.clientId || msg.id} message={msg} />
-                    ))}
-                  </AnimatePresence>
+                  {messages.map((msg) => (
+                    <ChatBubble key={msg.clientId || msg.id} message={msg} />
+                  ))}
                   <div ref={messagesEndRef} className="h-4" />
                 </div>
               )}

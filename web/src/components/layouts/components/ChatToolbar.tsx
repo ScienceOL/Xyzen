@@ -3,6 +3,7 @@
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { FileUploadPreview } from "@/components/features";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import {
@@ -19,6 +20,7 @@ import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { TierSelector, type ModelTier } from "./TierSelector";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import {
   HistorySheetButton,
   McpToolsButton,
@@ -78,16 +80,26 @@ export default function ChatToolbar({
 }: ChatToolbarProps) {
   const {
     createDefaultChannel,
-    activeChatChannel,
-    channels,
-    agents,
-    mcpServers,
     updateSessionConfig,
-    uploadedFiles,
-    isUploading,
     updateAgent,
     openSettingsModal,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      createDefaultChannel: s.createDefaultChannel,
+      updateSessionConfig: s.updateSessionConfig,
+      updateAgent: s.updateAgent,
+      openSettingsModal: s.openSettingsModal,
+    })),
+  );
+
+  const agents = useXyzen((s) => s.agents);
+  const mcpServers = useXyzen((s) => s.mcpServers);
+  const uploadedFiles = useXyzen((s) => s.uploadedFiles);
+  const isUploading = useXyzen((s) => s.isUploading);
+
+  // Fine-grained channel status (no messages)
+  const channelStatus = useActiveChannelStatus();
+  const activeChatChannel = channelStatus.channelId;
 
   // All user agents for lookup
   const allAgents = useMemo(() => agents, [agents]);
@@ -96,10 +108,10 @@ export default function ChatToolbar({
   const currentMcpInfo = useMemo(() => {
     if (!activeChatChannel) return null;
 
-    const channel = channels[activeChatChannel];
-    if (!channel?.agentId) return null;
+    const agentId = channelStatus.agentId;
+    if (!agentId) return null;
 
-    const agent = allAgents.find((a) => a.id === channel.agentId);
+    const agent = allAgents.find((a) => a.id === agentId);
     if (!agent?.mcp_servers?.length) return null;
 
     const connectedServers = mcpServers.filter((server) =>
@@ -110,26 +122,20 @@ export default function ChatToolbar({
       agent,
       servers: connectedServers,
     };
-  }, [activeChatChannel, channels, allAgents, mcpServers]);
+  }, [activeChatChannel, channelStatus.agentId, allAgents, mcpServers]);
 
   // Get current agent
   const currentAgent = useMemo(() => {
     if (!activeChatChannel) return null;
-    const channel = channels[activeChatChannel];
-    if (!channel?.agentId) return null;
-    return allAgents.find((a) => a.id === channel.agentId) || null;
-  }, [activeChatChannel, channels, allAgents]);
+    const agentId = channelStatus.agentId;
+    if (!agentId) return null;
+    return allAgents.find((a) => a.id === agentId) || null;
+  }, [activeChatChannel, channelStatus.agentId, allAgents]);
 
-  // Get current channel
-  const currentChannel = useMemo(() => {
-    if (!activeChatChannel) return null;
-    return channels[activeChatChannel] || null;
-  }, [activeChatChannel, channels]);
-
-  // Get current session's tier
-  const currentSessionTier = useMemo(() => {
-    return currentChannel?.model_tier || null;
-  }, [currentChannel]);
+  // Get current channel status for tier/knowledge
+  const currentSessionTier = channelStatus.model_tier;
+  const currentChannelSessionId = channelStatus.sessionId;
+  const currentChannelKnowledgeSetId = channelStatus.knowledge_set_id;
 
   // State for new chat creation loading
   const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
@@ -155,33 +161,33 @@ export default function ChatToolbar({
   // Tier change handler
   const handleTierChange = useCallback(
     async (tier: ModelTier) => {
-      if (!currentChannel?.sessionId) return;
+      if (!currentChannelSessionId) return;
 
       try {
-        await updateSessionConfig(currentChannel.sessionId, {
+        await updateSessionConfig(currentChannelSessionId, {
           model_tier: tier,
         });
       } catch (error) {
         console.error("Failed to update session tier:", error);
       }
     },
-    [currentChannel, updateSessionConfig],
+    [currentChannelSessionId, updateSessionConfig],
   );
 
   // Knowledge set change handler
   const handleKnowledgeSetChange = useCallback(
     async (knowledgeSetId: string | null) => {
-      if (!currentChannel?.sessionId) return;
+      if (!currentChannelSessionId) return;
 
       try {
-        await updateSessionConfig(currentChannel.sessionId, {
+        await updateSessionConfig(currentChannelSessionId, {
           knowledge_set_id: knowledgeSetId,
         });
       } catch (error) {
         console.error("Failed to update session knowledge set:", error);
       }
     },
-    [currentChannel, updateSessionConfig],
+    [currentChannelSessionId, updateSessionConfig],
   );
 
   const handleNewChat = async () => {
@@ -291,7 +297,7 @@ export default function ChatToolbar({
             mcpInfo={currentMcpInfo}
             allMcpServers={mcpServers}
             onOpenSettings={() => openSettingsModal("mcp")}
-            sessionKnowledgeSetId={currentChannel?.knowledge_set_id}
+            sessionKnowledgeSetId={currentChannelKnowledgeSetId}
             onUpdateSessionKnowledge={handleKnowledgeSetChange}
           />
         )}
@@ -323,9 +329,9 @@ export default function ChatToolbar({
                     onUpdateAgent={updateAgent}
                     hasKnowledgeSet={
                       !!currentAgent.knowledge_set_id ||
-                      !!currentChannel?.knowledge_set_id
+                      !!currentChannelKnowledgeSetId
                     }
-                    sessionKnowledgeSetId={currentChannel?.knowledge_set_id}
+                    sessionKnowledgeSetId={currentChannelKnowledgeSetId}
                     onUpdateSessionKnowledge={handleKnowledgeSetChange}
                   />
                 )}

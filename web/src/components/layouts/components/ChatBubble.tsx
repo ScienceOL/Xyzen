@@ -5,6 +5,10 @@ import {
   resolveMessageContent,
   getMessageDisplayMode,
 } from "@/core/chat/messageContent";
+import {
+  useActiveChannelAgentId,
+  useActiveChannelResponding,
+} from "@/hooks/useChannelSelectors";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
@@ -22,8 +26,10 @@ import {
   useMemo,
   useRef,
   useState,
+  memo,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,28 +59,41 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const mobileToolbarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
 
-  const confirmToolCall = useXyzen((state) => state.confirmToolCall);
-  const cancelToolCall = useXyzen((state) => state.cancelToolCall);
-  const activeChatChannel = useXyzen((state) => state.activeChatChannel);
-  const channels = useXyzen((state) => state.channels);
-  const agents = useXyzen((state) => state.agents);
-  const user = useXyzen((state) => state.user);
+  // Consolidate action refs into a single subscription (stable references, never trigger re-render)
+  const {
+    confirmToolCall,
+    cancelToolCall,
+    startEditMessage,
+    cancelEditMessage,
+    submitEditMessage,
+    deleteMessage,
+  } = useXyzen(
+    useShallow((s) => ({
+      confirmToolCall: s.confirmToolCall,
+      cancelToolCall: s.cancelToolCall,
+      startEditMessage: s.startEditMessage,
+      cancelEditMessage: s.cancelEditMessage,
+      submitEditMessage: s.submitEditMessage,
+      deleteMessage: s.deleteMessage,
+    })),
+  );
 
-  // Edit state
-  const editingMessageId = useXyzen((state) => state.editingMessageId);
-  const editingContent = useXyzen((state) => state.editingContent);
-  const editingMode = useXyzen((state) => state.editingMode);
-  const startEditMessage = useXyzen((state) => state.startEditMessage);
-  const cancelEditMessage = useXyzen((state) => state.cancelEditMessage);
-  const submitEditMessage = useXyzen((state) => state.submitEditMessage);
+  const activeChatChannel = useXyzen((s) => s.activeChatChannel);
+  const agents = useXyzen((s) => s.agents);
+  const user = useXyzen((s) => s.user);
 
-  // Delete state
-  const deleteMessage = useXyzen((state) => state.deleteMessage);
+  // Fine-grained channel selectors (avoid subscribing to entire channels object)
+  const activeAgentId = useActiveChannelAgentId();
+  const channelResponding = useActiveChannelResponding();
+
+  // Edit state - grouped because they change together
+  const editingMessageId = useXyzen((s) => s.editingMessageId);
+  const editingContent = useXyzen((s) => s.editingContent);
+  const editingMode = useXyzen((s) => s.editingMode);
 
   // Get current agent avatar from store
-  const currentChannel = activeChatChannel ? channels[activeChatChannel] : null;
-  const currentAgent = currentChannel?.agentId
-    ? agents.find((a) => a.id === currentChannel.agentId)
+  const currentAgent = activeAgentId
+    ? agents.find((a) => a.id === activeAgentId)
     : null;
 
   const {
@@ -103,12 +122,11 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   // Edit state
   const isEditing = editingMessageId === message.id;
-  const channel = activeChatChannel ? channels[activeChatChannel] : null;
   const canEditUser =
-    isUserMessage && !channel?.responding && !isLoading && !isStreaming;
+    isUserMessage && !channelResponding && !isLoading && !isStreaming;
   const canEditAssistant =
     !isUserMessage &&
-    !channel?.responding &&
+    !channelResponding &&
     !isLoading &&
     !isStreaming &&
     !isToolMessage;
@@ -253,7 +271,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   // Delete state - both user and assistant messages can be deleted
   const canDelete =
-    !channel?.responding && !isLoading && !isStreaming && !isEditing;
+    !channelResponding && !isLoading && !isStreaming && !isEditing;
 
   const handleDeleteClick = async () => {
     await deleteMessage(message.id);
@@ -274,7 +292,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const messageStyles = "rounded-sm bg-neutral-50/50 dark:bg-neutral-800/30";
   // Base toolbar styles (opacity controlled separately for mobile/desktop)
   const toolbarBaseStyles =
-    "absolute -bottom-7 left-8 z-10 flex items-center gap-2 py-0.5 transition-all duration-200";
+    "absolute -bottom-6 left-12 z-10 flex items-center gap-2 py-0.5 transition-all duration-200";
   // Toolbar visibility: desktop uses group-hover, mobile uses showMobileToolbar state
   const toolbarVisibilityStyles = showMobileToolbar
     ? "opacity-100 translate-y-0"
@@ -679,4 +697,4 @@ function ChatBubble({ message }: ChatBubbleProps) {
   }
 }
 
-export default ChatBubble;
+export default memo(ChatBubble);

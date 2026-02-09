@@ -721,34 +721,54 @@ function ImageLightboxEscapeCatcher({ onEscape }: { onEscape: () => void }) {
   return null;
 }
 
-const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
-  const { content = "", className } = props;
+// Stable plugin arrays — declared outside so references never change between renders
+const REMARK_PLUGINS = [
+  remarkMath,
+  remarkGfm,
+  remarkBreaks,
+  remarkStrongQuotedText,
+];
+const REHYPE_PLUGINS = [rehypeKatex];
 
-  // Detect theme for line number colors
-  const [isDark, setIsDark] = React.useState(false);
+// Shared dark-mode state via module-level singleton to avoid per-instance MutationObservers
+let _isDarkCached = false;
+let _observerSetup = false;
+const _darkListeners = new Set<(dark: boolean) => void>();
 
-  useEffect(() => {
-    const checkTheme = () => {
-      if (typeof document !== "undefined") {
-        const htmlEl = document.documentElement;
-        const hasDarkClass = htmlEl.classList.contains("dark");
-        setIsDark(hasDarkClass);
-      }
-    };
-
-    checkTheme();
-
-    // Watch for theme changes
-    const observer = new MutationObserver(checkTheme);
-    if (typeof document !== "undefined") {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["class"],
-      });
+function setupDarkObserver() {
+  if (_observerSetup || typeof document === "undefined") return;
+  _observerSetup = true;
+  _isDarkCached = document.documentElement.classList.contains("dark");
+  const observer = new MutationObserver(() => {
+    const dark = document.documentElement.classList.contains("dark");
+    if (dark !== _isDarkCached) {
+      _isDarkCached = dark;
+      _darkListeners.forEach((fn) => fn(dark));
     }
+  });
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+}
 
-    return () => observer.disconnect();
+function useDarkMode(): boolean {
+  const [isDark, setIsDark] = React.useState(() => {
+    setupDarkObserver();
+    return _isDarkCached;
+  });
+  useEffect(() => {
+    _darkListeners.add(setIsDark);
+    return () => {
+      _darkListeners.delete(setIsDark);
+    };
   }, []);
+  return isDark;
+}
+
+const Markdown: React.FC<MarkdownProps> = React.memo(function Markdown(props) {
+  const { content = "", className } = props;
+  const isDark = useDarkMode();
 
   const MarkdownComponents = React.useMemo(
     () => ({
@@ -835,18 +855,13 @@ const Markdown: React.FC<MarkdownProps> = function Markdown(props) {
     >
       <ReactMarkdown
         components={MarkdownComponents}
-        remarkPlugins={[
-          remarkMath,
-          remarkGfm,
-          remarkBreaks,
-          remarkStrongQuotedText,
-        ]}
-        rehypePlugins={[rehypeKatex]}
+        remarkPlugins={REMARK_PLUGINS}
+        rehypePlugins={REHYPE_PLUGINS}
       >
         {content}
       </ReactMarkdown>
     </article>
   );
-};
+});
 
 export default Markdown;
