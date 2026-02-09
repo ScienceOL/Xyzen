@@ -30,7 +30,7 @@ services:
     image: daytonaio/daytona-api
     network_mode: 'service:daytona-network-service'
     environment:
-      - ADMIN_API_KEY=${DAYTONA_ADMIN_API_KEY:-}
+      - ADMIN_API_KEY=${DAYTONA_ADMIN_API_KEY:-xyzen-dev-admin-key}
       - ADMIN_TOTAL_CPU_QUOTA=10000
       - ADMIN_TOTAL_MEMORY_QUOTA=10000
       - ADMIN_TOTAL_DISK_QUOTA=100000

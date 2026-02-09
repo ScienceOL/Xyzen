@@ -7,7 +7,7 @@ class SandboxConfig(BaseModel):
     """Configuration for sandbox code execution environments."""
 
     Enable: bool = Field(
-        default=False,
+        default=True,
         description="Enable sandbox code execution tools",
     )
     Backend: str = Field(
@@ -19,7 +19,7 @@ class SandboxConfig(BaseModel):
         description="Daytona API server URL",
     )
     DaytonaApiKey: str = Field(
-        default="",
+        default="xyzen-dev-admin-key",
         description="Daytona API key for authentication",
     )
     DaytonaTarget: str = Field(
