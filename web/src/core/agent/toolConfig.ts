@@ -1,5 +1,8 @@
 /**
- * Tool configuration utilities for managing agent's graph_config.tool_config.tool_filter
+ * Tool configuration utilities for managing agent's graph_config node-level tool_filter
+ *
+ * In v3 GraphConfig, tool filters live on each LLM node's config.tool_filter,
+ * not as a top-level tool_config.
  *
  * Tool filter semantics:
  * - null: All available tools are enabled
@@ -53,22 +56,54 @@ export const IMAGE_TOOLS = [
   BUILTIN_TOOLS.READ_IMAGE,
 ] as const;
 
-type GraphConfig = {
-  version?: string;
-  tool_config?: {
-    tool_filter?: string[] | null;
+// v3 GraphConfig shape used for reading/writing tool_filter on LLM nodes
+type GraphConfigV3 = {
+  graph?: {
+    nodes?: Array<{
+      kind?: string;
+      config?: { tool_filter?: string[] | null; [key: string]: unknown };
+      [key: string]: unknown;
+    }>;
     [key: string]: unknown;
   };
   [key: string]: unknown;
 };
 
 /**
+ * Read tool_filter from the first LLM node in the graph config.
+ */
+function getLlmToolFilter(config: GraphConfigV3): string[] | null {
+  const nodes = config.graph?.nodes;
+  if (!nodes) return null;
+  const llmNode = nodes.find((n) => n.kind === "llm");
+  return llmNode?.config?.tool_filter ?? null;
+}
+
+/**
+ * Deep-clone the config and set tool_filter on ALL LLM nodes.
+ */
+function withLlmToolFilter(
+  config: GraphConfigV3,
+  filter: string[] | null,
+): Record<string, unknown> {
+  const cloned = structuredClone(config) as GraphConfigV3;
+  const nodes = cloned.graph?.nodes;
+  if (nodes) {
+    for (const node of nodes) {
+      if (node.kind === "llm" && node.config) {
+        node.config.tool_filter = filter;
+      }
+    }
+  }
+  return cloned as Record<string, unknown>;
+}
+
+/**
  * Get the current tool_filter from agent's graph_config
  */
 export function getToolFilter(agent: Agent | null): string[] | null {
   if (!agent?.graph_config) return null;
-  const config = agent.graph_config as GraphConfig;
-  return config.tool_config?.tool_filter ?? null;
+  return getLlmToolFilter(agent.graph_config as GraphConfigV3);
 }
 
 /**
@@ -114,8 +149,8 @@ export function updateToolFilter(
   toolId: string,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -139,13 +174,7 @@ export function updateToolFilter(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
@@ -155,8 +184,8 @@ export function updateKnowledgeEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -186,13 +215,7 @@ export function updateKnowledgeEnabled(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
@@ -202,8 +225,8 @@ export function updateWebSearchEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -233,13 +256,7 @@ export function updateWebSearchEnabled(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
@@ -258,8 +275,8 @@ export function updateImageEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -287,13 +304,7 @@ export function updateImageEnabled(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**

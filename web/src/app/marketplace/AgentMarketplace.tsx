@@ -476,14 +476,26 @@ function AgentListingCard({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {listing.scope === "official"
-                  ? t("marketplace.card.byOfficial", { defaultValue: "Xyzen" })
-                  : t("marketplace.card.by", {
+              <p className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                {listing.scope === "official" ? (
+                  t("marketplace.card.byOfficial", { defaultValue: "Xyzen" })
+                ) : (
+                  <>
+                    {listing.author_avatar_url && (
+                      <img
+                        src={listing.author_avatar_url}
+                        alt=""
+                        className="h-4 w-4 rounded-full object-cover"
+                      />
+                    )}
+                    {t("marketplace.card.by", {
                       author:
+                        listing.author_display_name ||
                         (listing.user_id ?? "").split("@")[0] ||
                         listing.user_id,
                     })}
+                  </>
+                )}
               </p>
             </div>
           </div>

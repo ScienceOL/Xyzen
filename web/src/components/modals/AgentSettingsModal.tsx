@@ -177,6 +177,19 @@ interface AvatarSelectorProps {
   backendUrl?: string;
 }
 
+/** Extract the seed query-param from a DiceBear-style avatar URL. */
+const parseSeedFromAvatar = (url?: string): string => {
+  if (!url) return "";
+  try {
+    const seedParam = new URL(url).searchParams.get("seed");
+    return seedParam ? decodeURIComponent(seedParam) : "";
+  } catch {
+    // Fallback regex for relative / malformed URLs
+    const match = url.match(/[?&]seed=([^&]*)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  }
+};
+
 function AvatarSelector({
   currentAvatar,
   onSelect,
@@ -185,7 +198,15 @@ function AvatarSelector({
   const { t } = useTranslation();
   const [selectedStyle, setSelectedStyle] =
     useState<(typeof DICEBEAR_STYLES)[number]>("avataaars");
-  const [customSeed, setCustomSeed] = useState("");
+  const [customSeed, setCustomSeed] = useState(() =>
+    parseSeedFromAvatar(currentAvatar),
+  );
+
+  // Keep the seed input in sync when the avatar changes externally
+  useEffect(() => {
+    const seed = parseSeedFromAvatar(currentAvatar);
+    setCustomSeed(seed);
+  }, [currentAvatar]);
   const [isLoading, setIsLoading] = useState(false);
 
   const presetAvatars = useMemo(
@@ -213,7 +234,6 @@ function AvatarSelector({
     const url = buildAvatarUrl(selectedStyle, customSeed.trim(), backendUrl);
     onSelect(url);
     setIsLoading(false);
-    setCustomSeed("");
   }, [selectedStyle, customSeed, onSelect, backendUrl]);
 
   const handlePresetSelect = useCallback(

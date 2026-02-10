@@ -57,6 +57,7 @@
     "loading": "Loading agent details...",
     "error": "Failed to load agent details. Please try again.",
     "back": "Back to Marketplace",
+    "backToApp": "Open App",
     "publishedBy": "Published by",
     "noDescription": "No description provided",
     "stats": {
@@ -100,7 +101,8 @@
       "fork": "Fork This Agent",
       "liked": "Liked",
       "like": "Like This Agent",
-      "manage": "Manage Agent"
+      "manage": "Manage Agent",
+      "shareTitle": "Share"
     },
     "meta": {
       "publishedBy": "Published By",

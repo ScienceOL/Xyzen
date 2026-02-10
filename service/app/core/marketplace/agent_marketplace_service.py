@@ -108,6 +108,8 @@ class AgentMarketplaceService:
         is_published: bool = True,
         readme: str | None = None,
         fork_mode: ForkMode = ForkMode.EDITABLE,
+        author_display_name: str | None = None,
+        author_avatar_url: str | None = None,
     ) -> AgentMarketplace | None:
         """
         Publishes an agent to the marketplace or updates an existing listing.
@@ -141,6 +143,8 @@ class AgentMarketplaceService:
                 is_published=is_published,
                 readme=readme,
                 fork_mode=fork_mode,
+                author_display_name=author_display_name,
+                author_avatar_url=author_avatar_url,
             )
             listing = await self.marketplace_repo.update_listing(existing_listing.id, update_data)
 
@@ -156,6 +160,8 @@ class AgentMarketplaceService:
                 agent_id=agent.id,
                 active_snapshot_id=snapshot.id,
                 user_id=agent.user_id or "",
+                author_display_name=author_display_name,
+                author_avatar_url=author_avatar_url,
                 name=agent.name,
                 description=agent.description,
                 avatar=agent.avatar,

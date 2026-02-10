@@ -689,6 +689,7 @@ export const createChatSlice: StateCreator<
               provider_id: session.provider_id,
               model: session.model,
               model_tier: session.model_tier,
+              knowledge_set_id: session.knowledge_set_id,
               connected: false,
               error: null,
             };
@@ -728,6 +729,7 @@ export const createChatSlice: StateCreator<
                 provider_id: session.provider_id,
                 model: session.model,
                 model_tier: session.model_tier,
+                knowledge_set_id: session.knowledge_set_id,
                 connected: false,
                 error: null,
               };
