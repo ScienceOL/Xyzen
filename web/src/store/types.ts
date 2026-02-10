@@ -147,7 +147,7 @@ export interface AgentMetadata {
 }
 
 export interface KnowledgeContext {
-  folderId: string;
+  parentId: string;
   folderName: string;
 }
 

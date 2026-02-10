@@ -1,0 +1,41 @@
+{
+  "tabs": {
+    "knowledge": "知识库",
+    "tools": "工具",
+    "sandbox": "沙盒",
+    "memory": "记忆",
+    "comingSoon": "即将推出"
+  },
+  "knowledge": {
+    "fileCount": "{{count}} 个文件",
+    "noKnowledgeSet": "未绑定知识库",
+    "noKnowledgeSetHint": "为此对话绑定知识库即可在此查看文件。",
+    "loading": "加载中...",
+    "noFiles": "此知识库中没有文件。"
+  },
+  "memory": {
+    "noMemories": "暂无记忆",
+    "noMemoriesHint": "记忆由 Agent 在对话过程中自动创建。",
+    "loading": "加载中...",
+    "error": "加载记忆失败",
+    "justNow": "刚刚",
+    "countSingular": "条记忆",
+    "countPlural": "条记忆",
+    "delete": "删除"
+  },
+  "sandbox": {
+    "noSession": "无活动会话",
+    "noSandbox": "沙盒未启动",
+    "noSandboxHint": "Agent 运行代码时会自动创建沙盒。",
+    "loading": "加载中...",
+    "error": "加载沙盒文件失败",
+    "emptyFolder": "空文件夹",
+    "refresh": "刷新"
+  },
+  "collapse": "收起面板",
+  "expand": "展开面板",
+  "dock": "固定面板",
+  "back": "返回",
+  "mobileBanner": "知识库",
+  "capsule": "Capsule"
+}

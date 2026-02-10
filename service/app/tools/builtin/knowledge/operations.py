@@ -81,7 +81,7 @@ async def _resolve_image_ids_to_storage_urls(
         try:
             file_uuid = UUID(image_id)
             file_record = await file_repo.get_file_by_id(file_uuid)
-            if file_record and not file_record.is_deleted:
+            if file_record and not file_record.is_deleted and file_record.storage_key:
                 # Security check: verify the file belongs to the current user
                 if file_record.user_id != user_id:
                     logger.warning(
@@ -197,6 +197,9 @@ async def read_file(user_id: str, knowledge_set_id: UUID, filename: str) -> dict
             if not target_file:
                 return {"error": f"File '{filename}' not found in knowledge set.", "success": False}
 
+            if not target_file.storage_key:
+                return {"error": f"File '{filename}' has no storage key (directory entry).", "success": False}
+
             # Download content
             storage = get_storage_service()
             buffer = io.BytesIO()
@@ -288,7 +291,7 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
                 # Create new and link
                 new_file = FileCreate(
                     user_id=user_id,
-                    folder_id=None,
+                    parent_id=None,
                     original_filename=filename,
                     storage_key=new_key,
                     file_size=file_size_bytes,

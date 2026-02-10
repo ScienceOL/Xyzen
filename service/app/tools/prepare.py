@@ -66,6 +66,10 @@ async def prepare_tools(
     mcp_tools = await _load_mcp_tools(db, agent, session_id)
     langchain_tools.extend(mcp_tools)
 
+    # 3. Load skill tools (requires DB query + session binding)
+    skill_tools = await _load_skill_tools(db, agent, session_id)
+    langchain_tools.extend(skill_tools)
+
     logger.info(f"Loaded {len(langchain_tools)} tools (builtin + MCP)")
     logger.debug(f"Tool names: {[t.name for t in langchain_tools]}")
 
@@ -164,10 +168,64 @@ def _load_all_builtin_tools(
         if app_configs.Sandbox.Enable:
             from app.tools.builtin.sandbox import create_sandbox_tools_for_session
 
-            sandbox_tools = create_sandbox_tools_for_session(session_id=str(session_id))
+            sandbox_tools = create_sandbox_tools_for_session(
+                session_id=str(session_id),
+                user_id=user_id,
+            )
             tools.extend(sandbox_tools)
 
     return tools
+
+
+async def _load_skill_tools(
+    db: AsyncSession,
+    agent: "Agent | None",
+    session_id: "UUID | None",
+) -> list[BaseTool]:
+    """
+    Load skill activation tools if the agent has attached skills.
+
+    Requires both a valid agent (to query skills) and a session_id
+    (for sandbox resource deployment).
+
+    Args:
+        db: Database session
+        agent: Agent instance
+        session_id: Session UUID
+
+    Returns:
+        List of skill tools (activate_skill, list_skill_resources) or empty list
+    """
+    if not agent or not session_id:
+        return []
+
+    try:
+        from app.repos.skill import SkillRepository
+
+        repo = SkillRepository(db)
+        skills = await repo.get_skills_for_agent(agent.id)
+        if not skills:
+            return []
+
+        from app.tools.builtin.skills import SkillInfo, create_skill_tools_for_session
+
+        skill_infos = [
+            SkillInfo(
+                name=s.name,
+                description=s.description,
+                resource_prefix=s.resource_prefix,
+            )
+            for s in skills
+        ]
+
+        return create_skill_tools_for_session(
+            skills=skill_infos,
+            session_id=str(session_id),
+        )
+
+    except Exception:
+        logger.exception("Failed to load skill tools for agent %s", agent.id)
+        return []
 
 
 async def _load_mcp_tools(

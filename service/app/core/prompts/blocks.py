@@ -6,6 +6,7 @@ section of the system prompt.
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 
 from app.models.agent import Agent
@@ -245,6 +246,44 @@ class FormatBlock(PromptBlock):
         return "\n".join(parts)
 
 
+@dataclass(frozen=True)
+class SkillMetadata:
+    """Lightweight skill metadata for prompt injection (~100 tokens per skill)."""
+
+    name: str
+    description: str
+
+
+class SkillMetadataBlock(PromptBlock):
+    """
+    Available skills metadata block.
+
+    Injects a lightweight <available_skills> XML section into the system prompt
+    so the LLM knows which skills can be activated via the activate_skill tool.
+    """
+
+    def __init__(self, skills: list[SkillMetadata]):
+        self.skills = skills
+
+    def build(self) -> str:
+        if not self.skills:
+            return ""
+
+        lines = ["<available_skills>"]
+        for skill in self.skills:
+            lines.append("  <skill>")
+            lines.append(f"    <name>{skill.name}</name>")
+            lines.append(f"    <description>{skill.description}</description>")
+            lines.append("  </skill>")
+        lines.append("</available_skills>")
+        lines.append(
+            "To use a skill, call the activate_skill tool with the skill name. "
+            "This will return detailed instructions and deploy any resources to the sandbox."
+        )
+
+        return "\n".join(lines)
+
+
 __all__ = [
     "PromptBlock",
     "MetaInstructionBlock",
@@ -253,4 +292,6 @@ __all__ = [
     "KnowledgeBlock",
     "ContextBlock",
     "FormatBlock",
+    "SkillMetadata",
+    "SkillMetadataBlock",
 ]

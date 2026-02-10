@@ -7,7 +7,9 @@ Supports backward compatibility with legacy agent.prompt field.
 
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+import logging
 from typing import Any
+from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -17,6 +19,8 @@ from app.core.prompts.blocks import (
     MetaInstructionBlock,
     PersonaBlock,
     PromptBlock,
+    SkillMetadata,
+    SkillMetadataBlock,
     ToolInstructionBlock,
 )
 from app.core.prompts.defaults import get_prompt_config_from_graph_config
@@ -95,7 +99,12 @@ def _join_non_empty(parts: list[str]) -> str:
     return "\n\n".join(cleaned)
 
 
-def _build_prompt_layers(config: PromptConfig, agent: Agent | None, model_name: str | None) -> tuple[str, str]:
+def _build_prompt_layers(
+    config: PromptConfig,
+    agent: Agent | None,
+    model_name: str | None,
+    skills: list[SkillMetadata] | None = None,
+) -> tuple[str, str]:
     """Build platform and agent prompt layers independently."""
 
     agent_layer = PersonaBlock(config).build().strip()
@@ -107,6 +116,7 @@ def _build_prompt_layers(config: PromptConfig, agent: Agent | None, model_name: 
         MetaInstructionBlock(config).build(),
         ContextBlock(config).build(),
         ToolInstructionBlock(config, agent).build(),
+        SkillMetadataBlock(skills or []).build(),
         FormatBlock(config, model_name).build(),
     ]
     platform_layer = _join_non_empty(platform_parts)
@@ -155,21 +165,26 @@ async def build_system_prompt_with_provenance(
     3. Backward compat: agent.prompt → custom_instructions
 
     Args:
-        db: Database session (for future extensibility)
+        db: Database session (for skill metadata loading)
         agent: Agent configuration (may be None)
         model_name: Model name for format customization
 
     Returns:
         SystemPromptBuildResult with prompt text and provenance summary
     """
-    _ = db  # reserved for future prompt/data hydration
-
     # Extract prompt config from graph_config (with backward compatibility)
     graph_config = agent.graph_config if agent else None
     agent_prompt = agent.prompt if agent else None
     prompt_config = get_prompt_config_from_graph_config(graph_config, agent_prompt)
 
-    platform_prompt, resolved_agent_prompt = _build_prompt_layers(prompt_config, agent, model_name)
+    # Load skill metadata for prompt injection
+    skills: list[SkillMetadata] = []
+    if agent and agent.id:
+        skills = await _load_skill_metadata(db, agent.id)
+
+    platform_prompt, resolved_agent_prompt = _build_prompt_layers(
+        prompt_config, agent, model_name, skills=skills
+    )
     final_prompt = _join_non_empty([platform_prompt, resolved_agent_prompt])
 
     provenance = _build_prompt_provenance(
@@ -181,6 +196,22 @@ async def build_system_prompt_with_provenance(
         model_name=model_name,
     )
     return SystemPromptBuildResult(prompt=final_prompt, provenance=provenance)
+
+
+logger = logging.getLogger(__name__)
+
+
+async def _load_skill_metadata(db: AsyncSession, agent_id: UUID) -> list[SkillMetadata]:
+    """Load lightweight skill metadata for prompt injection."""
+    try:
+        from app.repos.skill import SkillRepository
+
+        repo = SkillRepository(db)
+        skills = await repo.get_skills_for_agent(agent_id)
+        return [SkillMetadata(name=s.name, description=s.description) for s in skills]
+    except Exception:
+        logger.debug("Failed to load skill metadata for agent %s", agent_id, exc_info=True)
+        return []
 
 
 async def build_system_prompt(db: AsyncSession, agent: Agent | None, model_name: str | None) -> str:

@@ -10,10 +10,13 @@ from .folders import router as folders_router
 from .knowledge_sets import router as knowledge_sets_router
 from .marketplace import router as marketplace_router
 from .mcps import router as mcps_router
+from .memories import router as memories_router
 from .messages import router as messages_router
 from .providers import router as providers_router
 from .redemption import router as redemption_router
+from .sandbox import router as sandbox_router
 from .sessions import router as sessions_router
+from .skills import agent_skills_router, router as skills_router
 from .system import router as system_router
 from .tools import router as tools_router
 from .topics import router as topics_router
@@ -85,6 +88,9 @@ v1_router.include_router(providers_router, prefix="/providers")
 v1_router.include_router(sessions_router, prefix="/sessions")
 v1_router.include_router(topics_router, prefix="/topics")
 v1_router.include_router(agents_router, prefix="/agents")
+v1_router.include_router(agent_skills_router, prefix="/agents")
+
+v1_router.include_router(skills_router, prefix="/skills")
 
 v1_router.include_router(mcps_router, prefix="/mcps")
 v1_router.include_router(redemption_router, prefix="/redemption", tags=["redemption"])
@@ -94,6 +100,8 @@ v1_router.include_router(folders_router, prefix="/folders")
 v1_router.include_router(knowledge_sets_router, prefix="/knowledge-sets")
 v1_router.include_router(marketplace_router, prefix="/marketplace")
 v1_router.include_router(messages_router, prefix="/messages")
+v1_router.include_router(memories_router, prefix="/memories")
+v1_router.include_router(sandbox_router, prefix="/sessions")
 v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(tools_router, prefix="/tools")
 v1_router.include_router(system_router, tags=["system"])

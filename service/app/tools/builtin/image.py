@@ -238,6 +238,8 @@ async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> lis
                 raise ValueError(f"Permission denied: you don't have access to image {image_id}")
 
             storage_key = file_record.storage_key
+            if not storage_key:
+                raise ValueError(f"Image has no storage key: {image_id}")
             content_type = file_record.content_type or "image/png"
 
             # Download from storage
@@ -492,6 +494,8 @@ async def _read_image(user_id: str, image_id: str, question: str) -> dict[str, A
 
             # Extract metadata from database record
             storage_key = file_record.storage_key
+            if not storage_key:
+                raise ValueError(f"Image has no storage key: {image_id}")
             content_type = file_record.content_type or "image/png"
             file_size = file_record.file_size
             original_filename = file_record.original_filename

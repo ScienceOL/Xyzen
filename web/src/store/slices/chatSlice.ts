@@ -101,7 +101,7 @@ export interface ChatSlice {
   // Knowledge Context
   setKnowledgeContext: (
     channelId: string,
-    context: { folderId: string; folderName: string } | null,
+    context: { parentId: string; folderName: string } | null,
   ) => void;
 
   // Message editing state
@@ -689,6 +689,7 @@ export const createChatSlice: StateCreator<
               provider_id: session.provider_id,
               model: session.model,
               model_tier: session.model_tier,
+              knowledge_set_id: session.knowledge_set_id,
               connected: false,
               error: null,
             };
@@ -728,6 +729,7 @@ export const createChatSlice: StateCreator<
                 provider_id: session.provider_id,
                 model: session.model,
                 model_tier: session.model_tier,
+                knowledge_set_id: session.knowledge_set_id,
                 connected: false,
                 error: null,
               };

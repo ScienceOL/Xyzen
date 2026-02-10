@@ -1,15 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
+import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
+import { Capsule } from "@/components/capsule";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { DEFAULT_WIDTH, MIN_WIDTH } from "@/configs/common";
+import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
 
@@ -42,6 +47,33 @@ export function AppSide({
   const { activeChatChannel, setActiveChatChannel } = useXyzen();
 
   const [mounted, setMounted] = useState(false);
+  const [showMobileCapsule, setShowMobileCapsule] = useState(false);
+  const { knowledge_set_id } = useActiveChannelStatus();
+
+  // Touch swipe handling for mobile
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Only trigger on predominantly horizontal swipes
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0)
+        setShowMobileCapsule(true); // swipe left → show capsule
+      else setShowMobileCapsule(false); // swipe right → show chat
+    }
+  }, []);
+
+  // Reset mobile capsule view when channel changes
+  useEffect(() => {
+    setShowMobileCapsule(false);
+  }, [activeChatChannel]);
 
   // Floating window state
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -331,11 +363,64 @@ export function AppSide({
           <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-neutral-950">
             {activePanel === "chat" &&
               (activeChatChannel ? (
-                <div className="h-full">
-                  <div className="h-full bg-white dark:bg-black">
-                    <XyzenChat />
+                isMobile ? (
+                  // Mobile: horizontal slide between Chat and Capsule
+                  <div
+                    className="h-full relative overflow-hidden"
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    {/* Chat view */}
+                    <motion.div
+                      className="absolute inset-0"
+                      animate={{ x: showMobileCapsule ? "-100%" : "0%" }}
+                      transition={{
+                        type: "spring",
+                        damping: 30,
+                        stiffness: 300,
+                        mass: 0.8,
+                      }}
+                    >
+                      <div className="h-full bg-white dark:bg-black relative">
+                        <XyzenChat />
+                        {/* Subtle banner to slide to Capsule */}
+                        {knowledge_set_id && (
+                          <button
+                            onClick={() => setShowMobileCapsule(true)}
+                            className="absolute bottom-20 right-3 flex items-center gap-1 py-1 px-2.5 rounded-full bg-neutral-100/90 dark:bg-neutral-800/90 backdrop-blur-sm text-[11px] text-neutral-400 dark:text-neutral-500 shadow-sm border border-neutral-200/50 dark:border-neutral-700/50 transition-colors active:bg-neutral-200 dark:active:bg-neutral-700"
+                          >
+                            {t("capsule.mobileBanner")}
+                            <ChevronRightIcon className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                    {/* Capsule view */}
+                    <motion.div
+                      className="absolute inset-0"
+                      animate={{ x: showMobileCapsule ? "0%" : "100%" }}
+                      transition={{
+                        type: "spring",
+                        damping: 30,
+                        stiffness: 300,
+                        mass: 0.8,
+                      }}
+                    >
+                      <Capsule
+                        variant="mobile"
+                        onBack={() => setShowMobileCapsule(false)}
+                      />
+                    </motion.div>
                   </div>
-                </div>
+                ) : (
+                  // Desktop: side-by-side with Capsule
+                  <div className="h-full flex">
+                    <div className="flex-1 min-w-0 h-full bg-white dark:bg-black">
+                      <XyzenChat />
+                    </div>
+                    <Capsule />
+                  </div>
+                )
               ) : (
                 <div className="h-full bg-white dark:bg-neutral-950 flex flex-col">
                   <div className="sm:border-b border-neutral-200 p-4 dark:border-neutral-800 shrink-0">
@@ -353,6 +438,12 @@ export function AppSide({
               ))}
 
             {activePanel === "knowledge" && <KnowledgeBase />}
+
+            {activePanel === "skills" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <SkillsLibrary />
+              </div>
+            )}
 
             {activePanel === "marketplace" && (
               <div className="h-full bg-white dark:bg-neutral-950">

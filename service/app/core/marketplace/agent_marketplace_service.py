@@ -108,6 +108,8 @@ class AgentMarketplaceService:
         is_published: bool = True,
         readme: str | None = None,
         fork_mode: ForkMode = ForkMode.EDITABLE,
+        author_display_name: str | None = None,
+        author_avatar_url: str | None = None,
     ) -> AgentMarketplace | None:
         """
         Publishes an agent to the marketplace or updates an existing listing.
@@ -141,6 +143,8 @@ class AgentMarketplaceService:
                 is_published=is_published,
                 readme=readme,
                 fork_mode=fork_mode,
+                author_display_name=author_display_name,
+                author_avatar_url=author_avatar_url,
             )
             listing = await self.marketplace_repo.update_listing(existing_listing.id, update_data)
 
@@ -156,6 +160,8 @@ class AgentMarketplaceService:
                 agent_id=agent.id,
                 active_snapshot_id=snapshot.id,
                 user_id=agent.user_id or "",
+                author_display_name=author_display_name,
+                author_avatar_url=author_avatar_url,
                 name=agent.name,
                 description=agent.description,
                 avatar=agent.avatar,
@@ -403,8 +409,8 @@ class AgentMarketplaceService:
                         if original_file.user_id == user_id:
                             # Self-fork or re-fork: Reuse existing file record
                             target_file_id = original_file.id
-                        else:
-                            # Cross-fork: Physical Copy required
+                        elif original_file.storage_key:
+                            # Cross-fork: Physical Copy required (only if file has a storage key)
                             # Download content
                             buffer = io.BytesIO()
                             await storage.download_file(original_file.storage_key, buffer)
@@ -418,7 +424,7 @@ class AgentMarketplaceService:
                             # Create new file record
                             new_file_data = FileCreate(
                                 user_id=user_id,
-                                folder_id=None,
+                                parent_id=None,
                                 original_filename=original_file.original_filename,
                                 storage_key=new_key,
                                 file_size=len(content_bytes),

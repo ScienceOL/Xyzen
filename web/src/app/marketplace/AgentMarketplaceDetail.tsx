@@ -1,6 +1,7 @@
 "use client";
 
 import ForkAgentModal from "@/components/features/ForkAgentModal";
+import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
 import {
   useMarketplaceListing,
   useMarketplaceRequirements,
@@ -10,6 +11,7 @@ import Markdown from "@/lib/Markdown";
 import { AgentSnapshot } from "@/service/marketplaceService";
 import { useXyzen } from "@/store";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
+import { STORAGE_KEY_VIEWPORT } from "@/app/chat/spatial/constants";
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -65,6 +67,7 @@ interface AgentMarketplaceDetailProps {
   marketplaceId: string;
   onBack: () => void;
   onManage?: () => void;
+  backLabel?: string;
 }
 
 /**
@@ -76,6 +79,7 @@ export default function AgentMarketplaceDetail({
   marketplaceId,
   onBack,
   onManage,
+  backLabel,
 }: AgentMarketplaceDetailProps) {
   const { t } = useTranslation();
   const [showForkModal, setShowForkModal] = useState(false);
@@ -84,7 +88,8 @@ export default function AgentMarketplaceDetail({
   >("readme");
 
   // Get fetchAgents from store to refresh after fork
-  const fetchAgents = useXyzen((state) => state.fetchAgents);
+  const addForkedAgent = useXyzen((state) => state.addForkedAgent);
+  const setActivePanel = useXyzen((state) => state.setActivePanel);
 
   // Note: Unpublish and Edit README states removed as they moved to dedicated Manage view
 
@@ -103,6 +108,8 @@ export default function AgentMarketplaceDetail({
 
   const isOwner = useIsMarketplaceOwner(listing);
 
+  const shareUrl = `${window.location.origin}/#/agent/${marketplaceId}`;
+
   const handleBack = () => {
     onBack();
   };
@@ -117,9 +124,43 @@ export default function AgentMarketplaceDetail({
     setShowForkModal(true);
   };
 
+  // Calculate center position from stored viewport
+  const getViewportCenterFromStorage = () => {
+    try {
+      const savedViewport = localStorage.getItem(STORAGE_KEY_VIEWPORT);
+      if (savedViewport) {
+        const viewport = JSON.parse(savedViewport);
+        const containerW = window.innerWidth;
+        const containerH = window.innerHeight;
+
+        const centerX = (containerW / 2 - viewport.x) / viewport.zoom;
+        const centerY = (containerH / 2 - viewport.y) / viewport.zoom;
+
+        const nodeWidth = 320;
+        const nodeHeight = 160;
+
+        return {
+          x: centerX - nodeWidth / 2,
+          y: centerY - nodeHeight / 2,
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to read viewport from localStorage", e);
+    }
+    return { x: 100, y: 100 }; // Default position
+  };
+
   const handleForkSuccess = async (agentId: string) => {
-    // Refresh the agents list in the store so SpatialWorkspace sees the new agent
-    await fetchAgents();
+    // 1. First switch to chat panel (let SpatialWorkspace mount)
+    setActivePanel("chat");
+
+    // 2. Wait for SpatialWorkspace to mount and initialize prevAgentIdsRef
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // 3. Incrementally add agent (SpatialWorkspace can now detect incremental change)
+    const centerPosition = getViewportCenterFromStorage();
+    await addForkedAgent(agentId, centerPosition);
+
     console.log("Agent forked successfully:", agentId);
   };
 
@@ -162,7 +203,7 @@ export default function AgentMarketplaceDetail({
             className="group mb-4 flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition-all hover:border-neutral-300 hover:shadow dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-700"
           >
             <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            <span>{t("marketplace.detail.back")}</span>
+            <span>{backLabel ?? t("marketplace.detail.back")}</span>
           </button>
         </div>
 
@@ -205,12 +246,21 @@ export default function AgentMarketplaceDetail({
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.detail.publishedBy")}{" "}
+                      {listing.scope !== "official" &&
+                        listing.author_avatar_url && (
+                          <img
+                            src={listing.author_avatar_url}
+                            alt=""
+                            className="h-4 w-4 rounded-full object-cover"
+                          />
+                        )}
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
                         {listing.scope === "official"
                           ? "Xyzen"
-                          : (listing.user_id ?? "").split("@")[0] ||
+                          : listing.author_display_name ||
+                            (listing.user_id ?? "").split("@")[0] ||
                             listing.user_id}
                       </span>
                     </p>
@@ -656,14 +706,49 @@ export default function AgentMarketplaceDetail({
 
                 <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />
 
+                {/* Share */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+                    {t("marketplace.detail.actions.shareTitle")}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-900">
+                      <p className="truncate text-xs text-neutral-500">
+                        {shareUrl}
+                      </p>
+                    </div>
+                    <CopyButton
+                      content={shareUrl}
+                      variant="outline"
+                      size="default"
+                    />
+                  </div>
+                </div>
+
+                <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />
+
                 {/* Author Info */}
                 <div>
                   <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     {t("marketplace.detail.meta.publishedBy")}
                   </h3>
-                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                    {listing.scope === "official" ? "Xyzen" : listing.user_id}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    {listing.scope !== "official" &&
+                      listing.author_avatar_url && (
+                        <img
+                          src={listing.author_avatar_url}
+                          alt=""
+                          className="h-5 w-5 rounded-full object-cover"
+                        />
+                      )}
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                      {listing.scope === "official"
+                        ? "Xyzen"
+                        : listing.author_display_name ||
+                          (listing.user_id ?? "").split("@")[0] ||
+                          listing.user_id}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />

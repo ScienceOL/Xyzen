@@ -10,6 +10,8 @@ export { ToolbarActions } from "./ToolbarActions";
 export { MobileMoreMenu } from "./MobileMoreMenu";
 export { HistorySheetButton } from "./HistorySheetButton";
 export { ToolSelector } from "./ToolSelector";
+export { SkillsButton } from "./SkillsButton";
+export { CreateSkillModal } from "./CreateSkillModal";
 
 // Re-export the main component (will be created as the refactored ChatToolbar)
 // For now, consumers should continue to import from the original file

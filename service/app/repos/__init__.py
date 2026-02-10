@@ -10,6 +10,7 @@ from .knowledge_set import KnowledgeSetRepository
 from .message import MessageRepository
 from .provider import ProviderRepository
 from .session import SessionRepository
+from .skill import SkillRepository
 from .smithery_cache import SmitheryCacheRepository
 from .tool import ToolRepository
 from .topic import TopicRepository
@@ -26,6 +27,7 @@ __all__ = [
     "MessageRepository",
     "TopicRepository",
     "SessionRepository",
+    "SkillRepository",
     "ProviderRepository",
     "KnowledgeSetRepository",
     "ToolRepository",

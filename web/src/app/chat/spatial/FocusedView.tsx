@@ -1,16 +1,22 @@
 import { AgentList } from "@/components/agents";
+import ChatStatusBadge from "@/components/base/ChatStatusBadge";
+import { Capsule } from "@/components/capsule";
 import {
   DOCK_HORIZONTAL_MARGIN,
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import XyzenChat from "@/components/layouts/XyzenChat";
-import { useRunningAgentIds } from "@/hooks/useChannelSelectors";
+import {
+  useActiveChannelStatus,
+  useRunningAgentIds,
+} from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
-import { motion } from "framer-motion";
+import { ChevronLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { AgentData } from "./types";
 import { useTranslation } from "react-i18next";
+import { AgentData } from "./types";
 
 interface FocusedViewProps {
   agent: AgentData;
@@ -37,8 +43,15 @@ export function FocusedView({
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const t = useTranslation().t;
 
-  const { activateChannelForAgent, reorderAgents } = useXyzen();
+  const {
+    activateChannelForAgent,
+    reorderAgents,
+    spatialSidebarCollapsed,
+    setSpatialSidebarCollapsed,
+  } = useXyzen();
+  const collapsed = spatialSidebarCollapsed;
   const runningAgentIds = useRunningAgentIds();
+  const { knowledge_set_id: focusedKnowledgeSetId } = useActiveChannelStatus();
 
   // Convert AgentData to Agent type for AgentList component
   const agentsForList: Agent[] = useMemo(
@@ -231,15 +244,20 @@ export function FocusedView({
 
   return (
     <div
-      className="absolute inset-0 z-40 flex items-stretch pt-4 gap-4 pointer-events-none"
+      className="absolute inset-0 z-40 flex items-stretch pt-4 pointer-events-none"
       style={{
         paddingBottom: DOCK_SAFE_AREA,
         paddingLeft: DOCK_HORIZONTAL_MARGIN,
         paddingRight: DOCK_HORIZONTAL_MARGIN,
       }}
     >
-      {/* 1. Left Column: Top (Empty for Node visibility) + Bottom (Switcher) */}
-      <div className="w-80 flex flex-col justify-end relative z-10 pointer-events-none">
+      {/* 1. Left Column: Collapsible Agent Switcher */}
+      <motion.div
+        initial={false}
+        animate={{ width: collapsed ? 56 : 320 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className="flex flex-col justify-end relative z-10 pointer-events-none shrink-0"
+      >
         {/* Agent Switcher List */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
@@ -249,30 +267,128 @@ export function FocusedView({
           className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-xl rounded-xl overflow-hidden pointer-events-auto max-h-[50vh] flex flex-col"
           ref={switcherRef}
         >
-          <div className="px-4 py-3 border-b border-black/5 dark:border-white/5 bg-white/40 dark:bg-white/5">
-            <h3 className="text-xs font-bold uppercase text-neutral-500 tracking-wider">
-              {t("agents.title")}
-            </h3>
+          {/* Header with collapse toggle */}
+          <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 bg-white/40 dark:bg-white/5 px-3 py-2.5">
+            <AnimatePresence mode="wait" initial={false}>
+              {collapsed ? (
+                <motion.div
+                  key="icon"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center justify-center w-8 h-5"
+                >
+                  <SparklesIcon className="w-4 h-4 text-neutral-500" />
+                </motion.div>
+              ) : (
+                <motion.h3
+                  key="text"
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-xs font-bold uppercase text-neutral-500 tracking-wider px-1"
+                >
+                  {t("agents.title")}
+                </motion.h3>
+              )}
+            </AnimatePresence>
+            <button
+              onClick={() => setSpatialSidebarCollapsed(!collapsed)}
+              className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+            >
+              <motion.div
+                initial={false}
+                animate={{ rotate: collapsed ? 180 : 0 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <ChevronLeftIcon className="w-3.5 h-3.5" />
+              </motion.div>
+            </button>
           </div>
+
+          {/* Content: full list or avatar-only column */}
           <div
             ref={listContainerRef}
-            className="overflow-y-auto p-2 custom-scrollbar"
+            className="overflow-y-auto custom-scrollbar"
           >
-            <AgentList
-              agents={agentsForList}
-              variant="compact"
-              sortable={true}
-              selectedAgentId={selectedAgentId}
-              getAgentStatus={getAgentStatus}
-              getAgentRole={getAgentRole}
-              onAgentClick={handleAgentClick}
-              onEdit={onEditAgent ? handleEditClick : undefined}
-              onDelete={onDeleteAgent ? handleDeleteClick : undefined}
-              onReorder={handleReorder}
-            />
+            <AnimatePresence mode="wait" initial={false}>
+              {collapsed ? (
+                <motion.div
+                  key="collapsed"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col items-center gap-1 p-2"
+                >
+                  {agents.map((a) => {
+                    const isSelected = selectedAgentId === a.id;
+                    const realAgentId = agentDataMap.get(a.id)?.agentId;
+                    const isBusy = realAgentId
+                      ? runningAgentIds.has(realAgentId)
+                      : false;
+                    return (
+                      <button
+                        key={a.id}
+                        data-agent-id={a.id}
+                        onClick={() => onSwitchAgent(a.id)}
+                        title={a.name}
+                        className={`relative rounded-full p-0.5 transition-all duration-200 ${
+                          isSelected
+                            ? "ring-2 ring-blue-500/60 shadow-sm"
+                            : "hover:ring-2 hover:ring-black/10 dark:hover:ring-white/20"
+                        }`}
+                      >
+                        <img
+                          src={
+                            a.avatar ||
+                            "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                          }
+                          alt={a.name}
+                          className="w-9 h-9 rounded-full border border-white/50 object-cover"
+                        />
+                        {isBusy && (
+                          <div className="absolute -bottom-0.5 -right-0.5">
+                            <ChatStatusBadge
+                              status="running"
+                              size="xs"
+                              showLabel={false}
+                            />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="expanded"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="p-2"
+                >
+                  <AgentList
+                    agents={agentsForList}
+                    variant="compact"
+                    sortable={true}
+                    selectedAgentId={selectedAgentId}
+                    getAgentStatus={getAgentStatus}
+                    getAgentRole={getAgentRole}
+                    onAgentClick={handleAgentClick}
+                    onEdit={onEditAgent ? handleEditClick : undefined}
+                    onDelete={onDeleteAgent ? handleDeleteClick : undefined}
+                    onReorder={handleReorder}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* 2. Main Chat Area - Frosted Glass Panel */}
       <motion.div
@@ -280,11 +396,29 @@ export function FocusedView({
         animate={{ x: 0, opacity: 1, scale: 1 }}
         exit={{ x: 50, opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-        className="spatial-chat-frosted relative z-10 flex flex-1 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/60 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
+        className="ml-4 spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/60 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
         ref={chatRef}
       >
         {/* XyzenChat Component - No modifications, just wrapped */}
         <XyzenChat />
+      </motion.div>
+
+      {/* 3. Capsule Panel - Right Side
+          Always mounted so the outer AnimatePresence (SpatialWorkspace)
+          can drive the exit animation when FocusedView unmounts.
+          The animate prop reacts to knowledge_set_id within the view. */}
+      <motion.div
+        initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+        animate={
+          focusedKnowledgeSetId
+            ? { opacity: 1, width: "auto", marginLeft: 16 }
+            : { opacity: 0, width: 0, marginLeft: 0 }
+        }
+        exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className="shrink-0 pointer-events-none h-full"
+      >
+        {focusedKnowledgeSetId && <Capsule variant="spatial" />}
       </motion.div>
     </div>
   );

@@ -323,7 +323,12 @@ class GraphBuilder:
         elif llm_config.tools_enabled and self.tool_registry:
             tools_to_bind = list(self.tool_registry.values())
             if llm_config.tool_filter:
-                tools_to_bind = [t for t in tools_to_bind if t.name in llm_config.tool_filter]
+                from app.tools.capabilities import TOOL_FILTER_EXEMPT
+
+                tools_to_bind = [
+                    t for t in tools_to_bind
+                    if t.name in llm_config.tool_filter or t.name in TOOL_FILTER_EXEMPT
+                ]
             if tools_to_bind:
                 configured_llm = base_llm.bind_tools(tools_to_bind)
             else:
@@ -450,8 +455,13 @@ class GraphBuilder:
             # Use all tools (or filtered by global config)
             tool_node = self._tool_node
         else:
-            # Use specific tools from filter
-            tools = [t for t in self.tool_registry.values() if t.name in tool_config.tool_filter]
+            # Use specific tools from filter (plus always-on exempt tools)
+            from app.tools.capabilities import TOOL_FILTER_EXEMPT
+
+            tools = [
+                t for t in self.tool_registry.values()
+                if t.name in tool_config.tool_filter or t.name in TOOL_FILTER_EXEMPT
+            ]
             tool_node = ToolNode(tools) if tools else None
 
         if not tool_node:

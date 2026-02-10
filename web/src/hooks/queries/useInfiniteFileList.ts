@@ -12,8 +12,8 @@ interface UseInfiniteFileListParams {
   scope?: string;
   category?: string;
   includeDeleted?: boolean;
-  folderId?: string | null;
-  filterByFolder?: boolean;
+  parentId?: string | null;
+  filterByParent?: boolean;
   enabled?: boolean;
 }
 
@@ -33,8 +33,8 @@ export const useInfiniteFileList = ({
   scope,
   category,
   includeDeleted = false,
-  folderId,
-  filterByFolder = false,
+  parentId,
+  filterByParent = false,
   enabled = true,
 }: UseInfiniteFileListParams = {}) => {
   const query = useInfiniteQuery({
@@ -42,8 +42,8 @@ export const useInfiniteFileList = ({
       scope,
       category,
       includeDeleted,
-      folderId,
-      filterByFolder,
+      parentId,
+      filterByParent,
     }),
     queryFn: async ({ pageParam = 0 }): Promise<FileListPage> => {
       const items = await fileService.listFiles({
@@ -52,8 +52,8 @@ export const useInfiniteFileList = ({
         include_deleted: includeDeleted,
         limit: PAGE_SIZE,
         offset: pageParam as number,
-        folder_id: folderId ?? undefined,
-        filter_by_folder: filterByFolder,
+        parent_id: parentId ?? undefined,
+        filter_by_parent: filterByParent,
       });
 
       // 如果返回数量等于 PAGE_SIZE，可能还有更多数据

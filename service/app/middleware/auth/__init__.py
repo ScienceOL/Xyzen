@@ -254,6 +254,27 @@ async def get_current_user(authorization: str | None = Header(None)) -> str:
     return auth_result.user_info.id
 
 
+async def get_current_user_info(authorization: str | None = Header(None)) -> UserInfo:
+    """Get the current user info from the Authorization header (for HTTP API)"""
+
+    if not authorization:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header")
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format")
+
+    access_token = authorization[7:]  # Remove "Bearer " prefix
+
+    auth_result = AuthProvider.validate_token(access_token)
+    if not auth_result.success or not auth_result.user_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=auth_result.error_message or "Token validation failed",
+        )
+
+    return auth_result.user_info
+
+
 async def get_current_user_websocket(token: str | None = Query(None, alias="token")) -> str:
     """Get the current user ID from the token in the query parameters (for WebSocket)"""
 

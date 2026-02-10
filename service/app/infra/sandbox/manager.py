@@ -115,6 +115,10 @@ class SandboxManager:
         sandbox_id = await self.ensure_sandbox()
         return await self._backend.read_file(sandbox_id, path)
 
+    async def read_file_bytes(self, path: str) -> bytes:
+        sandbox_id = await self.ensure_sandbox()
+        return await self._backend.read_file_bytes(sandbox_id, path)
+
     async def write_file(self, path: str, content: str) -> None:
         sandbox_id = await self.ensure_sandbox()
         await self._backend.write_file(sandbox_id, path, content)

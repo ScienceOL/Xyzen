@@ -447,6 +447,8 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
             selected
               ? "ring-2 ring-[#5a6e8c]/20 dark:ring-0 dark:border-indigo-400/50 dark:shadow-[0_0_15px_rgba(99,102,241,0.5),0_0_30px_rgba(168,85,247,0.3)] shadow-2xl"
               : "hover:shadow-2xl",
+            data.isRunning &&
+              "shadow-[0_0_20px_rgba(99,102,241,0.25),0_0_40px_rgba(168,85,247,0.15)] dark:shadow-[0_0_15px_rgba(99,102,241,0.5),0_0_30px_rgba(168,85,247,0.3)]",
             data.isFocused &&
               "ring-0 border-white/20! dark:border-white/10! shadow-none! bg-white/90 dark:bg-black/80", // Cleaner look when focused
           )}

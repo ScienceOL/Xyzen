@@ -1,5 +1,8 @@
 /**
- * Tool configuration utilities for managing agent's graph_config.tool_config.tool_filter
+ * Tool configuration utilities for managing agent's graph_config node-level tool_filter
+ *
+ * In v3 GraphConfig, tool filters live on each LLM node's config.tool_filter,
+ * not as a top-level tool_config.
  *
  * Tool filter semantics:
  * - null: All available tools are enabled
@@ -19,8 +22,16 @@ export const BUILTIN_TOOLS = {
   KNOWLEDGE_SEARCH: "knowledge_search",
   GENERATE_IMAGE: "generate_image",
   READ_IMAGE: "read_image",
-  MEMORY_SEARCH: "memory_search",
+  MANAGE_MEMORY: "manage_memory",
+  SEARCH_MEMORY: "search_memory",
   LITERATURE_SEARCH: "literature_search",
+  SANDBOX_BASH: "sandbox_bash",
+  SANDBOX_READ: "sandbox_read",
+  SANDBOX_WRITE: "sandbox_write",
+  SANDBOX_EDIT: "sandbox_edit",
+  SANDBOX_GLOB: "sandbox_glob",
+  SANDBOX_GREP: "sandbox_grep",
+  SANDBOX_EXPORT: "sandbox_export",
 } as const;
 
 // Web search tools as a group (search + fetch always together)
@@ -37,38 +48,87 @@ export const KNOWLEDGE_TOOLS = [
   BUILTIN_TOOLS.KNOWLEDGE_SEARCH,
 ] as const;
 
-// All builtin tool IDs as array
-export const ALL_BUILTIN_TOOL_IDS = [
-  ...WEB_SEARCH_TOOLS,
-  ...KNOWLEDGE_TOOLS,
-  BUILTIN_TOOLS.GENERATE_IMAGE,
-  BUILTIN_TOOLS.READ_IMAGE,
-  BUILTIN_TOOLS.MEMORY_SEARCH,
-  BUILTIN_TOOLS.LITERATURE_SEARCH,
-];
-
 // Image tools as a group
 export const IMAGE_TOOLS = [
   BUILTIN_TOOLS.GENERATE_IMAGE,
   BUILTIN_TOOLS.READ_IMAGE,
 ] as const;
 
-type GraphConfig = {
-  version?: string;
-  tool_config?: {
-    tool_filter?: string[] | null;
+// Memory tools as a group
+export const MEMORY_TOOLS = [
+  BUILTIN_TOOLS.MANAGE_MEMORY,
+  BUILTIN_TOOLS.SEARCH_MEMORY,
+] as const;
+
+// Sandbox tools as a group
+export const SANDBOX_TOOLS = [
+  BUILTIN_TOOLS.SANDBOX_BASH,
+  BUILTIN_TOOLS.SANDBOX_READ,
+  BUILTIN_TOOLS.SANDBOX_WRITE,
+  BUILTIN_TOOLS.SANDBOX_EDIT,
+  BUILTIN_TOOLS.SANDBOX_GLOB,
+  BUILTIN_TOOLS.SANDBOX_GREP,
+  BUILTIN_TOOLS.SANDBOX_EXPORT,
+] as const;
+
+// All builtin tool IDs as array
+export const ALL_BUILTIN_TOOL_IDS = [
+  ...WEB_SEARCH_TOOLS,
+  ...KNOWLEDGE_TOOLS,
+  ...IMAGE_TOOLS,
+  ...MEMORY_TOOLS,
+  ...SANDBOX_TOOLS,
+  BUILTIN_TOOLS.LITERATURE_SEARCH,
+];
+
+// v3 GraphConfig shape used for reading/writing tool_filter on LLM nodes
+type GraphConfigV3 = {
+  graph?: {
+    nodes?: Array<{
+      kind?: string;
+      config?: { tool_filter?: string[] | null; [key: string]: unknown };
+      [key: string]: unknown;
+    }>;
     [key: string]: unknown;
   };
   [key: string]: unknown;
 };
 
 /**
+ * Read tool_filter from the first LLM node in the graph config.
+ */
+function getLlmToolFilter(config: GraphConfigV3): string[] | null {
+  const nodes = config.graph?.nodes;
+  if (!nodes) return null;
+  const llmNode = nodes.find((n) => n.kind === "llm");
+  return llmNode?.config?.tool_filter ?? null;
+}
+
+/**
+ * Deep-clone the config and set tool_filter on ALL LLM nodes.
+ */
+function withLlmToolFilter(
+  config: GraphConfigV3,
+  filter: string[] | null,
+): Record<string, unknown> {
+  const cloned = structuredClone(config) as GraphConfigV3;
+  const nodes = cloned.graph?.nodes;
+  if (nodes) {
+    for (const node of nodes) {
+      if (node.kind === "llm" && node.config) {
+        node.config.tool_filter = filter;
+      }
+    }
+  }
+  return cloned as Record<string, unknown>;
+}
+
+/**
  * Get the current tool_filter from agent's graph_config
  */
 export function getToolFilter(agent: Agent | null): string[] | null {
   if (!agent?.graph_config) return null;
-  const config = agent.graph_config as GraphConfig;
-  return config.tool_config?.tool_filter ?? null;
+  return getLlmToolFilter(agent.graph_config as GraphConfigV3);
 }
 
 /**
@@ -114,8 +174,8 @@ export function updateToolFilter(
   toolId: string,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -139,13 +199,7 @@ export function updateToolFilter(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
@@ -155,8 +209,8 @@ export function updateKnowledgeEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -186,13 +240,7 @@ export function updateKnowledgeEnabled(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
@@ -202,8 +250,8 @@ export function updateWebSearchEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -233,13 +281,7 @@ export function updateWebSearchEnabled(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
@@ -258,8 +300,8 @@ export function updateImageEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  const currentConfig = (agent.graph_config ?? {}) as GraphConfig;
-  const currentFilter = currentConfig.tool_config?.tool_filter;
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
 
   let newFilter: string[] | null;
 
@@ -287,30 +329,51 @@ export function updateImageEnabled(
     }
   }
 
-  return {
-    ...currentConfig,
-    tool_config: {
-      ...currentConfig.tool_config,
-      tool_filter: newFilter,
-    },
-  };
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
- * Check if memory search is enabled
+ * Check if memory tools are enabled
  */
 export function isMemoryEnabled(agent: Agent | null): boolean {
-  return isToolEnabled(agent, BUILTIN_TOOLS.MEMORY_SEARCH);
+  const filter = getToolFilter(agent);
+  if (filter === null) return true;
+  return MEMORY_TOOLS.some((toolId) => filter.includes(toolId));
 }
 
 /**
- * Enable/disable memory search
+ * Enable/disable all memory tools at once
  */
 export function updateMemoryEnabled(
   agent: Agent,
   enabled: boolean,
 ): Record<string, unknown> {
-  return updateToolFilter(agent, BUILTIN_TOOLS.MEMORY_SEARCH, enabled);
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
+
+  let newFilter: string[] | null;
+
+  if (currentFilter === null || currentFilter === undefined) {
+    if (enabled) {
+      newFilter = null;
+    } else {
+      newFilter = ALL_BUILTIN_TOOL_IDS.filter(
+        (id) => !MEMORY_TOOLS.includes(id as (typeof MEMORY_TOOLS)[number]),
+      );
+    }
+  } else {
+    if (enabled) {
+      const existing = new Set(currentFilter);
+      MEMORY_TOOLS.forEach((toolId) => existing.add(toolId));
+      newFilter = Array.from(existing);
+    } else {
+      newFilter = currentFilter.filter(
+        (id) => !MEMORY_TOOLS.includes(id as (typeof MEMORY_TOOLS)[number]),
+      );
+    }
+  }
+
+  return withLlmToolFilter(currentConfig, newFilter);
 }
 
 /**
@@ -328,4 +391,48 @@ export function updateLiteratureSearchEnabled(
   enabled: boolean,
 ): Record<string, unknown> {
   return updateToolFilter(agent, BUILTIN_TOOLS.LITERATURE_SEARCH, enabled);
+}
+
+/**
+ * Check if sandbox tools are enabled
+ */
+export function isSandboxEnabled(agent: Agent | null): boolean {
+  const filter = getToolFilter(agent);
+  if (filter === null) return true;
+  return SANDBOX_TOOLS.some((toolId) => filter.includes(toolId));
+}
+
+/**
+ * Enable/disable all sandbox tools at once
+ */
+export function updateSandboxEnabled(
+  agent: Agent,
+  enabled: boolean,
+): Record<string, unknown> {
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
+
+  let newFilter: string[] | null;
+
+  if (currentFilter === null || currentFilter === undefined) {
+    if (enabled) {
+      newFilter = null;
+    } else {
+      newFilter = ALL_BUILTIN_TOOL_IDS.filter(
+        (id) => !SANDBOX_TOOLS.includes(id as (typeof SANDBOX_TOOLS)[number]),
+      );
+    }
+  } else {
+    if (enabled) {
+      const existing = new Set(currentFilter);
+      SANDBOX_TOOLS.forEach((toolId) => existing.add(toolId));
+      newFilter = Array.from(existing);
+    } else {
+      newFilter = currentFilter.filter(
+        (id) => !SANDBOX_TOOLS.includes(id as (typeof SANDBOX_TOOLS)[number]),
+      );
+    }
+  }
+
+  return withLlmToolFilter(currentConfig, newFilter);
 }

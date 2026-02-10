@@ -1,53 +1,94 @@
 import logging
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import Field
+from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode, ErrCodeError, handle_auth_error
+from app.core.storage import StorageServiceProto, get_storage_service
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
-from app.models.folder import FolderCreate, FolderRead, FolderUpdate
-from app.repos.folder import FolderRepository
+from app.models.file import File, FileCreate, FileUpdate
+from app.repos.file import FileRepository
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["folders"])
 
 
-@router.post("/", response_model=FolderRead, status_code=status.HTTP_201_CREATED)
+# --- Lightweight request/response schemas for the folder API ---
+
+
+class FolderCreateRequest(SQLModel):
+    parent_id: UUID | None = Field(default=None, description="Parent folder ID")
+    name: str = Field(min_length=1, max_length=255, description="Folder name")
+
+
+class FolderReadResponse(SQLModel):
+    id: UUID
+    user_id: str
+    parent_id: UUID | None = None
+    name: str
+    is_deleted: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class FolderUpdateRequest(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255, description="New folder name")
+    parent_id: UUID | None = Field(default=None, description="New parent folder ID (move folder)")
+    is_deleted: bool | None = Field(default=None, description="Soft delete flag")
+
+
+def _to_folder_response(f: File) -> FolderReadResponse:
+    return FolderReadResponse(
+        id=f.id,
+        user_id=f.user_id,
+        parent_id=f.parent_id,
+        name=f.original_filename,
+        is_deleted=f.is_deleted,
+        created_at=f.created_at,
+        updated_at=f.updated_at,
+    )
+
+
+@router.post("/", response_model=FolderReadResponse, status_code=status.HTTP_201_CREATED)
 async def create_folder(
-    folder_create: FolderCreate,
+    folder_create: FolderCreateRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> FolderRead:
-    """
-    Create a new folder.
-
-    Args:
-        folder_create: Folder creation data
-        user_id: Authenticated user ID
-        db: Database session
-
-    Returns:
-        FolderRead: Created folder
-    """
+) -> FolderReadResponse:
     try:
-        folder_repo = FolderRepository(db)
+        file_repo = FileRepository(db)
 
         # Verify parent folder exists and belongs to user if provided
         if folder_create.parent_id:
-            parent = await folder_repo.get_folder_by_id(folder_create.parent_id)
-            if not parent:
+            parent = await file_repo.get_file_by_id(folder_create.parent_id)
+            if not parent or not parent.is_dir:
                 raise ErrCode.FOLDER_NOT_FOUND.with_messages("Parent folder not found")
             if parent.user_id != user_id:
                 raise ErrCode.FOLDER_ACCESS_DENIED.with_messages("Parent folder access denied")
 
-        folder = await folder_repo.create_folder(folder_create, user_id)
+        file_data = FileCreate(
+            user_id=user_id,
+            original_filename=folder_create.name,
+            parent_id=folder_create.parent_id,
+            is_dir=True,
+            storage_key=None,
+            content_type=None,
+            file_size=0,
+            scope="private",
+            category="others",
+            status="confirmed",
+        )
+        folder = await file_repo.create_file(file_data)
         await db.commit()
         await db.refresh(folder)
 
-        return FolderRead(**folder.model_dump())
+        return _to_folder_response(folder)
 
     except ErrCodeError as e:
         raise handle_auth_error(e)
@@ -59,33 +100,22 @@ async def create_folder(
         )
 
 
-@router.get("/", response_model=list[FolderRead])
+@router.get("/", response_model=list[FolderReadResponse])
 async def list_folders(
     parent_id: UUID | None = None,
     include_deleted: bool = False,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> list[FolderRead]:
-    """
-    List folders for the current user.
-
-    Args:
-        parent_id: Filter by parent folder ID (None for root)
-        include_deleted: Whether to include soft-deleted folders
-        user_id: Authenticated user ID
-        db: Database session
-
-    Returns:
-        list[FolderRead]: List of folders
-    """
+) -> list[FolderReadResponse]:
     try:
-        folder_repo = FolderRepository(db)
-        folders = await folder_repo.get_folders_by_user(
+        file_repo = FileRepository(db)
+        folders = await file_repo.get_children(
             user_id=user_id,
             parent_id=parent_id,
+            is_dir=True,
             include_deleted=include_deleted,
         )
-        return [FolderRead(**f.model_dump()) for f in folders]
+        return [_to_folder_response(f) for f in folders]
 
     except Exception as e:
         logger.error(f"Failed to list folders: {e}")
@@ -95,26 +125,23 @@ async def list_folders(
         )
 
 
-@router.get("/{folder_id}", response_model=FolderRead)
+@router.get("/{folder_id}", response_model=FolderReadResponse)
 async def get_folder(
     folder_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> FolderRead:
-    """
-    Get folder details by ID.
-    """
+) -> FolderReadResponse:
     try:
-        folder_repo = FolderRepository(db)
-        folder = await folder_repo.get_folder_by_id(folder_id)
+        file_repo = FileRepository(db)
+        folder = await file_repo.get_file_by_id(folder_id)
 
-        if not folder:
+        if not folder or not folder.is_dir:
             raise ErrCode.FOLDER_NOT_FOUND.with_messages("Folder not found")
 
         if folder.user_id != user_id:
             raise ErrCode.FOLDER_ACCESS_DENIED.with_messages("Access denied")
 
-        return FolderRead(**folder.model_dump())
+        return _to_folder_response(folder)
 
     except ErrCodeError as e:
         raise handle_auth_error(e)
@@ -126,26 +153,23 @@ async def get_folder(
         )
 
 
-@router.get("/{folder_id}/path", response_model=list[FolderRead])
+@router.get("/{folder_id}/path", response_model=list[FolderReadResponse])
 async def get_folder_path(
     folder_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> list[FolderRead]:
-    """
-    Get the breadcrumb path for a folder.
-    """
+) -> list[FolderReadResponse]:
     try:
-        folder_repo = FolderRepository(db)
+        file_repo = FileRepository(db)
         # Verify access to the target folder first
-        target_folder = await folder_repo.get_folder_by_id(folder_id)
-        if not target_folder:
+        target_folder = await file_repo.get_file_by_id(folder_id)
+        if not target_folder or not target_folder.is_dir:
             raise ErrCode.FOLDER_NOT_FOUND.with_messages("Folder not found")
         if target_folder.user_id != user_id:
             raise ErrCode.FOLDER_ACCESS_DENIED.with_messages("Access denied")
 
-        path = await folder_repo.get_folder_path(folder_id)
-        return [FolderRead(**f.model_dump()) for f in path]
+        path = await file_repo.get_path(folder_id)
+        return [_to_folder_response(f) for f in path]
 
     except ErrCodeError as e:
         raise handle_auth_error(e)
@@ -157,21 +181,18 @@ async def get_folder_path(
         )
 
 
-@router.patch("/{folder_id}", response_model=FolderRead)
+@router.patch("/{folder_id}", response_model=FolderReadResponse)
 async def update_folder(
     folder_id: UUID,
-    folder_update: FolderUpdate,
+    folder_update: FolderUpdateRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> FolderRead:
-    """
-    Update folder details.
-    """
+) -> FolderReadResponse:
     try:
-        folder_repo = FolderRepository(db)
-        folder = await folder_repo.get_folder_by_id(folder_id)
+        file_repo = FileRepository(db)
+        folder = await file_repo.get_file_by_id(folder_id)
 
-        if not folder:
+        if not folder or not folder.is_dir:
             raise ErrCode.FOLDER_NOT_FOUND.with_messages("Folder not found")
 
         if folder.user_id != user_id:
@@ -184,20 +205,30 @@ async def update_folder(
                 raise ErrCode.INVALID_REQUEST.with_messages("Cannot move folder into itself")
 
             # Check for circular dependency (moving parent into child)
-            if await folder_repo.is_descendant(folder_id, folder_update.parent_id):
+            if await file_repo.is_descendant(folder_id, folder_update.parent_id):
                 raise ErrCode.INVALID_REQUEST.with_messages("Cannot move folder into its own subfolder")
 
-            parent = await folder_repo.get_folder_by_id(folder_update.parent_id)
-            if not parent:
+            parent = await file_repo.get_file_by_id(folder_update.parent_id)
+            if not parent or not parent.is_dir:
                 raise ErrCode.FOLDER_NOT_FOUND.with_messages("Target parent folder not found")
             if parent.user_id != user_id:
                 raise ErrCode.FOLDER_ACCESS_DENIED.with_messages("Target parent folder access denied")
 
-        updated_folder = await folder_repo.update_folder(folder_id, folder_update)
+        # Build FileUpdate from folder update fields
+        file_update_data: dict = {}
+        if folder_update.name is not None:
+            file_update_data["original_filename"] = folder_update.name
+        if folder_update.parent_id is not None:
+            file_update_data["parent_id"] = folder_update.parent_id
+        if folder_update.is_deleted is not None:
+            file_update_data["is_deleted"] = folder_update.is_deleted
+
+        file_update = FileUpdate.model_validate(file_update_data)
+        updated_folder = await file_repo.update_file(folder_id, file_update)
         if updated_folder:
             await db.commit()
             await db.refresh(updated_folder)
-            return FolderRead(**updated_folder.model_dump())
+            return _to_folder_response(updated_folder)
         else:
             raise ErrCode.FOLDER_NOT_FOUND.with_messages("Folder not found")
 
@@ -217,28 +248,32 @@ async def delete_folder(
     hard_delete: bool = False,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    storage: StorageServiceProto = Depends(get_storage_service),
 ) -> None:
-    """
-    Delete a folder.
-    Default: Soft delete (hides folder).
-    Hard delete: Recursively destroys folder and all contents.
-    """
     try:
-        folder_repo = FolderRepository(db)
-        folder = await folder_repo.get_folder_by_id(folder_id)
+        file_repo = FileRepository(db)
+        folder = await file_repo.get_file_by_id(folder_id)
 
-        if not folder:
+        if not folder or not folder.is_dir:
             raise ErrCode.FOLDER_NOT_FOUND.with_messages("Folder not found")
 
         if folder.user_id != user_id:
             raise ErrCode.FOLDER_ACCESS_DENIED.with_messages("Access denied")
 
         if hard_delete:
-            await folder_repo.hard_delete_folder_recursive(folder_id)
+            storage_keys = await file_repo.hard_delete_recursive(folder_id)
+            if storage_keys:
+                await storage.delete_files(storage_keys)
         else:
-            await folder_repo.soft_delete_folder(folder_id)
+            await file_repo.soft_delete_file(folder_id)
 
         await db.commit()
 
     except ErrCodeError as e:
         raise handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Failed to delete folder {folder_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )

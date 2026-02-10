@@ -94,6 +94,11 @@ class SandboxBackend(ABC):
         ...
 
     @abstractmethod
+    async def read_file_bytes(self, sandbox_id: str, path: str) -> bytes:
+        """Read raw file bytes from the sandbox."""
+        ...
+
+    @abstractmethod
     async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
         """Write content to a file in the sandbox."""
         ...

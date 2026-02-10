@@ -295,6 +295,21 @@ def register_builtin_tools() -> None:
                 requires_context=["session_id"],
             )
 
+        # Register skill tools (require sandbox for resource deployment)
+        from app.tools.builtin.skills import create_skill_tools
+
+        skill_tools = create_skill_tools()
+        for tool_id, tool in skill_tools.items():
+            BuiltinToolRegistry.register(
+                tool_id=tool_id,
+                tool=tool,
+                category="skills",
+                display_name=tool.name.replace("_", " ").title(),
+                ui_toggleable=False,  # Auto-enabled when agent has skills
+                default_enabled=False,
+                requires_context=["session_id"],
+            )
+
     logger.info(f"Registered {BuiltinToolRegistry.count()} builtin tools")
 
 

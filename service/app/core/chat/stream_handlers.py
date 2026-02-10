@@ -506,7 +506,7 @@ class GeneratedFileHandler:
                     file_info: GeneratedFileInfo = {
                         "id": str(file_obj.id),
                         "name": file_obj.original_filename,
-                        "type": file_obj.content_type,
+                        "type": file_obj.content_type or "",
                         "size": file_obj.file_size,
                         "category": file_obj.category,
                         "download_url": f"/xyzen/api/v1/files/{file_obj.id}/download",

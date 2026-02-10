@@ -43,6 +43,9 @@ class ToolCapability(StrEnum):
     RESEARCH = "research"
     THINK = "think"
 
+    # Skills
+    SKILLS = "skills"
+
 
 # Tool name -> capabilities mapping
 # This maps known tool names to their capabilities
@@ -83,7 +86,15 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     "sandbox_edit": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
     "sandbox_glob": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
     "sandbox_grep": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
+    "sandbox_export": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
+    # Skill tools
+    "activate_skill": [ToolCapability.SKILLS],
+    "list_skill_resources": [ToolCapability.SKILLS],
 }
+
+# Tools that bypass tool_filter — they're context-gated at load time
+# (e.g., skill tools require attached skills + session_id)
+TOOL_FILTER_EXEMPT: set[str] = {"activate_skill", "list_skill_resources"}
 
 
 def get_tool_capabilities(tool: "BaseTool") -> list[str]:
@@ -153,6 +164,7 @@ def register_tool_capabilities(tool_name: str, capabilities: list[str]) -> None:
 __all__ = [
     "ToolCapability",
     "TOOL_CAPABILITY_MAP",
+    "TOOL_FILTER_EXEMPT",
     "get_tool_capabilities",
     "filter_tools_by_capabilities",
     "register_tool_capabilities",
