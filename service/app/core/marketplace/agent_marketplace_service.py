@@ -403,8 +403,8 @@ class AgentMarketplaceService:
                         if original_file.user_id == user_id:
                             # Self-fork or re-fork: Reuse existing file record
                             target_file_id = original_file.id
-                        else:
-                            # Cross-fork: Physical Copy required
+                        elif original_file.storage_key:
+                            # Cross-fork: Physical Copy required (only if file has a storage key)
                             # Download content
                             buffer = io.BytesIO()
                             await storage.download_file(original_file.storage_key, buffer)
@@ -418,7 +418,7 @@ class AgentMarketplaceService:
                             # Create new file record
                             new_file_data = FileCreate(
                                 user_id=user_id,
-                                folder_id=None,
+                                parent_id=None,
                                 original_filename=original_file.original_filename,
                                 storage_key=new_key,
                                 file_size=len(content_bytes),

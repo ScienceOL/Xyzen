@@ -13,20 +13,22 @@ class FileBase(SQLModel):
         index=True,
         description="The user ID from authentication provider (e.g., Casdoor user ID)",
     )
-    storage_key: str = Field(
+    storage_key: str | None = Field(
+        default=None,
         index=True,
-        unique=True,
-        description="Unique storage key/path in object storage",
+        description="Unique storage key/path in object storage (None for directories)",
     )
     original_filename: str = Field(
         max_length=255,
         description="Original filename when uploaded",
     )
-    content_type: str = Field(
+    content_type: str | None = Field(
+        default=None,
         max_length=100,
-        description="MIME type of the file",
+        description="MIME type of the file (None for directories)",
     )
     file_size: int = Field(
+        default=0,
         ge=0,
         description="File size in bytes",
     )
@@ -67,11 +69,16 @@ class FileBase(SQLModel):
         max_length=20,
         description="File status: pending, confirmed, or expired",
     )
-    folder_id: UUID | None = Field(
+    is_dir: bool = Field(
+        default=False,
+        index=True,
+        description="Whether this entry is a directory",
+    )
+    parent_id: UUID | None = Field(
         default=None,
         index=True,
         nullable=True,
-        description="ID of the folder containing this file",
+        description="ID of the parent directory (self-referencing)",
     )
 
 
@@ -128,7 +135,7 @@ class FileRead(FileBase):
     @computed_field
     @property
     def type(self) -> str:
-        return self.content_type
+        return self.content_type or ""
 
 
 class FileUpdate(SQLModel):
@@ -156,9 +163,9 @@ class FileUpdate(SQLModel):
         max_length=20,
         description="File status: pending, confirmed, or expired",
     )
-    folder_id: UUID | None = Field(
+    parent_id: UUID | None = Field(
         default=None,
-        description="ID of the folder containing this file",
+        description="ID of the parent directory",
     )
 
 

@@ -71,8 +71,9 @@ class FileRepository:
         include_deleted: bool = False,
         limit: int = 100,
         offset: int = 0,
-        folder_id: UUID | None = None,
-        use_folder_filter: bool = False,
+        parent_id: UUID | None = None,
+        use_parent_filter: bool = False,
+        is_dir: bool | None = None,
     ) -> list[File]:
         """
         Fetches files for a given user with optional filters.
@@ -84,8 +85,9 @@ class FileRepository:
             include_deleted: Whether to include soft-deleted files.
             limit: Maximum number of files to return.
             offset: Number of files to skip.
-            folder_id: Folder ID to filter by (if use_folder_filter is True).
-            use_folder_filter: Whether to apply the folder_id filter.
+            parent_id: Parent directory ID to filter by (if use_parent_filter is True).
+            use_parent_filter: Whether to apply the parent_id filter.
+            is_dir: Optional filter for directories (True) or files (False).
 
         Returns:
             List of File instances.
@@ -102,13 +104,120 @@ class FileRepository:
         if category:
             statement = statement.where(File.category == category)
 
-        if use_folder_filter:
-            statement = statement.where(File.folder_id == folder_id)
+        if use_parent_filter:
+            statement = statement.where(File.parent_id == parent_id)
+
+        if is_dir is not None:
+            statement = statement.where(File.is_dir == is_dir)
 
         statement = statement.order_by(col(File.created_at).desc()).limit(limit).offset(offset)
 
         result = await self.db.exec(statement)
         return list(result.all())
+
+    async def get_children(
+        self,
+        user_id: str,
+        parent_id: UUID | None = None,
+        is_dir: bool | None = None,
+        include_deleted: bool = False,
+    ) -> list[File]:
+        """
+        List items under a parent directory.
+
+        Args:
+            user_id: The user ID.
+            parent_id: Parent directory ID (None for root).
+            is_dir: Filter for directories only (True) or files only (False).
+            include_deleted: Whether to include soft-deleted items.
+
+        Returns:
+            List of File instances.
+        """
+        logger.debug(f"Fetching children for user_id: {user_id}, parent_id: {parent_id}")
+        statement = select(File).where(File.user_id == user_id).where(File.parent_id == parent_id)
+
+        if not include_deleted:
+            statement = statement.where(col(File.is_deleted).is_(False))
+
+        if is_dir is not None:
+            statement = statement.where(File.is_dir == is_dir)
+
+        statement = statement.order_by(col(File.original_filename).asc())
+
+        result = await self.db.exec(statement)
+        return list(result.all())
+
+    _MAX_TREE_DEPTH = 100
+
+    async def get_path(self, file_id: UUID) -> list[File]:
+        """
+        Retrieves the path (list of ancestors) for a given file/directory,
+        starting from root.
+        """
+        path = []
+        current_id: UUID | None = file_id
+        for _ in range(self._MAX_TREE_DEPTH):
+            if not current_id:
+                break
+            item = await self.db.get(File, current_id)
+            if not item:
+                break
+            path.insert(0, item)
+            current_id = item.parent_id
+        return path
+
+    async def is_descendant(self, ancestor_id: UUID, target_id: UUID) -> bool:
+        """
+        Checks if target_id is a descendant of (or is the same as) ancestor_id.
+        Used to prevent circular moves.
+        """
+        if ancestor_id == target_id:
+            return True
+        current_id: UUID | None = target_id
+        for _ in range(self._MAX_TREE_DEPTH):
+            if not current_id:
+                return False
+            item = await self.db.get(File, current_id)
+            if not item:
+                return False
+            if item.parent_id == ancestor_id:
+                return True
+            current_id = item.parent_id
+        return False
+
+    async def hard_delete_recursive(self, file_id: UUID) -> list[str]:
+        """
+        Recursively hard deletes a directory and all its contents.
+
+        Returns:
+            List of storage keys that were removed from DB (caller should
+            delete these from object storage).
+        """
+        logger.debug(f"Recursively hard deleting: {file_id}")
+        storage_keys: list[str] = []
+
+        # Find all direct children
+        statement = select(File).where(File.parent_id == file_id)
+        children = (await self.db.exec(statement)).all()
+
+        # Recursively delete children
+        for child in children:
+            if child.is_dir:
+                child_keys = await self.hard_delete_recursive(child.id)
+                storage_keys.extend(child_keys)
+            else:
+                if child.storage_key:
+                    storage_keys.append(child.storage_key)
+                await self.db.delete(child)
+
+        # Delete the item itself
+        item = await self.db.get(File, file_id)
+        if item:
+            await self.db.delete(item)
+
+        await self.db.flush()
+        return storage_keys
 
     async def update_file(self, file_id: UUID, file_data: FileUpdate) -> File | None:
         """
@@ -225,7 +334,7 @@ class FileRepository:
 
     async def get_total_size_by_user(self, user_id: str, include_deleted: bool = False) -> int:
         """
-        Calculates the total file size for a user.
+        Calculates the total file size for a user (excludes directories).
 
         Args:
             user_id: The user ID.
@@ -235,7 +344,7 @@ class FileRepository:
             Total size in bytes.
         """
         logger.debug(f"Calculating total file size for user_id: {user_id}")
-        statement = select(File).where(File.user_id == user_id)
+        statement = select(File).where(File.user_id == user_id).where(File.is_dir == False)  # noqa: E712
 
         if not include_deleted:
             statement = statement.where(col(File.is_deleted).is_(False))
@@ -246,7 +355,7 @@ class FileRepository:
 
     async def get_file_count_by_user(self, user_id: str, include_deleted: bool = False) -> int:
         """
-        Counts the total number of files for a user.
+        Counts the total number of files for a user (excludes directories).
 
         Args:
             user_id: The user ID.
@@ -256,7 +365,7 @@ class FileRepository:
             Total file count.
         """
         logger.debug(f"Counting files for user_id: {user_id}")
-        statement = select(File).where(File.user_id == user_id)
+        statement = select(File).where(File.user_id == user_id).where(File.is_dir == False)  # noqa: E712
 
         if not include_deleted:
             statement = statement.where(col(File.is_deleted).is_(False))
@@ -390,10 +499,6 @@ class FileRepository:
         """
         Validate if a user can upload a file based on quota limits.
 
-        This is a convenience method that performs quota validation without
-        requiring external dependencies. For full quota management, use
-        StorageQuotaService from app.core.storage.
-
         Args:
             user_id: The user ID to check quota for
             file_size: Size of the file to upload in bytes
@@ -403,8 +508,6 @@ class FileRepository:
 
         Returns:
             Tuple of (is_valid: bool, error_message: str | None)
-            - (True, None) if upload is allowed
-            - (False, "error message") if upload would violate quota
         """
         # Check individual file size limit
         if file_size > max_file_size_bytes:

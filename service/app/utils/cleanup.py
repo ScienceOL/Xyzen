@@ -53,10 +53,11 @@ async def cleanup_orphaned_files(
 
     file_repo = FileRepository(db)
 
-    # Find all files with message_id set
+    # Find all files with message_id set (exclude directories which have no storage_key)
     statement = select(File).where(
         col(File.message_id).isnot(None),
         col(File.is_deleted).is_(False),
+        File.is_dir == False,  # noqa: E712
     )
     result = await db.exec(statement)
     files_with_message = list(result.all())
@@ -79,7 +80,7 @@ async def cleanup_orphaned_files(
 
     # Delete orphaned files
     if orphaned_files:
-        storage_keys = [file.storage_key for file in orphaned_files]
+        storage_keys = [file.storage_key for file in orphaned_files if file.storage_key]
 
         # Delete from object storage
         try:
@@ -149,13 +150,14 @@ async def cleanup_expired_pending_files(
     cutoff_time = datetime.now(timezone.utc).timestamp() - (expiration_hours * 3600)
     cutoff_datetime = datetime.fromtimestamp(cutoff_time, tz=timezone.utc)
 
-    # Find expired pending files
+    # Find expired pending files (exclude directories)
     statement = (
         select(File)
         .where(File.status == "pending")
         .where(col(File.message_id).is_(None))
         .where(File.created_at <= cutoff_datetime)
         .where(col(File.is_deleted).is_(False))
+        .where(File.is_dir == False)  # noqa: E712
     )
     result = await db.exec(statement)
     expired_files = list(result.all())
@@ -169,7 +171,7 @@ async def cleanup_expired_pending_files(
 
     # Delete expired files
     if expired_files:
-        storage_keys = [file.storage_key for file in expired_files]
+        storage_keys = [file.storage_key for file in expired_files if file.storage_key]
 
         # Delete from object storage
         try:
@@ -238,8 +240,12 @@ async def cleanup_old_soft_deleted_files(
         cutoff_time = datetime.now(timezone.utc).timestamp() - (retention_days * 24 * 3600)
         cutoff_datetime = datetime.fromtimestamp(cutoff_time, tz=timezone.utc)
 
-        # Count old soft-deleted files
-        statement = select(File).where(col(File.is_deleted).is_(True)).where(col(File.deleted_at) <= cutoff_datetime)
+        # Count old soft-deleted entries (files and directories)
+        statement = (
+            select(File)
+            .where(col(File.is_deleted).is_(True))
+            .where(col(File.deleted_at) <= cutoff_datetime)
+        )
         result = await db.exec(statement)
         old_files = list(result.all())
         stats["old_deleted_count"] = len(old_files)
@@ -249,14 +255,18 @@ async def cleanup_old_soft_deleted_files(
         cutoff_time = datetime.now(timezone.utc).timestamp() - (retention_days * 24 * 3600)
         cutoff_datetime = datetime.fromtimestamp(cutoff_time, tz=timezone.utc)
 
-        statement = select(File).where(col(File.is_deleted).is_(True)).where(col(File.deleted_at) <= cutoff_datetime)
+        statement = (
+            select(File)
+            .where(col(File.is_deleted).is_(True))
+            .where(col(File.deleted_at) <= cutoff_datetime)
+        )
         result = await db.exec(statement)
         old_files = list(result.all())
 
         stats["old_deleted_count"] = len(old_files)
 
         if old_files:
-            storage_keys = [file.storage_key for file in old_files]
+            storage_keys = [file.storage_key for file in old_files if file.storage_key]
 
             # Delete from object storage
             try:

@@ -64,7 +64,7 @@ describe("mergeChannelPreservingRuntime", () => {
       responding: true,
       aborting: true,
       knowledgeContext: {
-        folderId: "folder-1",
+        parentId: "folder-1",
         folderName: "Folder",
       },
     };

@@ -16,7 +16,6 @@ from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
 from .file_knowledge_set_link import FileKnowledgeSetLink, FileKnowledgeSetLinkCreate, FileKnowledgeSetLinkRead
-from .folder import Folder, FolderCreate, FolderRead, FolderUpdate
 from .knowledge_set import (
     KnowledgeSet,
     KnowledgeSetCreate,
@@ -72,10 +71,6 @@ __all__ = [
     "FileRead",
     "FileReadWithUrl",
     "FileUpdate",
-    "Folder",
-    "FolderCreate",
-    "FolderRead",
-    "FolderUpdate",
     "KnowledgeSet",
     "KnowledgeSetCreate",
     "KnowledgeSetRead",

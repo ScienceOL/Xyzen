@@ -23,7 +23,6 @@ export interface Folder {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
-  deleted_at: string | null;
 }
 
 export interface CreateFolderRequest {

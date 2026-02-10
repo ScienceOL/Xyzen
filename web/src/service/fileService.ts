@@ -18,18 +18,19 @@ const getAuthHeaders = (): Record<string, string> => {
 export interface FileUploadResponse {
   id: string;
   user_id: string;
-  storage_key: string;
+  storage_key: string | null;
   original_filename: string;
-  content_type: string;
+  content_type: string | null;
   file_size: number;
   scope: string;
   category: string;
   file_hash: string | null;
   metainfo: Record<string, unknown> | null;
   is_deleted: boolean;
+  is_dir: boolean;
+  parent_id: string | null;
   message_id: string | null;
   status: "pending" | "confirmed" | "expired";
-  folder_id: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -88,7 +89,7 @@ class FileService {
     file: File,
     scope: string = "private",
     category?: string,
-    folderId?: string | null,
+    parentId?: string | null,
     knowledgeSetId?: string | null,
     onProgress?: (progress: UploadProgress) => void,
   ): UploadHandle {
@@ -98,8 +99,8 @@ class FileService {
     if (category) {
       formData.append("category", category);
     }
-    if (folderId) {
-      formData.append("folder_id", folderId);
+    if (parentId) {
+      formData.append("parent_id", parentId);
     }
     if (knowledgeSetId) {
       formData.append("knowledge_set_id", knowledgeSetId);
@@ -158,7 +159,7 @@ class FileService {
     file: File,
     scope: string = "private",
     category?: string,
-    folderId?: string | null,
+    parentId?: string | null,
     knowledgeSetId?: string | null,
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<FileUploadResponse> {
@@ -168,8 +169,8 @@ class FileService {
     if (category) {
       formData.append("category", category);
     }
-    if (folderId) {
-      formData.append("folder_id", folderId);
+    if (parentId) {
+      formData.append("parent_id", parentId);
     }
     if (knowledgeSetId) {
       formData.append("knowledge_set_id", knowledgeSetId);
@@ -233,8 +234,8 @@ class FileService {
     include_deleted?: boolean;
     limit?: number;
     offset?: number;
-    folder_id?: string | null;
-    filter_by_folder?: boolean;
+    parent_id?: string | null;
+    filter_by_parent?: boolean;
   }): Promise<FileUploadResponse[]> {
     const baseUrl = getBackendUrl();
     const queryParams = new URLSearchParams();
@@ -246,14 +247,11 @@ class FileService {
       if (params.limit) queryParams.append("limit", params.limit.toString());
       if (params.offset) queryParams.append("offset", params.offset.toString());
 
-      // Handle folder_id: only append if not null (unless backend supports literal "null" which it usually doesn't for UUID)
-      // If folder_id is null, we assume Root. Backend treats missing folder_id as "don't filter" unless filter_by_folder is true.
-      // If filter_by_folder is true AND folder_id is missing, backend treats it as Root (None).
-      if (params.folder_id) {
-        queryParams.append("folder_id", params.folder_id);
+      if (params.parent_id) {
+        queryParams.append("parent_id", params.parent_id);
       }
-      if (params.filter_by_folder) {
-        queryParams.append("filter_by_folder", "true");
+      if (params.filter_by_parent) {
+        queryParams.append("filter_by_parent", "true");
       }
     }
 
@@ -302,7 +300,7 @@ class FileService {
       metainfo?: Record<string, unknown>;
       message_id?: string | null;
       status?: "pending" | "confirmed" | "expired";
-      folder_id?: string | null;
+      parent_id?: string | null;
     },
   ): Promise<FileUploadResponse> {
     const baseUrl = getBackendUrl();

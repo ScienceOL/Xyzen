@@ -55,8 +55,8 @@ export const queryKeys = {
   knowledge: {
     all: ["knowledge"] as const,
     folders: () => [...queryKeys.knowledge.all, "folders"] as const,
-    files: (folderId: string) =>
-      [...queryKeys.knowledge.all, "files", folderId] as const,
+    files: (parentId: string) =>
+      [...queryKeys.knowledge.all, "files", parentId] as const,
   },
 
   /**
