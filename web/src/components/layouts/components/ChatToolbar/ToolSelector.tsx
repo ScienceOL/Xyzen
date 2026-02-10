@@ -10,11 +10,14 @@ import {
   isImageEnabled,
   isKnowledgeEnabled,
   isLiteratureSearchEnabled,
+  isMemoryEnabled,
+  isSandboxEnabled,
   isWebSearchEnabled,
   updateImageEnabled,
   updateKnowledgeEnabled,
   updateLiteratureSearchEnabled,
-  // updateMemoryEnabled,
+  updateMemoryEnabled,
+  updateSandboxEnabled,
   updateWebSearchEnabled,
 } from "@/core/agent/toolConfig";
 import { cn } from "@/lib/utils";
@@ -28,7 +31,9 @@ import {
   BookOpenIcon,
   CheckIcon,
   ChevronDownIcon,
+  CommandLineIcon,
   GlobeAltIcon,
+  LightBulbIcon,
   PhotoIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
@@ -63,8 +68,8 @@ export function ToolSelector({
   const knowledgeEnabled = isKnowledgeEnabled(agent);
   const imageEnabled = isImageEnabled(agent);
   const literatureSearchEnabled = isLiteratureSearchEnabled(agent);
-  // const memoryEnabled = isMemoryEnabled(agent);  // Disabled: pending RAG/pgvector implementation
-  // const memoryEnabled = false; // Hardcoded off until RAG is implemented
+  const memoryEnabled = isMemoryEnabled(agent);
+  const sandboxEnabled = isSandboxEnabled(agent);
 
   // Effective knowledge set is session override or agent default
   const effectiveKnowledgeSetId =
@@ -75,7 +80,8 @@ export function ToolSelector({
     effectiveKnowledgeSetId && knowledgeEnabled,
     imageEnabled,
     literatureSearchEnabled,
-    // memoryEnabled,  // Disabled: pending RAG/pgvector implementation
+    memoryEnabled,
+    sandboxEnabled,
   ].filter(Boolean).length;
 
   // Load knowledge sets when picker is opened
@@ -139,11 +145,17 @@ export function ToolSelector({
     await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
   };
 
-  // const handleToggleMemory = async () => {
-  //   if (!agent) return;
-  //   const newGraphConfig = updateMemoryEnabled(agent, !memoryEnabled);
-  //   await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
-  // };
+  const handleToggleMemory = async () => {
+    if (!agent) return;
+    const newGraphConfig = updateMemoryEnabled(agent, !memoryEnabled);
+    await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+  };
+
+  const handleToggleSandbox = async () => {
+    if (!agent) return;
+    const newGraphConfig = updateSandboxEnabled(agent, !sandboxEnabled);
+    await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+  };
 
   if (!agent) return null;
 
@@ -387,7 +399,68 @@ export function ToolSelector({
             )}
           </button>
 
-          {/* Memory Search - Disabled: pending RAG/pgvector implementation */}
+          {/* Memory */}
+          <button
+            onClick={handleToggleMemory}
+            className={cn(
+              "w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors",
+              "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+              memoryEnabled && "bg-teal-50 dark:bg-teal-900/20",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <LightBulbIcon
+                className={cn(
+                  "h-4 w-4",
+                  memoryEnabled ? "text-teal-500" : "text-neutral-400",
+                )}
+              />
+              <div className="text-left">
+                <div className="text-sm font-medium">
+                  {t("app.toolbar.memory", "Memory")}
+                </div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {t(
+                    "app.toolbar.memoryDesc",
+                    "Remember across conversations",
+                  )}
+                </div>
+              </div>
+            </div>
+            {memoryEnabled && (
+              <CheckIcon className="h-4 w-4 text-teal-500" />
+            )}
+          </button>
+
+          {/* Sandbox (Code Execution) */}
+          <button
+            onClick={handleToggleSandbox}
+            className={cn(
+              "w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors",
+              "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+              sandboxEnabled && "bg-rose-50 dark:bg-rose-900/20",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <CommandLineIcon
+                className={cn(
+                  "h-4 w-4",
+                  sandboxEnabled ? "text-rose-500" : "text-neutral-400",
+                )}
+              />
+              <div className="text-left">
+                <div className="text-sm font-medium">
+                  {t("app.toolbar.sandbox", "Sandbox")}
+                </div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {t("app.toolbar.sandboxDesc", "Execute code in sandbox")}
+                </div>
+              </div>
+            </div>
+            {sandboxEnabled && (
+              <CheckIcon className="h-4 w-4 text-rose-500" />
+            )}
+          </button>
         </div>
       </PopoverContent>
     </Popover>

@@ -2,6 +2,7 @@
   "tabs": {
     "knowledge": "ナレッジ",
     "tools": "ツール",
+    "sandbox": "サンドボックス",
     "memory": "メモリー",
     "comingSoon": "近日公開"
   },
@@ -11,6 +12,25 @@
     "noKnowledgeSetHint": "この会話にナレッジベースを紐づけると、ファイルが表示されます。",
     "loading": "読み込み中...",
     "noFiles": "このナレッジベースにファイルはありません。"
+  },
+  "memory": {
+    "noMemories": "メモリーはまだありません",
+    "noMemoriesHint": "メモリーは会話中にエージェントが自動的に作成します。",
+    "loading": "読み込み中...",
+    "error": "メモリーの読み込みに失敗しました",
+    "justNow": "たった今",
+    "countSingular": "件のメモリー",
+    "countPlural": "件のメモリー",
+    "delete": "削除"
+  },
+  "sandbox": {
+    "noSession": "アクティブなセッションがありません",
+    "noSandbox": "サンドボックスが起動していません",
+    "noSandboxHint": "エージェントがコードを実行するとサンドボックスが作成されます。",
+    "loading": "読み込み中...",
+    "error": "サンドボックスファイルの読み込みに失敗しました",
+    "emptyFolder": "空のフォルダ",
+    "refresh": "更新"
   },
   "collapse": "パネルを閉じる",
   "expand": "パネルを開く",

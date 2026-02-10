@@ -1,9 +1,22 @@
-import { FileIcon } from "@/components/knowledge/FileIcon";
+import {
+  Files,
+  FileItem,
+} from "@/components/animate-ui/components/radix/files";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { fileService, type FileUploadResponse } from "@/service/fileService";
 import { knowledgeSetService } from "@/service/knowledgeSetService";
 import type { KnowledgeSetWithFileCount } from "@/service/knowledgeSetService";
-import { useEffect, useState } from "react";
+import {
+  ArchiveBoxIcon,
+  CodeBracketIcon,
+  DocumentTextIcon,
+  FilmIcon,
+  MusicalNoteIcon,
+  PhotoIcon,
+  PresentationChartBarIcon,
+  TableCellsIcon,
+} from "@heroicons/react/24/outline";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 function formatFileSize(bytes: number): string {
@@ -12,6 +25,65 @@ function formatFileSize(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+}
+
+function knowledgeFileIcon(filename: string, mimeType: string): ReactNode {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+
+  if (
+    mimeType.startsWith("image/") ||
+    ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)
+  ) {
+    return <PhotoIcon className="h-3.5 w-3.5 text-purple-500" />;
+  }
+  if (
+    mimeType.startsWith("audio/") ||
+    ["mp3", "wav", "ogg", "m4a"].includes(ext)
+  ) {
+    return <MusicalNoteIcon className="h-3.5 w-3.5 text-pink-500" />;
+  }
+  if (
+    mimeType.startsWith("video/") ||
+    ["mp4", "mov", "avi", "mkv"].includes(ext)
+  ) {
+    return <FilmIcon className="h-3.5 w-3.5 text-rose-500" />;
+  }
+
+  switch (ext) {
+    case "pdf":
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-red-500" />;
+    case "doc":
+    case "docx":
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-blue-500" />;
+    case "xls":
+    case "xlsx":
+    case "csv":
+      return <TableCellsIcon className="h-3.5 w-3.5 text-green-500" />;
+    case "ppt":
+    case "pptx":
+      return <PresentationChartBarIcon className="h-3.5 w-3.5 text-orange-500" />;
+    case "txt":
+    case "md":
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-500" />;
+    case "json":
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-yellow-500" />;
+    case "zip":
+    case "rar":
+    case "7z":
+    case "tar":
+    case "gz":
+      return <ArchiveBoxIcon className="h-3.5 w-3.5 text-amber-500" />;
+    case "js":
+    case "ts":
+    case "jsx":
+    case "tsx":
+    case "py":
+    case "html":
+    case "css":
+      return <CodeBracketIcon className="h-3.5 w-3.5 text-indigo-500" />;
+    default:
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-400" />;
+  }
 }
 
 export function KnowledgeTab() {
@@ -92,7 +164,6 @@ export function KnowledgeTab() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header */}
       {knowledgeSet && (
         <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">
@@ -111,7 +182,6 @@ export function KnowledgeTab() {
         </div>
       )}
 
-      {/* File list */}
       <div className="flex-1 overflow-y-auto">
         {files.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -120,28 +190,19 @@ export function KnowledgeTab() {
             </p>
           </div>
         ) : (
-          <div className="p-2">
+          <Files type="multiple" className="w-full p-2">
             {files.map((file) => (
-              <div
+              <FileItem
                 key={file.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                icon={knowledgeFileIcon(file.original_filename, file.content_type ?? "")}
               >
-                <FileIcon
-                  filename={file.original_filename}
-                  mimeType={file.content_type}
-                  className="h-5 w-5 shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-neutral-800 dark:text-neutral-200 truncate">
-                    {file.original_filename}
-                  </p>
-                </div>
-                <span className="text-xs text-neutral-400 dark:text-neutral-500 shrink-0">
+                <span className="truncate">{file.original_filename}</span>
+                <span className="ml-auto pl-2 shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">
                   {formatFileSize(file.file_size)}
                 </span>
-              </div>
+              </FileItem>
             ))}
-          </div>
+          </Files>
         )}
       </div>
     </div>

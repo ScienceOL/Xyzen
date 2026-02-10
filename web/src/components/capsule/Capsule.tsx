@@ -7,9 +7,10 @@ import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { KnowledgeTab } from "./KnowledgeTab";
 import { MemoryTab } from "./MemoryTab";
+import { SandboxTab } from "./SandboxTab";
 import { ToolsTab } from "./ToolsTab";
 
-const TABS = ["knowledge", "tools", "memory"] as const;
+const TABS = ["knowledge", "tools", "sandbox", "memory"] as const;
 const COLLAPSED_WIDTH = 10;
 const EXPANDED_WIDTH = 384;
 
@@ -66,6 +67,7 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
     <div className="flex-1 flex flex-col overflow-hidden">
       {activeTab === "knowledge" && <KnowledgeTab />}
       {activeTab === "tools" && <ToolsTab />}
+      {activeTab === "sandbox" && <SandboxTab />}
       {activeTab === "memory" && <MemoryTab />}
     </div>
   );
@@ -77,7 +79,7 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
 
 export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   const { t } = useTranslation();
-  const { knowledge_set_id } = useActiveChannelStatus();
+  const { knowledge_set_id, sessionId } = useActiveChannelStatus();
   const prevKnowledgeSetId = useRef<string | null>(null);
 
   const { capsuleOpen, capsuleActiveTab, setCapsuleOpen, setCapsuleActiveTab } =
@@ -134,7 +136,7 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
 
   // Determine if the capsule has any content worth showing.
   // Currently only Knowledge tab has real data; Tools and Memory are "coming soon".
-  const hasContent = !!knowledge_set_id;
+  const hasContent = !!knowledge_set_id || !!sessionId;
 
   // -------------------------------------------------------------------------
   // Mobile variant — full screen with back header

@@ -166,103 +166,34 @@ function fileKindLabel(fileName: string): string {
   return "file";
 }
 
-function fileVisualStyle(fileName: string): {
-  rowClass: string;
-  badgeClass: string;
-  icon: ReactNode;
-} {
+function fileIcon(fileName: string): ReactNode {
   const kind = fileKindLabel(fileName);
 
   switch (kind) {
     case "core":
-      return {
-        rowClass:
-          "border border-emerald-200/80 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200",
-        badgeClass:
-          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-        icon: <SparklesIcon className="h-3.5 w-3.5 text-emerald-500" />,
-      };
+      return <SparklesIcon className="h-3.5 w-3.5 text-emerald-500" />;
     case "md":
-      return {
-        rowClass:
-          "bg-green-50/70 text-green-800 dark:bg-green-950/20 dark:text-green-200",
-        badgeClass:
-          "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-        icon: <DocumentTextIcon className="h-3.5 w-3.5 text-green-500" />,
-      };
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-blue-400" />;
     case "code":
-      return {
-        rowClass:
-          "bg-indigo-50/70 text-indigo-800 dark:bg-indigo-950/20 dark:text-indigo-200",
-        badgeClass:
-          "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
-        icon: <CodeBracketIcon className="h-3.5 w-3.5 text-indigo-500" />,
-      };
+      return <CodeBracketIcon className="h-3.5 w-3.5 text-blue-500" />;
     case "json":
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-yellow-500" />;
     case "config":
-      return {
-        rowClass:
-          "bg-amber-50/70 text-amber-800 dark:bg-amber-950/20 dark:text-amber-200",
-        badgeClass:
-          "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-        icon: <DocumentTextIcon className="h-3.5 w-3.5 text-amber-500" />,
-      };
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-violet-400" />;
     case "table":
-      return {
-        rowClass:
-          "bg-cyan-50/70 text-cyan-800 dark:bg-cyan-950/20 dark:text-cyan-200",
-        badgeClass:
-          "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
-        icon: <TableCellsIcon className="h-3.5 w-3.5 text-cyan-500" />,
-      };
+      return <TableCellsIcon className="h-3.5 w-3.5 text-green-500" />;
     case "image":
-      return {
-        rowClass:
-          "bg-pink-50/70 text-pink-800 dark:bg-pink-950/20 dark:text-pink-200",
-        badgeClass:
-          "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300",
-        icon: <PhotoIcon className="h-3.5 w-3.5 text-pink-500" />,
-      };
+      return <PhotoIcon className="h-3.5 w-3.5 text-purple-400" />;
     case "audio":
-      return {
-        rowClass:
-          "bg-purple-50/70 text-purple-800 dark:bg-purple-950/20 dark:text-purple-200",
-        badgeClass:
-          "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-        icon: <MusicalNoteIcon className="h-3.5 w-3.5 text-purple-500" />,
-      };
+      return <MusicalNoteIcon className="h-3.5 w-3.5 text-pink-400" />;
     case "video":
-      return {
-        rowClass:
-          "bg-orange-50/70 text-orange-800 dark:bg-orange-950/20 dark:text-orange-200",
-        badgeClass:
-          "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
-        icon: <FilmIcon className="h-3.5 w-3.5 text-orange-500" />,
-      };
+      return <FilmIcon className="h-3.5 w-3.5 text-orange-400" />;
     case "archive":
-      return {
-        rowClass:
-          "bg-stone-50/70 text-stone-800 dark:bg-stone-900/30 dark:text-stone-200",
-        badgeClass:
-          "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
-        icon: <ArchiveBoxIcon className="h-3.5 w-3.5 text-stone-500" />,
-      };
+      return <ArchiveBoxIcon className="h-3.5 w-3.5 text-stone-400" />;
     case "text":
-      return {
-        rowClass:
-          "bg-sky-50/70 text-sky-800 dark:bg-sky-950/20 dark:text-sky-200",
-        badgeClass:
-          "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
-        icon: <DocumentTextIcon className="h-3.5 w-3.5 text-sky-500" />,
-      };
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-400" />;
     default:
-      return {
-        rowClass:
-          "bg-neutral-50/80 text-neutral-800 dark:bg-neutral-900/30 dark:text-neutral-200",
-        badgeClass:
-          "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
-        icon: <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-500" />,
-      };
+      return <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-400" />;
   }
 }
 
@@ -275,22 +206,6 @@ function fileBadgeText(fileName: string): string {
     return ext;
   }
   return kind.toUpperCase();
-}
-
-function countFiles(node: FileTreeNode): number {
-  let total = node.files.size;
-  for (const child of node.folders.values()) {
-    total += countFiles(child);
-  }
-  return total;
-}
-
-function countFolders(node: FileTreeNode): number {
-  let total = node.folders.size;
-  for (const child of node.folders.values()) {
-    total += countFolders(child);
-  }
-  return total;
 }
 
 function collectExpandedValuesForSkill(
@@ -416,7 +331,7 @@ export default function SkillsLibrary() {
   }, [loadSkills]);
 
   return (
-    <div className="h-full w-full bg-gradient-to-br from-sky-50 via-white to-violet-50 dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900 flex flex-col">
+    <div className="h-full w-full bg-white dark:bg-neutral-950 flex flex-col">
       <div className="border-b border-neutral-200/80 dark:border-neutral-800 px-4 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -476,23 +391,22 @@ export default function SkillsLibrary() {
           <Files
             type="multiple"
             defaultValue={defaultExpandedValues}
-            className="space-y-1 rounded-lg border border-sky-200/70 bg-white/70 p-2 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/40"
+            className="w-full"
           >
             <FolderItem value="builtin-root">
               <FolderTrigger
                 icon={<FolderIcon className="h-3.5 w-3.5 text-fuchsia-500" />}
-                className="bg-gradient-to-r from-fuchsia-50 to-violet-50 dark:from-fuchsia-950/20 dark:to-violet-950/20"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium">
                     {t("app.skillsPanel.builtinFolder", "builtin")}
                   </span>
-                  <span className="rounded-full bg-fuchsia-100 px-1.5 py-0.5 text-[10px] text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300">
+                  <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
                     {builtinSkills.length}
                   </span>
                 </div>
               </FolderTrigger>
-              <FolderContent className="space-y-1">
+              <FolderContent>
                 {builtinSkills.length === 0 && (
                   <div className="px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
                     {t(
@@ -514,18 +428,17 @@ export default function SkillsLibrary() {
             <FolderItem value="user-root">
               <FolderTrigger
                 icon={<FolderIcon className="h-3.5 w-3.5 text-sky-500" />}
-                className="bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-950/20 dark:to-cyan-950/20"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium">
                     {t("app.skillsPanel.userFolder", "my-skills")}
                   </span>
-                  <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                  <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
                     {userSkills.length}
                   </span>
                 </div>
               </FolderTrigger>
-              <FolderContent className="space-y-1">
+              <FolderContent>
                 {userSkills.length === 0 && (
                   <div className="px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
                     {t(
@@ -568,8 +481,6 @@ function SkillFolder({
 }) {
   const { t } = useTranslation();
   const tree = useMemo(() => buildSkillFileTree(resourcePaths), [resourcePaths]);
-  const fileCount = useMemo(() => countFiles(tree), [tree]);
-  const folderCount = useMemo(() => countFolders(tree), [tree]);
   const sourceLabel =
     skill.scope === "builtin"
       ? t("app.skillsPanel.sourceBuiltin", "Source: builtin")
@@ -588,31 +499,10 @@ function SkillFolder({
             )}
           />
         }
-        className={cn(
-          "border border-transparent",
-          skill.scope === "builtin"
-            ? "bg-gradient-to-r from-fuchsia-50/80 to-violet-50/80 dark:from-fuchsia-950/15 dark:to-violet-950/15"
-            : "bg-gradient-to-r from-sky-50/80 to-cyan-50/80 dark:from-sky-950/15 dark:to-cyan-950/15",
-        )}
       >
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
-            {skill.name}
-          </div>
-          <div className="mt-1 flex items-center gap-1.5 text-[11px]">
-            <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
-              {fileCount} {t("app.skillsPanel.filesLabel", "files")}
-            </span>
-            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-              {folderCount} {t("app.skillsPanel.foldersLabel", "folders")}
-            </span>
-          </div>
-          <div className="mt-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
-            {skill.description}
-          </div>
-        </div>
+        <span className="truncate">{skill.name}</span>
       </FolderTrigger>
-      <FolderContent className="space-y-1">
+      <FolderContent>
         {renderTreeNode({
           node: tree,
           keyPrefix: `skill:${skill.id}`,
@@ -620,14 +510,16 @@ function SkillFolder({
         })}
 
         <FileItem
-          icon={<UserCircleIcon className="h-3.5 w-3.5 text-violet-500" />}
-          className="text-violet-700 dark:text-violet-300"
+          icon={<UserCircleIcon className="h-3.5 w-3.5 text-neutral-400" />}
+          className="text-neutral-500 dark:text-neutral-400"
         >
           {sourceLabel}
         </FileItem>
-        <FileItem icon={<ClockIcon className="h-3.5 w-3.5" />}>
-          {t("app.skillsPanel.updatedAt", "Updated")}:{" "}
-          {new Date(skill.updated_at).toLocaleString()}
+        <FileItem icon={<ClockIcon className="h-3.5 w-3.5 text-neutral-400" />}>
+          <span className="text-neutral-500 dark:text-neutral-400">
+            {t("app.skillsPanel.updatedAt", "Updated")}:{" "}
+            {new Date(skill.updated_at).toLocaleString()}
+          </span>
         </FileItem>
       </FolderContent>
     </FolderItem>
@@ -654,20 +546,11 @@ function renderTreeNode({
     elements.push(
       <FolderItem key={folderKey} value={folderKey}>
         <FolderTrigger
-          icon={<FolderIcon className="h-3.5 w-3.5 text-indigo-500" />}
-          className={cn(
-            "text-neutral-800 dark:text-neutral-100",
-            depth % 3 === 0 &&
-              "bg-indigo-50/60 dark:bg-indigo-950/10 border border-indigo-100/80 dark:border-indigo-900/40",
-            depth % 3 === 1 &&
-              "bg-cyan-50/60 dark:bg-cyan-950/10 border border-cyan-100/80 dark:border-cyan-900/40",
-            depth % 3 === 2 &&
-              "bg-fuchsia-50/60 dark:bg-fuchsia-950/10 border border-fuchsia-100/80 dark:border-fuchsia-900/40",
-          )}
+          icon={<FolderIcon className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />}
         >
           <span className="truncate">{folderName}</span>
         </FolderTrigger>
-        <FolderContent className="space-y-1">
+        <FolderContent>
           {renderTreeNode({
             node: childNode,
             keyPrefix: folderKey,
@@ -680,23 +563,14 @@ function renderTreeNode({
 
   for (const fileName of files) {
     const fileKey = `${keyPrefix}/${fileName}`;
-    const visualStyle = fileVisualStyle(fileName);
+    const icon = fileIcon(fileName);
     elements.push(
       <FileItem
         key={fileKey}
-        icon={visualStyle.icon}
-        className={cn(
-          "font-medium",
-          visualStyle.rowClass,
-        )}
+        icon={icon}
       >
         <span className="truncate">{fileName}</span>
-        <span
-          className={cn(
-            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-            visualStyle.badgeClass,
-          )}
-        >
+        <span className="ml-auto rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
           {fileBadgeText(fileName)}
         </span>
       </FileItem>,
