@@ -54,7 +54,7 @@ async def deploy_skill_to_sandbox(
         for resource in resources:
             rel_path = resource.get("path", "")
             content = resource.get("content", "")
-            if rel_path and content:
+            if rel_path and isinstance(content, str):
                 full_path = f"{base_path}/{rel_path}"
                 await manager.write_file(full_path, content)
                 logger.debug(f"Deployed resource: {full_path}")

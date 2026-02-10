@@ -5,6 +5,7 @@ Endpoints for skill CRUD and agent-skill attachment:
 - POST   /v1/skills              — Create skill
 - GET    /v1/skills              — List user's skills + builtin skills
 - GET    /v1/skills/{id}         — Get skill details
+- GET    /v1/skills/{id}/resources — List skill resource file paths
 - PATCH  /v1/skills/{id}         — Update skill
 - DELETE /v1/skills/{id}         — Delete skill
 - POST   /v1/skills/parse        — Validate a SKILL.md (preview, no persist)
@@ -94,9 +95,17 @@ async def parse_skill_md(
     """
     from app.core.skills.parser import SkillParseError
     from app.core.skills.parser import parse_skill_md as do_parse
+    from app.core.skills.storage import normalize_inline_resources
 
     _ = user_id  # auth gate
-    resource_payload = [r.model_dump() for r in (body.resources or [])]
+    raw_resource_payload = [r.model_dump() for r in (body.resources or [])]
+
+    try:
+        normalized_resources = normalize_inline_resources(raw_resource_payload)
+    except ValueError as e:
+        return SkillParseResponse(valid=False, error=f"Invalid resources: {e}")
+
+    resource_payload = [{"path": path, "content": content} for path, content in normalized_resources]
 
     try:
         parsed = do_parse(body.skill_md, resources=resource_payload)
@@ -119,9 +128,19 @@ async def create_skill(
     """
     from app.core.skills.parser import SkillParseError
     from app.core.skills.parser import parse_skill_md as do_parse
-    from app.core.skills.storage import build_skill_prefix, delete_skill_folder, sync_skill_folder
+    from app.core.skills.storage import (
+        build_skill_prefix,
+        delete_skill_folder,
+        normalize_inline_resources,
+        sync_skill_folder,
+    )
 
-    resource_payload = [r.model_dump() for r in (body.resources or [])]
+    raw_resource_payload = [r.model_dump() for r in (body.resources or [])]
+    try:
+        normalized_resources = normalize_inline_resources(raw_resource_payload)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid resources: {e}")
+    resource_payload = [{"path": path, "content": content} for path, content in normalized_resources]
 
     try:
         parsed = do_parse(body.skill_md, resources=resource_payload)
@@ -223,6 +242,27 @@ async def get_skill(
     return SkillRead.model_validate(skill)
 
 
+@router.get("/{skill_id}/resources", response_model=list[str])
+async def list_skill_resources(
+    skill_id: UUID,
+    user_id: str = Depends(get_current_user),
+    storage: StorageServiceProto = Depends(get_storage_service),
+    db: AsyncSession = Depends(get_session),
+) -> list[str]:
+    """List all resource file paths for a skill (excluding SKILL.md)."""
+    from app.core.skills import list_skill_resource_paths
+
+    repo = SkillRepository(db)
+    skill = await repo.get_skill_by_id(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+
+    if skill.scope != SkillScope.BUILTIN and skill.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return await list_skill_resource_paths(skill.resource_prefix, storage=storage)
+
+
 @router.patch("/{skill_id}", response_model=SkillRead)
 async def update_skill(
     skill_id: UUID,
@@ -237,6 +277,7 @@ async def update_skill(
     from app.core.skills.storage import (
         build_skill_prefix,
         load_skill_md,
+        normalize_inline_resources,
         sync_skill_folder,
         write_skill_md_only,
     )
@@ -264,7 +305,14 @@ async def update_skill(
     if has_resource_update and body.resources is None:
         raise HTTPException(status_code=422, detail="resources cannot be null")
 
-    resource_payload = [r.model_dump() for r in (body.resources or [])]
+    raw_resource_payload = [r.model_dump() for r in (body.resources or [])]
+    normalized_resource_payload: list[dict[str, str]] | None = None
+    if has_resource_update:
+        try:
+            normalized_resources = normalize_inline_resources(raw_resource_payload)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=f"Invalid resources: {e}")
+        normalized_resource_payload = [{"path": path, "content": content} for path, content in normalized_resources]
     effective_name = skill.name
     if has_name_update and body.name is not None:
         try:
@@ -318,7 +366,7 @@ async def update_skill(
             try:
                 parsed = do_parse(
                     effective_skill_md,
-                    resources=resource_payload if has_resource_update else None,
+                    resources=normalized_resource_payload if has_resource_update else None,
                 )
                 if parsed.name != effective_name:
                     raise HTTPException(
@@ -334,7 +382,7 @@ async def update_skill(
             await sync_skill_folder(
                 prefix=prefix,
                 skill_md=effective_skill_md,
-                resources=resource_payload,
+                resources=normalized_resource_payload,
                 storage=storage,
             )
         elif has_skill_md_update and prefix:

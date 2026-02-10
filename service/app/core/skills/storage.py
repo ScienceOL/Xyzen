@@ -18,6 +18,10 @@ from app.core.storage import StorageServiceProto, get_storage_service
 logger = logging.getLogger(__name__)
 
 SKILL_MD_FILENAME = "SKILL.md"
+MAX_SKILL_RESOURCE_FILES = 200
+MAX_SKILL_RESOURCE_FILE_BYTES = 2 * 1024 * 1024  # 2 MiB per resource file
+MAX_SKILL_RESOURCE_TOTAL_BYTES = 25 * 1024 * 1024  # 25 MiB across all resource files
+MAX_SKILL_RESOURCE_PATH_LENGTH = 512
 
 
 def build_skill_prefix(user_id: str | None, skill_id: UUID) -> str:
@@ -40,6 +44,11 @@ def _normalize_resource_path(path: str) -> str:
     if pure.name == SKILL_MD_FILENAME:
         raise ValueError(f"{SKILL_MD_FILENAME} is reserved")
 
+    if len(normalized) > MAX_SKILL_RESOURCE_PATH_LENGTH:
+        raise ValueError(
+            f"Resource path exceeds max length {MAX_SKILL_RESOURCE_PATH_LENGTH}: {path!r}"
+        )
+
     return pure.as_posix()
 
 
@@ -48,8 +57,14 @@ def normalize_inline_resources(resources: list[dict[str, Any]] | None) -> list[t
     if not resources:
         return []
 
+    if len(resources) > MAX_SKILL_RESOURCE_FILES:
+        raise ValueError(
+            f"Too many resource files: {len(resources)} (max {MAX_SKILL_RESOURCE_FILES})"
+        )
+
     normalized: list[tuple[str, str]] = []
     seen_paths: set[str] = set()
+    total_bytes = 0
 
     for idx, resource in enumerate(resources):
         if not isinstance(resource, dict):
@@ -63,6 +78,22 @@ def normalize_inline_resources(resources: list[dict[str, Any]] | None) -> list[t
         content = resource.get("content")
         if not isinstance(content, str):
             raise ValueError(f"Resource '{path}' is missing string 'content'")
+
+        try:
+            content_bytes = len(content.encode("utf-8"))
+        except UnicodeEncodeError as e:
+            raise ValueError(f"Resource '{path}' is not valid UTF-8 text") from e
+
+        if content_bytes > MAX_SKILL_RESOURCE_FILE_BYTES:
+            raise ValueError(
+                f"Resource '{path}' exceeds max size {MAX_SKILL_RESOURCE_FILE_BYTES} bytes"
+            )
+
+        total_bytes += content_bytes
+        if total_bytes > MAX_SKILL_RESOURCE_TOTAL_BYTES:
+            raise ValueError(
+                f"Total resource size exceeds max {MAX_SKILL_RESOURCE_TOTAL_BYTES} bytes"
+            )
 
         if path in seen_paths:
             raise ValueError(f"Duplicate resource path: {path}")
