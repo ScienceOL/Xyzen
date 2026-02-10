@@ -78,7 +78,7 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
 export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   const { t } = useTranslation();
   const { knowledge_set_id } = useActiveChannelStatus();
-  const prevKnowledgeSetId = useRef(knowledge_set_id);
+  const prevKnowledgeSetId = useRef<string | null>(null);
 
   const { capsuleOpen, capsuleActiveTab, setCapsuleOpen, setCapsuleActiveTab } =
     useXyzen(

@@ -199,7 +199,7 @@ services:
       test: ['CMD', 'wget', '--spider', '--quiet', 'http://localhost:5556/dex/.well-known/openid-configuration']
 
   daytona-db:
-    image: postgres:18
+    image: pgvector/pgvector:pg16
     network_mode: 'service:daytona-network-service'
     environment:
       - POSTGRES_PASSWORD=pass
@@ -209,7 +209,7 @@ services:
       - daytona-db-data:/var/lib/postgresql/18/docker
 
   daytona-redis:
-    image: redis:latest
+    image: redis:7.4.2-alpine
     network_mode: 'service:daytona-network-service'
 
   daytona-registry:
@@ -223,7 +223,7 @@ services:
       - daytona-registry:/var/lib/registry
 
   daytona-minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     network_mode: 'service:daytona-network-service'
     environment:
       - MINIO_ROOT_USER=minioadmin

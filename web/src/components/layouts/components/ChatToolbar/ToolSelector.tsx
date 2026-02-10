@@ -94,6 +94,11 @@ export function ToolSelector({
     if (onUpdateSessionKnowledge) {
       await onUpdateSessionKnowledge(knowledgeSetId);
     }
+    // Auto-enable knowledge tools when selecting a knowledge set
+    if (knowledgeSetId && agent && !knowledgeEnabled) {
+      const newGraphConfig = updateKnowledgeEnabled(agent, true);
+      await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+    }
     setShowKnowledgePicker(false);
   };
 
@@ -112,6 +117,11 @@ export function ToolSelector({
     if (!agent) return;
     const newGraphConfig = updateKnowledgeEnabled(agent, !knowledgeEnabled);
     await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+    // When disabling knowledge, also clear the session's knowledge set
+    // so the Capsule panel auto-closes
+    if (knowledgeEnabled && onUpdateSessionKnowledge) {
+      await onUpdateSessionKnowledge(null);
+    }
   };
 
   const handleToggleImage = async () => {

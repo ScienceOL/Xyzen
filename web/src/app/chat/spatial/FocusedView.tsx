@@ -1,19 +1,22 @@
 import { AgentList } from "@/components/agents";
 import ChatStatusBadge from "@/components/base/ChatStatusBadge";
+import { Capsule } from "@/components/capsule";
 import {
   DOCK_HORIZONTAL_MARGIN,
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import XyzenChat from "@/components/layouts/XyzenChat";
-import { Capsule } from "@/components/capsule";
-import { useRunningAgentIds } from "@/hooks/useChannelSelectors";
+import {
+  useActiveChannelStatus,
+  useRunningAgentIds,
+} from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { ChevronLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { AgentData } from "./types";
 import { useTranslation } from "react-i18next";
+import { AgentData } from "./types";
 
 interface FocusedViewProps {
   agent: AgentData;
@@ -48,6 +51,7 @@ export function FocusedView({
   } = useXyzen();
   const collapsed = spatialSidebarCollapsed;
   const runningAgentIds = useRunningAgentIds();
+  const { knowledge_set_id: focusedKnowledgeSetId } = useActiveChannelStatus();
 
   // Convert AgentData to Agent type for AgentList component
   const agentsForList: Agent[] = useMemo(
@@ -240,7 +244,7 @@ export function FocusedView({
 
   return (
     <div
-      className="absolute inset-0 z-40 flex items-stretch pt-4 gap-4 pointer-events-none"
+      className="absolute inset-0 z-40 flex items-stretch pt-4 pointer-events-none"
       style={{
         paddingBottom: DOCK_SAFE_AREA,
         paddingLeft: DOCK_HORIZONTAL_MARGIN,
@@ -392,22 +396,29 @@ export function FocusedView({
         animate={{ x: 0, opacity: 1, scale: 1 }}
         exit={{ x: 50, opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-        className="spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/60 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
+        className="ml-4 spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/60 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
         ref={chatRef}
       >
         {/* XyzenChat Component - No modifications, just wrapped */}
         <XyzenChat />
       </motion.div>
 
-      {/* 3. Capsule Panel - Right Side */}
+      {/* 3. Capsule Panel - Right Side
+          Always mounted so the outer AnimatePresence (SpatialWorkspace)
+          can drive the exit animation when FocusedView unmounts.
+          The animate prop reacts to knowledge_set_id within the view. */}
       <motion.div
-        initial={{ x: 50, opacity: 0, scale: 0.95 }}
-        animate={{ x: 0, opacity: 1, scale: 1 }}
-        exit={{ x: 50, opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
+        initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+        animate={
+          focusedKnowledgeSetId
+            ? { opacity: 1, width: "auto", marginLeft: 16 }
+            : { opacity: 0, width: 0, marginLeft: 0 }
+        }
+        exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         className="shrink-0 pointer-events-none h-full"
       >
-        <Capsule variant="spatial" />
+        {focusedKnowledgeSetId && <Capsule variant="spatial" />}
       </motion.div>
     </div>
   );
