@@ -25,6 +25,7 @@ from .knowledge_set import (
 )
 from .links import AgentMcpServerLink
 from .mcp import McpServer
+from .skill import AgentSkillLink, Skill, SkillCreate, SkillRead, SkillUpdate
 from .message import (
     Message,
     MessageRead,
@@ -80,6 +81,11 @@ __all__ = [
     "FileKnowledgeSetLinkCreate",
     "FileKnowledgeSetLinkRead",
     "AgentMcpServerLink",
+    "AgentSkillLink",
+    "Skill",
+    "SkillCreate",
+    "SkillRead",
+    "SkillUpdate",
     "McpServer",
     "Message",
     "MessageRead",
