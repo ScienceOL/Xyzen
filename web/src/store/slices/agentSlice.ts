@@ -409,6 +409,17 @@ export const createAgentSlice: StateCreator<
   },
 
   updateAgent: async (agent) => {
+    // Save previous state for rollback
+    const previousAgents = get().agents;
+
+    // Optimistic update: apply changes to local state immediately
+    set((state) => {
+      const idx = state.agents.findIndex((a) => a.id === agent.id);
+      if (idx !== -1) {
+        state.agents[idx] = { ...state.agents[idx], ...agent };
+      }
+    });
+
     try {
       const response = await fetch(
         `${get().backendUrl}/xyzen/api/v1/agents/${agent.id}`,
@@ -422,8 +433,25 @@ export const createAgentSlice: StateCreator<
         const errorText = await response.text();
         throw new Error(`Failed to update agent: ${errorText}`);
       }
-      await get().fetchAgents();
+
+      // Reconcile with server response to pick up any server-side changes
+      const updatedAgent: Agent = await response.json();
+      set((state) => {
+        const idx = state.agents.findIndex((a) => a.id === agent.id);
+        if (idx !== -1) {
+          // Preserve local-only fields (spatial_layout, avatar from session)
+          const { spatial_layout, avatar } = state.agents[idx];
+          state.agents[idx] = {
+            ...state.agents[idx],
+            ...updatedAgent,
+            spatial_layout,
+            avatar,
+          };
+        }
+      });
     } catch (error) {
+      // Rollback on error
+      set({ agents: previousAgents });
       console.error(error);
       throw error;
     }
