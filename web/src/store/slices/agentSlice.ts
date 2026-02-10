@@ -36,6 +36,10 @@ export interface AgentSlice {
 
   isCreatingAgent: boolean;
   createAgent: (agent: Omit<Agent, "id">) => Promise<string | undefined>;
+  addForkedAgent: (
+    agentId: string,
+    centerPosition: { x: number; y: number },
+  ) => Promise<void>;
   updateAgent: (agent: Agent | AgentWithLayout) => Promise<void>;
   updateAgentLayout: (
     agentId: string,
@@ -355,6 +359,52 @@ export const createAgentSlice: StateCreator<
       throw error;
     } finally {
       set({ isCreatingAgent: false });
+    }
+  },
+
+  addForkedAgent: async (agentId, centerPosition) => {
+    try {
+      // Fetch the single agent data
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/${agentId}`,
+        { headers: createAuthHeaders() },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch forked agent");
+      }
+      const agent = await response.json();
+
+      // Fetch session for this agent to get avatar if available
+      let avatar = agent.avatar;
+      try {
+        const session = await sessionService.getSessionByAgent(agentId);
+        if (session.avatar) {
+          avatar = session.avatar;
+        }
+      } catch {
+        // Session doesn't exist yet - will be created when user starts chat
+        console.debug(`No session found for agent ${agentId}`);
+      }
+
+      // Incrementally add to agents array, using the passed center position
+      // Also set pendingNewAgentId for animation when SpatialWorkspace mounts
+      const existingAgents = get().agents;
+      const newAgent: AgentWithLayout = {
+        ...agent,
+        avatar,
+        spatial_layout: {
+          position: centerPosition,
+          size: "medium",
+          gridSize: { w: 2, h: 1 },
+        },
+      };
+      set({
+        agents: [...existingAgents, newAgent],
+      });
+    } catch (error) {
+      console.error("Failed to add forked agent:", error);
+      // Fallback: use fetchAgents to refresh all
+      await get().fetchAgents();
     }
   },
 

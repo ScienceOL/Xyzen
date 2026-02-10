@@ -11,6 +11,7 @@ import Markdown from "@/lib/Markdown";
 import { AgentSnapshot } from "@/service/marketplaceService";
 import { useXyzen } from "@/store";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
+import { STORAGE_KEY_VIEWPORT } from "@/app/chat/spatial/constants";
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -87,7 +88,8 @@ export default function AgentMarketplaceDetail({
   >("readme");
 
   // Get fetchAgents from store to refresh after fork
-  const fetchAgents = useXyzen((state) => state.fetchAgents);
+  const addForkedAgent = useXyzen((state) => state.addForkedAgent);
+  const setActivePanel = useXyzen((state) => state.setActivePanel);
 
   // Note: Unpublish and Edit README states removed as they moved to dedicated Manage view
 
@@ -122,9 +124,43 @@ export default function AgentMarketplaceDetail({
     setShowForkModal(true);
   };
 
+  // Calculate center position from stored viewport
+  const getViewportCenterFromStorage = () => {
+    try {
+      const savedViewport = localStorage.getItem(STORAGE_KEY_VIEWPORT);
+      if (savedViewport) {
+        const viewport = JSON.parse(savedViewport);
+        const containerW = window.innerWidth;
+        const containerH = window.innerHeight;
+
+        const centerX = (containerW / 2 - viewport.x) / viewport.zoom;
+        const centerY = (containerH / 2 - viewport.y) / viewport.zoom;
+
+        const nodeWidth = 320;
+        const nodeHeight = 160;
+
+        return {
+          x: centerX - nodeWidth / 2,
+          y: centerY - nodeHeight / 2,
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to read viewport from localStorage", e);
+    }
+    return { x: 100, y: 100 }; // Default position
+  };
+
   const handleForkSuccess = async (agentId: string) => {
-    // Refresh the agents list in the store so SpatialWorkspace sees the new agent
-    await fetchAgents();
+    // 1. First switch to chat panel (let SpatialWorkspace mount)
+    setActivePanel("chat");
+
+    // 2. Wait for SpatialWorkspace to mount and initialize prevAgentIdsRef
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // 3. Incrementally add agent (SpatialWorkspace can now detect incremental change)
+    const centerPosition = getViewportCenterFromStorage();
+    await addForkedAgent(agentId, centerPosition);
+
     console.log("Agent forked successfully:", agentId);
   };
 
