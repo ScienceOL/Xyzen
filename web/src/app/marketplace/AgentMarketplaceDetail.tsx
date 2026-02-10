@@ -1,6 +1,7 @@
 "use client";
 
 import ForkAgentModal from "@/components/features/ForkAgentModal";
+import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
 import {
   useMarketplaceListing,
   useMarketplaceRequirements,
@@ -65,6 +66,7 @@ interface AgentMarketplaceDetailProps {
   marketplaceId: string;
   onBack: () => void;
   onManage?: () => void;
+  backLabel?: string;
 }
 
 /**
@@ -76,6 +78,7 @@ export default function AgentMarketplaceDetail({
   marketplaceId,
   onBack,
   onManage,
+  backLabel,
 }: AgentMarketplaceDetailProps) {
   const { t } = useTranslation();
   const [showForkModal, setShowForkModal] = useState(false);
@@ -102,6 +105,8 @@ export default function AgentMarketplaceDetail({
   const toggleLike = useToggleLike();
 
   const isOwner = useIsMarketplaceOwner(listing);
+
+  const shareUrl = `${window.location.origin}/#/agent/${marketplaceId}`;
 
   const handleBack = () => {
     onBack();
@@ -162,7 +167,7 @@ export default function AgentMarketplaceDetail({
             className="group mb-4 flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition-all hover:border-neutral-300 hover:shadow dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-700"
           >
             <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            <span>{t("marketplace.detail.back")}</span>
+            <span>{backLabel ?? t("marketplace.detail.back")}</span>
           </button>
         </div>
 
@@ -652,6 +657,27 @@ export default function AgentMarketplaceDetail({
                       </div>
                     </button>
                   )}
+                </div>
+
+                <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />
+
+                {/* Share */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+                    {t("marketplace.detail.actions.shareTitle")}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-900">
+                      <p className="truncate text-xs text-neutral-500">
+                        {shareUrl}
+                      </p>
+                    </div>
+                    <CopyButton
+                      content={shareUrl}
+                      variant="outline"
+                      size="default"
+                    />
+                  </div>
                 </div>
 
                 <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />

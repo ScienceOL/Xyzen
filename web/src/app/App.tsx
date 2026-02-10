@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
 import { SecretCodePage } from "@/components/admin/SecretCodePage";
+import SharedAgentDetailPage from "@/app/marketplace/SharedAgentDetailPage";
 import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
@@ -20,6 +21,11 @@ import { LandingPage } from "./landing/LandingPage";
 
 // Handle relink callback in popup - check at module level
 handleRelinkCallback();
+
+function parseAgentShareHash(hash: string): string | null {
+  const match = hash.match(/^#\/agent\/([a-zA-Z0-9_-]+)$/);
+  return match ? match[1] : null;
+}
 
 // 创建 React Query client
 const queryClient = new QueryClient({
@@ -234,6 +240,7 @@ export function Xyzen({
     status === "loading" ||
     (status === "succeeded" && !initialLoadComplete);
   const authFailed = status === "failed";
+  const sharedAgentId = parseAgentShareHash(currentHash);
   // 手机阈值：512px 以下强制 Sidebar（不可拖拽，全宽）
   const isMobile = viewportWidth < MOBILE_BREAKPOINT;
 
@@ -272,6 +279,13 @@ export function Xyzen({
     ) : (
       <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />
     )
+  ) : sharedAgentId ? (
+    <SharedAgentDetailPage
+      marketplaceId={sharedAgentId}
+      onBack={() => {
+        window.location.hash = "";
+      }}
+    />
   ) : (
     <>{mainLayout}</>
   );

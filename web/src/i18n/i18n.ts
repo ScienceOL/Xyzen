@@ -4,6 +4,7 @@ import { initReactI18next } from "react-i18next";
 
 import enAgents from "./locales/en/agents.json";
 import enApp from "./locales/en/app.json";
+import enCapsule from "./locales/en/capsule.json";
 import enCommon from "./locales/en/common.json";
 import enKnowledge from "./locales/en/knowledge.json";
 import enLanding from "./locales/en/landing.json";
@@ -13,6 +14,7 @@ import enSettings from "./locales/en/settings.json";
 
 import jaAgents from "./locales/ja/agents.json";
 import jaApp from "./locales/ja/app.json";
+import jaCapsule from "./locales/ja/capsule.json";
 import jaCommon from "./locales/ja/common.json";
 import jaKnowledge from "./locales/ja/knowledge.json";
 import jaLanding from "./locales/ja/landing.json";
@@ -22,6 +24,7 @@ import jaSettings from "./locales/ja/settings.json";
 
 import zhAgents from "./locales/zh/agents.json";
 import zhApp from "./locales/zh/app.json";
+import zhCapsule from "./locales/zh/capsule.json";
 import zhCommon from "./locales/zh/common.json";
 import zhKnowledge from "./locales/zh/knowledge.json";
 import zhLanding from "./locales/zh/landing.json";
@@ -51,6 +54,7 @@ export function initI18n() {
         en: {
           translation: {
             app: enApp,
+            capsule: enCapsule,
             common: enCommon,
             settings: enSettings,
             marketplace: enMarketplace,
@@ -63,6 +67,7 @@ export function initI18n() {
         zh: {
           translation: {
             app: zhApp,
+            capsule: zhCapsule,
             common: zhCommon,
             settings: zhSettings,
             marketplace: zhMarketplace,
@@ -75,6 +80,7 @@ export function initI18n() {
         ja: {
           translation: {
             app: jaApp,
+            capsule: jaCapsule,
             common: jaCommon,
             settings: jaSettings,
             marketplace: jaMarketplace,

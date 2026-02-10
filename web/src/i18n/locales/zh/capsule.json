@@ -1,0 +1,21 @@
+{
+  "tabs": {
+    "knowledge": "知识库",
+    "tools": "工具",
+    "memory": "记忆",
+    "comingSoon": "即将推出"
+  },
+  "knowledge": {
+    "fileCount": "{{count}} 个文件",
+    "noKnowledgeSet": "未绑定知识库",
+    "noKnowledgeSetHint": "为此对话绑定知识库即可在此查看文件。",
+    "loading": "加载中...",
+    "noFiles": "此知识库中没有文件。"
+  },
+  "collapse": "收起面板",
+  "expand": "展开面板",
+  "dock": "固定面板",
+  "back": "返回",
+  "mobileBanner": "知识库",
+  "capsule": "Capsule"
+}

@@ -29,6 +29,9 @@ export interface UiSlice {
   activeUiSetting: UiSettingType;
   selectedProviderId: string | null;
   pendingInput: string;
+  spatialSidebarCollapsed: boolean;
+  capsuleOpen: boolean;
+  capsuleActiveTab: "knowledge" | "tools" | "memory";
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -57,6 +60,9 @@ export interface UiSlice {
   setSelectedProvider: (id: string | null) => void;
   setPendingInput: (input: string) => void;
   submitInput: () => void;
+  setSpatialSidebarCollapsed: (collapsed: boolean) => void;
+  setCapsuleOpen: (open: boolean) => void;
+  setCapsuleActiveTab: (tab: "knowledge" | "tools" | "memory") => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -83,6 +89,9 @@ export const createUiSlice: StateCreator<
   activeUiSetting: "theme",
   selectedProviderId: null,
   pendingInput: "",
+  spatialSidebarCollapsed: false,
+  capsuleOpen: false,
+  capsuleActiveTab: "knowledge",
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -139,4 +148,8 @@ export const createUiSlice: StateCreator<
       activePanel: "chat", // Switch to Chat panel
       // Keep the pendingInput so it can be used by the chat component
     })),
+  setSpatialSidebarCollapsed: (collapsed) =>
+    set({ spatialSidebarCollapsed: collapsed }),
+  setCapsuleOpen: (open) => set({ capsuleOpen: open }),
+  setCapsuleActiveTab: (tab) => set({ capsuleActiveTab: tab }),
 });

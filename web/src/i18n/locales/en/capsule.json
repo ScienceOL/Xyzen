@@ -1,0 +1,21 @@
+{
+  "tabs": {
+    "knowledge": "Knowledge",
+    "tools": "Tools",
+    "memory": "Memory",
+    "comingSoon": "Coming soon"
+  },
+  "knowledge": {
+    "fileCount": "{{count}} files",
+    "noKnowledgeSet": "No knowledge base",
+    "noKnowledgeSetHint": "Bind a knowledge base to this conversation to see files here.",
+    "loading": "Loading...",
+    "noFiles": "No files in this knowledge base."
+  },
+  "collapse": "Collapse panel",
+  "expand": "Expand panel",
+  "dock": "Pin panel",
+  "back": "Back",
+  "mobileBanner": "Knowledge Base",
+  "capsule": "Capsule"
+}
