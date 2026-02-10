@@ -96,6 +96,23 @@ class SandboxGrepInput(BaseModel):
     )
 
 
+class SandboxExportInput(BaseModel):
+    """Input schema for sandbox_export tool."""
+
+    path: str = Field(
+        description=(
+            "Absolute sandbox file path to export into user files "
+            "(must be under /workspace, e.g. /workspace/output/report.pdf)."
+        ),
+    )
+    filename: str | None = Field(
+        default=None,
+        description=(
+            "Optional output filename in OSS. If omitted, uses the basename from path."
+        ),
+    )
+
+
 __all__ = [
     "SandboxBashInput",
     "SandboxReadInput",
@@ -103,4 +120,5 @@ __all__ = [
     "SandboxEditInput",
     "SandboxGlobInput",
     "SandboxGrepInput",
+    "SandboxExportInput",
 ]

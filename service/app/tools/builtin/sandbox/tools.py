@@ -16,6 +16,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 from .operations import (
     sandbox_edit,
     sandbox_exec,
+    sandbox_export,
     sandbox_glob,
     sandbox_grep,
     sandbox_read,
@@ -24,6 +25,7 @@ from .operations import (
 from .schemas import (
     SandboxBashInput,
     SandboxEditInput,
+    SandboxExportInput,
     SandboxGlobInput,
     SandboxGrepInput,
     SandboxReadInput,
@@ -129,10 +131,26 @@ def create_sandbox_tools() -> dict[str, BaseTool]:
         coroutine=grep_placeholder,
     )
 
+    async def export_placeholder(path: str, filename: str | None = None) -> dict[str, Any]:
+        return _placeholder_error
+
+    tools["sandbox_export"] = StructuredTool(
+        name="sandbox_export",
+        description=(
+            "Export a file from the sandbox into your file library. "
+            "The path must be under /workspace. Returns a file_id and download URL."
+        ),
+        args_schema=SandboxExportInput,
+        coroutine=export_placeholder,
+    )
+
     return tools
 
 
-def create_sandbox_tools_for_session(session_id: str) -> list[BaseTool]:
+def create_sandbox_tools_for_session(
+    session_id: str,
+    user_id: str | None = None,
+) -> list[BaseTool]:
     """
     Create sandbox tools bound to a specific session.
 
@@ -142,6 +160,7 @@ def create_sandbox_tools_for_session(session_id: str) -> list[BaseTool]:
 
     Args:
         session_id: Session UUID string
+        user_id: Current user ID (needed for sandbox_export)
 
     Returns:
         List of BaseTool instances with session context bound
@@ -250,6 +269,28 @@ def create_sandbox_tools_for_session(session_id: str) -> list[BaseTool]:
             ),
             args_schema=SandboxGrepInput,
             coroutine=grep_bound,
+        )
+    )
+
+    # --- sandbox_export ---
+    async def export_bound(path: str, filename: str | None = None) -> dict[str, Any]:
+        return await sandbox_export(
+            manager,
+            user_id=user_id,
+            session_id=session_id,
+            path=path,
+            filename=filename,
+        )
+
+    tools.append(
+        StructuredTool(
+            name="sandbox_export",
+            description=(
+                "Export a file from the sandbox into your file library. "
+                "The path must be under /workspace. Returns a file_id and download URL."
+            ),
+            args_schema=SandboxExportInput,
+            coroutine=export_bound,
         )
     )
 

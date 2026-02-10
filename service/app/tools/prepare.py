@@ -168,7 +168,10 @@ def _load_all_builtin_tools(
         if app_configs.Sandbox.Enable:
             from app.tools.builtin.sandbox import create_sandbox_tools_for_session
 
-            sandbox_tools = create_sandbox_tools_for_session(session_id=str(session_id))
+            sandbox_tools = create_sandbox_tools_for_session(
+                session_id=str(session_id),
+                user_id=user_id,
+            )
             tools.extend(sandbox_tools)
 
     return tools
