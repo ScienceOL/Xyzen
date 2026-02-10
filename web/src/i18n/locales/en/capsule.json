@@ -2,6 +2,7 @@
   "tabs": {
     "knowledge": "Knowledge",
     "tools": "Tools",
+    "sandbox": "Sandbox",
     "memory": "Memory",
     "comingSoon": "Coming soon"
   },
@@ -11,6 +12,21 @@
     "noKnowledgeSetHint": "Bind a knowledge base to this conversation to see files here.",
     "loading": "Loading...",
     "noFiles": "No files in this knowledge base."
+  },
+  "memory": {
+    "noMemories": "No memories yet",
+    "noMemoriesHint": "Memories are created by the agent during conversations.",
+    "loading": "Loading memories...",
+    "error": "Failed to load memories"
+  },
+  "sandbox": {
+    "noSession": "No active session",
+    "noSandbox": "No sandbox active",
+    "noSandboxHint": "A sandbox is created when the agent runs code.",
+    "loading": "Loading files...",
+    "error": "Failed to load sandbox files",
+    "emptyFolder": "Empty folder",
+    "refresh": "Refresh"
   },
   "collapse": "Collapse panel",
   "expand": "Expand panel",
