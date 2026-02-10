@@ -275,7 +275,7 @@ function renderFileList(
       >
         <span className="truncate">{file.name}</span>
         {file.size != null && (
-          <span className="ml-auto shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">
+          <span className="ml-auto pl-2 shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">
             {formatFileSize(file.size)}
           </span>
         )}
