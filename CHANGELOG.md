@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.1](https://github.com/ScienceOL/Xyzen/compare/v1.3.0...v1.3.1) (2026-02-10)
+
+### 🐛 Bug Fixes
+
+* sandbox, long memory, skills ([5847d87](https://github.com/ScienceOL/Xyzen/commit/5847d874b7ef718950105d06866024cc01634121)), closes [#236](https://github.com/ScienceOL/Xyzen/issues/236)
+
 ## [1.3.0](https://github.com/ScienceOL/Xyzen/compare/v1.2.0...v1.3.0) (2026-02-09)
 
 ### ✨ Features
