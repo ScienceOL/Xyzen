@@ -3,12 +3,15 @@ import { TrashIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-function formatRelativeTime(dateString: string): string {
+function formatRelativeTime(
+  dateString: string,
+  t: (key: string, defaultValue: string) => string,
+): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "just now";
+  if (diffMins < 1) return t("capsule.memory.justNow", "just now");
   if (diffMins < 60) return `${diffMins}m ago`;
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -40,18 +43,20 @@ export function MemoryTab() {
     void loadMemories();
   }, [loadMemories]);
 
-  const handleDelete = useCallback(
-    async (key: string) => {
-      const prev = memories;
-      setMemories((m) => m.filter((item) => item.key !== key));
-      try {
-        await memoryService.deleteMemory(key);
-      } catch {
-        setMemories(prev);
+  const handleDelete = useCallback(async (key: string) => {
+    let removed: MemoryItem | undefined;
+    setMemories((prev) => {
+      removed = prev.find((item) => item.key === key);
+      return prev.filter((item) => item.key !== key);
+    });
+    try {
+      await memoryService.deleteMemory(key);
+    } catch {
+      if (removed) {
+        setMemories((prev) => [...prev, removed!]);
       }
-    },
-    [memories],
-  );
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -94,7 +99,10 @@ export function MemoryTab() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
         <p className="text-xs text-neutral-400 dark:text-neutral-500">
-          {memories.length} {memories.length === 1 ? "memory" : "memories"}
+          {memories.length}{" "}
+          {memories.length === 1
+            ? t("capsule.memory.countSingular", "memory")
+            : t("capsule.memory.countPlural", "memories")}
         </p>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -109,13 +117,13 @@ export function MemoryTab() {
                   {memory.content}
                 </p>
                 <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
-                  {formatRelativeTime(memory.updated_at)}
+                  {formatRelativeTime(memory.updated_at, t)}
                 </p>
               </div>
               <button
                 onClick={() => void handleDelete(memory.key)}
                 className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400 hover:text-red-500 dark:text-neutral-500 dark:hover:text-red-400"
-                title="Delete"
+                title={t("capsule.memory.delete", "Delete")}
               >
                 <TrashIcon className="w-3.5 h-3.5" />
               </button>

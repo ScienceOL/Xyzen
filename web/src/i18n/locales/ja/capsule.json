@@ -17,7 +17,11 @@
     "noMemories": "メモリーはまだありません",
     "noMemoriesHint": "メモリーは会話中にエージェントが自動的に作成します。",
     "loading": "読み込み中...",
-    "error": "メモリーの読み込みに失敗しました"
+    "error": "メモリーの読み込みに失敗しました",
+    "justNow": "たった今",
+    "countSingular": "件のメモリー",
+    "countPlural": "件のメモリー",
+    "delete": "削除"
   },
   "sandbox": {
     "noSession": "アクティブなセッションがありません",

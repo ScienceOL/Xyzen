@@ -17,7 +17,11 @@
     "noMemories": "暂无记忆",
     "noMemoriesHint": "记忆由 Agent 在对话过程中自动创建。",
     "loading": "加载中...",
-    "error": "加载记忆失败"
+    "error": "加载记忆失败",
+    "justNow": "刚刚",
+    "countSingular": "条记忆",
+    "countPlural": "条记忆",
+    "delete": "删除"
   },
   "sandbox": {
     "noSession": "无活动会话",

@@ -17,7 +17,11 @@
     "noMemories": "No memories yet",
     "noMemoriesHint": "Memories are created by the agent during conversations.",
     "loading": "Loading memories...",
-    "error": "Failed to load memories"
+    "error": "Failed to load memories",
+    "justNow": "just now",
+    "countSingular": "memory",
+    "countPlural": "memories",
+    "delete": "Delete"
   },
   "sandbox": {
     "noSession": "No active session",

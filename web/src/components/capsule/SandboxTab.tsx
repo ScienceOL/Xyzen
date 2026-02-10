@@ -108,22 +108,27 @@ export function SandboxTab() {
   const loadFolder = useCallback(
     async (path: string) => {
       if (!sessionId || childrenCache[path]) return;
+      const capturedSessionId = sessionId;
       setLoadingFolders((s) => new Set(s).add(path));
       try {
         const res = await sandboxService.listFiles(sessionId, path);
+        if (sessionIdRef.current !== capturedSessionId) return;
         setChildrenCache((prev) => ({
           ...prev,
           [path]: sortFiles(res.files),
         }));
       } catch {
+        if (sessionIdRef.current !== capturedSessionId) return;
         // Silently fail — folder will show empty
         setChildrenCache((prev) => ({ ...prev, [path]: [] }));
       } finally {
-        setLoadingFolders((s) => {
-          const next = new Set(s);
-          next.delete(path);
-          return next;
-        });
+        if (sessionIdRef.current === capturedSessionId) {
+          setLoadingFolders((s) => {
+            const next = new Set(s);
+            next.delete(path);
+            return next;
+          });
+        }
       }
     },
     [sessionId, childrenCache],
