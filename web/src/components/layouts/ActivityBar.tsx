@@ -2,11 +2,12 @@ import {
   ChatBubbleLeftRightIcon,
   FolderIcon,
   SparklesIcon,
+  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
-export type ActivityPanel = "chat" | "knowledge" | "marketplace";
+export type ActivityPanel = "chat" | "knowledge" | "skills" | "marketplace";
 
 interface ActivityBarProps {
   activePanel: ActivityPanel;
@@ -108,6 +109,12 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
       panel: "knowledge" as ActivityPanel,
       icon: FolderIcon, // Using FolderIcon for Knowledge Base
       label: t("app.activityBar.knowledge"),
+      disabled: false,
+    },
+    {
+      panel: "skills" as ActivityPanel,
+      icon: WrenchScrewdriverIcon,
+      label: t("app.activityBar.skills", "Skills"),
       disabled: false,
     },
     {
