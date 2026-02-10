@@ -35,6 +35,37 @@ if config.attributes.get("configure_logger", True):
 # for 'autogenerate' support
 target_metadata = SQLModel.metadata
 
+# Tables managed outside of Alembic (created by langmem/langgraph directly).
+# Exclude from autogenerate to prevent spurious DROP TABLE / DROP INDEX diffs.
+EXCLUDED_TABLES: set[str] = {
+    "store",
+    "store_vectors",
+    "store_migrations",
+    "vector_migrations",
+}
+
+
+def include_object(
+    object: object,  # noqa: A002
+    name: str | None,
+    type_: str,
+    reflected: bool,
+    compare_to: object | None,
+) -> bool:
+    """Filter objects for autogenerate.
+
+    Excludes tables and indexes owned by external systems (langmem, pgvector)
+    that create their own schemas outside of Alembic.
+    """
+    if type_ == "table" and name in EXCLUDED_TABLES:
+        return False
+    # Also exclude indexes on excluded tables
+    if type_ == "index" and getattr(object, "table", None) is not None:
+        table_name = getattr(object.table, "name", None)  # type: ignore[union-attr]
+        if table_name in EXCLUDED_TABLES:
+            return False
+    return True
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -78,6 +109,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -105,7 +137,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object)
 
         with context.begin_transaction():
             context.run_migrations()

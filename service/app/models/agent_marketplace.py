@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import TIMESTAMP, Column
+from sqlalchemy import TIMESTAMP, Column, Index, text
 from sqlmodel import JSON, Field, SQLModel
 
 from app.models.agent import ForkMode
@@ -20,6 +20,15 @@ class MarketplaceScope(StrEnum):
 
 class AgentMarketplace(SQLModel, table=True):
     """Public listing of community agents"""
+
+    __table_args__ = (
+        Index(
+            "uq_agentmarketplace_builtin_key_not_null",
+            "builtin_key",
+            unique=True,
+            postgresql_where=text("builtin_key IS NOT NULL"),
+        ),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
 
