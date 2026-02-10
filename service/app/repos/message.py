@@ -123,7 +123,7 @@ class MessageRepository:
 
             if files:
                 storage = get_storage_service()
-                storage_keys = [file.storage_key for file in files]
+                storage_keys = [file.storage_key for file in files if file.storage_key]
 
                 # Delete from object storage
                 try:
@@ -227,7 +227,7 @@ class MessageRepository:
             if files:
                 # Delete from object storage
                 storage = get_storage_service()
-                storage_keys = [file.storage_key for file in files]
+                storage_keys = [file.storage_key for file in files if file.storage_key]
                 try:
                     await storage.delete_files(storage_keys)
                     logger.info(f"Deleted {len(storage_keys)} files from storage")

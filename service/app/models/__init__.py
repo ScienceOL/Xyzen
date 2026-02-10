@@ -16,7 +16,6 @@ from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
 from .file_knowledge_set_link import FileKnowledgeSetLink, FileKnowledgeSetLinkCreate, FileKnowledgeSetLinkRead
-from .folder import Folder, FolderCreate, FolderRead, FolderUpdate
 from .knowledge_set import (
     KnowledgeSet,
     KnowledgeSetCreate,
@@ -26,6 +25,7 @@ from .knowledge_set import (
 )
 from .links import AgentMcpServerLink
 from .mcp import McpServer
+from .skill import AgentSkillLink, Skill, SkillCreate, SkillRead, SkillUpdate
 from .message import (
     Message,
     MessageRead,
@@ -72,10 +72,6 @@ __all__ = [
     "FileRead",
     "FileReadWithUrl",
     "FileUpdate",
-    "Folder",
-    "FolderCreate",
-    "FolderRead",
-    "FolderUpdate",
     "KnowledgeSet",
     "KnowledgeSetCreate",
     "KnowledgeSetRead",
@@ -85,6 +81,11 @@ __all__ = [
     "FileKnowledgeSetLinkCreate",
     "FileKnowledgeSetLinkRead",
     "AgentMcpServerLink",
+    "AgentSkillLink",
+    "Skill",
+    "SkillCreate",
+    "SkillRead",
+    "SkillUpdate",
     "McpServer",
     "Message",
     "MessageRead",

@@ -101,7 +101,7 @@ export interface ChatSlice {
   // Knowledge Context
   setKnowledgeContext: (
     channelId: string,
-    context: { folderId: string; folderName: string } | null,
+    context: { parentId: string; folderName: string } | null,
   ) => void;
 
   // Message editing state

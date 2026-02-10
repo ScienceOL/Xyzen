@@ -41,7 +41,7 @@ async def upload_file(
     file: UploadFile = File(...),
     scope: str = Form(FileScope.PRIVATE),
     category: str | None = Form(None),
-    folder_id: UUID | None = Form(None),
+    parent_id: UUID | None = Form(None),
     knowledge_set_id: UUID | None = Form(None),
     user_id: str = Depends(get_current_user),
     storage: StorageServiceProto = Depends(get_storage_service),
@@ -54,7 +54,7 @@ async def upload_file(
         file: The file to upload (multipart/form-data)
         scope: File scope (public/private/generated), default: private
         category: File category (images/documents/audio/others), auto-detected if not provided
-        folder_id: Optional folder ID to organize the file
+        parent_id: Optional parent directory ID to organize the file
         user_id: Authenticated user ID (injected by dependency)
         storage: Storage service instance (injected by dependency)
         db: Database session (injected by dependency)
@@ -131,7 +131,7 @@ async def upload_file(
             category=category or FileCategory.OTHER,
             file_hash=file_hash,
             metainfo={"original_content_type": file.content_type},
-            folder_id=folder_id,
+            parent_id=parent_id,
         )
 
         file_record = await file_repo.create_file(file_create)
@@ -177,8 +177,8 @@ async def list_files(
     include_deleted: bool = False,
     limit: int = 100,
     offset: int = 0,
-    folder_id: UUID | None = None,
-    filter_by_folder: bool = False,
+    parent_id: UUID | None = None,
+    filter_by_parent: bool = False,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[FileRead]:
@@ -191,8 +191,8 @@ async def list_files(
         include_deleted: Whether to include soft-deleted files, default: False
         limit: Maximum number of files to return, default: 100
         offset: Number of files to skip, default: 0
-        folder_id: Optional folder ID to filter by.
-        filter_by_folder: If True, filters files by folder_id (even if None).
+        parent_id: Optional parent directory ID to filter by.
+        filter_by_parent: If True, filters files by parent_id (even if None).
         user_id: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
@@ -208,8 +208,8 @@ async def list_files(
             include_deleted=include_deleted,
             limit=min(limit, 1000),  # Cap at 1000
             offset=offset,
-            folder_id=folder_id,
-            use_folder_filter=filter_by_folder,
+            parent_id=parent_id,
+            use_parent_filter=filter_by_parent,
         )
 
         return [FileRead(**file.model_dump()) for file in files]
@@ -254,6 +254,9 @@ async def get_file(
         # Check ownership
         if file_record.user_id != user_id and file_record.scope != FileScope.PUBLIC:
             raise ErrCode.FILE_ACCESS_DENIED.with_messages("You don't have access to this file")
+
+        if not file_record.storage_key:
+            raise ErrCode.FILE_NOT_FOUND.with_messages(f"File {file_id} has no storage key (directory entry)")
 
         # Generate download URL
         download_url = await storage.generate_download_url(file_record.storage_key, expires_in=3600)
@@ -306,6 +309,9 @@ async def download_file(
         # Check ownership
         if file_record.user_id != user_id and file_record.scope != FileScope.PUBLIC:
             raise ErrCode.FILE_ACCESS_DENIED.with_messages("You don't have access to this file")
+
+        if not file_record.storage_key:
+            raise ErrCode.FILE_NOT_FOUND.with_messages(f"File {file_id} has no storage key (directory entry)")
 
         # Download from storage
         file_stream = BytesIO()
@@ -390,6 +396,11 @@ async def convert_docx_to_pdf(
 
         # Download the Word file from storage
         file_buffer = BytesIO()
+        if not file.storage_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File has no storage key (directory entry)",
+            )
         try:
             await storage.download_file(file.storage_key, file_buffer)
         except Exception as e:
@@ -489,6 +500,11 @@ async def convert_xlsx_to_pdf(
 
         # Download the Excel file from storage
         file_buffer = BytesIO()
+        if not file.storage_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File has no storage key (directory entry)",
+            )
         try:
             await storage.download_file(file.storage_key, file_buffer)
         except Exception as e:
@@ -587,6 +603,11 @@ async def convert_pptx_to_pdf_get(
 
         # Download the PowerPoint file from storage
         file_buffer = BytesIO()
+        if not file.storage_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File has no storage key (directory entry)",
+            )
         try:
             await storage.download_file(file.storage_key, file_buffer)
         except Exception as e:
@@ -672,6 +693,9 @@ async def get_file_url(
         # Check ownership
         if file_record.user_id != user_id and file_record.scope != FileScope.PUBLIC:
             raise ErrCode.FILE_ACCESS_DENIED.with_messages("You don't have access to this file")
+
+        if not file_record.storage_key:
+            raise ErrCode.FILE_NOT_FOUND.with_messages(f"File {file_id} has no storage key (directory entry)")
 
         # Generate presigned URL
         download_url = await storage.generate_download_url(file_record.storage_key, expires_in=expires_in)
@@ -781,7 +805,8 @@ async def delete_file(
 
         if hard_delete:
             # Delete from object storage
-            await storage.delete_file(file_record.storage_key)
+            if file_record.storage_key:
+                await storage.delete_file(file_record.storage_key)
             # Delete from database
             await file_repo.hard_delete_file(file_id)
             logger.info(f"File {file_id} hard deleted by user {user_id}")

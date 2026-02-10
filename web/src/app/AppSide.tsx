@@ -4,6 +4,7 @@ import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
+import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { Capsule } from "@/components/capsule";
@@ -437,6 +438,12 @@ export function AppSide({
               ))}
 
             {activePanel === "knowledge" && <KnowledgeBase />}
+
+            {activePanel === "skills" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <SkillsLibrary />
+              </div>
+            )}
 
             {activePanel === "marketplace" && (
               <div className="h-full bg-white dark:bg-neutral-950">

@@ -11,6 +11,7 @@ import {
   FolderIcon,
   SparklesIcon,
   UserIcon,
+  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import {
   AnimatePresence,
@@ -50,7 +51,7 @@ export const DOCK_SAFE_AREA = 80;
 // Horizontal margin for dock and other full-width elements
 export const DOCK_HORIZONTAL_MARGIN = 8;
 
-export type ActivityPanel = "chat" | "knowledge" | "marketplace";
+export type ActivityPanel = "chat" | "knowledge" | "skills" | "marketplace";
 
 interface BottomDockProps {
   activePanel: ActivityPanel;
@@ -508,6 +509,12 @@ export function BottomDock({
       icon: FolderIcon,
       label: t("app.activityBar.knowledge"),
       panel: "knowledge",
+    },
+    {
+      id: "skills",
+      icon: WrenchScrewdriverIcon,
+      label: t("app.activityBar.skills", "Skills"),
+      panel: "skills",
     },
     {
       id: "marketplace",

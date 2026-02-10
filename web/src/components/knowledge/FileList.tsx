@@ -468,8 +468,8 @@ export const FileList = React.memo(
               }
 
               const fileData = await fileService.listFiles({
-                folder_id: currentFolderId || null,
-                filter_by_folder: true,
+                parent_id: currentFolderId || null,
+                filter_by_parent: true,
                 limit: PAGE_SIZE,
                 offset: filesOffsetRef.current,
               });
@@ -730,7 +730,7 @@ export const FileList = React.memo(
             });
           } else {
             await fileService.updateFile(item.id, {
-              folder_id: targetFolderId,
+              parent_id: targetFolderId,
             });
           }
           loadFiles(); // Refresh list
@@ -969,7 +969,7 @@ export const FileList = React.memo(
         setPreviewFile({
           id: file.id,
           name: file.original_filename,
-          type: file.content_type,
+          type: file.content_type || "",
           size: file.file_size,
         });
         setIsPreviewOpen(true);
@@ -1222,7 +1222,7 @@ export const FileList = React.memo(
                         <div className="shrink-0">
                           <FileIcon
                             filename={file.original_filename}
-                            mimeType={file.content_type}
+                            mimeType={file.content_type || ""}
                             className="h-5 w-5"
                           />
                         </div>
@@ -1340,7 +1340,7 @@ export const FileList = React.memo(
               {files.map((file) => {
                 const isSelected = selectedIds.has(file.id);
                 const isImage = isImageFile(
-                  file.content_type,
+                  file.content_type || "",
                   file.original_filename,
                 );
 
@@ -1371,7 +1371,7 @@ export const FileList = React.memo(
                       <div className="flex h-12 w-12 items-center justify-center">
                         <FileIcon
                           filename={file.original_filename}
-                          mimeType={file.content_type}
+                          mimeType={file.content_type || ""}
                           className="h-10 w-10"
                         />
                       </div>

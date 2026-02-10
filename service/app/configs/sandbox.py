@@ -7,7 +7,7 @@ class SandboxConfig(BaseModel):
     """Configuration for sandbox code execution environments."""
 
     Enable: bool = Field(
-        default=False,
+        default=True,
         description="Enable sandbox code execution tools",
     )
     Backend: str = Field(

@@ -8,9 +8,17 @@ with a `success` bool and either result data or an `error` message.
 from __future__ import annotations
 
 import logging
+import mimetypes
+from io import BytesIO
+from pathlib import PurePosixPath
 from typing import Any
 
+from app.configs import configs
+from app.core.storage import FileScope, create_quota_service, detect_file_category, generate_storage_key, get_storage_service
+from app.infra.database import create_task_session_factory
 from app.infra.sandbox.manager import SandboxManager
+from app.models.file import FileCreate
+from app.repos.file import FileRepository
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +137,10 @@ async def sandbox_grep(
     """Search file contents in the sandbox."""
     try:
         matches = await manager.search_in_files(path, pattern, include=include)
-        formatted = [{"file": m.file, "line": m.line, "content": m.content} for m in matches]
+        formatted: list[dict[str, str | int]] = [
+            {"file": m.file, "line": m.line, "content": m.content}
+            for m in matches
+        ]
         return {
             "success": True,
             "pattern": pattern,
@@ -142,6 +153,177 @@ async def sandbox_grep(
         return {"success": False, "error": str(e)}
 
 
+def _normalize_export_path(path: str) -> str:
+    normalized = path.strip().replace("\\", "/")
+    if not normalized:
+        raise ValueError("Path is required")
+    if normalized.startswith("//"):
+        raise ValueError("Path must be a normalized absolute path")
+
+    pure = PurePosixPath(normalized)
+    if not pure.is_absolute():
+        raise ValueError("Path must be absolute (e.g. /workspace/output.txt)")
+
+    for part in pure.parts:
+        if part == "/":
+            continue
+        if part in ("", ".", ".."):
+            raise ValueError(f"Path contains invalid segments: {path!r}")
+
+    return pure.as_posix()
+
+
+def _validate_export_root(path: str) -> None:
+    workdir_raw = (configs.Sandbox.WorkDir or "/workspace").strip()
+    workdir = workdir_raw if workdir_raw.startswith("/") else f"/{workdir_raw}"
+    root = PurePosixPath(workdir).as_posix()
+
+    if root == "/":
+        return
+    if path != root and not path.startswith(f"{root}/"):
+        raise ValueError(f"Path must be inside sandbox work directory: {root}")
+
+
+def _resolve_export_filename(path: str, filename: str | None) -> str:
+    resolved = filename.strip() if filename else PurePosixPath(path).name
+    if not resolved:
+        raise ValueError("Could not infer filename from path. Provide the filename parameter explicitly.")
+    if resolved in (".", ".."):
+        raise ValueError("Filename must be a regular file name")
+    if "/" in resolved or "\\" in resolved:
+        raise ValueError("Filename must not include path separators")
+    return resolved
+
+
+def _detect_content_type(filename: str) -> str:
+    content_type, _ = mimetypes.guess_type(filename)
+    if filename.lower().endswith(".md"):
+        return "text/markdown"
+    return content_type or "application/octet-stream"
+
+
+async def _persist_exported_file(
+    *,
+    user_id: str,
+    session_id: str,
+    sandbox_path: str,
+    filename: str,
+    file_bytes: bytes,
+) -> dict[str, Any]:
+    storage = get_storage_service()
+    task_session_factory = create_task_session_factory()
+    content_type = _detect_content_type(filename)
+    category = detect_file_category(filename)
+    storage_key = generate_storage_key(
+        user_id=user_id,
+        filename=filename,
+        scope=FileScope.PRIVATE,
+        category=category,
+    )
+
+    uploaded = False
+    try:
+        async with task_session_factory() as db:
+            quota_service = create_quota_service(db)
+            await quota_service.validate_upload(user_id, len(file_bytes))
+
+            await storage.upload_file(
+                file_data=BytesIO(file_bytes),
+                storage_key=storage_key,
+                content_type=content_type,
+                metadata={
+                    "user_id": user_id,
+                    "source": "sandbox_export",
+                    "sandbox_session_id": session_id,
+                    "sandbox_path": sandbox_path,
+                },
+            )
+            uploaded = True
+
+            file_repo = FileRepository(db)
+            file_record = await file_repo.create_file(
+                FileCreate(
+                    user_id=user_id,
+                    storage_key=storage_key,
+                    original_filename=filename,
+                    content_type=content_type,
+                    file_size=len(file_bytes),
+                    scope=FileScope.PRIVATE,
+                    category=category,
+                    status="confirmed",
+                    metainfo={
+                        "source": "sandbox_export",
+                        "sandbox_session_id": session_id,
+                        "sandbox_path": sandbox_path,
+                    },
+                )
+            )
+            await db.commit()
+            await db.refresh(file_record)
+
+        return {
+            "success": True,
+            "file_id": str(file_record.id),
+            "filename": filename,
+            "storage_key": storage_key,
+            "content_type": content_type,
+            "size_bytes": len(file_bytes),
+            "download_url": f"/xyzen/api/v1/files/{file_record.id}/download",
+        }
+    except Exception:
+        if uploaded:
+            try:
+                await storage.delete_file(storage_key)
+            except Exception:
+                logger.warning("Failed to cleanup exported sandbox object: %s", storage_key, exc_info=True)
+        raise
+
+
+async def sandbox_export(
+    manager: SandboxManager,
+    *,
+    user_id: str | None,
+    session_id: str,
+    path: str,
+    filename: str | None = None,
+) -> dict[str, Any]:
+    """Export a sandbox file into OSS and register it in user file records."""
+    if not user_id:
+        return {
+            "success": False,
+            "error": "sandbox_export requires user context",
+        }
+
+    try:
+        normalized_path = _normalize_export_path(path)
+        _validate_export_root(normalized_path)
+        resolved_filename = _resolve_export_filename(normalized_path, filename)
+
+        file_bytes = await manager.read_file_bytes(normalized_path)
+        max_bytes = int(configs.OSS.MaxFileUploadBytes)
+        if len(file_bytes) > max_bytes:
+            return {
+                "success": False,
+                "error": (
+                    f"File exceeds maximum allowed size ({len(file_bytes)} bytes > {max_bytes} bytes). "
+                    "Please split or compress the file before exporting."
+                ),
+            }
+
+        result = await _persist_exported_file(
+            user_id=user_id,
+            session_id=session_id,
+            sandbox_path=normalized_path,
+            filename=resolved_filename,
+            file_bytes=file_bytes,
+        )
+        result["sandbox_path"] = normalized_path
+        return result
+    except Exception as e:
+        logger.error("sandbox_export failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
 __all__ = [
     "sandbox_exec",
     "sandbox_read",
@@ -149,4 +331,5 @@ __all__ = [
     "sandbox_edit",
     "sandbox_glob",
     "sandbox_grep",
+    "sandbox_export",
 ]

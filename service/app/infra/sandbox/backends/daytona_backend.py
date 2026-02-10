@@ -105,10 +105,13 @@ class DaytonaBackend(SandboxBackend):
             )
 
     async def read_file(self, sandbox_id: str, path: str) -> str:
+        content_bytes = await self.read_file_bytes(sandbox_id, path)
+        return content_bytes.decode("utf-8")
+
+    async def read_file_bytes(self, sandbox_id: str, path: str) -> bytes:
         async with AsyncDaytona(self._get_config()) as daytona:
             sandbox = await daytona.get(sandbox_id)
-            content_bytes = await sandbox.fs.download_file(path)
-            return content_bytes.decode("utf-8")
+            return await sandbox.fs.download_file(path)
 
     async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
         async with AsyncDaytona(self._get_config()) as daytona:

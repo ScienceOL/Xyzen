@@ -17,8 +17,9 @@ class FileCreateFactory(ModelFactory[FileCreate]):
     scope = "private"
     category = "documents"
     is_deleted = False
+    is_dir = False
     status = "pending"
     message_id = None
-    folder_id = None
+    parent_id = None
     metainfo = None
     file_hash = None

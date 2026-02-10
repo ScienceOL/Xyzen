@@ -9,6 +9,7 @@ import { SpatialWorkspace } from "@/app/chat/SpatialWorkspace";
 import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { BottomDock } from "@/components/layouts/BottomDock";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
+import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 
 import { PwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
@@ -72,6 +73,12 @@ export function AppFullscreen({
             {activePanel === "knowledge" && (
               <div className="h-full w-full bg-white dark:bg-neutral-950">
                 <KnowledgeBase />
+              </div>
+            )}
+
+            {activePanel === "skills" && (
+              <div className="h-full w-full bg-white dark:bg-neutral-950">
+                <SkillsLibrary />
               </div>
             )}
 

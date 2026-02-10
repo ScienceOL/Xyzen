@@ -25,6 +25,7 @@ import {
   HistorySheetButton,
   McpToolsButton,
   MobileMoreMenu,
+  SkillsButton,
   ToolbarActions,
   ToolSelector,
 } from "./ChatToolbar/index";
@@ -80,12 +81,14 @@ export default function ChatToolbar({
 }: ChatToolbarProps) {
   const {
     createDefaultChannel,
+    fetchAgents,
     updateSessionConfig,
     updateAgent,
     openSettingsModal,
   } = useXyzen(
     useShallow((s) => ({
       createDefaultChannel: s.createDefaultChannel,
+      fetchAgents: s.fetchAgents,
       updateSessionConfig: s.updateSessionConfig,
       updateAgent: s.updateAgent,
       openSettingsModal: s.openSettingsModal,
@@ -299,6 +302,7 @@ export default function ChatToolbar({
             onOpenSettings={() => openSettingsModal("mcp")}
             sessionKnowledgeSetId={currentChannelKnowledgeSetId}
             onUpdateSessionKnowledge={handleKnowledgeSetChange}
+            onAgentRefresh={fetchAgents}
           />
         )}
 
@@ -346,6 +350,17 @@ export default function ChatToolbar({
                     agent={currentAgent}
                     onUpdateAgent={updateAgent}
                     onOpenSettings={() => openSettingsModal("mcp")}
+                    buttonClassName={cn(
+                      toolbarButtonClass,
+                      "w-auto px-2 gap-1.5",
+                    )}
+                  />
+                )}
+
+                {currentAgent && (
+                  <SkillsButton
+                    agent={currentAgent}
+                    onAgentRefresh={fetchAgents}
                     buttonClassName={cn(
                       toolbarButtonClass,
                       "w-auto px-2 gap-1.5",

@@ -165,7 +165,7 @@ export const KnowledgeLayout = () => {
       if (files.length === 0) return;
 
       // Capture current context at upload time
-      const folderId = activeTab === "folders" ? currentFolderId : null;
+      const parentId = activeTab === "folders" ? currentFolderId : null;
       const knowledgeSetId =
         activeTab === "knowledge" ? currentKnowledgeSetId : null;
 
@@ -217,7 +217,7 @@ export const KnowledgeLayout = () => {
           file,
           "private",
           undefined,
-          folderId,
+          parentId,
           knowledgeSetId,
           (progress) => {
             setUploads((prev) =>

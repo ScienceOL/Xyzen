@@ -6,17 +6,22 @@
 
 import McpIcon from "@/assets/McpIcon";
 import { cn } from "@/lib/utils";
+import { skillService } from "@/service/skillService";
 import type { Agent } from "@/types/agents";
 import type { McpServer } from "@/types/mcp";
+import type { SkillRead } from "@/types/skills";
 import {
   CheckIcon,
   ChevronDownIcon,
   Cog6ToothIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import CreateSkillModal from "./CreateSkillModal";
 import { ToolSelector } from "./ToolSelector";
+import { partitionSkills, toggleSkillAttachment } from "./skillActions";
 
 interface McpInfo {
   agent: Agent;
@@ -27,6 +32,7 @@ interface MobileMoreMenuProps {
   isOpen: boolean;
   agent: Agent | null;
   onUpdateAgent: (agent: Agent) => Promise<void>;
+  onAgentRefresh: () => Promise<void>;
   mcpInfo: McpInfo | null;
   allMcpServers?: McpServer[];
   onOpenSettings?: () => void;
@@ -38,6 +44,7 @@ export function MobileMoreMenu({
   isOpen,
   agent,
   onUpdateAgent,
+  onAgentRefresh,
   mcpInfo,
   allMcpServers = [],
   onOpenSettings,
@@ -46,12 +53,26 @@ export function MobileMoreMenu({
 }: MobileMoreMenuProps) {
   const { t } = useTranslation();
   const [showMcpList, setShowMcpList] = useState(false);
+  const [showSkillsList, setShowSkillsList] = useState(false);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false);
+  const [isUpdatingSkillId, setIsUpdatingSkillId] = useState<string | null>(
+    null,
+  );
+  const [showCreateSkillModal, setShowCreateSkillModal] = useState(false);
+  const [skillsError, setSkillsError] = useState<string | null>(null);
+  const [allSkills, setAllSkills] = useState<SkillRead[]>([]);
+  const [attachedSkills, setAttachedSkills] = useState<SkillRead[]>([]);
 
   const handleUpdateAgent = async (updatedAgent: Agent) => {
     await onUpdateAgent(updatedAgent);
     // Don't close on toggle - let user configure multiple tools
   };
+
+  const { connected: connectedSkills, available: availableSkills } = useMemo(
+    () => partitionSkills(allSkills, attachedSkills),
+    [allSkills, attachedSkills],
+  );
 
   // Get connected server IDs from agent
   const connectedServerIds = new Set(
@@ -71,6 +92,29 @@ export function MobileMoreMenu({
       (total, server) => total + (server.tools?.length || 0),
       0,
     ) || 0;
+
+  const loadSkills = useCallback(async () => {
+    if (!agent) return;
+
+    setIsLoadingSkills(true);
+    setSkillsError(null);
+    try {
+      const [skills, agentSkills] = await Promise.all([
+        skillService.listSkills(),
+        skillService.listAgentSkills(agent.id),
+      ]);
+      setAllSkills(skills);
+      setAttachedSkills(agentSkills);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : t("app.toolbar.skills.loadFailed", "Failed to load skills");
+      setSkillsError(message);
+    } finally {
+      setIsLoadingSkills(false);
+    }
+  }, [agent, t]);
 
   const handleMcpServerToggle = async (serverId: string, connect: boolean) => {
     if (!agent || isUpdating) return;
@@ -94,31 +138,54 @@ export function MobileMoreMenu({
     }
   };
 
+  const handleSkillToggle = async (skill: SkillRead, isConnected: boolean) => {
+    if (!agent || isUpdatingSkillId) return;
+
+    setIsUpdatingSkillId(skill.id);
+    setSkillsError(null);
+    try {
+      await toggleSkillAttachment(agent.id, skill.id, isConnected);
+      await Promise.all([loadSkills(), onAgentRefresh()]);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : t(
+              "app.toolbar.skills.toggleFailed",
+              "Failed to update skill attachment",
+            );
+      setSkillsError(message);
+    } finally {
+      setIsUpdatingSkillId(null);
+    }
+  };
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-          className="absolute bottom-full left-0 right-0 mx-2 mb-2 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-1.5"
-        >
-          <div className="flex flex-col gap-1">
-            {/* Tool Selector */}
-            {agent && (
-              <div className="w-full">
-                <ToolSelector
-                  agent={agent}
-                  onUpdateAgent={handleUpdateAgent}
-                  hasKnowledgeSet={
-                    !!agent.knowledge_set_id || !!sessionKnowledgeSetId
-                  }
-                  sessionKnowledgeSetId={sessionKnowledgeSetId}
-                  onUpdateSessionKnowledge={onUpdateSessionKnowledge}
-                />
-              </div>
-            )}
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="absolute bottom-full left-0 right-0 mx-2 mb-2 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-1.5"
+          >
+            <div className="flex flex-col gap-1">
+              {/* Tool Selector */}
+              {agent && (
+                <div className="w-full">
+                  <ToolSelector
+                    agent={agent}
+                    onUpdateAgent={handleUpdateAgent}
+                    hasKnowledgeSet={
+                      !!agent.knowledge_set_id || !!sessionKnowledgeSetId
+                    }
+                    sessionKnowledgeSetId={sessionKnowledgeSetId}
+                    onUpdateSessionKnowledge={onUpdateSessionKnowledge}
+                  />
+                </div>
+              )}
 
             {/* MCP Tool Section - Expandable */}
             {agent && (
@@ -230,10 +297,157 @@ export function MobileMoreMenu({
                 </AnimatePresence>
               </div>
             )}
-          </div>
-        </motion.div>
+
+            {/* Skills Section - Expandable */}
+            {agent && (
+              <div className="w-full">
+                <button
+                  onClick={() => {
+                    const next = !showSkillsList;
+                    setShowSkillsList(next);
+                    if (next) {
+                      void loadSkills();
+                    }
+                  }}
+                  className="w-full px-2.5 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                >
+                  <div className="flex items-center justify-between text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                    <div className="flex items-center gap-1.5">
+                      <SparklesIcon className="h-3.5 w-3.5" />
+                      <span>{t("app.toolbar.skills.title", "Skills")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {connectedSkills.length > 0 && (
+                        <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                          {connectedSkills.length}
+                        </span>
+                      )}
+                      <ChevronDownIcon
+                        className={cn(
+                          "h-3 w-3 transition-transform",
+                          showSkillsList && "rotate-180",
+                        )}
+                      />
+                    </div>
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {showSkillsList && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="ml-2 mt-1 space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
+                        <div className="px-2 py-0.5">
+                          <button
+                            type="button"
+                            className="text-[10px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            onClick={() => setShowCreateSkillModal(true)}
+                          >
+                            {t(
+                              "app.toolbar.skills.createAction",
+                              "Create Skill",
+                            )}
+                          </button>
+                        </div>
+
+                        {skillsError && (
+                          <div className="mx-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                            {skillsError}
+                          </div>
+                        )}
+
+                        {isLoadingSkills ? (
+                          <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
+                            {t("common.loading", "Loading...")}
+                          </div>
+                        ) : (
+                          <>
+                            {connectedSkills.length > 0 && (
+                              <div>
+                                <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
+                                  {t(
+                                    "app.toolbar.skills.connected",
+                                    "Connected",
+                                  )}
+                                </div>
+                                <div className="space-y-0.5">
+                                  {connectedSkills.map((skill) => (
+                                    <MobileSkillItem
+                                      key={skill.id}
+                                      skill={skill}
+                                      isConnected={true}
+                                      isUpdating={isUpdatingSkillId === skill.id}
+                                      onToggle={() =>
+                                        handleSkillToggle(skill, true)
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {availableSkills.length > 0 && (
+                              <div>
+                                <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
+                                  {t(
+                                    "app.toolbar.skills.available",
+                                    "Available",
+                                  )}
+                                </div>
+                                <div className="space-y-0.5">
+                                  {availableSkills.map((skill) => (
+                                    <MobileSkillItem
+                                      key={skill.id}
+                                      skill={skill}
+                                      isConnected={false}
+                                      isUpdating={isUpdatingSkillId === skill.id}
+                                      onToggle={() =>
+                                        handleSkillToggle(skill, false)
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {connectedSkills.length === 0 &&
+                              availableSkills.length === 0 && (
+                                <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
+                                  {t(
+                                    "app.toolbar.skills.empty",
+                                    "No skills available. Create one to get started.",
+                                  )}
+                                </div>
+                              )}
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {agent && (
+        <CreateSkillModal
+          isOpen={showCreateSkillModal}
+          onClose={() => setShowCreateSkillModal(false)}
+          agentId={agent.id}
+          onCreated={async () => {
+            await Promise.all([loadSkills(), onAgentRefresh()]);
+          }}
+        />
       )}
-    </AnimatePresence>
+    </>
   );
 }
 
@@ -298,3 +512,47 @@ function MobileMcpServerItem({
 }
 
 export default MobileMoreMenu;
+
+interface MobileSkillItemProps {
+  skill: SkillRead;
+  isConnected: boolean;
+  isUpdating: boolean;
+  onToggle: () => void;
+}
+
+function MobileSkillItem({
+  skill,
+  isConnected,
+  isUpdating,
+  onToggle,
+}: MobileSkillItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={isUpdating}
+      className={cn(
+        "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
+        "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+        isConnected && "bg-indigo-50 dark:bg-indigo-900/20",
+        isUpdating && "opacity-50 cursor-not-allowed",
+      )}
+    >
+      <div className="min-w-0 text-left">
+        <div className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
+          {skill.name}
+        </div>
+        <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+          {skill.description}
+        </div>
+      </div>
+      <div className="flex-shrink-0 ml-2">
+        {isUpdating ? (
+          <div className="h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        ) : isConnected ? (
+          <CheckIcon className="h-3 w-3 text-indigo-500" />
+        ) : null}
+      </div>
+    </button>
+  );
+}

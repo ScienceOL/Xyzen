@@ -64,6 +64,9 @@ class FileProcessor:
         if file_record.is_deleted:
             raise ValueError(f"File {file_id} is deleted")
 
+        if not file_record.storage_key:
+            raise ValueError(f"File {file_id} has no storage key (directory entry)")
+
         # Get storage service and download file to BytesIO
         storage = get_storage_service()
         buffer = BytesIO()
@@ -71,7 +74,7 @@ class FileProcessor:
         buffer.seek(0)  # Reset position to beginning
         file_bytes = buffer.read()
 
-        return file_bytes, file_record.content_type, file_record.category
+        return file_bytes, file_record.content_type or "", file_record.category
 
     async def process_image(self, file_content: bytes, content_type: str) -> dict[str, Any]:
         """
