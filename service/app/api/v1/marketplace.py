@@ -22,7 +22,7 @@ from app.common.code import ErrCodeError, handle_auth_error
 from app.core.auth import AuthorizationService, get_auth_service
 from app.core.marketplace import AgentMarketplaceService
 from app.infra.database import get_session
-from app.middleware.auth import get_current_user
+from app.middleware.auth import UserInfo, get_current_user, get_current_user_info
 from app.models.agent import AgentRead, ForkMode
 from app.models.agent_marketplace import (
     AgentMarketplaceRead,
@@ -114,7 +114,7 @@ class RequirementsResponse(BaseModel):
 @router.post("/publish", response_model=PublishResponse)
 async def publish_agent(
     request: PublishRequest,
-    user_id: str = Depends(get_current_user),
+    user_info: UserInfo = Depends(get_current_user_info),
     auth_service: AuthorizationService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_session),
 ) -> PublishResponse:
@@ -126,7 +126,7 @@ async def publish_agent(
 
     Args:
         request: Publish request with agent_id and commit message.
-        user_id: Authenticated user ID (injected by dependency).
+        user_info: Authenticated user info (injected by dependency).
         auth_service: Authorization service (injected by dependency).
         db: Database session (injected by dependency).
 
@@ -137,6 +137,7 @@ async def publish_agent(
         HTTPException: 403 if user doesn't own the agent, 404 if agent not found.
     """
     try:
+        user_id = user_info.id
         # Authorize write access (only owner can publish)
         agent = await auth_service.authorize_agent_write(request.agent_id, user_id)
 
@@ -162,6 +163,8 @@ async def publish_agent(
             is_published=request.is_published,
             readme=request.readme,
             fork_mode=request.fork_mode,
+            author_display_name=user_info.display_name,
+            author_avatar_url=user_info.avatar_url,
         )
         if not listing:
             raise HTTPException(status_code=404, detail="Marketplace listing not found")

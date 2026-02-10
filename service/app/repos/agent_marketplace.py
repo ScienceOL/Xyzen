@@ -40,6 +40,8 @@ class AgentMarketplaceRepository:
             agent_id=listing_data.agent_id,
             active_snapshot_id=listing_data.active_snapshot_id,
             user_id=listing_data.user_id,
+            author_display_name=listing_data.author_display_name,
+            author_avatar_url=listing_data.author_avatar_url,
             name=listing_data.name,
             description=listing_data.description,
             avatar=listing_data.avatar,

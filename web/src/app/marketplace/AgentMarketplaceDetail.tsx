@@ -210,12 +210,21 @@ export default function AgentMarketplaceDetail({
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.detail.publishedBy")}{" "}
+                      {listing.scope !== "official" &&
+                        listing.author_avatar_url && (
+                          <img
+                            src={listing.author_avatar_url}
+                            alt=""
+                            className="h-4 w-4 rounded-full object-cover"
+                          />
+                        )}
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
                         {listing.scope === "official"
                           ? "Xyzen"
-                          : (listing.user_id ?? "").split("@")[0] ||
+                          : listing.author_display_name ||
+                            (listing.user_id ?? "").split("@")[0] ||
                             listing.user_id}
                       </span>
                     </p>
@@ -687,9 +696,23 @@ export default function AgentMarketplaceDetail({
                   <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     {t("marketplace.detail.meta.publishedBy")}
                   </h3>
-                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                    {listing.scope === "official" ? "Xyzen" : listing.user_id}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    {listing.scope !== "official" &&
+                      listing.author_avatar_url && (
+                        <img
+                          src={listing.author_avatar_url}
+                          alt=""
+                          className="h-5 w-5 rounded-full object-cover"
+                        />
+                      )}
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                      {listing.scope === "official"
+                        ? "Xyzen"
+                        : listing.author_display_name ||
+                          (listing.user_id ?? "").split("@")[0] ||
+                          listing.user_id}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="my-4 h-px w-full bg-neutral-200 dark:bg-neutral-800" />

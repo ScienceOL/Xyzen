@@ -400,7 +400,15 @@ export function FocusedView({
       </motion.div>
 
       {/* 3. Capsule Panel - Right Side */}
-      <Capsule variant="spatial" />
+      <motion.div
+        initial={{ x: 50, opacity: 0, scale: 0.95 }}
+        animate={{ x: 0, opacity: 1, scale: 1 }}
+        exit={{ x: 50, opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
+        className="shrink-0 pointer-events-none h-full"
+      >
+        <Capsule variant="spatial" />
+      </motion.div>
     </div>
   );
 }

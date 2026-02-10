@@ -40,6 +40,10 @@ class AgentMarketplace(SQLModel, table=True):
     )
     builtin_key: str | None = Field(default=None, index=True, description="Stable key for builtin agent configs")
 
+    # Author info (denormalized from auth provider at publish time)
+    author_display_name: str | None = Field(default=None, description="Author display name")
+    author_avatar_url: str | None = Field(default=None, description="Author avatar URL")
+
     # Denormalized for search & display
     name: str = Field(index=True)
     description: str | None = None
@@ -87,6 +91,8 @@ class AgentMarketplaceCreate(SQLModel):
     agent_id: UUID
     active_snapshot_id: UUID
     user_id: str | None = None
+    author_display_name: str | None = None
+    author_avatar_url: str | None = None
     name: str
     description: str | None = None
     avatar: str | None = None
@@ -104,6 +110,8 @@ class AgentMarketplaceRead(SQLModel):
     agent_id: UUID
     active_snapshot_id: UUID
     user_id: str | None
+    author_display_name: str | None = None
+    author_avatar_url: str | None = None
     name: str
     description: str | None
     avatar: str | None
@@ -132,6 +140,8 @@ class AgentMarketplaceUpdate(SQLModel):
     readme: str | None = None
     is_published: bool | None = None
     fork_mode: ForkMode | None = None
+    author_display_name: str | None = None
+    author_avatar_url: str | None = None
 
 
 class AgentMarketplaceReadWithSnapshot(AgentMarketplaceRead):

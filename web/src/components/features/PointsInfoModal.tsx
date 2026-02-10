@@ -172,7 +172,7 @@ function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.35 }}
-      className={`relative flex flex-col rounded-xl border-2 p-4 transition-all ${
+      className={`relative flex flex-col rounded-xl border-2 p-3 transition-all sm:p-4 ${
         isLocked
           ? "border-neutral-200 bg-neutral-100/50 opacity-60 dark:border-neutral-700 dark:bg-neutral-800/20"
           : plan.highlight
@@ -206,7 +206,7 @@ function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
       <div className="mb-3">
         <div className="flex items-baseline gap-0.5">
           <span
-            className={`text-2xl font-bold tracking-tight ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-900 dark:text-neutral-50"}`}
+            className={`text-xl font-bold tracking-tight sm:text-2xl ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-900 dark:text-neutral-50"}`}
           >
             {plan.price}
           </span>
@@ -224,7 +224,7 @@ function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
       </div>
 
       <div
-        className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-2 ${isLocked ? "bg-neutral-200/50 dark:bg-neutral-700/20" : "bg-neutral-100/80 dark:bg-neutral-700/30"}`}
+        className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg px-2 py-2 sm:gap-3 sm:px-3 ${isLocked ? "bg-neutral-200/50 dark:bg-neutral-700/20" : "bg-neutral-100/80 dark:bg-neutral-700/30"}`}
       >
         <div className="flex items-center gap-1.5">
           <SparklesIcon
@@ -314,7 +314,7 @@ function TopUpCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.35 }}
-      className="flex items-center justify-between rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-4 py-3 dark:border-neutral-600 dark:bg-neutral-800/30"
+      className="flex flex-col gap-3 rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
     >
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm">
@@ -349,15 +349,21 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
       title="选择订阅方案"
       maxWidth="max-w-5xl"
     >
-      <div className="relative max-h-[70vh] overflow-y-auto px-2 py-2">
+      <div className="relative max-h-[70vh] overflow-y-auto px-1 py-2 sm:px-2">
         <div className="space-y-4">
           <Tabs defaultValue="international">
             <TabsList className="mx-auto w-fit">
-              <TabsTrigger value="international" className="gap-2 px-5">
+              <TabsTrigger
+                value="international"
+                className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
+              >
                 <GlobeAltIcon className="h-4 w-4" />
                 International
               </TabsTrigger>
-              <TabsTrigger value="china" className="gap-2 px-5">
+              <TabsTrigger
+                value="china"
+                className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
+              >
                 <svg
                   className="h-4 w-4"
                   viewBox="0 0 24 24"
@@ -377,7 +383,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                   transition={{ duration: 0.25 }}
                   className="mt-4 space-y-4"
                 >
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
                     {internationalPlans.map((plan, index) => (
                       <PlanCard key={plan.name} plan={plan} index={index} />
                     ))}
@@ -393,7 +399,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                   transition={{ duration: 0.25 }}
                   className="mt-4 space-y-4"
                 >
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
                     {chinaPlans.map((plan, index) => (
                       <PlanCard key={plan.name} plan={plan} index={index} />
                     ))}
@@ -434,7 +440,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
             href="https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb"
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-center gap-3 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3 transition-all hover:border-indigo-300 hover:shadow-sm dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-purple-500/10 dark:hover:border-indigo-400/50"
+            className="group flex items-center gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2.5 transition-all hover:border-indigo-300 hover:shadow-sm sm:gap-3 sm:px-4 sm:py-3 dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-purple-500/10 dark:hover:border-indigo-400/50"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-sm">
               <DocumentTextIcon className="h-5 w-5" />

@@ -1,6 +1,6 @@
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,8 @@ import { MemoryTab } from "./MemoryTab";
 import { ToolsTab } from "./ToolsTab";
 
 const TABS = ["knowledge", "tools", "memory"] as const;
+const COLLAPSED_WIDTH = 10;
+const EXPANDED_WIDTH = 384;
 
 export interface CapsuleProps {
   variant?: "default" | "spatial" | "mobile";
@@ -25,11 +27,9 @@ const transition = { duration: 0.3, ease: [0.4, 0, 0.2, 1] as const };
 function CapsuleTabBar({
   activeTab,
   onTabChange,
-  trailing,
 }: {
   activeTab: string;
   onTabChange: (tab: (typeof TABS)[number]) => void;
-  trailing?: React.ReactNode;
 }) {
   const { t } = useTranslation();
 
@@ -57,7 +57,6 @@ function CapsuleTabBar({
           </button>
         ))}
       </div>
-      {trailing}
     </div>
   );
 }
@@ -91,7 +90,7 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
       })),
     );
 
-  // Peek state (local, hover-driven)
+  // Peek state — hover-driven, independent from docked state
   const [peeking, setPeeking] = useState(false);
   const peekTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -108,22 +107,34 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
     }
   }, [knowledge_set_id, setCapsuleOpen, setCapsuleActiveTab]);
 
-  const handlePeekEnter = useCallback(() => {
-    clearTimeout(peekTimeout.current);
-    setPeeking(true);
-  }, []);
-
-  const handlePeekLeave = useCallback(() => {
-    peekTimeout.current = setTimeout(() => setPeeking(false), 150);
-  }, []);
-
-  // Cleanup timeout on unmount
+  // Cleanup peek timeout on unmount
   useEffect(() => () => clearTimeout(peekTimeout.current), []);
 
-  const handleDock = useCallback(() => {
-    setPeeking(false);
-    setCapsuleOpen(true);
-  }, [setCapsuleOpen]);
+  const handlePeekEnter = useCallback(() => {
+    if (capsuleOpen) return; // no peek when already docked
+    clearTimeout(peekTimeout.current);
+    setPeeking(true);
+  }, [capsuleOpen]);
+
+  const handlePeekLeave = useCallback(() => {
+    peekTimeout.current = setTimeout(() => setPeeking(false), 200);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (capsuleOpen) {
+      // Docked → collapse; also clear peek so it doesn't linger
+      setCapsuleOpen(false);
+      setPeeking(false);
+    } else {
+      // Collapsed (may or may not be peeking) → dock it open
+      setCapsuleOpen(true);
+      setPeeking(false);
+    }
+  }, [capsuleOpen, setCapsuleOpen]);
+
+  // Determine if the capsule has any content worth showing.
+  // Currently only Knowledge tab has real data; Tools and Memory are "coming soon".
+  const hasContent = !!knowledge_set_id;
 
   // -------------------------------------------------------------------------
   // Mobile variant — full screen with back header
@@ -154,80 +165,89 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   }
 
   // -------------------------------------------------------------------------
-  // Desktop / Spatial — styling helpers
+  // Desktop / Spatial — if no content, render nothing
   // -------------------------------------------------------------------------
+  if (!hasContent) return null;
+
   const isSpatial = variant === "spatial";
 
   const panelBg = isSpatial
-    ? "bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-xl rounded-xl pointer-events-auto"
+    ? "bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-xl rounded-xl"
     : "bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800";
 
   const peekBg = isSpatial
-    ? "bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-black/5 dark:border-white/10 rounded-xl pointer-events-auto"
+    ? "bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-black/5 dark:border-white/10 rounded-xl"
     : "bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800";
 
   // -------------------------------------------------------------------------
-  // Docked mode (capsuleOpen === true) — takes layout space
-  // -------------------------------------------------------------------------
-  if (capsuleOpen) {
-    return (
-      <motion.div
-        initial={false}
-        animate={{ width: 384 }}
-        exit={{ width: 0 }}
-        transition={transition}
-        className={`overflow-hidden shrink-0 ${isSpatial ? "pointer-events-auto" : ""}`}
-      >
-        <div className={`w-[384px] h-full flex flex-col ${panelBg}`}>
-          <CapsuleTabBar
-            activeTab={capsuleActiveTab}
-            onTabChange={setCapsuleActiveTab}
-            trailing={
-              <button
-                onClick={() => setCapsuleOpen(false)}
-                className="p-2 mr-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                title={t("capsule.collapse")}
-              >
-                <ChevronRightIcon className="w-4 h-4" />
-              </button>
-            }
-          />
-          <CapsuleBody activeTab={capsuleActiveTab} />
-        </div>
-      </motion.div>
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // Collapsed mode — thin trigger strip + overlay peek on hover
+  // Layout width only changes on dock; peek is a floating overlay
   // -------------------------------------------------------------------------
   return (
-    <div
-      className={`shrink-0 relative h-full ${isSpatial ? "pointer-events-auto" : ""}`}
+    <motion.div
+      initial={false}
+      animate={{ width: capsuleOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
+      transition={transition}
+      className={`shrink-0 h-full relative ${isSpatial ? "pointer-events-auto" : ""}`}
       onMouseEnter={handlePeekEnter}
       onMouseLeave={handlePeekLeave}
     >
-      {/* Trigger strip */}
-      <div
-        className={`h-full transition-all duration-200 cursor-pointer ${
-          isSpatial ? "w-1.5 rounded-full" : "w-1"
+      {/* ---- Docked panel (always mounted, fades in/out) ---- */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: capsuleOpen ? 1 : 0 }}
+        transition={{ duration: 0.15 }}
+        className={`absolute inset-0 flex flex-col ${panelBg} ${
+          capsuleOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+        style={{ width: EXPANDED_WIDTH }}
+      >
+        <CapsuleTabBar
+          activeTab={capsuleActiveTab}
+          onTabChange={setCapsuleActiveTab}
+        />
+        <CapsuleBody activeTab={capsuleActiveTab} />
+
+        {/* Right-edge click strip to collapse */}
+        <div
+          onClick={handleClick}
+          className={`absolute top-0 bottom-0 right-0 w-3 z-10 cursor-pointer transition-colors duration-200 ${
+            isSpatial
+              ? "hover:bg-neutral-400/20 dark:hover:bg-neutral-500/20"
+              : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          }`}
+          title={t("capsule.collapse")}
+        />
+      </motion.div>
+
+      {/* ---- Collapsed indicator (fixed width, never stretches) ---- */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: capsuleOpen ? 0 : 1 }}
+        transition={{ duration: 0.15 }}
+        className={`absolute top-0 bottom-0 right-0 cursor-pointer transition-colors duration-200 ${
+          capsuleOpen ? "pointer-events-none" : "pointer-events-auto"
         } ${
-          peeking
-            ? "bg-blue-400/40 dark:bg-blue-400/30"
+          isSpatial
+            ? "rounded-full bg-neutral-300/50 dark:bg-neutral-600/40 hover:bg-neutral-400/60 dark:hover:bg-neutral-500/50"
             : "bg-neutral-200/60 dark:bg-neutral-700/40 hover:bg-neutral-300/80 dark:hover:bg-neutral-600/50"
         }`}
+        style={{ width: COLLAPSED_WIDTH }}
+        onClick={handleClick}
+        title={t("capsule.expand")}
       />
 
-      {/* Peek overlay */}
+      {/* ---- Peek overlay — floats on top, no layout shift ---- */}
       <AnimatePresence>
-        {peeking && (
+        {peeking && !capsuleOpen && (
           <motion.div
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 12 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className={`absolute top-0 right-full w-[384px] h-full z-50 flex flex-col ${peekBg}`}
+            className={`absolute top-0 right-full z-50 flex flex-col pointer-events-auto ${peekBg}`}
             style={{
+              width: EXPANDED_WIDTH,
+              height: "100%",
               boxShadow:
                 "-8px 0 30px -10px rgba(0,0,0,0.12), -2px 0 8px -4px rgba(0,0,0,0.06)",
             }}
@@ -235,27 +255,11 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
             <CapsuleTabBar
               activeTab={capsuleActiveTab}
               onTabChange={setCapsuleActiveTab}
-              trailing={
-                <button
-                  onClick={handleDock}
-                  className="p-2 mr-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                  title={t("capsule.dock")}
-                >
-                  <motion.div
-                    initial={false}
-                    animate={{ rotate: 0 }}
-                    whileHover={{ rotate: 180 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <ChevronLeftIcon className="w-4 h-4" />
-                  </motion.div>
-                </button>
-              }
             />
             <CapsuleBody activeTab={capsuleActiveTab} />
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

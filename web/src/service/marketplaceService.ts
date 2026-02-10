@@ -15,6 +15,8 @@ export interface MarketplaceListing {
   agent_id: string;
   active_snapshot_id: string;
   user_id: string | null;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
   name: string;
   description: string | null;
   avatar: string | null;
