@@ -7,7 +7,9 @@ import {
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
 import {
+  ChatBubbleLeftRightIcon,
   CheckIcon,
+  CommandLineIcon,
   DocumentTextIcon,
   GlobeAltIcon,
   LockClosedIcon,
@@ -34,6 +36,8 @@ interface SubscriptionPlan {
   credits: string;
   creditsNote?: string;
   storage: string;
+  parallelChats: string;
+  sandboxes?: string;
   highlight?: boolean;
   badge?: string;
   isFree?: boolean;
@@ -50,6 +54,7 @@ const internationalPlans: SubscriptionPlan[] = [
     credits: "Daily check-in",
     creditsNote: "Resets monthly",
     storage: "100 MB",
+    parallelChats: "1 parallel",
     isFree: true,
     features: [
       { text: "Lite models", included: true },
@@ -64,6 +69,8 @@ const internationalPlans: SubscriptionPlan[] = [
     period: "/mo",
     credits: "5,000",
     storage: "1 GB",
+    parallelChats: "3 parallel",
+    sandboxes: "1 sandbox",
     features: [
       { text: "Standard models", included: true },
       { text: "Priority queue", included: true },
@@ -77,8 +84,8 @@ const internationalPlans: SubscriptionPlan[] = [
     period: "/mo",
     credits: "22,000",
     storage: "10 GB",
-    highlight: true,
-    badge: "Popular",
+    parallelChats: "5 parallel",
+    sandboxes: "2 sandbox",
     features: [
       { text: "All Standard features", included: true },
       { text: "Pro models", included: true },
@@ -92,6 +99,8 @@ const internationalPlans: SubscriptionPlan[] = [
     period: "/mo",
     credits: "60,000",
     storage: "100 GB",
+    parallelChats: "10 parallel",
+    sandboxes: "3 sandbox",
     features: [
       { text: "All Pro features", included: true },
       { text: "Ultra models", included: true },
@@ -109,6 +118,7 @@ const chinaPlans: SubscriptionPlan[] = [
     credits: "签到获取",
     creditsNote: "次月清空",
     storage: "100 MB",
+    parallelChats: "1 并行会话",
     isFree: true,
     features: [
       { text: "Lite 模型", included: true },
@@ -124,6 +134,8 @@ const chinaPlans: SubscriptionPlan[] = [
     period: "/月",
     credits: "3,000",
     storage: "1 GB",
+    parallelChats: "3 并行会话",
+    sandboxes: "1 沙盒",
     features: [
       { text: "标准模型", included: true },
       { text: "优先队列", included: true },
@@ -138,8 +150,8 @@ const chinaPlans: SubscriptionPlan[] = [
     period: "/月",
     credits: "10,000",
     storage: "10 GB",
-    highlight: true,
-    badge: "推荐",
+    parallelChats: "5 并行会话",
+    sandboxes: "2 沙盒",
     features: [
       { text: "全部标准功能", included: true },
       { text: "专业模型", included: true },
@@ -153,6 +165,8 @@ const chinaPlans: SubscriptionPlan[] = [
     period: "/mo",
     credits: "60,000",
     storage: "100 GB",
+    parallelChats: "10 并行会话",
+    sandboxes: "3 沙盒",
     isLocked: true,
     lockedReason: "仅限国际版",
     features: [
@@ -224,24 +238,21 @@ function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
       </div>
 
       <div
-        className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg px-2 py-2 sm:gap-3 sm:px-3 ${isLocked ? "bg-neutral-200/50 dark:bg-neutral-700/20" : "bg-neutral-100/80 dark:bg-neutral-700/30"}`}
+        className={`mb-3 grid grid-cols-2 gap-1.5 rounded-lg px-2 py-2 sm:px-3 ${isLocked ? "bg-neutral-200/50 dark:bg-neutral-700/20" : "bg-neutral-100/80 dark:bg-neutral-700/30"}`}
       >
         <div className="flex items-center gap-1.5">
           <SparklesIcon
-            className={`h-4 w-4 ${isLocked ? "text-neutral-400" : "text-amber-500"}`}
+            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-amber-500"}`}
           />
           <span
-            className={`text-xs font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+            className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
           >
             {plan.credits}
           </span>
         </div>
-        <div
-          className={`h-4 w-px ${isLocked ? "bg-neutral-300 dark:bg-neutral-600" : "bg-neutral-300 dark:bg-neutral-600"}`}
-        />
         <div className="flex items-center gap-1.5">
           <svg
-            className={`h-4 w-4 ${isLocked ? "text-neutral-400" : "text-blue-500"}`}
+            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-blue-500"}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -254,9 +265,29 @@ function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
             />
           </svg>
           <span
-            className={`text-xs font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+            className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
           >
             {plan.storage}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <ChatBubbleLeftRightIcon
+            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-indigo-500"}`}
+          />
+          <span
+            className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+          >
+            {plan.parallelChats}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <CommandLineIcon
+            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-emerald-500"}`}
+          />
+          <span
+            className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+          >
+            {plan.sandboxes ?? "—"}
           </span>
         </div>
       </div>
@@ -341,6 +372,47 @@ function TopUpCard({
   );
 }
 
+function SandboxPackCard({
+  region,
+  delay,
+}: {
+  region: "international" | "china";
+  delay: number;
+}) {
+  const isChina = region === "china";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.35 }}
+      className="flex flex-col gap-3 rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm">
+          <CommandLineIcon className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+            {isChina ? "沙盒扩容包" : "Sandbox Add-on"}
+          </div>
+          <div className="text-xs text-neutral-500 dark:text-neutral-400">
+            {isChina ? "额外沙盒实例，独立计费" : "Extra sandbox instances"}
+          </div>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+          {isChina ? "+1 沙盒 / 月" : "+1 sandbox / mo"}
+        </div>
+        <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+          {isChina ? "需标准版及以上" : "Standard plan or above"}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   return (
     <Modal
@@ -389,6 +461,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                     ))}
                   </div>
                   <TopUpCard region="international" delay={0.3} />
+                  <SandboxPackCard region="international" delay={0.35} />
                 </motion.div>
               </TabsContent>
 
@@ -405,6 +478,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                     ))}
                   </div>
                   <TopUpCard region="china" delay={0.3} />
+                  <SandboxPackCard region="china" delay={0.35} />
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}

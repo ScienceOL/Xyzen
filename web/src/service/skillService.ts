@@ -123,11 +123,14 @@ class SkillService {
   }
 
   async parseSkill(payload: SkillParseRequest): Promise<SkillParseResponse> {
-    const response = await fetch(`${getBackendUrl()}/xyzen/api/v1/skills/parse`, {
-      method: "POST",
-      headers: createAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
+    const response = await fetch(
+      `${getBackendUrl()}/xyzen/api/v1/skills/parse`,
+      {
+        method: "POST",
+        headers: createAuthHeaders(),
+        body: JSON.stringify(payload),
+      },
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -146,7 +149,9 @@ class SkillService {
     });
 
     if (!response.ok) {
-      throw new Error(await getErrorMessage(response, "Failed to create skill"));
+      throw new Error(
+        await getErrorMessage(response, "Failed to create skill"),
+      );
     }
 
     return response.json();

@@ -6,11 +6,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { KnowledgeTab } from "./KnowledgeTab";
-import { MemoryTab } from "./MemoryTab";
 import { SandboxTab } from "./SandboxTab";
 import { ToolsTab } from "./ToolsTab";
 
-const TABS = ["knowledge", "tools", "sandbox", "memory"] as const;
+const TABS = ["knowledge", "tools", "sandbox"] as const;
 const COLLAPSED_WIDTH = 10;
 const EXPANDED_WIDTH = 384;
 
@@ -68,7 +67,6 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
       {activeTab === "knowledge" && <KnowledgeTab />}
       {activeTab === "tools" && <ToolsTab />}
       {activeTab === "sandbox" && <SandboxTab />}
-      {activeTab === "memory" && <MemoryTab />}
     </div>
   );
 }

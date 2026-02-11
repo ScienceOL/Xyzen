@@ -6,10 +6,7 @@ import {
   FolderTrigger,
 } from "@/components/animate-ui/components/radix/files";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
-import {
-  sandboxService,
-  type SandboxFileInfo,
-} from "@/service/sandboxService";
+import { sandboxService, type SandboxFileInfo } from "@/service/sandboxService";
 import {
   ArrowPathIcon,
   CodeBracketIcon,
@@ -17,7 +14,13 @@ import {
   PhotoIcon,
 } from "@heroicons/react/24/outline";
 import { FolderIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 function formatFileSize(bytes: number): string {
@@ -220,12 +223,7 @@ export function SandboxTab() {
             onValueChange={handleValueChange}
             className="space-y-0.5"
           >
-            {renderFileList(
-              rootFiles,
-              childrenCache,
-              loadingFolders,
-              t,
-            )}
+            {renderFileList(rootFiles, childrenCache, loadingFolders, t)}
           </Files>
         )}
       </div>
@@ -253,7 +251,9 @@ function renderFileList(
       const isLoading = loadingFolders.has(file.path);
       return (
         <FolderItem key={file.path} value={file.path}>
-          <FolderTrigger icon={<FolderIcon className="h-3.5 w-3.5 text-amber-500" />}>
+          <FolderTrigger
+            icon={<FolderIcon className="h-3.5 w-3.5 text-amber-500" />}
+          >
             <span className="truncate">{file.name}</span>
           </FolderTrigger>
           <FolderContent className="space-y-0.5">
@@ -274,10 +274,7 @@ function renderFileList(
     }
 
     return (
-      <FileItem
-        key={file.path}
-        icon={fileIcon(file.name)}
-      >
+      <FileItem key={file.path} icon={fileIcon(file.name)}>
         <span className="truncate">{file.name}</span>
         {file.size != null && (
           <span className="ml-auto pl-2 shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">

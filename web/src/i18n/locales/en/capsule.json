@@ -21,7 +21,17 @@
     "justNow": "just now",
     "countSingular": "memory",
     "countPlural": "memories",
-    "delete": "Delete"
+    "delete": "Delete",
+    "create": "Add Memory",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "search": "Search memories...",
+    "searching": "Searching...",
+    "createPlaceholder": "Type something to remember...",
+    "createSuccess": "Memory created",
+    "updateSuccess": "Memory updated",
+    "saveFailed": "Failed to save memory"
   },
   "sandbox": {
     "noSession": "No active session",

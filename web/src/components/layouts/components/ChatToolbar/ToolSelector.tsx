@@ -420,16 +420,11 @@ export function ToolSelector({
                   {t("app.toolbar.memory", "Memory")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t(
-                    "app.toolbar.memoryDesc",
-                    "Remember across conversations",
-                  )}
+                  {t("app.toolbar.memoryDesc", "Remember across conversations")}
                 </div>
               </div>
             </div>
-            {memoryEnabled && (
-              <CheckIcon className="h-4 w-4 text-teal-500" />
-            )}
+            {memoryEnabled && <CheckIcon className="h-4 w-4 text-teal-500" />}
           </button>
 
           {/* Sandbox (Code Execution) */}
@@ -457,9 +452,7 @@ export function ToolSelector({
                 </div>
               </div>
             </div>
-            {sandboxEnabled && (
-              <CheckIcon className="h-4 w-4 text-rose-500" />
-            )}
+            {sandboxEnabled && <CheckIcon className="h-4 w-4 text-rose-500" />}
           </button>
         </div>
       </PopoverContent>

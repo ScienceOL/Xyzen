@@ -108,7 +108,9 @@ export function SkillsButton({
             className={cn(buttonClassName, "w-auto px-2 gap-1.5")}
           >
             <SparklesIcon className="h-4 w-4" />
-            <span className="text-xs">{t("app.toolbar.skills.title", "Skills")}</span>
+            <span className="text-xs">
+              {t("app.toolbar.skills.title", "Skills")}
+            </span>
             {connected.length > 0 && (
               <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
                 {connected.length}

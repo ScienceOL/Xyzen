@@ -1,7 +1,4 @@
-import type {
-  SkillCreateRequest,
-  SkillResourceInput,
-} from "@/types/skills";
+import type { SkillCreateRequest, SkillResourceInput } from "@/types/skills";
 
 export interface ParsedSkillFolder {
   name: string;
@@ -28,11 +25,7 @@ export const MAX_SKILL_RESOURCE_FILES = 200;
 export const MAX_SKILL_RESOURCE_FILE_BYTES = 2 * 1024 * 1024;
 export const MAX_SKILL_RESOURCE_TOTAL_BYTES = 25 * 1024 * 1024;
 
-const IGNORED_FILE_NAMES = new Set([
-  ".DS_Store",
-  "Thumbs.db",
-  "desktop.ini",
-]);
+const IGNORED_FILE_NAMES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
 
 const IGNORED_DIRECTORIES = new Set([
   "__MACOSX",

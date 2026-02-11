@@ -56,9 +56,8 @@ function toErrorMessage(error: unknown): string {
 
 function inferRootName(files: File[]): string | null {
   for (const file of files) {
-    const relativePath = (
-      file as File & { webkitRelativePath?: string }
-    ).webkitRelativePath;
+    const relativePath = (file as File & { webkitRelativePath?: string })
+      .webkitRelativePath;
     if (relativePath && relativePath.includes("/")) {
       const [root] = relativePath.split("/");
       return root || null;
@@ -490,19 +489,19 @@ export function CreateSkillModal({
             <div className="mt-2 space-y-1">
               <div>
                 <span className="font-medium">
-                  {t("app.toolbar.skills.previewName", "Name")}: 
+                  {t("app.toolbar.skills.previewName", "Name")}:
                 </span>
                 {metadataPreview.name}
               </div>
               <div>
                 <span className="font-medium">
-                  {t("app.toolbar.skills.previewDescription", "Description")}: 
+                  {t("app.toolbar.skills.previewDescription", "Description")}:
                 </span>
                 {metadataPreview.description}
               </div>
               <div>
                 <span className="font-medium">
-                  {t("app.toolbar.skills.previewResources", "Resources")}: 
+                  {t("app.toolbar.skills.previewResources", "Resources")}:
                 </span>
                 {metadataPreview.resourcesCount}
               </div>
