@@ -40,29 +40,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     register_builtin_tools()
 
-    # Temporary bootstrap migration for legacy graph configs.
-    # Remove this block after all environments are guaranteed to have canonical configs.
-    from app.infra.database import AsyncSessionLocal
-    from app.repos.agent import AgentRepository
-
-    async with AsyncSessionLocal() as db:
-        try:
-            agent_repo = AgentRepository(db)
-            summary = await agent_repo.backfill_graph_configs()
-            await db.commit()
-            logger.info(
-                "GraphConfig backfill completed: total=%d changed=%d migrated=%d fallback_defaults=%d",
-                summary["total_agents"],
-                summary["changed_rows"],
-                summary["migrated_rows"],
-                summary["fallback_defaults"],
-            )
-        except Exception as e:
-            logger.error(f"Failed to backfill graph_config at startup: {e}")
-            await db.rollback()
-            raise
-
     # Backfill legacy v2 graph_configs in snapshot configurations.
+    from app.infra.database import AsyncSessionLocal
     from app.repos.agent_snapshot import AgentSnapshotRepository
 
     async with AsyncSessionLocal() as db:
