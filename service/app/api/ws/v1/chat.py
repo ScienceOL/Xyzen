@@ -92,6 +92,26 @@ async def redis_listener(websocket: WebSocket, connection_id: str):
         await r.close()
 
 
+HEARTBEAT_INTERVAL_SECONDS = 25
+
+
+async def heartbeat_sender(websocket: WebSocket, connection_id: str) -> None:
+    """Send periodic ping messages to detect dead connections."""
+    try:
+        while True:
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
+            try:
+                if websocket.client_state.value == 1:  # WebSocketState.CONNECTED
+                    await websocket.send_text('{"type":"ping"}')
+                else:
+                    break
+            except Exception:
+                logger.info(f"Heartbeat send failed for {connection_id}, connection likely dead")
+                break
+    except asyncio.CancelledError:
+        pass
+
+
 @router.websocket("/sessions/{session_id}/topics/{topic_id}")
 async def chat_websocket(
     websocket: WebSocket,
@@ -126,6 +146,7 @@ async def chat_websocket(
 
     # Start Redis listener task
     listener_task = asyncio.create_task(redis_listener(websocket, connection_id))
+    heartbeat_task = asyncio.create_task(heartbeat_sender(websocket, connection_id))
 
     try:
         while True:
@@ -136,6 +157,10 @@ async def chat_websocket(
                 topic_repo = TopicRepository(db)
 
                 message_type = data.get("type", ChatClientEventType.MESSAGE)
+
+                # Handle heartbeat pong response
+                if message_type == "pong":
+                    continue
 
                 # Ignore tool confirmation for now as implicit execution is assumed/enforced
                 if message_type in [ChatClientEventType.TOOL_CALL_CONFIRM, ChatClientEventType.TOOL_CALL_CANCEL]:
@@ -319,6 +344,13 @@ async def chat_websocket(
                     access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
                 )
 
+                # 6b. Acknowledge message receipt to client
+                ack_event = {
+                    "type": ChatEventType.MESSAGE_ACK,
+                    "data": {"message_id": str(user_message.id)},
+                }
+                await websocket.send_text(json.dumps(ack_event))
+
                 # 7. Topic Renaming - uses Redis pub/sub for cross-pod delivery
                 topic_refreshed = await topic_repo.get_topic_with_details(topic_id)
                 if topic_refreshed and topic_refreshed.name in ["新的聊天", "New Chat", "New Topic"]:
@@ -341,7 +373,12 @@ async def chat_websocket(
     finally:
         manager.disconnect(connection_id)
         listener_task.cancel()
+        heartbeat_task.cancel()
         try:
             await listener_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await heartbeat_task
         except asyncio.CancelledError:
             pass

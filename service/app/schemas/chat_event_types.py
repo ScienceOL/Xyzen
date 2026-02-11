@@ -34,6 +34,7 @@ class ChatEventType(StrEnum):
 
     # Post-processing/ack
     MESSAGE_SAVED = "message_saved"
+    MESSAGE_ACK = "message_ack"
 
     # Token usage tracking
     TOKEN_USAGE = "token_usage"

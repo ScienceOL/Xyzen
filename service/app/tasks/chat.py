@@ -37,11 +37,27 @@ class RedisPublisher:
         self.channel = f"chat:{connection_id}"
         self.abort_key = f"abort:{connection_id}"
 
-    async def publish(self, message: str) -> None:
-        try:
-            await self.redis_client.publish(self.channel, message)
-        except Exception as e:
-            logger.error(f"Failed to publish to Redis channel {self.channel}: {e}")
+    async def publish(self, message: str, max_retries: int = 3) -> bool:
+        """Publish a message to the Redis channel with retry for transient failures."""
+        for attempt in range(max_retries):
+            try:
+                await self.redis_client.publish(self.channel, message)
+                return True
+            except (redis.ConnectionError, redis.TimeoutError) as e:
+                if attempt < max_retries - 1:
+                    delay = 0.1 * (2**attempt)  # 0.1s, 0.2s, 0.4s
+                    logger.warning(
+                        f"Redis publish attempt {attempt + 1} failed for {self.channel}, "
+                        f"retrying in {delay}s: {e}"
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error(f"Redis publish failed after {max_retries} attempts for {self.channel}: {e}")
+                    return False
+            except Exception as e:
+                logger.error(f"Non-retryable Redis publish error for {self.channel}: {e}")
+                return False
+        return False
 
     async def close(self) -> None:
         await self.redis_client.aclose()
