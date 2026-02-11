@@ -18,6 +18,7 @@ class SubscriptionRoleBase(SQLModel):
     max_file_upload_bytes: int = Field(sa_type=BigInteger, description="Max single file upload size in bytes")
     max_parallel_chats: int = Field(description="Max concurrent chat sessions")
     max_sandboxes: int = Field(description="Max sandbox instances")
+    monthly_credits: int = Field(default=0, description="Monthly claimable credits for this tier")
     is_default: bool = Field(default=False, index=True, description="Whether this is the default role")
     priority: int = Field(default=0, description="Display ordering (lower = first)")
 
@@ -46,6 +47,7 @@ class SubscriptionRoleCreate(SQLModel):
     max_file_upload_bytes: int = Field(description="Max single file upload size in bytes")
     max_parallel_chats: int = Field(description="Max concurrent chat sessions")
     max_sandboxes: int = Field(description="Max sandbox instances")
+    monthly_credits: int = Field(default=0, description="Monthly claimable credits")
     is_default: bool = Field(default=False, description="Whether this is the default role")
     priority: int = Field(default=0, description="Display ordering")
 
@@ -70,6 +72,11 @@ class UserSubscriptionBase(SQLModel):
         default=None,
         sa_column=Column(TIMESTAMP(timezone=True), nullable=True),
         description="Expiration time (null = no expiry)",
+    )
+    last_credits_claimed_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=True),
+        description="Last time monthly credits were claimed",
     )
 
 

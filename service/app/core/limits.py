@@ -32,6 +32,10 @@ class LimitsEnforcer:
         await enforcer.check_sandbox_creation(db)
     """
 
+    # Free-tier fallback defaults (used when no subscription role is resolved)
+    _FREE_MAX_PARALLEL_CHATS = 1
+    _FREE_MAX_SANDBOXES = 0
+
     def __init__(self, limits: UserLimits | None, user_id: str) -> None:
         self._limits = limits
         self._user_id = user_id
@@ -45,9 +49,10 @@ class LimitsEnforcer:
 
     async def check_parallel_chat(self) -> None:
         """Raise HTTPException(429) if user has max active WS connections."""
-        if self._limits is None:
-            return  # No limits configured, allow
-        max_chats = self._limits.max_parallel_chats
+        if self._limits is not None:
+            max_chats = self._limits.max_parallel_chats
+        else:
+            max_chats = self._FREE_MAX_PARALLEL_CHATS
         if max_chats <= 0:
             return  # 0 = unlimited
         current = await self.get_active_chat_count()
@@ -83,9 +88,10 @@ class LimitsEnforcer:
 
     async def check_sandbox_creation(self, db: AsyncSession) -> None:
         """Raise HTTPException(429) if user has max active sandboxes."""
-        if self._limits is None:
-            return
-        max_sandboxes = self._limits.max_sandboxes
+        if self._limits is not None:
+            max_sandboxes = self._limits.max_sandboxes
+        else:
+            max_sandboxes = self._FREE_MAX_SANDBOXES
         if max_sandboxes <= 0:
             return  # 0 = unlimited
         current = await self.count_active_sandboxes(db)
@@ -143,11 +149,11 @@ class LimitsEnforcer:
             "role_display_name": limits.role_display_name if limits else "Free",
             "chats": {
                 "used": chat_count,
-                "limit": limits.max_parallel_chats if limits else 0,
+                "limit": limits.max_parallel_chats if limits else self._FREE_MAX_PARALLEL_CHATS,
             },
             "sandboxes": {
                 "used": sandbox_count,
-                "limit": limits.max_sandboxes if limits else 0,
+                "limit": limits.max_sandboxes if limits else self._FREE_MAX_SANDBOXES,
             },
             "storage": {
                 "used_bytes": quota_info["storage"]["used_bytes"],

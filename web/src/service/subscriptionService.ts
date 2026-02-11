@@ -12,6 +12,7 @@ export interface SubscriptionRoleRead {
   max_file_upload_bytes: number;
   max_parallel_chats: number;
   max_sandboxes: number;
+  monthly_credits: number;
   is_default: boolean;
   priority: number;
   created_at: string;
@@ -23,6 +24,7 @@ export interface UserSubscriptionRead {
   user_id: string;
   role_id: string;
   expires_at: string | null;
+  last_credits_claimed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +32,12 @@ export interface UserSubscriptionRead {
 export interface SubscriptionResponse {
   subscription: UserSubscriptionRead;
   role: SubscriptionRoleRead;
+  can_claim_credits: boolean;
+}
+
+export interface ClaimCreditsResponse {
+  amount_credited: number;
+  message: string;
 }
 
 export interface PlansResponse {
@@ -131,6 +139,20 @@ class SubscriptionService {
       const error = await response.json();
       throw new Error(
         error.detail?.msg || error.detail || "Failed to get usage",
+      );
+    }
+    return response.json();
+  }
+
+  async claimCredits(): Promise<ClaimCreditsResponse> {
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/subscription/claim-credits`,
+      { method: "POST", headers: this.createAuthHeaders() },
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.detail?.msg || error.detail || "Failed to claim credits",
       );
     }
     return response.json();

@@ -10,6 +10,7 @@ from app.models.subscription import (
     UserSubscription,
     UserSubscriptionCreate,
 )
+from app.repos.redemption import RedemptionRepository
 from app.repos.subscription import SubscriptionRepository
 
 logger = logging.getLogger(__name__)
@@ -130,3 +131,45 @@ class SubscriptionService:
             role = await self.repo.get_role_by_id(sub.role_id)
             results.append((sub, role))
         return results
+
+    def can_claim_credits(
+        self,
+        sub: UserSubscription,
+        role: SubscriptionRole,
+    ) -> bool:
+        """Check if the user can claim monthly credits right now."""
+        if role.monthly_credits <= 0:
+            return False
+        # Expired subscriptions cannot claim
+        if sub.expires_at and sub.expires_at < datetime.now(timezone.utc):
+            return False
+        if sub.last_credits_claimed_at is None:
+            return True
+        # Can claim once per calendar month (UTC)
+        now = datetime.now(timezone.utc)
+        last = sub.last_credits_claimed_at
+        return (now.year, now.month) != (last.year, last.month)
+
+    async def claim_credits(self, user_id: str) -> int:
+        """Claim monthly credits for the user. Returns amount credited. Raises HTTPException on failure."""
+        from fastapi import HTTPException
+
+        result = await self.get_or_create_subscription(user_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="No subscription found")
+        sub, role = result
+
+        if not self.can_claim_credits(sub, role):
+            raise HTTPException(status_code=400, detail="Credits already claimed this month")
+
+        amount = role.monthly_credits
+
+        # Credit wallet
+        redemption_repo = RedemptionRepository(self.db)
+        await redemption_repo.credit_wallet(user_id, amount)
+
+        # Update last_credits_claimed_at
+        await self.repo.update_last_credits_claimed(user_id)
+        await self.db.commit()
+
+        return amount

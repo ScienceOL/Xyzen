@@ -28,6 +28,7 @@ class SubscriptionResponse(BaseModel):
 
     subscription: UserSubscriptionRead
     role: SubscriptionRoleRead
+    can_claim_credits: bool = Field(default=False, description="Whether monthly credits can be claimed now")
 
 
 class PlansResponse(BaseModel):
@@ -81,6 +82,13 @@ class UsageResponse(BaseModel):
     files: UsageBucket
 
 
+class ClaimCreditsResponse(BaseModel):
+    """Response from claiming monthly credits."""
+
+    amount_credited: int = Field(description="Amount of credits claimed")
+    message: str = Field(description="Human-readable confirmation")
+
+
 # ==================== User Endpoints ====================
 
 
@@ -102,9 +110,11 @@ async def get_subscription(
             detail="No subscription plans configured",
         )
     sub, role = result
+    can_claim = service.can_claim_credits(sub, role)
     return SubscriptionResponse(
         subscription=UserSubscriptionRead.model_validate(sub),
         role=SubscriptionRoleRead.model_validate(role),
+        can_claim_credits=can_claim,
     )
 
 
@@ -137,6 +147,24 @@ async def get_usage(
     enforcer = await LimitsEnforcer.create(db, user_id)
     summary = await enforcer.get_usage_summary(db)
     return UsageResponse(**summary)
+
+
+@router.post(
+    "/claim-credits",
+    response_model=ClaimCreditsResponse,
+    summary="Claim monthly subscription credits",
+)
+async def claim_credits(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> ClaimCreditsResponse:
+    """Claim monthly credits granted by the user's subscription tier."""
+    service = SubscriptionService(db)
+    amount = await service.claim_credits(user_id)
+    return ClaimCreditsResponse(
+        amount_credited=amount,
+        message=f"Successfully claimed {amount:,} credits",
+    )
 
 
 # ==================== Admin Endpoints ====================
@@ -211,4 +239,5 @@ async def admin_assign_role(
     return SubscriptionResponse(
         subscription=UserSubscriptionRead.model_validate(sub),
         role=SubscriptionRoleRead.model_validate(role),
+        can_claim_credits=service.can_claim_credits(sub, role),
     )

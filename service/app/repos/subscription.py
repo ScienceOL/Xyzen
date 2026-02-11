@@ -86,6 +86,18 @@ class SubscriptionRepository:
             return None
         return await self.get_role_by_id(sub.role_id)
 
+    async def update_last_credits_claimed(self, user_id: str) -> UserSubscription | None:
+        """Set last_credits_claimed_at to now for a user's subscription."""
+        sub = await self.get_user_subscription(user_id)
+        if sub is None:
+            return None
+        sub.last_credits_claimed_at = datetime.now(timezone.utc)
+        sub.updated_at = datetime.now(timezone.utc)
+        self.db.add(sub)
+        await self.db.flush()
+        await self.db.refresh(sub)
+        return sub
+
     async def list_all_subscriptions(self) -> list[UserSubscription]:
         """List all user subscriptions, ordered by creation time descending."""
         stmt = select(UserSubscription).order_by(col(UserSubscription.created_at).desc())

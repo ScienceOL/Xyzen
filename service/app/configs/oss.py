@@ -40,14 +40,14 @@ class OSSConfig(BaseModel):
         description="MinIO region",
     )
     MaxUserStorageBytes: int = Field(
-        default=1024 * 1024 * 1024,  # 1GB default
+        default=100 * 1024 * 1024,  # 100MB – matches free-tier subscription
         description="Maximum storage per user in bytes",
     )
     MaxFileUploadBytes: int = Field(
-        default=100 * 1024 * 1024,  # 100MB default
+        default=20 * 1024 * 1024,  # 20MB – matches free-tier subscription
         description="Maximum single file upload size in bytes",
     )
     MaxUserFileCount: int = Field(
-        default=10000,
+        default=200,  # matches free-tier subscription
         description="Maximum number of files per user",
     )

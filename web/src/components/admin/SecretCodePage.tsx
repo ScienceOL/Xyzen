@@ -27,6 +27,9 @@ interface GeneratedCode {
   is_active: boolean;
   expires_at: string | null;
   description: string | null;
+  code_type: string;
+  role_name: string | null;
+  duration_days: number;
   created_at: string;
 }
 

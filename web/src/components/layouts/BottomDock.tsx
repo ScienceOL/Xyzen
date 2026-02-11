@@ -23,7 +23,7 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
-import { Github, Globe } from "lucide-react";
+import { Crown, Gem, Github, Globe, Shield, User } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -493,27 +493,36 @@ function StatusBarItem({
 // Subscription tier badge styles
 const TIER_STYLES: Record<
   string,
-  { bg: string; text: string; border: string }
+  {
+    bg: string;
+    text: string;
+    border: string;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  }
 > = {
   free: {
     bg: "bg-neutral-100/80 dark:bg-neutral-800/80",
     text: "text-neutral-600 dark:text-neutral-400",
     border: "border-neutral-200/50 dark:border-neutral-700/50",
+    icon: User,
   },
   standard: {
     bg: "bg-blue-50/80 dark:bg-blue-950/40",
     text: "text-blue-600 dark:text-blue-400",
     border: "border-blue-200/50 dark:border-blue-800/50",
+    icon: Shield,
   },
   professional: {
     bg: "bg-purple-50/80 dark:bg-purple-950/40",
     text: "text-purple-600 dark:text-purple-400",
     border: "border-purple-200/50 dark:border-purple-800/50",
+    icon: Gem,
   },
   ultra: {
     bg: "bg-amber-50/80 dark:bg-amber-950/40",
     text: "text-amber-600 dark:text-amber-400",
     border: "border-amber-200/50 dark:border-amber-800/50",
+    icon: Crown,
   },
 };
 
@@ -529,6 +538,7 @@ function SubscriptionBadge() {
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
   const subQuery = useSubscription(auth.token, isAuthedForUi);
   const usageQuery = useSubscriptionUsage(auth.token, isAuthedForUi);
+  const respondingCount = useXyzen((s) => s.respondingChannelIds.size);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -539,6 +549,7 @@ function SubscriptionBadge() {
   const roleName = subQuery.data?.role?.name ?? "free";
   const displayName = subQuery.data?.role?.display_name ?? "Free";
   const expiresAt = subQuery.data?.subscription?.expires_at;
+  const canClaimCredits = subQuery.data?.can_claim_credits ?? false;
   const style = TIER_STYLES[roleName] ?? TIER_STYLES.free;
 
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
@@ -551,11 +562,19 @@ function SubscriptionBadge() {
       )
     : null;
 
+  // Expiry urgency tiers
+  const isUrgent = daysLeft !== null && daysLeft <= 3 && !isExpired;
+  const isWarning =
+    daysLeft !== null && daysLeft <= 7 && !isUrgent && !isExpired;
+
   const usage = usageQuery.data;
+  const chatLimit = usage?.chats.limit ?? 0;
   const hasOverQuota =
     usage &&
-    ((usage.chats.limit > 0 && usage.chats.used >= usage.chats.limit) ||
-      usage.storage.usage_percentage >= 100);
+    ((chatLimit > 0 && respondingCount > chatLimit) ||
+      usage.storage.usage_percentage > 100);
+
+  const TierIcon = style.icon;
 
   return (
     <>
@@ -575,13 +594,18 @@ function SubscriptionBadge() {
             hasOverQuota && "ring-1 ring-red-400/50",
           )}
         >
+          <TierIcon className="size-3.5" />
           <span>{displayName}</span>
-          {daysLeft !== null && !isExpired && roleName !== "free" && (
-            <span className="text-[10px] opacity-70">{daysLeft}d</span>
-          )}
           {isExpired && (
-            <span className="text-[10px] text-red-500 dark:text-red-400">
+            <span className="text-[10px] text-red-500 dark:text-red-400 font-semibold">
               expired
+            </span>
+          )}
+          {/* Red dot for claimable credits */}
+          {canClaimCredits && !isExpired && (
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
             </span>
           )}
         </motion.button>
@@ -594,9 +618,49 @@ function SubscriptionBadge() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 4, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute -top-2 right-0 -translate-y-full whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-2 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900 z-50"
+              className="absolute -top-2 right-0 -translate-y-full whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-2.5 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900 z-50"
             >
-              <div className="flex flex-col gap-1 min-w-[140px]">
+              <div className="flex flex-col gap-1.5 min-w-[160px]">
+                {/* Expiry row with progress bar (paid plans only) */}
+                {daysLeft !== null && roleName !== "free" && (
+                  <div className="flex flex-col gap-1 pb-1.5 mb-0.5 border-b border-neutral-700/50 dark:border-neutral-300/30">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-neutral-400 dark:text-neutral-500">
+                        Expires
+                      </span>
+                      <span
+                        className={cn(
+                          isExpired && "text-red-400 dark:text-red-500",
+                          isUrgent && "text-red-400 dark:text-red-500",
+                          isWarning && "text-amber-400 dark:text-amber-500",
+                        )}
+                      >
+                        {isExpired
+                          ? "Expired"
+                          : daysLeft === 0
+                            ? "Today"
+                            : `${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
+                      </span>
+                    </div>
+                    {!isExpired && (
+                      <div className="h-1 rounded-full bg-neutral-700 dark:bg-neutral-300/20 overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            isUrgent && "bg-red-500",
+                            isWarning && "bg-amber-500",
+                            !isUrgent && !isWarning && "bg-emerald-500",
+                          )}
+                          style={{
+                            width: `${Math.min(100, Math.max(2, (daysLeft / 30) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Storage */}
                 <div className="flex justify-between gap-4">
                   <span className="text-neutral-400 dark:text-neutral-500">
                     Storage
@@ -606,14 +670,20 @@ function SubscriptionBadge() {
                     {formatBytes(usage.storage.limit_bytes)}
                   </span>
                 </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-neutral-400 dark:text-neutral-500">
-                    Chats
-                  </span>
-                  <span>
-                    {usage.chats.used} / {usage.chats.limit || "\u221E"}
-                  </span>
-                </div>
+
+                {/* Active chats (only when responding) */}
+                {respondingCount > 0 && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-neutral-400 dark:text-neutral-500">
+                      Chats
+                    </span>
+                    <span>
+                      {respondingCount} / {chatLimit || "\u221E"}
+                    </span>
+                  </div>
+                )}
+
+                {/* Sandboxes (only when limit > 0) */}
                 {usage.sandboxes.limit > 0 && (
                   <div className="flex justify-between gap-4">
                     <span className="text-neutral-400 dark:text-neutral-500">
@@ -624,6 +694,8 @@ function SubscriptionBadge() {
                     </span>
                   </div>
                 )}
+
+                {/* Files */}
                 <div className="flex justify-between gap-4">
                   <span className="text-neutral-400 dark:text-neutral-500">
                     Files
@@ -632,6 +704,7 @@ function SubscriptionBadge() {
                     {usage.files.used} / {usage.files.limit}
                   </span>
                 </div>
+
                 {hasOverQuota && (
                   <div className="text-red-400 dark:text-red-500 text-[10px] mt-0.5">
                     Quota exceeded

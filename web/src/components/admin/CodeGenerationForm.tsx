@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -11,7 +11,16 @@ interface GeneratedCode {
   is_active: boolean;
   expires_at: string | null;
   description: string | null;
+  code_type: string;
+  role_name: string | null;
+  duration_days: number;
   created_at: string;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  display_name: string;
 }
 
 interface CodeGenerationFormProps {
@@ -25,22 +34,58 @@ export function CodeGenerationForm({
   backendUrl,
   onCodeGenerated,
 }: CodeGenerationFormProps) {
+  const [codeType, setCodeType] = useState<"credits" | "subscription">(
+    "credits",
+  );
   const [amount, setAmount] = useState("10000");
   const [maxUsage, setMaxUsage] = useState("1");
   const [customCode, setCustomCode] = useState("");
   const [description, setDescription] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [roleName, setRoleName] = useState("");
+  const [durationDays, setDurationDays] = useState("30");
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (codeType === "subscription" && plans.length === 0) {
+      fetch(`${backendUrl}/xyzen/api/v1/subscription/plans`)
+        .then((res) => res.json())
+        .then((data) => {
+          const loadedPlans: Plan[] = data.plans ?? [];
+          setPlans(loadedPlans);
+          if (loadedPlans.length > 0 && !roleName) {
+            setRoleName(loadedPlans[0].name);
+          }
+        })
+        .catch(() => {
+          /* ignore fetch errors */
+        });
+    }
+  }, [codeType, backendUrl, plans.length, roleName]);
 
   const handleGenerate = async () => {
     setError(null);
     setSuccess(null);
 
-    if (!amount || parseInt(amount) <= 0) {
+    if (codeType === "credits" && (!amount || parseInt(amount) <= 0)) {
       setError("Amount must be a positive number");
+      return;
+    }
+
+    if (codeType === "subscription" && !roleName) {
+      setError("Please select a subscription plan");
+      return;
+    }
+
+    if (
+      codeType === "subscription" &&
+      (!durationDays || parseInt(durationDays) <= 0)
+    ) {
+      setError("Duration must be a positive number");
       return;
     }
 
@@ -52,18 +97,19 @@ export function CodeGenerationForm({
     setIsLoading(true);
 
     try {
-      const payload: {
-        amount: number;
-        max_usage: number;
-        is_active: boolean;
-        code?: string;
-        description?: string;
-        expires_at?: string;
-      } = {
-        amount: parseInt(amount),
+      const payload: Record<string, unknown> = {
         max_usage: parseInt(maxUsage),
         is_active: isActive,
+        code_type: codeType,
       };
+
+      if (codeType === "credits") {
+        payload.amount = parseInt(amount);
+      } else {
+        payload.amount = 0;
+        payload.role_name = roleName;
+        payload.duration_days = parseInt(durationDays);
+      }
 
       if (customCode.trim()) {
         payload.code = customCode.trim().toUpperCase();
@@ -107,6 +153,7 @@ export function CodeGenerationForm({
       setDescription("");
       setExpiresAt("");
       setIsActive(true);
+      setDurationDays("30");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate code");
     } finally {
@@ -121,16 +168,85 @@ export function CodeGenerationForm({
       </h2>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Input
-              type="number"
-              placeholder="Amount *"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="code-type"
+              checked={codeType === "credits"}
+              onChange={() => setCodeType("credits")}
+              className="accent-indigo-600"
             />
-          </div>
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              Credits
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="code-type"
+              checked={codeType === "subscription"}
+              onChange={() => setCodeType("subscription")}
+              className="accent-indigo-600"
+            />
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              Subscription
+            </span>
+          </label>
+        </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          {codeType === "credits" ? (
+            <div>
+              <Input
+                type="number"
+                placeholder="Amount *"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <select
+                  value={roleName}
+                  onChange={(e) => setRoleName(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-50"
+                >
+                  <option value="" disabled>
+                    Select Plan *
+                  </option>
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.name}>
+                      {plan.display_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Input
+                  type="number"
+                  placeholder="Duration (days) *"
+                  value={durationDays}
+                  onChange={(e) => setDurationDays(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {codeType === "credits" && (
+            <div>
+              <Input
+                type="number"
+                placeholder="Max Usage *"
+                value={maxUsage}
+                onChange={(e) => setMaxUsage(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        {codeType === "subscription" && (
           <div>
             <Input
               type="number"
@@ -139,7 +255,7 @@ export function CodeGenerationForm({
               onChange={(e) => setMaxUsage(e.target.value)}
             />
           </div>
-        </div>
+        )}
 
         <div>
           <Input

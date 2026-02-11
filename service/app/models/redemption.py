@@ -20,6 +20,9 @@ class RedemptionCodeBase(SQLModel):
         description="Expiration time (null means no expiration)",
     )
     description: str | None = Field(default=None, description="Code description or notes")
+    code_type: str = Field(default="credits", description="Code type: 'credits' or 'subscription'")
+    role_name: str | None = Field(default=None, description="Target subscription role name (for subscription codes)")
+    duration_days: int = Field(default=30, description="Subscription duration in days (for subscription codes)")
 
 
 class RedemptionCode(RedemptionCodeBase, table=True):
@@ -45,6 +48,9 @@ class RedemptionCodeCreate(SQLModel):
     is_active: bool = Field(default=True, description="Whether this code is active")
     expires_at: datetime | None = Field(default=None, description="Expiration time (null means no expiration)")
     description: str | None = Field(default=None, description="Code description or notes")
+    code_type: str = Field(default="credits", description="Code type: 'credits' or 'subscription'")
+    role_name: str | None = Field(default=None, description="Target subscription role name")
+    duration_days: int = Field(default=30, description="Subscription duration in days")
 
 
 class RedemptionCodeRead(RedemptionCodeBase):
@@ -63,6 +69,9 @@ class RedemptionCodeUpdate(SQLModel):
     is_active: bool | None = Field(default=None, description="Whether this code is active")
     expires_at: datetime | None = Field(default=None, description="Expiration time")
     description: str | None = Field(default=None, description="Code description or notes")
+    code_type: str | None = Field(default=None, description="Code type: 'credits' or 'subscription'")
+    role_name: str | None = Field(default=None, description="Target subscription role name")
+    duration_days: int | None = Field(default=None, description="Subscription duration in days")
 
 
 # ==================== RedemptionHistory Models ====================
