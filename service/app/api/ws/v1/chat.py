@@ -152,15 +152,15 @@ async def chat_websocket(
         while True:
             data = await websocket.receive_json()
 
+            # Short-circuit heartbeat pongs before opening a DB session
+            if data.get("type") == "pong":
+                continue
+
             async with AsyncSessionLocal() as db:
                 message_repo = MessageRepository(db)
                 topic_repo = TopicRepository(db)
 
                 message_type = data.get("type", ChatClientEventType.MESSAGE)
-
-                # Handle heartbeat pong response
-                if message_type == "pong":
-                    continue
 
                 # Ignore tool confirmation for now as implicit execution is assumed/enforced
                 if message_type in [ChatClientEventType.TOOL_CALL_CONFIRM, ChatClientEventType.TOOL_CALL_CANCEL]:
