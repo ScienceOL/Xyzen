@@ -19,6 +19,7 @@ class SubscriptionRoleBase(SQLModel):
     max_parallel_chats: int = Field(description="Max concurrent chat sessions")
     max_sandboxes: int = Field(description="Max sandbox instances")
     monthly_credits: int = Field(default=0, description="Monthly claimable credits for this tier")
+    max_model_tier: str = Field(default="lite", description="Highest model tier allowed (lite/standard/pro/ultra)")
     is_default: bool = Field(default=False, index=True, description="Whether this is the default role")
     priority: int = Field(default=0, description="Display ordering (lower = first)")
 
@@ -48,6 +49,7 @@ class SubscriptionRoleCreate(SQLModel):
     max_parallel_chats: int = Field(description="Max concurrent chat sessions")
     max_sandboxes: int = Field(description="Max sandbox instances")
     monthly_credits: int = Field(default=0, description="Monthly claimable credits")
+    max_model_tier: str = Field(default="lite", description="Highest model tier allowed (lite/standard/pro/ultra)")
     is_default: bool = Field(default=False, description="Whether this is the default role")
     priority: int = Field(default=0, description="Display ordering")
 

@@ -13,6 +13,7 @@ export interface SubscriptionRoleRead {
   max_parallel_chats: number;
   max_sandboxes: number;
   monthly_credits: number;
+  max_model_tier: string;
   is_default: boolean;
   priority: number;
   created_at: string;

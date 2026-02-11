@@ -68,10 +68,10 @@ const internationalPlans: SubscriptionPlan[] = [
     parallelChats: "1 parallel",
     isFree: true,
     features: [
-      { text: "Lite & Standard models", included: true },
+      { text: "Lite models", included: true },
       { text: "Basic features", included: true },
-      { text: "Pro models", included: false },
-      { text: "Ultra models", included: false },
+      { text: "Standard models", included: false },
+      { text: "Pro & Ultra models", included: false },
     ],
   },
   {
@@ -86,7 +86,7 @@ const internationalPlans: SubscriptionPlan[] = [
       { text: "Lite & Standard models", included: true },
       { text: "More storage & chats", included: true },
       { text: "Sandbox access", included: true },
-      { text: "Pro models", included: false },
+      { text: "Pro & Ultra models", included: false },
     ],
   },
   {
@@ -132,10 +132,10 @@ const chinaPlans: SubscriptionPlan[] = [
     parallelChats: "1 并行会话",
     isFree: true,
     features: [
-      { text: "Lite 和 Standard 模型", included: true },
+      { text: "Lite 模型", included: true },
       { text: "基础功能", included: true },
-      { text: "专业模型", included: false },
-      { text: "Ultra 模型", included: false },
+      { text: "Standard 模型", included: false },
+      { text: "Pro 和 Ultra 模型", included: false },
     ],
   },
   {
@@ -151,7 +151,7 @@ const chinaPlans: SubscriptionPlan[] = [
       { text: "Lite 和 Standard 模型", included: true },
       { text: "更多存储和会话", included: true },
       { text: "沙盒环境", included: true },
-      { text: "专业模型", included: false },
+      { text: "Pro 和 Ultra 模型", included: false },
     ],
   },
   {

@@ -21,6 +21,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { TierSelector, type ModelTier } from "./TierSelector";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import {
   HistorySheetButton,
   McpToolsButton,
@@ -99,6 +101,11 @@ export default function ChatToolbar({
   const mcpServers = useXyzen((s) => s.mcpServers);
   const uploadedFiles = useXyzen((s) => s.uploadedFiles);
   const isUploading = useXyzen((s) => s.isUploading);
+
+  // Subscription tier limit
+  const auth = useAuth();
+  const subQuery = useSubscription(auth.token, auth.isAuthenticated);
+  const maxTier = (subQuery.data?.role?.max_model_tier ?? "lite") as ModelTier;
 
   // Fine-grained channel status (no messages)
   const channelStatus = useActiveChannelStatus();
@@ -321,6 +328,7 @@ export default function ChatToolbar({
                 <TierSelector
                   currentTier={currentSessionTier}
                   onTierChange={handleTierChange}
+                  maxTier={maxTier}
                 />
               )}
 

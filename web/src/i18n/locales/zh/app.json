@@ -240,6 +240,7 @@
         "name": "Xyzen Lite",
         "description": "快速轻量，适合简单任务"
       }
-    }
+    },
+    "locked": "需要 {{plan}} 订阅"
   }
 }

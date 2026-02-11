@@ -240,6 +240,7 @@
         "name": "Xyzen Lite",
         "description": "Fast and lightweight for simple tasks"
       }
-    }
+    },
+    "locked": "Requires {{plan}} plan"
   }
 }
