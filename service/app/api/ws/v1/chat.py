@@ -5,11 +5,13 @@ from uuid import UUID
 
 import redis.asyncio as redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi.exceptions import HTTPException
 
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.configs import configs
 from app.core.chat.topic_generator import generate_and_update_topic_title
 from app.core.consume import create_consume_for_chat
+from app.core.limits import LimitsEnforcer
 from app.infra.database import AsyncSessionLocal
 from app.middleware.auth import AuthContext, get_auth_context_websocket
 from app.models.message import MessageCreate
@@ -100,9 +102,26 @@ async def chat_websocket(
     auth_ctx: AuthContext = Depends(get_auth_context_websocket),
 ) -> None:
     connection_id = f"{session_id}:{topic_id}"
+    user = auth_ctx.user_id
+
+    # Check parallel chat limit before accepting connection
+    enforcer: LimitsEnforcer | None = None
+    try:
+        async with AsyncSessionLocal() as db:
+            enforcer = await LimitsEnforcer.create(db, user)
+            await enforcer.check_parallel_chat()
+    except HTTPException:
+        await websocket.accept()
+        await websocket.close(code=4029, reason="Parallel chat limit reached")
+        return
+    except Exception as e:
+        logger.warning(f"Limit check failed (allowing connection): {e}")
+
     await manager.connect(websocket, connection_id)
 
-    user = auth_ctx.user_id
+    # Track this connection for limit enforcement
+    if enforcer:
+        await enforcer.track_chat_connect(connection_id)
 
     # Validate session and topic access
     async with AsyncSessionLocal() as db:
@@ -340,6 +359,8 @@ async def chat_websocket(
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
     finally:
         manager.disconnect(connection_id)
+        if enforcer:
+            await enforcer.track_chat_disconnect(connection_id)
         listener_task.cancel()
         try:
             await listener_task

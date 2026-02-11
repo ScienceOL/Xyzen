@@ -357,33 +357,34 @@ class StorageQuotaService:
             return False, str(e)
 
 
-def create_quota_service(db: AsyncSession) -> StorageQuotaService:
+async def create_quota_service(db: AsyncSession, user_id: str | None = None) -> StorageQuotaService:
     """
-    Create a StorageQuotaService instance with configuration from OSSConfig.
-
-    This is the recommended way to create a quota service instance as it
-    automatically loads configuration from environment variables via OSSConfig.
-
-    Example:
-        @router.post("/upload")
-        async def upload_file(
-            file: UploadFile,
-            user_id: str = Depends(get_current_user),
-            db: AsyncSession = Depends(get_session),
-        ):
-            quota_service = create_quota_service(db)
-            await quota_service.validate_upload(user_id, file_size)
-            # ... proceed with upload
+    Create a StorageQuotaService instance with configuration from the user's
+    subscription role, falling back to OSSConfig when no roles are configured.
 
     Args:
         db: Database session for querying user storage usage
+        user_id: Optional user ID to resolve subscription-based limits
 
     Returns:
-        StorageQuotaService instance configured with limits from OSSConfig
+        StorageQuotaService instance configured with the effective limits
     """
     from app.configs import configs
 
     oss_config = configs.OSS
+
+    if user_id is not None:
+        from app.core.subscription import SubscriptionService
+
+        limits = await SubscriptionService(db).get_user_limits(user_id)
+        if limits is not None:
+            return StorageQuotaService(
+                db=db,
+                max_storage_bytes=limits.storage_limit_bytes,
+                max_file_count=limits.max_file_count,
+                max_file_size_bytes=limits.max_file_upload_bytes,
+            )
+
     return StorageQuotaService(
         db=db,
         max_storage_bytes=oss_config.MaxUserStorageBytes,

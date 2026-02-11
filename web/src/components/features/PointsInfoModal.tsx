@@ -57,10 +57,10 @@ const internationalPlans: SubscriptionPlan[] = [
     parallelChats: "1 parallel",
     isFree: true,
     features: [
-      { text: "Lite models", included: true },
+      { text: "Lite & Standard models", included: true },
       { text: "Basic features", included: true },
-      { text: "Standard models", included: false },
       { text: "Pro models", included: false },
+      { text: "Ultra models", included: false },
     ],
   },
   {
@@ -72,10 +72,10 @@ const internationalPlans: SubscriptionPlan[] = [
     parallelChats: "3 parallel",
     sandboxes: "1 sandbox",
     features: [
-      { text: "Standard models", included: true },
-      { text: "Priority queue", included: true },
+      { text: "Lite & Standard models", included: true },
+      { text: "More storage & chats", included: true },
+      { text: "Sandbox access", included: true },
       { text: "Pro models", included: false },
-      { text: "Ultra models", included: false },
     ],
   },
   {
@@ -121,10 +121,10 @@ const chinaPlans: SubscriptionPlan[] = [
     parallelChats: "1 并行会话",
     isFree: true,
     features: [
-      { text: "Lite 模型", included: true },
+      { text: "Lite 和 Standard 模型", included: true },
       { text: "基础功能", included: true },
-      { text: "标准模型", included: false },
       { text: "专业模型", included: false },
+      { text: "Ultra 模型", included: false },
     ],
   },
   {
@@ -137,10 +137,10 @@ const chinaPlans: SubscriptionPlan[] = [
     parallelChats: "3 并行会话",
     sandboxes: "1 沙盒",
     features: [
-      { text: "标准模型", included: true },
-      { text: "优先队列", included: true },
+      { text: "Lite 和 Standard 模型", included: true },
+      { text: "更多存储和会话", included: true },
+      { text: "沙盒环境", included: true },
       { text: "专业模型", included: false },
-      { text: "Ultra 模型", included: false },
     ],
   },
   {

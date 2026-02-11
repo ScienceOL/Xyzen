@@ -67,7 +67,7 @@ async def prepare_tools(
     langchain_tools.extend(mcp_tools)
 
     # 3. Load skill tools (requires DB query + session binding)
-    skill_tools = await _load_skill_tools(db, agent, session_id)
+    skill_tools = await _load_skill_tools(db, agent, session_id, user_id)
     langchain_tools.extend(skill_tools)
 
     logger.info(f"Loaded {len(langchain_tools)} tools (builtin + MCP)")
@@ -181,6 +181,7 @@ async def _load_skill_tools(
     db: AsyncSession,
     agent: "Agent | None",
     session_id: "UUID | None",
+    user_id: str | None = None,
 ) -> list[BaseTool]:
     """
     Load skill activation tools if the agent has attached skills.
@@ -192,6 +193,7 @@ async def _load_skill_tools(
         db: Database session
         agent: Agent instance
         session_id: Session UUID
+        user_id: User ID for sandbox limit enforcement
 
     Returns:
         List of skill tools (activate_skill, list_skill_resources) or empty list
@@ -221,6 +223,7 @@ async def _load_skill_tools(
         return create_skill_tools_for_session(
             skills=skill_infos,
             session_id=str(session_id),
+            user_id=user_id,
         )
 
     except Exception:

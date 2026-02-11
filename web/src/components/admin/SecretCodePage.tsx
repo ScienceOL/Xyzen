@@ -12,6 +12,7 @@ import { AdminAuthForm } from "./AdminAuthForm";
 import { CodeGenerationForm } from "./CodeGenerationForm";
 import { CodesList } from "./CodesList";
 import { DailyStatsTab } from "./DailyStatsTab";
+import { SubscriptionsTab } from "./SubscriptionsTab";
 import { TopUsersTab } from "./TopUsersTab";
 import { TrendChartTab } from "./TrendChartTab";
 import { UserActivityTab } from "./UserActivityTab";
@@ -140,6 +141,7 @@ export function SecretCodePage() {
               <TabsTrigger value="top-users">👥 Top Users</TabsTrigger>
               <TabsTrigger value="trend">📈 Trend Chart</TabsTrigger>
               <TabsTrigger value="rankings">🏆 Rankings</TabsTrigger>
+              <TabsTrigger value="subscriptions">📋 Subscriptions</TabsTrigger>
               <TabsTrigger value="codes">🎟️ Codes</TabsTrigger>
             </TabsList>
           </div>
@@ -184,6 +186,15 @@ export function SecretCodePage() {
             <TabsContent value="rankings">
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <UserRankingsTab
+                  adminSecret={adminSecret!}
+                  backendUrl={getBackendUrl()}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="subscriptions">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
+                <SubscriptionsTab
                   adminSecret={adminSecret!}
                   backendUrl={getBackendUrl()}
                 />

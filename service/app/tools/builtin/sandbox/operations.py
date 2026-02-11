@@ -14,7 +14,13 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from app.configs import configs
-from app.core.storage import FileScope, create_quota_service, detect_file_category, generate_storage_key, get_storage_service
+from app.core.storage import (
+    FileScope,
+    create_quota_service,
+    detect_file_category,
+    generate_storage_key,
+    get_storage_service,
+)
 from app.infra.database import create_task_session_factory
 from app.infra.sandbox.manager import SandboxManager
 from app.models.file import FileCreate
@@ -138,8 +144,7 @@ async def sandbox_grep(
     try:
         matches = await manager.search_in_files(path, pattern, include=include)
         formatted: list[dict[str, str | int]] = [
-            {"file": m.file, "line": m.line, "content": m.content}
-            for m in matches
+            {"file": m.file, "line": m.line, "content": m.content} for m in matches
         ]
         return {
             "success": True,
@@ -224,7 +229,7 @@ async def _persist_exported_file(
     uploaded = False
     try:
         async with task_session_factory() as db:
-            quota_service = create_quota_service(db)
+            quota_service = await create_quota_service(db, user_id)
             await quota_service.validate_upload(user_id, len(file_bytes))
 
             await storage.upload_file(

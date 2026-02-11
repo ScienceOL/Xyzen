@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription, useSubscriptionUsage } from "@/hooks/useSubscription";
 import { useVersion } from "@/hooks/useVersion";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
@@ -489,6 +490,168 @@ function StatusBarItem({
   );
 }
 
+// Subscription tier badge styles
+const TIER_STYLES: Record<
+  string,
+  { bg: string; text: string; border: string }
+> = {
+  free: {
+    bg: "bg-neutral-100/80 dark:bg-neutral-800/80",
+    text: "text-neutral-600 dark:text-neutral-400",
+    border: "border-neutral-200/50 dark:border-neutral-700/50",
+  },
+  standard: {
+    bg: "bg-blue-50/80 dark:bg-blue-950/40",
+    text: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-200/50 dark:border-blue-800/50",
+  },
+  professional: {
+    bg: "bg-purple-50/80 dark:bg-purple-950/40",
+    text: "text-purple-600 dark:text-purple-400",
+    border: "border-purple-200/50 dark:border-purple-800/50",
+  },
+  ultra: {
+    bg: "bg-amber-50/80 dark:bg-amber-950/40",
+    text: "text-amber-600 dark:text-amber-400",
+    border: "border-amber-200/50 dark:border-amber-800/50",
+  },
+};
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function SubscriptionBadge() {
+  const auth = useAuth();
+  const isAuthedForUi = auth.isAuthenticated || !!auth.token;
+  const subQuery = useSubscription(auth.token, isAuthedForUi);
+  const usageQuery = useSubscriptionUsage(auth.token, isAuthedForUi);
+  const [showPointsInfo, setShowPointsInfo] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  if (!isAuthedForUi || subQuery.isLoading) {
+    return null;
+  }
+
+  const roleName = subQuery.data?.role?.name ?? "free";
+  const displayName = subQuery.data?.role?.display_name ?? "Free";
+  const expiresAt = subQuery.data?.subscription?.expires_at;
+  const style = TIER_STYLES[roleName] ?? TIER_STYLES.free;
+
+  const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
+  const daysLeft = expiresAt
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        ),
+      )
+    : null;
+
+  const usage = usageQuery.data;
+  const hasOverQuota =
+    usage &&
+    ((usage.chats.limit > 0 && usage.chats.used >= usage.chats.limit) ||
+      usage.storage.usage_percentage >= 100);
+
+  return (
+    <>
+      <div className="relative">
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowPointsInfo(true)}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors border text-xs font-medium",
+            style.bg,
+            style.text,
+            style.border,
+            isExpired && "opacity-60",
+            hasOverQuota && "ring-1 ring-red-400/50",
+          )}
+        >
+          <span>{displayName}</span>
+          {daysLeft !== null && !isExpired && roleName !== "free" && (
+            <span className="text-[10px] opacity-70">{daysLeft}d</span>
+          )}
+          {isExpired && (
+            <span className="text-[10px] text-red-500 dark:text-red-400">
+              expired
+            </span>
+          )}
+        </motion.button>
+
+        {/* Usage tooltip */}
+        <AnimatePresence>
+          {hovered && usage && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute -top-2 right-0 -translate-y-full whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-2 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900 z-50"
+            >
+              <div className="flex flex-col gap-1 min-w-[140px]">
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-400 dark:text-neutral-500">
+                    Storage
+                  </span>
+                  <span>
+                    {formatBytes(usage.storage.used_bytes)} /{" "}
+                    {formatBytes(usage.storage.limit_bytes)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-400 dark:text-neutral-500">
+                    Chats
+                  </span>
+                  <span>
+                    {usage.chats.used} / {usage.chats.limit || "\u221E"}
+                  </span>
+                </div>
+                {usage.sandboxes.limit > 0 && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-neutral-400 dark:text-neutral-500">
+                      Sandboxes
+                    </span>
+                    <span>
+                      {usage.sandboxes.used} / {usage.sandboxes.limit}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-400 dark:text-neutral-500">
+                    Files
+                  </span>
+                  <span>
+                    {usage.files.used} / {usage.files.limit}
+                  </span>
+                </div>
+                {hasOverQuota && (
+                  <div className="text-red-400 dark:text-red-500 text-[10px] mt-0.5">
+                    Quota exceeded
+                  </div>
+                )}
+              </div>
+              <div className="absolute -bottom-1 right-4 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-100" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <PointsInfoModal
+        isOpen={showPointsInfo}
+        onClose={() => setShowPointsInfo(false)}
+      />
+    </>
+  );
+}
+
 // Main Dock container
 export function BottomDock({
   activePanel,
@@ -496,7 +659,6 @@ export function BottomDock({
   className,
 }: BottomDockProps) {
   const { t } = useTranslation();
-  const { openSettingsModal } = useXyzen();
   const auth = useAuth();
   const mouseX = useMotionValue(Infinity);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -619,20 +781,8 @@ export function BottomDock({
               {/* Divider */}
               <div className="h-6 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
 
-              {/* Settings */}
-              <motion.button
-                whileHover={{ scale: 1.05, rotate: 30 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => openSettingsModal()}
-                className={cn(
-                  "flex items-center justify-center h-9 w-9 rounded-lg transition-colors",
-                  "bg-white/40 dark:bg-neutral-800/40",
-                  "hover:bg-white/70 dark:hover:bg-neutral-700/60",
-                  "border border-white/20 dark:border-neutral-700/30",
-                )}
-              >
-                <Cog6ToothIcon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-              </motion.button>
+              {/* Subscription Badge */}
+              <SubscriptionBadge />
             </div>
           </div>
         </motion.div>
