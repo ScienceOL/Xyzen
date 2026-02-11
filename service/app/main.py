@@ -62,6 +62,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await db.rollback()
             raise
 
+    # Backfill legacy v2 graph_configs in snapshot configurations.
+    from app.repos.agent_snapshot import AgentSnapshotRepository
+
+    async with AsyncSessionLocal() as db:
+        try:
+            snapshot_repo = AgentSnapshotRepository(db)
+            summary = await snapshot_repo.backfill_snapshot_graph_configs()
+            await db.commit()
+            logger.info(
+                "Snapshot GraphConfig backfill completed: total=%d changed=%d migrated=%d skipped=%d failed=%d",
+                summary["total_snapshots"],
+                summary["changed"],
+                summary["migrated"],
+                summary["skipped"],
+                summary["failed"],
+            )
+        except Exception as e:
+            logger.error(f"Failed to backfill snapshot graph_configs at startup: {e}")
+            await db.rollback()
+
     # Initialize system agents (Chat agent)
     from app.core.system_agent import SystemAgentManager
 

@@ -32,6 +32,14 @@ class AgentRepository:
             raise ValueError(f"Agent {agent.id} has invalid graph_config; expected canonical GraphConfig.") from exc
 
     def _canonicalize_graph_config(self, raw_config: dict[str, Any]) -> dict[str, Any]:
+        from app.schemas.graph_config import is_graph_config
+
+        if not is_graph_config(raw_config):
+            from app.agents.graph.upgrader import upgrade_graph_config
+
+            result = upgrade_graph_config(raw_config)
+            return result.config.model_dump(exclude_none=True)
+
         config = parse_and_canonicalize_graph_config(raw_config)
         ensure_valid_graph_config(config)
         return config.model_dump(exclude_none=True)
