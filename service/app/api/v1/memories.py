@@ -36,7 +36,12 @@ async def list_memories(
         return []
 
     namespace = (configs.Memory.NamespacePrefix, user)
-    items = await memory_service.store.asearch(namespace, limit=limit, offset=offset)
+    try:
+        items = await memory_service.store.asearch(namespace, limit=limit, offset=offset)
+    except Exception:
+        logger.exception("Failed to search memories for user %s", user)
+        raise HTTPException(status_code=503, detail="Memory service temporarily unavailable")
+
     return [
         MemoryItem(
             key=item.key,
@@ -59,4 +64,8 @@ async def delete_memory(
         raise HTTPException(status_code=503, detail="Memory service unavailable")
 
     namespace = (configs.Memory.NamespacePrefix, user)
-    await memory_service.store.adelete(namespace, key)
+    try:
+        await memory_service.store.adelete(namespace, key)
+    except Exception:
+        logger.exception("Failed to delete memory %s for user %s", key, user)
+        raise HTTPException(status_code=503, detail="Memory service temporarily unavailable")

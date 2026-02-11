@@ -73,7 +73,9 @@ class MemoryService:
             index_config = _build_index_config()
 
             # from_conn_string is an async context manager
-            cm = AsyncPostgresStore.from_conn_string(conn_string, index=index_config)
+            cm = AsyncPostgresStore.from_conn_string(
+                conn_string, index=index_config, pool_config={"min_size": 1, "max_size": 5}
+            )
             store = await cm.__aenter__()
             self._context_manager = cm
 
