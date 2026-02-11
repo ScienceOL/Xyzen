@@ -900,153 +900,157 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
       title="选择订阅方案"
       maxWidth="max-w-5xl"
     >
-      <div className="relative max-h-[70vh] overflow-y-auto px-1 py-2 sm:px-2">
-        <div className="space-y-4">
-          <Tabs defaultValue={defaultTab} key={defaultTab}>
-            <TabsList className="mx-auto w-fit">
-              {hasPaidSub && (
+      <div className="flex flex-col">
+        {/* Scrollable content */}
+        <div className="relative max-h-[65vh] overflow-y-auto custom-scrollbar px-4 py-2 sm:px-6">
+          <div className="space-y-4">
+            <Tabs defaultValue={defaultTab} key={defaultTab}>
+              <TabsList className="mx-auto w-fit">
+                {hasPaidSub && (
+                  <TabsTrigger
+                    value="subscription"
+                    className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
+                  >
+                    <SparklesIcon className="h-4 w-4" />
+                    我的订阅
+                  </TabsTrigger>
+                )}
                 <TabsTrigger
-                  value="subscription"
+                  value="international"
                   className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
                 >
-                  <SparklesIcon className="h-4 w-4" />
-                  我的订阅
+                  <GlobeAltIcon className="h-4 w-4" />
+                  International
                 </TabsTrigger>
-              )}
-              <TabsTrigger
-                value="international"
-                className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
-              >
-                <GlobeAltIcon className="h-4 w-4" />
-                International
-              </TabsTrigger>
-              <TabsTrigger
-                value="china"
-                className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
-              >
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
+                <TabsTrigger
+                  value="china"
+                  className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
                 >
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-                </svg>
-                中国大陆
-              </TabsTrigger>
-            </TabsList>
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                  </svg>
+                  中国大陆
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContents>
-              {hasPaidSub && (
-                <TabsContent value="subscription">
-                  <MySubscriptionTab />
-                </TabsContent>
-              )}
+              <TabsContents>
+                {hasPaidSub && (
+                  <TabsContent value="subscription">
+                    <MySubscriptionTab />
+                  </TabsContent>
+                )}
 
-              <TabsContent value="international">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.25 }}
-                  className="mt-4 space-y-4"
-                >
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-                    {internationalPlans.map((plan, index) => (
-                      <PlanCard key={plan.name} plan={plan} index={index} />
-                    ))}
-                  </div>
-                  <TopUpCard region="international" delay={0.3} />
-                  <SandboxPackCard region="international" delay={0.35} />
-                </motion.div>
-              </TabsContent>
-
-              <TabsContent value="china">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.25 }}
-                  className="mt-4 space-y-4"
-                >
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-                    {chinaPlans.map((plan, index) => (
-                      <PlanCard key={plan.name} plan={plan} index={index} />
-                    ))}
-                  </div>
-                  <TopUpCard region="china" delay={0.3} />
-                  <SandboxPackCard region="china" delay={0.35} />
-                  <motion.p
+                <TabsContent value="international">
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.35 }}
-                    className="text-center text-xs text-neutral-500 dark:text-neutral-400"
+                    transition={{ duration: 0.25 }}
+                    className="mt-4 space-y-4"
                   >
-                    订阅服务不与国际版互通
-                  </motion.p>
-                </motion.div>
-              </TabsContent>
-            </TabsContents>
-          </Tabs>
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                      {internationalPlans.map((plan, index) => (
+                        <PlanCard key={plan.name} plan={plan} index={index} />
+                      ))}
+                    </div>
+                    <TopUpCard region="international" delay={0.3} />
+                    <SandboxPackCard region="international" delay={0.35} />
+                  </motion.div>
+                </TabsContent>
 
-          {/* Beta notice */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="rounded-lg border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10"
-          >
-            <p className="text-center text-xs text-amber-700 dark:text-amber-300">
-              内测期间暂不支持外部充值，欢迎加入内测群了解最新动态
-            </p>
-          </motion.div>
+                <TabsContent value="china">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-4 space-y-4"
+                  >
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                      {chinaPlans.map((plan, index) => (
+                        <PlanCard key={plan.name} plan={plan} index={index} />
+                      ))}
+                    </div>
+                    <TopUpCard region="china" delay={0.3} />
+                    <SandboxPackCard region="china" delay={0.35} />
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.35 }}
+                      className="text-center text-xs text-neutral-500 dark:text-neutral-400"
+                    >
+                      订阅服务不与国际版互通
+                    </motion.p>
+                  </motion.div>
+                </TabsContent>
+              </TabsContents>
+            </Tabs>
 
-          {/* Survey link */}
-          <motion.a
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.45 }}
-            whileHover={{ scale: 1.005 }}
-            whileTap={{ scale: 0.995 }}
-            href="https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-center gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2.5 transition-all hover:border-indigo-300 hover:shadow-sm sm:gap-3 sm:px-4 sm:py-3 dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-purple-500/10 dark:hover:border-indigo-400/50"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-sm">
-              <DocumentTextIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
-                填写内测问卷
-              </div>
-              <div className="text-xs text-indigo-600/70 dark:text-indigo-300/70">
-                参与内测获取更多额度
-              </div>
-            </div>
-            <svg
-              className="h-4 w-4 text-indigo-400 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+            {/* Beta notice */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="rounded-lg border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14 5l7 7m0 0l-7 7m7-7H3"
-              />
-            </svg>
-          </motion.a>
+              <p className="text-center text-xs text-amber-700 dark:text-amber-300">
+                内测期间暂不支持外部充值，欢迎加入内测群了解最新动态
+              </p>
+            </motion.div>
 
-          <div className="flex justify-end border-t border-neutral-100 pt-3 dark:border-neutral-800">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="button"
-              onClick={onClose}
-              className="rounded-lg bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:hover:bg-indigo-500"
+            {/* Survey link */}
+            <motion.a
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.45 }}
+              whileHover={{ scale: 1.005 }}
+              whileTap={{ scale: 0.995 }}
+              href="https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2.5 transition-all hover:border-indigo-300 hover:shadow-sm sm:gap-3 sm:px-4 sm:py-3 dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-purple-500/10 dark:hover:border-indigo-400/50"
             >
-              知道了
-            </motion.button>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-sm">
+                <DocumentTextIcon className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
+                  填写内测问卷
+                </div>
+                <div className="text-xs text-indigo-600/70 dark:text-indigo-300/70">
+                  参与内测获取更多额度
+                </div>
+              </div>
+              <svg
+                className="h-4 w-4 text-indigo-400 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                />
+              </svg>
+            </motion.a>
           </div>
+        </div>
+
+        {/* Fixed footer */}
+        <div className="flex justify-end border-t border-neutral-100 px-4 pt-3 pb-1 sm:px-6 dark:border-neutral-800">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:hover:bg-indigo-500"
+          >
+            知道了
+          </motion.button>
         </div>
       </div>
     </Modal>
