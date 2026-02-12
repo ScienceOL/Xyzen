@@ -2010,10 +2010,7 @@ export const createChatSlice: StateCreator<
       // where handleDisconnect re-calls connect() with the stored callback ref).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const currentCallback = xyzenService["onMessageEventCallback"] as any;
-      if (
-        currentCallback &&
-        !currentCallback.__staleWatchdog
-      ) {
+      if (currentCallback && !currentCallback.__staleWatchdog) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const wrapped: any = (event: any) => {
           lastActivityTimestamp = Date.now();
