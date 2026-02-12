@@ -48,7 +48,7 @@ interface MessageEvent {
 }
 
 type ServiceCallback<T> = (payload: T) => void;
-type MessageEventCallback = (event: MessageEvent) => void;
+export type MessageEventCallback = (event: MessageEvent) => void;
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
 
@@ -73,6 +73,12 @@ class XyzenService {
 
   // Heartbeat watchdog
   private heartbeatWatchdogId: ReturnType<typeof setTimeout> | null = null;
+
+  // Background connections: detached WS kept alive for responding channels
+  private backgroundConnections: Map<
+    string,
+    { ws: WebSocket; cleanup: () => void }
+  > = new Map();
 
   public setBackendUrl(url: string) {
     this.backendUrl = url;
@@ -299,6 +305,74 @@ class XyzenService {
     return false;
   }
 
+  /**
+   * Detach the current primary WS connection to background so it stays alive
+   * while the user switches to a different topic. The background WS only
+   * receives events and responds to server pings — no messages are sent.
+   */
+  public detachCurrentConnection(
+    topicId: string,
+    onMessageEvent: MessageEventCallback,
+  ): boolean {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false;
+
+    const bgWs = this.ws;
+    this.ws = null; // detach — connect() won't close it
+
+    // Clear primary-only state
+    this.clearHeartbeatWatchdog();
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
+    this.retryCount = 0;
+    this.wasDisconnected = false;
+    this.lastSessionId = null;
+    this.lastTopicId = null;
+
+    const cleanup = () => {
+      this.backgroundConnections.delete(topicId);
+    };
+
+    // Re-wire onmessage: ping/pong + event forwarding
+    bgWs.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "ping") {
+          if (bgWs.readyState === WebSocket.OPEN) {
+            bgWs.send(JSON.stringify({ type: "pong" }));
+          }
+          return;
+        }
+        if (data.type) onMessageEvent(data);
+      } catch {
+        /* ignore parse errors */
+      }
+    };
+    bgWs.onclose = () => {
+      cleanup();
+    };
+    bgWs.onerror = () => {
+      cleanup();
+    };
+
+    this.backgroundConnections.set(topicId, { ws: bgWs, cleanup });
+    return true;
+  }
+
+  /**
+   * Close a specific background connection (e.g., when its channel stops responding).
+   */
+  public closeBackgroundConnection(topicId: string): void {
+    const bg = this.backgroundConnections.get(topicId);
+    if (!bg) return;
+    bg.ws.onclose = null;
+    bg.ws.onerror = null;
+    bg.ws.onmessage = null;
+    bg.ws.close();
+    bg.cleanup();
+  }
+
   public disconnect() {
     // Clear heartbeat watchdog
     this.clearHeartbeatWatchdog();
@@ -324,6 +398,15 @@ class XyzenService {
       this.ws.close();
       this.ws = null;
     }
+
+    // Close ALL background connections
+    for (const [, bg] of this.backgroundConnections) {
+      bg.ws.onclose = null;
+      bg.ws.onerror = null;
+      bg.ws.onmessage = null;
+      bg.ws.close();
+    }
+    this.backgroundConnections.clear();
   }
 }
 

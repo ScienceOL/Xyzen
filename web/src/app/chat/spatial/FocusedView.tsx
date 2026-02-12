@@ -76,8 +76,8 @@ export function FocusedView({
 
   // Get selected agent's node ID
   const selectedAgentId = useMemo(
-    () => agents.find((a) => a.name === agent.name)?.id,
-    [agents, agent.name],
+    () => agents.find((a) => a.agentId === agent.agentId)?.id,
+    [agents, agent.agentId],
   );
 
   // Auto-scroll to selected agent in the list

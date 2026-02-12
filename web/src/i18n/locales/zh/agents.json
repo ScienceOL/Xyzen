@@ -61,7 +61,8 @@
     "nameRequired": "助手名称不能为空",
     "templateRequired": "请选择一个系统助手",
     "createFailed": "创建助手失败，请查看控制台了解更多信息。",
-    "updateFailed": "保存失败，请稍后重试。"
+    "updateFailed": "保存失败，请稍后重试。",
+    "nameDuplicate": "已存在同名助手，请使用其他名称。"
   },
   "sessionSettings": {
     "title": "{{name}} 设置",

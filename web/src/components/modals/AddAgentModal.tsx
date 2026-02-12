@@ -223,7 +223,7 @@ interface AddAgentModalProps {
 
 function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
   const { t } = useTranslation();
-  const { createAgent, isCreatingAgent, backendUrl } = useXyzen();
+  const { createAgent, isCreatingAgent, backendUrl, agents } = useXyzen();
 
   const [agent, setAgent] = useState<
     Omit<
@@ -264,6 +264,10 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
     if (isSubmitting) return;
     if (!agent.name) {
       alert(t("agents.errors.nameRequired"));
+      return;
+    }
+    if (agents.some((a) => a.name === agent.name)) {
+      alert(t("agents.errors.nameDuplicate"));
       return;
     }
 

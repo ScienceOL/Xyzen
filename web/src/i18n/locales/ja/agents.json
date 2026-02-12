@@ -61,7 +61,8 @@
     "nameRequired": "エージェント名を入力してください",
     "templateRequired": "システムエージェントを選択してください",
     "createFailed": "エージェントの作成に失敗しました。コンソールで詳細を確認してください。",
-    "updateFailed": "保存に失敗しました。後でもう一度お試しください。"
+    "updateFailed": "保存に失敗しました。後でもう一度お試しください。",
+    "nameDuplicate": "同じ名前のエージェントが既に存在します。別の名前を選択してください。"
   },
   "sessionSettings": {
     "title": "{{name}} 設定",

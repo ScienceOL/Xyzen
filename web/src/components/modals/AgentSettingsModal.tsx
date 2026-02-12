@@ -403,7 +403,7 @@ function ProfileEditor({
 }: ProfileEditorProps) {
   const { t } = useTranslation();
   const backendUrl = useXyzen((state) => state.backendUrl);
-  const { updateAgent } = useXyzen();
+  const { updateAgent, agents: allAgents } = useXyzen();
   const [agent, setAgent] = useState<Agent>(agentToEdit);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -421,6 +421,14 @@ function ProfileEditor({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSaving) return;
+
+    if (
+      agent.name !== agentToEdit.name &&
+      allAgents.some((a) => a.id !== agent.id && a.name === agent.name)
+    ) {
+      alert(t("agents.errors.nameDuplicate"));
+      return;
+    }
 
     setIsSaving(true);
     try {
