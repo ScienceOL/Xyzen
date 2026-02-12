@@ -326,8 +326,7 @@ class GraphBuilder:
                 from app.tools.capabilities import TOOL_FILTER_EXEMPT
 
                 tools_to_bind = [
-                    t for t in tools_to_bind
-                    if t.name in llm_config.tool_filter or t.name in TOOL_FILTER_EXEMPT
+                    t for t in tools_to_bind if t.name in llm_config.tool_filter or t.name in TOOL_FILTER_EXEMPT
                 ]
             if tools_to_bind:
                 configured_llm = base_llm.bind_tools(tools_to_bind)
@@ -459,7 +458,8 @@ class GraphBuilder:
             from app.tools.capabilities import TOOL_FILTER_EXEMPT
 
             tools = [
-                t for t in self.tool_registry.values()
+                t
+                for t in self.tool_registry.values()
                 if t.name in tool_config.tool_filter or t.name in TOOL_FILTER_EXEMPT
             ]
             tool_node = ToolNode(tools) if tools else None

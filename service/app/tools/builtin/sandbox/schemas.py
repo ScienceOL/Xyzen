@@ -107,9 +107,7 @@ class SandboxExportInput(BaseModel):
     )
     filename: str | None = Field(
         default=None,
-        description=(
-            "Optional output filename in OSS. If omitted, uses the basename from path."
-        ),
+        description=("Optional output filename in OSS. If omitted, uses the basename from path."),
     )
 
 

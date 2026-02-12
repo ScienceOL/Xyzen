@@ -355,7 +355,9 @@ export const createChatSlice: StateCreator<
    * Fetch authoritative messages from the REST API and reconcile channel state.
    * Used after reconnect or when stale runtime flags are detected.
    */
-  const reconcileChannelFromBackend = async (topicId: string): Promise<void> => {
+  const reconcileChannelFromBackend = async (
+    topicId: string,
+  ): Promise<void> => {
     const { backendUrl, setLoading } = get();
     const loadingKey = `topicMessages-${topicId}`;
     setLoading(loadingKey, true);

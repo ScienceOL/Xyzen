@@ -69,8 +69,7 @@ def validate_skill_name(name: str) -> str:
 
     if not NAME_PATTERN.match(name):
         raise SkillParseError(
-            f"Skill name must be lowercase letters, digits, and hyphens, "
-            f"starting with a letter: {name!r}"
+            f"Skill name must be lowercase letters, digits, and hyphens, starting with a letter: {name!r}"
         )
 
     return name
@@ -83,8 +82,7 @@ def _validate_description(description: str) -> str:
 
     if len(description) > DESCRIPTION_MAX_LENGTH:
         raise SkillParseError(
-            f"Skill description must be at most {DESCRIPTION_MAX_LENGTH} characters, "
-            f"got {len(description)}"
+            f"Skill description must be at most {DESCRIPTION_MAX_LENGTH} characters, got {len(description)}"
         )
 
     return description.strip()

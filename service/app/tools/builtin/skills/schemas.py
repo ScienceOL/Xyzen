@@ -23,9 +23,7 @@ class ActivateSkillInput(BaseModel):
 class ListSkillResourcesInput(BaseModel):
     """Input schema for list_skill_resources tool."""
 
-    skill_name: str = Field(
-        description="Name of the activated skill whose resources to list."
-    )
+    skill_name: str = Field(description="Name of the activated skill whose resources to list.")
 
 
 __all__ = [

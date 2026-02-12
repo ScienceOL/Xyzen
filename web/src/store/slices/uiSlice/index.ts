@@ -62,7 +62,9 @@ export interface UiSlice {
   submitInput: () => void;
   setSpatialSidebarCollapsed: (collapsed: boolean) => void;
   setCapsuleOpen: (open: boolean) => void;
-  setCapsuleActiveTab: (tab: "knowledge" | "tools" | "sandbox" | "memory") => void;
+  setCapsuleActiveTab: (
+    tab: "knowledge" | "tools" | "sandbox" | "memory",
+  ) => void;
 }
 
 export const createUiSlice: StateCreator<

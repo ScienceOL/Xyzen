@@ -164,10 +164,12 @@ describe("skillService", () => {
       ),
     );
 
-    await expect(skillService.createSkill({
-      name: "my-skill",
-      description: "desc",
-      skill_md: "x",
-    })).rejects.toThrow("Skill name already in use");
+    await expect(
+      skillService.createSkill({
+        name: "my-skill",
+        description: "desc",
+        skill_md: "x",
+      }),
+    ).rejects.toThrow("Skill name already in use");
   });
 });

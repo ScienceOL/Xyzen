@@ -74,8 +74,7 @@ def create_skill_tools() -> dict[str, BaseTool]:
     tools["list_skill_resources"] = StructuredTool(
         name="list_skill_resources",
         description=(
-            "List the resource files (scripts, references, assets) "
-            "available for an activated skill in the sandbox."
+            "List the resource files (scripts, references, assets) available for an activated skill in the sandbox."
         ),
         args_schema=ListSkillResourcesInput,
         coroutine=list_resources_placeholder,
@@ -222,8 +221,7 @@ def create_skill_tools_for_session(
         StructuredTool(
             name="list_skill_resources",
             description=(
-                "List the resource files (scripts, references, assets) "
-                "available for an activated skill in the sandbox."
+                "List the resource files (scripts, references, assets) available for an activated skill in the sandbox."
             ),
             args_schema=ListSkillResourcesInput,
             coroutine=list_skill_resources_bound,

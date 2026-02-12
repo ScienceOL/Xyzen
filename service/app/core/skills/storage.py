@@ -45,9 +45,7 @@ def _normalize_resource_path(path: str) -> str:
         raise ValueError(f"{SKILL_MD_FILENAME} is reserved")
 
     if len(normalized) > MAX_SKILL_RESOURCE_PATH_LENGTH:
-        raise ValueError(
-            f"Resource path exceeds max length {MAX_SKILL_RESOURCE_PATH_LENGTH}: {path!r}"
-        )
+        raise ValueError(f"Resource path exceeds max length {MAX_SKILL_RESOURCE_PATH_LENGTH}: {path!r}")
 
     return pure.as_posix()
 
@@ -58,9 +56,7 @@ def normalize_inline_resources(resources: list[dict[str, Any]] | None) -> list[t
         return []
 
     if len(resources) > MAX_SKILL_RESOURCE_FILES:
-        raise ValueError(
-            f"Too many resource files: {len(resources)} (max {MAX_SKILL_RESOURCE_FILES})"
-        )
+        raise ValueError(f"Too many resource files: {len(resources)} (max {MAX_SKILL_RESOURCE_FILES})")
 
     normalized: list[tuple[str, str]] = []
     seen_paths: set[str] = set()
@@ -85,15 +81,11 @@ def normalize_inline_resources(resources: list[dict[str, Any]] | None) -> list[t
             raise ValueError(f"Resource '{path}' is not valid UTF-8 text") from e
 
         if content_bytes > MAX_SKILL_RESOURCE_FILE_BYTES:
-            raise ValueError(
-                f"Resource '{path}' exceeds max size {MAX_SKILL_RESOURCE_FILE_BYTES} bytes"
-            )
+            raise ValueError(f"Resource '{path}' exceeds max size {MAX_SKILL_RESOURCE_FILE_BYTES} bytes")
 
         total_bytes += content_bytes
         if total_bytes > MAX_SKILL_RESOURCE_TOTAL_BYTES:
-            raise ValueError(
-                f"Total resource size exceeds max {MAX_SKILL_RESOURCE_TOTAL_BYTES} bytes"
-            )
+            raise ValueError(f"Total resource size exceeds max {MAX_SKILL_RESOURCE_TOTAL_BYTES} bytes")
 
         if path in seen_paths:
             raise ValueError(f"Duplicate resource path: {path}")

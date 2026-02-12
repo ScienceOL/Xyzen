@@ -187,251 +187,255 @@ export function MobileMoreMenu({
                 </div>
               )}
 
-            {/* MCP Tool Section - Expandable */}
-            {agent && (
-              <div className="w-full">
-                <button
-                  onClick={() => setShowMcpList(!showMcpList)}
-                  className="w-full px-2.5 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                >
-                  <div className="flex items-center justify-between text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                    <div className="flex items-center gap-1.5">
-                      <McpIcon className="h-3.5 w-3.5" />
-                      <span>{t("app.toolbar.mcpTools")}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {totalTools > 0 && (
-                        <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                          {totalTools}
-                        </span>
-                      )}
-                      <ChevronDownIcon
-                        className={cn(
-                          "h-3 w-3 transition-transform",
-                          showMcpList && "rotate-180",
+              {/* MCP Tool Section - Expandable */}
+              {agent && (
+                <div className="w-full">
+                  <button
+                    onClick={() => setShowMcpList(!showMcpList)}
+                    className="w-full px-2.5 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  >
+                    <div className="flex items-center justify-between text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                      <div className="flex items-center gap-1.5">
+                        <McpIcon className="h-3.5 w-3.5" />
+                        <span>{t("app.toolbar.mcpTools")}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {totalTools > 0 && (
+                          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                            {totalTools}
+                          </span>
                         )}
-                      />
+                        <ChevronDownIcon
+                          className={cn(
+                            "h-3 w-3 transition-transform",
+                            showMcpList && "rotate-180",
+                          )}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
 
-                {/* Expandable MCP Server List */}
-                <AnimatePresence>
-                  {showMcpList && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="ml-2 mt-1 space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
-                        {/* Empty State */}
-                        {allMcpServers.length === 0 && (
-                          <div className="px-2 py-3 text-center">
-                            <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                              {t(
-                                "app.toolbar.mcpNoServers",
-                                "No MCP servers configured",
-                              )}
+                  {/* Expandable MCP Server List */}
+                  <AnimatePresence>
+                    {showMcpList && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="ml-2 mt-1 space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
+                          {/* Empty State */}
+                          {allMcpServers.length === 0 && (
+                            <div className="px-2 py-3 text-center">
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                                {t(
+                                  "app.toolbar.mcpNoServers",
+                                  "No MCP servers configured",
+                                )}
+                              </div>
+                              <button
+                                onClick={() => onOpenSettings?.()}
+                                className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                              >
+                                <Cog6ToothIcon className="h-3 w-3" />
+                                {t(
+                                  "app.toolbar.mcpOpenSettings",
+                                  "Open Settings",
+                                )}
+                              </button>
                             </div>
+                          )}
+
+                          {/* Connected Servers */}
+                          {connectedServers.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
+                                {t("app.toolbar.mcpConnected", "Connected")}
+                              </div>
+                              <div className="space-y-0.5">
+                                {connectedServers.map((server) => (
+                                  <MobileMcpServerItem
+                                    key={server.id}
+                                    server={server}
+                                    isConnected={true}
+                                    isUpdating={isUpdating === server.id}
+                                    onToggle={() =>
+                                      handleMcpServerToggle(server.id, false)
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Available Servers */}
+                          {availableServers.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
+                                {t("app.toolbar.mcpAvailable", "Available")}
+                              </div>
+                              <div className="space-y-0.5">
+                                {availableServers.map((server) => (
+                                  <MobileMcpServerItem
+                                    key={server.id}
+                                    server={server}
+                                    isConnected={false}
+                                    isUpdating={isUpdating === server.id}
+                                    onToggle={() =>
+                                      handleMcpServerToggle(server.id, true)
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* Skills Section - Expandable */}
+              {agent && (
+                <div className="w-full">
+                  <button
+                    onClick={() => {
+                      const next = !showSkillsList;
+                      setShowSkillsList(next);
+                      if (next) {
+                        void loadSkills();
+                      }
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  >
+                    <div className="flex items-center justify-between text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                      <div className="flex items-center gap-1.5">
+                        <SparklesIcon className="h-3.5 w-3.5" />
+                        <span>{t("app.toolbar.skills.title", "Skills")}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {connectedSkills.length > 0 && (
+                          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                            {connectedSkills.length}
+                          </span>
+                        )}
+                        <ChevronDownIcon
+                          className={cn(
+                            "h-3 w-3 transition-transform",
+                            showSkillsList && "rotate-180",
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {showSkillsList && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="ml-2 mt-1 space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
+                          <div className="px-2 py-0.5">
                             <button
-                              onClick={() => onOpenSettings?.()}
-                              className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                              type="button"
+                              className="text-[10px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                              onClick={() => setShowCreateSkillModal(true)}
                             >
-                              <Cog6ToothIcon className="h-3 w-3" />
                               {t(
-                                "app.toolbar.mcpOpenSettings",
-                                "Open Settings",
+                                "app.toolbar.skills.createAction",
+                                "Create Skill",
                               )}
                             </button>
                           </div>
-                        )}
 
-                        {/* Connected Servers */}
-                        {connectedServers.length > 0 && (
-                          <div>
-                            <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
-                              {t("app.toolbar.mcpConnected", "Connected")}
+                          {skillsError && (
+                            <div className="mx-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                              {skillsError}
                             </div>
-                            <div className="space-y-0.5">
-                              {connectedServers.map((server) => (
-                                <MobileMcpServerItem
-                                  key={server.id}
-                                  server={server}
-                                  isConnected={true}
-                                  isUpdating={isUpdating === server.id}
-                                  onToggle={() =>
-                                    handleMcpServerToggle(server.id, false)
-                                  }
-                                />
-                              ))}
+                          )}
+
+                          {isLoadingSkills ? (
+                            <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
+                              {t("common.loading", "Loading...")}
                             </div>
-                          </div>
-                        )}
-
-                        {/* Available Servers */}
-                        {availableServers.length > 0 && (
-                          <div>
-                            <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
-                              {t("app.toolbar.mcpAvailable", "Available")}
-                            </div>
-                            <div className="space-y-0.5">
-                              {availableServers.map((server) => (
-                                <MobileMcpServerItem
-                                  key={server.id}
-                                  server={server}
-                                  isConnected={false}
-                                  isUpdating={isUpdating === server.id}
-                                  onToggle={() =>
-                                    handleMcpServerToggle(server.id, true)
-                                  }
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* Skills Section - Expandable */}
-            {agent && (
-              <div className="w-full">
-                <button
-                  onClick={() => {
-                    const next = !showSkillsList;
-                    setShowSkillsList(next);
-                    if (next) {
-                      void loadSkills();
-                    }
-                  }}
-                  className="w-full px-2.5 py-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                >
-                  <div className="flex items-center justify-between text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                    <div className="flex items-center gap-1.5">
-                      <SparklesIcon className="h-3.5 w-3.5" />
-                      <span>{t("app.toolbar.skills.title", "Skills")}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {connectedSkills.length > 0 && (
-                        <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                          {connectedSkills.length}
-                        </span>
-                      )}
-                      <ChevronDownIcon
-                        className={cn(
-                          "h-3 w-3 transition-transform",
-                          showSkillsList && "rotate-180",
-                        )}
-                      />
-                    </div>
-                  </div>
-                </button>
-
-                <AnimatePresence>
-                  {showSkillsList && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="ml-2 mt-1 space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
-                        <div className="px-2 py-0.5">
-                          <button
-                            type="button"
-                            className="text-[10px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                            onClick={() => setShowCreateSkillModal(true)}
-                          >
-                            {t(
-                              "app.toolbar.skills.createAction",
-                              "Create Skill",
-                            )}
-                          </button>
-                        </div>
-
-                        {skillsError && (
-                          <div className="mx-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-                            {skillsError}
-                          </div>
-                        )}
-
-                        {isLoadingSkills ? (
-                          <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
-                            {t("common.loading", "Loading...")}
-                          </div>
-                        ) : (
-                          <>
-                            {connectedSkills.length > 0 && (
-                              <div>
-                                <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
-                                  {t(
-                                    "app.toolbar.skills.connected",
-                                    "Connected",
-                                  )}
-                                </div>
-                                <div className="space-y-0.5">
-                                  {connectedSkills.map((skill) => (
-                                    <MobileSkillItem
-                                      key={skill.id}
-                                      skill={skill}
-                                      isConnected={true}
-                                      isUpdating={isUpdatingSkillId === skill.id}
-                                      onToggle={() =>
-                                        handleSkillToggle(skill, true)
-                                      }
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {availableSkills.length > 0 && (
-                              <div>
-                                <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
-                                  {t(
-                                    "app.toolbar.skills.available",
-                                    "Available",
-                                  )}
-                                </div>
-                                <div className="space-y-0.5">
-                                  {availableSkills.map((skill) => (
-                                    <MobileSkillItem
-                                      key={skill.id}
-                                      skill={skill}
-                                      isConnected={false}
-                                      isUpdating={isUpdatingSkillId === skill.id}
-                                      onToggle={() =>
-                                        handleSkillToggle(skill, false)
-                                      }
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {connectedSkills.length === 0 &&
-                              availableSkills.length === 0 && (
-                                <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
-                                  {t(
-                                    "app.toolbar.skills.empty",
-                                    "No skills available. Create one to get started.",
-                                  )}
+                          ) : (
+                            <>
+                              {connectedSkills.length > 0 && (
+                                <div>
+                                  <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
+                                    {t(
+                                      "app.toolbar.skills.connected",
+                                      "Connected",
+                                    )}
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    {connectedSkills.map((skill) => (
+                                      <MobileSkillItem
+                                        key={skill.id}
+                                        skill={skill}
+                                        isConnected={true}
+                                        isUpdating={
+                                          isUpdatingSkillId === skill.id
+                                        }
+                                        onToggle={() =>
+                                          handleSkillToggle(skill, true)
+                                        }
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
                               )}
-                          </>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
+
+                              {availableSkills.length > 0 && (
+                                <div>
+                                  <div className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 px-2 py-0.5">
+                                    {t(
+                                      "app.toolbar.skills.available",
+                                      "Available",
+                                    )}
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    {availableSkills.map((skill) => (
+                                      <MobileSkillItem
+                                        key={skill.id}
+                                        skill={skill}
+                                        isConnected={false}
+                                        isUpdating={
+                                          isUpdatingSkillId === skill.id
+                                        }
+                                        onToggle={() =>
+                                          handleSkillToggle(skill, false)
+                                        }
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {connectedSkills.length === 0 &&
+                                availableSkills.length === 0 && (
+                                  <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
+                                    {t(
+                                      "app.toolbar.skills.empty",
+                                      "No skills available. Create one to get started.",
+                                    )}
+                                  </div>
+                                )}
+                            </>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
