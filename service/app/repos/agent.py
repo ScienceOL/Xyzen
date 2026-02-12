@@ -35,10 +35,10 @@ class AgentRepository:
         from app.schemas.graph_config import is_graph_config
 
         if not is_graph_config(raw_config):
-            from app.agents.graph.upgrader import upgrade_graph_config
-
-            result = upgrade_graph_config(raw_config)
-            return result.config.model_dump(exclude_none=True)
+            raise ValueError(
+                "Legacy graph_config versions are not accepted. "
+                "Only canonical GraphConfig (schema_version 3.x) is supported."
+            )
 
         config = parse_and_canonicalize_graph_config(raw_config)
         ensure_valid_graph_config(config)

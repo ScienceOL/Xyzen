@@ -137,13 +137,7 @@ async def chat_websocket(
     except Exception as e:
         logger.warning(f"Limit check failed (allowing connection): {e}")
 
-    await manager.connect(websocket, connection_id)
-
-    # Track this connection for limit enforcement
-    if enforcer:
-        await enforcer.track_chat_connect(connection_id)
-
-    # Validate session and topic access
+    # Validate session and topic access before tracking the connection
     async with AsyncSessionLocal() as db:
         topic_repo = TopicRepository(db)
         session_repo = SessionRepository(db)
@@ -152,6 +146,7 @@ async def chat_websocket(
             logger.error(f"DEBUG: Topic check failed. Topic: {topic}, SessionID: {session_id}")
             if topic:
                 logger.error(f"DEBUG: Topic session id: {topic.session_id} vs {session_id}")
+            await websocket.accept()
             await websocket.close(code=4004, reason="Topic not found or does not belong to the session")
             return
 
@@ -160,8 +155,15 @@ async def chat_websocket(
             logger.error(f"DEBUG: Session check failed. Session: {session}, User: {user}")
             if session:
                 logger.error(f"DEBUG: Session user id: {session.user_id} vs {user}")
+            await websocket.accept()
             await websocket.close(code=4003, reason="Session not found or access denied")
             return
+
+    await manager.connect(websocket, connection_id)
+
+    # Track this connection for limit enforcement
+    if enforcer:
+        await enforcer.track_chat_connect(connection_id)
 
     # Start Redis listener task
     listener_task = asyncio.create_task(redis_listener(websocket, connection_id))

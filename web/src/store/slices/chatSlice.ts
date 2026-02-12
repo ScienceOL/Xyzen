@@ -2006,12 +2006,21 @@ export const createChatSlice: StateCreator<
       // Patch the event callback to track activity. The original event handler is
       // already wired into xyzenService. We update the timestamp here via a
       // secondary reference that the watchdog reads.
-      const originalEventCallback = xyzenService["onMessageEventCallback"];
-      if (originalEventCallback) {
-        xyzenService["onMessageEventCallback"] = (event) => {
+      // Guard: only wrap if not already wrapped (prevents accumulation on reconnect,
+      // where handleDisconnect re-calls connect() with the stored callback ref).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentCallback = xyzenService["onMessageEventCallback"] as any;
+      if (
+        currentCallback &&
+        !currentCallback.__staleWatchdog
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const wrapped: any = (event: any) => {
           lastActivityTimestamp = Date.now();
-          originalEventCallback(event);
+          currentCallback(event);
         };
+        wrapped.__staleWatchdog = true;
+        xyzenService["onMessageEventCallback"] = wrapped;
       }
 
       const staleCheckIntervalId = setInterval(() => {
