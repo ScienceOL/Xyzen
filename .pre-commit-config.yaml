@@ -49,9 +49,8 @@ repos:
     hooks:
       - id: basedpyright
         language: system
-        args:
-          - --project=service/pyproject.toml
         files: ^service/
+        pass_filenames: false
         entry: bash -c 'cd service && uv run --active basedpyright .'
         name: basedpyright type checking (Python)
 
