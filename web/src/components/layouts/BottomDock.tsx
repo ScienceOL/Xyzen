@@ -25,6 +25,7 @@ import {
 } from "framer-motion";
 import { Crown, Gem, Github, Globe, Shield, User } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -533,6 +534,162 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
+import { type UsageResponse } from "@/service/subscriptionService";
+
+// Subscription tooltip — rendered via portal to escape dock's backdrop-filter
+function SubscriptionTooltip({
+  visible,
+  anchorRef,
+  usage,
+  daysLeft,
+  roleName,
+  isExpired,
+  isUrgent,
+  isWarning,
+  respondingCount,
+  chatLimit,
+  hasOverQuota,
+}: {
+  visible: boolean;
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+  usage: UsageResponse | null;
+  daysLeft: number | null;
+  roleName: string;
+  isExpired: boolean;
+  isUrgent: boolean;
+  isWarning: boolean;
+  respondingCount: number;
+  chatLimit: number;
+  hasOverQuota: boolean;
+}) {
+  const rect = anchorRef.current?.getBoundingClientRect();
+  const show = visible && usage && rect;
+
+  return createPortal(
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 4, scale: 0.95 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          style={{
+            position: "fixed",
+            bottom: window.innerHeight - rect.top + 8,
+            right: window.innerWidth - rect.right,
+          }}
+          className="z-[60]"
+        >
+          <div
+            className={cn(
+              "relative flex flex-col gap-1.5 min-w-[180px] rounded-2xl px-4 py-3 text-xs shadow-2xl",
+              "bg-white/60 text-neutral-900 backdrop-blur-lg",
+              "border border-white/30",
+              "dark:bg-white/5 dark:text-white",
+              "dark:border-white/[0.08]",
+            )}
+          >
+            <div className="flex flex-col gap-1.5">
+              {/* Expiry row with progress bar (paid plans only) */}
+              {daysLeft !== null && roleName !== "free" && (
+                <div className="flex flex-col gap-1 pb-1.5 mb-0.5 border-b border-neutral-200/40 dark:border-neutral-700/40">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      Expires
+                    </span>
+                    <span
+                      className={cn(
+                        isExpired && "text-red-500 dark:text-red-400",
+                        isUrgent && "text-red-500 dark:text-red-400",
+                        isWarning && "text-amber-500 dark:text-amber-400",
+                      )}
+                    >
+                      {isExpired
+                        ? "Expired"
+                        : daysLeft === 0
+                          ? "Today"
+                          : `${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
+                    </span>
+                  </div>
+                  {!isExpired && (
+                    <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700/50 overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          isUrgent && "bg-red-500",
+                          isWarning && "bg-amber-500",
+                          !isUrgent && !isWarning && "bg-emerald-500",
+                        )}
+                        style={{
+                          width: `${Math.min(100, Math.max(2, (daysLeft / 30) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Storage */}
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  Storage
+                </span>
+                <span className="font-medium">
+                  {formatBytes(usage.storage.used_bytes)} /{" "}
+                  {formatBytes(usage.storage.limit_bytes)}
+                </span>
+              </div>
+
+              {/* Active chats (only when responding) */}
+              {respondingCount > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Chats
+                  </span>
+                  <span className="font-medium">
+                    {respondingCount} / {chatLimit || "\u221E"}
+                  </span>
+                </div>
+              )}
+
+              {/* Sandboxes (only when limit > 0) */}
+              {usage.sandboxes.limit > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Sandboxes
+                  </span>
+                  <span className="font-medium">
+                    {usage.sandboxes.used} / {usage.sandboxes.limit}
+                  </span>
+                </div>
+              )}
+
+              {/* Files */}
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  Files
+                </span>
+                <span className="font-medium">
+                  {usage.files.used} / {usage.files.limit}
+                </span>
+              </div>
+
+              {hasOverQuota && (
+                <div className="text-red-500 dark:text-red-400 text-[10px] mt-0.5 font-semibold">
+                  Quota exceeded
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Arrow indicator */}
+          <div className="absolute -bottom-[5px] right-4 h-2.5 w-2.5 rotate-45 bg-white/60 dark:bg-white/5 backdrop-blur-lg border-b border-r border-white/30 dark:border-white/[0.06]" />
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
 function SubscriptionBadge() {
   const auth = useAuth();
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
@@ -541,6 +698,7 @@ function SubscriptionBadge() {
   const respondingCount = useXyzen((s) => s.respondingChannelIds.size);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   if (!isAuthedForUi || subQuery.isLoading) {
     return null;
@@ -578,7 +736,7 @@ function SubscriptionBadge() {
 
   return (
     <>
-      <div className="relative">
+      <div className="relative" ref={badgeRef}>
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
@@ -609,113 +767,22 @@ function SubscriptionBadge() {
             </span>
           )}
         </motion.button>
-
-        {/* Usage tooltip */}
-        <AnimatePresence>
-          {hovered && usage && (
-            <motion.div
-              initial={{ opacity: 0, y: 8, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              className="absolute -top-2 right-0 -translate-y-full whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-2.5 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900 z-50"
-            >
-              <div className="flex flex-col gap-1.5 min-w-[160px]">
-                {/* Expiry row with progress bar (paid plans only) */}
-                {daysLeft !== null && roleName !== "free" && (
-                  <div className="flex flex-col gap-1 pb-1.5 mb-0.5 border-b border-neutral-700/50 dark:border-neutral-300/30">
-                    <div className="flex justify-between gap-4">
-                      <span className="text-neutral-400 dark:text-neutral-500">
-                        Expires
-                      </span>
-                      <span
-                        className={cn(
-                          isExpired && "text-red-400 dark:text-red-500",
-                          isUrgent && "text-red-400 dark:text-red-500",
-                          isWarning && "text-amber-400 dark:text-amber-500",
-                        )}
-                      >
-                        {isExpired
-                          ? "Expired"
-                          : daysLeft === 0
-                            ? "Today"
-                            : `${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
-                      </span>
-                    </div>
-                    {!isExpired && (
-                      <div className="h-1 rounded-full bg-neutral-700 dark:bg-neutral-300/20 overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all",
-                            isUrgent && "bg-red-500",
-                            isWarning && "bg-amber-500",
-                            !isUrgent && !isWarning && "bg-emerald-500",
-                          )}
-                          style={{
-                            width: `${Math.min(100, Math.max(2, (daysLeft / 30) * 100))}%`,
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Storage */}
-                <div className="flex justify-between gap-4">
-                  <span className="text-neutral-400 dark:text-neutral-500">
-                    Storage
-                  </span>
-                  <span>
-                    {formatBytes(usage.storage.used_bytes)} /{" "}
-                    {formatBytes(usage.storage.limit_bytes)}
-                  </span>
-                </div>
-
-                {/* Active chats (only when responding) */}
-                {respondingCount > 0 && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-neutral-400 dark:text-neutral-500">
-                      Chats
-                    </span>
-                    <span>
-                      {respondingCount} / {chatLimit || "\u221E"}
-                    </span>
-                  </div>
-                )}
-
-                {/* Sandboxes (only when limit > 0) */}
-                {usage.sandboxes.limit > 0 && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-neutral-400 dark:text-neutral-500">
-                      Sandboxes
-                    </span>
-                    <span>
-                      {usage.sandboxes.used} / {usage.sandboxes.limit}
-                    </span>
-                  </div>
-                )}
-
-                {/* Files */}
-                <div className="flex justify-between gap-4">
-                  <span className="text-neutral-400 dark:text-neutral-500">
-                    Files
-                  </span>
-                  <span>
-                    {usage.files.used} / {usage.files.limit}
-                  </span>
-                </div>
-
-                {hasOverQuota && (
-                  <div className="text-red-400 dark:text-red-500 text-[10px] mt-0.5">
-                    Quota exceeded
-                  </div>
-                )}
-              </div>
-              <div className="absolute -bottom-1 right-4 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-100" />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
+
+      {/* Tooltip via portal — escapes dock's backdrop-filter context */}
+      <SubscriptionTooltip
+        visible={hovered && !!usage}
+        anchorRef={badgeRef}
+        usage={usage ?? null}
+        daysLeft={daysLeft}
+        roleName={roleName}
+        isExpired={isExpired}
+        isUrgent={isUrgent}
+        isWarning={isWarning}
+        respondingCount={respondingCount}
+        chatLimit={chatLimit}
+        hasOverQuota={!!hasOverQuota}
+      />
 
       <PointsInfoModal
         isOpen={showPointsInfo}

@@ -109,7 +109,7 @@ async def chat_websocket(
     try:
         async with AsyncSessionLocal() as db:
             enforcer = await LimitsEnforcer.create(db, user)
-            await enforcer.check_parallel_chat()
+            await enforcer.check_parallel_chat(connection_id)
     except HTTPException:
         await websocket.accept()
         await websocket.close(code=4029, reason="Parallel chat limit reached")

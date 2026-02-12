@@ -47,14 +47,28 @@ class LimitsEnforcer:
 
     # --- Chat ---
 
-    async def check_parallel_chat(self) -> None:
-        """Raise HTTPException(429) if user has max active WS connections."""
+    async def check_parallel_chat(self, connection_id: str | None = None) -> None:
+        """Raise HTTPException(429) if user has max active WS connections.
+
+        If *connection_id* is provided, it is removed from the active set
+        **before** counting.  This avoids a race condition when the same
+        client disconnects and immediately reconnects: the old connection
+        may still be tracked in Redis when the new one is being checked.
+        """
         if self._limits is not None:
             max_chats = self._limits.max_parallel_chats
         else:
             max_chats = self._FREE_MAX_PARALLEL_CHATS
         if max_chats <= 0:
             return  # 0 = unlimited
+
+        # Pre-clean: remove this connection_id so a reconnect is not counted
+        # against itself.
+        if connection_id:
+            redis = await get_redis_client()
+            key = f"{_ACTIVE_CHATS_KEY}{self._user_id}"
+            await redis.srem(key, connection_id)  # type: ignore[misc]
+
         current = await self.get_active_chat_count()
         if current >= max_chats:
             raise HTTPException(
