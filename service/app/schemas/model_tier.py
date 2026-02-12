@@ -117,21 +117,14 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             capabilities=["general", "fast"],
             description="Choose this for most tasks (99%+). Fast and efficient for general and multimodal tasks, strong in handling large contexts and coding, with impressive speed for big tasks.",
         ),
-        # TierModelCandidate(
-        #     model="qwen3-30b-a3b",
-        #     provider_type=ProviderType.QWEN,
-        #     priority=98,
-        #     capabilities=["fast", "efficient"],
-        #     description="Choose this if user needs quick responses. Excellent for coding, reasoning, and multilingual tasks; outperforms in agentic scenarios and vision-related tasks.",
-        # ),
-        # TierModelCandidate(
-        #     model="DeepSeek/DeepSeek-V3.1-0821",
-        #     provider_type=ProviderType.GPUGEEK,
-        #     is_fallback=True,
-        #     priority=99,
-        #     capabilities=["coding", "efficient"],
-        #     description="Choose this for most tasks. Efficient with strong performance in coding and reasoning, comparable to larger models; great for instruction following and agentic tasks.",
-        # ),
+        TierModelCandidate(
+            model="qwen3-30b-a3b",
+            provider_type=ProviderType.QWEN,
+            is_fallback=True,
+            priority=98,
+            capabilities=["fast", "efficient"],
+            description="Choose this if user needs quick responses. Excellent for coding, reasoning, and multilingual tasks; outperforms in agentic scenarios and vision-related tasks.",
+        ),
         # TierModelCandidate(
         #     model="gpt-5-mini",
         #     provider_type=ProviderType.AZURE_OPENAI,
@@ -145,8 +138,7 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
         TierModelCandidate(
             model="gemini-2.5-flash-lite",
             provider_type=ProviderType.GOOGLE_VERTEX,
-            is_fallback=True,
-            priority=99,
+            priority=1,
             capabilities=["fast", "efficient"],
             description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
         ),
@@ -157,6 +149,14 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
         #     capabilities=["fast", "efficient"],
         #     description="Choose this if user needs reasoning. Fast for simple tasks and basic reasoning; cost-effective for quick responses, though less capable than newer models for complex queries.",
         # ),
+        TierModelCandidate(
+            model="DeepSeek/DeepSeek-V3.1-0821",
+            provider_type=ProviderType.GPUGEEK,
+            is_fallback=True,
+            priority=99,
+            capabilities=["coding", "efficient"],
+            description="Choose this for most tasks. Efficient with strong performance in coding and reasoning, comparable to larger models; great for instruction following and agentic tasks.",
+        ),
     ],
 }
 
