@@ -60,16 +60,23 @@ export function AppSide({
     touchStartY.current = e.touches[0].clientY;
   }, []);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    // Only trigger on predominantly horizontal swipes
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0)
-        setShowMobileCapsule(true); // swipe left → show capsule
-      else setShowMobileCapsule(false); // swipe right → show chat
-    }
-  }, []);
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
+      // Only trigger on predominantly horizontal swipes
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (dx < 0) {
+          setShowMobileCapsule(true); // swipe left → show capsule
+        } else if (showMobileCapsule) {
+          setShowMobileCapsule(false); // swipe right → show chat (from capsule)
+        } else {
+          setActiveChatChannel(null); // swipe right → back to agent list (from chat)
+        }
+      }
+    },
+    [showMobileCapsule, setActiveChatChannel],
+  );
 
   // Reset mobile capsule view when channel changes
   useEffect(() => {
@@ -374,6 +381,7 @@ export function AppSide({
                     {/* Chat view */}
                     <motion.div
                       className="absolute inset-0"
+                      initial={false}
                       animate={{ x: showMobileCapsule ? "-100%" : "0%" }}
                       transition={{
                         type: "spring",
@@ -399,6 +407,7 @@ export function AppSide({
                     {/* Capsule view */}
                     <motion.div
                       className="absolute inset-0"
+                      initial={false}
                       animate={{ x: showMobileCapsule ? "0%" : "100%" }}
                       transition={{
                         type: "spring",

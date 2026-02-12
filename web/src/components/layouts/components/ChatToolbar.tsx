@@ -106,6 +106,7 @@ export default function ChatToolbar({
   const auth = useAuth();
   const subQuery = useSubscription(auth.token, auth.isAuthenticated);
   const maxTier = (subQuery.data?.role?.max_model_tier ?? "lite") as ModelTier;
+  const userPlan = subQuery.data?.role?.name ?? "free";
 
   // Fine-grained channel status (no messages)
   const channelStatus = useActiveChannelStatus();
@@ -310,6 +311,7 @@ export default function ChatToolbar({
             sessionKnowledgeSetId={currentChannelKnowledgeSetId}
             onUpdateSessionKnowledge={handleKnowledgeSetChange}
             onAgentRefresh={fetchAgents}
+            userPlan={userPlan}
           />
         )}
 
@@ -345,6 +347,7 @@ export default function ChatToolbar({
                     }
                     sessionKnowledgeSetId={currentChannelKnowledgeSetId}
                     onUpdateSessionKnowledge={handleKnowledgeSetChange}
+                    userPlan={userPlan}
                   />
                 )}
 

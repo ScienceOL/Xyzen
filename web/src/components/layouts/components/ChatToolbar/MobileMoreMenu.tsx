@@ -38,6 +38,7 @@ interface MobileMoreMenuProps {
   onOpenSettings?: () => void;
   sessionKnowledgeSetId?: string | null;
   onUpdateSessionKnowledge?: (knowledgeSetId: string | null) => Promise<void>;
+  userPlan?: string;
 }
 
 export function MobileMoreMenu({
@@ -50,6 +51,7 @@ export function MobileMoreMenu({
   onOpenSettings,
   sessionKnowledgeSetId,
   onUpdateSessionKnowledge,
+  userPlan,
 }: MobileMoreMenuProps) {
   const { t } = useTranslation();
   const [showMcpList, setShowMcpList] = useState(false);
@@ -183,6 +185,7 @@ export function MobileMoreMenu({
                     }
                     sessionKnowledgeSetId={sessionKnowledgeSetId}
                     onUpdateSessionKnowledge={onUpdateSessionKnowledge}
+                    userPlan={userPlan}
                   />
                 </div>
               )}

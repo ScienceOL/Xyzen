@@ -193,6 +193,11 @@ async def _resolve_provider_and_model(
                         f"(subscription limit for user {session.user_id})"
                     )
                     effective_model_tier = max_tier_enum
+                    # Persist the clamped tier so DB, billing, and frontend stay consistent
+                    session.model_tier = max_tier_enum
+                    session.model = None
+                    db.add(session)
+                    await db.flush()
             except Exception as e:
                 logger.warning(f"Failed to check subscription tier limit: {e}")
 
