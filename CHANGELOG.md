@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.2](https://github.com/ScienceOL/Xyzen/compare/v1.3.1...v1.3.2) (2026-02-12)
+
+### 🐛 Bug Fixes
+
+* add subscription, fix fork error. ([90c554c](https://github.com/ScienceOL/Xyzen/commit/90c554c76952cce8cfeec7d6b2ab00b695950ddf)), closes [#239](https://github.com/ScienceOL/Xyzen/issues/239)
+
 ## [1.3.1](https://github.com/ScienceOL/Xyzen/compare/v1.3.0...v1.3.1) (2026-02-10)
 
 ### 🐛 Bug Fixes
