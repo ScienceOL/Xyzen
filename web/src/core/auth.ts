@@ -52,9 +52,12 @@ export const handleRelinkCallback = async (): Promise<boolean> => {
 
 /**
  * Handle OAuth authorization code callback (e.g. Casdoor code flow).
- * Returns the access_token if code exchange succeeds, or null.
+ * Returns the access_token and user_info if code exchange succeeds, or null.
  */
-const handleOAuthCodeCallback = async (): Promise<string | null> => {
+const handleOAuthCodeCallback = async (): Promise<{
+  access_token: string;
+  user_info?: UserInfo;
+} | null> => {
   if (typeof window === "undefined") return null;
 
   // Skip if this is a relink callback (handled separately)
@@ -84,7 +87,10 @@ const handleOAuthCodeCallback = async (): Promise<string | null> => {
       code,
       state || undefined,
     );
-    return response.access_token;
+    return {
+      access_token: response.access_token,
+      user_info: response.user_info,
+    };
   } catch (err) {
     console.error("[Auth] Failed to exchange code for token:", err);
     return null;
@@ -176,15 +182,32 @@ export const checkAuthState = async (_force: boolean = false) => {
 /**
  * 处理用户登录
  * @param token - 从认证流程中获取的token
+ * @param userInfo - 可选，登录时已获取的用户信息（避免重复请求）
  */
-export const login = async (token: string) => {
+export const login = async (token: string, userInfo?: UserInfo) => {
   const { setStatus, setUser, setToken } = useXyzen.getState();
   setStatus("loading");
 
   try {
-    // 先写入 token，再进行校验并同步用户信息
     authService.setToken(token);
-    await checkAuthState(true);
+
+    // If user_info was already fetched during login (e.g. from loginWithCasdoor),
+    // use it directly to avoid a redundant validate round-trip that may lose
+    // the avatar due to flaky external API calls (Bohrium userinfo, etc.).
+    if (userInfo) {
+      const mapped = mapUserInfo(userInfo);
+      if (import.meta.env.DEV) {
+        console.info("[Auth] 使用登录响应中的用户信息", {
+          raw: userInfo,
+          mapped,
+        });
+      }
+      setUser(mapped);
+      setToken(token);
+      setStatus("succeeded");
+    } else {
+      await checkAuthState(true);
+    }
   } catch (error) {
     console.error("Login failed in Core:", error);
     setUser(null);
@@ -217,9 +240,9 @@ export const logout = () => {
 export const autoLogin = async () => {
   if (typeof window !== "undefined") {
     // 1) Handle OAuth code callback (e.g. Casdoor redirect with ?code=)
-    const tokenFromCode = await handleOAuthCodeCallback();
-    if (tokenFromCode) {
-      await login(tokenFromCode);
+    const loginResult = await handleOAuthCodeCallback();
+    if (loginResult) {
+      await login(loginResult.access_token, loginResult.user_info);
       return;
     }
 
