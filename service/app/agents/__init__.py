@@ -10,7 +10,11 @@ Public API:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .builtin import get_builtin_config, list_builtin_keys
+    from .factory import create_chat_agent
 
 logger = logging.getLogger(__name__)
 

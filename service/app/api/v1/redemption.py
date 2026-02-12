@@ -1,7 +1,7 @@
 """Redemption API endpoints for code generation and redemption."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -552,7 +552,7 @@ async def get_daily_token_stats(
 
                 date = datetime.now(ZoneInfo(tz)).strftime("%Y-%m-%d")
             else:
-                date = datetime.utcnow().strftime("%Y-%m-%d")
+                date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         consume_repo = ConsumeRepository(db)
         stats = await consume_repo.get_daily_token_stats(date, None, tz)

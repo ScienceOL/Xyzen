@@ -47,8 +47,7 @@ class RedisPublisher:
                 if attempt < max_retries - 1:
                     delay = 0.1 * (2**attempt)  # 0.1s, 0.2s, 0.4s
                     logger.warning(
-                        f"Redis publish attempt {attempt + 1} failed for {self.channel}, "
-                        f"retrying in {delay}s: {e}"
+                        f"Redis publish attempt {attempt + 1} failed for {self.channel}, retrying in {delay}s: {e}"
                     )
                     await asyncio.sleep(delay)
                 else:
@@ -103,7 +102,7 @@ def extract_content_text(content: Any) -> str:
         text_parts: list[str] = []
         for item in content:
             if isinstance(item, dict) and item.get("type") == "text":
-                text_parts.append(str(item.get("text", "")))  # pyright: ignore[reportUnknownArgumentType]
+                text_parts.append(str(item.get("text", "")))
         return "".join(text_parts)
     return str(content)
 
@@ -612,7 +611,7 @@ async def _process_chat_message_async(
                         try:
                             agent_run_repo = AgentRunRepository(db)
                             node_data = stream_event["data"]
-                            timeline_entry: dict[str, Any] = {
+                            timeline_entry = {
                                 "event_type": "node_start",
                                 "timestamp": time.time(),
                                 "node_id": node_data.get("node_id"),

@@ -65,7 +65,7 @@ def create_embeddings(embedding_config: EmbeddingConfig) -> Embeddings | None:
     # Add provider-specific extra data (azure_endpoint, etc.)
     extra = provider_config.to_extra_data(provider_type)
     for k, v in extra.items():
-        credentials[k] = v  # type: ignore[literal-required]
+        credentials[k] = v
 
     from app.core.providers.factory import ChatModelFactory
 

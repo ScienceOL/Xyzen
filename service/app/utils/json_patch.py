@@ -28,7 +28,7 @@ def pydantic_aware_json_dumps(obj: Any, **kwargs: Any) -> str:
 
     def pydantic_default(o: Any) -> Any:
         # 处理 pydantic 的 AnyUrl 类型
-        if hasattr(o, "__class__") and "AnyUrl" in str(type(o)):  # pyright: ignore[reportUnknownArgumentType]
+        if hasattr(o, "__class__") and "AnyUrl" in str(type(o)):
             return str(o)
 
         # 处理 pydantic 模型

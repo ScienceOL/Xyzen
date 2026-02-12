@@ -58,7 +58,6 @@ dev = [
     "types-requests>=2.32.4.20250611",
     "types-aioboto3>=15.5.0",
     "types-openpyxl>=3.1.5.20250919",
-    "pyright>=1.1.390",
     "pre-commit>=4.2.0",
     "ruff>=0.14.3",
     "pytest>=8.0.0",
@@ -70,6 +69,7 @@ dev = [
     "pytest-xdist>=3.8.0",
     "polyfactory>=3.2.0",
     "watchdog>=3.0.0",
+    "basedpyright>=1.38.0",
 ]
 
 [tool.ruff]
@@ -97,77 +97,40 @@ known-first-party = [
     "middleware",
 ]
 
-[tool.pyright]
+# --- basedpyright: used by CI, pre-commit, and `just type-backend` ---
+# Pylance (VS Code) config is in .vscode/settings.example.json
+[tool.basedpyright]
 include = ["."]
-ignore = ["**/migrations", "**/.venv/**"]
+exclude = ["**/migrations", "**/.venv/**", "tests/"]
 pythonVersion = "3.12"
 pythonPlatform = "All"
-typeCheckingMode = "standard"
+typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
 
-# ---------- 严格模式细节配置 ----------
-# strictListInference = true           # 严格推断列表类型（避免 list[Unknown]）
-# strictDictionaryInference = true     # 严格推断字典类型（避免 dict[Unknown, Unknown]）
-# strictSetInference = true            # 严格推断集合类型
-# strictParameterNoneValue = true      # 严格检查参数默认值 None 的类型匹配
+# Downgrade "Unknown" type noise from incomplete 3rd-party stubs
+reportUnknownMemberType = "hint"
+reportUnknownParameterType = "hint"
+reportUnknownArgumentType = "hint"
+reportUnknownVariableType = "hint"
+reportUnknownLambdaType = "hint"
 
-# reportMissingTypeStubs = false
-# reportUnknownMemberType = "warning"
-# reportUnknownArgumentType = "warning"
-# reportUnknownVariableType = "warning"
+# Downgrade rules too strict for LangChain/LangGraph ecosystem
+reportMissingParameterType = "hint"
+reportMissingTypeArgument = "hint"
+reportUnnecessaryIsInstance = "hint"
+reportUnnecessaryComparison = "hint"
+reportUntypedFunctionDecorator = "hint"
+reportUntypedClassDecorator = "hint"
+reportUntypedBaseClass = "hint"
+reportAttributeAccessIssue = "hint"
 
-reportMissingImports = "error"                 # 缺失的导入（模块不存在）
-reportDuplicateImport = "error"                # 重复导入同一模块
-reportOptionalSubscript = "error"              # 对可能为 None 的对象使用下标访问
-reportOptionalMemberAccess = "error"           # 访问可能为 None 的对象的成员
-reportOptionalCall = "error"                   # 调用可能为 None 的对象
-reportOptionalIterable = "error"               # 迭代可能为 None 的对象
-reportOptionalContextManager = "error"         # 将可能为 None 的对象用作上下文管理器
-reportOptionalOperand = "error"                # 对可能为 None 的对象使用运算符
-reportConstantRedefinition = "error"           # 重新定义常量（全大写变量名被视为常量）
-reportIncompatibleMethodOverride = "error"     # 方法重写时签名不兼容
-reportIncompatibleVariableOverride = "error"   # 变量重写时类型不兼容
-reportInconsistentConstructor = "error"        # __init__ 方法的实例变量赋值不一致
-reportOverlappingOverload = "error"            # @overload 装饰的函数签名重叠
-reportInvalidStringEscapeSequence = "error"    # 字符串中无效的转义序列
-reportMissingParameterType = "error"           # 函数参数缺少类型注解
-reportUnknownLambdaType = "error"              # Lambda 表达式类型未知
+# Keep visible as warnings
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportPrivateUsage = "warning"
 
-# ============================================================================
-# 报告配置 - 警告级别 (warning)
-# ============================================================================
-# 这些问题不会导致失败，但应该引起注意并修复
-
-reportUnusedImport = "warning"                      # 未使用的导入
-reportUnusedClass = "warning"                       # 未使用的类定义
-reportUnusedFunction = "warning"                    # 未使用的函数定义
-reportUnusedVariable = "warning"                    # 未使用的变量
-reportPrivateUsage = "warning"                      # 使用私有成员（_开头）
-reportUninitializedInstanceVariable = "warning"     # 实例变量未在 __init__ 中初始化
-reportUnnecessaryIsInstance = "warning"             # 不必要的 isinstance 检查
-reportUnnecessaryCast = "warning"                   # 不必要的类型转换
-reportUnnecessaryComparison = "warning"             # 不必要的比较（如 x is True）
-reportUnnecessaryContains = "warning"               # 不必要的 in 检查
-reportUnnecessaryTypeIgnoreComment = "warning"      # 不必要的 type: ignore 注释（强制审查每个 type: ignore 的必要性）
-reportTypeCommentUsage = "warning"                   # 使用类型注释而非类型注解
-reportUnknownParameterType = "warning"               # TODO: 参数类型未知，未来升级为 error，严格禁止
-reportUnknownArgumentType = "warning"                # Disabled: LangChain/LangGraph stubs have incomplete types
-
-# ============================================================================
-# 报告配置 - 禁用项 (none)
-# ============================================================================
-# 这些检查被禁用，因为它们可能过于严格或不适用于当前项目
-
-reportMissingTypeStubs = "none"              # 缺少第三方库的类型存根文件（.pyi）
-reportUntypedFunctionDecorator = "none"      # 装饰器没有类型注解
-reportUntypedClassDecorator = "none"         # 类装饰器没有类型注解
-reportUntypedBaseClass = "none"              # 基类没有类型注解
-reportUnknownVariableType = "none"           # 变量类型未知
-reportUnknownMemberType = "none"             # 成员类型未知
-reportMissingSuperCall = "none"              # 子类方法中缺少 super() 调用
-reportCallInDefaultInitializer = "none"      # 在默认参数中调用函数
-reportImplicitStringConcatenation = "none"   # 隐式字符串拼接（如 "a" "b"）
+# Not useful for this codebase
+reportMissingTypeStubs = "none"
 
 
 [tool.pytest.ini_options]
