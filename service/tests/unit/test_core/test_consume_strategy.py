@@ -228,3 +228,37 @@ class TestConsumptionCalculator:
         # Should be valid JSON
         parsed = json.loads(json_str)
         assert parsed == result.breakdown
+
+    def test_set_custom_strategy(self) -> None:
+        """Test that set_strategy delegates to the custom strategy."""
+        from unittest.mock import MagicMock
+
+        from app.core.consume_strategy import ConsumptionResult
+
+        mock_strategy = MagicMock()
+        mock_result = ConsumptionResult(amount=999, breakdown={"custom": True})
+        mock_strategy.calculate.return_value = mock_result
+
+        try:
+            ConsumptionCalculator.set_strategy(mock_strategy)
+            context = ConsumptionContext(model_tier=ModelTier.LITE)
+            result = ConsumptionCalculator.calculate(context)
+
+            mock_strategy.calculate.assert_called_once_with(context)
+            assert result.amount == 999
+            assert result.breakdown == {"custom": True}
+        finally:
+            ConsumptionCalculator.reset_strategy()
+
+    def test_reset_strategy_restores_default(self) -> None:
+        """Test that reset_strategy restores TierBasedConsumptionStrategy."""
+        from unittest.mock import MagicMock
+
+        mock_strategy = MagicMock()
+        ConsumptionCalculator.set_strategy(mock_strategy)
+        ConsumptionCalculator.reset_strategy()
+
+        # After reset, LITE tier should be free (default behavior)
+        context = ConsumptionContext(model_tier=ModelTier.LITE, input_tokens=1000)
+        result = ConsumptionCalculator.calculate(context)
+        assert result.amount == 0
