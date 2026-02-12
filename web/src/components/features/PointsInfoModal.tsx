@@ -134,8 +134,8 @@ const chinaPlans: SubscriptionPlan[] = [
     features: [
       { text: "Lite 模型", included: true },
       { text: "基础功能", included: true },
-      { text: "Standard 模型", included: false },
-      { text: "Pro 和 Ultra 模型", included: false },
+      { text: "沙盒与并行会话", included: false },
+      { text: "高级推理模型", included: false },
     ],
   },
   {
@@ -165,21 +165,19 @@ const chinaPlans: SubscriptionPlan[] = [
     sandboxes: "2 沙盒",
     features: [
       { text: "全部标准功能", included: true },
-      { text: "专业模型", included: true },
+      { text: "Pro 模型", included: true },
       { text: "优先技术支持", included: true },
       { text: "Ultra 模型", included: false },
     ],
   },
   {
-    name: "Ultra",
-    price: "$99.9",
-    period: "/mo",
+    name: "深度版",
+    price: "¥268.0",
+    period: "/月",
     credits: "60,000",
     storage: "100 GB",
     parallelChats: "10 并行会话",
     sandboxes: "3 沙盒",
-    isLocked: true,
-    lockedReason: "仅限国际版",
     features: [
       { text: "全部专业功能", included: true },
       { text: "Ultra 模型", included: true },
