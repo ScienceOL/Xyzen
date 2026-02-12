@@ -125,14 +125,6 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             capabilities=["fast", "efficient"],
             description="Choose this if user needs quick responses. Excellent for coding, reasoning, and multilingual tasks; outperforms in agentic scenarios and vision-related tasks.",
         ),
-        # TierModelCandidate(
-        #     model="gpt-5-mini",
-        #     provider_type=ProviderType.AZURE_OPENAI,
-        #     is_fallback=True,
-        #     priority=99,
-        #     capabilities=["general"],
-        #     description="Choose this if this is just a simple task. Fast and efficient for general tasks, strong in reasoning and multimodal capabilities, outperforming predecessors in speed and cost.",
-        # ),
     ],
     ModelTier.LITE: [
         TierModelCandidate(
@@ -142,13 +134,6 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             capabilities=["fast", "efficient"],
             description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
         ),
-        # TierModelCandidate(
-        #     model="gpt-5-nano",
-        #     provider_type=ProviderType.AZURE_OPENAI,
-        #     priority=99,
-        #     capabilities=["fast", "efficient"],
-        #     description="Choose this if user needs reasoning. Fast for simple tasks and basic reasoning; cost-effective for quick responses, though less capable than newer models for complex queries.",
-        # ),
         TierModelCandidate(
             model="DeepSeek/DeepSeek-V3.1-0821",
             provider_type=ProviderType.GPUGEEK,
