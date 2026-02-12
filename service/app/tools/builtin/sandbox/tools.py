@@ -167,7 +167,7 @@ def create_sandbox_tools_for_session(
     """
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(session_id)
+    manager = get_sandbox_manager(session_id, user_id=user_id)
     tools: list[BaseTool] = []
 
     # --- sandbox_bash ---

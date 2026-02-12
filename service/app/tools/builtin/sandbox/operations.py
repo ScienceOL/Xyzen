@@ -229,7 +229,7 @@ async def _persist_exported_file(
     uploaded = False
     try:
         async with task_session_factory() as db:
-            quota_service = create_quota_service(db)
+            quota_service = await create_quota_service(db, user_id)
             await quota_service.validate_upload(user_id, len(file_bytes))
 
             await storage.upload_file(

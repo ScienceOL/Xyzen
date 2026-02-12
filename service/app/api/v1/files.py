@@ -78,7 +78,7 @@ async def upload_file(
         file_size = len(file_data)
 
         # Validate storage quota BEFORE uploading
-        quota_service = create_quota_service(db)
+        quota_service = await create_quota_service(db, user_id)
         await quota_service.validate_upload(user_id, file_size)
 
         # Calculate file hash
@@ -903,7 +903,7 @@ async def get_user_storage_stats(
     """
     try:
         file_repo = FileRepository(db)
-        quota_service = create_quota_service(db)
+        quota_service = await create_quota_service(db, user_id)
 
         total_size = await file_repo.get_total_size_by_user(user_id, include_deleted=False)
         total_files = await file_repo.get_file_count_by_user(user_id, include_deleted=False)

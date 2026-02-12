@@ -176,6 +176,26 @@ async def _resolve_provider_and_model(
     model_name: str | None = None
 
     if session:
+        # Clamp model_tier to subscription limit
+        effective_model_tier = session.model_tier
+        if effective_model_tier:
+            try:
+                from app.core.subscription import SubscriptionService
+
+                sub_service = SubscriptionService(db)
+                role = await sub_service.get_user_role(session.user_id)
+                max_tier_str = role.max_model_tier if role else "lite"
+                tier_order = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
+                max_tier_enum = ModelTier(max_tier_str)
+                if tier_order.index(effective_model_tier) > tier_order.index(max_tier_enum):
+                    logger.info(
+                        f"Clamped model tier from {effective_model_tier.value} to {max_tier_enum.value} "
+                        f"(subscription limit for user {session.user_id})"
+                    )
+                    effective_model_tier = max_tier_enum
+            except Exception as e:
+                logger.warning(f"Failed to check subscription tier limit: {e}")
+
         if session.provider_id:
             provider_id = str(session.provider_id)
 
@@ -184,15 +204,17 @@ async def _resolve_provider_and_model(
             model_name = session.model
             logger.info(f"Using cached session model: {model_name}")
         # If model_tier is set but no model, do intelligent selection
-        elif session.model_tier:
+        elif effective_model_tier:
             if message_text and user_provider_manager:
                 try:
                     model_name = await select_model_for_tier(
-                        tier=session.model_tier,
+                        tier=effective_model_tier,
                         first_message=message_text,
                         user_provider_manager=user_provider_manager,
                     )
-                    logger.info(f"Intelligent selection chose model: {model_name} for tier {session.model_tier.value}")
+                    logger.info(
+                        f"Intelligent selection chose model: {model_name} for tier {effective_model_tier.value}"
+                    )
 
                     # Cache the selection in session.model for subsequent messages.
                     # Note: Concurrent requests may race to set this, but that's fine since
@@ -207,11 +229,11 @@ async def _resolve_provider_and_model(
                     logger.info(f"Cached selected model in session: {model_name}")
                 except Exception as e:
                     logger.error(f"Intelligent model selection failed: {e}")
-                    model_name = resolve_model_for_tier(session.model_tier)
+                    model_name = resolve_model_for_tier(effective_model_tier)
                     logger.warning(f"Falling back to tier default: {model_name}")
             else:
                 # No message or provider manager, use simple fallback
-                model_name = resolve_model_for_tier(session.model_tier)
+                model_name = resolve_model_for_tier(effective_model_tier)
                 logger.info(f"Using tier fallback (no context): {model_name}")
 
     if not provider_id and agent and agent.provider_id:

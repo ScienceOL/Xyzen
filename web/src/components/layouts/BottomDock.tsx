@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription, useSubscriptionUsage } from "@/hooks/useSubscription";
 import { useVersion } from "@/hooks/useVersion";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
@@ -9,6 +10,7 @@ import {
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   FolderIcon,
+  LightBulbIcon,
   SparklesIcon,
   UserIcon,
   WrenchScrewdriverIcon,
@@ -21,8 +23,9 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
-import { Github, Globe } from "lucide-react";
+import { Crown, Gem, Github, Globe, Shield, User } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -51,7 +54,12 @@ export const DOCK_SAFE_AREA = 80;
 // Horizontal margin for dock and other full-width elements
 export const DOCK_HORIZONTAL_MARGIN = 8;
 
-export type ActivityPanel = "chat" | "knowledge" | "skills" | "marketplace";
+export type ActivityPanel =
+  | "chat"
+  | "knowledge"
+  | "skills"
+  | "marketplace"
+  | "memory";
 
 interface BottomDockProps {
   activePanel: ActivityPanel;
@@ -483,6 +491,307 @@ function StatusBarItem({
   );
 }
 
+// Subscription tier badge styles
+const TIER_STYLES: Record<
+  string,
+  {
+    bg: string;
+    text: string;
+    border: string;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  }
+> = {
+  free: {
+    bg: "bg-neutral-100/80 dark:bg-neutral-800/80",
+    text: "text-neutral-600 dark:text-neutral-400",
+    border: "border-neutral-200/50 dark:border-neutral-700/50",
+    icon: User,
+  },
+  standard: {
+    bg: "bg-blue-50/80 dark:bg-blue-950/40",
+    text: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-200/50 dark:border-blue-800/50",
+    icon: Shield,
+  },
+  professional: {
+    bg: "bg-purple-50/80 dark:bg-purple-950/40",
+    text: "text-purple-600 dark:text-purple-400",
+    border: "border-purple-200/50 dark:border-purple-800/50",
+    icon: Gem,
+  },
+  ultra: {
+    bg: "bg-amber-50/80 dark:bg-amber-950/40",
+    text: "text-amber-600 dark:text-amber-400",
+    border: "border-amber-200/50 dark:border-amber-800/50",
+    icon: Crown,
+  },
+};
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+import { type UsageResponse } from "@/service/subscriptionService";
+
+// Subscription tooltip — rendered via portal to escape dock's backdrop-filter
+function SubscriptionTooltip({
+  visible,
+  anchorRef,
+  usage,
+  daysLeft,
+  roleName,
+  isExpired,
+  isUrgent,
+  isWarning,
+  respondingCount,
+  chatLimit,
+  hasOverQuota,
+}: {
+  visible: boolean;
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+  usage: UsageResponse | null;
+  daysLeft: number | null;
+  roleName: string;
+  isExpired: boolean;
+  isUrgent: boolean;
+  isWarning: boolean;
+  respondingCount: number;
+  chatLimit: number;
+  hasOverQuota: boolean;
+}) {
+  const rect = anchorRef.current?.getBoundingClientRect();
+  const show = visible && usage && rect;
+
+  return createPortal(
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 4, scale: 0.95 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          style={{
+            position: "fixed",
+            bottom: window.innerHeight - rect.top + 8,
+            right: window.innerWidth - rect.right,
+          }}
+          className="z-[60]"
+        >
+          <div
+            className={cn(
+              "relative flex flex-col gap-1.5 min-w-[180px] rounded-2xl px-4 py-3 text-xs shadow-2xl",
+              "bg-white/60 text-neutral-900 backdrop-blur-lg",
+              "border border-white/30",
+              "dark:bg-white/5 dark:text-white",
+              "dark:border-white/[0.08]",
+            )}
+          >
+            <div className="flex flex-col gap-1.5">
+              {/* Expiry row with progress bar (paid plans only) */}
+              {daysLeft !== null && roleName !== "free" && (
+                <div className="flex flex-col gap-1 pb-1.5 mb-0.5 border-b border-neutral-200/40 dark:border-neutral-700/40">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      Expires
+                    </span>
+                    <span
+                      className={cn(
+                        isExpired && "text-red-500 dark:text-red-400",
+                        isUrgent && "text-red-500 dark:text-red-400",
+                        isWarning && "text-amber-500 dark:text-amber-400",
+                      )}
+                    >
+                      {isExpired
+                        ? "Expired"
+                        : daysLeft === 0
+                          ? "Today"
+                          : `${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
+                    </span>
+                  </div>
+                  {!isExpired && (
+                    <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700/50 overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          isUrgent && "bg-red-500",
+                          isWarning && "bg-amber-500",
+                          !isUrgent && !isWarning && "bg-emerald-500",
+                        )}
+                        style={{
+                          width: `${Math.min(100, Math.max(2, (daysLeft / 30) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Storage */}
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  Storage
+                </span>
+                <span className="font-medium">
+                  {formatBytes(usage.storage.used_bytes)} /{" "}
+                  {formatBytes(usage.storage.limit_bytes)}
+                </span>
+              </div>
+
+              {/* Active chats (only when responding) */}
+              {respondingCount > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Chats
+                  </span>
+                  <span className="font-medium">
+                    {respondingCount} / {chatLimit || "\u221E"}
+                  </span>
+                </div>
+              )}
+
+              {/* Sandboxes (only when limit > 0) */}
+              {usage.sandboxes.limit > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Sandboxes
+                  </span>
+                  <span className="font-medium">
+                    {usage.sandboxes.used} / {usage.sandboxes.limit}
+                  </span>
+                </div>
+              )}
+
+              {/* Files */}
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  Files
+                </span>
+                <span className="font-medium">
+                  {usage.files.used} / {usage.files.limit}
+                </span>
+              </div>
+
+              {hasOverQuota && (
+                <div className="text-red-500 dark:text-red-400 text-[10px] mt-0.5 font-semibold">
+                  Quota exceeded
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Arrow indicator */}
+          <div className="absolute -bottom-[5px] right-4 h-2.5 w-2.5 rotate-45 bg-white/60 dark:bg-white/5 backdrop-blur-lg border-b border-r border-white/30 dark:border-white/[0.06]" />
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+function SubscriptionBadge() {
+  const auth = useAuth();
+  const isAuthedForUi = auth.isAuthenticated || !!auth.token;
+  const subQuery = useSubscription(auth.token, isAuthedForUi);
+  const usageQuery = useSubscriptionUsage(auth.token, isAuthedForUi);
+  const respondingCount = useXyzen((s) => s.respondingChannelIds.size);
+  const [showPointsInfo, setShowPointsInfo] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
+
+  if (!isAuthedForUi || subQuery.isLoading) {
+    return null;
+  }
+
+  const roleName = subQuery.data?.role?.name ?? "free";
+  const displayName = subQuery.data?.role?.display_name ?? "Free";
+  const expiresAt = subQuery.data?.subscription?.expires_at;
+  const canClaimCredits = subQuery.data?.can_claim_credits ?? false;
+  const style = TIER_STYLES[roleName] ?? TIER_STYLES.free;
+
+  const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
+  const daysLeft = expiresAt
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        ),
+      )
+    : null;
+
+  // Expiry urgency tiers
+  const isUrgent = daysLeft !== null && daysLeft <= 3 && !isExpired;
+  const isWarning =
+    daysLeft !== null && daysLeft <= 7 && !isUrgent && !isExpired;
+
+  const usage = usageQuery.data;
+  const chatLimit = usage?.chats.limit ?? 0;
+  const hasOverQuota =
+    usage &&
+    ((chatLimit > 0 && respondingCount > chatLimit) ||
+      usage.storage.usage_percentage > 100);
+
+  const TierIcon = style.icon;
+
+  return (
+    <>
+      <div className="relative" ref={badgeRef}>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowPointsInfo(true)}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors border text-xs font-medium",
+            style.bg,
+            style.text,
+            style.border,
+            isExpired && "opacity-60",
+            hasOverQuota && "ring-1 ring-red-400/50",
+          )}
+        >
+          <TierIcon className="size-3.5" />
+          <span>{displayName}</span>
+          {isExpired && (
+            <span className="text-[10px] text-red-500 dark:text-red-400 font-semibold">
+              expired
+            </span>
+          )}
+          {/* Red dot for claimable credits */}
+          {canClaimCredits && !isExpired && (
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+            </span>
+          )}
+        </motion.button>
+      </div>
+
+      {/* Tooltip via portal — escapes dock's backdrop-filter context */}
+      <SubscriptionTooltip
+        visible={hovered && !!usage}
+        anchorRef={badgeRef}
+        usage={usage ?? null}
+        daysLeft={daysLeft}
+        roleName={roleName}
+        isExpired={isExpired}
+        isUrgent={isUrgent}
+        isWarning={isWarning}
+        respondingCount={respondingCount}
+        chatLimit={chatLimit}
+        hasOverQuota={!!hasOverQuota}
+      />
+
+      <PointsInfoModal
+        isOpen={showPointsInfo}
+        onClose={() => setShowPointsInfo(false)}
+      />
+    </>
+  );
+}
+
 // Main Dock container
 export function BottomDock({
   activePanel,
@@ -490,7 +799,6 @@ export function BottomDock({
   className,
 }: BottomDockProps) {
   const { t } = useTranslation();
-  const { openSettingsModal } = useXyzen();
   const auth = useAuth();
   const mouseX = useMotionValue(Infinity);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -515,6 +823,12 @@ export function BottomDock({
       icon: WrenchScrewdriverIcon,
       label: t("app.activityBar.skills", "Skills"),
       panel: "skills",
+    },
+    {
+      id: "memory",
+      icon: LightBulbIcon,
+      label: t("app.activityBar.memory"),
+      panel: "memory",
     },
     {
       id: "marketplace",
@@ -607,20 +921,8 @@ export function BottomDock({
               {/* Divider */}
               <div className="h-6 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
 
-              {/* Settings */}
-              <motion.button
-                whileHover={{ scale: 1.05, rotate: 30 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => openSettingsModal()}
-                className={cn(
-                  "flex items-center justify-center h-9 w-9 rounded-lg transition-colors",
-                  "bg-white/40 dark:bg-neutral-800/40",
-                  "hover:bg-white/70 dark:hover:bg-neutral-700/60",
-                  "border border-white/20 dark:border-neutral-700/30",
-                )}
-              >
-                <Cog6ToothIcon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-              </motion.button>
+              {/* Subscription Badge */}
+              <SubscriptionBadge />
             </div>
           </div>
         </motion.div>

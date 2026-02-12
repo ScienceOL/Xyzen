@@ -17,6 +17,7 @@ from .redemption import router as redemption_router
 from .sandbox import router as sandbox_router
 from .sessions import router as sessions_router
 from .skills import agent_skills_router, router as skills_router
+from .subscription import router as subscription_router
 from .system import router as system_router
 from .tools import router as tools_router
 from .topics import router as topics_router
@@ -102,6 +103,7 @@ v1_router.include_router(marketplace_router, prefix="/marketplace")
 v1_router.include_router(messages_router, prefix="/messages")
 v1_router.include_router(memories_router, prefix="/memories")
 v1_router.include_router(sandbox_router, prefix="/sessions")
+v1_router.include_router(subscription_router, prefix="/subscription", tags=["subscription"])
 v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(tools_router, prefix="/tools")
 v1_router.include_router(system_router, tags=["system"])

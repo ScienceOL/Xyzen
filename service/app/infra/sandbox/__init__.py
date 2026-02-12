@@ -10,18 +10,19 @@ from .backends import get_backend
 from .manager import SandboxManager
 
 
-def get_sandbox_manager(session_id: str) -> SandboxManager:
+def get_sandbox_manager(session_id: str, user_id: str | None = None) -> SandboxManager:
     """
     Get a SandboxManager for a given session.
 
     Args:
         session_id: Session UUID string
+        user_id: Optional user ID for limit enforcement
 
     Returns:
         SandboxManager instance with configured backend
     """
     backend = get_backend()
-    return SandboxManager(backend=backend, session_id=session_id)
+    return SandboxManager(backend=backend, session_id=session_id, user_id=user_id)
 
 
 __all__ = ["get_sandbox_manager", "SandboxManager"]

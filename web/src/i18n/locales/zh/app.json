@@ -41,6 +41,7 @@
     "knowledge": "知识库",
     "skills": "技能",
     "community": "社区",
+    "memory": "记忆",
     "comingSoon": "敬请期待"
   },
   "skillsPanel": {
@@ -239,6 +240,7 @@
         "name": "Xyzen Lite",
         "description": "快速轻量，适合简单任务"
       }
-    }
+    },
+    "locked": "需要 {{plan}} 订阅"
   }
 }

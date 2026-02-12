@@ -28,9 +28,10 @@ class SandboxManager:
     ensuring a sandbox exists.
     """
 
-    def __init__(self, backend: SandboxBackend, session_id: str) -> None:
+    def __init__(self, backend: SandboxBackend, session_id: str, user_id: str | None = None) -> None:
         self._backend = backend
         self._session_id = session_id
+        self._user_id = user_id
         self._sandbox_id: str | None = None
 
     @property
@@ -78,6 +79,18 @@ class SandboxManager:
             raise RuntimeError(f"Timed out waiting for sandbox creation for session {self._session_id}")
 
         try:
+            # Check sandbox limit before creating
+            if self._user_id:
+                try:
+                    from app.core.limits import LimitsEnforcer
+                    from app.infra.database import AsyncSessionLocal
+
+                    async with AsyncSessionLocal() as db:
+                        enforcer = await LimitsEnforcer.create(db, self._user_id)
+                        await enforcer.check_sandbox_creation(db)
+                except ImportError:
+                    logger.warning("LimitsEnforcer not available, skipping sandbox limit check")
+
             sandbox_name = f"xyzen-{self._session_id[:8]}-{uuid.uuid4().hex[:6]}"
             sandbox_id = await self._backend.create_sandbox(name=sandbox_name)
 

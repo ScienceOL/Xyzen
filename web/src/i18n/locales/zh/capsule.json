@@ -21,7 +21,17 @@
     "justNow": "刚刚",
     "countSingular": "条记忆",
     "countPlural": "条记忆",
-    "delete": "删除"
+    "delete": "删除",
+    "create": "添加记忆",
+    "edit": "编辑",
+    "save": "保存",
+    "cancel": "取消",
+    "search": "搜索记忆...",
+    "searching": "搜索中...",
+    "createPlaceholder": "输入要记住的内容...",
+    "createSuccess": "记忆已添加",
+    "updateSuccess": "记忆已更新",
+    "saveFailed": "保存记忆失败"
   },
   "sandbox": {
     "noSession": "无活动会话",

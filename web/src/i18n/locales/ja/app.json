@@ -41,6 +41,7 @@
     "knowledge": "ナレッジベース",
     "skills": "スキル",
     "community": "コミュニティ",
+    "memory": "メモリー",
     "comingSoon": "近日公開予定"
   },
   "skillsPanel": {
@@ -237,6 +238,7 @@
         "name": "Xyzen ライト",
         "description": "シンプルなタスク向けの高速軽量モデル"
       }
-    }
+    },
+    "locked": "{{plan}} プランが必要"
   }
 }

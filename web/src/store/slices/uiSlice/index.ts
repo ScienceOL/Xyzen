@@ -8,7 +8,12 @@ import { type InputPosition, type LayoutStyle } from "./types";
 // Ensure xyzen service is aware of the default backend on startup
 xyzenService.setBackendUrl(DEFAULT_BACKEND_URL);
 
-export type ActivityPanel = "chat" | "knowledge" | "skills" | "marketplace";
+export type ActivityPanel =
+  | "chat"
+  | "knowledge"
+  | "skills"
+  | "marketplace"
+  | "memory";
 
 export interface UiSlice {
   backendUrl: string;

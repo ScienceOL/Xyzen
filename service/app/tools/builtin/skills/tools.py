@@ -86,6 +86,7 @@ def create_skill_tools() -> dict[str, BaseTool]:
 def create_skill_tools_for_session(
     skills: list[SkillInfo],
     session_id: str,
+    user_id: str | None = None,
 ) -> list[BaseTool]:
     """
     Create skill tools bound to a specific session.
@@ -141,7 +142,7 @@ def create_skill_tools_for_session(
                 from app.infra.sandbox import get_sandbox_manager
 
                 resource_files = await load_skill_resource_files(skill.resource_prefix)
-                manager = get_sandbox_manager(session_id)
+                manager = get_sandbox_manager(session_id, user_id=user_id)
                 deployed_path = await deploy_skill_to_sandbox(
                     manager=manager,
                     skill_name=skill.name,

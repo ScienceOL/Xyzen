@@ -1,7 +1,8 @@
 "use client";
 
-import ForkAgentModal from "@/components/features/ForkAgentModal";
+import { STORAGE_KEY_VIEWPORT } from "@/app/chat/spatial/constants";
 import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
+import ForkAgentModal from "@/components/features/ForkAgentModal";
 import {
   useMarketplaceListing,
   useMarketplaceRequirements,
@@ -11,7 +12,6 @@ import Markdown from "@/lib/Markdown";
 import { AgentSnapshot } from "@/service/marketplaceService";
 import { useXyzen } from "@/store";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
-import { STORAGE_KEY_VIEWPORT } from "@/app/chat/spatial/constants";
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -151,6 +151,12 @@ export default function AgentMarketplaceDetail({
   };
 
   const handleForkSuccess = async (agentId: string) => {
+    try {
+      localStorage.removeItem("xyzen_spatial_focused_agent");
+    } catch {
+      /* ignore */
+    }
+
     // 1. First switch to chat panel (let SpatialWorkspace mount)
     setActivePanel("chat");
 

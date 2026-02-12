@@ -26,12 +26,15 @@ router = APIRouter(tags=["redemption"])
 class GenerateCodeRequest(BaseModel):
     """Request model for generating a redemption code."""
 
-    amount: int = Field(gt=0, description="Virtual balance amount to credit")
+    amount: int = Field(default=0, ge=0, description="Virtual balance amount to credit")
     max_usage: int = Field(default=1, gt=0, description="Maximum number of times this code can be used")
     code: Optional[str] = Field(default=None, description="Custom code (if None, generates random code)")
     expires_at: Optional[datetime] = Field(default=None, description="Expiration time (None means no expiration)")
     description: Optional[str] = Field(default=None, description="Code description or notes")
     is_active: bool = Field(default=True, description="Whether the code is active")
+    code_type: str = Field(default="credits", description="Code type: 'credits' or 'subscription'")
+    role_name: Optional[str] = Field(default=None, description="Target subscription role name (for subscription)")
+    duration_days: int = Field(default=30, gt=0, description="Subscription duration in days")
 
 
 class RedemptionCodeResponse(BaseModel):
@@ -45,6 +48,9 @@ class RedemptionCodeResponse(BaseModel):
     is_active: bool
     expires_at: Optional[datetime]
     description: Optional[str]
+    code_type: str
+    role_name: Optional[str]
+    duration_days: int
     created_at: datetime
     updated_at: datetime
 
@@ -62,6 +68,8 @@ class RedeemCodeResponse(BaseModel):
     amount_credited: int
     new_balance: int
     message: str
+    role_name: Optional[str] = None
+    duration_days: Optional[int] = None
 
 
 class UserWalletResponse(BaseModel):
@@ -131,6 +139,9 @@ async def generate_redemption_code(
             expires_at=request.expires_at,
             description=request.description,
             is_active=request.is_active,
+            code_type=request.code_type,
+            role_name=request.role_name,
+            duration_days=request.duration_days,
         )
 
         await db.commit()
@@ -146,6 +157,9 @@ async def generate_redemption_code(
             is_active=code.is_active,
             expires_at=code.expires_at,
             description=code.description,
+            code_type=code.code_type,
+            role_name=code.role_name,
+            duration_days=code.duration_days,
             created_at=code.created_at,
             updated_at=code.updated_at,
         )
@@ -210,6 +224,9 @@ async def list_redemption_codes(
                 is_active=code.is_active,
                 expires_at=code.expires_at,
                 description=code.description,
+                code_type=code.code_type,
+                role_name=code.role_name,
+                duration_days=code.duration_days,
                 created_at=code.created_at,
                 updated_at=code.updated_at,
             )
@@ -274,6 +291,9 @@ async def get_redemption_code(
             is_active=code.is_active,
             expires_at=code.expires_at,
             description=code.description,
+            code_type=code.code_type,
+            role_name=code.role_name,
+            duration_days=code.duration_days,
             created_at=code.created_at,
             updated_at=code.updated_at,
         )
@@ -334,6 +354,9 @@ async def deactivate_redemption_code(
             is_active=code.is_active,
             expires_at=code.expires_at,
             description=code.description,
+            code_type=code.code_type,
+            role_name=code.role_name,
+            duration_days=code.duration_days,
             created_at=code.created_at,
             updated_at=code.updated_at,
         )
@@ -376,11 +399,25 @@ async def redeem_code(
 
     try:
         service = RedemptionService(db)
+        # Look up the code before redeeming to get code_type info for response
+        redemption_code = await service.repo.get_redemption_code_by_code(request.code)
         wallet, history = await service.redeem_code(user_id, request.code)
 
         await db.commit()
 
         logger.info(f"User {user_id} successfully redeemed code {request.code}, credited: {history.amount}")
+
+        if redemption_code and redemption_code.code_type == "subscription":
+            return RedeemCodeResponse(
+                success=True,
+                amount_credited=0,
+                new_balance=wallet.virtual_balance,
+                message=(
+                    f"Subscription upgraded to {redemption_code.role_name} ({redemption_code.duration_days} days)"
+                ),
+                role_name=redemption_code.role_name,
+                duration_days=redemption_code.duration_days,
+            )
 
         return RedeemCodeResponse(
             success=True,

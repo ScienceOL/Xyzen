@@ -12,14 +12,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from langgraph.store.base import BaseStore
 
 from app.configs import configs
 
 if TYPE_CHECKING:
-    from langgraph.store.postgres.base import PostgresIndexConfig
+    from langgraph.store.postgres.base import PoolConfig, PostgresIndexConfig
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +73,24 @@ class MemoryService:
             index_config = _build_index_config()
 
             # from_conn_string is an async context manager
+            pool_config = cast(
+                "PoolConfig",
+                {
+                    "max_size": 5,
+                    "max_lifetime": 3600,  # Recycle connections after 1 hour
+                    "max_idle": 300,  # Close idle connections after 5 minutes
+                    "kwargs": {
+                        "keepalives": 1,
+                        "keepalives_idle": 30,  # Send keepalive after 30s idle
+                        "keepalives_interval": 10,  # Retry every 10s
+                        "keepalives_count": 3,  # Give up after 3 retries
+                    },
+                },
+            )
             cm = AsyncPostgresStore.from_conn_string(
-                conn_string, index=index_config, pool_config={"min_size": 1, "max_size": 5}
+                conn_string,
+                index=index_config,
+                pool_config=pool_config,
             )
             store = await cm.__aenter__()
             self._context_manager = cm
