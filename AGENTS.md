@@ -214,7 +214,7 @@ just down                        # Stop and remove all containers
 # Backend (runs in service/ directory)
 just test-backend                # uv run pytest
 just test-backend-cov            # uv run pytest --cov
-just type-backend                # uv run pyright .
+just type-backend                # uv run basedpyright .
 just lint-backend                # uv run ruff check .
 just fmt-backend                 # uv run ruff format .
 just check-backend               # Run all backend checks
@@ -327,7 +327,7 @@ Examples:
 
 ## Git Commit Rules
 
-This project has pre-commit hooks (pyright, ruff) that can fail on partially-staged files. Follow this workflow for multi-file refactors:
+This project has pre-commit hooks (basedpyright, ruff) that can fail on partially-staged files. Follow this workflow for multi-file refactors:
 
 1. **Verify final state first**: Run `just lint-backend`, `just type-backend`, and `just test-backend` on the full working tree before committing.
 2. **Commit without verify**: Use `git commit --no-verify` to bypass pre-commit hooks that would fail on partial staging.

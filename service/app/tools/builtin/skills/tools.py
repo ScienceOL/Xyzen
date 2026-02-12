@@ -74,8 +74,7 @@ def create_skill_tools() -> dict[str, BaseTool]:
     tools["list_skill_resources"] = StructuredTool(
         name="list_skill_resources",
         description=(
-            "List the resource files (scripts, references, assets) "
-            "available for an activated skill in the sandbox."
+            "List the resource files (scripts, references, assets) available for an activated skill in the sandbox."
         ),
         args_schema=ListSkillResourcesInput,
         coroutine=list_resources_placeholder,
@@ -87,6 +86,7 @@ def create_skill_tools() -> dict[str, BaseTool]:
 def create_skill_tools_for_session(
     skills: list[SkillInfo],
     session_id: str,
+    user_id: str | None = None,
 ) -> list[BaseTool]:
     """
     Create skill tools bound to a specific session.
@@ -142,7 +142,7 @@ def create_skill_tools_for_session(
                 from app.infra.sandbox import get_sandbox_manager
 
                 resource_files = await load_skill_resource_files(skill.resource_prefix)
-                manager = get_sandbox_manager(session_id)
+                manager = get_sandbox_manager(session_id, user_id=user_id)
                 deployed_path = await deploy_skill_to_sandbox(
                     manager=manager,
                     skill_name=skill.name,
@@ -222,8 +222,7 @@ def create_skill_tools_for_session(
         StructuredTool(
             name="list_skill_resources",
             description=(
-                "List the resource files (scripts, references, assets) "
-                "available for an activated skill in the sandbox."
+                "List the resource files (scripts, references, assets) available for an activated skill in the sandbox."
             ),
             args_schema=ListSkillResourcesInput,
             coroutine=list_skill_resources_bound,

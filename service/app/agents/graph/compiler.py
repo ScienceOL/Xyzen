@@ -121,7 +121,9 @@ class GraphCompiler:
         result: dict[str, LegacyStateFieldSchema] = {}
         for field_name, field_schema in config.state.state_schema.items():
             reducer = config.state.reducers.get(field_name, StateReducerType.REPLACE)
-            legacy_reducer = ReducerType.ADD_MESSAGES if reducer == StateReducerType.ADD_MESSAGES else ReducerType.REPLACE
+            legacy_reducer = (
+                ReducerType.ADD_MESSAGES if reducer == StateReducerType.ADD_MESSAGES else ReducerType.REPLACE
+            )
             result[field_name] = LegacyStateFieldSchema(
                 type=field_schema.type.value,
                 description=field_schema.description,

@@ -176,6 +176,31 @@ async def _resolve_provider_and_model(
     model_name: str | None = None
 
     if session:
+        # Clamp model_tier to subscription limit
+        effective_model_tier = session.model_tier
+        if effective_model_tier:
+            try:
+                from app.core.subscription import SubscriptionService
+
+                sub_service = SubscriptionService(db)
+                role = await sub_service.get_user_role(session.user_id)
+                max_tier_str = role.max_model_tier if role else "lite"
+                tier_order = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
+                max_tier_enum = ModelTier(max_tier_str)
+                if tier_order.index(effective_model_tier) > tier_order.index(max_tier_enum):
+                    logger.info(
+                        f"Clamped model tier from {effective_model_tier.value} to {max_tier_enum.value} "
+                        f"(subscription limit for user {session.user_id})"
+                    )
+                    effective_model_tier = max_tier_enum
+                    # Persist the clamped tier so DB, billing, and frontend stay consistent
+                    session.model_tier = max_tier_enum
+                    session.model = None
+                    db.add(session)
+                    await db.flush()
+            except Exception as e:
+                logger.warning(f"Failed to check subscription tier limit: {e}")
+
         if session.provider_id:
             provider_id = str(session.provider_id)
 
@@ -184,15 +209,17 @@ async def _resolve_provider_and_model(
             model_name = session.model
             logger.info(f"Using cached session model: {model_name}")
         # If model_tier is set but no model, do intelligent selection
-        elif session.model_tier:
+        elif effective_model_tier:
             if message_text and user_provider_manager:
                 try:
                     model_name = await select_model_for_tier(
-                        tier=session.model_tier,
+                        tier=effective_model_tier,
                         first_message=message_text,
                         user_provider_manager=user_provider_manager,
                     )
-                    logger.info(f"Intelligent selection chose model: {model_name} for tier {session.model_tier.value}")
+                    logger.info(
+                        f"Intelligent selection chose model: {model_name} for tier {effective_model_tier.value}"
+                    )
 
                     # Cache the selection in session.model for subsequent messages.
                     # Note: Concurrent requests may race to set this, but that's fine since
@@ -207,11 +234,11 @@ async def _resolve_provider_and_model(
                     logger.info(f"Cached selected model in session: {model_name}")
                 except Exception as e:
                     logger.error(f"Intelligent model selection failed: {e}")
-                    model_name = resolve_model_for_tier(session.model_tier)
+                    model_name = resolve_model_for_tier(effective_model_tier)
                     logger.warning(f"Falling back to tier default: {model_name}")
             else:
                 # No message or provider manager, use simple fallback
-                model_name = resolve_model_for_tier(session.model_tier)
+                model_name = resolve_model_for_tier(effective_model_tier)
                 logger.info(f"Using tier fallback (no context): {model_name}")
 
     if not provider_id and agent and agent.provider_id:
@@ -220,10 +247,19 @@ async def _resolve_provider_and_model(
     if not model_name and agent and agent.model:
         model_name = agent.model
 
-    # Final fallback: if still no model, use STANDARD tier default
+    # Final fallback: if still no model, use the user's max allowed tier
     # This handles cases where session has no model/tier and agent has no default model
     if not model_name:
         default_tier = ModelTier.STANDARD
+        if session:
+            try:
+                from app.core.subscription import SubscriptionService as _SubSvc
+
+                _role = await _SubSvc(db).get_user_role(session.user_id)
+                _max_str = _role.max_model_tier if _role else "lite"
+                default_tier = ModelTier(_max_str)
+            except Exception as e:
+                logger.warning(f"Failed to resolve subscription tier for fallback: {e}")
         if message_text and user_provider_manager:
             try:
                 model_name = await select_model_for_tier(
@@ -231,14 +267,14 @@ async def _resolve_provider_and_model(
                     first_message=message_text,
                     user_provider_manager=user_provider_manager,
                 )
-                logger.info(f"Using STANDARD tier selection: {model_name}")
+                logger.info(f"Using {default_tier.value} tier selection: {model_name}")
             except Exception as e:
-                logger.error(f"STANDARD tier selection failed: {e}")
+                logger.error(f"{default_tier.value} tier selection failed: {e}")
                 model_name = resolve_model_for_tier(default_tier)
-                logger.warning(f"Falling back to STANDARD tier default: {model_name}")
+                logger.warning(f"Falling back to {default_tier.value} tier default: {model_name}")
         else:
             model_name = resolve_model_for_tier(default_tier)
-            logger.info(f"Using STANDARD tier fallback: {model_name}")
+            logger.info(f"Using {default_tier.value} tier fallback: {model_name}")
 
     # Ensure we have the correct provider for the selected model.
     # The model's required provider takes precedence over session.provider_id.

@@ -9,6 +9,9 @@ interface GeneratedCode {
   is_active: boolean;
   expires_at: string | null;
   description: string | null;
+  code_type: string;
+  role_name: string | null;
+  duration_days: number;
   created_at: string;
 }
 
@@ -166,6 +169,15 @@ export function CodesList({
                   >
                     {code.code}
                   </button>
+                  {code.code_type === "subscription" ? (
+                    <span className="text-xs px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
+                      Subscription
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400">
+                      Credits
+                    </span>
+                  )}
                   {!code.is_active && (
                     <span className="text-xs px-2 py-0.5 rounded bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400">
                       Inactive
@@ -181,14 +193,35 @@ export function CodesList({
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-              <div>
-                <span className="text-neutral-500 dark:text-neutral-400">
-                  Amount:
-                </span>{" "}
-                <span className="font-medium text-neutral-900 dark:text-white">
-                  {code.amount.toLocaleString()}
-                </span>
-              </div>
+              {code.code_type === "subscription" ? (
+                <>
+                  <div>
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      Plan:
+                    </span>{" "}
+                    <span className="font-medium text-neutral-900 dark:text-white">
+                      {code.role_name}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      Duration:
+                    </span>{" "}
+                    <span className="font-medium text-neutral-900 dark:text-white">
+                      {code.duration_days} days
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Amount:
+                  </span>{" "}
+                  <span className="font-medium text-neutral-900 dark:text-white">
+                    {code.amount.toLocaleString()}
+                  </span>
+                </div>
+              )}
               <div>
                 <span className="text-neutral-500 dark:text-neutral-400">
                   Usage:

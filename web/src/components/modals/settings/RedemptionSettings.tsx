@@ -2,12 +2,13 @@ import { BubbleBackground } from "@/components/animate-ui/components/backgrounds
 import { Button } from "@/components/ui/button";
 import { redemptionService } from "@/service/redemptionService";
 import { CheckCircleIcon, TicketIcon } from "@heroicons/react/24/outline";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export function RedemptionSettings() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -19,6 +20,9 @@ export function RedemptionSettings() {
       setSuccess(data.message);
       setError(null);
       setCode("");
+      // Refresh subscription and wallet data (credits may have been auto-claimed)
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["userWallet"] });
     },
     onError: (err: Error) => {
       setError(err.message);

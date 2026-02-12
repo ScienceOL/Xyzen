@@ -5,11 +5,13 @@ from uuid import UUID
 
 import redis.asyncio as redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi.exceptions import HTTPException
 
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.configs import configs
 from app.core.chat.topic_generator import generate_and_update_topic_title
 from app.core.consume import create_consume_for_chat
+from app.core.limits import LimitsEnforcer
 from app.infra.database import AsyncSessionLocal
 from app.middleware.auth import AuthContext, get_auth_context_websocket
 from app.models.message import MessageCreate
@@ -92,6 +94,26 @@ async def redis_listener(websocket: WebSocket, connection_id: str):
         await r.close()
 
 
+HEARTBEAT_INTERVAL_SECONDS = 25
+
+
+async def heartbeat_sender(websocket: WebSocket, connection_id: str) -> None:
+    """Send periodic ping messages to detect dead connections."""
+    try:
+        while True:
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
+            try:
+                if websocket.client_state.value == 1:  # WebSocketState.CONNECTED
+                    await websocket.send_text('{"type":"ping"}')
+                else:
+                    break
+            except Exception:
+                logger.info(f"Heartbeat send failed for {connection_id}, connection likely dead")
+                break
+    except asyncio.CancelledError:
+        pass
+
+
 @router.websocket("/sessions/{session_id}/topics/{topic_id}")
 async def chat_websocket(
     websocket: WebSocket,
@@ -100,11 +122,22 @@ async def chat_websocket(
     auth_ctx: AuthContext = Depends(get_auth_context_websocket),
 ) -> None:
     connection_id = f"{session_id}:{topic_id}"
-    await manager.connect(websocket, connection_id)
-
     user = auth_ctx.user_id
 
-    # Validate session and topic access
+    # Check parallel chat limit before accepting connection
+    enforcer: LimitsEnforcer | None = None
+    try:
+        async with AsyncSessionLocal() as db:
+            enforcer = await LimitsEnforcer.create(db, user)
+            await enforcer.check_parallel_chat(connection_id)
+    except HTTPException:
+        await websocket.accept()
+        await websocket.close(code=4029, reason="Parallel chat limit reached")
+        return
+    except Exception as e:
+        logger.warning(f"Limit check failed (allowing connection): {e}")
+
+    # Validate session and topic access before tracking the connection
     async with AsyncSessionLocal() as db:
         topic_repo = TopicRepository(db)
         session_repo = SessionRepository(db)
@@ -113,6 +146,7 @@ async def chat_websocket(
             logger.error(f"DEBUG: Topic check failed. Topic: {topic}, SessionID: {session_id}")
             if topic:
                 logger.error(f"DEBUG: Topic session id: {topic.session_id} vs {session_id}")
+            await websocket.accept()
             await websocket.close(code=4004, reason="Topic not found or does not belong to the session")
             return
 
@@ -121,15 +155,27 @@ async def chat_websocket(
             logger.error(f"DEBUG: Session check failed. Session: {session}, User: {user}")
             if session:
                 logger.error(f"DEBUG: Session user id: {session.user_id} vs {user}")
+            await websocket.accept()
             await websocket.close(code=4003, reason="Session not found or access denied")
             return
 
+    await manager.connect(websocket, connection_id)
+
+    # Track this connection for limit enforcement
+    if enforcer:
+        await enforcer.track_chat_connect(connection_id)
+
     # Start Redis listener task
     listener_task = asyncio.create_task(redis_listener(websocket, connection_id))
+    heartbeat_task = asyncio.create_task(heartbeat_sender(websocket, connection_id))
 
     try:
         while True:
             data = await websocket.receive_json()
+
+            # Short-circuit heartbeat pongs before opening a DB session
+            if data.get("type") == "pong":
+                continue
 
             async with AsyncSessionLocal() as db:
                 message_repo = MessageRepository(db)
@@ -319,6 +365,13 @@ async def chat_websocket(
                     access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
                 )
 
+                # 6b. Acknowledge message receipt to client
+                ack_event = {
+                    "type": ChatEventType.MESSAGE_ACK,
+                    "data": {"message_id": str(user_message.id)},
+                }
+                await websocket.send_text(json.dumps(ack_event))
+
                 # 7. Topic Renaming - uses Redis pub/sub for cross-pod delivery
                 topic_refreshed = await topic_repo.get_topic_with_details(topic_id)
                 if topic_refreshed and topic_refreshed.name in ["新的聊天", "New Chat", "New Topic"]:
@@ -340,8 +393,15 @@ async def chat_websocket(
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
     finally:
         manager.disconnect(connection_id)
+        if enforcer:
+            await enforcer.track_chat_disconnect(connection_id)
         listener_task.cancel()
+        heartbeat_task.cancel()
         try:
             await listener_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await heartbeat_task
         except asyncio.CancelledError:
             pass

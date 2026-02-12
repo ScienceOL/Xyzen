@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   CpuChipIcon,
   InformationCircleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -12,10 +13,21 @@ import { TierInfoModal } from "./TierInfoModal";
 
 export type ModelTier = "ultra" | "pro" | "standard" | "lite";
 
+const TIER_ORDER: ModelTier[] = ["lite", "standard", "pro", "ultra"];
+
+// Mapping: which subscription plan name unlocks each tier
+const TIER_REQUIRED_PLAN: Record<ModelTier, string> = {
+  lite: "Free",
+  standard: "Standard",
+  pro: "Professional",
+  ultra: "Ultra",
+};
+
 interface TierSelectorProps {
   currentTier: ModelTier | null | undefined;
   onTierChange: (tier: ModelTier) => void;
   disabled?: boolean;
+  maxTier?: ModelTier;
 }
 
 interface TierConfig {
@@ -61,6 +73,7 @@ export function TierSelector({
   currentTier,
   onTierChange,
   disabled = false,
+  maxTier = "ultra",
 }: TierSelectorProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -71,7 +84,14 @@ export function TierSelector({
   const currentConfig =
     TIER_CONFIGS.find((c) => c.key === effectiveTier) || TIER_CONFIGS[2];
 
+  const maxTierIndex = TIER_ORDER.indexOf(maxTier);
+
+  const isTierLocked = (tier: ModelTier): boolean => {
+    return TIER_ORDER.indexOf(tier) > maxTierIndex;
+  };
+
   const handleTierClick = (tier: ModelTier) => {
+    if (isTierLocked(tier)) return;
     onTierChange(tier);
     setIsOpen(false);
   };
@@ -132,37 +152,70 @@ export function TierSelector({
                 </button>
               </div>
               <div className="space-y-1">
-                {TIER_CONFIGS.map((config, index) => (
-                  <motion.button
-                    key={config.key}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03, duration: 0.2 }}
-                    onClick={() => handleTierClick(config.key)}
-                    className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
-                      effectiveTier === config.key
-                        ? `${config.bgColor} ${config.textColor}`
-                        : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                    }`}
-                  >
-                    <div
-                      className={`h-2 w-2 shrink-0 rounded-full ${config.dotColor}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
-                          {t(`app.tierSelector.tiers.${config.key}.name`)}
-                        </span>
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-                          {formatRate(config.rate)}
-                        </span>
+                {TIER_CONFIGS.map((config, index) => {
+                  const locked = isTierLocked(config.key);
+                  return (
+                    <motion.button
+                      key={config.key}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.03, duration: 0.2 }}
+                      onClick={() => handleTierClick(config.key)}
+                      disabled={locked}
+                      className={`group/tier flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
+                        locked
+                          ? "cursor-not-allowed"
+                          : effectiveTier === config.key
+                            ? `${config.bgColor} ${config.textColor}`
+                            : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      }`}
+                    >
+                      <div
+                        className={`h-2 w-2 shrink-0 rounded-full ${locked ? "bg-neutral-300 dark:bg-neutral-600" : config.dotColor}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`font-medium text-sm flex items-center gap-1.5 ${locked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-900 dark:text-neutral-100"}`}
+                          >
+                            {t(`app.tierSelector.tiers.${config.key}.name`)}
+                            {locked && (
+                              <LockClosedIcon className="h-3 w-3 text-neutral-300 dark:text-neutral-600" />
+                            )}
+                          </span>
+                          <span
+                            className={`text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 ${
+                              locked
+                                ? "text-neutral-300 dark:text-neutral-600"
+                                : "text-neutral-600 dark:text-neutral-400"
+                            }`}
+                          >
+                            {formatRate(config.rate)}
+                          </span>
+                        </div>
+                        <div
+                          className={`text-xs ${locked ? "text-neutral-300 dark:text-neutral-600" : "text-neutral-500 dark:text-neutral-400"}`}
+                        >
+                          {/* Default: description. Hover: upgrade hint */}
+                          <span
+                            className={locked ? "group-hover/tier:hidden" : ""}
+                          >
+                            {t(
+                              `app.tierSelector.tiers.${config.key}.description`,
+                            )}
+                          </span>
+                          {locked && (
+                            <span className="hidden group-hover/tier:inline text-neutral-400 dark:text-neutral-500">
+                              {t("app.tierSelector.locked", {
+                                plan: TIER_REQUIRED_PLAN[config.key],
+                              })}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {t(`app.tierSelector.tiers.${config.key}.description`)}
-                      </div>
-                    </div>
-                  </motion.button>
-                ))}
+                    </motion.button>
+                  );
+                })}
               </div>
             </motion.div>
           )}

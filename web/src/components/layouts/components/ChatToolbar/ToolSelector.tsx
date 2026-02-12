@@ -34,11 +34,41 @@ import {
   CommandLineIcon,
   GlobeAltIcon,
   LightBulbIcon,
+  LockClosedIcon,
   PhotoIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+// Subscription plan order for comparison
+const PLAN_ORDER = ["free", "standard", "professional", "ultra"] as const;
+type PlanName = (typeof PLAN_ORDER)[number];
+
+// Minimum plan required for each tool. "free" = available to all.
+const TOOL_REQUIRED_PLAN: Record<string, PlanName> = {
+  webSearch: "free",
+  knowledge: "free",
+  image: "free",
+  literatureSearch: "free",
+  memory: "free",
+  sandbox: "standard",
+};
+
+function isToolLocked(toolKey: string, userPlan: string): boolean {
+  const requiredPlan = TOOL_REQUIRED_PLAN[toolKey];
+  if (!requiredPlan) return false;
+  const userIndex = PLAN_ORDER.indexOf(userPlan as PlanName);
+  const requiredIndex = PLAN_ORDER.indexOf(requiredPlan);
+  // Unknown plans are treated as free (index -1)
+  return (userIndex === -1 ? 0 : userIndex) < requiredIndex;
+}
+
+function getRequiredPlanLabel(toolKey: string): string | null {
+  const plan = TOOL_REQUIRED_PLAN[toolKey];
+  if (!plan || plan === "free") return null;
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
 
 interface ToolSelectorProps {
   agent: Agent | null;
@@ -47,6 +77,7 @@ interface ToolSelectorProps {
   sessionKnowledgeSetId?: string | null;
   onUpdateSessionKnowledge?: (knowledgeSetId: string | null) => Promise<void>;
   className?: string;
+  userPlan?: string;
 }
 
 export function ToolSelector({
@@ -56,6 +87,7 @@ export function ToolSelector({
   sessionKnowledgeSetId,
   onUpdateSessionKnowledge,
   className,
+  userPlan = "free",
 }: ToolSelectorProps) {
   const { t } = useTranslation();
   const [knowledgeSets, setKnowledgeSets] = useState<
@@ -70,6 +102,11 @@ export function ToolSelector({
   const literatureSearchEnabled = isLiteratureSearchEnabled(agent);
   const memoryEnabled = isMemoryEnabled(agent);
   const sandboxEnabled = isSandboxEnabled(agent);
+
+  const sandboxLocked = useMemo(
+    () => isToolLocked("sandbox", userPlan),
+    [userPlan],
+  );
 
   // Effective knowledge set is session override or agent default
   const effectiveKnowledgeSetId =
@@ -420,32 +457,33 @@ export function ToolSelector({
                   {t("app.toolbar.memory", "Memory")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t(
-                    "app.toolbar.memoryDesc",
-                    "Remember across conversations",
-                  )}
+                  {t("app.toolbar.memoryDesc", "Remember across conversations")}
                 </div>
               </div>
             </div>
-            {memoryEnabled && (
-              <CheckIcon className="h-4 w-4 text-teal-500" />
-            )}
+            {memoryEnabled && <CheckIcon className="h-4 w-4 text-teal-500" />}
           </button>
 
           {/* Sandbox (Code Execution) */}
           <button
-            onClick={handleToggleSandbox}
+            onClick={sandboxLocked ? undefined : handleToggleSandbox}
             className={cn(
               "w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors",
-              "hover:bg-neutral-100 dark:hover:bg-neutral-800",
-              sandboxEnabled && "bg-rose-50 dark:bg-rose-900/20",
+              sandboxLocked
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+              !sandboxLocked &&
+                sandboxEnabled &&
+                "bg-rose-50 dark:bg-rose-900/20",
             )}
           >
             <div className="flex items-center gap-2">
               <CommandLineIcon
                 className={cn(
                   "h-4 w-4",
-                  sandboxEnabled ? "text-rose-500" : "text-neutral-400",
+                  !sandboxLocked && sandboxEnabled
+                    ? "text-rose-500"
+                    : "text-neutral-400",
                 )}
               />
               <div className="text-left">
@@ -457,8 +495,15 @@ export function ToolSelector({
                 </div>
               </div>
             </div>
-            {sandboxEnabled && (
-              <CheckIcon className="h-4 w-4 text-rose-500" />
+            {sandboxLocked ? (
+              <div className="flex items-center gap-1 text-neutral-400">
+                <LockClosedIcon className="h-3.5 w-3.5" />
+                <span className="text-[10px]">
+                  {getRequiredPlanLabel("sandbox")}
+                </span>
+              </div>
+            ) : (
+              sandboxEnabled && <CheckIcon className="h-4 w-4 text-rose-500" />
             )}
           </button>
         </div>

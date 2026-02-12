@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
 from app.models.sessions import (
+    Session as SessionModel,
     SessionCreate,
     SessionRead,
     SessionReadWithTopics,
@@ -14,6 +16,11 @@ from app.models.sessions import (
 )
 from app.models.topic import TopicCreate, TopicRead
 from app.repos import MessageRepository, SessionRepository, TopicRepository
+from app.schemas.model_tier import ModelTier
+
+logger = logging.getLogger(__name__)
+
+TIER_ORDER = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
 
 
 class SessionService:
@@ -22,6 +29,44 @@ class SessionService:
         self.session_repo = SessionRepository(db)
         self.topic_repo = TopicRepository(db)
         self.message_repo = MessageRepository(db)
+
+    async def _clamp_session_model_tier(self, session: SessionModel, user_id: str) -> bool:
+        """Clamp session.model_tier to subscription limit. Persists to DB if changed.
+
+        If model_tier is NULL, sets it to the user's max allowed tier.
+        Returns True if the tier was changed.
+        """
+        try:
+            from app.core.subscription import SubscriptionService
+
+            role = await SubscriptionService(self.db).get_user_role(user_id)
+            max_tier_str = role.max_model_tier if role else "lite"
+            max_tier_enum = ModelTier(max_tier_str)
+
+            if not session.model_tier:
+                # NULL tier: initialize to the user's max allowed tier
+                logger.info(f"Session {session.id}: setting NULL model_tier to {max_tier_enum.value}")
+                session.model_tier = max_tier_enum
+                session.model = None
+                self.db.add(session)
+                await self.db.flush()
+                return True
+
+            if TIER_ORDER.index(session.model_tier) > TIER_ORDER.index(max_tier_enum):
+                logger.info(
+                    f"Session {session.id}: clamping model_tier from {session.model_tier.value} "
+                    f"to {max_tier_enum.value} (subscription limit)"
+                )
+                session.model_tier = max_tier_enum
+                # Clear cached model so next message triggers re-selection
+                session.model = None
+                self.db.add(session)
+                await self.db.flush()
+                return True
+        except Exception as e:
+            logger.warning(f"Failed to clamp session model tier: {e}")
+
+        return False
 
     async def create_session_with_default_topic(self, session_data: SessionCreate, user_id: str) -> SessionRead:
         agent_uuid = await self._resolve_agent_uuid_for_create(session_data.agent_id)
@@ -55,6 +100,10 @@ class SessionService:
         if not session:
             raise ErrCode.SESSION_NOT_FOUND.with_messages("No session found for this user-agent combination")
 
+        # Clamp tier if it exceeds subscription limit
+        if await self._clamp_session_model_tier(session, user_id):
+            await self.db.commit()
+
         # Fetch topics ordered by updated_at descending (most recent first)
         topics = await self.topic_repo.get_topics_by_session(session.id, order_by_updated=True)
         topic_reads = [TopicRead(**topic.model_dump()) for topic in topics]
@@ -65,6 +114,14 @@ class SessionService:
 
     async def get_sessions_with_topics(self, user_id: str) -> list[SessionReadWithTopics]:
         sessions = await self.session_repo.get_sessions_by_user_ordered_by_activity(user_id)
+
+        # Clamp all sessions in one pass, commit once if any changed
+        any_clamped = False
+        for session in sessions:
+            if await self._clamp_session_model_tier(session, user_id):
+                any_clamped = True
+        if any_clamped:
+            await self.db.commit()
 
         sessions_with_topics: list[SessionReadWithTopics] = []
         for session in sessions:

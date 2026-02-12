@@ -182,9 +182,7 @@ async def build_system_prompt_with_provenance(
     if agent and agent.id:
         skills = await _load_skill_metadata(db, agent.id)
 
-    platform_prompt, resolved_agent_prompt = _build_prompt_layers(
-        prompt_config, agent, model_name, skills=skills
-    )
+    platform_prompt, resolved_agent_prompt = _build_prompt_layers(prompt_config, agent, model_name, skills=skills)
     final_prompt = _join_non_empty([platform_prompt, resolved_agent_prompt])
 
     provenance = _build_prompt_provenance(

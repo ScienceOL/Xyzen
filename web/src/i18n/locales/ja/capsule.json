@@ -21,7 +21,17 @@
     "justNow": "たった今",
     "countSingular": "件のメモリー",
     "countPlural": "件のメモリー",
-    "delete": "削除"
+    "delete": "削除",
+    "create": "メモリーを追加",
+    "edit": "編集",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "search": "メモリーを検索...",
+    "searching": "検索中...",
+    "createPlaceholder": "覚えておきたいことを入力...",
+    "createSuccess": "メモリーを追加しました",
+    "updateSuccess": "メモリーを更新しました",
+    "saveFailed": "メモリーの保存に失敗しました"
   },
   "sandbox": {
     "noSession": "アクティブなセッションがありません",

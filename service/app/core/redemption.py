@@ -6,7 +6,7 @@ Provides core business logic for redemption code generation and redemption
 import logging
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -57,6 +57,9 @@ class RedemptionService:
         expires_at: datetime | None = None,
         description: str | None = None,
         is_active: bool = True,
+        code_type: str = "credits",
+        role_name: str | None = None,
+        duration_days: int = 30,
     ) -> RedemptionCode:
         """
         Create a new redemption code (admin only).
@@ -68,6 +71,9 @@ class RedemptionService:
             expires_at: Expiration time (None means no expiration)
             description: Code description or notes
             is_active: Whether the code is active
+            code_type: Code type ('credits' or 'subscription')
+            role_name: Target subscription role name (required for subscription codes)
+            duration_days: Subscription duration in days (for subscription codes)
 
         Returns:
             Created redemption code
@@ -75,7 +81,18 @@ class RedemptionService:
         Raises:
             ErrCode.REDEMPTION_CODE_ALREADY_EXISTS: If code already exists
         """
-        logger.info(f"Creating redemption code with amount: {amount}, max_usage: {max_usage}")
+        logger.info(f"Creating redemption code with amount: {amount}, max_usage: {max_usage}, type: {code_type}")
+
+        # Validate code_type
+        if code_type not in ("credits", "subscription"):
+            raise ErrCode.INVALID_PARAMETER.with_messages("code_type must be 'credits' or 'subscription'")
+
+        # Validate subscription-specific fields
+        if code_type == "subscription":
+            if not role_name:
+                raise ErrCode.INVALID_PARAMETER.with_messages("role_name is required for subscription codes")
+            if duration_days <= 0:
+                raise ErrCode.INVALID_PARAMETER.with_messages("duration_days must be positive")
 
         # Generate code if not provided
         if code is None:
@@ -96,7 +113,7 @@ class RedemptionService:
                 raise ErrCode.REDEMPTION_CODE_ALREADY_EXISTS.with_messages(f"Code '{code}' already exists")
 
         # Validate amount
-        if amount <= 0:
+        if code_type == "credits" and amount <= 0:
             raise ErrCode.INVALID_PARAMETER.with_messages("Amount must be positive")
 
         # Validate max_usage
@@ -111,6 +128,9 @@ class RedemptionService:
             is_active=is_active,
             expires_at=expires_at,
             description=description,
+            code_type=code_type,
+            role_name=role_name,
+            duration_days=duration_days,
         )
 
         redemption_code = await self.repo.create_redemption_code(code_data)
@@ -163,24 +183,60 @@ class RedemptionService:
             raise ErrCode.REDEMPTION_CODE_ALREADY_USED.with_messages(f"You have already redeemed code '{code}'")
 
         # All checks passed, proceed with redemption
-        # 1. Credit user wallet
-        wallet = await self.repo.credit_wallet(user_id, redemption_code.amount)
-        logger.info(f"Credited {redemption_code.amount} to user {user_id}, new balance: {wallet.virtual_balance}")
+        if redemption_code.code_type == "subscription":
+            # Subscription code: upgrade user's subscription
+            from app.core.subscription import SubscriptionService
 
-        # 2. Create redemption history
-        history_data = RedemptionHistoryCreate(
-            code_id=redemption_code.id,
-            user_id=user_id,
-            amount=redemption_code.amount,
-        )
-        history = await self.repo.create_redemption_history(history_data)
-        logger.info(f"Created redemption history: {history.id}")
+            sub_service = SubscriptionService(self.db)
+            role = await sub_service.repo.get_role_by_name(redemption_code.role_name or "")
+            if role is None:
+                raise ErrCode.INVALID_PARAMETER.with_messages(
+                    f"Subscription role '{redemption_code.role_name}' not found"
+                )
 
-        # 3. Increment code usage
-        await self.repo.increment_code_usage(redemption_code.id)
-        logger.info(
-            f"Incremented code usage for {code}, usage: {redemption_code.current_usage + 1}/{redemption_code.max_usage}"  # noqa
-        )
+            expires_at = datetime.now(timezone.utc) + timedelta(days=redemption_code.duration_days)
+            await sub_service.assign_role(user_id, role.id, expires_at)
+
+            # Auto-claim monthly credits for the new subscription
+            if role.monthly_credits > 0:
+                await self.repo.credit_wallet(user_id, role.monthly_credits)
+                await sub_service.repo.update_last_credits_claimed(user_id)
+                logger.info(f"Auto-claimed {role.monthly_credits} credits for user {user_id}")
+
+            # Record history (amount=0 for subscription codes)
+            wallet = await self.repo.get_or_create_user_wallet(user_id)
+            history_data = RedemptionHistoryCreate(
+                code_id=redemption_code.id,
+                user_id=user_id,
+                amount=0,
+            )
+            history = await self.repo.create_redemption_history(history_data)
+            await self.repo.increment_code_usage(redemption_code.id)
+            logger.info(
+                f"User {user_id} subscription upgraded to {redemption_code.role_name} "
+                f"for {redemption_code.duration_days} days via code {code}"
+            )
+        else:
+            # Credits code: existing flow
+            # 1. Credit user wallet
+            wallet = await self.repo.credit_wallet(user_id, redemption_code.amount)
+            logger.info(f"Credited {redemption_code.amount} to user {user_id}, new balance: {wallet.virtual_balance}")
+
+            # 2. Create redemption history
+            history_data = RedemptionHistoryCreate(
+                code_id=redemption_code.id,
+                user_id=user_id,
+                amount=redemption_code.amount,
+            )
+            history = await self.repo.create_redemption_history(history_data)
+            logger.info(f"Created redemption history: {history.id}")
+
+            # 3. Increment code usage
+            await self.repo.increment_code_usage(redemption_code.id)
+            logger.info(
+                f"Incremented code usage for {code}, "
+                f"usage: {redemption_code.current_usage + 1}/{redemption_code.max_usage}"
+            )
 
         return wallet, history
 

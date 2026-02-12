@@ -149,3 +149,71 @@ class AgentSnapshotRepository:
         statement = select(AgentSnapshot).where(AgentSnapshot.agent_id == agent_id)
         result = await self.db.exec(statement)
         return len(list(result.all()))
+
+    async def backfill_snapshot_graph_configs(self, *, batch_size: int = 100) -> dict[str, int]:
+        """
+        Upgrade legacy v2 graph_configs inside snapshot configurations to canonical v3.
+
+        Runs at startup to ensure all snapshot graph_configs are in canonical form,
+        preventing fork failures on legacy snapshots.
+        """
+        from app.agents.graph.upgrader import GraphConfigMigrationError, upgrade_or_create_default_graph_config
+        from app.schemas.graph_config import is_graph_config
+
+        result = await self.db.exec(select(AgentSnapshot))
+        snapshots = result.all()
+
+        changed = 0
+        migrated = 0
+        skipped = 0
+        failed = 0
+        pending = 0
+
+        for snapshot in snapshots:
+            config = snapshot.configuration
+            if not isinstance(config, dict):
+                skipped += 1
+                continue
+
+            gc = config.get("graph_config")
+            if not isinstance(gc, dict):
+                skipped += 1
+                continue
+
+            if is_graph_config(gc):
+                continue
+
+            try:
+                migration_result = upgrade_or_create_default_graph_config(gc)
+            except GraphConfigMigrationError as exc:
+                logger.warning(
+                    "Snapshot %s graph_config migration failed (%s): %s; skipping",
+                    snapshot.id,
+                    exc.code,
+                    exc.message,
+                )
+                failed += 1
+                continue
+
+            canonical = migration_result.config.model_dump(exclude_none=True)
+            config["graph_config"] = canonical
+            snapshot.configuration = config
+            self.db.add(snapshot)
+            changed += 1
+            migrated += 1
+            pending += 1
+
+            if pending >= batch_size:
+                await self.db.flush()
+                pending = 0
+
+        if pending > 0:
+            await self.db.flush()
+
+        return {
+            "total_snapshots": len(snapshots),
+            "changed": changed,
+            "migrated": migrated,
+            "skipped": skipped,
+            "failed": failed,
+        }

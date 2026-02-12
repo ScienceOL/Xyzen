@@ -41,6 +41,7 @@
     "knowledge": "Knowledge",
     "skills": "Skills",
     "community": "Community",
+    "memory": "Memory",
     "comingSoon": "Coming Soon"
   },
   "skillsPanel": {
@@ -239,6 +240,7 @@
         "name": "Xyzen Lite",
         "description": "Fast and lightweight for simple tasks"
       }
-    }
+    },
+    "locked": "Requires {{plan}} plan"
   }
 }

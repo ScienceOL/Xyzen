@@ -25,7 +25,13 @@ import {
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { FolderIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -260,7 +266,10 @@ export default function SkillsLibrary() {
     const values = new Set<string>(["builtin-root", "user-root"]);
     for (const skill of skills) {
       const resourcePaths = resourcePathsBySkill[skill.id] ?? [];
-      for (const value of collectExpandedValuesForSkill(skill.id, resourcePaths)) {
+      for (const value of collectExpandedValuesForSkill(
+        skill.id,
+        resourcePaths,
+      )) {
         values.add(value);
       }
     }
@@ -480,7 +489,10 @@ function SkillFolder({
   resourcePaths: string[];
 }) {
   const { t } = useTranslation();
-  const tree = useMemo(() => buildSkillFileTree(resourcePaths), [resourcePaths]);
+  const tree = useMemo(
+    () => buildSkillFileTree(resourcePaths),
+    [resourcePaths],
+  );
   const sourceLabel =
     skill.scope === "builtin"
       ? t("app.skillsPanel.sourceBuiltin", "Source: builtin")
@@ -493,9 +505,7 @@ function SkillFolder({
           <SparklesIcon
             className={cn(
               "h-3.5 w-3.5",
-              skill.scope === "builtin"
-                ? "text-fuchsia-500"
-                : "text-sky-500",
+              skill.scope === "builtin" ? "text-fuchsia-500" : "text-sky-500",
             )}
           />
         }
@@ -546,7 +556,9 @@ function renderTreeNode({
     elements.push(
       <FolderItem key={folderKey} value={folderKey}>
         <FolderTrigger
-          icon={<FolderIcon className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />}
+          icon={
+            <FolderIcon className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
+          }
         >
           <span className="truncate">{folderName}</span>
         </FolderTrigger>
@@ -565,10 +577,7 @@ function renderTreeNode({
     const fileKey = `${keyPrefix}/${fileName}`;
     const icon = fileIcon(fileName);
     elements.push(
-      <FileItem
-        key={fileKey}
-        icon={icon}
-      >
+      <FileItem key={fileKey} icon={icon}>
         <span className="truncate">{fileName}</span>
         <span className="ml-auto rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
           {fileBadgeText(fileName)}

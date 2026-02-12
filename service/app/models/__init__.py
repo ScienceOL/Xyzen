@@ -36,6 +36,7 @@ from .message import (
 from .provider import Provider
 from .redemption import RedemptionCode, RedemptionHistory, UserWallet
 from .session_stats import AgentStatsAggregated, SessionStatsRead, UserStatsAggregated
+from .subscription import SubscriptionRole, SubscriptionRoleRead, UserSubscription, UserSubscriptionRead
 from .sessions import Session, SessionReadWithTopics
 from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
@@ -108,6 +109,10 @@ __all__ = [
     "RedemptionCode",
     "RedemptionHistory",
     "UserWallet",
+    "SubscriptionRole",
+    "SubscriptionRoleRead",
+    "UserSubscription",
+    "UserSubscriptionRead",
 ]
 
 # Rebuild models with forward references after all models are imported

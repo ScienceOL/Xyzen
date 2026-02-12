@@ -78,7 +78,7 @@ async def upload_file(
         file_size = len(file_data)
 
         # Validate storage quota BEFORE uploading
-        quota_service = create_quota_service(db)
+        quota_service = await create_quota_service(db, user_id)
         await quota_service.validate_upload(user_id, file_size)
 
         # Calculate file hash
@@ -903,7 +903,7 @@ async def get_user_storage_stats(
     """
     try:
         file_repo = FileRepository(db)
-        quota_service = create_quota_service(db)
+        quota_service = await create_quota_service(db, user_id)
 
         total_size = await file_repo.get_total_size_by_user(user_id, include_deleted=False)
         total_files = await file_repo.get_file_count_by_user(user_id, include_deleted=False)
@@ -1124,8 +1124,8 @@ def convert_pptx_to_pdf_bytes(pptx_data: bytes) -> BytesIO:
                         if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
                             try:
                                 # Extract image data
-                                if hasattr(shape, "image") and shape.image:  # type: ignore
-                                    image_stream = io.BytesIO(shape.image.blob)  # type: ignore
+                                if hasattr(shape, "image") and shape.image:
+                                    image_stream = io.BytesIO(shape.image.blob)
                                     image_rect = fitz.Rect(
                                         shape.left / 914400 * 72,
                                         shape.top / 914400 * 72,
@@ -1152,9 +1152,9 @@ def convert_pptx_to_pdf_bytes(pptx_data: bytes) -> BytesIO:
                         # Handle tables
                         if shape.shape_type == MSO_SHAPE_TYPE.TABLE:
                             try:
-                                if hasattr(shape, "table") and shape.table:  # type: ignore
-                                    logger.info(f"[Slide {slide_idx}] Found table with {len(shape.table.rows)} rows")  # type: ignore
-                                    table_img = render_pptx_table(shape.table, slide_width_pt)  # type: ignore
+                                if hasattr(shape, "table") and shape.table:
+                                    logger.info(f"[Slide {slide_idx}] Found table with {len(shape.table.rows)} rows")
+                                    table_img = render_pptx_table(shape.table, slide_width_pt)
 
                                     # Get table position
                                     table_left_pt = shape.left / 914400 * 72
@@ -1180,7 +1180,7 @@ def convert_pptx_to_pdf_bytes(pptx_data: bytes) -> BytesIO:
                         if not hasattr(shape, "text_frame"):
                             continue
 
-                        text_frame = shape.text_frame  # type: ignore
+                        text_frame = shape.text_frame
                         if not text_frame:
                             continue
 

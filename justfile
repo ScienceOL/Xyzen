@@ -43,7 +43,7 @@ test-backend-cov:
 
 # Type check backend code
 type-backend:
-    cd service && uv run pyright .
+    cd service && uv run basedpyright .
 
 # Lint backend code
 lint-backend:

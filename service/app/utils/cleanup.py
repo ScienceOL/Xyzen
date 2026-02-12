@@ -241,11 +241,7 @@ async def cleanup_old_soft_deleted_files(
         cutoff_datetime = datetime.fromtimestamp(cutoff_time, tz=timezone.utc)
 
         # Count old soft-deleted entries (files and directories)
-        statement = (
-            select(File)
-            .where(col(File.is_deleted).is_(True))
-            .where(col(File.deleted_at) <= cutoff_datetime)
-        )
+        statement = select(File).where(col(File.is_deleted).is_(True)).where(col(File.deleted_at) <= cutoff_datetime)
         result = await db.exec(statement)
         old_files = list(result.all())
         stats["old_deleted_count"] = len(old_files)
@@ -255,11 +251,7 @@ async def cleanup_old_soft_deleted_files(
         cutoff_time = datetime.now(timezone.utc).timestamp() - (retention_days * 24 * 3600)
         cutoff_datetime = datetime.fromtimestamp(cutoff_time, tz=timezone.utc)
 
-        statement = (
-            select(File)
-            .where(col(File.is_deleted).is_(True))
-            .where(col(File.deleted_at) <= cutoff_datetime)
-        )
+        statement = select(File).where(col(File.is_deleted).is_(True)).where(col(File.deleted_at) <= cutoff_datetime)
         result = await db.exec(statement)
         old_files = list(result.all())
 

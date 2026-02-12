@@ -63,6 +63,13 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             description="Best for coding and choose this for most tasks. Exceptional in complex coding, agentic tasks, and reasoning; highly reliable for software engineering.",
         ),
         # TierModelCandidate(
+        #     model="qwen3-max",
+        #     provider_type=ProviderType.QWEN,
+        #     priority=2,
+        #     capabilities=["reasoning", "coding", "multilingual"],
+        #     description="Choose this if user uses Chinese. Top-tier domestic model, exceptional at reasoning, coding, and multilingual tasks; best for Chinese-language scenarios.",
+        # ),
+        # TierModelCandidate(
         #     model="gpt-5.2-pro",
         #     provider_type=ProviderType.AZURE_OPENAI,
         #     is_fallback=True,
@@ -143,13 +150,13 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             capabilities=["fast", "efficient"],
             description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
         ),
-        TierModelCandidate(
-            model="gpt-5-nano",
-            provider_type=ProviderType.AZURE_OPENAI,
-            priority=99,
-            capabilities=["fast", "efficient"],
-            description="Choose this if user needs reasoning. Fast for simple tasks and basic reasoning; cost-effective for quick responses, though less capable than newer models for complex queries.",
-        ),
+        # TierModelCandidate(
+        #     model="gpt-5-nano",
+        #     provider_type=ProviderType.AZURE_OPENAI,
+        #     priority=99,
+        #     capabilities=["fast", "efficient"],
+        #     description="Choose this if user needs reasoning. Fast for simple tasks and basic reasoning; cost-effective for quick responses, though less capable than newer models for complex queries.",
+        # ),
     ],
 }
 

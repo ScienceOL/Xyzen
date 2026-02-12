@@ -12,6 +12,7 @@ from .provider import ProviderRepository
 from .session import SessionRepository
 from .skill import SkillRepository
 from .smithery_cache import SmitheryCacheRepository
+from .subscription import SubscriptionRepository
 from .tool import ToolRepository
 from .topic import TopicRepository
 
@@ -32,4 +33,5 @@ __all__ = [
     "KnowledgeSetRepository",
     "ToolRepository",
     "SmitheryCacheRepository",
+    "SubscriptionRepository",
 ]

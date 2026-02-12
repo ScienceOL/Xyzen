@@ -294,7 +294,7 @@ class ImageFileHandler(BaseFileHandler):
             )
 
         img = PILImage.open(io.BytesIO(file_bytes))
-        text = pytesseract.image_to_string(img)
+        text = str(pytesseract.image_to_string(img))
         return text.strip() if text else "(No text detected in image)"
 
     def _detect_format(self, file_bytes: bytes) -> str:
@@ -342,7 +342,7 @@ class PdfFileHandler(BaseFileHandler):
         for page in doc:
             # Try table extraction first
             try:
-                tables = page.find_tables()  # type: ignore[attr-defined]
+                tables = page.find_tables()
                 if tables and tables.tables:
                     for table in tables.tables:
                         text_parts.append(self._format_table(table))
@@ -444,14 +444,14 @@ class PdfFileHandler(BaseFileHandler):
 
         for block in spec.content:
             if block.type == "heading":
-                level = min(block.level, 6)  # type: ignore[union-attr]
+                level = min(block.level, 6)
                 style_name = f"Heading{level}" if level <= 3 else "Heading3"
-                story.append(Paragraph(block.content, styles[style_name]))  # type: ignore[union-attr]
+                story.append(Paragraph(block.content, styles[style_name]))
             elif block.type == "text":
                 style = styles["Normal"]
-                if hasattr(block, "style") and block.style == "code":  # type: ignore[union-attr]
+                if hasattr(block, "style") and block.style == "code":
                     style = styles["Code"]
-                story.append(Paragraph(block.content, style))  # type: ignore[union-attr]
+                story.append(Paragraph(block.content, style))
             elif block.type == "list":
                 list_items = [
                     Paragraph(f"{'• ' if not block.ordered else f'{i + 1}. '}{item}", styles["Normal"])
@@ -460,7 +460,7 @@ class PdfFileHandler(BaseFileHandler):
                 for item in list_items:
                     story.append(item)
             elif block.type == "table":
-                table_data = [block.headers] + block.rows  # type: ignore[union-attr]
+                table_data = [block.headers] + block.rows
                 t = Table(table_data)
                 t.setStyle(
                     TableStyle(
@@ -596,31 +596,31 @@ class DocxFileHandler(BaseFileHandler):
 
         for block in spec.content:
             if block.type == "heading":
-                level = min(block.level, 9)  # type: ignore[union-attr]
-                doc.add_heading(block.content, level=level)  # type: ignore[union-attr]
+                level = min(block.level, 9)
+                doc.add_heading(block.content, level=level)
             elif block.type == "text":
-                p = doc.add_paragraph(block.content)  # type: ignore[union-attr]
+                p = doc.add_paragraph(block.content)
                 if hasattr(block, "style"):
-                    if block.style == "bold" and p.runs:  # type: ignore[union-attr]
+                    if block.style == "bold" and p.runs:
                         p.runs[0].bold = True
-                    elif block.style == "italic" and p.runs:  # type: ignore[union-attr]
+                    elif block.style == "italic" and p.runs:
                         p.runs[0].italic = True
-                    elif block.style == "code" and p.runs:  # type: ignore[union-attr]
+                    elif block.style == "code" and p.runs:
                         p.runs[0].font.name = "Courier New"
                         p.runs[0].font.size = Pt(10)
             elif block.type == "list":
-                style = "List Number" if block.ordered else "List Bullet"  # type: ignore[union-attr]
-                for item in block.items:  # type: ignore[union-attr]
+                style = "List Number" if block.ordered else "List Bullet"
+                for item in block.items:
                     doc.add_paragraph(item, style=style)
             elif block.type == "table":
-                table = doc.add_table(rows=1, cols=len(block.headers))  # type: ignore[union-attr]
+                table = doc.add_table(rows=1, cols=len(block.headers))
                 table.style = "Table Grid"
                 # Header row
                 hdr_cells = table.rows[0].cells
-                for i, header in enumerate(block.headers):  # type: ignore[union-attr]
+                for i, header in enumerate(block.headers):
                     hdr_cells[i].text = header
                 # Data rows
-                for row_data in block.rows:  # type: ignore[union-attr]
+                for row_data in block.rows:
                     row_cells = table.add_row().cells
                     for i, cell_val in enumerate(row_data):
                         row_cells[i].text = str(cell_val)
@@ -772,8 +772,8 @@ class PptxFileHandler(BaseFileHandler):
         for i, slide in enumerate(prs.slides):
             text_parts.append(f"--- Slide {i + 1} ---")
             for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text:  # type: ignore[union-attr]
-                    text_parts.append(str(shape.text))  # type: ignore[union-attr]
+                if hasattr(shape, "text") and shape.text:
+                    text_parts.append(str(shape.text))
 
             # Extract speaker notes
             if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
@@ -808,7 +808,7 @@ class PptxFileHandler(BaseFileHandler):
         if slide.shapes.title and lines:
             slide.shapes.title.text = lines[0]
         if len(lines) > 1 and len(slide.placeholders) > 1:
-            slide.placeholders[1].text = lines[1]  # type: ignore[union-attr]
+            slide.placeholders[1].text = lines[1]
 
         buffer = io.BytesIO()
         prs.save(buffer)
@@ -858,7 +858,7 @@ class PptxFileHandler(BaseFileHandler):
 
             # Set subtitle (for title slides)
             if slide_spec.subtitle and len(slide.placeholders) > 1:
-                slide.placeholders[1].text = slide_spec.subtitle  # type: ignore[union-attr]
+                slide.placeholders[1].text = slide_spec.subtitle
 
             # Render content blocks
             if slide_spec.content:

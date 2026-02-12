@@ -33,10 +33,7 @@ describe("skillActions (SkillsButton behavior)", () => {
     ];
     const attached = [{ id: "s2", name: "B", description: "B" }];
 
-    const result = partitionSkills(
-      allSkills as never[],
-      attached as never[],
-    );
+    const result = partitionSkills(allSkills as never[], attached as never[]);
 
     expect(result.connected).toEqual(attached);
     expect(result.available).toEqual([

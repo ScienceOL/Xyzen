@@ -61,7 +61,9 @@ function knowledgeFileIcon(filename: string, mimeType: string): ReactNode {
       return <TableCellsIcon className="h-3.5 w-3.5 text-green-500" />;
     case "ppt":
     case "pptx":
-      return <PresentationChartBarIcon className="h-3.5 w-3.5 text-orange-500" />;
+      return (
+        <PresentationChartBarIcon className="h-3.5 w-3.5 text-orange-500" />
+      );
     case "txt":
     case "md":
       return <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-500" />;
@@ -194,7 +196,10 @@ export function KnowledgeTab() {
             {files.map((file) => (
               <FileItem
                 key={file.id}
-                icon={knowledgeFileIcon(file.original_filename, file.content_type ?? "")}
+                icon={knowledgeFileIcon(
+                  file.original_filename,
+                  file.content_type ?? "",
+                )}
               >
                 <span className="truncate">{file.original_filename}</span>
                 <span className="ml-auto pl-2 shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">

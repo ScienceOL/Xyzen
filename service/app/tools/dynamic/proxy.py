@@ -140,7 +140,7 @@ except Exception as e:
                     "client": k8s_api,
                 }
             else:
-                session_kwargs: dict[str, Any] = {
+                session_kwargs = {
                     "backend": SandboxBackend.DOCKER,
                     "lang": "python",
                     "libraries": self.requirements,
