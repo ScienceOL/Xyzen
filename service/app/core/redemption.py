@@ -197,6 +197,12 @@ class RedemptionService:
             expires_at = datetime.now(timezone.utc) + timedelta(days=redemption_code.duration_days)
             await sub_service.assign_role(user_id, role.id, expires_at)
 
+            # Auto-claim monthly credits for the new subscription
+            if role.monthly_credits > 0:
+                await self.repo.credit_wallet(user_id, role.monthly_credits)
+                await sub_service.repo.update_last_credits_claimed(user_id)
+                logger.info(f"Auto-claimed {role.monthly_credits} credits for user {user_id}")
+
             # Record history (amount=0 for subscription codes)
             wallet = await self.repo.get_or_create_user_wallet(user_id)
             history_data = RedemptionHistoryCreate(
