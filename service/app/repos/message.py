@@ -619,14 +619,14 @@ class MessageRepository:
                 MessageModel.content,
                 MessageModel.role,
                 MessageModel.created_at,
-                TopicModel.name.label("topic_name"),  # type: ignore[union-attr]
+                TopicModel.name.label("topic_name"),
             )
-            .join(TopicModel, MessageModel.topic_id == TopicModel.id)  # type: ignore[arg-type]
-            .join(SessionModel, TopicModel.session_id == SessionModel.id)  # type: ignore[arg-type]
+            .join(TopicModel, col(MessageModel.topic_id) == col(TopicModel.id))
+            .join(SessionModel, col(TopicModel.session_id) == col(SessionModel.id))
             .where(
                 SessionModel.user_id == user_id,
                 SessionModel.agent_id == agent_id,
-                MessageModel.content.ilike(f"%{query}%"),  # type: ignore[union-attr]
+                MessageModel.content.ilike(f"%{query}%"),
             )
         )
 
@@ -637,15 +637,15 @@ class MessageRepository:
         # Order by most recent first, apply limit
         statement = statement.order_by(col(MessageModel.created_at).desc()).limit(limit)
 
-        result = await self.db.exec(statement)  # type: ignore[arg-type]
+        result = await self.db.exec(statement)
         rows = result.all()
 
         return [
             {
-                "content": row.content,  # type: ignore[attr-defined]
-                "role": row.role,  # type: ignore[attr-defined]
-                "topic_name": row.topic_name,  # type: ignore[attr-defined]
-                "created_at": row.created_at,  # type: ignore[attr-defined]
+                "content": row.content,
+                "role": row.role,
+                "topic_name": row.topic_name,
+                "created_at": row.created_at,
             }
             for row in rows
         ]

@@ -373,16 +373,16 @@ class ConsumeRepository:
         if user_id:
             stmt = stmt.where(ConsumeRecord.user_id == user_id)
 
-        result = await self.db.exec(stmt)  # type: ignore
+        result = await self.db.exec(stmt)
 
         row = result.one()
         stats: dict[str, Any] = {
             "date": date_str,
-            "total_tokens": int(row.total_tokens),  # type: ignore
-            "input_tokens": int(row.input_tokens),  # type: ignore
-            "output_tokens": int(row.output_tokens),  # type: ignore
-            "total_amount": int(row.total_amount),  # type: ignore
-            "record_count": int(row.record_count),  # type: ignore
+            "total_tokens": int(row.total_tokens),
+            "input_tokens": int(row.input_tokens),
+            "output_tokens": int(row.output_tokens),
+            "total_amount": int(row.total_amount),
+            "record_count": int(row.record_count),
         }
 
         logger.debug(f"Daily token stats: {stats}")
@@ -401,9 +401,7 @@ class ConsumeRepository:
         logger.debug(f"Getting top {limit} users by consumption")
 
         result = await self.db.exec(
-            select(UserConsumeSummary)
-            .order_by(UserConsumeSummary.total_amount.desc())  # type: ignore
-            .limit(limit)
+            select(UserConsumeSummary).order_by(UserConsumeSummary.total_amount.desc()).limit(limit)
         )
 
         summaries = list(result.all())
@@ -470,7 +468,7 @@ class ConsumeRepository:
             query = query.where(ConsumeRecord.created_at <= end_dt)
 
         # Order by creation time ascending for chronological trend analysis
-        query = query.order_by(ConsumeRecord.created_at.asc()).offset(offset).limit(limit)  # type: ignore
+        query = query.order_by(ConsumeRecord.created_at.asc()).offset(offset).limit(limit)
 
         result = await self.db.exec(query)
         records = list(result.all())

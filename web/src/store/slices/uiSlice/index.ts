@@ -36,7 +36,7 @@ export interface UiSlice {
   pendingInput: string;
   spatialSidebarCollapsed: boolean;
   capsuleOpen: boolean;
-  capsuleActiveTab: "knowledge" | "tools" | "sandbox";
+  capsuleActiveTab: "knowledge" | "tools" | "sandbox" | "memory";
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -67,7 +67,9 @@ export interface UiSlice {
   submitInput: () => void;
   setSpatialSidebarCollapsed: (collapsed: boolean) => void;
   setCapsuleOpen: (open: boolean) => void;
-  setCapsuleActiveTab: (tab: "knowledge" | "tools" | "sandbox") => void;
+  setCapsuleActiveTab: (
+    tab: "knowledge" | "tools" | "sandbox" | "memory",
+  ) => void;
 }
 
 export const createUiSlice: StateCreator<

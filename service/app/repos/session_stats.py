@@ -137,11 +137,11 @@ class SessionStatsRepository:
 
         return AgentStatsAggregated(
             agent_id=agent_id,
-            session_count=int(stats_row[0]) if stats_row else 0,  # type: ignore
-            topic_count=int(stats_row[1]) if stats_row else 0,  # type: ignore
-            message_count=int(stats_row[2]) if stats_row else 0,  # type: ignore
-            input_tokens=int(token_row[0]) if token_row else 0,  # type: ignore
-            output_tokens=int(token_row[1]) if token_row else 0,  # type: ignore
+            session_count=int(stats_row[0]) if stats_row else 0,
+            topic_count=int(stats_row[1]) if stats_row else 0,
+            message_count=int(stats_row[2]) if stats_row else 0,
+            input_tokens=int(token_row[0]) if token_row else 0,  # type: ignore[arg-type]
+            output_tokens=int(token_row[1]) if token_row else 0,  # type: ignore[arg-type]
         )
 
     async def get_all_agent_stats_for_user(self, user_id: str) -> dict[str, AgentStatsAggregated]:
@@ -204,19 +204,19 @@ class SessionStatsRepository:
         for row in token_rows:
             agent_id = row[0]
             if agent_id:
-                token_by_agent[agent_id] = (int(row[1]), int(row[2]))  # type: ignore
+                token_by_agent[agent_id] = (int(row[1]), int(row[2]))  # type: ignore[arg-type]
 
         # Build result dict
         result: dict[str, AgentStatsAggregated] = {}
-        for row in stats_rows:  # type: ignore
+        for row in stats_rows:
             agent_id = row[0]
             if agent_id:
                 input_tokens, output_tokens = token_by_agent.get(agent_id, (0, 0))
                 result[str(agent_id)] = AgentStatsAggregated(
                     agent_id=agent_id,
-                    session_count=int(row[1]),  # type: ignore
-                    topic_count=int(row[2]),  # type: ignore
-                    message_count=int(row[3]),  # type: ignore
+                    session_count=int(row[1]),
+                    topic_count=int(row[2]),
+                    message_count=int(row[3]),
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                 )
@@ -259,8 +259,8 @@ class SessionStatsRepository:
         # Build a map of date -> count
         count_by_date: dict[date, int] = {}
         for row in daily_rows:
-            day = row[0]  # type: ignore
-            count = int(row[1])  # type: ignore
+            day = row[0]
+            count = int(row[1])
             if isinstance(day, str):
                 day = datetime.strptime(day, "%Y-%m-%d").date()
             count_by_date[day] = count

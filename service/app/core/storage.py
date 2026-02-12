@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, BinaryIO, Protocol
@@ -158,7 +158,7 @@ def generate_storage_key(
     unique_id = uuid.uuid4().hex
 
     # Get current date for organizing
-    date_path = datetime.utcnow().strftime("%Y/%m/%d")
+    date_path = datetime.now(timezone.utc).strftime("%Y/%m/%d")
 
     # Construct storage key
     safe_filename = f"{unique_id}{ext}"

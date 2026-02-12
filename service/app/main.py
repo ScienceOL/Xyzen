@@ -40,27 +40,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     register_builtin_tools()
 
-    # Temporary bootstrap migration for legacy graph configs.
-    # Remove this block after all environments are guaranteed to have canonical configs.
+    # Backfill legacy v2 graph_configs in snapshot configurations.
     from app.infra.database import AsyncSessionLocal
-    from app.repos.agent import AgentRepository
+    from app.repos.agent_snapshot import AgentSnapshotRepository
 
     async with AsyncSessionLocal() as db:
         try:
-            agent_repo = AgentRepository(db)
-            summary = await agent_repo.backfill_graph_configs()
+            snapshot_repo = AgentSnapshotRepository(db)
+            summary = await snapshot_repo.backfill_snapshot_graph_configs()
             await db.commit()
             logger.info(
-                "GraphConfig backfill completed: total=%d changed=%d migrated=%d fallback_defaults=%d",
-                summary["total_agents"],
-                summary["changed_rows"],
-                summary["migrated_rows"],
-                summary["fallback_defaults"],
+                "Snapshot GraphConfig backfill completed: total=%d changed=%d migrated=%d skipped=%d failed=%d",
+                summary["total_snapshots"],
+                summary["changed"],
+                summary["migrated"],
+                summary["skipped"],
+                summary["failed"],
             )
         except Exception as e:
-            logger.error(f"Failed to backfill graph_config at startup: {e}")
+            logger.error(f"Failed to backfill snapshot graph_configs at startup: {e}")
             await db.rollback()
-            raise
 
     # Initialize system agents (Chat agent)
     from app.core.system_agent import SystemAgentManager

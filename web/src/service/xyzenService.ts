@@ -15,6 +15,7 @@ interface MessageEvent {
     | "streaming_chunk"
     | "streaming_end"
     | "message_saved"
+    | "message_ack"
     | "tool_call_request"
     | "tool_call_response"
     | "insufficient_balance"
@@ -38,7 +39,9 @@ interface MessageEvent {
     | "iteration_end"
     | "state_update"
     // Abort events
-    | "stream_aborted";
+    | "stream_aborted"
+    // Heartbeat
+    | "ping";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: Message | Record<string, any>;
 }
@@ -46,12 +49,15 @@ interface MessageEvent {
 type ServiceCallback<T> = (payload: T) => void;
 type MessageEventCallback = (event: MessageEvent) => void;
 
+const HEARTBEAT_TIMEOUT_MS = 45_000;
+
 class XyzenService {
   private ws: WebSocket | null = null;
   private onMessageCallback: ServiceCallback<Message> | null = null;
   private onMessageEventCallback: MessageEventCallback | null = null;
   private onStatusChangeCallback: ServiceCallback<StatusChangePayload> | null =
     null;
+  private onReconnectCallback: (() => void) | null = null;
   private backendUrl = "";
 
   // Retry logic state
@@ -60,6 +66,12 @@ class XyzenService {
   private retryTimeout: NodeJS.Timeout | null = null;
   private lastSessionId: string | null = null;
   private lastTopicId: string | null = null;
+
+  // Reconnect detection
+  private wasDisconnected = false;
+
+  // Heartbeat watchdog
+  private heartbeatWatchdogId: ReturnType<typeof setTimeout> | null = null;
 
   public setBackendUrl(url: string) {
     this.backendUrl = url;
@@ -71,6 +83,7 @@ class XyzenService {
     onMessage: ServiceCallback<Message>,
     onStatusChange: ServiceCallback<StatusChangePayload>,
     onMessageEvent?: MessageEventCallback,
+    onReconnect?: () => void,
   ) {
     // If a connection is already open for the same session/topic, do nothing
     if (
@@ -101,6 +114,7 @@ class XyzenService {
     this.onMessageCallback = onMessage;
     this.onMessageEventCallback = onMessageEvent || null;
     this.onStatusChangeCallback = onStatusChange;
+    this.onReconnectCallback = onReconnect || null;
 
     // Get authentication token
     const token = authService.getToken();
@@ -131,14 +145,29 @@ class XyzenService {
 
     this.ws.onopen = () => {
       console.log("XyzenService: WebSocket connected");
-      // Successful connection resets the retry counter
+      const wasReconnect = this.wasDisconnected;
+      this.wasDisconnected = false;
       this.retryCount = 0;
+      this.resetHeartbeatWatchdog();
       this.onStatusChangeCallback?.({ connected: true, error: null });
+      if (wasReconnect && this.onReconnectCallback) {
+        this.onReconnectCallback();
+      }
     };
 
     this.ws.onmessage = (event) => {
+      this.resetHeartbeatWatchdog();
+
       try {
         const eventData = JSON.parse(event.data);
+
+        // Handle server ping — reply with pong, don't propagate
+        if (eventData.type === "ping") {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: "pong" }));
+          }
+          return;
+        }
 
         // Handle different message types
         if (eventData.type && this.onMessageEventCallback) {
@@ -153,6 +182,7 @@ class XyzenService {
     };
 
     this.ws.onclose = (event) => {
+      this.clearHeartbeatWatchdog();
       console.log(
         `XyzenService: WebSocket disconnected (code: ${event.code}, reason: ${event.reason})`,
       );
@@ -178,7 +208,26 @@ class XyzenService {
     };
   }
 
+  private resetHeartbeatWatchdog() {
+    this.clearHeartbeatWatchdog();
+    this.heartbeatWatchdogId = setTimeout(() => {
+      console.warn("XyzenService: Heartbeat timeout, closing socket");
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.close(4001, "Heartbeat timeout");
+      }
+    }, HEARTBEAT_TIMEOUT_MS);
+  }
+
+  private clearHeartbeatWatchdog() {
+    if (this.heartbeatWatchdogId) {
+      clearTimeout(this.heartbeatWatchdogId);
+      this.heartbeatWatchdogId = null;
+    }
+  }
+
   private handleDisconnect(reason?: string) {
+    this.wasDisconnected = true;
+
     // If we haven't reached max retries, try to reconnect
     if (this.retryCount < this.maxRetries) {
       const delay = Math.min(1000 * Math.pow(2, this.retryCount), 10000);
@@ -201,6 +250,7 @@ class XyzenService {
             this.onMessageCallback,
             this.onStatusChangeCallback,
             this.onMessageEventCallback || undefined,
+            this.onReconnectCallback || undefined,
           );
         }
       }, delay);
@@ -214,34 +264,55 @@ class XyzenService {
     }
   }
 
-  public sendMessage(message: string) {
+  public sendMessage(message: string): boolean {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ message }));
-    } else {
-      console.error("XyzenService: WebSocket is not connected.");
+      try {
+        this.ws.send(JSON.stringify({ message }));
+        return true;
+      } catch (e) {
+        console.error("XyzenService: Failed to send message:", e);
+        return false;
+      }
     }
+    console.error("XyzenService: WebSocket is not connected.");
+    return false;
   }
 
-  public sendStructuredMessage(data: Record<string, unknown>) {
+  public sendStructuredMessage(data: Record<string, unknown>): boolean {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
-    } else {
-      console.error("XyzenService: WebSocket is not connected.");
+      try {
+        this.ws.send(JSON.stringify(data));
+        return true;
+      } catch (e) {
+        console.error("XyzenService: Failed to send structured message:", e);
+        return false;
+      }
     }
+    console.error("XyzenService: WebSocket is not connected.");
+    return false;
   }
 
-  public sendAbort() {
+  public sendAbort(): boolean {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: "abort" }));
-      console.log("XyzenService: Abort signal sent");
-    } else {
-      console.error(
-        "XyzenService: WebSocket is not connected, cannot send abort.",
-      );
+      try {
+        this.ws.send(JSON.stringify({ type: "abort" }));
+        console.log("XyzenService: Abort signal sent");
+        return true;
+      } catch (e) {
+        console.error("XyzenService: Failed to send abort:", e);
+        return false;
+      }
     }
+    console.error(
+      "XyzenService: WebSocket is not connected, cannot send abort.",
+    );
+    return false;
   }
 
   public disconnect() {
+    // Clear heartbeat watchdog
+    this.clearHeartbeatWatchdog();
+
     // Clear retry timer
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
@@ -250,6 +321,7 @@ class XyzenService {
 
     // Reset state
     this.retryCount = 0;
+    this.wasDisconnected = false;
     this.lastSessionId = null;
     this.lastTopicId = null;
 

@@ -138,9 +138,7 @@ class StreamingEventHandler:
     """Handle streaming token events."""
 
     @staticmethod
-    def create_streaming_start(
-        stream_id: str, execution_id: str | None = None
-    ) -> StreamingEvent:
+    def create_streaming_start(stream_id: str, execution_id: str | None = None) -> StreamingEvent:
         """Create streaming start event."""
         data: StreamingStartData = {"id": stream_id}
         if execution_id:
@@ -148,9 +146,7 @@ class StreamingEventHandler:
         return {"type": ChatEventType.STREAMING_START, "data": data}
 
     @staticmethod
-    def create_streaming_chunk(
-        stream_id: str, content: str, execution_id: str | None = None
-    ) -> StreamingEvent:
+    def create_streaming_chunk(stream_id: str, content: str, execution_id: str | None = None) -> StreamingEvent:
         """Create streaming chunk event."""
         data: StreamingChunkData = {"id": stream_id, "content": content}
         if execution_id:

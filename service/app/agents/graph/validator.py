@@ -224,14 +224,12 @@ def validate_graph_config(config: GraphConfig) -> list[GraphConfigValidationErro
         has_tool_edges = [
             (idx, edge)
             for idx, edge in edge_entries
-            if isinstance(edge.when, BuiltinEdgeCondition)
-            and edge.when == BuiltinEdgeCondition.HAS_TOOL_CALLS
+            if isinstance(edge.when, BuiltinEdgeCondition) and edge.when == BuiltinEdgeCondition.HAS_TOOL_CALLS
         ]
         no_tool_edges = [
             (idx, edge)
             for idx, edge in edge_entries
-            if isinstance(edge.when, BuiltinEdgeCondition)
-            and edge.when == BuiltinEdgeCondition.NO_TOOL_CALLS
+            if isinstance(edge.when, BuiltinEdgeCondition) and edge.when == BuiltinEdgeCondition.NO_TOOL_CALLS
         ]
         custom_predicate_edges = [(idx, edge) for idx, edge in edge_entries if isinstance(edge.when, EdgePredicate)]
 

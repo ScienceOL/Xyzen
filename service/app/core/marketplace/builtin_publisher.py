@@ -8,7 +8,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.agents.builtin import get_builtin_config, get_builtin_metadata, list_builtin_keys
 from app.core.marketplace.agent_marketplace_service import AgentMarketplaceService
 from app.models.agent import Agent, AgentCreate, AgentScope, ForkMode
-from app.models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate, MarketplaceScope
+from app.models.agent_marketplace import (
+    AgentMarketplace,
+    AgentMarketplaceCreate,
+    AgentMarketplaceUpdate,
+    MarketplaceScope,
+)
 from app.models.agent_snapshot import AgentSnapshot
 from app.repos import AgentMarketplaceRepository, AgentRepository, AgentSnapshotRepository
 from app.schemas.graph_config import GraphConfig
@@ -67,9 +72,7 @@ class BuiltinMarketplacePublisher:
 
         return result
 
-    async def _create_listing(
-        self, key: str, config: GraphConfig, metadata: dict[str, str]
-    ) -> AgentMarketplace:
+    async def _create_listing(self, key: str, config: GraphConfig, metadata: dict[str, str]) -> AgentMarketplace:
         """Create Agent, Snapshot, and Marketplace listing for a builtin agent."""
         graph_config_dict = config.model_dump()
         display_name = metadata.get("display_name", key)
@@ -123,9 +126,7 @@ class BuiltinMarketplacePublisher:
         await self.marketplace_repo.delete_listing(listing.id)
 
         # Delete snapshots for the backing agent
-        snapshots = await self.db.exec(
-            select(AgentSnapshot).where(AgentSnapshot.agent_id == agent_id)
-        )
+        snapshots = await self.db.exec(select(AgentSnapshot).where(AgentSnapshot.agent_id == agent_id))
         for snap in snapshots.all():
             await self.db.delete(snap)
 

@@ -73,7 +73,7 @@ class DynamicToolMiddleware(Middleware):
             self.browser_mcp_client = Client(
                 f"http://{dynamic_mcp_config.host}:{dynamic_mcp_config.playwright_port}/mcp"
             )
-            await self.browser_mcp_client._connect()
+            await self.browser_mcp_client._connect()  # pyright: ignore[reportPrivateUsage]
 
     async def on_call_tool(self, context: MiddlewareContext, call_next: Callable) -> ToolResult:
         """Refresh current tool when calling tool, with user isolation and permission check"""
@@ -93,8 +93,8 @@ class DynamicToolMiddleware(Middleware):
                     user_id = user_info.id
 
                     # Verify ownership before refresh
-                    if tool_name in tool_loader._tool_ownership:
-                        tool_owner = tool_loader._tool_ownership[tool_name]
+                    if tool_name in tool_loader._tool_ownership:  # pyright: ignore[reportPrivateUsage]
+                        tool_owner = tool_loader._tool_ownership[tool_name]  # pyright: ignore[reportPrivateUsage]
                         if tool_owner != user_id:
                             logger.error(
                                 f"Permission denied: User {user_id} "

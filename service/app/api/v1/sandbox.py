@@ -70,9 +70,6 @@ async def list_sandbox_files(
         return SandboxFilesResponse(files=[], sandbox_active=True)
 
     return SandboxFilesResponse(
-        files=[
-            SandboxFileInfo(name=f.name, path=f.path, is_dir=f.is_dir, size=f.size)
-            for f in raw_files
-        ],
+        files=[SandboxFileInfo(name=f.name, path=f.path, is_dir=f.is_dir, size=f.size) for f in raw_files],
         sandbox_active=True,
     )

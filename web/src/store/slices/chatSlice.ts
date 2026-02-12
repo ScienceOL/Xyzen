@@ -351,6 +351,55 @@ export const createChatSlice: StateCreator<
     });
   };
 
+  /**
+   * Fetch authoritative messages from the REST API and reconcile channel state.
+   * Used after reconnect or when stale runtime flags are detected.
+   */
+  const reconcileChannelFromBackend = async (
+    topicId: string,
+  ): Promise<void> => {
+    const { backendUrl, setLoading } = get();
+    const loadingKey = `topicMessages-${topicId}`;
+    setLoading(loadingKey, true);
+
+    try {
+      const token = authService.getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `${backendUrl}/xyzen/api/v1/topics/${topicId}/messages`,
+        { headers },
+      );
+      if (response.ok) {
+        const messages = await response.json();
+        const processedMessages = groupToolMessagesWithAssistant(messages);
+
+        set((state: ChatSlice) => {
+          if (state.channels[topicId]) {
+            state.channels[topicId].messages = processedMessages;
+            syncChannelResponding(state.channels[topicId]);
+          }
+        });
+        updateDerivedStatus();
+      } else {
+        const errorText = await response.text();
+        console.error(
+          `ChatSlice: Failed to reconcile messages for topic ${topicId}: ${response.status} ${errorText}`,
+        );
+      }
+    } catch (error) {
+      console.error("Failed to reconcile topic messages:", error);
+    } finally {
+      setLoading(loadingKey, false);
+    }
+  };
+
   return {
     // Chat panel state
     activeChatChannel: null,
@@ -587,54 +636,7 @@ export const createChatSlice: StateCreator<
         // Always reconcile with backend when no messages OR when runtime flags may be stale
         // (e.g. switched topic during streaming and missed terminal events).
         if (channel.messages.length === 0 || hasUnresolvedRuntimeState) {
-          const { setLoading } = get();
-          const loadingKey = `topicMessages-${topicId}`;
-          setLoading(loadingKey, true);
-
-          try {
-            const token = authService.getToken();
-            const headers: Record<string, string> = {
-              "Content-Type": "application/json",
-            };
-
-            if (token) {
-              headers.Authorization = `Bearer ${token}`;
-            }
-
-            const response = await fetch(
-              `${backendUrl}/xyzen/api/v1/topics/${topicId}/messages`,
-              { headers },
-            );
-            if (response.ok) {
-              const messages = await response.json();
-
-              // Process messages to group tool events with assistant messages
-              const processedMessages =
-                groupToolMessagesWithAssistant(messages);
-
-              set((state: ChatSlice) => {
-                if (state.channels[topicId]) {
-                  state.channels[topicId].messages = processedMessages;
-                  syncChannelResponding(state.channels[topicId]);
-                }
-              });
-            } else {
-              const errorText = await response.text();
-              console.error(
-                `ChatSlice: Failed to load messages for topic ${topicId}: ${response.status} ${errorText}`,
-              );
-              // 如果是认证问题，可以考虑清除消息或显示错误状态
-              if (response.status === 401 || response.status === 403) {
-                console.error(
-                  "ChatSlice: Authentication/authorization issue loading messages",
-                );
-              }
-            }
-          } catch (error) {
-            console.error("Failed to load topic messages:", error);
-          } finally {
-            setLoading(loadingKey, false);
-          }
+          await reconcileChannelFromBackend(topicId);
         }
         connectToChannel(channel.sessionId, channel.id);
 
@@ -753,6 +755,14 @@ export const createChatSlice: StateCreator<
     },
 
     connectToChannel: (sessionId: string, topicId: string) => {
+      // Clean up previous stale state watchdog
+      for (const [key, timerId] of abortTimeoutIds.entries()) {
+        if (key.startsWith("stale-")) {
+          clearInterval(timerId);
+          abortTimeoutIds.delete(key);
+        }
+      }
+
       // Single websocket connection is shared across topics.
       // Mark all channels disconnected first to avoid stale "connected" state.
       set((state: ChatSlice) => {
@@ -1966,7 +1976,72 @@ export const createChatSlice: StateCreator<
           // Chunk events return early above, so all events reaching here are state transitions
           updateDerivedStatus();
         },
+        // onReconnect: reconcile stale state after WebSocket reconnects
+        () => {
+          const channel = get().channels[topicId];
+          if (!channel) return;
+
+          const hasStaleState = channel.messages.some((m) =>
+            Boolean(
+              m.isLoading ||
+              m.isStreaming ||
+              m.isThinking ||
+              m.agentExecution?.status === "running",
+            ),
+          );
+
+          if (hasStaleState) {
+            reconcileChannelFromBackend(topicId);
+          }
+        },
       );
+
+      // --- Stale state watchdog ---
+      // Detects when the channel is "responding" but no events have arrived for too long
+      // (e.g., Celery worker crashed, Redis lost events). Triggers reconciliation.
+      const STALE_STATE_TIMEOUT_MS = 60_000;
+      const STALE_CHECK_INTERVAL_MS = 15_000;
+      let lastActivityTimestamp = Date.now();
+
+      // Patch the event callback to track activity. The original event handler is
+      // already wired into xyzenService. We update the timestamp here via a
+      // secondary reference that the watchdog reads.
+      // Guard: only wrap if not already wrapped (prevents accumulation on reconnect,
+      // where handleDisconnect re-calls connect() with the stored callback ref).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentCallback = xyzenService["onMessageEventCallback"] as any;
+      if (
+        currentCallback &&
+        !currentCallback.__staleWatchdog
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const wrapped: any = (event: any) => {
+          lastActivityTimestamp = Date.now();
+          currentCallback(event);
+        };
+        wrapped.__staleWatchdog = true;
+        xyzenService["onMessageEventCallback"] = wrapped;
+      }
+
+      const staleCheckIntervalId = setInterval(() => {
+        const channel = get().channels[topicId];
+        if (!channel?.responding) return;
+
+        const timeSinceActivity = Date.now() - lastActivityTimestamp;
+        if (timeSinceActivity > STALE_STATE_TIMEOUT_MS) {
+          console.warn(
+            `ChatSlice: Stale state detected for topic ${topicId}: ${timeSinceActivity}ms since last activity, reconciling...`,
+          );
+          reconcileChannelFromBackend(topicId);
+          lastActivityTimestamp = Date.now();
+        }
+      }, STALE_CHECK_INTERVAL_MS);
+
+      // Store the interval ID so it can be cleaned up when switching topics.
+      // We piggyback on the module-level abortTimeoutIds map for this.
+      const prevStaleCheck = abortTimeoutIds.get(`stale-${topicId}`);
+      if (prevStaleCheck) clearInterval(prevStaleCheck);
+      abortTimeoutIds.set(`stale-${topicId}`, staleCheckIntervalId);
     },
 
     disconnectFromChannel: () => {
@@ -2033,7 +2108,22 @@ export const createChatSlice: StateCreator<
         payload.context = channel.knowledgeContext;
       }
 
-      xyzenService.sendStructuredMessage(payload);
+      const sendSuccess = xyzenService.sendStructuredMessage(payload);
+
+      if (!sendSuccess) {
+        // Reset responding state since message was never sent
+        set((state: ChatSlice) => {
+          const ch = state.channels[activeChatChannel];
+          if (ch) ch.responding = false;
+        });
+        updateDerivedStatus();
+        showNotification(
+          "Send Failed",
+          "Message could not be sent. Please check your connection and try again.",
+          "error",
+        );
+        return;
+      }
 
       // Clear files after sending (don't delete from server - they're now linked to the message)
       clearFiles(false);

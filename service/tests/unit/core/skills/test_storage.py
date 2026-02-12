@@ -23,10 +23,7 @@ def test_normalize_inline_resources_accepts_text_resources():
 
 
 def test_normalize_inline_resources_rejects_excessive_file_count():
-    resources = [
-        {"path": f"scripts/{index}.txt", "content": "x"}
-        for index in range(MAX_SKILL_RESOURCE_FILES + 1)
-    ]
+    resources = [{"path": f"scripts/{index}.txt", "content": "x"} for index in range(MAX_SKILL_RESOURCE_FILES + 1)]
 
     with pytest.raises(ValueError, match="Too many resource files"):
         normalize_inline_resources(resources)
@@ -43,8 +40,7 @@ def test_normalize_inline_resources_rejects_large_single_file():
 def test_normalize_inline_resources_rejects_large_total_payload():
     chunks = MAX_SKILL_RESOURCE_TOTAL_BYTES // MAX_SKILL_RESOURCE_FILE_BYTES + 1
     resources = [
-        {"path": f"scripts/{index}.txt", "content": "a" * MAX_SKILL_RESOURCE_FILE_BYTES}
-        for index in range(chunks)
+        {"path": f"scripts/{index}.txt", "content": "a" * MAX_SKILL_RESOURCE_FILE_BYTES} for index in range(chunks)
     ]
 
     with pytest.raises(ValueError, match="Total resource size exceeds max"):

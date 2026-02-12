@@ -10,4 +10,6 @@ class EmbeddingConfig(BaseModel):
 class MemoryConfig(BaseModel):
     Enabled: bool = Field(default=True, description="Enable cross-thread memory store")
     NamespacePrefix: str = Field(default="memories", description="Root namespace prefix for memory store")
-    Embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig, description="Embedding config for semantic search")
+    Embedding: EmbeddingConfig = Field(
+        default_factory=EmbeddingConfig, description="Embedding config for semantic search"
+    )

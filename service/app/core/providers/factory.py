@@ -193,7 +193,10 @@ class ChatModelFactory:
         return llm
 
     def create_embedding(
-        self, model: str, provider: ProviderType, credentials: LLMCredentials,
+        self,
+        model: str,
+        provider: ProviderType,
+        credentials: LLMCredentials,
     ) -> Embeddings:
         """Create a LangChain Embeddings instance for the given provider.
 
