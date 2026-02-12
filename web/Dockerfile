@@ -53,3 +53,4 @@ EXPOSE 32233
 CMD ["npx", "-y", "serve", "-s", ".", "-l", "32233"]
 
 LABEL org.opencontainers.image.source=https://github.com/scienceol/xyzen
+LABEL org.opencontainers.image.description="AI Research Interface"
