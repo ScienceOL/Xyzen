@@ -45,7 +45,7 @@ services:
       retries: 5
 
   celery:
-    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
+    image: ghcr.io/scienceol/xyzen-service:latest
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped
@@ -75,7 +75,7 @@ services:
     attach: false
 
   service:
-    image: registry.sciol.ac.cn/sciol/xyzen-service:latest
+    image: ghcr.io/scienceol/xyzen-service:latest
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped
@@ -98,7 +98,7 @@ services:
       start_period: 10s
 
   web:
-    image: registry.sciol.ac.cn/sciol/xyzen-web:latest
+    image: ghcr.io/scienceol/xyzen-web:latest
     pull_policy: if_not_present
     network_mode: 'service:network-service'
     restart: unless-stopped
