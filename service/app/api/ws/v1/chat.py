@@ -5,13 +5,12 @@ from uuid import UUID
 
 import redis.asyncio as redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
-from fastapi.exceptions import HTTPException
 
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.configs import configs
 from app.core.chat.topic_generator import generate_and_update_topic_title
 from app.core.consume import create_consume_for_chat
-from app.core.limits import LimitsEnforcer
+from app.core.limits import LimitsEnforcer, ParallelChatLimitError
 from app.infra.database import AsyncSessionLocal
 from app.middleware.auth import AuthContext, get_auth_context_websocket
 from app.models.message import MessageCreate
@@ -124,18 +123,13 @@ async def chat_websocket(
     connection_id = f"{session_id}:{topic_id}"
     user = auth_ctx.user_id
 
-    # Check parallel chat limit before accepting connection
+    # Create limits enforcer (no limit check on connect — only on message send)
     enforcer: LimitsEnforcer | None = None
     try:
         async with AsyncSessionLocal() as db:
             enforcer = await LimitsEnforcer.create(db, user)
-            await enforcer.check_parallel_chat(connection_id)
-    except HTTPException:
-        await websocket.accept()
-        await websocket.close(code=4029, reason="Parallel chat limit reached")
-        return
     except Exception as e:
-        logger.warning(f"Limit check failed (allowing connection): {e}")
+        logger.warning(f"Failed to create LimitsEnforcer (allowing connection): {e}")
 
     # Validate session and topic access before tracking the connection
     async with AsyncSessionLocal() as db:
@@ -208,6 +202,22 @@ async def chat_websocket(
 
                     # Note: Files attached to last_user_message are automatically included
                     # during history loading in load_conversation_history()
+
+                    # Check parallel chat limit before processing
+                    if enforcer:
+                        try:
+                            await enforcer.check_and_start_responding(connection_id)
+                        except ParallelChatLimitError as e:
+                            limit_event = {
+                                "type": "parallel_chat_limit",
+                                "data": {
+                                    "error_code": "PARALLEL_CHAT_LIMIT",
+                                    "current": e.current,
+                                    "limit": e.limit,
+                                },
+                            }
+                            await websocket.send_text(json.dumps(limit_event))
+                            continue
 
                     # Loading status
                     loading_event = {"type": ChatEventType.LOADING, "data": {"message": "AI is thinking..."}}
@@ -283,6 +293,22 @@ async def chat_websocket(
 
                 if not message_text:
                     continue
+
+                # Check parallel chat limit before processing
+                if enforcer:
+                    try:
+                        await enforcer.check_and_start_responding(connection_id)
+                    except ParallelChatLimitError as e:
+                        limit_event = {
+                            "type": "parallel_chat_limit",
+                            "data": {
+                                "error_code": "PARALLEL_CHAT_LIMIT",
+                                "current": e.current,
+                                "limit": e.limit,
+                            },
+                        }
+                        await websocket.send_text(json.dumps(limit_event))
+                        continue
 
                 # 1. Save user message
                 user_message_create = MessageCreate(role="user", content=message_text, topic_id=topic_id)

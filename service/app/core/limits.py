@@ -9,18 +9,25 @@ import logging
 
 from typing import Any
 
-from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.session_pool import SessionPool
 from app.core.subscription import SubscriptionService, UserLimits
 from app.infra.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
-# Redis key prefix for active chat connections per user
-_ACTIVE_CHATS_KEY = "active_chats:user:"
 # Redis key prefix for sandbox session mapping (defined in sandbox/manager.py)
 _SANDBOX_KEY_PREFIX = "sandbox:session:"
+
+
+class ParallelChatLimitError(Exception):
+    """Raised when the user has reached the max number of responding chats."""
+
+    def __init__(self, current: int, limit: int) -> None:
+        self.current = current
+        self.limit = limit
+        super().__init__(f"Parallel chat limit reached ({current}/{limit})")
 
 
 class LimitsEnforcer:
@@ -28,8 +35,7 @@ class LimitsEnforcer:
 
     Usage:
         enforcer = await LimitsEnforcer.create(db, user_id)
-        await enforcer.check_parallel_chat()
-        await enforcer.check_sandbox_creation(db)
+        await enforcer.check_and_start_responding(connection_id)
     """
 
     # Free-tier fallback defaults (used when no subscription role is resolved)
@@ -39,6 +45,7 @@ class LimitsEnforcer:
     def __init__(self, limits: UserLimits | None, user_id: str) -> None:
         self._limits = limits
         self._user_id = user_id
+        self._pool = SessionPool(user_id)
 
     @staticmethod
     async def create(db: AsyncSession, user_id: str) -> "LimitsEnforcer":
@@ -47,61 +54,50 @@ class LimitsEnforcer:
 
     # --- Chat ---
 
-    async def check_parallel_chat(self, connection_id: str | None = None) -> None:
-        """Raise HTTPException(429) if user has max active WS connections.
-
-        If *connection_id* is provided, it is removed from the active set
-        **before** counting.  This avoids a race condition when the same
-        client disconnects and immediately reconnects: the old connection
-        may still be tracked in Redis when the new one is being checked.
-        """
+    @property
+    def _max_parallel_chats(self) -> int:
         if self._limits is not None:
-            max_chats = self._limits.max_parallel_chats
-        else:
-            max_chats = self._FREE_MAX_PARALLEL_CHATS
-        if max_chats <= 0:
-            return  # 0 = unlimited
-
-        # Pre-clean: remove this connection_id so a reconnect is not counted
-        # against itself.
-        if connection_id:
-            redis = await get_redis_client()
-            key = f"{_ACTIVE_CHATS_KEY}{self._user_id}"
-            await redis.srem(key, connection_id)  # type: ignore[misc]
-
-        current = await self.get_active_chat_count()
-        if current >= max_chats:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Parallel chat limit reached ({current}/{max_chats}). "
-                "Please close an existing chat before opening a new one.",
-            )
+            return self._limits.max_parallel_chats
+        return self._FREE_MAX_PARALLEL_CHATS
 
     async def track_chat_connect(self, connection_id: str) -> None:
-        """Add connection_id to Redis SET active_chats:user:{user_id}."""
-        redis = await get_redis_client()
-        key = f"{_ACTIVE_CHATS_KEY}{self._user_id}"
-        await redis.sadd(key, connection_id)  # type: ignore[misc]
-        # TTL as safety net: auto-clean if server crashes without disconnect
-        await redis.expire(key, 7200)  # 2 hours
+        """Register connection as idle in the session pool."""
+        await self._pool.register(connection_id)
 
     async def track_chat_disconnect(self, connection_id: str) -> None:
-        """Remove connection_id from Redis SET."""
-        redis = await get_redis_client()
-        key = f"{_ACTIVE_CHATS_KEY}{self._user_id}"
-        await redis.srem(key, connection_id)  # type: ignore[misc]
+        """Remove connection from the session pool."""
+        await self._pool.unregister(connection_id)
 
-    async def get_active_chat_count(self) -> int:
-        """SCARD on active_chats:user:{user_id}."""
-        redis = await get_redis_client()
-        key = f"{_ACTIVE_CHATS_KEY}{self._user_id}"
-        count: int = await redis.scard(key)  # type: ignore[misc]
-        return count
+    async def check_and_start_responding(self, connection_id: str) -> None:
+        """Atomically check limit and mark connection as responding.
+
+        Raises ParallelChatLimitError if the limit is reached.
+        """
+        max_chats = self._max_parallel_chats
+        result = await self._pool.check_and_set_responding(connection_id, max_chats)
+        if result == 0:
+            count = await self._pool.get_responding_count()
+            raise ParallelChatLimitError(current=count, limit=max_chats)
+        if result == -1:
+            # Connection not registered — register as responding directly
+            logger.warning(f"Connection {connection_id} not registered, registering now")
+            await self._pool.register(connection_id)
+            # Retry once after registration
+            result = await self._pool.check_and_set_responding(connection_id, max_chats)
+            if result == 0:
+                count = await self._pool.get_responding_count()
+                raise ParallelChatLimitError(current=count, limit=max_chats)
+
+    async def finish_responding(self, connection_id: str) -> None:
+        """Mark connection as idle after AI processing completes."""
+        await self._pool.set_idle(connection_id)
 
     # --- Sandbox ---
 
     async def check_sandbox_creation(self, db: AsyncSession) -> None:
         """Raise HTTPException(429) if user has max active sandboxes."""
+        from fastapi import HTTPException
+
         if self._limits is not None:
             max_sandboxes = self._limits.max_sandboxes
         else:
@@ -151,7 +147,7 @@ class LimitsEnforcer:
         """Return usage vs limits for all resource types."""
         from app.core.storage import create_quota_service
 
-        chat_count = await self.get_active_chat_count()
+        responding_count = await self._pool.get_responding_count()
         sandbox_count = await self.count_active_sandboxes(db)
 
         quota_service = await create_quota_service(db, self._user_id)
@@ -162,7 +158,7 @@ class LimitsEnforcer:
             "role_name": limits.role_name if limits else "free",
             "role_display_name": limits.role_display_name if limits else "Free",
             "chats": {
-                "used": chat_count,
+                "used": responding_count,
                 "limit": limits.max_parallel_chats if limits else self._FREE_MAX_PARALLEL_CHATS,
             },
             "sandboxes": {

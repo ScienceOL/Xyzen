@@ -19,6 +19,7 @@ interface MessageEvent {
     | "tool_call_request"
     | "tool_call_response"
     | "insufficient_balance"
+    | "parallel_chat_limit"
     | "error"
     | "topic_updated"
     | "thinking_start"
@@ -186,17 +187,6 @@ class XyzenService {
       console.log(
         `XyzenService: WebSocket disconnected (code: ${event.code}, reason: ${event.reason})`,
       );
-
-      // 4029 = parallel chat limit reached — do not retry
-      if (event.code === 4029) {
-        this.onStatusChangeCallback?.({
-          connected: false,
-          error:
-            event.reason ||
-            "Parallel chat limit reached. Please close an existing chat.",
-        });
-        return;
-      }
 
       this.handleDisconnect(event.reason);
     };

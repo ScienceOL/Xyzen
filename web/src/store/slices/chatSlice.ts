@@ -1516,6 +1516,36 @@ export const createChatSlice: StateCreator<
                 break;
               }
 
+              case "parallel_chat_limit": {
+                const limitData = event.data as {
+                  error_code?: string;
+                  current?: number;
+                  limit?: number;
+                };
+
+                console.warn("Parallel chat limit reached:", limitData);
+
+                // Reset responding state to unblock input
+                channel.responding = false;
+
+                // Remove loading message
+                const limitLoadingIndex = channel.messages.findIndex(
+                  (m) => m.isLoading,
+                );
+                if (limitLoadingIndex !== -1) {
+                  channel.messages.splice(limitLoadingIndex, 1);
+                }
+
+                // Show notification to user
+                state.notification = {
+                  isOpen: true,
+                  title: "并行会话已达上限",
+                  message: `您已达到并行会话上限（${limitData.current ?? "?"}/${limitData.limit ?? "?"}）。请等待其他会话完成后重试。`,
+                  type: "warning",
+                };
+                break;
+              }
+
               case "stream_aborted": {
                 // Handle abort acknowledgment from backend
                 const abortData = event.data as {

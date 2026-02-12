@@ -947,5 +947,12 @@ async def _process_chat_message_async(
             except Exception as finalize_error:
                 logger.warning(f"Failed to finalize AgentRun on error: {finalize_error}")
     finally:
+        # Mark connection as idle in session pool so the parallel chat slot is freed
+        try:
+            from app.core.session_pool import mark_connection_idle
+
+            await mark_connection_idle(publisher.redis_client, user_id, connection_id)
+        except Exception as e:
+            logger.warning(f"Failed to mark connection idle: {e}")
         await publisher.close()
         await task_engine.dispose()
