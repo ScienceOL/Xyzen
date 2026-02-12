@@ -247,10 +247,19 @@ async def _resolve_provider_and_model(
     if not model_name and agent and agent.model:
         model_name = agent.model
 
-    # Final fallback: if still no model, use STANDARD tier default
+    # Final fallback: if still no model, use the user's max allowed tier
     # This handles cases where session has no model/tier and agent has no default model
     if not model_name:
         default_tier = ModelTier.STANDARD
+        if session:
+            try:
+                from app.core.subscription import SubscriptionService as _SubSvc
+
+                _role = await _SubSvc(db).get_user_role(session.user_id)
+                _max_str = _role.max_model_tier if _role else "lite"
+                default_tier = ModelTier(_max_str)
+            except Exception as e:
+                logger.warning(f"Failed to resolve subscription tier for fallback: {e}")
         if message_text and user_provider_manager:
             try:
                 model_name = await select_model_for_tier(
@@ -258,14 +267,14 @@ async def _resolve_provider_and_model(
                     first_message=message_text,
                     user_provider_manager=user_provider_manager,
                 )
-                logger.info(f"Using STANDARD tier selection: {model_name}")
+                logger.info(f"Using {default_tier.value} tier selection: {model_name}")
             except Exception as e:
-                logger.error(f"STANDARD tier selection failed: {e}")
+                logger.error(f"{default_tier.value} tier selection failed: {e}")
                 model_name = resolve_model_for_tier(default_tier)
-                logger.warning(f"Falling back to STANDARD tier default: {model_name}")
+                logger.warning(f"Falling back to {default_tier.value} tier default: {model_name}")
         else:
             model_name = resolve_model_for_tier(default_tier)
-            logger.info(f"Using STANDARD tier fallback: {model_name}")
+            logger.info(f"Using {default_tier.value} tier fallback: {model_name}")
 
     # Ensure we have the correct provider for the selected model.
     # The model's required provider takes precedence over session.provider_id.

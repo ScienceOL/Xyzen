@@ -33,17 +33,24 @@ class SessionService:
     async def _clamp_session_model_tier(self, session: SessionModel, user_id: str) -> bool:
         """Clamp session.model_tier to subscription limit. Persists to DB if changed.
 
-        Returns True if the tier was clamped (downgraded).
+        If model_tier is NULL, sets it to the user's max allowed tier.
+        Returns True if the tier was changed.
         """
-        if not session.model_tier:
-            return False
-
         try:
             from app.core.subscription import SubscriptionService
 
             role = await SubscriptionService(self.db).get_user_role(user_id)
             max_tier_str = role.max_model_tier if role else "lite"
             max_tier_enum = ModelTier(max_tier_str)
+
+            if not session.model_tier:
+                # NULL tier: initialize to the user's max allowed tier
+                logger.info(f"Session {session.id}: setting NULL model_tier to {max_tier_enum.value}")
+                session.model_tier = max_tier_enum
+                session.model = None
+                self.db.add(session)
+                await self.db.flush()
+                return True
 
             if TIER_ORDER.index(session.model_tier) > TIER_ORDER.index(max_tier_enum):
                 logger.info(
