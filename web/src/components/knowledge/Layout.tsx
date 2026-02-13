@@ -17,11 +17,33 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CreateKnowledgeSetModal } from "./CreateKnowledgeSetModal";
 import { FileList, type FileListHandle } from "./FileList";
+import { DRAG_MIME } from "./FileTreeView";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import type { KnowledgeTab, StorageStats, ViewMode } from "./types";
 import { UploadProgress, type UploadItem } from "./UploadProgress";
+
+/**
+ * Given a desired name and a set of existing names in the same directory,
+ * return a unique name by appending " (1)", " (2)", etc. when needed.
+ */
+const getUniqueFilename = (name: string, existingNames: string[]): string => {
+  if (!existingNames.includes(name)) return name;
+
+  const dotIdx = name.lastIndexOf(".");
+  const base = dotIdx > 0 ? name.slice(0, dotIdx) : name;
+  const ext = dotIdx > 0 ? name.slice(dotIdx) : "";
+
+  let counter = 1;
+  let candidate: string;
+  do {
+    candidate = `${base} (${counter})${ext}`;
+    counter++;
+  } while (existingNames.includes(candidate));
+
+  return candidate;
+};
 
 export const KnowledgeLayout = () => {
   const { t } = useTranslation();
@@ -41,20 +63,22 @@ export const KnowledgeLayout = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
 
-  // Navigation Helper
+  // Navigate into a subfolder (independent of tab)
+  const navigateToFolder = useCallback((folderId: string | null) => {
+    setCurrentFolderId(folderId);
+  }, []);
+
+  // Navigation Helper — switches tabs (sidebar clicks)
   const handleNavigate = useCallback(
-    (tab: KnowledgeTab, idOrFolderId: string | null = null) => {
+    (tab: KnowledgeTab, idOrKnowledgeSetId: string | null = null) => {
       setActiveTab(tab);
       if (tab === "knowledge") {
-        setCurrentKnowledgeSetId(idOrFolderId);
-        setCurrentFolderId(null);
-      } else if (tab === "folders") {
-        setCurrentFolderId(idOrFolderId);
-        setCurrentKnowledgeSetId(null);
+        setCurrentKnowledgeSetId(idOrKnowledgeSetId);
       } else {
-        setCurrentFolderId(null);
         setCurrentKnowledgeSetId(null);
       }
+      // Switching tabs always resets to root folder
+      setCurrentFolderId(null);
       setIsSidebarOpen(false);
     },
     [],
@@ -165,9 +189,23 @@ export const KnowledgeLayout = () => {
       if (files.length === 0) return;
 
       // Capture current context at upload time
-      const parentId = activeTab === "folders" ? currentFolderId : null;
+      const parentId = currentFolderId || null;
       const knowledgeSetId =
         activeTab === "knowledge" ? currentKnowledgeSetId : null;
+
+      // Fetch existing filenames in current directory for deduplication
+      let existingNames: string[] = [];
+      try {
+        const existingFiles = await fileService.listFiles({
+          parent_id: parentId,
+          filter_by_parent: true,
+          limit: 1000,
+          offset: 0,
+        });
+        existingNames = existingFiles.map((f) => f.original_filename);
+      } catch {
+        // If we can't fetch, proceed without dedup
+      }
 
       // Validate and start uploads
       for (const file of files) {
@@ -201,11 +239,19 @@ export const KnowledgeLayout = () => {
           continue;
         }
 
+        // Deduplicate filename
+        const uniqueName = getUniqueFilename(file.name, existingNames);
+        existingNames.push(uniqueName); // Track for batch dedup
+        const uploadFile =
+          uniqueName !== file.name
+            ? new File([file], uniqueName, { type: file.type })
+            : file;
+
         // Create upload item
         const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const uploadItem: UploadItem = {
           id: uploadId,
-          fileName: file.name,
+          fileName: uniqueName,
           progress: 0,
           status: "uploading",
         };
@@ -214,7 +260,7 @@ export const KnowledgeLayout = () => {
 
         // Start upload with progress tracking
         const handle = fileService.uploadFileWithProgress(
-          file,
+          uploadFile,
           "private",
           undefined,
           parentId,
@@ -310,6 +356,8 @@ export const KnowledgeLayout = () => {
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Ignore internal item drags (only show overlay for external file drops)
+    if (e.dataTransfer.types.includes(DRAG_MIME)) return;
     dragCounterRef.current++;
     if (e.dataTransfer.types.includes("Files")) {
       setIsDragOver(true);
@@ -355,8 +403,15 @@ export const KnowledgeLayout = () => {
     const name = prompt(t("knowledge.prompts.folderName"));
     if (name) {
       try {
+        // Deduplicate folder name
+        const existingFolders = await folderService.listFolders(
+          currentFolderId || null,
+        );
+        const existingFolderNames = existingFolders.map((f) => f.name);
+        const uniqueName = getUniqueFilename(name, existingFolderNames);
+
         await folderService.createFolder({
-          name,
+          name: uniqueName,
           parent_id: currentFolderId,
         });
         setRefreshKey((prev) => prev + 1);
@@ -370,6 +425,23 @@ export const KnowledgeLayout = () => {
   const handleCreateKnowledgeSet = async () => {
     setIsCreateKnowledgeSetOpen(true);
   };
+
+  // Handle dropping files onto knowledge set items in sidebar
+  const handleDropOnKnowledgeSet = useCallback(
+    async (fileIds: string[], knowledgeSetId: string) => {
+      try {
+        await Promise.all(
+          fileIds.map((fileId) =>
+            knowledgeSetService.linkFileToKnowledgeSet(knowledgeSetId, fileId),
+          ),
+        );
+        setRefreshKey((prev) => prev + 1);
+      } catch (e) {
+        console.error("Failed to add files to knowledge set", e);
+      }
+    },
+    [],
+  );
 
   const handleSubmitCreateKnowledgeSet = async (values: {
     name: string;
@@ -394,8 +466,6 @@ export const KnowledgeLayout = () => {
         return t("knowledge.titles.recents");
       case "all":
         return t("knowledge.titles.allFiles");
-      case "folders":
-        return t("knowledge.titles.myKnowledge");
       case "knowledge":
         return currentKnowledgeSetName || t("knowledge.titles.knowledgeBase");
       case "trash":
@@ -428,6 +498,7 @@ export const KnowledgeLayout = () => {
             onTabChange={handleNavigate}
             refreshTrigger={refreshKey}
             onCreateKnowledgeSet={handleCreateKnowledgeSet}
+            onDropOnKnowledgeSet={handleDropOnKnowledgeSet}
           />
         </div>
       </div>
@@ -451,6 +522,7 @@ export const KnowledgeLayout = () => {
             onTabChange={handleNavigate}
             refreshTrigger={refreshKey}
             onCreateKnowledgeSet={handleCreateKnowledgeSet}
+            onDropOnKnowledgeSet={handleDropOnKnowledgeSet}
           />
         </SheetContent>
       </Sheet>
@@ -476,7 +548,7 @@ export const KnowledgeLayout = () => {
                   ? t("knowledge.upload.dropToKnowledgeSet", {
                       name: currentKnowledgeSetName,
                     })
-                  : activeTab === "folders"
+                  : currentFolderId
                     ? t("knowledge.upload.dropToFolder")
                     : t("knowledge.upload.dropToUpload")}
               </div>
@@ -493,10 +565,15 @@ export const KnowledgeLayout = () => {
           onRefresh={() => setRefreshKey((k) => k + 1)}
           isTrash={activeTab === "trash"}
           onEmptyTrash={handleEmptyTrash}
-          showCreateFolder={activeTab === "folders"}
+          showCreateFolder={activeTab === "all" || activeTab === "knowledge"}
           onCreateFolder={handleCreateFolder}
-          breadcrumbs={activeTab === "folders" ? breadcrumbs : undefined}
-          onBreadcrumbClick={(id) => handleNavigate("folders", id)}
+          breadcrumbs={
+            currentFolderId &&
+            (activeTab === "all" || activeTab === "knowledge")
+              ? breadcrumbs
+              : undefined
+          }
+          onBreadcrumbClick={(id) => navigateToFolder(id)}
           onMenuClick={() => setIsSidebarOpen(true)}
         />
 
@@ -517,13 +594,16 @@ export const KnowledgeLayout = () => {
             onStatsUpdate={handleStatsUpdate}
             currentFolderId={currentFolderId}
             currentKnowledgeSetId={currentKnowledgeSetId}
-            onFolderChange={(id) => handleNavigate("folders", id)}
+            onFolderChange={(id) => navigateToFolder(id)}
+            onCreateFolder={handleCreateFolder}
+            onUpload={handleUploadClick}
           />
         </div>
         {/* Status Bar */}
         <StatusBar
           itemCount={
-            activeTab === "folders" || activeTab === "knowledge"
+            (currentFolderId && activeTab === "all") ||
+            activeTab === "knowledge"
               ? currentFileCount
               : stats.fileCount
           }

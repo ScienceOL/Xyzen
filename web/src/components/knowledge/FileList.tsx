@@ -13,8 +13,10 @@ import { useXyzen } from "@/store";
 import {
   ArrowDownTrayIcon,
   ArrowPathRoundedSquareIcon,
+  ArrowUpTrayIcon,
   DocumentIcon,
   EyeIcon,
+  FolderPlusIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { FolderIcon } from "@heroicons/react/24/solid";
@@ -24,13 +26,16 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useInView } from "react-intersection-observer";
 import { ContextMenu, type ContextMenuType } from "./ContextMenu";
 import { FileIcon } from "./FileIcon";
+import { DRAG_MIME, FileTreeView, getDragContext } from "./FileTreeView";
 import { ImageThumbnail } from "./ImageThumbnail";
 import { MoveToModal } from "./MoveToModal";
 import type { KnowledgeTab, ViewMode } from "./types";
@@ -45,6 +50,8 @@ interface FileListProps {
   currentFolderId: string | null;
   onFolderChange?: (folderId: string | null) => void;
   currentKnowledgeSetId?: string | null;
+  onCreateFolder?: () => void;
+  onUpload?: () => void;
 }
 
 export interface FileListHandle {
@@ -80,6 +87,8 @@ export const FileList = React.memo(
         currentFolderId,
         onFolderChange,
         currentKnowledgeSetId,
+        onCreateFolder,
+        onUpload,
       },
       ref,
     ) => {
@@ -176,6 +185,96 @@ export const FileList = React.memo(
           }
         },
         [],
+      );
+
+      // Computed set of folder IDs for drag type detection
+      const folderIds = useMemo(
+        () => new Set(folders.map((f) => f.id)),
+        [folders],
+      );
+
+      // Handle drag-and-drop onto a folder (from tree view or flat list)
+      const loadFilesRef = useRef<() => void>(() => {});
+      const handleDropOnFolder = useCallback(
+        async (itemIds: string[], targetFolderId: string | null) => {
+          try {
+            await Promise.all(
+              itemIds.map((id) => {
+                if (folderIds.has(id)) {
+                  return folderService.updateFolder(id, {
+                    parent_id: targetFolderId,
+                  });
+                }
+                return fileService.updateFile(id, {
+                  parent_id: targetFolderId,
+                });
+              }),
+            );
+            setSelectedIds(new Set());
+            loadFilesRef.current();
+            if (onRefresh) onRefresh();
+          } catch (e) {
+            console.error("Drop move failed", e);
+          }
+        },
+        [folderIds, onRefresh],
+      );
+
+      // Drag start handler for flat list/grid items
+      const handleDragStartItem = useCallback(
+        (e: React.DragEvent, itemId: string) => {
+          const ids = selectedIds.has(itemId) ? [...selectedIds] : [itemId];
+          const types: Record<string, "file" | "folder"> = {};
+          for (const id of ids) {
+            types[id] = folderIds.has(id) ? "folder" : "file";
+          }
+          const ctx = { ids, types };
+          // Set module-level dragContext so dragOver can read it
+          (window as unknown as Record<string, unknown>).__xyzenDragContext =
+            ctx;
+          e.dataTransfer.setData(DRAG_MIME, JSON.stringify(ctx));
+          e.dataTransfer.effectAllowed = "move";
+        },
+        [selectedIds, folderIds],
+      );
+
+      // Drag over handler for folder rows in flat list/grid
+      const handleDragOverFolder = useCallback(
+        (e: React.DragEvent, folderId: string) => {
+          if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+          // Check module-level context to prevent dropping on self
+          const ctx =
+            getDragContext() ||
+            ((window as unknown as Record<string, unknown>)
+              .__xyzenDragContext as { ids: string[] } | null);
+          if (ctx?.ids?.includes(folderId)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "move";
+        },
+        [],
+      );
+
+      // Drop handler for folder rows in flat list/grid
+      const handleDropOnFolderRow = useCallback(
+        (e: React.DragEvent, folderId: string) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            const data = JSON.parse(e.dataTransfer.getData(DRAG_MIME));
+            if (data?.ids?.length > 0) {
+              handleDropOnFolder(data.ids, folderId);
+            }
+          } catch {
+            // ignore
+          }
+        },
+        [handleDropOnFolder],
+      );
+
+      // Track which folder is being dragged over (for visual feedback in flat list)
+      const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(
+        null,
       );
 
       // Selection box handlers for drag select
@@ -294,6 +393,27 @@ export const FileList = React.memo(
         item: Folder | FileUploadResponse;
         position: { x: number; y: number };
       } | null>(null);
+
+      // Background context menu (right-click on empty space)
+      const [bgContextMenu, setBgContextMenu] = useState<{
+        x: number;
+        y: number;
+      } | null>(null);
+
+      // Close background context menu on any outside click
+      useEffect(() => {
+        if (!bgContextMenu) return;
+        const handleMouseDown = () => setBgContextMenu(null);
+        // Delay to avoid immediate close from the same event
+        const timer = setTimeout(
+          () => document.addEventListener("mousedown", handleMouseDown),
+          0,
+        );
+        return () => {
+          clearTimeout(timer);
+          document.removeEventListener("mousedown", handleMouseDown);
+        };
+      }, [bgContextMenu]);
 
       // Modal States
       const [moveModal, setMoveModal] = useState<{
@@ -429,8 +549,18 @@ export const FileList = React.memo(
           }
 
           try {
-            // Handle Knowledge Set view (no pagination for now)
+            // Handle Knowledge Set view — load files linked to the set + folders in current dir
             if (filter === "knowledge" && currentKnowledgeSetId) {
+              // Load folders (knowledge sets support browsing subfolders)
+              let folderCount = folders.length;
+              if (!append) {
+                const folderData = await folderService.listFolders(
+                  currentFolderId || null,
+                );
+                setFolders(folderData);
+                folderCount = folderData.length;
+              }
+
               const fileIds = await knowledgeSetService.getFilesInKnowledgeSet(
                 currentKnowledgeSetId,
               );
@@ -444,20 +574,19 @@ export const FileList = React.memo(
                   (f) => f !== null && !f.is_deleted,
                 ) as FileUploadResponse[];
                 setFiles(validFiles);
-                setFolders([]);
                 setHasMoreFiles(false);
-                if (onFileCountChange) onFileCountChange(validFiles.length);
+                if (onFileCountChange)
+                  onFileCountChange(validFiles.length + folderCount);
               } else {
                 setFiles([]);
-                setFolders([]);
                 setHasMoreFiles(false);
-                if (onFileCountChange) onFileCountChange(0);
+                if (onFileCountChange) onFileCountChange(0 + folderCount);
               }
               return;
             }
 
-            // Handle Folders view with pagination
-            if (filter === "folders") {
+            // "all" = Finder-like hierarchical browser (folders + files by parent_id)
+            if (filter === "all") {
               let folderCount = folders.length;
               if (!append) {
                 const folderData = await folderService.listFolders(
@@ -467,12 +596,23 @@ export const FileList = React.memo(
                 folderCount = folderData.length;
               }
 
-              const fileData = await fileService.listFiles({
-                parent_id: currentFolderId || null,
-                filter_by_parent: true,
+              const fileParams: {
+                limit: number;
+                offset: number;
+                parent_id?: string | null;
+                filter_by_parent?: boolean;
+                is_dir?: boolean;
+              } = {
                 limit: PAGE_SIZE,
                 offset: filesOffsetRef.current,
-              });
+                is_dir: false, // Exclude directories (loaded separately via folderService)
+              };
+
+              // Filter by parent_id (null = root level)
+              fileParams.parent_id = currentFolderId || null;
+              fileParams.filter_by_parent = true;
+
+              const fileData = await fileService.listFiles(fileParams);
 
               if (append) {
                 setFiles((prev) => {
@@ -497,7 +637,40 @@ export const FileList = React.memo(
               return;
             }
 
-            // Handle other views (home, all, trash, etc.) with pagination
+            // "home" = Recents: flat list of recent files across all folders (no folders shown)
+            if (filter === "home") {
+              if (!append) {
+                setFolders([]);
+              }
+
+              const fileData = await fileService.listFiles({
+                limit: PAGE_SIZE,
+                offset: filesOffsetRef.current,
+                is_dir: false,
+              });
+              const validFiles = fileData.filter((f) => !f.is_deleted);
+
+              if (append) {
+                setFiles((prev) => {
+                  const newFiles = [...prev, ...validFiles];
+                  if (onFileCountChange) {
+                    setTimeout(() => onFileCountChange(newFiles.length), 0);
+                  }
+                  return newFiles;
+                });
+              } else {
+                setFiles(validFiles);
+                if (onFileCountChange) {
+                  onFileCountChange(validFiles.length);
+                }
+              }
+
+              filesOffsetRef.current += fileData.length;
+              setHasMoreFiles(fileData.length === PAGE_SIZE);
+              return;
+            }
+
+            // Handle other views (trash, images, documents, audio, etc.) with pagination
             const params: {
               category?: string;
               include_deleted: boolean;
@@ -520,11 +693,29 @@ export const FileList = React.memo(
             if (filter === "trash") {
               filteredData = data.filter((f) => f.is_deleted);
               if (!append) {
-                const deletedFolders = await folderService.listFolders(
-                  null,
-                  true,
-                );
-                setFolders(deletedFolders.filter((f) => f.is_deleted));
+                // For trash, load all deleted folders (regardless of parent) using file service
+                try {
+                  const deletedFolderData = await fileService.listFiles({
+                    include_deleted: true,
+                    is_dir: true,
+                    limit: 1000,
+                    offset: 0,
+                  });
+                  const deletedFolders: Folder[] = deletedFolderData
+                    .filter((f) => f.is_deleted && f.is_dir)
+                    .map((f) => ({
+                      id: f.id,
+                      user_id: f.user_id,
+                      parent_id: f.parent_id,
+                      name: f.original_filename,
+                      is_deleted: f.is_deleted,
+                      created_at: f.created_at,
+                      updated_at: f.updated_at,
+                    }));
+                  setFolders(deletedFolders);
+                } catch {
+                  setFolders([]);
+                }
               }
             } else {
               filteredData = data.filter((f) => !f.is_deleted);
@@ -561,6 +752,9 @@ export const FileList = React.memo(
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [filter, currentFolderId, currentKnowledgeSetId, onFileCountChange],
       );
+
+      // Keep ref in sync so handleDropOnFolder (defined before loadFiles) can call it
+      loadFilesRef.current = loadFiles;
 
       // Load more files when scrolling to bottom
       const loadMoreFiles = useCallback(() => {
@@ -612,6 +806,7 @@ export const FileList = React.memo(
       ) => {
         e.preventDefault();
         e.stopPropagation();
+        setBgContextMenu(null);
         setContextMenu({
           type,
           item,
@@ -702,6 +897,35 @@ export const FileList = React.memo(
       const handleRenameConfirm = async (newName: string) => {
         if (!renameModal) return;
         const { item, type } = renameModal;
+
+        // Check for duplicate name (excluding self)
+        if (type === "folder") {
+          const duplicate = folders.find(
+            (f) => f.name === newName && f.id !== item.id,
+          );
+          if (duplicate) {
+            setNotification({
+              isOpen: true,
+              title: t("knowledge.fileList.notifications.errorTitle"),
+              message: t("knowledge.fileList.rename.duplicateName"),
+              type: "warning",
+            });
+            return;
+          }
+        } else {
+          const duplicate = files.find(
+            (f) => f.original_filename === newName && f.id !== item.id,
+          );
+          if (duplicate) {
+            setNotification({
+              isOpen: true,
+              title: t("knowledge.fileList.notifications.errorTitle"),
+              message: t("knowledge.fileList.rename.duplicateName"),
+              type: "warning",
+            });
+            return;
+          }
+        }
 
         try {
           if (type === "folder") {
@@ -1090,6 +1314,13 @@ export const FileList = React.memo(
               return;
             }
             setSelectedIds(new Set());
+            setBgContextMenu(null);
+          }}
+          onContextMenu={(e) => {
+            // Background right-click (not on items — items call e.stopPropagation())
+            e.preventDefault();
+            setContextMenu(null);
+            setBgContextMenu({ x: e.clientX, y: e.clientY });
           }}
           onMouseDown={handleSelectionStart}
           onMouseMove={handleSelectionMove}
@@ -1108,7 +1339,19 @@ export const FileList = React.memo(
               }}
             />
           )}
-          {viewMode === "list" ? (
+          {filter === "all" || filter === "knowledge" ? (
+            <FileTreeView
+              folders={folders}
+              files={files}
+              selectedIds={selectedIds}
+              itemRefs={itemRefs}
+              folderIds={folderIds}
+              onItemClick={handleItemClick}
+              onFileDoubleClick={handlePreview}
+              onContextMenu={handleContextMenu}
+              onDropOnFolder={handleDropOnFolder}
+            />
+          ) : viewMode === "list" ? (
             <div className="min-w-full inline-block align-middle">
               <div className="border-b border-neutral-200 dark:border-neutral-800">
                 <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium uppercase text-neutral-500 dark:text-neutral-400">
@@ -1132,6 +1375,26 @@ export const FileList = React.memo(
                       if (el) itemRefs.current.set(folder.id, el);
                       else itemRefs.current.delete(folder.id);
                     }}
+                    draggable
+                    onDragStart={(e) => handleDragStartItem(e, folder.id)}
+                    onDragEnd={() => {
+                      (
+                        window as unknown as Record<string, unknown>
+                      ).__xyzenDragContext = null;
+                    }}
+                    onDragOver={(e) => {
+                      handleDragOverFolder(e, folder.id);
+                      if (e.defaultPrevented) setDragOverFolderId(folder.id);
+                    }}
+                    onDragLeave={() =>
+                      setDragOverFolderId((prev) =>
+                        prev === folder.id ? null : prev,
+                      )
+                    }
+                    onDrop={(e) => {
+                      setDragOverFolderId(null);
+                      handleDropOnFolderRow(e, folder.id);
+                    }}
                     onClick={(e) => handleItemClick(e, folder.id)}
                     onDoubleClick={() => handleFolderClick(folder.id)}
                     onContextMenu={(e) =>
@@ -1139,9 +1402,11 @@ export const FileList = React.memo(
                     }
                     {...createLongPressHandlers(folder, "folder")}
                     className={`group grid grid-cols-12 gap-4 px-4 py-2 text-sm items-center cursor-default ${
-                      selectedIds.has(folder.id)
-                        ? "bg-indigo-600 text-white"
-                        : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      dragOverFolderId === folder.id
+                        ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 rounded"
+                        : selectedIds.has(folder.id)
+                          ? "bg-indigo-600 text-white"
+                          : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
                     }`}
                   >
                     <div className="col-span-8 md:col-span-6 flex items-center gap-3 overflow-hidden">
@@ -1207,6 +1472,13 @@ export const FileList = React.memo(
                       ref={(el) => {
                         if (el) itemRefs.current.set(file.id, el);
                         else itemRefs.current.delete(file.id);
+                      }}
+                      draggable
+                      onDragStart={(e) => handleDragStartItem(e, file.id)}
+                      onDragEnd={() => {
+                        (
+                          window as unknown as Record<string, unknown>
+                        ).__xyzenDragContext = null;
                       }}
                       onClick={(e) => handleItemClick(e, file.id)}
                       onDoubleClick={() => handlePreview(file)}
@@ -1316,14 +1588,36 @@ export const FileList = React.memo(
                     if (el) itemRefs.current.set(folder.id, el);
                     else itemRefs.current.delete(folder.id);
                   }}
+                  draggable
+                  onDragStart={(e) => handleDragStartItem(e, folder.id)}
+                  onDragEnd={() => {
+                    (
+                      window as unknown as Record<string, unknown>
+                    ).__xyzenDragContext = null;
+                  }}
+                  onDragOver={(e) => {
+                    handleDragOverFolder(e, folder.id);
+                    if (e.defaultPrevented) setDragOverFolderId(folder.id);
+                  }}
+                  onDragLeave={() =>
+                    setDragOverFolderId((prev) =>
+                      prev === folder.id ? null : prev,
+                    )
+                  }
+                  onDrop={(e) => {
+                    setDragOverFolderId(null);
+                    handleDropOnFolderRow(e, folder.id);
+                  }}
                   onClick={(e) => handleItemClick(e, folder.id)}
                   onDoubleClick={() => handleFolderClick(folder.id)}
                   onContextMenu={(e) => handleContextMenu(e, folder, "folder")}
                   {...createLongPressHandlers(folder, "folder")}
                   className={`group flex flex-col items-center gap-2 rounded-md p-3 text-center cursor-default ${
-                    selectedIds.has(folder.id)
-                      ? "bg-indigo-100 ring-2 ring-indigo-500 dark:bg-indigo-900/50"
-                      : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    dragOverFolderId === folder.id
+                      ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                      : selectedIds.has(folder.id)
+                        ? "bg-indigo-100 ring-2 ring-indigo-500 dark:bg-indigo-900/50"
+                        : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   }`}
                 >
                   <div className="flex h-12 w-12 items-center justify-center">
@@ -1350,6 +1644,13 @@ export const FileList = React.memo(
                     ref={(el) => {
                       if (el) itemRefs.current.set(file.id, el);
                       else itemRefs.current.delete(file.id);
+                    }}
+                    draggable
+                    onDragStart={(e) => handleDragStartItem(e, file.id)}
+                    onDragEnd={() => {
+                      (
+                        window as unknown as Record<string, unknown>
+                      ).__xyzenDragContext = null;
                     }}
                     onClick={(e) => handleItemClick(e, file.id)}
                     onDoubleClick={() => handlePreview(file)}
@@ -1421,6 +1722,16 @@ export const FileList = React.memo(
                       )
                   : undefined
               }
+              onPreview={
+                contextMenu.type === "file"
+                  ? (item) => handlePreview(item as FileUploadResponse)
+                  : undefined
+              }
+              onOpen={
+                contextMenu.type === "folder"
+                  ? (item) => handleFolderClick(item.id)
+                  : undefined
+              }
               onAddToKnowledgeSet={
                 contextMenu.type === "file"
                   ? handleAddToKnowledgeSet
@@ -1432,10 +1743,78 @@ export const FileList = React.memo(
                   : undefined
               }
               onRestore={(item, type) => handleRestore(item.id, type)}
+              onBulkDelete={
+                selectedIds.size > 1
+                  ? () => handleDeleteItem(contextMenu.item, contextMenu.type)
+                  : undefined
+              }
+              onBulkMove={
+                selectedIds.size > 1
+                  ? () =>
+                      setMoveModal({
+                        isOpen: true,
+                        item: contextMenu.item,
+                        type: contextMenu.type,
+                      })
+                  : undefined
+              }
               isInKnowledgeSetView={filter === "knowledge"}
               isTrashView={filter === "trash"}
+              selectedCount={
+                selectedIds.has(contextMenu.item.id) ? selectedIds.size : 1
+              }
             />
           )}
+
+          {/* Background context menu (right-click on empty space) */}
+          {bgContextMenu &&
+            createPortal(
+              <div
+                className="fixed z-50 min-w-40 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+                style={{ top: bgContextMenu.y, left: bgContextMenu.x }}
+                ref={(el) => {
+                  if (!el) return;
+                  // Adjust to keep in viewport
+                  const rect = el.getBoundingClientRect();
+                  if (rect.right > window.innerWidth) {
+                    el.style.left = `${window.innerWidth - rect.width - 10}px`;
+                  }
+                  if (rect.bottom > window.innerHeight) {
+                    el.style.top = `${window.innerHeight - rect.height - 10}px`;
+                  }
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex flex-col gap-0.5">
+                  {onCreateFolder &&
+                    (filter === "all" || filter === "knowledge") && (
+                      <button
+                        onClick={() => {
+                          onCreateFolder();
+                          setBgContextMenu(null);
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      >
+                        <FolderPlusIcon className="h-4 w-4" />
+                        {t("knowledge.toolbar.newFolder")}
+                      </button>
+                    )}
+                  {onUpload && filter !== "trash" && (
+                    <button
+                      onClick={() => {
+                        onUpload();
+                        setBgContextMenu(null);
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    >
+                      <ArrowUpTrayIcon className="h-4 w-4" />
+                      {t("knowledge.toolbar.uploadFile")}
+                    </button>
+                  )}
+                </div>
+              </div>,
+              document.body,
+            )}
 
           {moveModal && (
             <MoveToModal

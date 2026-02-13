@@ -75,6 +75,8 @@
     "available": "{{available}}利用可能"
   },
   "contextMenu": {
+    "open": "開く",
+    "preview": "プレビュー",
     "download": "ダウンロード",
     "rename": "名前を変更",
     "moveTo": "移動先...",
@@ -82,7 +84,10 @@
     "removeFromKnowledgeSet": "ナレッジセットから削除",
     "delete": "削除",
     "restore": "復元",
-    "deleteForever": "完全に削除"
+    "restoreSelected": "{{count}}個のアイテムを復元",
+    "deleteForever": "完全に削除",
+    "deleteSelected": "{{count}}個のアイテムを削除",
+    "moveSelected": "{{count}}個のアイテムを移動..."
   },
   "moveModal": {
     "title": "「{{name}}」を移動",
@@ -140,7 +145,8 @@
       "titleFolder": "フォルダー名を変更",
       "placeholder": "新しい名前を入力",
       "confirm": "名前を変更",
-      "failed": "名前の変更に失敗しました"
+      "failed": "名前の変更に失敗しました",
+      "duplicateName": "このフォルダーに同じ名前のアイテムが既に存在します"
     },
     "move": {
       "failed": "移動に失敗しました"

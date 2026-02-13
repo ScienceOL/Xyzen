@@ -75,6 +75,8 @@
     "available": "{{available}} available"
   },
   "contextMenu": {
+    "open": "Open",
+    "preview": "Preview",
     "download": "Download",
     "rename": "Rename",
     "moveTo": "Move to...",
@@ -82,7 +84,10 @@
     "removeFromKnowledgeSet": "Remove from Knowledge Set",
     "delete": "Delete",
     "restore": "Restore",
-    "deleteForever": "Delete Forever"
+    "restoreSelected": "Restore {{count}} Items",
+    "deleteForever": "Delete Forever",
+    "deleteSelected": "Delete {{count}} Items",
+    "moveSelected": "Move {{count}} Items..."
   },
   "moveModal": {
     "title": "Move \"{{name}}\"",
@@ -140,7 +145,8 @@
       "titleFolder": "Rename Folder",
       "placeholder": "Enter new name",
       "confirm": "Rename",
-      "failed": "Rename failed"
+      "failed": "Rename failed",
+      "duplicateName": "An item with the same name already exists in this folder"
     },
     "move": {
       "failed": "Move failed"

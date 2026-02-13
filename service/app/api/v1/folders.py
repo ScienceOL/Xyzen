@@ -72,6 +72,12 @@ async def create_folder(
             if parent.user_id != user_id:
                 raise ErrCode.FOLDER_ACCESS_DENIED.with_messages("Parent folder access denied")
 
+        # Check for duplicate name in parent directory
+        if await file_repo.name_exists_in_parent(user_id, folder_create.parent_id, folder_create.name):
+            raise ErrCode.INVALID_REQUEST.with_messages(
+                f"An item named '{folder_create.name}' already exists in this folder"
+            )
+
         file_data = FileCreate(
             user_id=user_id,
             original_filename=folder_create.name,
@@ -217,6 +223,12 @@ async def update_folder(
         # Build FileUpdate from folder update fields
         file_update_data: dict = {}
         if folder_update.name is not None:
+            # Check for duplicate name when renaming
+            target_parent = folder_update.parent_id if folder_update.parent_id is not None else folder.parent_id
+            if await file_repo.name_exists_in_parent(user_id, target_parent, folder_update.name, exclude_id=folder_id):
+                raise ErrCode.INVALID_REQUEST.with_messages(
+                    f"An item named '{folder_update.name}' already exists in this folder"
+                )
             file_update_data["original_filename"] = folder_update.name
         if folder_update.parent_id is not None:
             file_update_data["parent_id"] = folder_update.parent_id

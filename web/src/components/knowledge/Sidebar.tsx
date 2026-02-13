@@ -11,8 +11,9 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DRAG_MIME } from "./FileTreeView";
 import type { KnowledgeTab } from "./types";
 
 interface SidebarProps {
@@ -21,6 +22,7 @@ interface SidebarProps {
   onTabChange: (tab: KnowledgeTab, knowledgeSetId?: string | null) => void;
   refreshTrigger?: number;
   onCreateKnowledgeSet: () => void;
+  onDropOnKnowledgeSet?: (fileIds: string[], knowledgeSetId: string) => void;
 }
 
 const SidebarComp = ({
@@ -29,6 +31,7 @@ const SidebarComp = ({
   onTabChange,
   refreshTrigger,
   onCreateKnowledgeSet,
+  onDropOnKnowledgeSet,
 }: SidebarProps) => {
   const { t } = useTranslation();
   const [knowledgeSets, setKnowledgeSets] = useState<
@@ -74,6 +77,46 @@ const SidebarComp = ({
       console.error("Failed to delete knowledge set", error);
     }
   };
+
+  // Drag-over tracking for knowledge set drop targets
+  const [dragOverKnowledgeSetId, setDragOverKnowledgeSetId] = useState<
+    string | null
+  >(null);
+
+  const handleKsDragOver = useCallback((e: React.DragEvent, ksId: string) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    setDragOverKnowledgeSetId(ksId);
+  }, []);
+
+  const handleKsDragLeave = useCallback((ksId: string) => {
+    setDragOverKnowledgeSetId((prev) => (prev === ksId ? null : prev));
+  }, []);
+
+  const handleKsDrop = useCallback(
+    (e: React.DragEvent, ksId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragOverKnowledgeSetId(null);
+      try {
+        const data = JSON.parse(e.dataTransfer.getData(DRAG_MIME));
+        if (data?.ids?.length > 0 && onDropOnKnowledgeSet) {
+          // Only add files (not folders) to knowledge sets
+          const fileIds = data.ids.filter(
+            (id: string) => data.types?.[id] !== "folder",
+          );
+          if (fileIds.length > 0) {
+            onDropOnKnowledgeSet(fileIds, ksId);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    },
+    [onDropOnKnowledgeSet],
+  );
 
   const navGroups = [
     {
@@ -172,10 +215,15 @@ const SidebarComp = ({
                 <button
                   key={knowledgeSet.id}
                   onClick={() => onTabChange("knowledge", knowledgeSet.id)}
+                  onDragOver={(e) => handleKsDragOver(e, knowledgeSet.id)}
+                  onDragLeave={() => handleKsDragLeave(knowledgeSet.id)}
+                  onDrop={(e) => handleKsDrop(e, knowledgeSet.id)}
                   className={`flex w-full items-center gap-2.5 rounded-sm px-3 py-2 text-sm font-medium transition-all duration-200 group ${
-                    isActive
-                      ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
-                      : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
+                    dragOverKnowledgeSetId === knowledgeSet.id
+                      ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                      : isActive
+                        ? "bg-white/80 dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
+                        : "text-neutral-600 hover:bg-white/50 dark:hover:bg-white/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                   }`}
                 >
                   <FolderIcon
