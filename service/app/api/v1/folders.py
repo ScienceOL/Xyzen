@@ -37,6 +37,19 @@ class FolderReadResponse(SQLModel):
     updated_at: datetime
 
 
+class FileTreeItem(SQLModel):
+    """A single item (file or folder) in the flat tree listing."""
+
+    id: UUID
+    parent_id: UUID | None = None
+    name: str
+    is_dir: bool = False
+    file_size: int = 0
+    content_type: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class FolderUpdateRequest(SQLModel):
     name: str | None = Field(default=None, min_length=1, max_length=255, description="New folder name")
     parent_id: UUID | None = Field(default=None, description="New parent folder ID (move folder)")
@@ -131,6 +144,46 @@ async def list_folders(
         )
 
 
+@router.get("/tree", response_model=list[FileTreeItem])
+async def get_folder_tree(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> list[FileTreeItem]:
+    """
+    Return a flat list of ALL folders and files for the current user.
+
+    The frontend builds the tree structure client-side using ``parent_id``
+    references.  Returning a single flat list eliminates the N+1 queries the
+    old per-folder expand approach required and removes an entire class of
+    cache-consistency bugs.
+
+    Items are sorted: folders first (alphabetical), then files (alphabetical).
+    Soft-deleted items are excluded.
+    """
+    try:
+        file_repo = FileRepository(db)
+        items = await file_repo.get_all_items(user_id=user_id, include_deleted=False)
+        return [
+            FileTreeItem(
+                id=f.id,
+                parent_id=f.parent_id,
+                name=f.original_filename,
+                is_dir=f.is_dir,
+                file_size=f.file_size,
+                content_type=f.content_type,
+                created_at=f.created_at,
+                updated_at=f.updated_at,
+            )
+            for f in items
+        ]
+    except Exception as e:
+        logger.error(f"Failed to get folder tree: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
 @router.get("/{folder_id}", response_model=FolderReadResponse)
 async def get_folder(
     folder_id: UUID,
@@ -204,8 +257,11 @@ async def update_folder(
         if folder.user_id != user_id:
             raise ErrCode.FOLDER_ACCESS_DENIED.with_messages("Access denied")
 
-        # Verify new parent if moving
-        if folder_update.parent_id:
+        # Detect whether parent_id was explicitly sent (even as null = move to root)
+        moving = "parent_id" in folder_update.model_fields_set
+
+        # Verify new parent if moving to a non-root target
+        if moving and folder_update.parent_id is not None:
             # Prevent moving to self
             if folder_update.parent_id == folder_id:
                 raise ErrCode.INVALID_REQUEST.with_messages("Cannot move folder into itself")
@@ -224,13 +280,13 @@ async def update_folder(
         file_update_data: dict = {}
         if folder_update.name is not None:
             # Check for duplicate name when renaming
-            target_parent = folder_update.parent_id if folder_update.parent_id is not None else folder.parent_id
+            target_parent = folder_update.parent_id if moving else folder.parent_id
             if await file_repo.name_exists_in_parent(user_id, target_parent, folder_update.name, exclude_id=folder_id):
                 raise ErrCode.INVALID_REQUEST.with_messages(
                     f"An item named '{folder_update.name}' already exists in this folder"
                 )
             file_update_data["original_filename"] = folder_update.name
-        if folder_update.parent_id is not None:
+        if moving:
             file_update_data["parent_id"] = folder_update.parent_id
         if folder_update.is_deleted is not None:
             file_update_data["is_deleted"] = folder_update.is_deleted

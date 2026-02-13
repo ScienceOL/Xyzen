@@ -161,6 +161,8 @@ export interface DragHandleProps {
 interface AgentListItemBaseProps {
   agent: Agent;
   onClick?: (agent: Agent) => void;
+  // Loading state (breathing animation)
+  isLoading?: boolean;
   // Drag and drop support
   isDragging?: boolean;
   dragHandleProps?: DragHandleProps;
@@ -207,6 +209,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   onClick,
   onEdit,
   onDelete,
+  isLoading = false,
   isDragging = false,
   dragHandleProps,
   style,
@@ -485,6 +488,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
               ${agent.id === "default-chat" ? "select-none" : ""}
               ${isDragging ? "shadow-xl cursor-grabbing" : ""}
               ${!isSwiped ? "hover:bg-neutral-50 dark:hover:bg-neutral-800" : ""}
+              ${isLoading ? "animate-pulse" : ""}
               transition-transform duration-200 ease-out
             `}
           >
@@ -573,6 +577,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
             ${agent.id === "default-chat" ? "select-none" : ""}
             ${isDragging ? "shadow-xl z-50 cursor-grabbing" : ""}
             ${!isSwiped ? "hover:bg-neutral-50 dark:hover:bg-neutral-800" : ""}
+            ${isLoading ? "animate-pulse" : ""}
           `}
         >
           {itemContent}

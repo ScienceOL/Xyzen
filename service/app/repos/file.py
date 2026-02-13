@@ -215,6 +215,38 @@ class FileRepository:
         result = await self.db.exec(statement)
         return list(result.all())
 
+    async def get_all_items(
+        self,
+        user_id: str,
+        include_deleted: bool = False,
+    ) -> list[File]:
+        """
+        Fetch ALL files and folders for a user in a single query.
+        The caller is responsible for building the tree structure from
+        the flat list using parent_id references.
+
+        Args:
+            user_id: The user ID.
+            include_deleted: Whether to include soft-deleted items.
+
+        Returns:
+            Flat list of all File instances belonging to the user.
+        """
+        logger.debug(f"Fetching all items for user_id: {user_id}")
+        statement = select(File).where(File.user_id == user_id)
+
+        if not include_deleted:
+            statement = statement.where(col(File.is_deleted).is_(False))
+
+        # Folders first, then files; alphabetical within each group
+        statement = statement.order_by(
+            col(File.is_dir).desc(),
+            col(File.original_filename).asc(),
+        )
+
+        result = await self.db.exec(statement)
+        return list(result.all())
+
     _MAX_TREE_DEPTH = 100
 
     async def get_path(self, file_id: UUID) -> list[File]:

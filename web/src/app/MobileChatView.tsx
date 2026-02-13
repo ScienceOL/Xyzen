@@ -19,6 +19,11 @@ export interface MobileChatViewHandle {
   currentPage: number;
 }
 
+interface MobileChatViewProps {
+  /** Fires whenever the visible page index changes. */
+  onPageChange?: (page: number) => void;
+}
+
 /**
  * Mobile three-page swipeable view:
  *   [Agent List]  ←→  [Chat]  ←→  [Capsule]
@@ -27,8 +32,8 @@ export interface MobileChatViewHandle {
  * Content follows the finger 1:1 during the drag and snaps with
  * velocity-based momentum on release.
  */
-const MobileChatView = forwardRef<MobileChatViewHandle>(
-  function MobileChatView(_props, ref) {
+const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
+  function MobileChatView({ onPageChange }, ref) {
     const { t } = useTranslation();
     const { activeChatChannel, setActiveChatChannel } = useXyzen();
     const { knowledge_set_id } = useActiveChannelStatus();
@@ -56,29 +61,38 @@ const MobileChatView = forwardRef<MobileChatViewHandle>(
     const { wrapperRef, trackRef, currentPage, goToPage, setPageImmediate } =
       useMobileSwipe({ pageCount, onSnap: handleSnap });
 
+    // Keep goToPage always-current via ref so async callbacks never go stale.
+    // `goToPage` (= snapTo) is recreated whenever pageCount changes, but the
+    // ref is updated synchronously on every render — before any await resumes.
+    const goToPageRef = useRef(goToPage);
+    goToPageRef.current = goToPage;
+
+    // Stable callback that XyzenAgent can safely call after an async
+    // activateChannelForAgent — always uses the latest goToPage.
+    const navigateToChat = useCallback(() => {
+      goToPageRef.current(1);
+    }, []);
+
     // Expose imperative handle for the parent (e.g. header back button)
     useImperativeHandle(ref, () => ({ goToPage, currentPage }), [
       goToPage,
       currentPage,
     ]);
 
-    // ---- Page transitions driven by activeChatChannel ----
+    // Notify parent whenever the visible page changes
     useEffect(() => {
-      if (hasChannel && !prevHasChannel.current) {
-        // Entering chat: start at page 0 then animate to page 1
-        setPageImmediate(0);
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            goToPage(1, false); // no onSnap callback needed
-          });
-        });
-      } else if (!hasChannel && prevHasChannel.current) {
-        // Channel cleared externally (not by our swipe-back)
+      onPageChange?.(currentPage);
+    }, [currentPage, onPageChange]);
+
+    // ---- Sync page position when channel is cleared externally ----
+    // Entering-chat navigation is handled imperatively via navigateToChat.
+    useEffect(() => {
+      if (!hasChannel && prevHasChannel.current) {
         externalClear.current = true;
         setPageImmediate(0);
       }
       prevHasChannel.current = hasChannel;
-    }, [hasChannel, goToPage, setPageImmediate]);
+    }, [hasChannel, setPageImmediate]);
 
     return (
       <div ref={wrapperRef} className="h-full overflow-hidden">
@@ -94,7 +108,7 @@ const MobileChatView = forwardRef<MobileChatViewHandle>(
               </p>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar py-4">
-              <XyzenAgent />
+              <XyzenAgent onNavigateToChat={navigateToChat} />
             </div>
           </div>
 

@@ -198,11 +198,19 @@ export const FileList = React.memo(
       // Handle drag-and-drop onto a folder (from tree view or flat list)
       const loadFilesRef = useRef<() => void>(() => {});
       const handleDropOnFolder = useCallback(
-        async (itemIds: string[], targetFolderId: string | null) => {
+        async (
+          itemIds: string[],
+          targetFolderId: string | null,
+          /** Optional type map from SortableTree (knows nested types). */
+          typeMap?: Record<string, "file" | "folder">,
+        ) => {
           try {
             await Promise.all(
               itemIds.map((id) => {
-                if (folderIds.has(id)) {
+                const isFolder = typeMap
+                  ? typeMap[id] === "folder"
+                  : folderIds.has(id);
+                if (isFolder) {
                   return folderService.updateFolder(id, {
                     parent_id: targetFolderId,
                   });
@@ -1352,7 +1360,6 @@ export const FileList = React.memo(
               files={files}
               selectedIds={selectedIds}
               itemRefs={itemRefs}
-              folderIds={folderIds}
               onItemClick={handleItemClick}
               onFileDoubleClick={handlePreview}
               onContextMenu={handleContextMenu}

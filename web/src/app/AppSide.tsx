@@ -47,6 +47,7 @@ export function AppSide({
 
   const [mounted, setMounted] = useState(false);
   const mobileChatRef = useRef<MobileChatViewHandle>(null);
+  const [mobilePage, setMobilePage] = useState(0);
 
   // Floating window state
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -314,9 +315,7 @@ export function AppSide({
           onDragEnd={handleDragEnd}
           showBackButton={
             activePanel === "chat" &&
-            (isMobile
-              ? (mobileChatRef.current?.currentPage ?? 0) > 0
-              : !!activeChatChannel)
+            (isMobile ? mobilePage > 0 : !!activeChatChannel)
           }
           onBackClick={() => {
             if (isMobile) {
@@ -349,7 +348,10 @@ export function AppSide({
           <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-neutral-950">
             {activePanel === "chat" &&
               (isMobile ? (
-                <MobileChatView ref={mobileChatRef} />
+                <MobileChatView
+                  ref={mobileChatRef}
+                  onPageChange={setMobilePage}
+                />
               ) : activeChatChannel ? (
                 // Desktop: side-by-side with Capsule
                 <div className="h-full flex">
