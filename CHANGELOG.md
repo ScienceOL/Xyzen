@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.3](https://github.com/ScienceOL/Xyzen/compare/v1.3.2...v1.3.3) (2026-02-13)
+
+### 🐛 Bug Fixes
+
+* parallel session pool, update release.yaml ([#241](https://github.com/ScienceOL/Xyzen/issues/241)) ([9fa78fb](https://github.com/ScienceOL/Xyzen/commit/9fa78fb27ae24053c1f1fb0ec6a97ac475230568)), closes [#243](https://github.com/ScienceOL/Xyzen/issues/243)
+
 ## [1.3.2](https://github.com/ScienceOL/Xyzen/compare/v1.3.1...v1.3.2) (2026-02-12)
 
 ### 🐛 Bug Fixes
