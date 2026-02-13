@@ -474,6 +474,7 @@ def _should_enable_subagent(agent_config: "Agent | None") -> bool:
     Uses the standard tool_filter mechanism on LLM nodes:
     - tool_filter is null → all tools enabled (spawn_subagent included)
     - tool_filter is explicit list → spawn_subagent must be in the list
+    - unsupported tool_filter shapes are skipped (do not globally disable subagent)
     """
     if not agent_config:
         return False
@@ -482,7 +483,7 @@ def _should_enable_subagent(agent_config: "Agent | None") -> bool:
     if not gc or not isinstance(gc, dict):
         return False
 
-    # Find the first LLM node's tool_filter
+    # Inspect all LLM nodes; enable subagent if any node allows it.
     graph = gc.get("graph")
     if not isinstance(graph, dict):
         return False
@@ -502,9 +503,12 @@ def _should_enable_subagent(agent_config: "Agent | None") -> bool:
             # null means all tools enabled
             if tool_filter is None:
                 return True
-            # explicit list — check for spawn_subagent
+            # explicit list — enable if this node explicitly allows spawn_subagent
             if isinstance(tool_filter, list):
-                return "spawn_subagent" in tool_filter
-            return False
+                if "spawn_subagent" in tool_filter:
+                    return True
+                continue
+            # unsupported/legacy shape - skip this node and keep checking
+            continue
 
     return False

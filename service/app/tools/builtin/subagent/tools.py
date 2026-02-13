@@ -13,9 +13,10 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import BaseTool, StructuredTool
 
+from app.agents.utils import extract_text_from_content
 from app.tools.builtin.subagent.schemas import SpawnSubagentInput
 
 if TYPE_CHECKING:
@@ -59,6 +60,16 @@ async def create_subagent_tool_for_session(
     At execution time, the subagent creates its own fresh session via
     the session factory set in contextvars.
     """
+    from app.tools.builtin.subagent.context import get_session_factory
+
+    # Fail fast with an explicit error if the execution context is not initialized.
+    # Chat tasks set this via set_session_factory(TaskSessionLocal).
+    if not get_session_factory():
+        raise RuntimeError(
+            "spawn_subagent requires session factory context. "
+            "Call set_session_factory(...) before creating subagent tools."
+        )
+
     tool_description = (
         "Spawn a subagent to handle a specific task autonomously. "
         "The subagent is a general-purpose react agent with tool-calling "
@@ -122,8 +133,10 @@ async def _spawn_subagent_impl(
     # 2. Get session factory from context
     session_factory = get_session_factory()
     if not session_factory:
-        logger.error("No session factory available for subagent — was set_session_factory() called?")
-        return "Error: subagent database context not available."
+        raise RuntimeError(
+            "No session factory available for subagent. "
+            "Ensure set_session_factory(...) is called in task setup."
+        )
 
     start_time = time.time()
 
@@ -246,51 +259,24 @@ async def _run_subagent(
     """
     Run a subagent graph and collect the final text output.
     """
-    collected_content: list[str] = []
-    saw_streaming_chunk = False
-
-    async for chunk in graph.astream(
+    state = await graph.ainvoke(
         {"messages": [HumanMessage(content=task)]},
-        stream_mode=["updates", "messages"],
         config={"recursion_limit": 30},
-    ):
-        mode, data = chunk
+    )
 
-        if mode == "messages":
-            msg_chunk, _metadata = data
-            # Collect streaming deltas when available, but also support providers
-            # that emit a single non-streaming AIMessage.
-            if isinstance(msg_chunk, AIMessageChunk):
-                if msg_chunk.tool_calls or msg_chunk.tool_call_chunks:
-                    continue
-                token_text = _extract_token_text(msg_chunk)
-                if token_text:
-                    saw_streaming_chunk = True
-                    collected_content.append(token_text)
-                continue
+    messages: list[Any]
+    if isinstance(state, dict):
+        raw_messages = state.get("messages", [])
+        messages = list(raw_messages) if isinstance(raw_messages, list) else []
+    else:
+        raw_messages = getattr(state, "messages", [])
+        messages = list(raw_messages) if isinstance(raw_messages, list) else []
 
-            if type(msg_chunk) is AIMessage:
-                if getattr(msg_chunk, "tool_calls", None):
-                    continue
-                token_text = _extract_token_text(msg_chunk)
-                if token_text and not saw_streaming_chunk:
-                    collected_content.append(token_text)
+    # Walk backwards to find the latest final assistant message.
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage) and not getattr(msg, "tool_calls", None):
+            return extract_text_from_content(msg.content)
 
-    return "".join(collected_content)
-
-
-def _extract_token_text(msg_chunk: Any) -> str:
-    """Extract text content from a LangGraph message chunk."""
-    if hasattr(msg_chunk, "content"):
-        content = msg_chunk.content
-        if isinstance(content, str):
-            return content
-        if isinstance(content, list):
-            parts: list[str] = []
-            for item in content:
-                if isinstance(item, dict) and item.get("type") == "text":
-                    parts.append(str(item.get("text", "")))
-            return "".join(parts)
     return ""
 
 
