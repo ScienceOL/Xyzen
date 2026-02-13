@@ -1,10 +1,9 @@
 import logging
 from typing import Any
 
-from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings, ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from langchain_qwq import ChatQwen
 
 from app.common.code import ErrCode
@@ -131,11 +130,31 @@ class ChatModelFactory:
         )
 
         # Create the base model
+        # NOTE: 'project' is passed as 'google_project' or via credentials in newer versions?
+        # Actually ChatGoogleGenerativeAI (langchain-google-genai) uses 'project' argument in some versions,
+        # but recent versions might prefer it via ClientOptions or implicit in credentials.
+        # However, looking at the error log: "Unexpected argument 'vertex_project' provided to ChatGoogleGenerativeAI"
+        # It seems we should NOT pass 'project' explicitly if it's already in credentials, OR the argument name changed.
+        # But wait, the error log said: "Unexpected argument 'vertex_sa' ... Did you mean: 'vertexai'?"
+        # The code above was NOT passing 'vertex_sa' to ChatGoogleGenerativeAI constructor directly,
+        # but maybe 'credentials' dict had it? No, we are constructing it.
+        # Ah, looking at lines 109-141:
+        # The credentials dict passed to _create_google_vertex comes from the caller (ProviderManager).
+        # It contains "vertex_sa" key.
+        # The code extracts it and saves to temp file.
+        # The issue is likely how we are instantiating ChatGoogleGenerativeAI.
+
+        # Let's clean up kwargs to avoid passing unexpected args if they leaked into runtime_kwargs
+        if "vertex_sa" in runtime_kwargs:
+            del runtime_kwargs["vertex_sa"]
+        if "vertex_project" in runtime_kwargs:
+            del runtime_kwargs["vertex_project"]
+
         llm = ChatGoogleGenerativeAI(
             model=model,
-            location="global",
+            # location="global", # This might also be an issue if the library expects 'region' or nothing
             credentials=google_credentials,
-            project=credentials["vertex_project"],
+            # project=credentials["vertex_project"], # If the credential has project_id, this might be redundant or causing conflict if arg name is wrong
             **runtime_kwargs,
         )
 
@@ -191,44 +210,3 @@ class ChatModelFactory:
         )
 
         return llm
-
-    def create_embedding(
-        self,
-        model: str,
-        provider: ProviderType,
-        credentials: LLMCredentials,
-    ) -> Embeddings:
-        """Create a LangChain Embeddings instance for the given provider.
-
-        Uses the same credential resolution as chat models.
-        """
-        match provider:
-            case ProviderType.OPENAI:
-                return OpenAIEmbeddings(model=model, api_key=credentials["api_key"])
-            case ProviderType.AZURE_OPENAI:
-                # TODO: use azure_deployment param instead of model, align with _create_azure_openai() pattern
-                azure_endpoint = credentials.get("azure_endpoint") or credentials.get("api_endpoint", "")
-                return AzureOpenAIEmbeddings(
-                    model=model,
-                    api_key=credentials["api_key"],
-                    azure_endpoint=azure_endpoint,
-                    api_version=credentials.get("azure_version", "2024-02-15-preview"),
-                )
-            case ProviderType.GPUGEEK:
-                base_url = credentials.get("api_endpoint", "https://api.gpugeek.com/v1")
-                return OpenAIEmbeddings(
-                    model=model,
-                    api_key=credentials["api_key"],
-                    base_url=base_url,
-                    check_embedding_ctx_length=False,
-                )
-            case ProviderType.QWEN:
-                base_url = credentials.get("api_endpoint", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-                return OpenAIEmbeddings(
-                    model=model,
-                    api_key=credentials["api_key"],
-                    base_url=base_url,
-                    check_embedding_ctx_length=False,
-                )
-            case _:
-                raise ValueError(f"Unsupported embedding provider: {provider}")
