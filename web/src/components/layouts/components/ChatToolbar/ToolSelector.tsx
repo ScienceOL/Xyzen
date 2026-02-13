@@ -12,12 +12,14 @@ import {
   isLiteratureSearchEnabled,
   isMemoryEnabled,
   isSandboxEnabled,
+  isSubagentEnabled,
   isWebSearchEnabled,
   updateImageEnabled,
   updateKnowledgeEnabled,
   updateLiteratureSearchEnabled,
   updateMemoryEnabled,
   updateSandboxEnabled,
+  updateSubagentEnabled,
   updateWebSearchEnabled,
 } from "@/core/agent/toolConfig";
 import { cn } from "@/lib/utils";
@@ -36,6 +38,7 @@ import {
   LightBulbIcon,
   LockClosedIcon,
   PhotoIcon,
+  UserGroupIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
@@ -102,6 +105,7 @@ export function ToolSelector({
   const literatureSearchEnabled = isLiteratureSearchEnabled(agent);
   const memoryEnabled = isMemoryEnabled(agent);
   const sandboxEnabled = isSandboxEnabled(agent);
+  const subagentEnabled = isSubagentEnabled(agent);
 
   const sandboxLocked = useMemo(
     () => isToolLocked("sandbox", userPlan),
@@ -119,6 +123,7 @@ export function ToolSelector({
     literatureSearchEnabled,
     memoryEnabled,
     sandboxEnabled,
+    subagentEnabled,
   ].filter(Boolean).length;
 
   // Load knowledge sets when picker is opened
@@ -191,6 +196,12 @@ export function ToolSelector({
   const handleToggleSandbox = async () => {
     if (!agent) return;
     const newGraphConfig = updateSandboxEnabled(agent, !sandboxEnabled);
+    await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+  };
+
+  const handleToggleSubagent = async () => {
+    if (!agent) return;
+    const newGraphConfig = updateSubagentEnabled(agent, !subagentEnabled);
     await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
   };
 
@@ -504,6 +515,39 @@ export function ToolSelector({
               </div>
             ) : (
               sandboxEnabled && <CheckIcon className="h-4 w-4 text-rose-500" />
+            )}
+          </button>
+
+          {/* Subagent */}
+          <button
+            onClick={handleToggleSubagent}
+            className={cn(
+              "w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors",
+              "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+              subagentEnabled && "bg-indigo-50 dark:bg-indigo-900/20",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <UserGroupIcon
+                className={cn(
+                  "h-4 w-4",
+                  subagentEnabled ? "text-indigo-500" : "text-neutral-400",
+                )}
+              />
+              <div className="text-left">
+                <div className="text-sm font-medium">
+                  {t("app.toolbar.subagent", "Subagent")}
+                </div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {t(
+                    "app.toolbar.subagentDesc",
+                    "Delegate tasks to other agents",
+                  )}
+                </div>
+              </div>
+            </div>
+            {subagentEnabled && (
+              <CheckIcon className="h-4 w-4 text-indigo-500" />
             )}
           </button>
         </div>

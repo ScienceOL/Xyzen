@@ -117,6 +117,23 @@ async def create_chat_agent(
         agent_type=agent_type_key,
     )
 
+    # Conditionally add subagent spawn tool
+    if _should_enable_subagent(agent_config):
+        from app.tools.builtin.subagent import create_subagent_tool_for_session
+
+        subagent_tools = await create_subagent_tool_for_session(
+            db=db,
+            user_id=user_id,
+            session_id=session_id,
+            topic_id=topic_id,
+            user_provider_manager=user_provider_manager,
+            provider_id=provider_id,
+            model_name=model_name,
+            current_depth=0,
+            store=store,
+        )
+        tools.extend(subagent_tools)
+
     # Create LLM factory
     async def create_llm(**kwargs: Any) -> "BaseChatModel":
         override_model = kwargs.get("model") or model_name
@@ -448,3 +465,46 @@ async def create_agent_from_builtin(
     except Exception as e:
         logger.error(f"Failed to build builtin agent '{builtin_key}': {e}")
         return None
+
+
+def _should_enable_subagent(agent_config: "Agent | None") -> bool:
+    """
+    Check if the subagent spawn tool should be enabled for this agent.
+
+    Uses the standard tool_filter mechanism on LLM nodes:
+    - tool_filter is null → all tools enabled (spawn_subagent included)
+    - tool_filter is explicit list → spawn_subagent must be in the list
+    """
+    if not agent_config:
+        return False
+
+    gc = agent_config.graph_config
+    if not gc or not isinstance(gc, dict):
+        return False
+
+    # Find the first LLM node's tool_filter
+    graph = gc.get("graph")
+    if not isinstance(graph, dict):
+        return False
+
+    nodes = graph.get("nodes")
+    if not isinstance(nodes, list):
+        return False
+
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        if node.get("kind") == "llm":
+            config = node.get("config")
+            if not isinstance(config, dict):
+                continue
+            tool_filter = config.get("tool_filter")
+            # null means all tools enabled
+            if tool_filter is None:
+                return True
+            # explicit list — check for spawn_subagent
+            if isinstance(tool_filter, list):
+                return "spawn_subagent" in tool_filter
+            return False
+
+    return False

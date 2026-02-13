@@ -32,6 +32,7 @@ export const BUILTIN_TOOLS = {
   SANDBOX_GLOB: "sandbox_glob",
   SANDBOX_GREP: "sandbox_grep",
   SANDBOX_EXPORT: "sandbox_export",
+  SPAWN_SUBAGENT: "spawn_subagent",
 } as const;
 
 // Web search tools as a group (search + fetch always together)
@@ -79,6 +80,7 @@ export const ALL_BUILTIN_TOOL_IDS = [
   ...MEMORY_TOOLS,
   ...SANDBOX_TOOLS,
   BUILTIN_TOOLS.LITERATURE_SEARCH,
+  BUILTIN_TOOLS.SPAWN_SUBAGENT,
 ];
 
 // v3 GraphConfig shape used for reading/writing tool_filter on LLM nodes
@@ -435,4 +437,21 @@ export function updateSandboxEnabled(
   }
 
   return withLlmToolFilter(currentConfig, newFilter);
+}
+
+/**
+ * Check if subagent tool is enabled
+ */
+export function isSubagentEnabled(agent: Agent | null): boolean {
+  return isToolEnabled(agent, BUILTIN_TOOLS.SPAWN_SUBAGENT);
+}
+
+/**
+ * Enable/disable subagent tool
+ */
+export function updateSubagentEnabled(
+  agent: Agent,
+  enabled: boolean,
+): Record<string, unknown> {
+  return updateToolFilter(agent, BUILTIN_TOOLS.SPAWN_SUBAGENT, enabled);
 }
