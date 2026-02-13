@@ -19,6 +19,7 @@ interface MessageEvent {
     | "tool_call_request"
     | "tool_call_response"
     | "insufficient_balance"
+    | "parallel_chat_limit"
     | "error"
     | "topic_updated"
     | "thinking_start"
@@ -47,36 +48,93 @@ interface MessageEvent {
 }
 
 type ServiceCallback<T> = (payload: T) => void;
-type MessageEventCallback = (event: MessageEvent) => void;
+export type MessageEventCallback = (event: MessageEvent) => void;
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
+const MAX_RETRIES = 5;
+
+/** Per-topic connection state. */
+interface ConnectionState {
+  ws: WebSocket;
+  sessionId: string;
+  topicId: string;
+  onMessage: ServiceCallback<Message>;
+  onStatusChange: ServiceCallback<StatusChangePayload>;
+  onMessageEvent: MessageEventCallback | null;
+  onReconnect: (() => void) | null;
+  retryCount: number;
+  retryTimeout: ReturnType<typeof setTimeout> | null;
+  heartbeatWatchdogId: ReturnType<typeof setTimeout> | null;
+  wasDisconnected: boolean;
+}
 
 class XyzenService {
-  private ws: WebSocket | null = null;
-  private onMessageCallback: ServiceCallback<Message> | null = null;
-  private onMessageEventCallback: MessageEventCallback | null = null;
-  private onStatusChangeCallback: ServiceCallback<StatusChangePayload> | null =
-    null;
-  private onReconnectCallback: (() => void) | null = null;
+  /** All active WS connections, keyed by topicId. */
+  private connections = new Map<string, ConnectionState>();
+
+  /** The topic whose connection is used for sending messages. */
+  private primaryTopicId: string | null = null;
+
   private backendUrl = "";
-
-  // Retry logic state
-  private retryCount = 0;
-  private maxRetries = 5;
-  private retryTimeout: NodeJS.Timeout | null = null;
-  private lastSessionId: string | null = null;
-  private lastTopicId: string | null = null;
-
-  // Reconnect detection
-  private wasDisconnected = false;
-
-  // Heartbeat watchdog
-  private heartbeatWatchdogId: ReturnType<typeof setTimeout> | null = null;
 
   public setBackendUrl(url: string) {
     this.backendUrl = url;
   }
 
+  // ---------------------------------------------------------------------------
+  // Public query helpers
+  // ---------------------------------------------------------------------------
+
+  /** Check if an open WS exists for the given topic. */
+  public hasConnection(topicId: string): boolean {
+    const conn = this.connections.get(topicId);
+    return !!conn && conn.ws.readyState === WebSocket.OPEN;
+  }
+
+  /** Get the current primary topicId. */
+  public getPrimaryTopicId(): string | null {
+    return this.primaryTopicId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Connect / set primary
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Promote an existing connection to primary (used when switching back to a
+   * topic that already has a live WS). Updates callbacks so the chatSlice
+   * event handler for the new connectToChannel closure is used.
+   */
+  public setPrimary(
+    topicId: string,
+    onMessage: ServiceCallback<Message>,
+    onStatusChange: ServiceCallback<StatusChangePayload>,
+    onMessageEvent?: MessageEventCallback,
+    onReconnect?: () => void,
+  ): boolean {
+    const conn = this.connections.get(topicId);
+    if (!conn || conn.ws.readyState !== WebSocket.OPEN) return false;
+
+    this.primaryTopicId = topicId;
+
+    // Update callbacks to the new closure's handlers
+    conn.onMessage = onMessage;
+    conn.onStatusChange = onStatusChange;
+    conn.onMessageEvent = onMessageEvent || null;
+    conn.onReconnect = onReconnect || null;
+
+    // Re-wire ws.onmessage to use updated callbacks
+    conn.ws.onmessage = (event) => {
+      this.handleWsMessage(conn, event);
+    };
+
+    return true;
+  }
+
+  /**
+   * Open a new WS for the given session/topic. If a connection already exists
+   * for this topic it is closed first.
+   */
   public connect(
     sessionId: string,
     topicId: string,
@@ -85,255 +143,312 @@ class XyzenService {
     onMessageEvent?: MessageEventCallback,
     onReconnect?: () => void,
   ) {
-    // If a connection is already open for the same session/topic, do nothing
-    if (
-      this.ws &&
-      this.ws.readyState === WebSocket.OPEN &&
-      this.lastSessionId === sessionId &&
-      this.lastTopicId === topicId
-    ) {
-      console.log("WebSocket is already connected.");
-      return;
-    }
+    // Close any existing connection for this topic first
+    this.closeConnection(topicId);
 
-    // Reset retry state if this is a new connection request (different session/topic)
-    // or if we are forcing a new connection (e.g. manual reconnect)
-    if (this.lastSessionId !== sessionId || this.lastTopicId !== topicId) {
-      this.retryCount = 0;
-    }
+    this.primaryTopicId = topicId;
 
-    // Clear any pending retry timer
-    if (this.retryTimeout) {
-      clearTimeout(this.retryTimeout);
-      this.retryTimeout = null;
-    }
-
-    // Store context
-    this.lastSessionId = sessionId;
-    this.lastTopicId = topicId;
-    this.onMessageCallback = onMessage;
-    this.onMessageEventCallback = onMessageEvent || null;
-    this.onStatusChangeCallback = onStatusChange;
-    this.onReconnectCallback = onReconnect || null;
-
-    // Get authentication token
     const token = authService.getToken();
     if (!token) {
       console.error("XyzenService: No authentication token available");
-      this.onStatusChangeCallback?.({
-        connected: false,
-        error: "Authentication required",
-      });
+      onStatusChange({ connected: false, error: "Authentication required" });
       return;
     }
 
-    // Close existing socket if any (to be safe)
-    if (this.ws) {
-      // Remove listeners to prevent triggering old handlers
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      this.ws.close();
-    }
-
-    // Build WebSocket URL with token as query parameter
     const wsUrl = `${this.backendUrl.replace(
       /^http(s?):\/\//,
       "ws$1://",
     )}/xyzen/ws/v1/chat/sessions/${sessionId}/topics/${topicId}?token=${encodeURIComponent(token)}`;
 
-    this.ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl);
 
-    this.ws.onopen = () => {
-      console.log("XyzenService: WebSocket connected");
-      const wasReconnect = this.wasDisconnected;
-      this.wasDisconnected = false;
-      this.retryCount = 0;
-      this.resetHeartbeatWatchdog();
-      this.onStatusChangeCallback?.({ connected: true, error: null });
-      if (wasReconnect && this.onReconnectCallback) {
-        this.onReconnectCallback();
+    const conn: ConnectionState = {
+      ws,
+      sessionId,
+      topicId,
+      onMessage,
+      onStatusChange,
+      onMessageEvent: onMessageEvent || null,
+      onReconnect: onReconnect || null,
+      retryCount: 0,
+      retryTimeout: null,
+      heartbeatWatchdogId: null,
+      wasDisconnected: false,
+    };
+
+    this.connections.set(topicId, conn);
+
+    ws.onopen = () => {
+      console.log(`XyzenService: WebSocket connected [${topicId}]`);
+      const wasReconnect = conn.wasDisconnected;
+      conn.wasDisconnected = false;
+      conn.retryCount = 0;
+      this.resetHeartbeat(conn);
+      conn.onStatusChange({ connected: true, error: null });
+      if (wasReconnect && conn.onReconnect) {
+        conn.onReconnect();
       }
     };
 
-    this.ws.onmessage = (event) => {
-      this.resetHeartbeatWatchdog();
-
-      try {
-        const eventData = JSON.parse(event.data);
-
-        // Handle server ping — reply with pong, don't propagate
-        if (eventData.type === "ping") {
-          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ type: "pong" }));
-          }
-          return;
-        }
-
-        // Handle different message types
-        if (eventData.type && this.onMessageEventCallback) {
-          this.onMessageEventCallback(eventData);
-        } else {
-          // Legacy support - assume it's a direct message
-          this.onMessageCallback?.(eventData);
-        }
-      } catch (error) {
-        console.error("XyzenService: Failed to parse message data:", error);
-      }
+    ws.onmessage = (event) => {
+      this.handleWsMessage(conn, event);
     };
 
-    this.ws.onclose = (event) => {
-      this.clearHeartbeatWatchdog();
+    ws.onclose = (event) => {
+      this.clearHeartbeat(conn);
       console.log(
-        `XyzenService: WebSocket disconnected (code: ${event.code}, reason: ${event.reason})`,
+        `XyzenService: WebSocket disconnected [${topicId}] (code: ${event.code}, reason: ${event.reason})`,
       );
-
-      // 4029 = parallel chat limit reached — do not retry
-      if (event.code === 4029) {
-        this.onStatusChangeCallback?.({
-          connected: false,
-          error:
-            event.reason ||
-            "Parallel chat limit reached. Please close an existing chat.",
-        });
-        return;
-      }
-
-      this.handleDisconnect(event.reason);
+      this.handleDisconnect(conn, event.reason);
     };
 
-    this.ws.onerror = (error) => {
-      console.error("XyzenService: WebSocket error:", error);
-      // We rely on onclose to handle the actual disconnect/retry logic
-      // to avoid double handling.
+    ws.onerror = (error) => {
+      console.error(`XyzenService: WebSocket error [${topicId}]:`, error);
     };
   }
 
-  private resetHeartbeatWatchdog() {
-    this.clearHeartbeatWatchdog();
-    this.heartbeatWatchdogId = setTimeout(() => {
-      console.warn("XyzenService: Heartbeat timeout, closing socket");
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.close(4001, "Heartbeat timeout");
+  // ---------------------------------------------------------------------------
+  // Close helpers
+  // ---------------------------------------------------------------------------
+
+  /** Close a single topic's connection. */
+  public closeConnection(topicId: string): void {
+    const conn = this.connections.get(topicId);
+    if (!conn) return;
+
+    this.clearHeartbeat(conn);
+    if (conn.retryTimeout) {
+      clearTimeout(conn.retryTimeout);
+      conn.retryTimeout = null;
+    }
+    conn.ws.onclose = null;
+    conn.ws.onerror = null;
+    conn.ws.onopen = null;
+    conn.ws.onmessage = null;
+    conn.ws.close();
+    this.connections.delete(topicId);
+
+    if (this.primaryTopicId === topicId) {
+      this.primaryTopicId = null;
+    }
+  }
+
+  /** Close ALL connections (used on logout / disconnectFromChannel). */
+  public disconnect(): void {
+    for (const [topicId] of this.connections) {
+      this.closeConnection(topicId);
+    }
+    this.primaryTopicId = null;
+  }
+
+  /** Return all currently open topicIds. */
+  public getOpenTopicIds(): string[] {
+    const ids: string[] = [];
+    for (const [topicId, conn] of this.connections) {
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        ids.push(topicId);
+      }
+    }
+    return ids;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Send helpers — operate on the primary connection
+  // ---------------------------------------------------------------------------
+
+  public sendMessage(message: string): boolean {
+    return this.sendOnPrimary(JSON.stringify({ message }));
+  }
+
+  public sendStructuredMessage(data: Record<string, unknown>): boolean {
+    return this.sendOnPrimary(JSON.stringify(data));
+  }
+
+  public sendAbort(): boolean {
+    const ok = this.sendOnPrimary(JSON.stringify({ type: "abort" }));
+    if (ok) console.log("XyzenService: Abort signal sent");
+    return ok;
+  }
+
+  private sendOnPrimary(payload: string): boolean {
+    if (!this.primaryTopicId) {
+      console.error("XyzenService: No primary connection.");
+      return false;
+    }
+    const conn = this.connections.get(this.primaryTopicId);
+    if (!conn || conn.ws.readyState !== WebSocket.OPEN) {
+      console.error("XyzenService: Primary WebSocket is not connected.");
+      return false;
+    }
+    try {
+      conn.ws.send(payload);
+      return true;
+    } catch (e) {
+      console.error("XyzenService: Failed to send:", e);
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal: message handling
+  // ---------------------------------------------------------------------------
+
+  private handleWsMessage(
+    conn: ConnectionState,
+    event: globalThis.MessageEvent,
+  ): void {
+    this.resetHeartbeat(conn);
+
+    try {
+      const eventData = JSON.parse(event.data as string);
+
+      // Handle server ping — reply with pong, don't propagate
+      if (eventData.type === "ping") {
+        if (conn.ws.readyState === WebSocket.OPEN) {
+          conn.ws.send(JSON.stringify({ type: "pong" }));
+        }
+        return;
+      }
+
+      if (eventData.type && conn.onMessageEvent) {
+        conn.onMessageEvent(eventData);
+      } else {
+        conn.onMessage?.(eventData);
+      }
+    } catch (error) {
+      console.error(
+        `XyzenService: Failed to parse message data [${conn.topicId}]:`,
+        error,
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal: heartbeat
+  // ---------------------------------------------------------------------------
+
+  private resetHeartbeat(conn: ConnectionState): void {
+    this.clearHeartbeat(conn);
+    conn.heartbeatWatchdogId = setTimeout(() => {
+      console.warn(
+        `XyzenService: Heartbeat timeout [${conn.topicId}], closing socket`,
+      );
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.close(4001, "Heartbeat timeout");
       }
     }, HEARTBEAT_TIMEOUT_MS);
   }
 
-  private clearHeartbeatWatchdog() {
-    if (this.heartbeatWatchdogId) {
-      clearTimeout(this.heartbeatWatchdogId);
-      this.heartbeatWatchdogId = null;
+  private clearHeartbeat(conn: ConnectionState): void {
+    if (conn.heartbeatWatchdogId) {
+      clearTimeout(conn.heartbeatWatchdogId);
+      conn.heartbeatWatchdogId = null;
     }
   }
 
-  private handleDisconnect(reason?: string) {
-    this.wasDisconnected = true;
+  // ---------------------------------------------------------------------------
+  // Internal: disconnect & retry
+  // ---------------------------------------------------------------------------
 
-    // If we haven't reached max retries, try to reconnect
-    if (this.retryCount < this.maxRetries) {
-      const delay = Math.min(1000 * Math.pow(2, this.retryCount), 10000);
-      this.retryCount++;
+  private handleDisconnect(conn: ConnectionState, reason?: string): void {
+    conn.wasDisconnected = true;
+
+    if (conn.retryCount < MAX_RETRIES) {
+      const delay = Math.min(1000 * Math.pow(2, conn.retryCount), 10000);
+      conn.retryCount++;
       console.log(
-        `XyzenService: Reconnecting in ${delay}ms... (Attempt ${this.retryCount}/${this.maxRetries})`,
+        `XyzenService: Reconnecting [${conn.topicId}] in ${delay}ms... (Attempt ${conn.retryCount}/${MAX_RETRIES})`,
       );
 
-      this.retryTimeout = setTimeout(() => {
-        // Ensure we still have the necessary context to reconnect
-        if (
-          this.lastSessionId &&
-          this.lastTopicId &&
-          this.onMessageCallback &&
-          this.onStatusChangeCallback
-        ) {
+      conn.retryTimeout = setTimeout(() => {
+        // Remove stale entry — reconnect will create a new one
+        this.connections.delete(conn.topicId);
+        const wasPrimary = this.primaryTopicId === conn.topicId;
+
+        // Re-create the WebSocket. connect() will set primary again if we were primary.
+        if (!wasPrimary) {
+          // Non-primary reconnect: use internal helper to avoid changing primaryTopicId
+          this.connectNonPrimary(conn);
+        } else {
           this.connect(
-            this.lastSessionId,
-            this.lastTopicId,
-            this.onMessageCallback,
-            this.onStatusChangeCallback,
-            this.onMessageEventCallback || undefined,
-            this.onReconnectCallback || undefined,
+            conn.sessionId,
+            conn.topicId,
+            conn.onMessage,
+            conn.onStatusChange,
+            conn.onMessageEvent || undefined,
+            conn.onReconnect || undefined,
           );
         }
       }, delay);
     } else {
-      // Max retries reached, notify failure
-      console.error("XyzenService: Max reconnect attempts reached. Giving up.");
-      this.onStatusChangeCallback?.({
+      console.error(
+        `XyzenService: Max reconnect attempts reached [${conn.topicId}]. Giving up.`,
+      );
+      conn.onStatusChange({
         connected: false,
         error: reason || "Connection closed. Please refresh the page.",
       });
-    }
-  }
-
-  public sendMessage(message: string): boolean {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        this.ws.send(JSON.stringify({ message }));
-        return true;
-      } catch (e) {
-        console.error("XyzenService: Failed to send message:", e);
-        return false;
+      this.connections.delete(conn.topicId);
+      if (this.primaryTopicId === conn.topicId) {
+        this.primaryTopicId = null;
       }
     }
-    console.error("XyzenService: WebSocket is not connected.");
-    return false;
   }
 
-  public sendStructuredMessage(data: Record<string, unknown>): boolean {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        this.ws.send(JSON.stringify(data));
-        return true;
-      } catch (e) {
-        console.error("XyzenService: Failed to send structured message:", e);
-        return false;
-      }
-    }
-    console.error("XyzenService: WebSocket is not connected.");
-    return false;
-  }
+  /**
+   * Reconnect a non-primary connection without altering primaryTopicId.
+   */
+  private connectNonPrimary(oldConn: ConnectionState): void {
+    const {
+      sessionId,
+      topicId,
+      onMessage,
+      onStatusChange,
+      onMessageEvent,
+      onReconnect,
+    } = oldConn;
 
-  public sendAbort(): boolean {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        this.ws.send(JSON.stringify({ type: "abort" }));
-        console.log("XyzenService: Abort signal sent");
-        return true;
-      } catch (e) {
-        console.error("XyzenService: Failed to send abort:", e);
-        return false;
-      }
-    }
-    console.error(
-      "XyzenService: WebSocket is not connected, cannot send abort.",
-    );
-    return false;
-  }
+    const token = authService.getToken();
+    if (!token) return;
 
-  public disconnect() {
-    // Clear heartbeat watchdog
-    this.clearHeartbeatWatchdog();
+    const wsUrl = `${this.backendUrl.replace(
+      /^http(s?):\/\//,
+      "ws$1://",
+    )}/xyzen/ws/v1/chat/sessions/${sessionId}/topics/${topicId}?token=${encodeURIComponent(token)}`;
 
-    // Clear retry timer
-    if (this.retryTimeout) {
-      clearTimeout(this.retryTimeout);
-      this.retryTimeout = null;
-    }
+    const ws = new WebSocket(wsUrl);
+    const conn: ConnectionState = {
+      ws,
+      sessionId,
+      topicId,
+      onMessage,
+      onStatusChange,
+      onMessageEvent,
+      onReconnect,
+      retryCount: oldConn.retryCount,
+      retryTimeout: null,
+      heartbeatWatchdogId: null,
+      wasDisconnected: true,
+    };
 
-    // Reset state
-    this.retryCount = 0;
-    this.wasDisconnected = false;
-    this.lastSessionId = null;
-    this.lastTopicId = null;
+    this.connections.set(topicId, conn);
 
-    // Close socket
-    if (this.ws) {
-      // Prevent automatic retry logic from firing
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      this.ws.onopen = null;
-      this.ws.close();
-      this.ws = null;
-    }
+    ws.onopen = () => {
+      console.log(`XyzenService: WebSocket reconnected [${topicId}]`);
+      conn.wasDisconnected = false;
+      conn.retryCount = 0;
+      this.resetHeartbeat(conn);
+      conn.onStatusChange({ connected: true, error: null });
+      conn.onReconnect?.();
+    };
+    ws.onmessage = (event) => this.handleWsMessage(conn, event);
+    ws.onclose = (event) => {
+      this.clearHeartbeat(conn);
+      this.handleDisconnect(conn, event.reason);
+    };
+    ws.onerror = (error) => {
+      console.error(`XyzenService: WebSocket error [${topicId}]:`, error);
+    };
   }
 }
 

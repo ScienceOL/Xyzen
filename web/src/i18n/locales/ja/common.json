@@ -5,5 +5,10 @@
   "delete": "削除",
   "recommended": "おすすめ",
   "close": "閉じる",
-  "dismiss": "閉じる"
+  "dismiss": "閉じる",
+  "back": "戻る",
+  "next": "次へ",
+  "name": "名前",
+  "confirm": "確認",
+  "requirements": "要件"
 }

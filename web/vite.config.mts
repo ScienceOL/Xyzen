@@ -12,13 +12,17 @@ export default defineConfig(() => {
   const isLibBuild = process.env.BUILD_MODE === "library";
   // const isIframeBuild = process.env.BUILD_MODE === "iframe";
 
-  // Build version info
+  // Build version info — prefer XYZEN_VERSION env var (set by CI) over package.json
   let version = "0.0.0";
-  try {
-    const pkg = JSON.parse(fs.readFileSync("package.json", "utf-8"));
-    version = pkg.version;
-  } catch {
-    /* ignore */
+  if (process.env.XYZEN_VERSION) {
+    version = process.env.XYZEN_VERSION;
+  } else {
+    try {
+      const pkg = JSON.parse(fs.readFileSync("package.json", "utf-8"));
+      version = pkg.version;
+    } catch {
+      /* ignore */
+    }
   }
 
   let commit = "unknown";

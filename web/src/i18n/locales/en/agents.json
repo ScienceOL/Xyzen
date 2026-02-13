@@ -61,7 +61,8 @@
     "nameRequired": "Agent name cannot be empty",
     "templateRequired": "Please select a system agent",
     "createFailed": "Failed to create agent, please check the console for more information.",
-    "updateFailed": "Failed to save, please try again later."
+    "updateFailed": "Failed to save, please try again later.",
+    "nameDuplicate": "An agent with this name already exists. Please choose a different name."
   },
   "sessionSettings": {
     "title": "{{name}} Settings",

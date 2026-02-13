@@ -1,10 +1,6 @@
 name: Build and Push ghcr.io Images
 
 on:
-  workflow_run:
-    workflows: ['Release']
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       version:
@@ -24,9 +20,7 @@ jobs:
   get-release-info:
     name: Get Release Info
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    if: github.event_name == 'workflow_dispatch'
     outputs:
       should_build: ${{ steps.info.outputs.should_build }}
       version: ${{ steps.info.outputs.version }}

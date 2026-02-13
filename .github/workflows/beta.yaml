@@ -5,6 +5,14 @@ on:
     branches:
       - test
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: scienceol
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # Setup: Build variables
   setup:
@@ -36,11 +44,18 @@ jobs:
           echo "commit_sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "commit_date=$(git log -1 --pretty=format:'%cd' --date=format:'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
 
-  # Parallel build: Service image
+  # Build service image per-platform (amd64 + arm64 in parallel)
   build-service:
-    name: Build Service
-    runs-on: ubuntu-latest
+    name: Build Service (${{ matrix.platform }})
     needs: setup
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     env:
       BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
     steps:
@@ -50,31 +65,59 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to registry.sciol.ac.cn
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: registry.sciol.ac.cn
-          username: ${{ secrets.SCIENCEOL_REGISTRY_USERNAME }}
-          password: ${{ secrets.SCIENCEOL_REGISTRY_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
 
-      - name: Build and push Service image
+      - name: Prepare platform pair
+        id: platform
+        run: echo "pair=${platform//\//-}" >> $GITHUB_OUTPUT
+        env:
+          platform: ${{ matrix.platform }}
+
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./service
-          push: true
+          platforms: ${{ matrix.platform }}
           build-args: |
             XYZEN_VERSION=${{ env.BETA_VERSION }}
             XYZEN_COMMIT_SHA=${{ github.sha }}
             XYZEN_BUILD_TIME=${{ needs.setup.outputs.commit_date }}
-          tags: |
-            registry.sciol.ac.cn/sciol/xyzen-service:beta
-            registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}
+          outputs: type=image,"name=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:buildcache-${{ steps.platform.outputs.pair }}
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:buildcache-${{ steps.platform.outputs.pair }},mode=max
 
-  # Parallel build: Web image
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-digest-${{ steps.platform.outputs.pair }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Build web image per-platform (amd64 + arm64 in parallel)
   build-web:
-    name: Build Web
-    runs-on: ubuntu-latest
+    name: Build Web (${{ matrix.platform }})
     needs: setup
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     env:
       BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
     steps:
@@ -84,27 +127,118 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to registry.sciol.ac.cn
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: registry.sciol.ac.cn
-          username: ${{ secrets.SCIENCEOL_REGISTRY_USERNAME }}
-          password: ${{ secrets.SCIENCEOL_REGISTRY_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
 
-      - name: Build and push Web image
+      - name: Prepare platform pair
+        id: platform
+        run: echo "pair=${platform//\//-}" >> $GITHUB_OUTPUT
+        env:
+          platform: ${{ matrix.platform }}
+
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./web
-          push: true
-          tags: |
-            registry.sciol.ac.cn/sciol/xyzen-web:beta
-            registry.sciol.ac.cn/sciol/xyzen-web:${{ env.BETA_VERSION }}
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            XYZEN_VERSION=${{ env.BETA_VERSION }}
+          outputs: type=image,"name=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:buildcache-${{ steps.platform.outputs.pair }}
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:buildcache-${{ steps.platform.outputs.pair }},mode=max
 
-  # Deploy: Wait for all builds to complete
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-digest-${{ steps.platform.outputs.pair }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Merge service multi-arch manifest
+  merge-service:
+    name: Merge Service Manifest
+    runs-on: ubuntu-latest
+    needs: [setup, build-service]
+    env:
+      BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: service-digest-*
+          merge-multiple: true
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            --annotation "index:org.opencontainers.image.description=AI Research Interface" \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:beta \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }} \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service@sha256:%s ' *)
+
+  # Merge web multi-arch manifest
+  merge-web:
+    name: Merge Web Manifest
+    runs-on: ubuntu-latest
+    needs: [setup, build-web]
+    env:
+      BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: web-digest-*
+          merge-multiple: true
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            --annotation "index:org.opencontainers.image.description=AI Research Interface" \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:beta \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.BETA_VERSION }} \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web@sha256:%s ' *)
+
+  # Deploy: Wait for all manifests to be ready
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: [setup, build-service, build-web]
+    needs: [setup, merge-service, merge-web]
     env:
       BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
     steps:
@@ -117,19 +251,19 @@ jobs:
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            set image deployment/xyzen -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}
+            set image deployment/xyzen -n bohrium *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }}
 
           kubectl \
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            set image deployment/xyzen-web -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-web:${{ env.BETA_VERSION }}
+            set image deployment/xyzen-web -n bohrium *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.BETA_VERSION }}
 
           kubectl \
             --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
             --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
             --certificate-authority=ca.crt \
-            set image deployment/xyzen-celery -n bohrium *=registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}
+            set image deployment/xyzen-celery -n bohrium *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }}
 
       - name: Deployment Summary
         run: |
@@ -137,14 +271,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Image |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Service | \`registry.sciol.ac.cn/sciol/xyzen-service:${{ env.BETA_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Web | \`registry.sciol.ac.cn/sciol/xyzen-web:${{ env.BETA_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.BETA_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
 
   # Notify: Send build result notification
   notify:
     name: Notify
     runs-on: ubuntu-latest
-    needs: [setup, build-service, build-web, deploy]
+    needs: [setup, merge-service, merge-web, deploy]
     if: always()
     steps:
       - name: Checkout
@@ -188,7 +322,7 @@ jobs:
           smtp_user: ${{ secrets.SMTP_USER }}
           smtp_pass: ${{ secrets.SMTP_PASS }}
           recipient: ${{ secrets.SMTP_RECEIVER }}
-          architecture: 'amd64'
+          architecture: 'amd64,arm64'
           pr_number: 'N/A'
           pr_title: 'Beta Deploy ${{ needs.setup.outputs.beta_version }}'
           pr_url: '${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}'
@@ -205,5 +339,5 @@ jobs:
           commit_sha: ${{ needs.setup.outputs.commit_sha }}
           commit_sha_short: ${{ needs.setup.outputs.commit_sha_short }}
           commit_date: ${{ needs.setup.outputs.commit_date }}
-          service_image: 'registry.sciol.ac.cn/sciol/xyzen-service:${{ needs.setup.outputs.beta_version }}'
-          web_image: 'registry.sciol.ac.cn/sciol/xyzen-web:${{ needs.setup.outputs.beta_version }}'
+          service_image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ needs.setup.outputs.beta_version }}'
+          web_image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ needs.setup.outputs.beta_version }}'

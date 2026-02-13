@@ -196,8 +196,8 @@ class AgentSnapshotRepository:
                 continue
 
             canonical = migration_result.config.model_dump(exclude_none=True)
-            config["graph_config"] = canonical
-            snapshot.configuration = config
+            # Reassign with a new dict so SQLAlchemy detects the JSON mutation
+            snapshot.configuration = {**config, "graph_config": canonical}
             self.db.add(snapshot)
             changed += 1
             migrated += 1

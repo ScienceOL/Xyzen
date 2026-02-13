@@ -25,8 +25,10 @@ COPY . .
 
 # Set build-time environment variables
 ARG VITE_XYZEN_BACKEND_URL
+ARG XYZEN_VERSION
 ENV NODE_ENV=production
 ENV VITE_XYZEN_BACKEND_URL=${VITE_XYZEN_BACKEND_URL}
+ENV XYZEN_VERSION=${XYZEN_VERSION}
 
 # Build the application
 # The build script in package.json is "rimraf site && tsc -b && vite build"
@@ -51,3 +53,4 @@ EXPOSE 32233
 CMD ["npx", "-y", "serve", "-s", ".", "-l", "32233"]
 
 LABEL org.opencontainers.image.source=https://github.com/scienceol/xyzen
+LABEL org.opencontainers.image.description="AI Research Interface"

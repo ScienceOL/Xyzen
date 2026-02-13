@@ -38,7 +38,7 @@ export const AboutSettings = () => {
           {/* Version mismatch indicator */}
           {needsRefresh && (
             <span
-              className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900"
+              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-1 ring-white dark:ring-neutral-900"
               title={t(
                 "settings.about.versionMismatch",
                 "New version available. Refresh to update.",
