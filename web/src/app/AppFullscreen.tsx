@@ -65,11 +65,13 @@ export function AppFullscreen({
         <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-black">
           {/* Main Content - Full screen canvas */}
           <main className="flex-1 overflow-hidden">
-            {activePanel === "chat" && (
-              <div className="h-full w-full">
-                <SpatialWorkspace />
-              </div>
-            )}
+            {/* SpatialWorkspace stays mounted to avoid ReactFlow re-init flash */}
+            <div
+              className="h-full w-full"
+              style={{ display: activePanel === "chat" ? "block" : "none" }}
+            >
+              <SpatialWorkspace />
+            </div>
 
             {activePanel === "knowledge" && (
               <div className="h-full w-full bg-white dark:bg-neutral-950">

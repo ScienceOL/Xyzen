@@ -52,6 +52,10 @@ export function useMobileSwipe({
     horizontal: false, // was it horizontal?
   });
 
+  // Tracks whether a CSS snap animation is in progress.
+  // Only when animating do we need to freeze the track on touchstart.
+  const animatingRef = useRef(false);
+
   const getWidth = useCallback(
     () => wrapperRef.current?.offsetWidth ?? window.innerWidth,
     [],
@@ -60,6 +64,7 @@ export function useMobileSwipe({
   const applyTransform = useCallback((px: number, animate: boolean) => {
     const el = trackRef.current;
     if (!el) return;
+    animatingRef.current = animate;
     el.style.transition = animate
       ? "transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)"
       : "none";
@@ -90,12 +95,14 @@ export function useMobileSwipe({
         };
         const handler = () => {
           el.removeEventListener("transitionend", handler);
+          animatingRef.current = false;
           fire();
         };
         el.addEventListener("transitionend", handler);
         // Safety fallback in case transitionend doesn't fire
         setTimeout(() => {
           el.removeEventListener("transitionend", handler);
+          animatingRef.current = false;
           fire();
         }, 500);
       }
@@ -114,6 +121,14 @@ export function useMobileSwipe({
     [pageCount, applyTransform, getWidth],
   );
 
+  // Keep latest values in refs so the touch-listener effect
+  // doesn't need them as dependencies (avoids re-registering listeners
+  // every time pageCount changes, which could interrupt gestures).
+  const snapToRef = useRef(snapTo);
+  snapToRef.current = snapTo;
+  const pageCountRef = useRef(pageCount);
+  pageCountRef.current = pageCount;
+
   // ---- Touch listeners (non-passive for preventDefault) ----
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -129,12 +144,18 @@ export function useMobileSwipe({
         locked: false,
         horizontal: false,
       };
-      // Freeze any running CSS transition so the finger takes over
-      const track = trackRef.current;
-      if (track) {
-        const mx = new DOMMatrix(getComputedStyle(track).transform);
-        track.style.transition = "none";
-        track.style.transform = `translate3d(${mx.m41}px,0,0)`;
+      // Only freeze the track when a CSS snap animation is in progress.
+      // Mutating transform on every touchstart prevents mobile browsers
+      // from synthesizing click events (they interpret the style change
+      // as the element moving and cancel the tap).
+      if (animatingRef.current) {
+        const track = trackRef.current;
+        if (track) {
+          const mx = new DOMMatrix(getComputedStyle(track).transform);
+          track.style.transition = "none";
+          track.style.transform = `translate3d(${mx.m41}px,0,0)`;
+          animatingRef.current = false;
+        }
       }
     };
 
@@ -168,7 +189,7 @@ export function useMobileSwipe({
       let offset = base + dx;
 
       // Rubber-band at boundaries
-      const min = -(pageCount - 1) * w;
+      const min = -(pageCountRef.current - 1) * w;
       if (offset > 0) {
         offset *= rubberBand;
       } else if (offset < min) {
@@ -193,7 +214,7 @@ export function useMobileSwipe({
       if (velocity > velocityThreshold || fraction > distanceThreshold) {
         target += dx < 0 ? 1 : -1;
       }
-      snapTo(target);
+      snapToRef.current(target);
     };
 
     wrapper.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -206,17 +227,18 @@ export function useMobileSwipe({
       wrapper.removeEventListener("touchend", onTouchEnd);
     };
   }, [
-    pageCount,
     velocityThreshold,
     distanceThreshold,
     rubberBand,
     getWidth,
     applyTransform,
-    snapTo,
   ]);
 
-  // Reposition after window resize
+  // Set initial inline transform on mount and reposition after window resize.
+  // The track MUST have an inline transform from the start so that
+  // will-change-transform compositing works correctly for hit-testing.
   useEffect(() => {
+    applyTransform(-pageRef.current * getWidth(), false);
     const onResize = () => applyTransform(-pageRef.current * getWidth(), false);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);

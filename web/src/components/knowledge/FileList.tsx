@@ -56,6 +56,8 @@ interface FileListProps {
 
 export interface FileListHandle {
   emptyTrash: () => Promise<void>;
+  /** Move items (files/folders) to a target folder (null = root). Used by breadcrumb drop. */
+  moveItems: (itemIds: string[], targetFolderId: string | null) => void;
 }
 
 const formatSize = (bytes: number) => {
@@ -211,13 +213,14 @@ export const FileList = React.memo(
               }),
             );
             setSelectedIds(new Set());
+            // Silent reload — loadFiles no longer shows loading spinner
+            // when existing data is present, so no flash occurs.
             loadFilesRef.current();
-            if (onRefresh) onRefresh();
           } catch (e) {
             console.error("Drop move failed", e);
           }
         },
-        [folderIds, onRefresh],
+        [folderIds],
       );
 
       // Drag start handler for flat list/grid items
@@ -459,6 +462,9 @@ export const FileList = React.memo(
       useImperativeHandle(
         ref,
         () => ({
+          moveItems: (itemIds: string[], targetFolderId: string | null) => {
+            handleDropOnFolder(itemIds, targetFolderId);
+          },
           emptyTrash: async () => {
             // Use refs to get the latest values (avoid stale closure issues)
             const currentFiles = filesRef.current;
@@ -522,7 +528,7 @@ export const FileList = React.memo(
             });
           },
         }),
-        [onFileCountChange, onRefresh, onStatsUpdate, t],
+        [handleDropOnFolder, onFileCountChange, onRefresh, onStatsUpdate, t],
       );
 
       // Load knowledge sets for the modal
@@ -543,22 +549,24 @@ export const FileList = React.memo(
           if (append) {
             setIsLoadingMore(true);
           } else {
-            setIsLoading(true);
+            // Only show full loading spinner on initial load (no existing data).
+            // Refreshes (after drag-drop, rename, etc.) keep the current list
+            // visible to avoid a jarring flash.
+            if (
+              filesRef.current.length === 0 &&
+              foldersRef.current.length === 0
+            ) {
+              setIsLoading(true);
+            }
             filesOffsetRef.current = 0;
             setHasMoreFiles(true);
           }
 
           try {
-            // Handle Knowledge Set view — load files linked to the set + folders in current dir
+            // Handle Knowledge Set view — flat list of linked files (no folders)
             if (filter === "knowledge" && currentKnowledgeSetId) {
-              // Load folders (knowledge sets support browsing subfolders)
-              let folderCount = folders.length;
               if (!append) {
-                const folderData = await folderService.listFolders(
-                  currentFolderId || null,
-                );
-                setFolders(folderData);
-                folderCount = folderData.length;
+                setFolders([]);
               }
 
               const fileIds = await knowledgeSetService.getFilesInKnowledgeSet(
@@ -575,12 +583,11 @@ export const FileList = React.memo(
                 ) as FileUploadResponse[];
                 setFiles(validFiles);
                 setHasMoreFiles(false);
-                if (onFileCountChange)
-                  onFileCountChange(validFiles.length + folderCount);
+                if (onFileCountChange) onFileCountChange(validFiles.length);
               } else {
                 setFiles([]);
                 setHasMoreFiles(false);
-                if (onFileCountChange) onFileCountChange(0 + folderCount);
+                if (onFileCountChange) onFileCountChange(0);
               }
               return;
             }
@@ -1786,19 +1793,18 @@ export const FileList = React.memo(
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <div className="flex flex-col gap-0.5">
-                  {onCreateFolder &&
-                    (filter === "all" || filter === "knowledge") && (
-                      <button
-                        onClick={() => {
-                          onCreateFolder();
-                          setBgContextMenu(null);
-                        }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                      >
-                        <FolderPlusIcon className="h-4 w-4" />
-                        {t("knowledge.toolbar.newFolder")}
-                      </button>
-                    )}
+                  {onCreateFolder && filter === "all" && (
+                    <button
+                      onClick={() => {
+                        onCreateFolder();
+                        setBgContextMenu(null);
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    >
+                      <FolderPlusIcon className="h-4 w-4" />
+                      {t("knowledge.toolbar.newFolder")}
+                    </button>
+                  )}
                   {onUpload && filter !== "trash" && (
                     <button
                       onClick={() => {

@@ -11,8 +11,9 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DRAG_MIME, getDragContext } from "./FileTreeView";
 import type { ViewMode } from "./types";
 
 interface KnowledgeToolbarProps {
@@ -28,6 +29,11 @@ interface KnowledgeToolbarProps {
   showCreateFolder?: boolean;
   breadcrumbs?: Folder[];
   onBreadcrumbClick?: (folderId: string | null) => void;
+  /** Called when items are dropped on a breadcrumb (null = root) */
+  onDropOnBreadcrumb?: (
+    itemIds: string[],
+    targetFolderId: string | null,
+  ) => void;
   onMenuClick?: () => void;
 }
 
@@ -44,10 +50,52 @@ export const KnowledgeToolbar = ({
   showCreateFolder,
   breadcrumbs,
   onBreadcrumbClick,
+  onDropOnBreadcrumb,
   onMenuClick,
 }: KnowledgeToolbarProps) => {
   const { t } = useTranslation();
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [dragOverBreadcrumbId, setDragOverBreadcrumbId] = useState<
+    string | null | undefined
+  >(undefined); // null = home, undefined = none
+
+  // Shared drag-over handler for breadcrumb buttons
+  const handleBreadcrumbDragOver = useCallback(
+    (e: React.DragEvent, targetId: string | null) => {
+      if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+      // Don't allow dropping on the current folder (last breadcrumb)
+      const ctx =
+        getDragContext() ||
+        ((window as unknown as Record<string, unknown>).__xyzenDragContext as {
+          ids: string[];
+        } | null);
+      if (targetId !== null && ctx?.ids?.includes(targetId)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDragOverBreadcrumbId(targetId);
+    },
+    [],
+  );
+
+  const handleBreadcrumbDragLeave = useCallback(() => {
+    setDragOverBreadcrumbId(undefined);
+  }, []);
+
+  const handleBreadcrumbDrop = useCallback(
+    (e: React.DragEvent, targetId: string | null) => {
+      e.preventDefault();
+      setDragOverBreadcrumbId(undefined);
+      try {
+        const data = JSON.parse(e.dataTransfer.getData(DRAG_MIME));
+        if (data?.ids?.length > 0 && onDropOnBreadcrumb) {
+          onDropOnBreadcrumb(data.ids, targetId);
+        }
+      } catch {
+        // ignore
+      }
+    },
+    [onDropOnBreadcrumb],
+  );
 
   return (
     <div className="relative flex h-14 items-center justify-between border-b border-white/20 dark:border-neutral-700/30 px-3 md:px-4">
@@ -90,7 +138,10 @@ export const KnowledgeToolbar = ({
           <div className="flex items-center gap-1 text-sm font-medium text-neutral-600 dark:text-neutral-300">
             <button
               onClick={() => onBreadcrumbClick && onBreadcrumbClick(null)}
-              className={`flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${breadcrumbs.length === 0 ? "text-neutral-900 font-semibold dark:text-white" : ""}`}
+              onDragOver={(e) => handleBreadcrumbDragOver(e, null)}
+              onDragLeave={handleBreadcrumbDragLeave}
+              onDrop={(e) => handleBreadcrumbDrop(e, null)}
+              className={`flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${breadcrumbs.length === 0 ? "text-neutral-900 font-semibold dark:text-white" : ""} ${dragOverBreadcrumbId === null ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : ""}`}
             >
               <HomeIcon className="h-4 w-4" />
               <span>{t("knowledge.toolbar.home")}</span>
@@ -107,8 +158,11 @@ export const KnowledgeToolbar = ({
                       onBreadcrumbClick &&
                       onBreadcrumbClick(folder.id)
                     }
+                    onDragOver={(e) => handleBreadcrumbDragOver(e, folder.id)}
+                    onDragLeave={handleBreadcrumbDragLeave}
+                    onDrop={(e) => handleBreadcrumbDrop(e, folder.id)}
                     disabled={isLast}
-                    className={`truncate max-w-37.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${isLast ? "text-neutral-900 font-semibold dark:text-white cursor-default" : "cursor-pointer"}`}
+                    className={`truncate max-w-37.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${isLast ? "text-neutral-900 font-semibold dark:text-white cursor-default" : "cursor-pointer"} ${dragOverBreadcrumbId === folder.id ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : ""}`}
                   >
                     {folder.name}
                   </button>

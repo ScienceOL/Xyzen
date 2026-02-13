@@ -321,9 +321,9 @@ export function ModelSelector({
       {/* Dropdown Content */}
       <AnimatePresence>
         {isOpen && (
-          <div className="absolute bottom-full left-0 mb-1 z-50">
+          <>
             {/* Desktop View: Two-column layout */}
-            <div className="hidden sm:block">
+            <div className="absolute bottom-full right-0 mb-1 z-50 hidden sm:block">
               {/* Provider List */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -442,13 +442,13 @@ export function ModelSelector({
               </AnimatePresence>
             </div>
 
-            {/* Mobile View: Single unified list */}
+            {/* Mobile View: Single unified list — fixed to viewport center */}
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="sm:hidden w-[90vw] max-w-[360px] rounded-lg border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900 p-2 overflow-hidden"
+              className="fixed inset-x-0 bottom-16 z-50 mx-auto w-[92vw] max-w-[360px] rounded-lg border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900 p-2 sm:hidden"
             >
               <div
                 className="space-y-3 overflow-y-auto custom-scrollbar"
@@ -508,7 +508,7 @@ export function ModelSelector({
                 })}
               </div>
             </motion.div>
-          </div>
+          </>
         )}
       </AnimatePresence>
     </div>

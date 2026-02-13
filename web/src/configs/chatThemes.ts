@@ -5,7 +5,6 @@ export const XYZEN_CHAT_CONFIG: XyzenChatConfig = {
   theme: "indigo" as const,
   systemAgentTag: "default_chat",
   storageKeys: {
-    inputHeight: "chatInputHeight",
     historyPinned: "chatHistoryPinned",
   },
   defaultTitle: "新的聊天",

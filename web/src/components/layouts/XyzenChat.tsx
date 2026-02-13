@@ -11,8 +11,7 @@ import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
 import ChatBubble from "./components/ChatBubble";
-import ChatInput from "./components/ChatInput";
-import ChatToolbar from "./components/ChatToolbar";
+import FloatingChatInput from "./components/FloatingChatInput";
 import EmptyChat from "./components/EmptyChat";
 import WelcomeMessage from "./components/WelcomeMessage";
 
@@ -67,7 +66,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     autoScroll,
     isRetrying,
     showHistory,
-    inputHeight,
     sendBlocked,
 
     // Computed
@@ -88,7 +86,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     handleToggleHistory,
     handleCloseHistory,
     handleSelectTopic,
-    handleInputHeightChange,
     handleRetryConnection,
     handleScrollToBottom,
     handleScroll,
@@ -128,39 +125,82 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
       <div
         className={`${showHistory && historyEnabled ? "flex-1 min-w-0 overflow-hidden" : ""} flex flex-col h-full`}
       >
-        {/* Agent Header */}
-        {currentAgent ? (
-          <div className="relative shrink-0 sm:border-y border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
-            <div className="flex items-start gap-3">
-              <div className="relative mt-1 h-8 w-8 shrink-0">
-                <div className="avatar-glow">
-                  <img
-                    src={
-                      currentAgent.avatar ||
-                      "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
-                    }
-                    alt={currentAgent.name}
-                    className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
-                  />
-                </div>
-                {responding && (
-                  <div className="typing-bubble">
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
+        {/* Messages Area */}
+        <div className="relative grow overflow-y-auto min-w-0">
+          <div
+            ref={messagesContainerRef}
+            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-neutral-50 dark:bg-black custom-scrollbar"
+            onScroll={handleScroll}
+          >
+            {/* Sticky Frosted Header */}
+            {currentAgent ? (
+              <div className="sticky top-0 z-10">
+                <div className="bg-gradient-to-b from-white/95 to-white/40 px-4 py-3 backdrop-blur-xl dark:from-neutral-950/95 dark:to-neutral-950/40">
+                  <div className="flex items-start gap-3">
+                    <div className="relative mt-1 h-8 w-8 shrink-0">
+                      <div className="avatar-glow">
+                        <img
+                          src={
+                            currentAgent.avatar ||
+                            "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                          }
+                          alt={currentAgent.name}
+                          className={`h-8 w-8 rounded-full border-2 ${themeStyles.agentBorder} object-cover shadow-sm`}
+                        />
+                      </div>
+                      {responding && (
+                        <div className="typing-bubble">
+                          <span className="typing-dot" />
+                          <span className="typing-dot" />
+                          <span className="typing-dot" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span
+                          className={`text-sm font-semibold whitespace-nowrap ${themeStyles.agentName}`}
+                        >
+                          {currentAgent.name}
+                        </span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                          •
+                        </span>
+                        <EditableTitle
+                          title={channelTitle || config.defaultTitle}
+                          onSave={(newTitle) => {
+                            if (activeChatChannel) {
+                              return updateTopicName(
+                                activeChatChannel,
+                                newTitle,
+                              );
+                            }
+                            return Promise.resolve();
+                          }}
+                          className="min-w-0"
+                          textClassName="text-sm text-neutral-600 dark:text-neutral-400 truncate block"
+                        />
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                        {currentAgent.description}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleShowShareModal}
+                      className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-white/30 dark:text-neutral-400 dark:hover:bg-white/10"
+                      title="分享对话"
+                    >
+                      <ShareIcon className="h-3.5 w-3.5" />
+                      <span>分享</span>
+                    </button>
                   </div>
-                )}
+                </div>
+                {/* Gradient fade-out edge */}
+                <div className="h-6 bg-gradient-to-b from-white/30 to-transparent pointer-events-none dark:from-neutral-950/30" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="mb-1 flex items-center gap-2">
-                  <span
-                    className={`text-sm font-semibold whitespace-nowrap ${themeStyles.agentName}`}
-                  >
-                    {currentAgent.name}
-                  </span>
-                  <span className="text-xs text-neutral-400 dark:text-neutral-500">
-                    •
-                  </span>
+            ) : (
+              <div className="sticky top-0 z-10">
+                <div className="bg-gradient-to-b from-white/95 to-white/40 px-4 py-3 backdrop-blur-xl dark:from-neutral-950/95 dark:to-neutral-950/40">
                   <EditableTitle
                     title={channelTitle || config.defaultTitle}
                     onSave={(newTitle) => {
@@ -169,71 +209,39 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                       }
                       return Promise.resolve();
                     }}
-                    className="min-w-0"
-                    textClassName="text-sm text-neutral-600 dark:text-neutral-400 truncate block"
+                    className="mb-1"
+                    textClassName="text-lg font-medium text-neutral-800 dark:text-white"
                   />
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    {config.welcomeMessage?.description ||
+                      config.emptyState.description}
+                  </p>
                 </div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
-                  {currentAgent.description}
-                </p>
+                {/* Gradient fade-out edge */}
+                <div className="h-6 bg-gradient-to-b from-white/30 to-transparent pointer-events-none dark:from-neutral-950/30" />
               </div>
-              <button
-                onClick={handleShowShareModal}
-                className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                title="分享对话"
-              >
-                <ShareIcon className="h-3.5 w-3.5" />
-                <span>分享</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="relative shrink-0 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-black">
-            <EditableTitle
-              title={channelTitle || config.defaultTitle}
-              onSave={(newTitle) => {
-                if (activeChatChannel) {
-                  return updateTopicName(activeChatChannel, newTitle);
-                }
-                return Promise.resolve();
-              }}
-              className="mb-1"
-              textClassName="text-lg font-medium text-neutral-800 dark:text-white"
-            />
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              {config.welcomeMessage?.description ||
-                config.emptyState.description}
-            </p>
-          </div>
-        )}
+            )}
 
-        {/* Connection Status */}
-        {!connected && (
-          <div className="mb-1 flex shrink-0 items-center justify-between rounded-sm bg-amber-50 px-3 py-1.5 dark:bg-amber-900/20">
-            <span className="text-xs text-amber-700 dark:text-amber-200">
-              {error || config.connectionMessages.connecting}
-            </span>
-            <button
-              onClick={handleRetryConnection}
-              disabled={isRetrying}
-              className="ml-2 rounded-sm p-1 text-amber-700 hover:bg-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:text-amber-300 dark:hover:bg-amber-800/30"
-              title={config.connectionMessages.retrying}
-            >
-              <ArrowPathIcon
-                className={`h-4 w-4 ${isRetrying ? "animate-spin" : ""}`}
-              />
-            </button>
-          </div>
-        )}
+            {/* Connection Status */}
+            {!connected && (
+              <div className="sticky top-0 z-[9] mx-3 mt-1 flex items-center justify-between rounded-sm bg-amber-50/90 px-3 py-1.5 backdrop-blur-sm dark:bg-amber-900/30">
+                <span className="text-xs text-amber-700 dark:text-amber-200">
+                  {error || config.connectionMessages.connecting}
+                </span>
+                <button
+                  onClick={handleRetryConnection}
+                  disabled={isRetrying}
+                  className="ml-2 rounded-sm p-1 text-amber-700 hover:bg-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:text-amber-300 dark:hover:bg-amber-800/30"
+                  title={config.connectionMessages.retrying}
+                >
+                  <ArrowPathIcon
+                    className={`h-4 w-4 ${isRetrying ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
+            )}
 
-        {/* Messages Area */}
-        <div className="relative grow overflow-y-auto min-w-0">
-          <div
-            ref={messagesContainerRef}
-            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-neutral-50 pt-6 dark:bg-black custom-scrollbar"
-            onScroll={handleScroll}
-          >
-            <div className="px-3 min-w-0">
+            <div className="px-3 pt-6 min-w-0">
               {messages.length === 0 ? (
                 <ThemedWelcomeMessage
                   config={config}
@@ -277,20 +285,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
 
         {/* Input Area */}
         <div className="shrink-0">
-          <ChatToolbar
-            onShowHistory={handleToggleHistory}
-            onHeightChange={handleInputHeightChange}
-            showHistory={showHistory}
-            handleCloseHistory={handleCloseHistory}
-            handleSelectTopic={handleSelectTopic}
-            inputHeight={inputHeight}
-          />
-          {sendBlocked && (
-            <div className="mx-4 mb-1 rounded-sm bg-amber-50 px-3 py-1.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/40">
-              正在生成回复，暂时无法发送。请稍后再试。
-            </div>
-          )}
-          <ChatInput
+          <FloatingChatInput
             onSendMessage={handleSendMessage}
             disabled={!connected}
             placeholder={
@@ -298,11 +293,15 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                 ? config.placeholders.responding
                 : config.placeholders.default
             }
-            height={inputHeight}
             initialValue={pendingInput}
             responding={responding}
             aborting={aborting}
             onAbort={handleAbortGeneration}
+            sendBlocked={sendBlocked}
+            onShowHistory={handleToggleHistory}
+            showHistory={showHistory}
+            handleCloseHistory={handleCloseHistory}
+            handleSelectTopic={handleSelectTopic}
           />
         </div>
       </div>

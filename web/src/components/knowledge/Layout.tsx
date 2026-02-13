@@ -399,6 +399,16 @@ export const KnowledgeLayout = () => {
     }
   };
 
+  // Handle dropping files onto a breadcrumb (move to ancestor folder or root)
+  const handleDropOnBreadcrumb = useCallback(
+    async (itemIds: string[], targetFolderId: string | null) => {
+      if (fileListRef.current) {
+        fileListRef.current.moveItems(itemIds, targetFolderId);
+      }
+    },
+    [],
+  );
+
   const handleCreateFolder = async () => {
     const name = prompt(t("knowledge.prompts.folderName"));
     if (name) {
@@ -565,15 +575,13 @@ export const KnowledgeLayout = () => {
           onRefresh={() => setRefreshKey((k) => k + 1)}
           isTrash={activeTab === "trash"}
           onEmptyTrash={handleEmptyTrash}
-          showCreateFolder={activeTab === "all" || activeTab === "knowledge"}
+          showCreateFolder={activeTab === "all"}
           onCreateFolder={handleCreateFolder}
           breadcrumbs={
-            currentFolderId &&
-            (activeTab === "all" || activeTab === "knowledge")
-              ? breadcrumbs
-              : undefined
+            currentFolderId && activeTab === "all" ? breadcrumbs : undefined
           }
           onBreadcrumbClick={(id) => navigateToFolder(id)}
+          onDropOnBreadcrumb={handleDropOnBreadcrumb}
           onMenuClick={() => setIsSidebarOpen(true)}
         />
 
