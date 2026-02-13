@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from app.agents.factory import _build_graph_agent, _inject_system_prompt
+from app.agents.factory import build_graph_agent, _inject_system_prompt
 
 
 class TestInjectSystemPrompt:
@@ -232,7 +232,7 @@ class TestBuildGraphAgent:
             mock_llm.ainvoke = ainvoke
             return mock_llm
 
-        compiled_graph, node_component_keys = await _build_graph_agent(
+        compiled_graph, node_component_keys = await build_graph_agent(
             raw_config=raw_config,
             llm_factory=llm_factory,
             tools=[],
@@ -276,7 +276,7 @@ class TestBuildGraphAgent:
             return mock_llm
 
         with pytest.raises(Exception):
-            await _build_graph_agent(
+            await build_graph_agent(
                 raw_config=raw_config,
                 llm_factory=llm_factory,
                 tools=[],

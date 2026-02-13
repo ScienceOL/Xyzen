@@ -177,7 +177,7 @@ async def _build_subagent_graph(
     """
     from app.agents.builtin import get_builtin_config
     from app.agents.components import ensure_components_registered
-    from app.agents.factory import _build_graph_agent
+    from app.agents.factory import build_graph_agent
     from app.tools.prepare import prepare_tools
 
     # Prepare subagent's tools (default tools, no specific agent config)
@@ -228,7 +228,7 @@ async def _build_subagent_graph(
 
     ensure_components_registered()
 
-    compiled_graph, _ = await _build_graph_agent(
+    compiled_graph, _ = await build_graph_agent(
         config_dict,
         create_llm,
         subagent_tools,

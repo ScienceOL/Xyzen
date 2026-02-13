@@ -153,7 +153,7 @@ async def create_chat_agent(
         )
 
     # Build the agent using unified GraphBuilder path
-    compiled_graph, node_component_keys = await _build_graph_agent(
+    compiled_graph, node_component_keys = await build_graph_agent(
         resolved_config,
         create_llm,
         tools,
@@ -338,7 +338,7 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
     return config
 
 
-async def _build_graph_agent(
+async def build_graph_agent(
     raw_config: dict[str, Any],
     llm_factory: LLMFactory,
     tools: list["BaseTool"],
@@ -443,7 +443,7 @@ async def create_agent_from_builtin(
 
     # Build the agent
     try:
-        compiled_graph, node_component_keys = await _build_graph_agent(
+        compiled_graph, node_component_keys = await build_graph_agent(
             config_dict,
             create_llm,
             tools or [],
