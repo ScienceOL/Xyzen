@@ -39,7 +39,6 @@ export default function TrendingSection({
           <AgentListingCard
             key={listing.id}
             listing={listing}
-            compact
             onClick={() => onSelectListing(listing.id)}
             onMouseEnter={() => onMouseEnterListing(listing.id)}
           />

@@ -1,5 +1,6 @@
 import { HeartIcon } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
+import { SparklesIcon } from "@heroicons/react/24/solid";
 import { useTranslation } from "react-i18next";
 
 import { useToggleLike } from "@/hooks/useMarketplace";
@@ -34,25 +35,28 @@ function OfficialBannerCard({
 
   return (
     <div
-      className="group relative cursor-pointer overflow-hidden rounded-lg bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 p-[1px] transition-all duration-300 hover:shadow-xl"
+      className="group relative cursor-pointer bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 p-[2px] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-purple-500/25 dark:hover:shadow-purple-500/15"
       onClick={onClick}
       onMouseEnter={onMouseEnter}
     >
-      <div className="relative flex items-center gap-6 rounded-[7px] bg-white/95 p-6 backdrop-blur-sm dark:bg-neutral-950/95">
+      <div className="relative flex items-center gap-5 bg-white p-5 transition-colors duration-300 group-hover:bg-neutral-50 dark:bg-neutral-950 dark:group-hover:bg-neutral-900 sm:gap-6 sm:p-6">
+        {/* Avatar */}
         {listing.avatar ? (
           <img
             src={listing.avatar}
             alt={listing.name}
-            className="h-20 w-20 shrink-0 rounded-lg object-cover shadow-lg ring-2 ring-indigo-200 dark:ring-indigo-800"
+            className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-md ring-1 ring-neutral-200 dark:ring-neutral-800 sm:h-20 sm:w-20"
           />
         ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-3xl font-bold text-white shadow-lg">
-            {listing.name.charAt(0).toUpperCase()}
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-indigo-600 via-purple-600 to-pink-600 shadow-md sm:h-20 sm:w-20">
+            <SparklesIcon className="h-8 w-8 text-white/90 sm:h-10 sm:w-10" />
           </div>
         )}
+
+        {/* Content */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 sm:text-xl">
               {listing.name}
             </h3>
             <span className="inline-flex shrink-0 items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
@@ -62,12 +66,12 @@ function OfficialBannerCard({
           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
             {listing.description || t("marketplace.card.noDescription")}
           </p>
-          <div className="mt-3 flex items-center gap-5 text-sm">
-            <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
+          <div className="mt-2.5 flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
               <HeartIcon className="h-4 w-4" />
               <span className="font-medium">{listing.likes_count}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
+            <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
               <svg
                 className="h-4 w-4"
                 fill="none"
@@ -85,14 +89,16 @@ function OfficialBannerCard({
             </div>
           </div>
         </div>
+
+        {/* Like button */}
         <button
           onClick={handleLikeClick}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
         >
           {listing.has_liked ? (
-            <HeartSolidIcon className="h-6 w-6 text-red-500" />
+            <HeartSolidIcon className="h-5 w-5 text-red-500" />
           ) : (
-            <HeartIcon className="h-6 w-6 text-neutral-400 transition-colors group-hover:text-red-500" />
+            <HeartIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-red-500" />
           )}
         </button>
       </div>

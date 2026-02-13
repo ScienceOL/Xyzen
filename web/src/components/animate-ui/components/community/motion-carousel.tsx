@@ -1,92 +1,63 @@
 "use client";
 
 import * as React from "react";
-import { motion, type Transition } from "motion/react";
 import { EmblaOptionsType, EmblaCarouselType } from "embla-carousel";
 import useEmblaCarousel from "embla-carousel-react";
-import { Button } from "@/components/animate-ui/components/buttons/button";
 import { ChevronRight, ChevronLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type MotionCarouselProps = {
   children: React.ReactNode;
   options?: EmblaOptionsType;
   showDots?: boolean;
   showArrows?: boolean;
+  className?: string;
 };
 
-type EmblaControls = {
-  selectedIndex: number;
-  scrollSnaps: number[];
-  prevDisabled: boolean;
-  nextDisabled: boolean;
-  onDotClick: (index: number) => void;
-  onPrev: () => void;
-  onNext: () => void;
-};
-
-type DotButtonProps = {
-  selected?: boolean;
-  label: string;
-  onClick: () => void;
-};
-
-const transition: Transition = {
-  type: "spring",
-  stiffness: 240,
-  damping: 24,
-  mass: 1,
-};
-
-const useEmblaControls = (
-  emblaApi: EmblaCarouselType | undefined,
-): EmblaControls => {
+const useEmblaControls = (emblaApi: EmblaCarouselType | undefined) => {
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const [scrollSnaps, setScrollSnaps] = React.useState<number[]>([]);
-  const [prevDisabled, setPrevDisabled] = React.useState(true);
-  const [nextDisabled, setNextDisabled] = React.useState(true);
+  const [canScrollPrev, setCanScrollPrev] = React.useState(false);
+  const [canScrollNext, setCanScrollNext] = React.useState(false);
 
-  const onDotClick = React.useCallback(
+  const scrollTo = React.useCallback(
     (index: number) => emblaApi?.scrollTo(index),
     [emblaApi],
   );
-
-  const onPrev = React.useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
-  const onNext = React.useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
-
-  const updateSelectionState = (api: EmblaCarouselType) => {
-    setSelectedIndex(api.selectedScrollSnap());
-    setPrevDisabled(!api.canScrollPrev());
-    setNextDisabled(!api.canScrollNext());
-  };
-
-  const onInit = React.useCallback((api: EmblaCarouselType) => {
-    setScrollSnaps(api.scrollSnapList());
-    updateSelectionState(api);
-  }, []);
-
-  const onSelect = React.useCallback((api: EmblaCarouselType) => {
-    updateSelectionState(api);
-  }, []);
+  const scrollPrev = React.useCallback(
+    () => emblaApi?.scrollPrev(),
+    [emblaApi],
+  );
+  const scrollNext = React.useCallback(
+    () => emblaApi?.scrollNext(),
+    [emblaApi],
+  );
 
   React.useEffect(() => {
     if (!emblaApi) return;
 
-    onInit(emblaApi);
-    emblaApi.on("reInit", onInit).on("select", onSelect);
-
-    return () => {
-      emblaApi.off("reInit", onInit).off("select", onSelect);
+    const sync = () => {
+      setScrollSnaps(emblaApi.scrollSnapList());
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
     };
-  }, [emblaApi, onInit, onSelect]);
+
+    sync();
+    emblaApi.on("reInit", sync).on("select", sync);
+    return () => {
+      emblaApi.off("reInit", sync).off("select", sync);
+    };
+  }, [emblaApi]);
 
   return {
     selectedIndex,
     scrollSnaps,
-    prevDisabled,
-    nextDisabled,
-    onDotClick,
-    onPrev,
-    onNext,
+    canScrollPrev,
+    canScrollNext,
+    scrollTo,
+    scrollPrev,
+    scrollNext,
   };
 };
 
@@ -95,112 +66,87 @@ function MotionCarousel({
   options,
   showDots = true,
   showArrows = true,
+  className,
 }: MotionCarouselProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel(options);
   const {
     selectedIndex,
     scrollSnaps,
-    prevDisabled,
-    nextDisabled,
-    onDotClick,
-    onPrev,
-    onNext,
+    canScrollPrev,
+    canScrollNext,
+    scrollTo,
+    scrollPrev,
+    scrollNext,
   } = useEmblaControls(emblaApi);
 
   const slides = React.Children.toArray(children);
 
   return (
-    <div className="w-full space-y-4 [--slide-spacing:1rem] [--slide-size:80%] sm:[--slide-size:45%] lg:[--slide-size:33.33%]">
+    <div className={cn("group/carousel relative w-full", className)}>
+      {/* Viewport */}
       <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex touch-pan-y touch-pinch-zoom">
-          {slides.map((child, index) => {
-            const isActive = index === selectedIndex;
-
-            return (
-              <motion.div
-                key={index}
-                className="mr-[var(--slide-spacing)] basis-[var(--slide-size)] flex-none flex min-w-0"
-              >
-                <motion.div
-                  className="size-full"
-                  initial={false}
-                  animate={{
-                    scale: isActive ? 1 : 0.95,
-                  }}
-                  transition={transition}
-                >
-                  {child}
-                </motion.div>
-              </motion.div>
-            );
-          })}
+        <div className="-ml-3 flex touch-pan-y touch-pinch-zoom">
+          {slides.map((child, index) => (
+            <div
+              key={index}
+              className="min-w-0 flex-none basis-[80%] pl-3 sm:basis-[45%] lg:basis-[33.33%]"
+            >
+              {child}
+            </div>
+          ))}
         </div>
       </div>
 
-      {(showArrows || showDots) && (
-        <div className="flex justify-between">
-          {showArrows ? (
-            <Button size="icon" onClick={onPrev} disabled={prevDisabled}>
-              <ChevronLeft className="size-5" />
-            </Button>
-          ) : (
-            <div />
-          )}
+      {/* Arrows — overlaid on edges, only visible on hover */}
+      {showArrows && (
+        <>
+          <button
+            onClick={scrollPrev}
+            disabled={!canScrollPrev}
+            className={cn(
+              "absolute -left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white/90 text-neutral-600 shadow-sm backdrop-blur-sm transition-all dark:border-neutral-700 dark:bg-neutral-800/90 dark:text-neutral-300",
+              "hover:bg-white hover:shadow-md dark:hover:bg-neutral-700",
+              "disabled:pointer-events-none disabled:opacity-0",
+              "opacity-0 group-hover/carousel:opacity-100",
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            onClick={scrollNext}
+            disabled={!canScrollNext}
+            className={cn(
+              "absolute -right-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white/90 text-neutral-600 shadow-sm backdrop-blur-sm transition-all dark:border-neutral-700 dark:bg-neutral-800/90 dark:text-neutral-300",
+              "hover:bg-white hover:shadow-md dark:hover:bg-neutral-700",
+              "disabled:pointer-events-none disabled:opacity-0",
+              "opacity-0 group-hover/carousel:opacity-100",
+            )}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </>
+      )}
 
-          {showDots && (
-            <div className="flex flex-wrap justify-end items-center gap-2">
-              {scrollSnaps.map((_, index) => (
-                <DotButton
-                  key={index}
-                  label={`Slide ${index + 1}`}
-                  selected={index === selectedIndex}
-                  onClick={() => onDotClick(index)}
-                />
-              ))}
-            </div>
-          )}
-
-          {showArrows ? (
-            <Button size="icon" onClick={onNext} disabled={nextDisabled}>
-              <ChevronRight className="size-5" />
-            </Button>
-          ) : (
-            <div />
-          )}
+      {/* Dots — small, inline, below slides */}
+      {showDots && scrollSnaps.length > 1 && (
+        <div className="mt-3 flex items-center justify-center gap-1.5">
+          {scrollSnaps.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              aria-label={`Go to slide ${index + 1}`}
+              onClick={() => scrollTo(index)}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-300",
+                index === selectedIndex
+                  ? "w-5 bg-neutral-800 dark:bg-neutral-200"
+                  : "w-1.5 bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-600 dark:hover:bg-neutral-500",
+              )}
+            />
+          ))}
         </div>
       )}
     </div>
-  );
-}
-
-function DotButton({ selected = false, label, onClick }: DotButtonProps) {
-  return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      layout
-      initial={false}
-      className="flex cursor-pointer select-none items-center justify-center rounded-full border-none bg-primary text-primary-foreground text-sm"
-      animate={{
-        width: selected ? 68 : 12,
-        height: selected ? 28 : 12,
-      }}
-      transition={transition}
-    >
-      <motion.span
-        layout
-        initial={false}
-        className="block whitespace-nowrap px-3 py-1"
-        animate={{
-          opacity: selected ? 1 : 0,
-          scale: selected ? 1 : 0,
-          filter: selected ? "blur(0)" : "blur(4px)",
-        }}
-        transition={transition}
-      >
-        {label}
-      </motion.span>
-    </motion.button>
   );
 }
 

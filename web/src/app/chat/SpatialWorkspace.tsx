@@ -105,6 +105,9 @@ function InnerWorkspace() {
     null,
   );
 
+  // Whether the initial viewport has been set (hide canvas until ready to avoid flash)
+  const [isViewportReady, setIsViewportReady] = useState(false);
+
   // Refs
   const containerRef = useRef<HTMLDivElement | null>(null);
   const initStateRef = useRef<"pending" | "measuring" | "done">("pending");
@@ -222,6 +225,7 @@ function InnerWorkspace() {
         setNodes([]);
       }
       prevAgentIdsRef.current = new Set();
+      setIsViewportReady(true);
       return;
     }
 
@@ -424,7 +428,7 @@ function InnerWorkspace() {
             const topPadding = Math.max(20, Math.min(64, containerH * 0.05));
             const x = -node.position.x * FOCUS_ZOOM + leftPadding;
             const y = -node.position.y * FOCUS_ZOOM + topPadding;
-            setViewport({ x, y, zoom: FOCUS_ZOOM }, { duration: 600 });
+            setViewport({ x, y, zoom: FOCUS_ZOOM }, { duration: 0 });
           }
         } else {
           try {
@@ -432,6 +436,7 @@ function InnerWorkspace() {
             if (savedViewport) {
               setViewport(JSON.parse(savedViewport), { duration: 0 });
               initStateRef.current = "done";
+              setIsViewportReady(true);
               return;
             }
           } catch {
@@ -440,6 +445,7 @@ function InnerWorkspace() {
           fitView({ padding: 0.22, duration: 0 });
         }
         initStateRef.current = "done";
+        setIsViewportReady(true);
       }, 100);
     };
 
@@ -613,7 +619,7 @@ function InnerWorkspace() {
         maxZoom={4}
         panOnDrag
         zoomOnScroll
-        className="transition-all duration-700"
+        style={{ opacity: isViewportReady ? 1 : 0 }}
       >
         <Background gap={40} size={1} color="#ccc" />
       </ReactFlow>
