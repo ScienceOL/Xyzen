@@ -13,7 +13,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.messages import AIMessageChunk, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 from langchain_core.tools import BaseTool, StructuredTool
 
 from app.tools.builtin.subagent.schemas import SpawnSubagentInput
@@ -247,6 +247,7 @@ async def _run_subagent(
     Run a subagent graph and collect the final text output.
     """
     collected_content: list[str] = []
+    saw_streaming_chunk = False
 
     async for chunk in graph.astream(
         {"messages": [HumanMessage(content=task)]},
@@ -257,14 +258,23 @@ async def _run_subagent(
 
         if mode == "messages":
             msg_chunk, _metadata = data
-            # Only collect AI message text, skip tool messages and tool call chunks
-            if not isinstance(msg_chunk, AIMessageChunk):
+            # Collect streaming deltas when available, but also support providers
+            # that emit a single non-streaming AIMessage.
+            if isinstance(msg_chunk, AIMessageChunk):
+                if msg_chunk.tool_calls or msg_chunk.tool_call_chunks:
+                    continue
+                token_text = _extract_token_text(msg_chunk)
+                if token_text:
+                    saw_streaming_chunk = True
+                    collected_content.append(token_text)
                 continue
-            if msg_chunk.tool_calls or msg_chunk.tool_call_chunks:
-                continue
-            token_text = _extract_token_text(msg_chunk)
-            if token_text:
-                collected_content.append(token_text)
+
+            if type(msg_chunk) is AIMessage:
+                if getattr(msg_chunk, "tool_calls", None):
+                    continue
+                token_text = _extract_token_text(msg_chunk)
+                if token_text and not saw_streaming_chunk:
+                    collected_content.append(token_text)
 
     return "".join(collected_content)
 
