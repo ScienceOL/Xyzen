@@ -12,7 +12,7 @@ import {
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import type { ForkMode } from "@/service/marketplaceService";
 
 interface ForkAgentModalProps {
@@ -103,10 +103,10 @@ export default function ForkAgentModal({
       <div className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 dark:bg-neutral-900">
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-            Fork Agent: {agentName}
+            {t("marketplace.fork.title", { name: agentName })}
           </h2>
           <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            Create your own copy of this agent to customize and use.
+            {t("marketplace.fork.description")}
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function ForkAgentModal({
                   <CheckCircleIcon className="h-5 w-5" />
                 )}
               </div>
-              <span className="text-sm font-medium">Name</span>
+              <span className="text-sm font-medium">{t("common.name")}</span>
             </div>
             <ArrowRightIcon className="h-4 w-4 text-neutral-400" />
             <div className="flex items-center gap-2">
@@ -146,7 +146,9 @@ export default function ForkAgentModal({
                   "2"
                 )}
               </div>
-              <span className="text-sm font-medium">Requirements</span>
+              <span className="text-sm font-medium">
+                {t("common.requirements")}
+              </span>
             </div>
             <ArrowRightIcon className="h-4 w-4 text-neutral-400" />
             <div className="flex items-center gap-2">
@@ -159,7 +161,7 @@ export default function ForkAgentModal({
               >
                 3
               </div>
-              <span className="text-sm font-medium">Confirm</span>
+              <span className="text-sm font-medium">{t("common.confirm")}</span>
             </div>
           </div>
 
@@ -193,25 +195,27 @@ export default function ForkAgentModal({
 
               <Field className="space-y-2">
                 <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  Agent Name <span className="text-red-500">*</span>
+                  <Trans i18nKey="marketplace.fork.agentNameRequired">
+                    Agent Name <span className="text-red-500">*</span>
+                  </Trans>
                 </Label>
                 <Input
                   id="agent-name"
                   type="text"
-                  placeholder="My Custom Agent"
+                  placeholder={t("marketplace.fork.agentNamePlaceholder")}
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
                   maxLength={100}
                 />
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Give your fork a unique name to identify it
+                  {t("marketplace.fork.agentNameHint")}
                 </p>
               </Field>
 
               {agentDescription && (
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Original Description
+                    {t("marketplace.fork.originalDescription")}
                   </p>
                   <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                     {agentDescription}
@@ -228,8 +232,7 @@ export default function ForkAgentModal({
                 <div className="flex gap-2">
                   <InformationCircleIcon className="h-4 w-4 shrink-0" />
                   <div className="text-sm">
-                    This agent requires some setup before you can use it
-                    effectively.
+                    {t("marketplace.fork.requirementsInfo")}
                   </div>
                 </div>
               </div>
@@ -255,11 +258,10 @@ export default function ForkAgentModal({
                     </div>
                     <div className="flex-1">
                       <h4 className="font-medium text-neutral-900 dark:text-neutral-100">
-                        Provider Configuration Required
+                        {t("marketplace.fork.providerRequired")}
                       </h4>
                       <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                        You'll need to configure an LLM provider (e.g., OpenAI,
-                        Anthropic) in your agent settings after forking.
+                        {t("marketplace.fork.providerRequiredDescription")}
                       </p>
                     </div>
                   </div>
@@ -288,10 +290,12 @@ export default function ForkAgentModal({
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-neutral-900 dark:text-neutral-100">
-                          MCP Servers ({requirements.mcp_servers.length})
+                          {t("marketplace.fork.mcpServers", {
+                            count: requirements.mcp_servers.length,
+                          })}
                         </h4>
                         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                          This agent uses the following MCP servers:
+                          {t("marketplace.fork.mcpServersDescription")}
                         </p>
                         <ul className="mt-3 space-y-2">
                           {requirements.mcp_servers.map((mcp, index) => (
@@ -304,7 +308,7 @@ export default function ForkAgentModal({
                                   {mcp.name}
                                 </span>
                                 <span className="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                  ✅ Auto-configured
+                                  {t("marketplace.fork.autoConfigured")}
                                 </span>
                               </div>
                               {mcp.description && (
@@ -330,18 +334,23 @@ export default function ForkAgentModal({
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-neutral-900 dark:text-neutral-100">
-                          Knowledge Base Included
+                          {t("marketplace.fork.knowledgeBaseIncluded")}
                         </h4>
                         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                          The original agent uses a knowledge base with{" "}
-                          <strong>
-                            {requirements.knowledge_base.file_count} files
-                          </strong>
-                          . These files will be copied to your personal
-                          workspace automatically.
+                          <Trans
+                            i18nKey="marketplace.fork.knowledgeBaseDescription"
+                            values={{
+                              count: requirements.knowledge_base.file_count,
+                            }}
+                          >
+                            The original agent uses a knowledge base with
+                            <strong>{"{{count}}"} files</strong>. These files
+                            will be copied to your personal workspace
+                            automatically.
+                          </Trans>
                         </p>
                         <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
-                          ℹ️ You will have full access to these files
+                          {t("marketplace.fork.knowledgeBaseAccess")}
                         </p>
                       </div>
                     </div>
@@ -358,8 +367,7 @@ export default function ForkAgentModal({
                     <div className="flex gap-2">
                       <CheckCircleIcon className="h-4 w-4 shrink-0 text-green-600" />
                       <div className="text-sm">
-                        This agent has no special requirements. You can use it
-                        right away after forking!
+                        {t("marketplace.fork.noRequirements")}
                       </div>
                     </div>
                   </div>
@@ -374,8 +382,7 @@ export default function ForkAgentModal({
                 <div className="flex gap-2">
                   <InformationCircleIcon className="h-4 w-4 shrink-0" />
                   <div className="text-sm">
-                    Ready to fork? Your new agent will be created with the
-                    following configuration:
+                    {t("marketplace.fork.confirmInfo")}
                   </div>
                 </div>
               </div>
@@ -383,7 +390,7 @@ export default function ForkAgentModal({
               <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Name
+                    {t("common.name")}
                   </p>
                   <p className="text-sm text-neutral-900 dark:text-neutral-100">
                     {customName}
@@ -392,7 +399,7 @@ export default function ForkAgentModal({
 
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Based on
+                    {t("marketplace.fork.basedOn")}
                   </p>
                   <p className="text-sm text-neutral-900 dark:text-neutral-100">
                     {agentName}
@@ -401,24 +408,26 @@ export default function ForkAgentModal({
 
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    Next Steps After Forking
+                    {t("marketplace.fork.nextSteps")}
                   </p>
                   <ul className="mt-2 space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
                     {requirements?.provider_needed && (
-                      <li>• Configure LLM provider</li>
+                      <li>• {t("marketplace.fork.nextStepProvider")}</li>
                     )}
                     {requirements?.mcp_servers &&
                       requirements.mcp_servers.length > 0 && (
                         <li>
-                          • Set up {requirements.mcp_servers.length} MCP
-                          server(s)
+                          •{" "}
+                          {t("marketplace.fork.nextStepMcp", {
+                            count: requirements.mcp_servers.length,
+                          })}
                         </li>
                       )}
                     {requirements?.knowledge_base &&
                       requirements.knowledge_base.file_count > 0 && (
-                        <li>• Add documents to knowledge base</li>
+                        <li>• {t("marketplace.fork.nextStepKnowledge")}</li>
                       )}
-                    <li>• Customize prompts and settings as needed</li>
+                    <li>• {t("marketplace.fork.nextStepCustomize")}</li>
                   </ul>
                 </div>
               </div>
@@ -433,7 +442,7 @@ export default function ForkAgentModal({
                 <div className="text-sm">
                   {forkMutation.error instanceof Error
                     ? forkMutation.error.message
-                    : "Failed to fork agent. Please try again."}
+                    : t("marketplace.fork.error")}
                 </div>
               </div>
             </div>
@@ -448,7 +457,7 @@ export default function ForkAgentModal({
             disabled={forkMutation.isPending}
             className="rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
-            {currentStep === "name" ? "Cancel" : "Back"}
+            {currentStep === "name" ? t("common.cancel") : t("common.back")}
           </Button>
           <Button
             onClick={currentStep === "confirm" ? handleFork : handleNext}
@@ -458,10 +467,10 @@ export default function ForkAgentModal({
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
           >
             {forkMutation.isPending
-              ? "Forking..."
+              ? t("marketplace.fork.forking")
               : currentStep === "confirm"
-                ? "Fork Agent"
-                : "Next"}
+                ? t("marketplace.fork.forkButton")
+                : t("common.next")}
           </Button>
         </div>
       </div>

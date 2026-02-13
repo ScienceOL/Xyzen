@@ -5,5 +5,10 @@
   "delete": "Delete",
   "recommended": "Recommended",
   "close": "Close",
-  "dismiss": "Dismiss"
+  "dismiss": "Dismiss",
+  "back": "Back",
+  "next": "Next",
+  "name": "Name",
+  "confirm": "Confirm",
+  "requirements": "Requirements"
 }
