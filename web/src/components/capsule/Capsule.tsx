@@ -94,7 +94,8 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   const [peeking, setPeeking] = useState(false);
   const peekTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Auto-open/close when knowledge_set_id changes
+  // Auto-open when knowledge_set_id transitions from null → non-null.
+  // We do NOT auto-close when it becomes null — the persisted capsuleOpen state takes priority.
   useEffect(() => {
     const prev = prevKnowledgeSetId.current;
     prevKnowledgeSetId.current = knowledge_set_id;
@@ -102,8 +103,6 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
     if (!prev && knowledge_set_id) {
       setCapsuleOpen(true);
       setCapsuleActiveTab("knowledge");
-    } else if (prev && !knowledge_set_id) {
-      setCapsuleOpen(false);
     }
   }, [knowledge_set_id, setCapsuleOpen, setCapsuleActiveTab]);
 

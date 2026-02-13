@@ -41,9 +41,8 @@ const abortTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
 const CHANNEL_CONNECT_TIMEOUT_MS = 5000;
 const CHANNEL_CONNECT_POLL_INTERVAL_MS = 100;
 
-// Background connection lifecycle tracking
-const bgCleanupTimers = new Map<string, ReturnType<typeof setInterval>>();
-const bgEventCallbacks = new Map<string, MessageEventCallback>();
+// Per-topic stale-state watchdog interval IDs (separate from abort timeouts)
+const staleWatchdogIds = new Map<string, ReturnType<typeof setInterval>>();
 
 export interface ChatSlice {
   // Chat panel state
@@ -356,18 +355,24 @@ export const createChatSlice: StateCreator<
     });
   };
 
-  /** Close a background WS if its channel is no longer responding. */
-  const tryCloseBackground = (topicId: string) => {
-    if (!bgCleanupTimers.has(topicId)) return;
-    // Use setTimeout(0) so Immer set() commits first
+  /**
+   * After a terminal event on a non-primary connection, close it if the channel
+   * is no longer responding. Uses setTimeout(0) so Immer set() commits first.
+   */
+  const closeIdleNonPrimaryConnection = (topicId: string) => {
     setTimeout(() => {
+      // Don't close the primary connection
+      if (xyzenService.getPrimaryTopicId() === topicId) return;
+      // Don't close connections for channels that are still responding
       const ch = get().channels[topicId];
-      if (ch && !ch.responding) {
-        xyzenService.closeBackgroundConnection(topicId);
-        const timer = bgCleanupTimers.get(topicId);
-        if (timer) clearInterval(timer);
-        bgCleanupTimers.delete(topicId);
-        bgEventCallbacks.delete(topicId);
+      if (ch?.responding) return;
+      // Safe to close
+      xyzenService.closeConnection(topicId);
+      // Clean up stale watchdog
+      const timer = staleWatchdogIds.get(topicId);
+      if (timer) {
+        clearInterval(timer);
+        staleWatchdogIds.delete(topicId);
       }
     }, 0);
   };
@@ -645,19 +650,26 @@ export const createChatSlice: StateCreator<
       }
 
       if (channel) {
-        const hasUnresolvedRuntimeState = channel.messages.some((m) =>
-          Boolean(
-            m.isLoading ||
-            m.isStreaming ||
-            m.isThinking ||
-            m.agentExecution?.status === "running",
-          ),
-        );
+        // If the topic already has a live WS connection, the in-memory state is
+        // authoritative (events are flowing in real-time). Skip reconciliation
+        // to avoid replacing streaming content with stale DB data.
+        const hasLiveWs = xyzenService.hasConnection(topicId);
 
-        // Always reconcile with backend when no messages OR when runtime flags may be stale
-        // (e.g. switched topic during streaming and missed terminal events).
-        if (channel.messages.length === 0 || hasUnresolvedRuntimeState) {
-          await reconcileChannelFromBackend(topicId);
+        if (!hasLiveWs) {
+          const hasUnresolvedRuntimeState = channel.messages.some((m) =>
+            Boolean(
+              m.isLoading ||
+              m.isStreaming ||
+              m.isThinking ||
+              m.agentExecution?.status === "running",
+            ),
+          );
+
+          // Reconcile with backend when no messages OR when runtime flags may be
+          // stale (e.g. WS died during streaming and missed terminal events).
+          if (channel.messages.length === 0 || hasUnresolvedRuntimeState) {
+            await reconcileChannelFromBackend(topicId);
+          }
         }
         connectToChannel(channel.sessionId, channel.id);
 
@@ -776,78 +788,17 @@ export const createChatSlice: StateCreator<
     },
 
     connectToChannel: (sessionId: string, topicId: string) => {
-      // --- 0. If target topic has an existing background connection, close it first ---
-      if (bgCleanupTimers.has(topicId)) {
-        xyzenService.closeBackgroundConnection(topicId);
-        const timer = bgCleanupTimers.get(topicId);
-        if (timer) clearInterval(timer);
-        bgCleanupTimers.delete(topicId);
-        bgEventCallbacks.delete(topicId);
-      }
+      // --- 0. Build shared callbacks (defined early so they can be passed to setPrimary or connect) ---
 
-      // Clean up previous stale state watchdog
-      for (const [key, timerId] of abortTimeoutIds.entries()) {
-        if (key.startsWith("stale-")) {
-          clearInterval(timerId);
-          abortTimeoutIds.delete(key);
+      // Clean up stale watchdog for the *previous* primary topic (not the target)
+      const prevPrimary = xyzenService.getPrimaryTopicId();
+      if (prevPrimary && prevPrimary !== topicId) {
+        const prevTimer = staleWatchdogIds.get(prevPrimary);
+        if (prevTimer) {
+          clearInterval(prevTimer);
+          staleWatchdogIds.delete(prevPrimary);
         }
       }
-
-      // --- 1. Check if old channel is responding → detach to background ---
-      const { activeChatChannel, channels } = get();
-      let detachedTopicId: string | null = null;
-
-      if (activeChatChannel && activeChatChannel !== topicId) {
-        const oldChannel = channels[activeChatChannel];
-        if (oldChannel?.responding) {
-          const oldCallback = bgEventCallbacks.get(activeChatChannel);
-          if (oldCallback) {
-            const ok = xyzenService.detachCurrentConnection(
-              activeChatChannel,
-              oldCallback,
-            );
-            if (ok) {
-              detachedTopicId = activeChatChannel;
-              // Polling watchdog: close background WS when channel stops responding
-              const watchdogId = setInterval(() => {
-                const ch = get().channels[detachedTopicId!];
-                if (!ch?.responding) {
-                  xyzenService.closeBackgroundConnection(detachedTopicId!);
-                  clearInterval(watchdogId);
-                  bgCleanupTimers.delete(detachedTopicId!);
-                  bgEventCallbacks.delete(detachedTopicId!);
-                }
-              }, 3000);
-              bgCleanupTimers.set(activeChatChannel, watchdogId);
-
-              // Hard timeout: 5 minutes safety net
-              setTimeout(
-                () => {
-                  if (bgCleanupTimers.has(detachedTopicId!)) {
-                    xyzenService.closeBackgroundConnection(detachedTopicId!);
-                    const t = bgCleanupTimers.get(detachedTopicId!);
-                    if (t) clearInterval(t);
-                    bgCleanupTimers.delete(detachedTopicId!);
-                    bgEventCallbacks.delete(detachedTopicId!);
-                  }
-                },
-                5 * 60 * 1000,
-              );
-            }
-          }
-        }
-      }
-
-      // --- 2. Mark channels as disconnected, SKIP the detached one ---
-      set((state: ChatSlice) => {
-        Object.entries(state.channels).forEach(([chId, ch]) => {
-          if (chId === detachedTopicId) return; // still connected via background WS
-          ch.connected = false;
-        });
-        if (state.channels[topicId]) {
-          state.channels[topicId].error = null;
-        }
-      });
 
       // --- Chunk buffering: batch streaming_chunk and thinking_chunk at rAF cadence ---
       type ChunkEntry = {
@@ -964,12 +915,7 @@ export const createChatSlice: StateCreator<
         }
       };
 
-      // --- 4. Disconnect old primary (only if NOT detached) ---
-      if (!detachedTopicId) {
-        xyzenService.disconnect();
-      }
-
-      // --- 5. Define event callback, store it for potential background detachment ---
+      // --- Define event callback ---
       const messageEventCallback: MessageEventCallback = (event) => {
         // --- Hot-path: buffer chunk events and flush at rAF cadence ---
         if (event.type === "streaming_chunk") {
@@ -2051,82 +1997,130 @@ export const createChatSlice: StateCreator<
 
         // Chunk events return early above, so all events reaching here are state transitions
         updateDerivedStatus();
-        tryCloseBackground(topicId);
+        closeIdleNonPrimaryConnection(topicId);
       };
 
-      // Store for potential future background detachment
-      bgEventCallbacks.set(topicId, messageEventCallback);
+      // --- Shared callbacks for onMessage, onStatusChange, onReconnect ---
+      const onMessage = (message: import("../types").Message) => {
+        set((state: ChatSlice) => {
+          const channel = state.channels[topicId];
+          if (channel) {
+            if (!channel.messages.some((m) => m.id === message.id)) {
+              channel.messages.push({
+                ...message,
+                isNewMessage: true,
+              });
+            }
+          }
+        });
+      };
 
+      const onStatusChange = (status: {
+        connected: boolean;
+        error: string | null;
+      }) => {
+        set((state: ChatSlice) => {
+          const channel = state.channels[topicId];
+          if (channel) {
+            channel.connected = status.connected;
+            channel.error = status.error;
+          }
+        });
+      };
+
+      const onReconnect = () => {
+        const channel = get().channels[topicId];
+        if (!channel) return;
+
+        const hasStaleState = channel.messages.some((m) =>
+          Boolean(
+            m.isLoading ||
+            m.isStreaming ||
+            m.isThinking ||
+            m.agentExecution?.status === "running",
+          ),
+        );
+
+        if (hasStaleState) {
+          reconcileChannelFromBackend(topicId);
+        }
+      };
+
+      // --- If the target topic already has a live WS, just promote to primary ---
+      if (xyzenService.hasConnection(topicId)) {
+        xyzenService.setPrimary(
+          topicId,
+          onMessage,
+          onStatusChange,
+          messageEventCallback,
+          onReconnect,
+        );
+        // Mark channel as connected (it already is, but ensure store is consistent)
+        set((state: ChatSlice) => {
+          if (state.channels[topicId]) {
+            state.channels[topicId].connected = true;
+            state.channels[topicId].error = null;
+          }
+        });
+        return;
+      }
+
+      // --- Close non-responding, non-primary idle connections to avoid leaking ---
+      const openTopics = xyzenService.getOpenTopicIds();
+      for (const openTopic of openTopics) {
+        if (openTopic === topicId) continue;
+        const ch = get().channels[openTopic];
+        if (!ch?.responding) {
+          xyzenService.closeConnection(openTopic);
+          const timer = staleWatchdogIds.get(openTopic);
+          if (timer) {
+            clearInterval(timer);
+            staleWatchdogIds.delete(openTopic);
+          }
+        }
+      }
+
+      // --- Mark old channels as disconnected (only those we don't have WS for) ---
+      set((state: ChatSlice) => {
+        Object.entries(state.channels).forEach(([chId, ch]) => {
+          // Keep channels with live WS marked as connected
+          if (xyzenService.hasConnection(chId)) return;
+          ch.connected = false;
+        });
+        if (state.channels[topicId]) {
+          state.channels[topicId].error = null;
+        }
+      });
+
+      // --- Open new WS for this topic ---
       xyzenService.connect(
         sessionId,
         topicId,
-        (message) => {
-          set((state: ChatSlice) => {
-            const channel = state.channels[topicId];
-            if (channel) {
-              if (!channel.messages.some((m) => m.id === message.id)) {
-                // Mark messages from WebSocket as new (should show typewriter effect)
-                channel.messages.push({
-                  ...message,
-                  isNewMessage: true,
-                });
-              }
-            }
-          });
-        },
-        (status) => {
-          set((state: ChatSlice) => {
-            const channel = state.channels[topicId];
-            if (channel) {
-              channel.connected = status.connected;
-              channel.error = status.error;
-            }
-          });
-        },
+        onMessage,
+        onStatusChange,
         messageEventCallback,
-        // onReconnect: reconcile stale state after WebSocket reconnects
-        () => {
-          const channel = get().channels[topicId];
-          if (!channel) return;
-
-          const hasStaleState = channel.messages.some((m) =>
-            Boolean(
-              m.isLoading ||
-              m.isStreaming ||
-              m.isThinking ||
-              m.agentExecution?.status === "running",
-            ),
-          );
-
-          if (hasStaleState) {
-            reconcileChannelFromBackend(topicId);
-          }
-        },
+        onReconnect,
       );
 
       // --- Stale state watchdog ---
-      // Detects when the channel is "responding" but no events have arrived for too long
-      // (e.g., Celery worker crashed, Redis lost events). Triggers reconciliation.
       const STALE_STATE_TIMEOUT_MS = 60_000;
       const STALE_CHECK_INTERVAL_MS = 15_000;
       let lastActivityTimestamp = Date.now();
 
-      // Patch the event callback to track activity. The original event handler is
-      // already wired into xyzenService. We update the timestamp here via a
-      // secondary reference that the watchdog reads.
-      // Guard: only wrap if not already wrapped (prevents accumulation on reconnect,
-      // where handleDisconnect re-calls connect() with the stored callback ref).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentCallback = xyzenService["onMessageEventCallback"] as any;
-      if (currentCallback && !currentCallback.__staleWatchdog) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const wrapped: any = (event: any) => {
-          lastActivityTimestamp = Date.now();
-          currentCallback(event);
-        };
-        wrapped.__staleWatchdog = true;
-        xyzenService["onMessageEventCallback"] = wrapped;
-      }
+      // Wrap the event callback to track activity for the stale watchdog
+      const originalOnMessageEvent = messageEventCallback;
+      const wrappedCallback: MessageEventCallback = (event) => {
+        lastActivityTimestamp = Date.now();
+        originalOnMessageEvent(event);
+      };
+      // Update the connection's event callback to the wrapped version
+      xyzenService.setPrimary(
+        topicId,
+        onMessage,
+        onStatusChange,
+        wrappedCallback,
+        onReconnect,
+      );
 
       const staleCheckIntervalId = setInterval(() => {
         const channel = get().channels[topicId];
@@ -2142,11 +2136,9 @@ export const createChatSlice: StateCreator<
         }
       }, STALE_CHECK_INTERVAL_MS);
 
-      // Store the interval ID so it can be cleaned up when switching topics.
-      // We piggyback on the module-level abortTimeoutIds map for this.
-      const prevStaleCheck = abortTimeoutIds.get(`stale-${topicId}`);
+      const prevStaleCheck = staleWatchdogIds.get(topicId);
       if (prevStaleCheck) clearInterval(prevStaleCheck);
-      abortTimeoutIds.set(`stale-${topicId}`, staleCheckIntervalId);
+      staleWatchdogIds.set(topicId, staleCheckIntervalId);
     },
 
     disconnectFromChannel: () => {
