@@ -7,7 +7,6 @@ export type KnowledgeTab =
   | "audio"
   | "videos"
   | "trash"
-  | "folders"
   | "knowledge";
 
 export type ViewMode = "list" | "grid";

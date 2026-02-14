@@ -1,10 +1,9 @@
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
-import { useXyzen } from "@/store";
+import { useCapsule } from "@/hooks/useCapsule";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useShallow } from "zustand/react/shallow";
 import { KnowledgeTab } from "./KnowledgeTab";
 import { SandboxTab } from "./SandboxTab";
 import { ToolsTab } from "./ToolsTab";
@@ -78,58 +77,51 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
 export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   const { t } = useTranslation();
   const { knowledge_set_id, sessionId } = useActiveChannelStatus();
-  const prevKnowledgeSetId = useRef<string | null>(null);
+  const { isOpen, activeTab, setActiveTab, open, close, toggle } = useCapsule();
 
-  const { capsuleOpen, capsuleActiveTab, setCapsuleOpen, setCapsuleActiveTab } =
-    useXyzen(
-      useShallow((s) => ({
-        capsuleOpen: s.capsuleOpen,
-        capsuleActiveTab: s.capsuleActiveTab,
-        setCapsuleOpen: s.setCapsuleOpen,
-        setCapsuleActiveTab: s.setCapsuleActiveTab,
-      })),
-    );
+  // Track previous values to detect *what* changed
+  const prevRef = useRef<{
+    sessionId: string | null;
+    knowledgeSetId: string | null;
+  }>({ sessionId: null, knowledgeSetId: null });
 
   // Peek state — hover-driven, independent from docked state
   const [peeking, setPeeking] = useState(false);
   const peekTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Auto-open when knowledge_set_id transitions from null → non-null.
-  // We do NOT auto-close when it becomes null — the persisted capsuleOpen state takes priority.
+  // Auto-open when knowledge_set_id transitions null → non-null
+  // WITHIN the same session (i.e. user bound a knowledge set).
+  // Switching to a different agent that already has knowledge does NOT
+  // auto-open — the persisted open/close state takes priority.
   useEffect(() => {
-    const prev = prevKnowledgeSetId.current;
-    prevKnowledgeSetId.current = knowledge_set_id;
+    const prev = prevRef.current;
+    prevRef.current = { sessionId, knowledgeSetId: knowledge_set_id };
 
-    if (!prev && knowledge_set_id) {
-      setCapsuleOpen(true);
-      setCapsuleActiveTab("knowledge");
+    const sameSession = prev.sessionId === sessionId;
+    const knowledgeBound = !prev.knowledgeSetId && knowledge_set_id;
+
+    if (sameSession && knowledgeBound) {
+      open("knowledge");
     }
-  }, [knowledge_set_id, setCapsuleOpen, setCapsuleActiveTab]);
+  }, [sessionId, knowledge_set_id, open]);
 
   // Cleanup peek timeout on unmount
   useEffect(() => () => clearTimeout(peekTimeout.current), []);
 
   const handlePeekEnter = useCallback(() => {
-    if (capsuleOpen) return; // no peek when already docked
+    if (isOpen) return; // no peek when already docked
     clearTimeout(peekTimeout.current);
     setPeeking(true);
-  }, [capsuleOpen]);
+  }, [isOpen]);
 
   const handlePeekLeave = useCallback(() => {
     peekTimeout.current = setTimeout(() => setPeeking(false), 200);
   }, []);
 
   const handleClick = useCallback(() => {
-    if (capsuleOpen) {
-      // Docked → collapse; also clear peek so it doesn't linger
-      setCapsuleOpen(false);
-      setPeeking(false);
-    } else {
-      // Collapsed (may or may not be peeking) → dock it open
-      setCapsuleOpen(true);
-      setPeeking(false);
-    }
-  }, [capsuleOpen, setCapsuleOpen]);
+    toggle();
+    setPeeking(false);
+  }, [toggle]);
 
   // Determine if the capsule has any content worth showing.
   // Currently only Knowledge tab has real data; Tools and Memory are "coming soon".
@@ -154,11 +146,8 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
           </span>
         </div>
 
-        <CapsuleTabBar
-          activeTab={capsuleActiveTab}
-          onTabChange={setCapsuleActiveTab}
-        />
-        <CapsuleBody activeTab={capsuleActiveTab} />
+        <CapsuleTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        <CapsuleBody activeTab={activeTab} />
       </div>
     );
   }
@@ -184,7 +173,7 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   return (
     <motion.div
       initial={false}
-      animate={{ width: capsuleOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
+      animate={{ width: isOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
       transition={transition}
       className={`shrink-0 h-full relative ${isSpatial ? "pointer-events-auto" : ""}`}
       onMouseEnter={handlePeekEnter}
@@ -193,22 +182,19 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
       {/* ---- Docked panel (always mounted, fades in/out) ---- */}
       <motion.div
         initial={false}
-        animate={{ opacity: capsuleOpen ? 1 : 0 }}
+        animate={{ opacity: isOpen ? 1 : 0 }}
         transition={{ duration: 0.15 }}
         className={`absolute inset-0 flex flex-col ${panelBg} ${
-          capsuleOpen ? "pointer-events-auto" : "pointer-events-none"
+          isOpen ? "pointer-events-auto" : "pointer-events-none"
         }`}
         style={{ width: EXPANDED_WIDTH }}
       >
-        <CapsuleTabBar
-          activeTab={capsuleActiveTab}
-          onTabChange={setCapsuleActiveTab}
-        />
-        <CapsuleBody activeTab={capsuleActiveTab} />
+        <CapsuleTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        <CapsuleBody activeTab={activeTab} />
 
         {/* Right-edge click strip to collapse */}
         <div
-          onClick={handleClick}
+          onClick={close}
           className={`absolute top-0 bottom-0 right-0 w-3 z-10 cursor-pointer transition-colors duration-200 ${
             isSpatial
               ? "hover:bg-neutral-400/20 dark:hover:bg-neutral-500/20"
@@ -221,10 +207,10 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
       {/* ---- Collapsed indicator (fixed width, never stretches) ---- */}
       <motion.div
         initial={false}
-        animate={{ opacity: capsuleOpen ? 0 : 1 }}
+        animate={{ opacity: isOpen ? 0 : 1 }}
         transition={{ duration: 0.15 }}
         className={`absolute top-0 bottom-0 right-0 cursor-pointer transition-colors duration-200 ${
-          capsuleOpen ? "pointer-events-none" : "pointer-events-auto"
+          isOpen ? "pointer-events-none" : "pointer-events-auto"
         } ${
           isSpatial
             ? "rounded-full bg-neutral-300/50 dark:bg-neutral-600/40 hover:bg-neutral-400/60 dark:hover:bg-neutral-500/50"
@@ -237,7 +223,7 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
 
       {/* ---- Peek overlay — floats on top, no layout shift ---- */}
       <AnimatePresence>
-        {peeking && !capsuleOpen && (
+        {peeking && !isOpen && (
           <motion.div
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
@@ -251,11 +237,8 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
                 "-8px 0 30px -10px rgba(0,0,0,0.12), -2px 0 8px -4px rgba(0,0,0,0.06)",
             }}
           >
-            <CapsuleTabBar
-              activeTab={capsuleActiveTab}
-              onTabChange={setCapsuleActiveTab}
-            />
-            <CapsuleBody activeTab={capsuleActiveTab} />
+            <CapsuleTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+            <CapsuleBody activeTab={activeTab} />
           </motion.div>
         )}
       </AnimatePresence>

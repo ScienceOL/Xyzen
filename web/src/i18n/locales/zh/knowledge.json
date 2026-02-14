@@ -48,6 +48,7 @@
     "emptyTrash": "清空回收站",
     "empty": "清空",
     "uploadFile": "上传文件",
+    "uploadFolder": "上传文件夹",
     "upload": "上传",
     "refresh": "刷新"
   },
@@ -75,6 +76,8 @@
     "available": "可用 {{available}}"
   },
   "contextMenu": {
+    "open": "打开",
+    "preview": "预览",
     "download": "下载",
     "rename": "重命名",
     "moveTo": "移动到...",
@@ -82,7 +85,10 @@
     "removeFromKnowledgeSet": "从知识库移除",
     "delete": "删除",
     "restore": "恢复",
-    "deleteForever": "永久删除"
+    "restoreSelected": "恢复 {{count}} 个项目",
+    "deleteForever": "永久删除",
+    "deleteSelected": "删除 {{count}} 个项目",
+    "moveSelected": "移动 {{count}} 个项目..."
   },
   "moveModal": {
     "title": "移动「{{name}}」",
@@ -140,7 +146,8 @@
       "titleFolder": "重命名文件夹",
       "placeholder": "输入新名称",
       "confirm": "重命名",
-      "failed": "重命名失败"
+      "failed": "重命名失败",
+      "duplicateName": "此文件夹中已存在同名项目"
     },
     "move": {
       "failed": "移动失败"

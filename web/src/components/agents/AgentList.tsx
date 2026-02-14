@@ -52,6 +52,7 @@ interface SortableItemProps {
   onClick?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
+  isLoading?: boolean;
 }
 
 const SortableItem: React.FC<SortableItemProps> = ({
@@ -66,6 +67,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
   onClick,
   onEdit,
   onDelete,
+  isLoading,
 }) => {
   const {
     attributes,
@@ -98,6 +100,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
         onClick={onClick}
         onEdit={onEdit}
         onDelete={onDelete}
+        isLoading={isLoading}
         isDragging={isDragging}
         dragHandleProps={dragHandleProps}
         style={style}
@@ -129,6 +132,8 @@ const SortableItem: React.FC<SortableItemProps> = ({
 interface AgentListBaseProps {
   agents: Agent[];
   onAgentClick?: (agent: Agent) => void;
+  /** ID of agent currently being loaded (shows breathing animation) */
+  loadingAgentId?: string | null;
   // Sorting support
   sortable?: boolean;
   onReorder?: (agentIds: string[]) => void;
@@ -165,7 +170,14 @@ interface CompactAgentListProps extends AgentListBaseProps {
 export type AgentListProps = DetailedAgentListProps | CompactAgentListProps;
 
 export const AgentList: React.FC<AgentListProps> = (props) => {
-  const { agents, variant, onAgentClick, sortable = false, onReorder } = props;
+  const {
+    agents,
+    variant,
+    onAgentClick,
+    loadingAgentId,
+    sortable = false,
+    onReorder,
+  } = props;
 
   // Local state for drag ordering
   const [items, setItems] = useState<Agent[]>(agents);
@@ -310,6 +322,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
               onClick={onAgentClick}
               onEdit={onEdit}
               onDelete={onDelete}
+              isLoading={loadingAgentId === agent.id}
             />
           ) : (
             <AgentListItem
@@ -322,6 +335,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
               onClick={onAgentClick}
               onEdit={onEdit}
               onDelete={onDelete}
+              isLoading={loadingAgentId === agent.id}
             />
           ),
         )}

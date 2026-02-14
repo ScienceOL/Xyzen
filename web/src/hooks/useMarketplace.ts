@@ -41,6 +41,10 @@ export const marketplaceKeys = {
   myListings: () => [...marketplaceKeys.all, "my-listings"] as const,
   starredListings: () => [...marketplaceKeys.all, "starred"] as const,
   history: (id: string) => [...marketplaceKeys.all, "history", id] as const,
+  trending: (limit: number) =>
+    [...marketplaceKeys.all, "trending", limit] as const,
+  recentlyPublished: (limit: number) =>
+    [...marketplaceKeys.all, "recently-published", limit] as const,
 };
 
 const DEFAULT_MARKETPLACE_PAGE_SIZE = 20;
@@ -158,6 +162,28 @@ export function useStarredListings() {
         has_liked: true,
       }));
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Hook to get trending marketplace listings
+ */
+export function useTrendingListings(limit = 10) {
+  return useQuery({
+    queryKey: marketplaceKeys.trending(limit),
+    queryFn: () => marketplaceService.getTrendingListings(limit),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Hook to get recently published marketplace listings
+ */
+export function useRecentlyPublishedListings(limit = 6) {
+  return useQuery({
+    queryKey: marketplaceKeys.recentlyPublished(limit),
+    queryFn: () => marketplaceService.getRecentlyPublishedListings(limit),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -532,6 +558,14 @@ export function useToggleLike() {
       // Invalidate starred listings to ensure consistency
       queryClient.invalidateQueries({
         queryKey: marketplaceKeys.starredListings(),
+      });
+
+      // Invalidate trending and recently published
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.trending(10),
+      });
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.recentlyPublished(6),
       });
     },
   });

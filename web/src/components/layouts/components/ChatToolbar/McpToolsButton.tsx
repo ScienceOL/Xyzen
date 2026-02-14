@@ -6,6 +6,11 @@
 
 import McpIcon from "@/assets/McpIcon";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/animate-ui/components/animate/tooltip";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -85,19 +90,23 @@ export function McpToolsButton({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={cn(buttonClassName, "w-auto px-2 gap-1.5")}
-          title={t("app.toolbar.mcpTools")}
-        >
-          <McpIcon className="h-4 w-4" />
-          {totalTools > 0 && (
-            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-              {totalTools}
-            </span>
-          )}
-        </button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button className={cn(buttonClassName, "w-auto px-2 gap-1.5")}>
+              <McpIcon className="h-4 w-4" />
+              {totalTools > 0 && (
+                <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                  {totalTools}
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{t("app.toolbar.mcpTools")}</p>
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent className="w-72 p-2" align="start">
         <div className="space-y-2">
           {/* Header */}

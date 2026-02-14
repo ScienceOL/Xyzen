@@ -1,4 +1,8 @@
-import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/animate-ui/components/animate/tooltip";
 import {
   Popover,
   PopoverContent,
@@ -101,23 +105,23 @@ export function SkillsButton({
   return (
     <>
       <Popover open={isOpen} onOpenChange={handlePopoverOpenChange}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(buttonClassName, "w-auto px-2 gap-1.5")}
-          >
-            <SparklesIcon className="h-4 w-4" />
-            <span className="text-xs">
-              {t("app.toolbar.skills.title", "Skills")}
-            </span>
-            {connected.length > 0 && (
-              <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                {connected.length}
-              </span>
-            )}
-          </Button>
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button className={cn(buttonClassName, "w-auto px-2 gap-1.5")}>
+                <SparklesIcon className="h-4 w-4" />
+                {connected.length > 0 && (
+                  <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                    {connected.length}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t("app.toolbar.skills.title", "Skills")}</p>
+          </TooltipContent>
+        </Tooltip>
 
         <PopoverContent className="w-72 p-2" align="start">
           <div className="space-y-2">

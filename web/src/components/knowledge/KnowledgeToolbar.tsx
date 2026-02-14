@@ -2,7 +2,9 @@ import { type Folder } from "@/service/folderService";
 import {
   ArrowPathIcon,
   ChevronRightIcon as BreadcrumbSeparatorIcon,
+  DocumentIcon,
   FolderIcon,
+  FolderOpenIcon,
   HomeIcon,
   ListBulletIcon,
   MagnifyingGlassIcon,
@@ -11,8 +13,9 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DRAG_MIME, getDragContext } from "./FileTreeView";
 import type { ViewMode } from "./types";
 
 interface KnowledgeToolbarProps {
@@ -20,6 +23,7 @@ interface KnowledgeToolbarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onSearch: (query: string) => void;
   onUpload: () => void;
+  onUploadFolder?: () => void;
   onCreateFolder?: () => void;
   onRefresh: () => void;
   onEmptyTrash?: () => void;
@@ -28,7 +32,13 @@ interface KnowledgeToolbarProps {
   showCreateFolder?: boolean;
   breadcrumbs?: Folder[];
   onBreadcrumbClick?: (folderId: string | null) => void;
+  /** Called when items are dropped on a breadcrumb (null = root) */
+  onDropOnBreadcrumb?: (
+    itemIds: string[],
+    targetFolderId: string | null,
+  ) => void;
   onMenuClick?: () => void;
+  isLoading?: boolean;
 }
 
 export const KnowledgeToolbar = ({
@@ -36,6 +46,7 @@ export const KnowledgeToolbar = ({
   onViewModeChange,
   onSearch,
   onUpload,
+  onUploadFolder,
   onCreateFolder,
   onRefresh,
   onEmptyTrash,
@@ -44,10 +55,53 @@ export const KnowledgeToolbar = ({
   showCreateFolder,
   breadcrumbs,
   onBreadcrumbClick,
+  onDropOnBreadcrumb,
   onMenuClick,
+  isLoading,
 }: KnowledgeToolbarProps) => {
   const { t } = useTranslation();
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [dragOverBreadcrumbId, setDragOverBreadcrumbId] = useState<
+    string | null | undefined
+  >(undefined); // null = home, undefined = none
+
+  // Shared drag-over handler for breadcrumb buttons
+  const handleBreadcrumbDragOver = useCallback(
+    (e: React.DragEvent, targetId: string | null) => {
+      if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+      // Don't allow dropping on the current folder (last breadcrumb)
+      const ctx =
+        getDragContext() ||
+        ((window as unknown as Record<string, unknown>).__xyzenDragContext as {
+          ids: string[];
+        } | null);
+      if (targetId !== null && ctx?.ids?.includes(targetId)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDragOverBreadcrumbId(targetId);
+    },
+    [],
+  );
+
+  const handleBreadcrumbDragLeave = useCallback(() => {
+    setDragOverBreadcrumbId(undefined);
+  }, []);
+
+  const handleBreadcrumbDrop = useCallback(
+    (e: React.DragEvent, targetId: string | null) => {
+      e.preventDefault();
+      setDragOverBreadcrumbId(undefined);
+      try {
+        const data = JSON.parse(e.dataTransfer.getData(DRAG_MIME));
+        if (data?.ids?.length > 0 && onDropOnBreadcrumb) {
+          onDropOnBreadcrumb(data.ids, targetId);
+        }
+      } catch {
+        // ignore
+      }
+    },
+    [onDropOnBreadcrumb],
+  );
 
   return (
     <div className="relative flex h-14 items-center justify-between border-b border-white/20 dark:border-neutral-700/30 px-3 md:px-4">
@@ -90,7 +144,10 @@ export const KnowledgeToolbar = ({
           <div className="flex items-center gap-1 text-sm font-medium text-neutral-600 dark:text-neutral-300">
             <button
               onClick={() => onBreadcrumbClick && onBreadcrumbClick(null)}
-              className={`flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${breadcrumbs.length === 0 ? "text-neutral-900 font-semibold dark:text-white" : ""}`}
+              onDragOver={(e) => handleBreadcrumbDragOver(e, null)}
+              onDragLeave={handleBreadcrumbDragLeave}
+              onDrop={(e) => handleBreadcrumbDrop(e, null)}
+              className={`flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${breadcrumbs.length === 0 ? "text-neutral-900 font-semibold dark:text-white" : ""} ${dragOverBreadcrumbId === null ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : ""}`}
             >
               <HomeIcon className="h-4 w-4" />
               <span>{t("knowledge.toolbar.home")}</span>
@@ -107,8 +164,11 @@ export const KnowledgeToolbar = ({
                       onBreadcrumbClick &&
                       onBreadcrumbClick(folder.id)
                     }
+                    onDragOver={(e) => handleBreadcrumbDragOver(e, folder.id)}
+                    onDragLeave={handleBreadcrumbDragLeave}
+                    onDrop={(e) => handleBreadcrumbDrop(e, folder.id)}
                     disabled={isLast}
-                    className={`truncate max-w-37.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${isLast ? "text-neutral-900 font-semibold dark:text-white cursor-default" : "cursor-pointer"}`}
+                    className={`truncate max-w-37.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1.5 py-0.5 ${isLast ? "text-neutral-900 font-semibold dark:text-white cursor-default" : "cursor-pointer"} ${dragOverBreadcrumbId === folder.id ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : ""}`}
                   >
                     {folder.name}
                   </button>
@@ -202,26 +262,93 @@ export const KnowledgeToolbar = ({
             </span>
           </button>
         ) : (
-          <button
-            onClick={onUpload}
-            className="flex items-center gap-1.5 rounded-sm bg-indigo-500/90 hover:bg-indigo-500 px-3 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200"
-            title={t("knowledge.toolbar.uploadFile")}
-          >
-            <PlusIcon className="h-4 w-4" />
-            <span className="hidden md:inline">
-              {t("knowledge.toolbar.upload")}
-            </span>
-          </button>
+          <UploadDropdown
+            onUploadFiles={onUpload}
+            onUploadFolder={onUploadFolder}
+          />
         )}
 
         <button
           onClick={onRefresh}
           className="hidden rounded-sm p-2 text-neutral-500 hover:bg-white/50 dark:hover:bg-white/10 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-all duration-200 md:block"
           title={t("knowledge.toolbar.refresh")}
+          disabled={isLoading}
         >
-          <ArrowPathIcon className="h-4 w-4" />
+          <ArrowPathIcon
+            className={`h-4 w-4 transition-transform${isLoading ? " animate-spin" : ""}`}
+          />
         </button>
       </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Upload Dropdown — "Upload Files" / "Upload Folder"
+// ---------------------------------------------------------------------------
+
+const UploadDropdown = ({
+  onUploadFiles,
+  onUploadFolder,
+}: {
+  onUploadFiles: () => void;
+  onUploadFolder?: () => void;
+}) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded-sm bg-indigo-500/90 hover:bg-indigo-500 px-3 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200"
+        title={t("knowledge.toolbar.upload")}
+      >
+        <PlusIcon className="h-4 w-4" />
+        <span className="hidden md:inline">
+          {t("knowledge.toolbar.upload")}
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-md border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
+            onClick={() => {
+              setOpen(false);
+              onUploadFiles();
+            }}
+          >
+            <DocumentIcon className="h-4 w-4 text-neutral-500" />
+            {t("knowledge.toolbar.uploadFile")}
+          </button>
+          {onUploadFolder && (
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
+              onClick={() => {
+                setOpen(false);
+                onUploadFolder();
+              }}
+            >
+              <FolderOpenIcon className="h-4 w-4 text-neutral-500" />
+              {t("knowledge.toolbar.uploadFolder")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

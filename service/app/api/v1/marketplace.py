@@ -434,6 +434,80 @@ async def get_starred_listings(
     return [AgentMarketplaceRead(**listing.model_dump(), has_liked=True) for listing in listings]
 
 
+@router.get("/trending", response_model=list[AgentMarketplaceRead])
+async def get_trending_listings(
+    limit: int = Query(10, ge=1, le=20),
+    user_id: str | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> list[AgentMarketplaceRead]:
+    """
+    Get trending marketplace listings ranked by weighted score with time decay.
+
+    Args:
+        limit: Maximum number of results (1-20).
+        user_id: Authenticated user ID (optional, injected by dependency).
+        db: Database session (injected by dependency).
+
+    Returns:
+        List of trending marketplace listings with has_liked populated if user is authenticated.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listings = await marketplace_repo.get_trending_listings(limit=limit)
+
+    liked_map: dict[UUID, bool] = {}
+    if user_id and listings:
+        from app.repos.agent_like import AgentLikeRepository
+
+        like_repo = AgentLikeRepository(db)
+        listing_ids = [listing.id for listing in listings]
+        liked_map = await like_repo.get_likes_for_listings(listing_ids, user_id)
+
+    return [
+        AgentMarketplaceRead(
+            **listing.model_dump(),
+            has_liked=liked_map.get(listing.id, False),
+        )
+        for listing in listings
+    ]
+
+
+@router.get("/recently-published", response_model=list[AgentMarketplaceRead])
+async def get_recently_published_listings(
+    limit: int = Query(6, ge=1, le=20),
+    user_id: str | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> list[AgentMarketplaceRead]:
+    """
+    Get recently published marketplace listings.
+
+    Args:
+        limit: Maximum number of results (1-20).
+        user_id: Authenticated user ID (optional, injected by dependency).
+        db: Database session (injected by dependency).
+
+    Returns:
+        List of recently published marketplace listings with has_liked populated.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listings = await marketplace_repo.get_recently_published_listings(limit=limit)
+
+    liked_map: dict[UUID, bool] = {}
+    if user_id and listings:
+        from app.repos.agent_like import AgentLikeRepository
+
+        like_repo = AgentLikeRepository(db)
+        listing_ids = [listing.id for listing in listings]
+        liked_map = await like_repo.get_likes_for_listings(listing_ids, user_id)
+
+    return [
+        AgentMarketplaceRead(
+            **listing.model_dump(),
+            has_liked=liked_map.get(listing.id, False),
+        )
+        for listing in listings
+    ]
+
+
 @router.get("/{marketplace_id}", response_model=AgentMarketplaceReadWithSnapshot)
 async def get_marketplace_listing(
     marketplace_id: UUID,

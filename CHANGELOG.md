@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.4](https://github.com/ScienceOL/Xyzen/compare/v1.3.3...v1.3.4) (2026-02-14)
+
+### 🐛 Bug Fixes
+
+* add knowledge base folder ([#246](https://github.com/ScienceOL/Xyzen/issues/246)) ([0523424](https://github.com/ScienceOL/Xyzen/commit/0523424e6a227f87b8cd6db0b85b337218d11b49))
+
 ## [1.3.3](https://github.com/ScienceOL/Xyzen/compare/v1.3.2...v1.3.3) (2026-02-13)
 
 ### 🐛 Bug Fixes

@@ -112,6 +112,10 @@ async def upload_file(
 
         # Upload to object storage
         file_repo = FileRepository(db)
+
+        # Auto-rename if a file with the same name exists in the target directory
+        unique_filename = await file_repo.get_unique_name(user_id, parent_id, file.filename)
+
         file_stream = BytesIO(file_data)
         await storage.upload_file(
             file_data=file_stream,
@@ -124,7 +128,7 @@ async def upload_file(
         file_create = FileCreate(
             user_id=user_id,
             storage_key=storage_key,
-            original_filename=file.filename,
+            original_filename=unique_filename,
             content_type=content_type,
             file_size=file_size,
             scope=scope,
@@ -179,6 +183,7 @@ async def list_files(
     offset: int = 0,
     parent_id: UUID | None = None,
     filter_by_parent: bool = False,
+    is_dir: bool | None = None,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[FileRead]:
@@ -193,6 +198,7 @@ async def list_files(
         offset: Number of files to skip, default: 0
         parent_id: Optional parent directory ID to filter by.
         filter_by_parent: If True, filters files by parent_id (even if None).
+        is_dir: Optional filter for directories (true) or files (false).
         user_id: Authenticated user ID (injected by dependency)
         db: Database session (injected by dependency)
 
@@ -210,6 +216,7 @@ async def list_files(
             offset=offset,
             parent_id=parent_id,
             use_parent_filter=filter_by_parent,
+            is_dir=is_dir,
         )
 
         return [FileRead(**file.model_dump()) for file in files]
@@ -749,6 +756,16 @@ async def update_file(
         # Check ownership
         if file_record.user_id != user_id:
             raise ErrCode.FILE_ACCESS_DENIED.with_messages("You don't have access to this file")
+
+        # Check for duplicate name when renaming
+        if file_update.original_filename is not None:
+            target_parent = file_update.parent_id if file_update.parent_id is not None else file_record.parent_id
+            if await file_repo.name_exists_in_parent(
+                user_id, target_parent, file_update.original_filename, exclude_id=file_id
+            ):
+                raise ErrCode.INVALID_REQUEST.with_messages(
+                    f"An item named '{file_update.original_filename}' already exists in this folder"
+                )
 
         # Update file
         updated_file = await file_repo.update_file(file_id, file_update)

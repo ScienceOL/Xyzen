@@ -25,6 +25,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
+import { CheckBadgeIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -222,80 +223,89 @@ export default function AgentMarketplaceDetail({
               {/* Gradient background */}
               <div className="absolute inset-0 bg-linear-to-br from-purple-500/10 via-pink-500/10 to-indigo-500/10"></div>
 
-              <div className="relative flex flex-col space-y-1.5 p-8">
-                <div className="flex items-start gap-6">
-                  {listing.avatar ? (
-                    <img
-                      src={listing.avatar}
-                      alt={listing.name}
-                      className="h-24 w-24 rounded-2xl object-cover ring-4 ring-white dark:ring-neutral-800"
-                    />
-                  ) : (
-                    <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-3xl font-bold text-white shadow-xl">
-                      {listing.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-                        {listing.name}
-                      </h1>
-                      {listing.scope === "official" && (
-                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-                          {t("marketplace.badge.official")}
-                        </span>
-                      )}
-                      {listing.fork_mode === "locked" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
-                          <LockClosedIcon className="h-3 w-3" />
-                          {t("marketplace.forkMode.locked")}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
-                      {t("marketplace.detail.publishedBy")}{" "}
-                      {listing.scope !== "official" &&
-                        listing.author_avatar_url && (
+              <div className="relative grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-3 p-6 sm:gap-x-6 sm:p-8">
+                {/* Avatar */}
+                {listing.avatar ? (
+                  <img
+                    src={listing.avatar}
+                    alt={listing.name}
+                    className="h-14 w-14 self-center rounded-xl object-cover ring-2 ring-white sm:h-24 sm:w-24 sm:self-start sm:rounded-2xl sm:ring-4 dark:ring-neutral-800"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 self-center items-center justify-center rounded-xl bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-xl sm:h-24 sm:w-24 sm:self-start sm:rounded-2xl sm:text-3xl">
+                    {listing.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                {/* Title + Author */}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <h1 className="text-xl font-bold text-neutral-900 sm:text-3xl dark:text-neutral-100">
+                      {listing.name}
+                    </h1>
+                    {listing.scope === "official" && (
+                      <CheckBadgeIcon className="h-6 w-6 shrink-0 text-indigo-500 sm:h-7 sm:w-7 dark:text-indigo-400" />
+                    )}
+                    {listing.fork_mode === "locked" && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                        <LockClosedIcon className="h-3 w-3" />
+                        {t("marketplace.forkMode.locked")}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+                    {t("marketplace.detail.publishedBy")}{" "}
+                    {listing.scope === "official" ? (
+                      <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                        {t("marketplace.badge.official")}
+                      </span>
+                    ) : (
+                      <>
+                        {listing.author_avatar_url && (
                           <img
                             src={listing.author_avatar_url}
                             alt=""
                             className="h-4 w-4 rounded-full object-cover"
                           />
                         )}
-                      <span className="font-medium text-neutral-700 dark:text-neutral-300">
-                        {listing.scope === "official"
-                          ? "Xyzen"
-                          : listing.author_display_name ||
+                        <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                          {listing.author_display_name ||
                             (listing.user_id ?? "").split("@")[0] ||
                             listing.user_id}
-                      </span>
-                    </p>
-                    <p className="mt-3 text-base leading-relaxed text-neutral-700 dark:text-neutral-300">
-                      {listing.description ||
-                        t("marketplace.detail.noDescription")}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {listing.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center rounded-full border border-neutral-300 bg-white px-3 py-1 text-xs font-medium text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
-                        >
-                          #{tag}
                         </span>
-                      ))}
-                    </div>
-                  </div>
+                      </>
+                    )}
+                  </p>
                 </div>
+
+                {/* Description */}
+                <p className="col-span-full text-base leading-relaxed text-neutral-700 sm:col-span-1 sm:col-start-2 dark:text-neutral-300">
+                  {listing.description || t("marketplace.detail.noDescription")}
+                </p>
+
+                {/* Tags */}
+                {listing.tags.length > 0 && (
+                  <div className="col-span-full flex flex-wrap gap-2 sm:col-span-1 sm:col-start-2">
+                    {listing.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center rounded-full border border-neutral-300 bg-white px-3 py-1 text-xs font-medium text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="relative border-t border-neutral-200 bg-white/50 p-6 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-                <div className="flex items-center gap-8 text-sm">
+              <div className="relative border-t border-neutral-200 bg-white/50 px-6 py-4 backdrop-blur-sm sm:p-6 dark:border-neutral-800 dark:bg-neutral-900/50">
+                <div className="flex items-center gap-6 text-sm sm:gap-8">
                   <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950/30">
-                      <HeartIcon className="h-5 w-5 text-red-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 sm:h-10 sm:w-10 dark:bg-red-950/30">
+                      <HeartIcon className="h-4 w-4 text-red-500 sm:h-5 sm:w-5" />
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                      <div className="text-base font-bold text-neutral-900 sm:text-lg dark:text-neutral-100">
                         {listing.likes_count}
                       </div>
                       <div className="text-xs">
@@ -304,9 +314,9 @@ export default function AgentMarketplaceDetail({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 sm:h-10 sm:w-10 dark:bg-blue-950/30">
                       <svg
-                        className="h-5 w-5 text-blue-500"
+                        className="h-4 w-4 text-blue-500 sm:h-5 sm:w-5"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -320,7 +330,7 @@ export default function AgentMarketplaceDetail({
                       </svg>
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                      <div className="text-base font-bold text-neutral-900 sm:text-lg dark:text-neutral-100">
                         {listing.forks_count}
                       </div>
                       <div className="text-xs">
@@ -329,11 +339,11 @@ export default function AgentMarketplaceDetail({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950/30">
-                      <EyeIcon className="h-5 w-5 text-purple-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 sm:h-10 sm:w-10 dark:bg-purple-950/30">
+                      <EyeIcon className="h-4 w-4 text-purple-500 sm:h-5 sm:w-5" />
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                      <div className="text-base font-bold text-neutral-900 sm:text-lg dark:text-neutral-100">
                         {listing.views_count}
                       </div>
                       <div className="text-xs">
@@ -739,21 +749,26 @@ export default function AgentMarketplaceDetail({
                     {t("marketplace.detail.meta.publishedBy")}
                   </h3>
                   <div className="mt-1 flex items-center gap-2">
-                    {listing.scope !== "official" &&
-                      listing.author_avatar_url && (
-                        <img
-                          src={listing.author_avatar_url}
-                          alt=""
-                          className="h-5 w-5 rounded-full object-cover"
-                        />
-                      )}
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                      {listing.scope === "official"
-                        ? "Xyzen"
-                        : listing.author_display_name ||
-                          (listing.user_id ?? "").split("@")[0] ||
-                          listing.user_id}
-                    </p>
+                    {listing.scope === "official" ? (
+                      <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                        {t("marketplace.badge.official")}
+                      </span>
+                    ) : (
+                      <>
+                        {listing.author_avatar_url && (
+                          <img
+                            src={listing.author_avatar_url}
+                            alt=""
+                            className="h-5 w-5 rounded-full object-cover"
+                          />
+                        )}
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                          {listing.author_display_name ||
+                            (listing.user_id ?? "").split("@")[0] ||
+                            listing.user_id}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
 

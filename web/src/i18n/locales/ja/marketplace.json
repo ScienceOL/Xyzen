@@ -250,5 +250,11 @@
   "infinite": {
     "loadingMore": "さらに読み込み中...",
     "scrollHint": "スクロールしてさらに読み込む"
+  },
+  "sections": {
+    "trending": "今週のトレンド",
+    "officialPicks": "公式セレクション",
+    "recentlyPublished": "最近公開",
+    "allAgents": "すべてのエージェント"
   }
 }

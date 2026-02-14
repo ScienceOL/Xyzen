@@ -25,6 +25,18 @@ export interface Folder {
   updated_at: string;
 }
 
+/** A single item in the flat tree returned by GET /folders/tree */
+export interface FileTreeItem {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  is_dir: boolean;
+  file_size: number;
+  content_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CreateFolderRequest {
   name: string;
   parent_id?: string | null;
@@ -83,6 +95,22 @@ class FolderService {
 
     if (!response.ok) {
       throw new Error("Failed to list folders");
+    }
+    return response.json();
+  }
+
+  /**
+   * Get a flat list of ALL folders and files (for building the tree client-side).
+   * Uses a single query — no N+1 per-folder expansion.
+   */
+  async getTree(): Promise<FileTreeItem[]> {
+    const baseUrl = getBackendUrl();
+    const response = await fetch(`${baseUrl}/xyzen/api/v1/folders/tree`, {
+      headers: { ...getAuthHeaders() },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to get folder tree");
     }
     return response.json();
   }

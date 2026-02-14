@@ -20,13 +20,19 @@ import { useXyzen } from "@/store";
 // Import types from separate file
 import type { Agent } from "@/types/agents";
 
-export default function XyzenAgent() {
+interface XyzenAgentProps {
+  /** Called after a channel has been activated for the clicked agent. */
+  onNavigateToChat?: () => void;
+}
+
+export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
+  const [loadingAgentId, setLoadingAgentId] = useState<string | null>(null);
   const {
     agents,
 
@@ -108,17 +114,23 @@ export default function XyzenAgent() {
   const handleAgentClick = async (agent: Agent) => {
     const agentId = agent.id;
 
-    // Ensure providers are loaded before creating a channel
-    if (llmProviders.length === 0) {
-      try {
-        await fetchMyProviders();
-      } catch (error) {
-        console.error("Failed to fetch providers:", error);
+    setLoadingAgentId(agentId);
+    try {
+      // Ensure providers are loaded before creating a channel
+      if (llmProviders.length === 0) {
+        try {
+          await fetchMyProviders();
+        } catch (error) {
+          console.error("Failed to fetch providers:", error);
+        }
       }
-    }
 
-    // Use unified logic that always fetches from backend and gets the latest topic
-    await activateChannelForAgent(agentId);
+      // Use unified logic that always fetches from backend and gets the latest topic
+      await activateChannelForAgent(agentId);
+      onNavigateToChat?.();
+    } finally {
+      setLoadingAgentId(null);
+    }
   };
 
   const handleEditClick = (agent: Agent) => {
@@ -158,6 +170,7 @@ export default function XyzenAgent() {
           lastConversationTimeByAgent={lastConversationTimeByAgent}
           activeTopicCountByAgent={activeTopicCountByAgent}
           onAgentClick={handleAgentClick}
+          loadingAgentId={loadingAgentId}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
           onReorder={handleReorder}

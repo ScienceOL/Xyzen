@@ -1,6 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/animate-ui/components/animate/tooltip";
 import {
   Popover,
   PopoverContent,
@@ -80,6 +84,7 @@ interface ToolSelectorProps {
   sessionKnowledgeSetId?: string | null;
   onUpdateSessionKnowledge?: (knowledgeSetId: string | null) => Promise<void>;
   className?: string;
+  buttonClassName?: string;
   userPlan?: string;
 }
 
@@ -90,6 +95,7 @@ export function ToolSelector({
   sessionKnowledgeSetId,
   onUpdateSessionKnowledge,
   className,
+  buttonClassName,
   userPlan = "free",
 }: ToolSelectorProps) {
   const { t } = useTranslation();
@@ -209,19 +215,25 @@ export function ToolSelector({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn("h-8 px-2 gap-1.5", className)}
-        >
-          <WrenchScrewdriverIcon className="h-4 w-4" />
-          <span className="text-xs">
-            {t("app.toolbar.tools", "Tools")}{" "}
-            {enabledCount > 0 && `(${enabledCount})`}
-          </span>
-        </Button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(buttonClassName, "w-auto px-2 gap-1.5", className)}
+            >
+              <WrenchScrewdriverIcon className="h-4 w-4" />
+              {enabledCount > 0 && (
+                <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                  {enabledCount}
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{t("app.toolbar.tools", "Tools")}</p>
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent className="w-64 p-2" align="start">
         <div className="space-y-1">
           <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 px-2 py-1">

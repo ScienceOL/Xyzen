@@ -35,6 +35,73 @@ class FileRepository:
         await self.db.refresh(file)
         return file
 
+    async def name_exists_in_parent(
+        self,
+        user_id: str,
+        parent_id: UUID | None,
+        name: str,
+        exclude_id: UUID | None = None,
+    ) -> bool:
+        """
+        Check if an item with the given name already exists in the parent directory.
+        Used to enforce unique names within a folder (like a real filesystem).
+
+        Args:
+            user_id: The user ID.
+            parent_id: Parent directory ID (None for root).
+            name: The filename/folder name to check.
+            exclude_id: Optional ID to exclude (for rename operations).
+
+        Returns:
+            True if a conflicting name exists.
+        """
+        statement = (
+            select(File)
+            .where(File.user_id == user_id)
+            .where(File.parent_id == parent_id)
+            .where(File.original_filename == name)
+            .where(col(File.is_deleted).is_(False))
+        )
+
+        if exclude_id is not None:
+            statement = statement.where(File.id != exclude_id)
+
+        result = await self.db.exec(statement)
+        return result.first() is not None
+
+    async def get_unique_name(
+        self,
+        user_id: str,
+        parent_id: UUID | None,
+        name: str,
+    ) -> str:
+        """
+        Return a unique name for an item in the given parent directory.
+        If no conflict, returns the original name.
+        Otherwise appends " (1)", " (2)", etc.
+
+        Args:
+            user_id: The user ID.
+            parent_id: Parent directory ID (None for root).
+            name: The desired name.
+
+        Returns:
+            A name that doesn't conflict with existing items.
+        """
+        if not await self.name_exists_in_parent(user_id, parent_id, name):
+            return name
+
+        dot_idx = name.rfind(".")
+        base = name[:dot_idx] if dot_idx > 0 else name
+        ext = name[dot_idx:] if dot_idx > 0 else ""
+
+        counter = 1
+        while True:
+            candidate = f"{base} ({counter}){ext}"
+            if not await self.name_exists_in_parent(user_id, parent_id, candidate):
+                return candidate
+            counter += 1
+
     async def get_file_by_id(self, file_id: UUID) -> File | None:
         """
         Fetches a file by its ID.
@@ -144,6 +211,38 @@ class FileRepository:
             statement = statement.where(File.is_dir == is_dir)
 
         statement = statement.order_by(col(File.original_filename).asc())
+
+        result = await self.db.exec(statement)
+        return list(result.all())
+
+    async def get_all_items(
+        self,
+        user_id: str,
+        include_deleted: bool = False,
+    ) -> list[File]:
+        """
+        Fetch ALL files and folders for a user in a single query.
+        The caller is responsible for building the tree structure from
+        the flat list using parent_id references.
+
+        Args:
+            user_id: The user ID.
+            include_deleted: Whether to include soft-deleted items.
+
+        Returns:
+            Flat list of all File instances belonging to the user.
+        """
+        logger.debug(f"Fetching all items for user_id: {user_id}")
+        statement = select(File).where(File.user_id == user_id)
+
+        if not include_deleted:
+            statement = statement.where(col(File.is_deleted).is_(False))
+
+        # Folders first, then files; alphabetical within each group
+        statement = statement.order_by(
+            col(File.is_dir).desc(),
+            col(File.original_filename).asc(),
+        )
 
         result = await self.db.exec(statement)
         return list(result.all())

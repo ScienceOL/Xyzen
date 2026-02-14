@@ -250,5 +250,11 @@
   "infinite": {
     "loadingMore": "正在加载更多...",
     "scrollHint": "滚动以加载更多"
+  },
+  "sections": {
+    "trending": "本周热门",
+    "officialPicks": "官方精选",
+    "recentlyPublished": "最新发布",
+    "allAgents": "全部 Agent"
   }
 }
