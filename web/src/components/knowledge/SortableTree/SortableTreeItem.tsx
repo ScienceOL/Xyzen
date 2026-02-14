@@ -93,28 +93,43 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
 
 interface TreeItemCloneProps {
   item: FlattenedItem;
-  depth: number;
   childCount?: number;
-  sortMode?: SortMode;
 }
 
 /**
- * Lightweight clone rendered inside DragOverlay. No hooks needed.
+ * Compact Finder-style drag preview: icon + name + optional child count badge.
+ * Rendered inside DragOverlay — no hooks needed.
  */
 export const TreeItemClone: React.FC<TreeItemCloneProps> = ({
   item,
-  depth,
   childCount,
-  sortMode = "name",
 }) => (
-  <TreeItemContent
-    item={item}
-    depth={depth}
-    isSelected={false}
-    clone
-    childCount={childCount}
-    sortMode={sortMode}
-  />
+  <div className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 max-w-64 pointer-events-none">
+    {/* Icon */}
+    <span className="shrink-0">
+      {item.type === "folder" ? (
+        <FolderIconColored className="h-4 w-4 text-yellow-500" />
+      ) : (
+        <FileIcon
+          filename={item.name}
+          mimeType={item.file?.content_type || ""}
+          className="h-4 w-4"
+        />
+      )}
+    </span>
+
+    {/* Name — truncated */}
+    <span className="truncate text-xs font-medium text-neutral-800 dark:text-neutral-200">
+      {item.name}
+    </span>
+
+    {/* Child count badge (dragging a collapsed folder with children) */}
+    {childCount && childCount > 1 ? (
+      <span className="ml-0.5 flex shrink-0 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[10px] font-semibold text-white min-w-5 h-5">
+        {childCount}
+      </span>
+    ) : null}
+  </div>
 );
 
 /**
@@ -128,8 +143,6 @@ const TreeItemContent = forwardRef<
     depth: number;
     isSelected: boolean;
     isDropTarget?: boolean;
-    clone?: boolean;
-    childCount?: number;
     indentationWidth?: number;
     onCollapse?: (id: string) => void;
     sortMode?: SortMode;
@@ -141,8 +154,6 @@ const TreeItemContent = forwardRef<
       depth,
       isSelected,
       isDropTarget = false,
-      clone,
-      childCount,
       indentationWidth = INDENTATION_WIDTH,
       onCollapse,
       sortMode = "name",
@@ -158,13 +169,11 @@ const TreeItemContent = forwardRef<
       <div
         ref={ref}
         className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm select-none cursor-default group transition-colors ${
-          clone
-            ? "shadow-lg border border-indigo-300 bg-white dark:bg-neutral-900 dark:border-indigo-700 opacity-90"
-            : isDropTarget
-              ? "ring-2 ring-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 dark:ring-indigo-500"
-              : isSelected
-                ? "bg-indigo-600 text-white"
-                : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          isDropTarget
+            ? "ring-2 ring-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 dark:ring-indigo-500"
+            : isSelected
+              ? "bg-indigo-600 text-white"
+              : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
         }`}
         style={{ paddingLeft: depth * indentationWidth + 8 }}
       >
@@ -208,37 +217,26 @@ const TreeItemContent = forwardRef<
         <span className="min-w-0 flex-1 truncate text-xs">{item.name}</span>
 
         {/* Metadata — file size & date (like Finder list view) */}
-        {!clone && (
-          <>
-            {metaSize && (
-              <span
-                className={`shrink-0 text-[10px] tabular-nums ${
-                  isSelected
-                    ? "text-indigo-200"
-                    : "text-neutral-400 dark:text-neutral-500"
-                }`}
-              >
-                {metaSize}
-              </span>
-            )}
-            <span
-              className={`shrink-0 w-17.5 text-right text-[10px] tabular-nums ${
-                isSelected
-                  ? "text-indigo-200"
-                  : "text-neutral-400 dark:text-neutral-500"
-              }`}
-            >
-              {formatDate(metaDate)}
-            </span>
-          </>
-        )}
-
-        {/* Child count badge (for clone overlay when dragging collapsed folder) */}
-        {clone && childCount && childCount > 0 ? (
-          <span className="flex items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[10px] font-semibold text-white min-w-5 h-5">
-            {childCount}
+        {metaSize && (
+          <span
+            className={`shrink-0 text-[10px] tabular-nums ${
+              isSelected
+                ? "text-indigo-200"
+                : "text-neutral-400 dark:text-neutral-500"
+            }`}
+          >
+            {metaSize}
           </span>
-        ) : null}
+        )}
+        <span
+          className={`shrink-0 w-17.5 text-right text-[10px] tabular-nums ${
+            isSelected
+              ? "text-indigo-200"
+              : "text-neutral-400 dark:text-neutral-500"
+          }`}
+        >
+          {formatDate(metaDate)}
+        </span>
       </div>
     );
   },

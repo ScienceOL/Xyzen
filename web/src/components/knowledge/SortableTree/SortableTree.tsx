@@ -204,6 +204,18 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
     ? flattenedItems.find(({ id }) => id === activeId)
     : null;
 
+  /**
+   * The set of item IDs being dragged.
+   * If the actively-dragged item is part of the selection, drag ALL selected.
+   * Otherwise drag only the single item.
+   */
+  const draggedIds = useMemo(() => {
+    if (!activeId) return new Set<string>();
+    const aid = String(activeId);
+    if (selectedIds.has(aid) && selectedIds.size > 1) return selectedIds;
+    return new Set([aid]);
+  }, [activeId, selectedIds]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -238,14 +250,16 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
       const currentParentId = activeFlat?.parentId ?? null;
 
       let target: string | null;
-      if (
-        overItem.type === "folder" &&
-        overItem.id !== activeIdStr &&
-        !overItem.collapsed
-      ) {
-        target =
-          overItem.id === currentParentId ? overItem.parentId : overItem.id;
+      if (overItem.type === "folder" && overItem.id !== activeIdStr) {
+        // Expanded folder that is the item's current parent → move OUT
+        if (!overItem.collapsed && overItem.id === currentParentId) {
+          target = overItem.parentId;
+        } else {
+          // Any other folder (collapsed or expanded) → move INTO
+          target = overItem.id;
+        }
       } else {
+        // File or self → become sibling (same parent)
         target = overItem.parentId;
       }
 
@@ -276,6 +290,8 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
 
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
+      // Capture before clearing state
+      const idsToMove = new Set(draggedIds);
       setActiveId(null);
       setOverId(null);
       document.body.style.setProperty("cursor", "");
@@ -285,60 +301,91 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
       const activeIdStr = String(active.id);
       const overIdStr = String(over.id);
 
-      const draggedItem = findItemDeep(items, activeIdStr);
-      if (!draggedItem) return;
-
       const overItem = flattenedItems.find((i) => i.id === overIdStr);
       if (!overItem) return;
 
+      // Determine target parent from the primary dragged item
       const activeFlat = flattenedItems.find((i) => i.id === activeIdStr);
       const currentParentId = activeFlat?.parentId ?? null;
 
       let targetParentId: string | null;
-      if (
-        overItem.type === "folder" &&
-        overItem.id !== activeIdStr &&
-        !overItem.collapsed
-      ) {
-        targetParentId =
-          overItem.id === currentParentId ? overItem.parentId : overItem.id;
+      if (overItem.type === "folder" && overItem.id !== activeIdStr) {
+        // Expanded folder that is the item's current parent → move OUT
+        if (!overItem.collapsed && overItem.id === currentParentId) {
+          targetParentId = overItem.parentId;
+        } else {
+          // Any other folder (collapsed or expanded) → move INTO
+          targetParentId = overItem.id;
+        }
       } else {
         targetParentId = overItem.parentId;
       }
 
-      if (targetParentId === currentParentId) return;
+      // Don't drop onto one of the items being dragged
+      if (targetParentId !== null && idsToMove.has(targetParentId)) return;
 
-      // Prevent circular move
-      if (
-        draggedItem.type === "folder" &&
-        targetParentId !== null &&
-        findItemDeep(draggedItem.children, targetParentId)
-      ) {
-        return;
+      // Collect all items to move, filtering out invalid ones
+      const itemsToMove: { id: string; item: TreeItem }[] = [];
+      const typeMap: Record<string, "file" | "folder"> = {};
+
+      for (const id of idsToMove) {
+        const item = findItemDeep(items, id);
+        if (!item) continue;
+
+        // Skip items already in the target folder
+        const flat = flattenedItems.find((i) => i.id === id);
+        if ((flat?.parentId ?? null) === targetParentId) continue;
+
+        // Prevent circular move (folder into its own descendant)
+        if (
+          item.type === "folder" &&
+          targetParentId !== null &&
+          findItemDeep(item.children, targetParentId)
+        ) {
+          continue;
+        }
+
+        itemsToMove.push({ id, item });
+        typeMap[id] = item.type;
       }
-      if (targetParentId === activeIdStr) return;
 
-      // Optimistic update
-      const withoutItem = removeItem(items, activeIdStr);
-      const newItems = insertItem(
-        withoutItem,
-        { ...draggedItem, children: draggedItem.children },
-        targetParentId,
-        sortMode,
-        sortDirection,
-      );
-      setItems(newItems);
+      if (itemsToMove.length === 0) return;
+
+      // Optimistic update: remove all, then insert all
+      let updatedTree = items;
+      for (const { id } of itemsToMove) {
+        updatedTree = removeItem(updatedTree, id);
+      }
+      for (const { item } of itemsToMove) {
+        updatedTree = insertItem(
+          updatedTree,
+          { ...item, children: item.children },
+          targetParentId,
+          sortMode,
+          sortDirection,
+        );
+      }
+      setItems(updatedTree);
 
       // Backend call
-      const typeMap: Record<string, "file" | "folder"> = {
-        [activeIdStr]: draggedItem.type,
-      };
-      onDropOnFolder([activeIdStr], targetParentId, typeMap);
+      onDropOnFolder(
+        itemsToMove.map(({ id }) => id),
+        targetParentId,
+        typeMap,
+      );
 
       // Refetch for consistency
       setTimeout(() => fetchTree(), 500);
     },
-    [items, flattenedItems, sortMode, sortDirection, onDropOnFolder, fetchTree],
+    [
+      items,
+      flattenedItems,
+      draggedIds,
+      sortMode,
+      sortDirection,
+      onDropOnFolder,
+      fetchTree,
+    ],
   );
 
   const handleDragCancel = useCallback(() => {
@@ -367,9 +414,9 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
 
   // ===== Render =====
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {/* Sort controls — Finder-style toolbar */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-neutral-200 dark:border-neutral-700 text-[11px] text-neutral-500 dark:text-neutral-400">
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-neutral-200 dark:border-neutral-700 text-[11px] text-neutral-500 dark:text-neutral-400 shrink-0">
         <span className="mr-1">Sort:</span>
         {(["name", "modified", "created"] as const).map((mode) => (
           <button
@@ -397,7 +444,7 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
 
       {/* Tree — items stay in place during drag (Finder-like) */}
       <div
-        className={`p-2 rounded-md transition-colors ${
+        className={`flex-1 p-2 rounded-md transition-colors ${
           activeId && dropTargetId === null
             ? "bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-inset ring-indigo-300 dark:ring-indigo-600"
             : ""
@@ -429,7 +476,7 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
                   item={item}
                   depth={item.depth}
                   isSelected={selectedIds.has(item.id)}
-                  isDragging={activeId === item.id}
+                  isDragging={draggedIds.has(item.id)}
                   isDropTarget={dropTargetId === item.id}
                   onCollapse={
                     item.type === "folder" ? handleCollapse : undefined
@@ -462,9 +509,11 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
               {activeId && activeItem ? (
                 <TreeItemClone
                   item={activeItem}
-                  depth={0}
-                  childCount={getChildCount(items, String(activeId)) + 1}
-                  sortMode={sortMode}
+                  childCount={
+                    draggedIds.size > 1
+                      ? draggedIds.size
+                      : getChildCount(items, String(activeId)) + 1
+                  }
                 />
               ) : null}
             </DragOverlay>,
