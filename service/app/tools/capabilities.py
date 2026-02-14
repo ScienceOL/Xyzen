@@ -46,6 +46,9 @@ class ToolCapability(StrEnum):
     # Skills
     SKILLS = "skills"
 
+    # Subagent delegation
+    SUBAGENT = "subagent"
+
 
 # Tool name -> capabilities mapping
 # This maps known tool names to their capabilities
@@ -90,6 +93,8 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     # Skill tools
     "activate_skill": [ToolCapability.SKILLS],
     "list_skill_resources": [ToolCapability.SKILLS],
+    # Subagent tools
+    "spawn_subagent": [ToolCapability.SUBAGENT],
 }
 
 # Tools that bypass tool_filter — they're context-gated at load time

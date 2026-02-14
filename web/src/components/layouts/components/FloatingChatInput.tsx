@@ -264,24 +264,24 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
             }}
           />
 
-          {/* Mobile More Menu */}
-          {toolbar.activeChatChannel && toolbar.currentAgent && (
-            <MobileMoreMenu
-              isOpen={toolbar.showMoreMenu}
-              agent={toolbar.currentAgent}
-              onUpdateAgent={toolbar.updateAgent}
-              mcpInfo={toolbar.currentMcpInfo}
-              allMcpServers={toolbar.mcpServers}
-              onOpenSettings={() => toolbar.openSettingsModal("mcp")}
-              sessionKnowledgeSetId={toolbar.currentChannelKnowledgeSetId}
-              onUpdateSessionKnowledge={toolbar.handleKnowledgeSetChange}
-              onAgentRefresh={toolbar.fetchAgents}
-              userPlan={toolbar.userPlan}
-            />
-          )}
-
-          {/* Bottom toolbar row */}
           <TooltipProvider>
+            {/* Mobile More Menu */}
+            {toolbar.activeChatChannel && toolbar.currentAgent && (
+              <MobileMoreMenu
+                isOpen={toolbar.showMoreMenu}
+                agent={toolbar.currentAgent}
+                onUpdateAgent={toolbar.updateAgent}
+                mcpInfo={toolbar.currentMcpInfo}
+                allMcpServers={toolbar.mcpServers}
+                onOpenSettings={() => toolbar.openSettingsModal("mcp")}
+                sessionKnowledgeSetId={toolbar.currentChannelKnowledgeSetId}
+                onUpdateSessionKnowledge={toolbar.handleKnowledgeSetChange}
+                onAgentRefresh={toolbar.fetchAgents}
+                userPlan={toolbar.userPlan}
+              />
+            )}
+
+            {/* Bottom toolbar row */}
             <div className="flex items-center justify-between px-2 py-1.5 gap-2">
               {/* Left: tool buttons */}
               <div className="flex flex-wrap items-center gap-1">

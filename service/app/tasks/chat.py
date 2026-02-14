@@ -197,6 +197,11 @@ async def _process_chat_message_async(
         expire_on_commit=False,
     )
 
+    # Make session factory available to subagent tool via contextvars
+    from app.tools.builtin.subagent.context import set_session_factory
+
+    set_session_factory(TaskSessionLocal)
+
     # Agent run tracking - declared outside db context for error handling access
     agent_run_id: UUID | None = None
     agent_run_start_time: float | None = None

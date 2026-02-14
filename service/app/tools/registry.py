@@ -310,6 +310,24 @@ def register_builtin_tools() -> None:
                 requires_context=["session_id"],
             )
 
+    # Register subagent tool placeholder (actual tool is context-bound in factory)
+    from langchain_core.tools import Tool
+
+    subagent_placeholder = Tool(
+        name="spawn_subagent",
+        description="Spawn a subagent to handle a specific task autonomously",
+        func=lambda _: None,
+    )
+    BuiltinToolRegistry.register(
+        tool_id="spawn_subagent",
+        tool=subagent_placeholder,
+        category="subagent",
+        display_name="Subagent",
+        ui_toggleable=True,
+        default_enabled=False,
+        requires_context=[],
+    )
+
     logger.info(f"Registered {BuiltinToolRegistry.count()} builtin tools")
 
 

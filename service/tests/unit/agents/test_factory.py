@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from app.agents.factory import _build_graph_agent, _inject_system_prompt
+from app.agents.factory import _inject_system_prompt, _should_enable_subagent, build_graph_agent
 
 
 class TestInjectSystemPrompt:
@@ -232,7 +232,7 @@ class TestBuildGraphAgent:
             mock_llm.ainvoke = ainvoke
             return mock_llm
 
-        compiled_graph, node_component_keys = await _build_graph_agent(
+        compiled_graph, node_component_keys = await build_graph_agent(
             raw_config=raw_config,
             llm_factory=llm_factory,
             tools=[],
@@ -276,9 +276,66 @@ class TestBuildGraphAgent:
             return mock_llm
 
         with pytest.raises(Exception):
-            await _build_graph_agent(
+            await build_graph_agent(
                 raw_config=raw_config,
                 llm_factory=llm_factory,
                 tools=[],
                 system_prompt="",
             )
+
+
+class TestShouldEnableSubagent:
+    """Tests for subagent tool enablement logic."""
+
+    def test_returns_true_when_any_llm_node_has_null_tool_filter(self) -> None:
+        agent = MagicMock()
+        agent.graph_config = {
+            "graph": {
+                "nodes": [
+                    {
+                        "kind": "llm",
+                        "config": {"tool_filter": None},
+                    }
+                ]
+            }
+        }
+
+        assert _should_enable_subagent(agent) is True
+
+    def test_returns_true_when_later_llm_node_allows_spawn(self) -> None:
+        agent = MagicMock()
+        agent.graph_config = {
+            "graph": {
+                "nodes": [
+                    {
+                        "kind": "llm",
+                        "config": {"tool_filter": ["web_search"]},
+                    },
+                    {
+                        "kind": "llm",
+                        "config": {"tool_filter": ["spawn_subagent"]},
+                    },
+                ]
+            }
+        }
+
+        assert _should_enable_subagent(agent) is True
+
+    def test_skips_unsupported_tool_filter_shapes_and_keeps_checking(self) -> None:
+        agent = MagicMock()
+        agent.graph_config = {
+            "graph": {
+                "nodes": [
+                    {
+                        "kind": "llm",
+                        "config": {"tool_filter": "invalid_shape"},
+                    },
+                    {
+                        "kind": "llm",
+                        "config": {"tool_filter": ["spawn_subagent"]},
+                    },
+                ]
+            }
+        }
+
+        assert _should_enable_subagent(agent) is True
