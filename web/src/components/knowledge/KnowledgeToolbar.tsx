@@ -35,6 +35,7 @@ interface KnowledgeToolbarProps {
     targetFolderId: string | null,
   ) => void;
   onMenuClick?: () => void;
+  isLoading?: boolean;
 }
 
 export const KnowledgeToolbar = ({
@@ -52,6 +53,7 @@ export const KnowledgeToolbar = ({
   onBreadcrumbClick,
   onDropOnBreadcrumb,
   onMenuClick,
+  isLoading,
 }: KnowledgeToolbarProps) => {
   const { t } = useTranslation();
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -272,8 +274,11 @@ export const KnowledgeToolbar = ({
           onClick={onRefresh}
           className="hidden rounded-sm p-2 text-neutral-500 hover:bg-white/50 dark:hover:bg-white/10 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-all duration-200 md:block"
           title={t("knowledge.toolbar.refresh")}
+          disabled={isLoading}
         >
-          <ArrowPathIcon className="h-4 w-4" />
+          <ArrowPathIcon
+            className={`h-4 w-4 transition-transform${isLoading ? " animate-spin" : ""}`}
+          />
         </button>
       </div>
     </div>

@@ -4,21 +4,18 @@ import { folderService } from "@/service/folderService";
 import {
   DndContext,
   type DragEndEvent,
+  type DragOverEvent,
   DragOverlay,
   type DragStartEvent,
   type DropAnimation,
   PointerSensor,
   type UniqueIdentifier,
-  closestCenter,
   defaultDropAnimation,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { AnimatePresence, motion } from "framer-motion";
 import React, {
   useCallback,
   useEffect,
@@ -28,7 +25,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import type { ContextMenuType } from "../ContextMenu";
-import { SortableTreeItem } from "./SortableTreeItem";
+import { TreeItemClone, TreeItemRow } from "./SortableTreeItem";
 import type { TreeItem } from "./types";
 import {
   type SortDirection,
@@ -116,6 +113,7 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
   const [sortMode, setSortMode] = useState<SortMode>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
 
   // ---- Fetch the entire tree from backend in ONE call ----
   const fetchTree = useCallback(async () => {
@@ -202,11 +200,6 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
   // ===== Flatten for rendering =====
   const flattenedItems = useMemo(() => flattenTree(items), [items]);
 
-  const sortedIds = useMemo(
-    () => flattenedItems.map(({ id }) => id),
-    [flattenedItems],
-  );
-
   const activeItem = activeId
     ? flattenedItems.find(({ id }) => id === activeId)
     : null;
@@ -230,18 +223,61 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
     [flattenedItems],
   );
 
+  // ===== Drag helpers =====
+
+  /**
+   * Compute which folder (or null = root) a drop would land in.
+   * Returns `undefined` if the drop would be a no-op (same parent).
+   */
+  const computeDropTarget = useCallback(
+    (activeIdStr: string, overIdStr: string): string | null | undefined => {
+      const overItem = flattenedItems.find((i) => i.id === overIdStr);
+      if (!overItem) return undefined;
+
+      const activeFlat = flattenedItems.find((i) => i.id === activeIdStr);
+      const currentParentId = activeFlat?.parentId ?? null;
+
+      let target: string | null;
+      if (
+        overItem.type === "folder" &&
+        overItem.id !== activeIdStr &&
+        !overItem.collapsed
+      ) {
+        target =
+          overItem.id === currentParentId ? overItem.parentId : overItem.id;
+      } else {
+        target = overItem.parentId;
+      }
+
+      return target === currentParentId ? undefined : target;
+    },
+    [flattenedItems],
+  );
+
+  /**
+   * The folder id that would receive the drop, or `null` for root.
+   * `undefined` means no valid drop target (same parent / invalid).
+   */
+  const dropTargetId = useMemo(() => {
+    if (!activeId || !overId || activeId === overId) return undefined;
+    return computeDropTarget(String(activeId), String(overId));
+  }, [activeId, overId, computeDropTarget]);
+
   // ===== Drag handlers =====
-  // Drag only changes the parent folder — no manual position reordering.
-  // The tree is always auto-sorted by the selected sort mode.
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
     setActiveId(active.id);
     document.body.style.setProperty("cursor", "grabbing");
   }, []);
 
+  const handleDragOver = useCallback(({ over }: DragOverEvent) => {
+    setOverId(over?.id ?? null);
+  }, []);
+
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
       setActiveId(null);
+      setOverId(null);
       document.body.style.setProperty("cursor", "");
 
       if (!over || active.id === over.id) return;
@@ -249,31 +285,30 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
       const activeIdStr = String(active.id);
       const overIdStr = String(over.id);
 
-      // Find the dragged item
       const draggedItem = findItemDeep(items, activeIdStr);
       if (!draggedItem) return;
 
-      // Determine target parent:
-      // - If dropped on a folder → move into that folder
-      // - If dropped on a file → move to the same parent as that file
       const overItem = flattenedItems.find((i) => i.id === overIdStr);
       if (!overItem) return;
 
+      const activeFlat = flattenedItems.find((i) => i.id === activeIdStr);
+      const currentParentId = activeFlat?.parentId ?? null;
+
       let targetParentId: string | null;
-      if (overItem.type === "folder" && overItem.id !== activeIdStr) {
-        targetParentId = overItem.id;
+      if (
+        overItem.type === "folder" &&
+        overItem.id !== activeIdStr &&
+        !overItem.collapsed
+      ) {
+        targetParentId =
+          overItem.id === currentParentId ? overItem.parentId : overItem.id;
       } else {
         targetParentId = overItem.parentId;
       }
 
-      // Find current parent of the dragged item
-      const activeFlat = flattenedItems.find((i) => i.id === activeIdStr);
-      const currentParentId = activeFlat?.parentId ?? null;
-
-      // Don't move if it's already in the target folder
       if (targetParentId === currentParentId) return;
 
-      // Prevent moving a folder into itself or its descendants
+      // Prevent circular move
       if (
         draggedItem.type === "folder" &&
         targetParentId !== null &&
@@ -283,7 +318,7 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
       }
       if (targetParentId === activeIdStr) return;
 
-      // Optimistic update: remove from old position, insert into new parent
+      // Optimistic update
       const withoutItem = removeItem(items, activeIdStr);
       const newItems = insertItem(
         withoutItem,
@@ -294,7 +329,7 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
       );
       setItems(newItems);
 
-      // Call the backend
+      // Backend call
       const typeMap: Record<string, "file" | "folder"> = {
         [activeIdStr]: draggedItem.type,
       };
@@ -308,6 +343,7 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
+    setOverId(null);
     document.body.style.setProperty("cursor", "");
   }, []);
 
@@ -322,11 +358,7 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
 
   // ===== Loading state =====
   if (!loaded) {
-    return (
-      <div className="flex items-center justify-center p-8 text-sm text-neutral-400">
-        Loading…
-      </div>
-    );
+    return null;
   }
 
   if (items.length === 0) {
@@ -363,56 +395,74 @@ const SortableTreeComp: React.FC<SortableTreeProps> = ({
         ))}
       </div>
 
-      {/* Tree */}
-      <div className="p-2">
+      {/* Tree — items stay in place during drag (Finder-like) */}
+      <div
+        className={`p-2 rounded-md transition-colors ${
+          activeId && dropTargetId === null
+            ? "bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-inset ring-indigo-300 dark:ring-indigo-600"
+            : ""
+        }`}
+      >
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <SortableContext
-            items={sortedIds}
-            strategy={verticalListSortingStrategy}
-          >
+          <AnimatePresence initial={false}>
             {flattenedItems.map((item) => (
-              <SortableTreeItem
+              <motion.div
                 key={item.id}
-                item={item}
-                depth={item.depth}
-                isSelected={selectedIds.has(item.id)}
-                onCollapse={item.type === "folder" ? handleCollapse : undefined}
-                onClick={onItemClick}
-                onDoubleClick={(id) => {
-                  const found = findOriginalItem(id);
-                  if (found?.type === "file") {
-                    onFileDoubleClick(found.item as FileUploadResponse);
-                  } else if (found?.type === "folder") {
-                    handleCollapse(id);
-                  }
+                layout={!activeId}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{
+                  layout: { duration: 0.2, ease: "easeInOut" },
+                  opacity: { duration: 0.15 },
+                  height: { duration: 0.2 },
                 }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const found = findOriginalItem(item.id);
-                  if (found) {
-                    onContextMenu(e, found.item, found.type);
+                style={{ overflow: "hidden" }}
+              >
+                <TreeItemRow
+                  item={item}
+                  depth={item.depth}
+                  isSelected={selectedIds.has(item.id)}
+                  isDragging={activeId === item.id}
+                  isDropTarget={dropTargetId === item.id}
+                  onCollapse={
+                    item.type === "folder" ? handleCollapse : undefined
                   }
-                }}
-                registerRef={registerRef}
-                sortMode={sortMode}
-              />
+                  onClick={onItemClick}
+                  onDoubleClick={(id: string) => {
+                    const found = findOriginalItem(id);
+                    if (found?.type === "file") {
+                      onFileDoubleClick(found.item as FileUploadResponse);
+                    } else if (found?.type === "folder") {
+                      handleCollapse(id);
+                    }
+                  }}
+                  onContextMenu={(e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const found = findOriginalItem(item.id);
+                    if (found) {
+                      onContextMenu(e, found.item, found.type);
+                    }
+                  }}
+                  registerRef={registerRef}
+                  sortMode={sortMode}
+                />
+              </motion.div>
             ))}
-          </SortableContext>
+          </AnimatePresence>
           {createPortal(
             <DragOverlay dropAnimation={dropAnimationConfig}>
               {activeId && activeItem ? (
-                <SortableTreeItem
+                <TreeItemClone
                   item={activeItem}
-                  depth={activeItem.depth}
-                  isSelected={false}
-                  clone
+                  depth={0}
                   childCount={getChildCount(items, String(activeId)) + 1}
                   sortMode={sortMode}
                 />

@@ -61,6 +61,7 @@ export const KnowledgeLayout = () => {
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isFileListLoading, setIsFileListLoading] = useState(false);
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
 
   // Navigate into a subfolder (independent of tab)
@@ -583,6 +584,7 @@ export const KnowledgeLayout = () => {
           onBreadcrumbClick={(id) => navigateToFolder(id)}
           onDropOnBreadcrumb={handleDropOnBreadcrumb}
           onMenuClick={() => setIsSidebarOpen(true)}
+          isLoading={isFileListLoading}
         />
 
         {/* File Content */}
@@ -600,6 +602,7 @@ export const KnowledgeLayout = () => {
             onRefresh={() => setRefreshKey((k) => k + 1)}
             onFileCountChange={setCurrentFileCount}
             onStatsUpdate={handleStatsUpdate}
+            onLoadingChange={setIsFileListLoading}
             currentFolderId={currentFolderId}
             currentKnowledgeSetId={currentKnowledgeSetId}
             onFolderChange={(id) => navigateToFolder(id)}

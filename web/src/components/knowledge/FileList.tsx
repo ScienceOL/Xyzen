@@ -47,6 +47,7 @@ interface FileListProps {
   onRefresh?: () => void;
   onFileCountChange?: (count: number) => void;
   onStatsUpdate?: (deletedBytes: number, deletedFileCount: number) => void;
+  onLoadingChange?: (loading: boolean) => void;
   currentFolderId: string | null;
   onFolderChange?: (folderId: string | null) => void;
   currentKnowledgeSetId?: string | null;
@@ -86,6 +87,7 @@ export const FileList = React.memo(
         onRefresh,
         onFileCountChange,
         onStatsUpdate,
+        onLoadingChange,
         currentFolderId,
         onFolderChange,
         currentKnowledgeSetId,
@@ -98,6 +100,11 @@ export const FileList = React.memo(
       const [files, setFiles] = useState<FileUploadResponse[]>([]);
       const [folders, setFolders] = useState<Folder[]>([]);
       const [isLoading, setIsLoading] = useState(false);
+
+      // Notify parent when loading state changes
+      useEffect(() => {
+        onLoadingChange?.(isLoading);
+      }, [isLoading, onLoadingChange]);
 
       // Refs to track current files/folders for imperative handle
       const filesRef = useRef<FileUploadResponse[]>([]);
@@ -1292,15 +1299,12 @@ export const FileList = React.memo(
         }
       };
 
-      if (isLoading) {
-        return (
-          <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-            {t("common.loading")}
-          </div>
-        );
+      if (isLoading && files.length === 0 && folders.length === 0) {
+        // Initial load — show nothing (toolbar refresh icon spins)
+        return null;
       }
 
-      if (files.length === 0 && folders.length === 0) {
+      if (!isLoading && files.length === 0 && folders.length === 0) {
         return (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
             <DocumentIcon className="h-8 w-8 opacity-50" />
@@ -1354,7 +1358,7 @@ export const FileList = React.memo(
               }}
             />
           )}
-          {filter === "all" || filter === "knowledge" ? (
+          {filter === "all" ? (
             <FileTreeView
               folders={folders}
               files={files}
@@ -1709,9 +1713,7 @@ export const FileList = React.memo(
               className="flex items-center justify-center py-4"
             >
               {isLoadingMore && (
-                <span className="text-sm text-neutral-500">
-                  {t("common.loading")}
-                </span>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-600 dark:border-neutral-600 dark:border-t-neutral-300" />
               )}
             </div>
           )}

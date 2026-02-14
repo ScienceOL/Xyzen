@@ -1,6 +1,5 @@
 import { FileIcon } from "@/components/knowledge/FileIcon";
-import { useSortable, type AnimateLayoutChanges } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { ChevronRightIcon } from "lucide-react";
 import React, { forwardRef } from "react";
 import type { FlattenedItem } from "./types";
@@ -11,17 +10,16 @@ import {
   type SortMode,
 } from "./utilities";
 
-const animateLayoutChanges: AnimateLayoutChanges = ({
-  isSorting,
-  wasDragging,
-}) => !(isSorting || wasDragging);
+// ---------------------------------------------------------------------------
+// Props shared between TreeItemRow and TreeItemClone
+// ---------------------------------------------------------------------------
 
-interface SortableTreeItemProps {
+interface TreeItemRowProps {
   item: FlattenedItem;
   depth: number;
   isSelected: boolean;
-  clone?: boolean;
-  childCount?: number;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
   indentationWidth?: number;
   sortMode?: SortMode;
   onCollapse?: (id: string) => void;
@@ -32,12 +30,17 @@ interface SortableTreeItemProps {
   registerRef?: (id: string, el: HTMLDivElement | null) => void;
 }
 
-export const SortableTreeItem: React.FC<SortableTreeItemProps> = ({
+/**
+ * A tree item row that is both draggable (drag source) and droppable (drop target).
+ * Items stay perfectly in place during drag — no shifting, no transforms.
+ * Only the DragOverlay follows the cursor.
+ */
+export const TreeItemRow: React.FC<TreeItemRowProps> = ({
   item,
   depth,
   isSelected,
-  clone,
-  childCount,
+  isDragging = false,
+  isDropTarget = false,
   indentationWidth = INDENTATION_WIDTH,
   sortMode = "name",
   onCollapse,
@@ -49,46 +52,19 @@ export const SortableTreeItem: React.FC<SortableTreeItemProps> = ({
   const {
     attributes,
     listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: item.id,
-    animateLayoutChanges,
-  });
+    setNodeRef: setDragRef,
+  } = useDraggable({ id: item.id });
 
-  const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-  };
-
-  if (clone) {
-    return (
-      <TreeItemContent
-        item={item}
-        depth={depth}
-        isSelected={false}
-        clone
-        childCount={childCount}
-        indentationWidth={indentationWidth}
-        sortMode={sortMode}
-      />
-    );
-  }
+  const { setNodeRef: setDropRef } = useDroppable({ id: item.id });
 
   return (
     <div
       ref={(el) => {
-        setNodeRef(el);
-        setActivatorNodeRef(el);
+        setDragRef(el);
+        setDropRef(el);
         registerRef?.(item.id, el);
       }}
-      style={{
-        ...style,
-        opacity: isDragging ? 0.4 : 1,
-      }}
+      style={{ opacity: isDragging ? 0.4 : 1 }}
       {...attributes}
       {...listeners}
       onMouseDown={(e) => {
@@ -102,6 +78,7 @@ export const SortableTreeItem: React.FC<SortableTreeItemProps> = ({
         item={item}
         depth={depth}
         isSelected={isSelected}
+        isDropTarget={isDropTarget}
         indentationWidth={indentationWidth}
         onCollapse={onCollapse}
         sortMode={sortMode}
@@ -109,6 +86,36 @@ export const SortableTreeItem: React.FC<SortableTreeItemProps> = ({
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Clone (shown in DragOverlay)
+// ---------------------------------------------------------------------------
+
+interface TreeItemCloneProps {
+  item: FlattenedItem;
+  depth: number;
+  childCount?: number;
+  sortMode?: SortMode;
+}
+
+/**
+ * Lightweight clone rendered inside DragOverlay. No hooks needed.
+ */
+export const TreeItemClone: React.FC<TreeItemCloneProps> = ({
+  item,
+  depth,
+  childCount,
+  sortMode = "name",
+}) => (
+  <TreeItemContent
+    item={item}
+    depth={depth}
+    isSelected={false}
+    clone
+    childCount={childCount}
+    sortMode={sortMode}
+  />
+);
 
 /**
  * Pure presentational component for tree item content.
@@ -120,6 +127,7 @@ const TreeItemContent = forwardRef<
     item: FlattenedItem;
     depth: number;
     isSelected: boolean;
+    isDropTarget?: boolean;
     clone?: boolean;
     childCount?: number;
     indentationWidth?: number;
@@ -132,6 +140,7 @@ const TreeItemContent = forwardRef<
       item,
       depth,
       isSelected,
+      isDropTarget = false,
       clone,
       childCount,
       indentationWidth = INDENTATION_WIDTH,
@@ -148,12 +157,14 @@ const TreeItemContent = forwardRef<
     return (
       <div
         ref={ref}
-        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm select-none cursor-default group ${
+        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm select-none cursor-default group transition-colors ${
           clone
             ? "shadow-lg border border-indigo-300 bg-white dark:bg-neutral-900 dark:border-indigo-700 opacity-90"
-            : isSelected
-              ? "bg-indigo-600 text-white"
-              : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            : isDropTarget
+              ? "ring-2 ring-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 dark:ring-indigo-500"
+              : isSelected
+                ? "bg-indigo-600 text-white"
+                : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
         }`}
         style={{ paddingLeft: depth * indentationWidth + 8 }}
       >
