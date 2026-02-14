@@ -485,6 +485,54 @@ class MarketplaceService {
 
     return response.json();
   }
+
+  /**
+   * Get trending marketplace listings
+   */
+  async getTrendingListings(limit = 10): Promise<MarketplaceListing[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.append("limit", limit.toString());
+
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/trending?${searchParams.toString()}`,
+      {
+        method: "GET",
+        headers: this.createAuthHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to get trending listings: ${response.statusText}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get recently published marketplace listings
+   */
+  async getRecentlyPublishedListings(limit = 6): Promise<MarketplaceListing[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.append("limit", limit.toString());
+
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/recently-published?${searchParams.toString()}`,
+      {
+        method: "GET",
+        headers: this.createAuthHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to get recently published listings: ${response.statusText}`,
+      );
+    }
+
+    return response.json();
+  }
 }
 
 export const marketplaceService = new MarketplaceService();

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Literal, Sequence
 from uuid import UUID
 
+from sqlalchemy import Float, cast, literal
 from sqlmodel import asc, case, col, desc, func, or_, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -416,3 +417,64 @@ class AgentMarketplaceRepository:
 
         result = await self.db.exec(statement)
         return result.one()
+
+    async def get_trending_listings(
+        self,
+        limit: int = 10,
+        decay_days: int = 30,
+    ) -> Sequence[AgentMarketplace]:
+        """
+        Fetches trending marketplace listings ranked by a weighted score
+        with time decay.
+
+        Score = (likes*3 + forks*5 + views*0.5) * (1 / (1 + days_since_update / decay_days))
+
+        Args:
+            limit: Maximum number of results.
+            decay_days: Number of days for the decay factor.
+
+        Returns:
+            List of trending AgentMarketplace instances.
+        """
+        days_since_update = func.extract("epoch", func.now() - AgentMarketplace.updated_at) / 86400.0
+        base_score = (
+            cast(AgentMarketplace.likes_count, Float) * 3
+            + cast(AgentMarketplace.forks_count, Float) * 5
+            + cast(AgentMarketplace.views_count, Float) * 0.5
+        )
+        decay_factor = literal(1.0) / (literal(1.0) + days_since_update / literal(float(decay_days)))
+        trending_score = base_score * decay_factor
+
+        statement = (
+            select(AgentMarketplace)
+            .where(col(AgentMarketplace.is_published).is_(True))
+            .order_by(desc(trending_score))
+            .limit(limit)
+        )
+
+        result = await self.db.exec(statement)
+        return result.all()
+
+    async def get_recently_published_listings(
+        self,
+        limit: int = 6,
+    ) -> Sequence[AgentMarketplace]:
+        """
+        Fetches recently published marketplace listings, sorted by first_published_at.
+
+        Args:
+            limit: Maximum number of results.
+
+        Returns:
+            List of recently published AgentMarketplace instances.
+        """
+        statement = (
+            select(AgentMarketplace)
+            .where(col(AgentMarketplace.is_published).is_(True))
+            .where(col(AgentMarketplace.first_published_at).is_not(None))
+            .order_by(desc(AgentMarketplace.first_published_at))
+            .limit(limit)
+        )
+
+        result = await self.db.exec(statement)
+        return result.all()

@@ -250,5 +250,11 @@
   "infinite": {
     "loadingMore": "Loading more...",
     "scrollHint": "Scroll to load more"
+  },
+  "sections": {
+    "trending": "Trending This Week",
+    "officialPicks": "Official Picks",
+    "recentlyPublished": "Recently Published",
+    "allAgents": "All Agents"
   }
 }

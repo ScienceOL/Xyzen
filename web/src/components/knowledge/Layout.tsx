@@ -17,11 +17,33 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CreateKnowledgeSetModal } from "./CreateKnowledgeSetModal";
 import { FileList, type FileListHandle } from "./FileList";
+import { DRAG_MIME } from "./FileTreeView";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import type { KnowledgeTab, StorageStats, ViewMode } from "./types";
 import { UploadProgress, type UploadItem } from "./UploadProgress";
+
+/**
+ * Given a desired name and a set of existing names in the same directory,
+ * return a unique name by appending " (1)", " (2)", etc. when needed.
+ */
+const getUniqueFilename = (name: string, existingNames: string[]): string => {
+  if (!existingNames.includes(name)) return name;
+
+  const dotIdx = name.lastIndexOf(".");
+  const base = dotIdx > 0 ? name.slice(0, dotIdx) : name;
+  const ext = dotIdx > 0 ? name.slice(dotIdx) : "";
+
+  let counter = 1;
+  let candidate: string;
+  do {
+    candidate = `${base} (${counter})${ext}`;
+    counter++;
+  } while (existingNames.includes(candidate));
+
+  return candidate;
+};
 
 export const KnowledgeLayout = () => {
   const { t } = useTranslation();
@@ -39,22 +61,25 @@ export const KnowledgeLayout = () => {
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isFileListLoading, setIsFileListLoading] = useState(false);
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
 
-  // Navigation Helper
+  // Navigate into a subfolder (independent of tab)
+  const navigateToFolder = useCallback((folderId: string | null) => {
+    setCurrentFolderId(folderId);
+  }, []);
+
+  // Navigation Helper — switches tabs (sidebar clicks)
   const handleNavigate = useCallback(
-    (tab: KnowledgeTab, idOrFolderId: string | null = null) => {
+    (tab: KnowledgeTab, idOrKnowledgeSetId: string | null = null) => {
       setActiveTab(tab);
       if (tab === "knowledge") {
-        setCurrentKnowledgeSetId(idOrFolderId);
-        setCurrentFolderId(null);
-      } else if (tab === "folders") {
-        setCurrentFolderId(idOrFolderId);
-        setCurrentKnowledgeSetId(null);
+        setCurrentKnowledgeSetId(idOrKnowledgeSetId);
       } else {
-        setCurrentFolderId(null);
         setCurrentKnowledgeSetId(null);
       }
+      // Switching tabs always resets to root folder
+      setCurrentFolderId(null);
       setIsSidebarOpen(false);
     },
     [],
@@ -108,6 +133,7 @@ export const KnowledgeLayout = () => {
   const [currentFileCount, setCurrentFileCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const fileListRef = useRef<FileListHandle>(null);
 
   // Upload progress tracking
@@ -159,15 +185,33 @@ export const KnowledgeLayout = () => {
     fileInputRef.current?.click();
   };
 
+  const handleFolderUploadClick = () => {
+    folderInputRef.current?.click();
+  };
+
   // Upload files with current context
   const uploadFiles = useCallback(
     async (files: File[]) => {
       if (files.length === 0) return;
 
       // Capture current context at upload time
-      const parentId = activeTab === "folders" ? currentFolderId : null;
+      const parentId = currentFolderId || null;
       const knowledgeSetId =
         activeTab === "knowledge" ? currentKnowledgeSetId : null;
+
+      // Fetch existing filenames in current directory for deduplication
+      let existingNames: string[] = [];
+      try {
+        const existingFiles = await fileService.listFiles({
+          parent_id: parentId,
+          filter_by_parent: true,
+          limit: 1000,
+          offset: 0,
+        });
+        existingNames = existingFiles.map((f) => f.original_filename);
+      } catch {
+        // If we can't fetch, proceed without dedup
+      }
 
       // Validate and start uploads
       for (const file of files) {
@@ -201,11 +245,19 @@ export const KnowledgeLayout = () => {
           continue;
         }
 
+        // Deduplicate filename
+        const uniqueName = getUniqueFilename(file.name, existingNames);
+        existingNames.push(uniqueName); // Track for batch dedup
+        const uploadFile =
+          uniqueName !== file.name
+            ? new File([file], uniqueName, { type: file.type })
+            : file;
+
         // Create upload item
         const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const uploadItem: UploadItem = {
           id: uploadId,
-          fileName: file.name,
+          fileName: uniqueName,
           progress: 0,
           status: "uploading",
         };
@@ -214,7 +266,7 @@ export const KnowledgeLayout = () => {
 
         // Start upload with progress tracking
         const handle = fileService.uploadFileWithProgress(
-          file,
+          uploadFile,
           "private",
           undefined,
           parentId,
@@ -303,6 +355,148 @@ export const KnowledgeLayout = () => {
     }
   };
 
+  /**
+   * Handle folder upload via webkitdirectory input.
+   * Creates the folder hierarchy on the backend first,
+   * then uploads each file into its correct parent folder.
+   */
+  const handleFolderChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+
+      const files = Array.from(e.target.files);
+      // Reset input so user can upload the same folder again
+      e.target.value = "";
+
+      // The root parent for the upload
+      const rootParentId = currentFolderId || null;
+      const knowledgeSetId =
+        activeTab === "knowledge" ? currentKnowledgeSetId : null;
+
+      // Build a set of unique directory paths from webkitRelativePath.
+      // e.g. "MyFolder/sub/file.txt" → ["MyFolder", "MyFolder/sub"]
+      const dirPaths = new Set<string>();
+      for (const file of files) {
+        const rel = (file as File & { webkitRelativePath?: string })
+          .webkitRelativePath;
+        if (!rel) continue;
+        const parts = rel.split("/");
+        // All segments except the last (filename) form directory paths
+        for (let i = 1; i < parts.length; i++) {
+          dirPaths.add(parts.slice(0, i).join("/"));
+        }
+      }
+
+      // Sort by depth so parents are created before children
+      const sortedDirs = Array.from(dirPaths).sort(
+        (a, b) => a.split("/").length - b.split("/").length,
+      );
+
+      // Map from directory path → created folder ID
+      const folderIdMap = new Map<string, string>();
+
+      // Create folders sequentially (parent before child)
+      for (const dirPath of sortedDirs) {
+        const parts = dirPath.split("/");
+        const folderName = parts[parts.length - 1];
+        const parentPath =
+          parts.length > 1 ? parts.slice(0, -1).join("/") : null;
+        const parentId = parentPath
+          ? (folderIdMap.get(parentPath) ?? null)
+          : rootParentId;
+
+        try {
+          const folder = await folderService.createFolder({
+            name: folderName,
+            parent_id: parentId,
+          });
+          folderIdMap.set(dirPath, folder.id);
+        } catch (err) {
+          console.error(`Failed to create folder: ${dirPath}`, err);
+        }
+      }
+
+      // Now upload each file into its correct parent folder
+      for (const file of files) {
+        const rel = (file as File & { webkitRelativePath?: string })
+          .webkitRelativePath;
+        if (!rel) continue;
+        const parts = rel.split("/");
+        const parentDirPath =
+          parts.length > 1 ? parts.slice(0, -1).join("/") : null;
+        const parentId = parentDirPath
+          ? (folderIdMap.get(parentDirPath) ?? rootParentId)
+          : rootParentId;
+
+        // Check file size
+        if (stats.maxFileSize && file.size > stats.maxFileSize) continue;
+        if (
+          stats.availableBytes !== undefined &&
+          file.size > stats.availableBytes
+        )
+          continue;
+
+        const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const uploadItem: UploadItem = {
+          id: uploadId,
+          fileName: file.name,
+          progress: 0,
+          status: "uploading",
+        };
+        setUploads((prev) => [...prev, uploadItem]);
+
+        const handle = fileService.uploadFileWithProgress(
+          file,
+          "private",
+          undefined,
+          parentId,
+          knowledgeSetId,
+          (progress) => {
+            setUploads((prev) =>
+              prev.map((u) =>
+                u.id === uploadId ? { ...u, progress: progress.percentage } : u,
+              ),
+            );
+          },
+        );
+
+        uploadHandlesRef.current.set(uploadId, handle);
+
+        handle.promise
+          .then(() => {
+            setUploads((prev) =>
+              prev.map((u) =>
+                u.id === uploadId
+                  ? { ...u, status: "completed", progress: 100 }
+                  : u,
+              ),
+            );
+            uploadHandlesRef.current.delete(uploadId);
+            setRefreshKey((prev) => prev + 1);
+          })
+          .catch((error: Error) => {
+            if (error.message === "Upload cancelled") {
+              setUploads((prev) =>
+                prev.map((u) =>
+                  u.id === uploadId ? { ...u, status: "cancelled" } : u,
+                ),
+              );
+            } else {
+              setUploads((prev) =>
+                prev.map((u) =>
+                  u.id === uploadId
+                    ? { ...u, status: "error", error: error.message }
+                    : u,
+                ),
+              );
+            }
+            uploadHandlesRef.current.delete(uploadId);
+          });
+      }
+    },
+    [activeTab, currentFolderId, currentKnowledgeSetId, stats],
+  );
+
   // Drag and drop state
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
@@ -310,6 +504,8 @@ export const KnowledgeLayout = () => {
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Ignore internal item drags (only show overlay for external file drops)
+    if (e.dataTransfer.types.includes(DRAG_MIME)) return;
     dragCounterRef.current++;
     if (e.dataTransfer.types.includes("Files")) {
       setIsDragOver(true);
@@ -351,12 +547,29 @@ export const KnowledgeLayout = () => {
     }
   };
 
+  // Handle dropping files onto a breadcrumb (move to ancestor folder or root)
+  const handleDropOnBreadcrumb = useCallback(
+    async (itemIds: string[], targetFolderId: string | null) => {
+      if (fileListRef.current) {
+        fileListRef.current.moveItems(itemIds, targetFolderId);
+      }
+    },
+    [],
+  );
+
   const handleCreateFolder = async () => {
     const name = prompt(t("knowledge.prompts.folderName"));
     if (name) {
       try {
+        // Deduplicate folder name
+        const existingFolders = await folderService.listFolders(
+          currentFolderId || null,
+        );
+        const existingFolderNames = existingFolders.map((f) => f.name);
+        const uniqueName = getUniqueFilename(name, existingFolderNames);
+
         await folderService.createFolder({
-          name,
+          name: uniqueName,
           parent_id: currentFolderId,
         });
         setRefreshKey((prev) => prev + 1);
@@ -370,6 +583,23 @@ export const KnowledgeLayout = () => {
   const handleCreateKnowledgeSet = async () => {
     setIsCreateKnowledgeSetOpen(true);
   };
+
+  // Handle dropping files onto knowledge set items in sidebar
+  const handleDropOnKnowledgeSet = useCallback(
+    async (fileIds: string[], knowledgeSetId: string) => {
+      try {
+        await Promise.all(
+          fileIds.map((fileId) =>
+            knowledgeSetService.linkFileToKnowledgeSet(knowledgeSetId, fileId),
+          ),
+        );
+        setRefreshKey((prev) => prev + 1);
+      } catch (e) {
+        console.error("Failed to add files to knowledge set", e);
+      }
+    },
+    [],
+  );
 
   const handleSubmitCreateKnowledgeSet = async (values: {
     name: string;
@@ -394,8 +624,6 @@ export const KnowledgeLayout = () => {
         return t("knowledge.titles.recents");
       case "all":
         return t("knowledge.titles.allFiles");
-      case "folders":
-        return t("knowledge.titles.myKnowledge");
       case "knowledge":
         return currentKnowledgeSetName || t("knowledge.titles.knowledgeBase");
       case "trash":
@@ -428,6 +656,7 @@ export const KnowledgeLayout = () => {
             onTabChange={handleNavigate}
             refreshTrigger={refreshKey}
             onCreateKnowledgeSet={handleCreateKnowledgeSet}
+            onDropOnKnowledgeSet={handleDropOnKnowledgeSet}
           />
         </div>
       </div>
@@ -451,6 +680,7 @@ export const KnowledgeLayout = () => {
             onTabChange={handleNavigate}
             refreshTrigger={refreshKey}
             onCreateKnowledgeSet={handleCreateKnowledgeSet}
+            onDropOnKnowledgeSet={handleDropOnKnowledgeSet}
           />
         </SheetContent>
       </Sheet>
@@ -476,7 +706,7 @@ export const KnowledgeLayout = () => {
                   ? t("knowledge.upload.dropToKnowledgeSet", {
                       name: currentKnowledgeSetName,
                     })
-                  : activeTab === "folders"
+                  : currentFolderId
                     ? t("knowledge.upload.dropToFolder")
                     : t("knowledge.upload.dropToUpload")}
               </div>
@@ -490,14 +720,19 @@ export const KnowledgeLayout = () => {
           onViewModeChange={setViewMode}
           onSearch={(q) => console.log("Search", q)}
           onUpload={handleUploadClick}
+          onUploadFolder={handleFolderUploadClick}
           onRefresh={() => setRefreshKey((k) => k + 1)}
           isTrash={activeTab === "trash"}
           onEmptyTrash={handleEmptyTrash}
-          showCreateFolder={activeTab === "folders"}
+          showCreateFolder={activeTab === "all"}
           onCreateFolder={handleCreateFolder}
-          breadcrumbs={activeTab === "folders" ? breadcrumbs : undefined}
-          onBreadcrumbClick={(id) => handleNavigate("folders", id)}
+          breadcrumbs={
+            currentFolderId && activeTab === "all" ? breadcrumbs : undefined
+          }
+          onBreadcrumbClick={(id) => navigateToFolder(id)}
+          onDropOnBreadcrumb={handleDropOnBreadcrumb}
           onMenuClick={() => setIsSidebarOpen(true)}
+          isLoading={isFileListLoading}
         />
 
         {/* File Content */}
@@ -515,15 +750,19 @@ export const KnowledgeLayout = () => {
             onRefresh={() => setRefreshKey((k) => k + 1)}
             onFileCountChange={setCurrentFileCount}
             onStatsUpdate={handleStatsUpdate}
+            onLoadingChange={setIsFileListLoading}
             currentFolderId={currentFolderId}
             currentKnowledgeSetId={currentKnowledgeSetId}
-            onFolderChange={(id) => handleNavigate("folders", id)}
+            onFolderChange={(id) => navigateToFolder(id)}
+            onCreateFolder={handleCreateFolder}
+            onUpload={handleUploadClick}
           />
         </div>
         {/* Status Bar */}
         <StatusBar
           itemCount={
-            activeTab === "folders" || activeTab === "knowledge"
+            (currentFolderId && activeTab === "all") ||
+            activeTab === "knowledge"
               ? currentFileCount
               : stats.fileCount
           }
@@ -547,13 +786,22 @@ export const KnowledgeLayout = () => {
         </AnimatePresence>
       </div>
 
-      {/* Hidden Upload Input */}
+      {/* Hidden Upload Inputs */}
       <input
         type="file"
         ref={fileInputRef}
         className="hidden"
         multiple
         onChange={handleFileChange}
+      />
+
+      <input
+        type="file"
+        ref={folderInputRef}
+        className="hidden"
+        // @ts-expect-error webkitdirectory is not in the React typings
+        webkitdirectory=""
+        onChange={handleFolderChange}
       />
 
       <CreateKnowledgeSetModal

@@ -1,5 +1,6 @@
 "use client";
 
+import { zIndexClasses } from "@/constants/zIndex";
 import {
   ChevronDownIcon,
   CpuChipIcon,
@@ -7,7 +8,8 @@ import {
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { TierInfoModal } from "./TierInfoModal";
 
@@ -78,6 +80,24 @@ export function TierSelector({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const closeTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  // Debounced open/close to bridge the gap between trigger and portal dropdown
+  const openDropdown = useCallback(() => {
+    if (disabled) return;
+    if (closeTimeout.current) {
+      clearTimeout(closeTimeout.current);
+      closeTimeout.current = null;
+    }
+    setIsOpen(true);
+  }, [disabled]);
+
+  const closeDropdown = useCallback(() => {
+    closeTimeout.current = setTimeout(() => setIsOpen(false), 80);
+  }, []);
 
   // Default to standard if no tier is selected
   const effectiveTier = currentTier || "standard";
@@ -102,15 +122,53 @@ export function TierSelector({
     return t("app.tierSelector.rateFormat", { rate: rate.toFixed(1) });
   };
 
+  // Position the portal dropdown above the trigger
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: "fixed",
+      left: rect.left,
+      bottom: window.innerHeight - rect.top + 4,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen, updatePosition]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        triggerRef.current?.contains(e.target as Node) ||
+        dropdownRef.current?.contains(e.target as Node)
+      )
+        return;
+      setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [isOpen]);
+
   return (
     <>
       <div
         className="relative"
-        onMouseEnter={() => !disabled && setIsOpen(true)}
-        onMouseLeave={() => setIsOpen(false)}
+        onMouseEnter={openDropdown}
+        onMouseLeave={closeDropdown}
       >
         {/* Main Trigger Button */}
         <motion.button
+          ref={triggerRef}
           disabled={disabled}
           className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${currentConfig.bgColor} ${currentConfig.textColor} ${isOpen ? "shadow-md" : "shadow-sm"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           whileHover={disabled ? undefined : { scale: 1.02 }}
@@ -125,16 +183,22 @@ export function TierSelector({
             className={`h-3 w-3 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
           />
         </motion.button>
+      </div>
 
-        {/* Dropdown */}
+      {/* Portal dropdown — renders at body level so backdrop-blur works */}
+      {createPortal(
         <AnimatePresence>
           {isOpen && (
             <motion.div
+              ref={dropdownRef}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="absolute bottom-full left-0 mb-1 z-50 w-80 rounded-sm border border-neutral-200/60 bg-white/80 shadow-xl backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-900/80 p-2"
+              className={`${zIndexClasses.popover} w-80 rounded-sm border border-neutral-200/60 bg-white/80 shadow-xl backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-900/80 p-2`}
+              style={dropdownStyle}
+              onMouseEnter={openDropdown}
+              onMouseLeave={closeDropdown}
             >
               <div className="flex items-center justify-between px-2 py-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
@@ -219,8 +283,9 @@ export function TierSelector({
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
-      </div>
+        </AnimatePresence>,
+        document.body,
+      )}
 
       {/* Tier Info Modal */}
       <TierInfoModal open={isInfoModalOpen} onOpenChange={setIsInfoModalOpen} />

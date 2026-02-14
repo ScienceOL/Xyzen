@@ -236,6 +236,7 @@ class FileService {
     offset?: number;
     parent_id?: string | null;
     filter_by_parent?: boolean;
+    is_dir?: boolean;
   }): Promise<FileUploadResponse[]> {
     const baseUrl = getBackendUrl();
     const queryParams = new URLSearchParams();
@@ -252,6 +253,9 @@ class FileService {
       }
       if (params.filter_by_parent) {
         queryParams.append("filter_by_parent", "true");
+      }
+      if (params.is_dir !== undefined) {
+        queryParams.append("is_dir", params.is_dir.toString());
       }
     }
 

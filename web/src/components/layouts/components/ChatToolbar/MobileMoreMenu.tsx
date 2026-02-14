@@ -5,6 +5,7 @@
  */
 
 import McpIcon from "@/assets/McpIcon";
+import { zIndexClasses } from "@/constants/zIndex";
 import { cn } from "@/lib/utils";
 import { skillService } from "@/service/skillService";
 import type { Agent } from "@/types/agents";
@@ -171,7 +172,7 @@ export function MobileMoreMenu({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-full left-0 right-0 mx-2 mb-2 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-1.5"
+            className={`absolute bottom-full left-0 right-0 mx-2 mb-2 ${zIndexClasses.popover} rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900 p-1.5`}
           >
             <div className="flex flex-col gap-1">
               {/* Tool Selector */}

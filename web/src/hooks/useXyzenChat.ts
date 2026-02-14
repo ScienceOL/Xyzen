@@ -12,7 +12,6 @@ export interface XyzenChatConfig {
   theme: "indigo";
   systemAgentTag: string;
   storageKeys: {
-    inputHeight: string;
     historyPinned?: string;
   };
   defaultTitle: string;
@@ -113,10 +112,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
     }
     return false;
   });
-  const [inputHeight, setInputHeight] = useState(() => {
-    const savedHeight = localStorage.getItem(config.storageKeys.inputHeight);
-    return savedHeight ? parseInt(savedHeight, 10) : 170;
-  });
   const [sendBlocked, setSendBlocked] = useState(false);
 
   // Abort handler
@@ -199,14 +194,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
   const handleSelectTopic = useCallback((_topicId: string) => {
     // Keep history panel open when selecting a topic for better UX
   }, []);
-
-  const handleInputHeightChange = useCallback(
-    (height: number) => {
-      setInputHeight(height);
-      localStorage.setItem(config.storageKeys.inputHeight, height.toString());
-    },
-    [config.storageKeys.inputHeight],
-  );
 
   const handleRetryConnection = useCallback(() => {
     const sessionId = channelStatus.sessionId;
@@ -333,7 +320,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
     autoScroll,
     isRetrying,
     showHistory,
-    inputHeight,
     sendBlocked,
 
     // Computed
@@ -354,7 +340,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
     handleToggleHistory,
     handleCloseHistory,
     handleSelectTopic,
-    handleInputHeightChange,
     handleRetryConnection,
     handleScrollToBottom,
     handleScroll,
