@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.5](https://github.com/ScienceOL/Xyzen/compare/v1.3.4...v1.3.5) (2026-02-14)
+
+### 🐛 Bug Fixes
+
+* handle non-streaming subagent responses ([#245](https://github.com/ScienceOL/Xyzen/issues/245)) ([#247](https://github.com/ScienceOL/Xyzen/issues/247)) ([cfeed6b](https://github.com/ScienceOL/Xyzen/commit/cfeed6bfd49fe1cdabbbae642670c29e13baccaf))
+
 ## [1.3.4](https://github.com/ScienceOL/Xyzen/compare/v1.3.3...v1.3.4) (2026-02-14)
 
 ### 🐛 Bug Fixes
