@@ -117,6 +117,23 @@ async def create_chat_agent(
         agent_type=agent_type_key,
     )
 
+    # Conditionally add subagent spawn tool
+    if _should_enable_subagent(agent_config):
+        from app.tools.builtin.subagent import create_subagent_tool_for_session
+
+        subagent_tools = await create_subagent_tool_for_session(
+            db=db,
+            user_id=user_id,
+            session_id=session_id,
+            topic_id=topic_id,
+            user_provider_manager=user_provider_manager,
+            provider_id=provider_id,
+            model_name=model_name,
+            current_depth=0,
+            store=store,
+        )
+        tools.extend(subagent_tools)
+
     # Create LLM factory
     async def create_llm(**kwargs: Any) -> "BaseChatModel":
         override_model = kwargs.get("model") or model_name
@@ -136,7 +153,7 @@ async def create_chat_agent(
         )
 
     # Build the agent using unified GraphBuilder path
-    compiled_graph, node_component_keys = await _build_graph_agent(
+    compiled_graph, node_component_keys = await build_graph_agent(
         resolved_config,
         create_llm,
         tools,
@@ -321,7 +338,7 @@ def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> di
     return config
 
 
-async def _build_graph_agent(
+async def build_graph_agent(
     raw_config: dict[str, Any],
     llm_factory: LLMFactory,
     tools: list["BaseTool"],
@@ -426,7 +443,7 @@ async def create_agent_from_builtin(
 
     # Build the agent
     try:
-        compiled_graph, node_component_keys = await _build_graph_agent(
+        compiled_graph, node_component_keys = await build_graph_agent(
             config_dict,
             create_llm,
             tools or [],
@@ -448,3 +465,50 @@ async def create_agent_from_builtin(
     except Exception as e:
         logger.error(f"Failed to build builtin agent '{builtin_key}': {e}")
         return None
+
+
+def _should_enable_subagent(agent_config: "Agent | None") -> bool:
+    """
+    Check if the subagent spawn tool should be enabled for this agent.
+
+    Uses the standard tool_filter mechanism on LLM nodes:
+    - tool_filter is null → all tools enabled (spawn_subagent included)
+    - tool_filter is explicit list → spawn_subagent must be in the list
+    - unsupported tool_filter shapes are skipped (do not globally disable subagent)
+    """
+    if not agent_config:
+        return False
+
+    gc = agent_config.graph_config
+    if not gc or not isinstance(gc, dict):
+        return False
+
+    # Inspect all LLM nodes; enable subagent if any node allows it.
+    graph = gc.get("graph")
+    if not isinstance(graph, dict):
+        return False
+
+    nodes = graph.get("nodes")
+    if not isinstance(nodes, list):
+        return False
+
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        if node.get("kind") == "llm":
+            config = node.get("config")
+            if not isinstance(config, dict):
+                continue
+            tool_filter = config.get("tool_filter")
+            # null means all tools enabled
+            if tool_filter is None:
+                return True
+            # explicit list — enable if this node explicitly allows spawn_subagent
+            if isinstance(tool_filter, list):
+                if "spawn_subagent" in tool_filter:
+                    return True
+                continue
+            # unsupported/legacy shape - skip this node and keep checking
+            continue
+
+    return False

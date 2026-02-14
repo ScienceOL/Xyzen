@@ -11,7 +11,7 @@ import {
   PencilIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 // Allowed image types
@@ -48,13 +48,16 @@ export const AccountSettings = () => {
   const [nameSuccess, setNameSuccess] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchAccounts = async (validate = false) => {
+  const fetchAccounts = useCallback(async (validate = false) => {
     try {
-      if (validate && accounts.length > 0) {
-        setIsValidating(true);
-      } else {
-        setIsLoading(true);
-      }
+      setAccounts((prev) => {
+        if (validate && prev.length > 0) {
+          setIsValidating(true);
+        } else {
+          setIsLoading(true);
+        }
+        return prev;
+      });
       setError(null);
 
       const response = await authService.getLinkedAccounts(validate);
@@ -65,12 +68,12 @@ export const AccountSettings = () => {
       setIsLoading(false);
       setIsValidating(false);
     }
-  };
+  }, []);
 
   // Auto-validate on mount
   useEffect(() => {
     fetchAccounts(true);
-  }, []);
+  }, [fetchAccounts]);
 
   const handleRelink = async (providerName: string) => {
     try {
