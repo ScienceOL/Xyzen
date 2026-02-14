@@ -48,6 +48,7 @@
     "emptyTrash": "ゴミ箱を空にする",
     "empty": "空",
     "uploadFile": "ファイルをアップロード",
+    "uploadFolder": "フォルダをアップロード",
     "upload": "アップロード",
     "refresh": "更新"
   },

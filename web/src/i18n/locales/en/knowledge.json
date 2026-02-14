@@ -47,7 +47,8 @@
     "newFolder": "New Folder",
     "emptyTrash": "Empty Trash",
     "empty": "Empty",
-    "uploadFile": "Upload File",
+    "uploadFile": "Upload Files",
+    "uploadFolder": "Upload Folder",
     "upload": "Upload",
     "refresh": "Refresh"
   },

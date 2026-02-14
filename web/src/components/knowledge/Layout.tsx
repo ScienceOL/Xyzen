@@ -133,6 +133,7 @@ export const KnowledgeLayout = () => {
   const [currentFileCount, setCurrentFileCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const fileListRef = useRef<FileListHandle>(null);
 
   // Upload progress tracking
@@ -182,6 +183,10 @@ export const KnowledgeLayout = () => {
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleFolderUploadClick = () => {
+    folderInputRef.current?.click();
   };
 
   // Upload files with current context
@@ -349,6 +354,148 @@ export const KnowledgeLayout = () => {
       e.target.value = "";
     }
   };
+
+  /**
+   * Handle folder upload via webkitdirectory input.
+   * Creates the folder hierarchy on the backend first,
+   * then uploads each file into its correct parent folder.
+   */
+  const handleFolderChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+
+      const files = Array.from(e.target.files);
+      // Reset input so user can upload the same folder again
+      e.target.value = "";
+
+      // The root parent for the upload
+      const rootParentId = currentFolderId || null;
+      const knowledgeSetId =
+        activeTab === "knowledge" ? currentKnowledgeSetId : null;
+
+      // Build a set of unique directory paths from webkitRelativePath.
+      // e.g. "MyFolder/sub/file.txt" → ["MyFolder", "MyFolder/sub"]
+      const dirPaths = new Set<string>();
+      for (const file of files) {
+        const rel = (file as File & { webkitRelativePath?: string })
+          .webkitRelativePath;
+        if (!rel) continue;
+        const parts = rel.split("/");
+        // All segments except the last (filename) form directory paths
+        for (let i = 1; i < parts.length; i++) {
+          dirPaths.add(parts.slice(0, i).join("/"));
+        }
+      }
+
+      // Sort by depth so parents are created before children
+      const sortedDirs = Array.from(dirPaths).sort(
+        (a, b) => a.split("/").length - b.split("/").length,
+      );
+
+      // Map from directory path → created folder ID
+      const folderIdMap = new Map<string, string>();
+
+      // Create folders sequentially (parent before child)
+      for (const dirPath of sortedDirs) {
+        const parts = dirPath.split("/");
+        const folderName = parts[parts.length - 1];
+        const parentPath =
+          parts.length > 1 ? parts.slice(0, -1).join("/") : null;
+        const parentId = parentPath
+          ? (folderIdMap.get(parentPath) ?? null)
+          : rootParentId;
+
+        try {
+          const folder = await folderService.createFolder({
+            name: folderName,
+            parent_id: parentId,
+          });
+          folderIdMap.set(dirPath, folder.id);
+        } catch (err) {
+          console.error(`Failed to create folder: ${dirPath}`, err);
+        }
+      }
+
+      // Now upload each file into its correct parent folder
+      for (const file of files) {
+        const rel = (file as File & { webkitRelativePath?: string })
+          .webkitRelativePath;
+        if (!rel) continue;
+        const parts = rel.split("/");
+        const parentDirPath =
+          parts.length > 1 ? parts.slice(0, -1).join("/") : null;
+        const parentId = parentDirPath
+          ? (folderIdMap.get(parentDirPath) ?? rootParentId)
+          : rootParentId;
+
+        // Check file size
+        if (stats.maxFileSize && file.size > stats.maxFileSize) continue;
+        if (
+          stats.availableBytes !== undefined &&
+          file.size > stats.availableBytes
+        )
+          continue;
+
+        const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const uploadItem: UploadItem = {
+          id: uploadId,
+          fileName: file.name,
+          progress: 0,
+          status: "uploading",
+        };
+        setUploads((prev) => [...prev, uploadItem]);
+
+        const handle = fileService.uploadFileWithProgress(
+          file,
+          "private",
+          undefined,
+          parentId,
+          knowledgeSetId,
+          (progress) => {
+            setUploads((prev) =>
+              prev.map((u) =>
+                u.id === uploadId ? { ...u, progress: progress.percentage } : u,
+              ),
+            );
+          },
+        );
+
+        uploadHandlesRef.current.set(uploadId, handle);
+
+        handle.promise
+          .then(() => {
+            setUploads((prev) =>
+              prev.map((u) =>
+                u.id === uploadId
+                  ? { ...u, status: "completed", progress: 100 }
+                  : u,
+              ),
+            );
+            uploadHandlesRef.current.delete(uploadId);
+            setRefreshKey((prev) => prev + 1);
+          })
+          .catch((error: Error) => {
+            if (error.message === "Upload cancelled") {
+              setUploads((prev) =>
+                prev.map((u) =>
+                  u.id === uploadId ? { ...u, status: "cancelled" } : u,
+                ),
+              );
+            } else {
+              setUploads((prev) =>
+                prev.map((u) =>
+                  u.id === uploadId
+                    ? { ...u, status: "error", error: error.message }
+                    : u,
+                ),
+              );
+            }
+            uploadHandlesRef.current.delete(uploadId);
+          });
+      }
+    },
+    [activeTab, currentFolderId, currentKnowledgeSetId, stats],
+  );
 
   // Drag and drop state
   const [isDragOver, setIsDragOver] = useState(false);
@@ -573,6 +720,7 @@ export const KnowledgeLayout = () => {
           onViewModeChange={setViewMode}
           onSearch={(q) => console.log("Search", q)}
           onUpload={handleUploadClick}
+          onUploadFolder={handleFolderUploadClick}
           onRefresh={() => setRefreshKey((k) => k + 1)}
           isTrash={activeTab === "trash"}
           onEmptyTrash={handleEmptyTrash}
@@ -638,13 +786,22 @@ export const KnowledgeLayout = () => {
         </AnimatePresence>
       </div>
 
-      {/* Hidden Upload Input */}
+      {/* Hidden Upload Inputs */}
       <input
         type="file"
         ref={fileInputRef}
         className="hidden"
         multiple
         onChange={handleFileChange}
+      />
+
+      <input
+        type="file"
+        ref={folderInputRef}
+        className="hidden"
+        // @ts-expect-error webkitdirectory is not in the React typings
+        webkitdirectory=""
+        onChange={handleFolderChange}
       />
 
       <CreateKnowledgeSetModal

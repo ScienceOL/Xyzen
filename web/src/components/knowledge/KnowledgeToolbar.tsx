@@ -2,7 +2,9 @@ import { type Folder } from "@/service/folderService";
 import {
   ArrowPathIcon,
   ChevronRightIcon as BreadcrumbSeparatorIcon,
+  DocumentIcon,
   FolderIcon,
+  FolderOpenIcon,
   HomeIcon,
   ListBulletIcon,
   MagnifyingGlassIcon,
@@ -11,7 +13,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DRAG_MIME, getDragContext } from "./FileTreeView";
 import type { ViewMode } from "./types";
@@ -21,6 +23,7 @@ interface KnowledgeToolbarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onSearch: (query: string) => void;
   onUpload: () => void;
+  onUploadFolder?: () => void;
   onCreateFolder?: () => void;
   onRefresh: () => void;
   onEmptyTrash?: () => void;
@@ -43,6 +46,7 @@ export const KnowledgeToolbar = ({
   onViewModeChange,
   onSearch,
   onUpload,
+  onUploadFolder,
   onCreateFolder,
   onRefresh,
   onEmptyTrash,
@@ -258,16 +262,10 @@ export const KnowledgeToolbar = ({
             </span>
           </button>
         ) : (
-          <button
-            onClick={onUpload}
-            className="flex items-center gap-1.5 rounded-sm bg-indigo-500/90 hover:bg-indigo-500 px-3 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200"
-            title={t("knowledge.toolbar.uploadFile")}
-          >
-            <PlusIcon className="h-4 w-4" />
-            <span className="hidden md:inline">
-              {t("knowledge.toolbar.upload")}
-            </span>
-          </button>
+          <UploadDropdown
+            onUploadFiles={onUpload}
+            onUploadFolder={onUploadFolder}
+          />
         )}
 
         <button
@@ -281,6 +279,76 @@ export const KnowledgeToolbar = ({
           />
         </button>
       </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Upload Dropdown — "Upload Files" / "Upload Folder"
+// ---------------------------------------------------------------------------
+
+const UploadDropdown = ({
+  onUploadFiles,
+  onUploadFolder,
+}: {
+  onUploadFiles: () => void;
+  onUploadFolder?: () => void;
+}) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded-sm bg-indigo-500/90 hover:bg-indigo-500 px-3 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200"
+        title={t("knowledge.toolbar.upload")}
+      >
+        <PlusIcon className="h-4 w-4" />
+        <span className="hidden md:inline">
+          {t("knowledge.toolbar.upload")}
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-md border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
+            onClick={() => {
+              setOpen(false);
+              onUploadFiles();
+            }}
+          >
+            <DocumentIcon className="h-4 w-4 text-neutral-500" />
+            {t("knowledge.toolbar.uploadFile")}
+          </button>
+          {onUploadFolder && (
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
+              onClick={() => {
+                setOpen(false);
+                onUploadFolder();
+              }}
+            >
+              <FolderOpenIcon className="h-4 w-4 text-neutral-500" />
+              {t("knowledge.toolbar.uploadFolder")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
