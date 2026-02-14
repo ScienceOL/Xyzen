@@ -187,6 +187,8 @@ export function MobileMoreMenu({
                     sessionKnowledgeSetId={sessionKnowledgeSetId}
                     onUpdateSessionKnowledge={onUpdateSessionKnowledge}
                     userPlan={userPlan}
+                    displayMode="list"
+                    showTooltip={false}
                   />
                 </div>
               )}

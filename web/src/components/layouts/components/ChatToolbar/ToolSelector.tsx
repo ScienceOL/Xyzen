@@ -86,6 +86,8 @@ interface ToolSelectorProps {
   className?: string;
   buttonClassName?: string;
   userPlan?: string;
+  displayMode?: "compact" | "list";
+  showTooltip?: boolean;
 }
 
 export function ToolSelector({
@@ -97,6 +99,8 @@ export function ToolSelector({
   className,
   buttonClassName,
   userPlan = "free",
+  displayMode = "compact",
+  showTooltip = true,
 }: ToolSelectorProps) {
   const { t } = useTranslation();
   const [knowledgeSets, setKnowledgeSets] = useState<
@@ -213,27 +217,57 @@ export function ToolSelector({
 
   if (!agent) return null;
 
+  const triggerButton =
+    displayMode === "list" ? (
+      <button
+        className={cn(
+          "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors",
+          "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
+          <span>{t("app.toolbar.tools", "Tools")}</span>
+        </div>
+        {enabledCount > 0 && (
+          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+            {enabledCount}
+          </span>
+        )}
+      </button>
+    ) : (
+      <button
+        className={cn(
+          buttonClassName ??
+            "flex h-8 w-8 items-center justify-center rounded-md transition-all duration-200 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 [&>svg]:h-5 [&>svg]:w-5",
+          "w-auto px-2 gap-1.5",
+          className,
+        )}
+      >
+        <WrenchScrewdriverIcon className="h-4 w-4" />
+        {enabledCount > 0 && (
+          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+            {enabledCount}
+          </span>
+        )}
+      </button>
+    );
+
   return (
     <Popover>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <button
-              className={cn(buttonClassName, "w-auto px-2 gap-1.5", className)}
-            >
-              <WrenchScrewdriverIcon className="h-4 w-4" />
-              {enabledCount > 0 && (
-                <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                  {enabledCount}
-                </span>
-              )}
-            </button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{t("app.toolbar.tools", "Tools")}</p>
-        </TooltipContent>
-      </Tooltip>
+      {showTooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t("app.toolbar.tools", "Tools")}</p>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
+      )}
       <PopoverContent className="w-64 p-2" align="start">
         <div className="space-y-1">
           <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 px-2 py-1">
