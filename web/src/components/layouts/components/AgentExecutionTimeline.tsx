@@ -165,7 +165,7 @@ export default function AgentExecutionTimeline({
                 </div>
                 {execution.error.nodeId && (
                   <div className="mt-1 text-[11px] text-red-500/60 dark:text-red-500/60">
-                    Node: {execution.error.nodeId}
+                    {t("app.chat.toolCall.node")}: {execution.error.nodeId}
                   </div>
                 )}
               </div>

@@ -448,6 +448,15 @@ class AgentMarketplaceService:
         # Increment forks count
         await self.marketplace_repo.increment_forks(marketplace_id)
 
+        # Write FGA owner tuple for forked agent (best-effort)
+        try:
+            from app.core.fga.client import get_fga_client
+
+            fga = await get_fga_client()
+            await fga.write_tuple(user_id, "owner", "agent", str(forked_agent.id))
+        except Exception:
+            pass
+
         logger.info(f"Successfully forked agent {listing.agent_id} to {forked_agent.id} for user {user_id}")
         return forked_agent
 

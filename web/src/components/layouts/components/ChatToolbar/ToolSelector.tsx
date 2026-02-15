@@ -545,10 +545,10 @@ export function ToolSelector({
               />
               <div className="text-left">
                 <div className="text-sm font-medium">
-                  {t("app.toolbar.sandbox", "Sandbox")}
+                  {t("app.toolbar.sandbox")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t("app.toolbar.sandboxDesc", "Execute code in sandbox")}
+                  {t("app.toolbar.sandboxDesc")}
                 </div>
               </div>
             </div>
@@ -582,13 +582,10 @@ export function ToolSelector({
               />
               <div className="text-left">
                 <div className="text-sm font-medium">
-                  {t("app.toolbar.subagent", "Subagent")}
+                  {t("app.toolbar.subagent")}
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t(
-                    "app.toolbar.subagentDesc",
-                    "Delegate tasks to other agents",
-                  )}
+                  {t("app.toolbar.subagentDesc")}
                 </div>
               </div>
             </div>

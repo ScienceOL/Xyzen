@@ -370,6 +370,9 @@ class MessageRepository:
                 topic_id=message.topic_id,
                 created_at=message.created_at,
                 attachments=file_reads_with_urls,
+                error_code=message.error_code,
+                error_category=message.error_category,
+                error_detail=message.error_detail,
             )
             messages_with_files.append(message_with_files)
 
@@ -423,6 +426,9 @@ class MessageRepository:
             topic_id=message.topic_id,
             created_at=message.created_at,
             attachments=file_reads_with_urls,
+            error_code=message.error_code,
+            error_category=message.error_category,
+            error_detail=message.error_detail,
         )
 
         return message_with_files
@@ -462,6 +468,9 @@ class MessageRepository:
                 topic_id=message.topic_id,
                 created_at=message.created_at,
                 citations=citations,
+                error_code=message.error_code,
+                error_category=message.error_category,
+                error_detail=message.error_detail,
             )
             messages_with_citations.append(message_with_citations)
 
@@ -543,6 +552,9 @@ class MessageRepository:
                 citations=citations,
                 thinking_content=message.thinking_content,
                 agent_metadata=agent_metadata,
+                error_code=message.error_code,
+                error_category=message.error_category,
+                error_detail=message.error_detail,
             )
             messages_with_files_and_citations.append(message_with_files_and_citations)
 
@@ -578,6 +590,9 @@ class MessageRepository:
             topic_id=message.topic_id,
             created_at=message.created_at,
             citations=citations,
+            error_code=message.error_code,
+            error_category=message.error_category,
+            error_detail=message.error_detail,
         )
 
         return message_with_citations

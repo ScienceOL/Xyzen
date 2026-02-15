@@ -45,6 +45,7 @@
     "listView": "List View",
     "gridView": "Grid View",
     "newFolder": "New Folder",
+    "newFolderPlaceholder": "Untitled Folder",
     "emptyTrash": "Empty Trash",
     "empty": "Empty",
     "uploadFile": "Upload Files",
@@ -174,6 +175,15 @@
       "noticeTitle": "Notice",
       "errorTitle": "Error"
     }
+  },
+  "recents": {
+    "knowledgeSets": "Knowledge Base",
+    "recentFiles": "Recent Files",
+    "noKnowledgeSets": "No knowledge sets yet",
+    "noRecentFiles": "No recent files",
+    "fileCount": "{{count}} files",
+    "updated": "Updated {{date}}",
+    "createKnowledgeSet": "New Knowledge Set"
   },
   "createKnowledgeSetModal": {
     "title": "Create Knowledge Set",

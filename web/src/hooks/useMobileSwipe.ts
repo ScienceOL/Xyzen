@@ -11,6 +11,8 @@ interface SwipeOptions {
   distanceThreshold?: number;
   /** Damping factor for overscroll rubber-band (0–1) */
   rubberBand?: number;
+  /** Width in px from each screen edge that activates the swipe gesture */
+  edgeWidth?: number;
 }
 
 /**
@@ -30,6 +32,7 @@ export function useMobileSwipe({
   velocityThreshold = 0.3,
   distanceThreshold = 0.25,
   rubberBand = 0.25,
+  edgeWidth = 24,
 }: SwipeOptions) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -55,6 +58,12 @@ export function useMobileSwipe({
   // Tracks whether a CSS snap animation is in progress.
   // Only when animating do we need to freeze the track on touchstart.
   const animatingRef = useRef(false);
+
+  // Monotonic counter to invalidate stale snap callbacks.
+  // Each snapTo() call bumps this; pending transitionend / timeout
+  // callbacks compare their captured epoch to the current value and
+  // bail out if a newer snap has started since.
+  const snapEpochRef = useRef(0);
 
   const getWidth = useCallback(
     () => wrapperRef.current?.offsetWidth ?? window.innerWidth,
@@ -82,6 +91,10 @@ export function useMobileSwipe({
       setCurrentPage(clamped);
 
       if (notify) {
+        // Bump epoch so any pending callbacks from a previous snapTo
+        // become stale and won't fire onSnap.
+        const epoch = ++snapEpochRef.current;
+
         const el = trackRef.current;
         if (!el) {
           onSnapRef.current?.(clamped);
@@ -91,6 +104,8 @@ export function useMobileSwipe({
         const fire = () => {
           if (fired) return;
           fired = true;
+          // Only fire if no newer snapTo has started since.
+          if (epoch !== snapEpochRef.current) return;
           onSnapRef.current?.(clamped);
         };
         const handler = () => {
@@ -136,6 +151,15 @@ export function useMobileSwipe({
 
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
+
+      // Only activate from screen edges to avoid conflicts with
+      // in-content interactions (text selection, scrolling, etc.)
+      const fromLeftEdge = t.clientX <= edgeWidth;
+      const fromRightEdge =
+        t.clientX >=
+        (wrapperRef.current?.offsetWidth ?? window.innerWidth) - edgeWidth;
+      if (!fromLeftEdge && !fromRightEdge) return;
+
       gesture.current = {
         active: true,
         startX: t.clientX,
@@ -169,7 +193,7 @@ export function useMobileSwipe({
 
       // Direction lock on first significant move
       if (!g.locked) {
-        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
           g.locked = true;
           g.horizontal = Math.abs(dx) >= Math.abs(dy);
           if (!g.horizontal) {
@@ -201,6 +225,7 @@ export function useMobileSwipe({
 
     const onTouchEnd = (e: TouchEvent) => {
       const g = gesture.current;
+      if (!g.active) return; // touch wasn't tracked by onTouchStart
       g.active = false;
       if (!g.locked || !g.horizontal) return;
 
@@ -230,6 +255,7 @@ export function useMobileSwipe({
     velocityThreshold,
     distanceThreshold,
     rubberBand,
+    edgeWidth,
     getWidth,
     applyTransform,
   ]);

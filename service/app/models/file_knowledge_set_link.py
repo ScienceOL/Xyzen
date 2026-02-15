@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import TIMESTAMP, Column
+from sqlalchemy import TIMESTAMP, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
 class FileKnowledgeSetLink(SQLModel, table=True):
     """Link table for many-to-many relationship between files and knowledge sets"""
+
+    __table_args__ = (UniqueConstraint("file_id", "knowledge_set_id", name="uq_file_knowledge_set_link"),)
 
     id: UUID = Field(
         default_factory=uuid4,

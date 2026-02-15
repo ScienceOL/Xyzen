@@ -3,6 +3,7 @@ import { useXyzen } from "@/store";
 import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
+  ChevronRightIcon,
   GiftIcon,
   GlobeAltIcon,
   InformationCircleIcon,
@@ -87,42 +88,61 @@ export function SettingsModal() {
     <Modal
       isOpen={isSettingsModalOpen}
       onClose={closeSettingsModal}
-      title={t("settings.modal.title")}
-      maxWidth="max-w-[90vw]"
-      maxHeight="h-[85vh]"
-      minHeight="min-h-[600px]"
+      title=""
+      containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
+      panelClassName="flex w-full flex-col h-[95dvh] rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-[85vh] md:max-w-[90vw] md:min-h-[600px] md:rounded-2xl md:border md:border-neutral-200/20"
+      swipeToDismiss
     >
-      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 md:flex-row">
-        {/* Sidebar (Categories) */}
+      <div className="flex h-full flex-col overflow-hidden md:flex-row">
+        {/* Sidebar (Categories) - Desktop: frosted sidebar; Mobile: full-screen list */}
         <AnimatePresence mode="wait">
           <motion.div
-            className={`flex w-full flex-col border-r border-neutral-200 bg-neutral-50/80 dark:border-neutral-800 dark:bg-neutral-900/80 md:w-64 ${
+            className={`flex w-full flex-col md:w-56 md:border-r md:border-neutral-200/60 md:bg-neutral-50/60 md:backdrop-blur-xl md:dark:border-neutral-800/60 md:dark:bg-neutral-900/60 ${
               mobileView === "content" ? "hidden md:flex" : "flex"
             }`}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
           >
-            <nav className="flex-1 space-y-1 p-4">
-              {categories.map((category) => {
-                const Icon = category.icon;
-                const isActive = activeSettingsCategory === category.id;
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => handleCategoryClick(category.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
-                      isActive
-                        ? "bg-white text-indigo-600 shadow-sm ring-1 ring-neutral-200 dark:bg-neutral-800 dark:text-indigo-400 dark:ring-neutral-700"
-                        : "text-neutral-600 hover:bg-neutral-200/50 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {category.label}
-                  </button>
-                );
-              })}
+            {/* Mobile title */}
+            <div className="px-5 pb-1 pt-2 md:hidden">
+              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                {t("settings.modal.title")}
+              </h2>
+            </div>
+
+            <nav className="custom-scrollbar flex-1 overflow-y-auto px-3 py-2 md:px-2.5 md:py-3">
+              {/* Mobile: iOS-style grouped list */}
+              <div className="flex flex-col gap-0.5 md:gap-0.5">
+                {categories.map((category) => {
+                  const Icon = category.icon;
+                  const isActive = activeSettingsCategory === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => handleCategoryClick(category.id)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-[15px] font-medium transition-colors ${
+                        isActive
+                          ? "bg-white/80 text-neutral-900 shadow-sm shadow-black/5 dark:bg-white/10 dark:text-white"
+                          : "text-neutral-600 hover:bg-black/[0.04] dark:text-neutral-400 dark:hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div
+                        className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                          isActive
+                            ? "bg-indigo-500 text-white"
+                            : "bg-neutral-200/70 text-neutral-500 dark:bg-neutral-700/70 dark:text-neutral-400"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <span className="flex-1 text-left">{category.label}</span>
+                      <ChevronRightIcon className="h-4 w-4 text-neutral-300 md:hidden dark:text-neutral-600" />
+                    </button>
+                  );
+                })}
+              </div>
             </nav>
           </motion.div>
         </AnimatePresence>
@@ -131,28 +151,31 @@ export function SettingsModal() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSettingsCategory}
-            className={`flex flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-950 ${
+            className={`flex flex-1 flex-col overflow-hidden ${
               mobileView === "categories" ? "hidden md:flex" : "flex"
             }`}
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.15 }}
           >
-            {/* Mobile Header for Content View */}
-            <div className="flex items-center border-b border-neutral-200 px-4 py-3 md:hidden dark:border-neutral-800">
+            {/* Mobile Header - iOS-style back navigation */}
+            <div className="flex items-center gap-2 px-2 py-2.5 md:hidden">
               <button
                 onClick={handleBackToCategories}
-                className="mr-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                className="flex items-center gap-0.5 rounded-lg px-1.5 py-1 text-indigo-500 transition-colors active:bg-indigo-50 dark:text-indigo-400 dark:active:bg-indigo-950/30"
               >
-                ← {t("settings.modal.back")}
+                <ArrowLeftIcon className="h-5 w-5" />
+                <span className="text-[15px]">{t("settings.modal.back")}</span>
               </button>
-              <span className="font-medium text-neutral-900 dark:text-white">
+              <span className="flex-1 text-center text-[15px] font-semibold text-neutral-900 dark:text-white">
                 {categories.find((c) => c.id === activeSettingsCategory)?.label}
               </span>
+              {/* Spacer to keep title centered */}
+              <div className="w-16" />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-0 md:p-0">
+            <div className="custom-scrollbar flex-1 overflow-y-auto">
               {activeSettingsCategory === "account" && <AccountSettings />}
 
               {activeSettingsCategory === "mcp" && <McpSettings />}
@@ -162,14 +185,14 @@ export function SettingsModal() {
               {activeSettingsCategory === "ui" && (
                 <div className="flex h-full flex-col md:flex-row">
                   <div
-                    className={`w-full border-b border-neutral-200 md:w-64 md:border-b-0 md:border-r dark:border-neutral-800 ${
+                    className={`w-full border-b border-neutral-200/60 md:w-56 md:border-b-0 md:border-r md:border-neutral-200/60 dark:border-neutral-800/60 ${
                       showUiDetail ? "hidden md:block" : "block"
                     }`}
                   >
                     <UiSettings onSelect={() => setShowUiDetail(true)} />
                   </div>
                   <div
-                    className={`flex-1 overflow-y-auto p-4 md:p-6 ${
+                    className={`custom-scrollbar flex-1 overflow-y-auto p-4 md:p-6 ${
                       showUiDetail ? "block" : "hidden md:block"
                     }`}
                   >
@@ -177,11 +200,11 @@ export function SettingsModal() {
                     <div className="mb-4 flex items-center md:hidden">
                       <button
                         onClick={() => setShowUiDetail(false)}
-                        className="mr-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                        className="mr-2 text-indigo-500 dark:text-indigo-400"
                       >
                         <ArrowLeftIcon className="h-5 w-5" />
                       </button>
-                      <span className="font-medium text-neutral-900 dark:text-white">
+                      <span className="font-semibold text-neutral-900 dark:text-white">
                         {t("settings.categories.ui")}
                       </span>
                     </div>

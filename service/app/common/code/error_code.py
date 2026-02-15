@@ -200,6 +200,16 @@ class ErrCode(IntEnum):
     OSS_OBJECT_TOO_LARGE = 15016  # Object exceeds size limit
     OSS_METADATA_ERROR = 15017  # Object metadata operation failed
 
+    # ========== SHARE MANAGEMENT (16xxx) ==========
+    # Use when: Chat share operations fail
+    SHARE_NOT_FOUND = 16000  # Share doesn't exist
+    SHARE_EXPIRED = 16001  # Share has expired
+    SHARE_REVOKED = 16002  # Share has been revoked
+    SHARE_MAX_USES_REACHED = 16003  # Share reached max usage
+    SHARE_ACCESS_DENIED = 16004  # User can't manage this share
+    SHARE_CREATION_FAILED = 16005  # Failed to create share
+    SHARE_FORK_NOT_ALLOWED = 16006  # Share does not allow forking
+
     def with_messages(self, *messages: str) -> "ErrCodeError":
         """Return an ErrCodeError containing extra human messages."""
 
@@ -316,6 +326,17 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.OSS_CONFIGURATION_ERROR: 500,
         ErrCode.OSS_CONNECTION_FAILED: 500,
         ErrCode.OSS_MULTIPART_UPLOAD_FAILED: 500,
+        # 404 errors (Share)
+        ErrCode.SHARE_NOT_FOUND: 404,
+        # 410 errors (Share)
+        ErrCode.SHARE_EXPIRED: 410,
+        ErrCode.SHARE_REVOKED: 410,
+        ErrCode.SHARE_MAX_USES_REACHED: 410,
+        # 403 errors (Share)
+        ErrCode.SHARE_ACCESS_DENIED: 403,
+        ErrCode.SHARE_FORK_NOT_ALLOWED: 403,
+        # 500 errors (Share)
+        ErrCode.SHARE_CREATION_FAILED: 500,
     }
 
     status_code = status_map.get(error.code, 500)

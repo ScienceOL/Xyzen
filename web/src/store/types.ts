@@ -4,6 +4,7 @@ import type {
   AuthSlice,
   ChatSlice,
   FileUploadSlice,
+  KnowledgeSlice,
   LoadingSlice,
   McpSlice,
   McpToolSlice,
@@ -47,36 +48,64 @@ export interface SearchCitation {
   search_queries?: string[];
 }
 
+export interface MessageError {
+  code: string; // ChatErrorCode value, e.g. "provider.rate_limited"
+  category: string; // "provider" | "content" | "agent" | "billing" | "system"
+  message: string; // User-safe display message
+  recoverable: boolean; // Show retry button?
+  detail?: string; // Optional sanitized detail
+}
+
+/**
+ * Unified message lifecycle status.
+ * Replaces the separate boolean flags (isLoading, isStreaming, isThinking).
+ */
+export type MessageStatus =
+  | "pending" // Waiting for backend response (was isLoading)
+  | "thinking" // Model is reasoning (was isThinking)
+  | "streaming" // Content streaming in progress (was isStreaming)
+  | "completed" // Normal completion
+  | "failed" // Error occurred
+  | "cancelled"; // User interrupted
+
 export interface Message {
   id: string;
-  // Transient stream id used to route streaming events even after id is replaced by db_id.
+  // Stream ID for routing events throughout the message lifecycle.
+  // Set from backend stream_id; used by findMessageByStreamId for deterministic lookup.
   streamId?: string;
+  // Database UUID, written on message_saved event.
+  dbId?: string;
   clientId?: string;
   content: string;
   role: "user" | "assistant" | "system" | "tool";
   created_at: string;
-  // Legacy fields for backward compatibility
-  sender?: "user" | "assistant" | "system";
+
+  // Unified lifecycle status
+  status: MessageStatus;
+
   timestamp?: string;
-  // New fields for loading and streaming
+
+  /** @deprecated Use status === "pending" */
   isLoading?: boolean;
+  /** @deprecated Use status === "streaming" */
   isStreaming?: boolean;
   // Typewriter effect flag - only applies typewriter effect to newly created messages, not loaded history
   isNewMessage?: boolean;
   // Tool call related fields
   toolCalls?: ToolCall[];
-  isToolCalling?: boolean;
   // Multimodal support
   attachments?: MessageAttachment[];
   // Search citations from built-in search
   citations?: SearchCitation[];
-  // Thinking/reasoning content from models like Claude, DeepSeek R1, OpenAI o1
+  /** @deprecated Use status === "thinking" */
   isThinking?: boolean;
   thinkingContent?: string;
   // Agent execution state for graph-based agents (legacy - will be migrated to agent_metadata)
   agentExecution?: AgentExecutionState;
   // Scalable agent metadata structure for node/phase/subagent execution
   agent_metadata?: AgentMetadata;
+  // Structured error for error messages
+  error?: MessageError;
 }
 
 /**
@@ -219,4 +248,5 @@ export type XyzenState = UiSlice &
   ProviderSlice &
   AuthSlice &
   LoadingSlice &
-  FileUploadSlice;
+  FileUploadSlice &
+  KnowledgeSlice;

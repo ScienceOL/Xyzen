@@ -438,41 +438,43 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
           style={style}
           className={`relative overflow-hidden rounded-lg ${isDragging ? "z-50" : ""}`}
         >
-          {/* Swipe action buttons (behind the content) */}
-          <div className="absolute inset-y-0 right-0 flex items-stretch">
-            <button
-              onClick={handleEditClick}
-              className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 active:bg-neutral-200 dark:active:bg-neutral-600"
-            >
-              <PencilIcon className="h-5 w-5" />
-            </button>
-            <div className="w-px bg-neutral-200 dark:bg-neutral-600" />
-            {isMarketplacePublished ? (
-              <Tooltip side="top">
-                <TooltipTrigger asChild>
-                  <button
-                    disabled
-                    className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("agents.deleteBlockedMessage", {
-                    defaultValue:
-                      "This agent is published to Agent Market. Please unpublish it first, then delete it.",
-                  })}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
+          {/* Swipe action buttons (behind the content) - hidden during loading to prevent flicker */}
+          {!isLoading && (
+            <div className="absolute inset-y-0 right-0 flex items-stretch">
               <button
-                onClick={handleDeleteClick}
-                className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-red-500 dark:text-red-400 active:bg-red-50 dark:active:bg-red-900/30"
+                onClick={handleEditClick}
+                className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 active:bg-neutral-200 dark:active:bg-neutral-600"
               >
-                <TrashIcon className="h-5 w-5" />
+                <PencilIcon className="h-5 w-5" />
               </button>
-            )}
-          </div>
+              <div className="w-px bg-neutral-200 dark:bg-neutral-600" />
+              {isMarketplacePublished ? (
+                <Tooltip side="top">
+                  <TooltipTrigger asChild>
+                    <button
+                      disabled
+                      className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("agents.deleteBlockedMessage", {
+                      defaultValue:
+                        "This agent is published to Agent Market. Please unpublish it first, then delete it.",
+                    })}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  onClick={handleDeleteClick}
+                  className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-red-500 dark:text-red-400 active:bg-red-50 dark:active:bg-red-900/30"
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Main content (slides left on swipe) */}
           <div
@@ -518,41 +520,43 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   return (
     <>
       <div ref={containerRef} className="relative overflow-hidden rounded-lg">
-        {/* Swipe action buttons (behind the content) */}
-        <div className="absolute inset-y-0 right-0 flex items-stretch">
-          <button
-            onClick={handleEditClick}
-            className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 active:bg-neutral-200 dark:active:bg-neutral-600"
-          >
-            <PencilIcon className="h-5 w-5" />
-          </button>
-          <div className="w-px bg-neutral-200 dark:bg-neutral-600" />
-          {isMarketplacePublished ? (
-            <Tooltip side="top">
-              <TooltipTrigger asChild>
-                <button
-                  disabled
-                  className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {t("agents.deleteBlockedMessage", {
-                  defaultValue:
-                    "This agent is published to Agent Market. Please unpublish it first, then delete it.",
-                })}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
+        {/* Swipe action buttons (behind the content) - hidden during loading to prevent flicker */}
+        {!isLoading && (
+          <div className="absolute inset-y-0 right-0 flex items-stretch">
             <button
-              onClick={handleDeleteClick}
-              className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-red-500 dark:text-red-400 active:bg-red-50 dark:active:bg-red-900/30"
+              onClick={handleEditClick}
+              className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 active:bg-neutral-200 dark:active:bg-neutral-600"
             >
-              <TrashIcon className="h-5 w-5" />
+              <PencilIcon className="h-5 w-5" />
             </button>
-          )}
-        </div>
+            <div className="w-px bg-neutral-200 dark:bg-neutral-600" />
+            {isMarketplacePublished ? (
+              <Tooltip side="top">
+                <TooltipTrigger asChild>
+                  <button
+                    disabled
+                    className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("agents.deleteBlockedMessage", {
+                    defaultValue:
+                      "This agent is published to Agent Market. Please unpublish it first, then delete it.",
+                  })}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                onClick={handleDeleteClick}
+                className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-red-500 dark:text-red-400 active:bg-red-50 dark:active:bg-red-900/30"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Main content (slides left on swipe) */}
         <motion.div

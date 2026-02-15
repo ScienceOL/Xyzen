@@ -37,6 +37,7 @@ export interface UiSlice {
   spatialSidebarCollapsed: boolean;
   capsuleOpen: boolean;
   capsuleActiveTab: "knowledge" | "tools" | "sandbox" | "memory";
+  showOfficialRecommendations: boolean;
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -70,6 +71,7 @@ export interface UiSlice {
   setCapsuleActiveTab: (
     tab: "knowledge" | "tools" | "sandbox" | "memory",
   ) => void;
+  setShowOfficialRecommendations: (show: boolean) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -99,6 +101,8 @@ export const createUiSlice: StateCreator<
   spatialSidebarCollapsed: false,
   capsuleOpen: false,
   capsuleActiveTab: "knowledge",
+  showOfficialRecommendations:
+    localStorage.getItem("officialRecommendationsDismissed") !== "true",
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -159,4 +163,11 @@ export const createUiSlice: StateCreator<
     set({ spatialSidebarCollapsed: collapsed }),
   setCapsuleOpen: (open) => set({ capsuleOpen: open }),
   setCapsuleActiveTab: (tab) => set({ capsuleActiveTab: tab }),
+  setShowOfficialRecommendations: (show) => {
+    localStorage.setItem(
+      "officialRecommendationsDismissed",
+      show ? "false" : "true",
+    );
+    set({ showOfficialRecommendations: show });
+  },
 });

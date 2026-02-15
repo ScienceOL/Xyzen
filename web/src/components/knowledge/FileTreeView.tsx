@@ -1,8 +1,8 @@
 import type { FileUploadResponse } from "@/service/fileService";
-import type { Folder } from "@/service/folderService";
+import type { Folder, FileTreeItem } from "@/service/folderService";
 import React from "react";
 import type { ContextMenuType } from "./ContextMenu";
-import { SortableTree } from "./SortableTree";
+import { SortableTree, type SortableTreeHandle } from "./SortableTree";
 
 // Module-level drag context — readable during dragOver (dataTransfer.getData is drop-only)
 // Used by FileList's list/grid views which still use native HTML5 DnD.
@@ -23,9 +23,10 @@ export function setDragContext(
   dragContext = ctx;
 }
 
+export type FileTreeViewHandle = SortableTreeHandle;
+
 interface FileTreeViewProps {
-  folders: Folder[];
-  files: FileUploadResponse[];
+  treeItems: FileTreeItem[];
   selectedIds: Set<string>;
   /** Ref map for marquee selection — items register their DOM elements here */
   itemRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
@@ -41,30 +42,49 @@ interface FileTreeViewProps {
     targetFolderId: string | null,
     typeMap?: Record<string, "file" | "folder">,
   ) => void;
+  onFolderCreated?: (name: string, parentId: string | null) => Promise<void>;
+  onRefresh?: () => void;
+  /** When true, disables drag-drop and folder creation (trash view) */
+  isTrashView?: boolean;
 }
 
-const FileTreeViewComp = ({
-  folders,
-  files,
-  selectedIds,
-  itemRefs,
-  onItemClick,
-  onFileDoubleClick,
-  onContextMenu,
-  onDropOnFolder,
-}: FileTreeViewProps) => {
-  return (
-    <SortableTree
-      folders={folders}
-      files={files}
-      selectedIds={selectedIds}
-      itemRefs={itemRefs}
-      onItemClick={onItemClick}
-      onFileDoubleClick={onFileDoubleClick}
-      onContextMenu={onContextMenu}
-      onDropOnFolder={onDropOnFolder}
-    />
-  );
-};
+const FileTreeViewComp = React.forwardRef<
+  FileTreeViewHandle,
+  FileTreeViewProps
+>(
+  (
+    {
+      treeItems,
+      selectedIds,
+      itemRefs,
+      onItemClick,
+      onFileDoubleClick,
+      onContextMenu,
+      onDropOnFolder,
+      onFolderCreated,
+      onRefresh,
+      isTrashView,
+    },
+    ref,
+  ) => {
+    return (
+      <SortableTree
+        ref={ref}
+        treeItems={treeItems}
+        selectedIds={selectedIds}
+        itemRefs={itemRefs}
+        onItemClick={onItemClick}
+        onFileDoubleClick={onFileDoubleClick}
+        onContextMenu={onContextMenu}
+        onDropOnFolder={onDropOnFolder}
+        onFolderCreated={onFolderCreated}
+        onRefresh={onRefresh}
+        isTrashView={isTrashView}
+      />
+    );
+  },
+);
+
+FileTreeViewComp.displayName = "FileTreeView";
 
 export const FileTreeView = React.memo(FileTreeViewComp);

@@ -104,12 +104,14 @@ describe("groupToolMessagesWithAssistant", () => {
         role: "user",
         content: "Hello",
         created_at: "2024-01-01T00:00:00Z",
+        status: "completed",
       },
       {
         id: "2",
         role: "assistant",
         content: "Hi there!",
         created_at: "2024-01-01T00:00:01Z",
+        status: "completed",
       },
     ];
 
@@ -129,6 +131,7 @@ describe("groupToolMessagesWithAssistant", () => {
         role: "user",
         content: "Hello",
         created_at: "2024-01-01T00:00:00Z",
+        status: "completed",
         citations: [
           {
             url: "https://example.com",
@@ -177,6 +180,7 @@ describe("groupToolMessagesWithAssistant", () => {
         role: "tool",
         content: "not valid json",
         created_at: "2024-01-01T00:00:00Z",
+        status: "completed",
       },
     ];
 
@@ -201,6 +205,7 @@ describe("groupToolMessagesWithAssistant", () => {
           status: "waiting_confirmation",
         }),
         created_at: "2024-01-01T00:00:00Z",
+        status: "completed",
       },
     ];
 
@@ -222,6 +227,7 @@ describe("groupToolMessagesWithAssistant", () => {
         role: "assistant",
         content: "",
         created_at: "2024-01-01T00:00:00Z",
+        status: "completed",
         toolCalls: [
           {
             id: "tc-1",
@@ -241,6 +247,7 @@ describe("groupToolMessagesWithAssistant", () => {
           result: "Search results here",
         }),
         created_at: "2024-01-01T00:00:01Z",
+        status: "completed",
       },
     ];
 
@@ -258,6 +265,7 @@ describe("groupToolMessagesWithAssistant", () => {
         role: "assistant",
         content: "",
         created_at: "2024-01-01T00:00:00Z",
+        status: "completed",
         toolCalls: [
           {
             id: "tc-1",
@@ -276,6 +284,7 @@ describe("groupToolMessagesWithAssistant", () => {
           error: "Network error",
         }),
         created_at: "2024-01-01T00:00:01Z",
+        status: "completed",
       },
     ];
 
@@ -317,6 +326,7 @@ describe("convertToStreamingMessage", () => {
       role: "assistant",
       content: "",
       created_at: "2024-01-01T00:00:00Z",
+      status: "pending",
       isLoading: true,
       isStreaming: false,
     };
@@ -338,6 +348,7 @@ describe("finalizeStreamingMessage", () => {
       role: "assistant",
       content: "Hello world",
       created_at: "2024-01-01T00:00:00Z",
+      status: "streaming",
       isLoading: false,
       isStreaming: true,
     };
@@ -355,6 +366,7 @@ describe("finalizeStreamingMessage", () => {
       role: "assistant",
       content: "Test",
       created_at: "2024-01-01T00:00:00Z",
+      status: "streaming",
       isStreaming: true,
     };
 
@@ -372,6 +384,7 @@ describe("finalizeStreamingMessage", () => {
       role: "assistant",
       content: "Test",
       created_at: "2024-01-01T00:00:00Z",
+      status: "streaming",
       isStreaming: true,
     };
 

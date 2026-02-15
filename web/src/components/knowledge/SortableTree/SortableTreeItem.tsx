@@ -1,13 +1,15 @@
 import { FileIcon } from "@/components/knowledge/FileIcon";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { ChevronRightIcon } from "lucide-react";
-import React, { forwardRef } from "react";
+import { FolderIcon, FolderOpenIcon } from "lucide-react";
+import React, { forwardRef, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type { FlattenedItem } from "./types";
 import {
+  COL_DATE_WIDTH,
+  COL_SIZE_WIDTH,
   INDENTATION_WIDTH,
   formatDate,
   formatFileSize,
-  type SortMode,
 } from "./utilities";
 
 // ---------------------------------------------------------------------------
@@ -21,7 +23,9 @@ interface TreeItemRowProps {
   isDragging?: boolean;
   isDropTarget?: boolean;
   indentationWidth?: number;
-  sortMode?: SortMode;
+  isEditing?: boolean;
+  onEditConfirm?: (name: string) => void;
+  onEditCancel?: () => void;
   onCollapse?: (id: string) => void;
   onClick?: (e: React.MouseEvent, id: string) => void;
   onDoubleClick?: (id: string) => void;
@@ -42,7 +46,9 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
   isDragging = false,
   isDropTarget = false,
   indentationWidth = INDENTATION_WIDTH,
-  sortMode = "name",
+  isEditing = false,
+  onEditConfirm,
+  onEditCancel,
   onCollapse,
   onClick,
   onDoubleClick,
@@ -53,7 +59,7 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
     attributes,
     listeners,
     setNodeRef: setDragRef,
-  } = useDraggable({ id: item.id });
+  } = useDraggable({ id: item.id, disabled: isEditing });
 
   const { setNodeRef: setDropRef } = useDroppable({ id: item.id });
 
@@ -65,14 +71,21 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         registerRef?.(item.id, el);
       }}
       style={{ opacity: isDragging ? 0.4 : 1 }}
-      {...attributes}
-      {...listeners}
+      {...(isEditing ? {} : attributes)}
+      {...(isEditing ? {} : listeners)}
       onMouseDown={(e) => {
         e.stopPropagation();
       }}
-      onClick={(e) => onClick?.(e, item.id)}
-      onDoubleClick={() => onDoubleClick?.(item.id)}
-      onContextMenu={onContextMenu}
+      onClick={(e) => {
+        if (!isEditing) {
+          onClick?.(e, item.id);
+          if (item.type === "folder") onCollapse?.(item.id);
+        }
+      }}
+      onDoubleClick={() => {
+        if (!isEditing) onDoubleClick?.(item.id);
+      }}
+      onContextMenu={isEditing ? undefined : onContextMenu}
     >
       <TreeItemContent
         item={item}
@@ -80,8 +93,9 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         isSelected={isSelected}
         isDropTarget={isDropTarget}
         indentationWidth={indentationWidth}
-        onCollapse={onCollapse}
-        sortMode={sortMode}
+        isEditing={isEditing}
+        onEditConfirm={onEditConfirm}
+        onEditCancel={onEditCancel}
       />
     </div>
   );
@@ -106,9 +120,9 @@ export const TreeItemClone: React.FC<TreeItemCloneProps> = ({
 }) => (
   <div className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 max-w-64 pointer-events-none">
     {/* Icon */}
-    <span className="shrink-0">
+    <span className="shrink-0 text-yellow-400 dark:text-yellow-500">
       {item.type === "folder" ? (
-        <FolderIconColored className="h-4 w-4 text-yellow-500" />
+        <FolderIcon className="h-4 w-4" />
       ) : (
         <FileIcon
           filename={item.name}
@@ -144,8 +158,9 @@ const TreeItemContent = forwardRef<
     isSelected: boolean;
     isDropTarget?: boolean;
     indentationWidth?: number;
-    onCollapse?: (id: string) => void;
-    sortMode?: SortMode;
+    isEditing?: boolean;
+    onEditConfirm?: (name: string) => void;
+    onEditCancel?: () => void;
   }
 >(
   (
@@ -155,15 +170,50 @@ const TreeItemContent = forwardRef<
       isSelected,
       isDropTarget = false,
       indentationWidth = INDENTATION_WIDTH,
-      onCollapse,
-      sortMode = "name",
+      isEditing = false,
+      onEditConfirm,
+      onEditCancel,
     },
     ref,
   ) => {
-    // Pick which date to show based on sort mode
-    const metaDate = sortMode === "created" ? item.createdAt : item.updatedAt;
+    const { t } = useTranslation();
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Auto-focus and select all text when entering editing mode
+    useEffect(() => {
+      if (isEditing && inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
+    }, [isEditing]);
+
+    // Always show updatedAt and file size
+    const metaDate = item.updatedAt;
     const metaSize =
-      item.type === "file" ? formatFileSize(item.fileSize ?? 0) : null;
+      item.type === "file" ? formatFileSize(item.fileSize ?? 0) : "--";
+
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        const value = (e.target as HTMLInputElement).value.trim();
+        if (value) {
+          onEditConfirm?.(value);
+        } else {
+          onEditCancel?.();
+        }
+      } else if (e.key === "Escape") {
+        onEditCancel?.();
+      }
+    };
+
+    const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      const value = e.target.value.trim();
+      if (value) {
+        onEditConfirm?.(value);
+      } else {
+        onEditCancel?.();
+      }
+    };
 
     return (
       <div
@@ -177,49 +227,58 @@ const TreeItemContent = forwardRef<
         }`}
         style={{ paddingLeft: depth * indentationWidth + 8 }}
       >
-        {/* Folder collapse/expand chevron or spacer */}
+        {/* Folder icon or file icon */}
         {item.type === "folder" ? (
-          <button
-            className={`shrink-0 p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 ${
-              isSelected ? "hover:bg-indigo-500" : ""
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onCollapse?.(item.id);
-            }}
+          <span
+            className={`shrink-0 ${isSelected ? "text-white" : "text-yellow-400 dark:text-yellow-500"}`}
           >
-            <ChevronRightIcon
-              className={`h-3.5 w-3.5 transition-transform ${
-                !item.collapsed ? "rotate-90" : ""
-              } ${isSelected ? "text-white" : "text-neutral-500"}`}
-            />
-          </button>
+            {item.collapsed ? (
+              <FolderIcon className="h-4 w-4" />
+            ) : (
+              <FolderOpenIcon className="h-4 w-4" />
+            )}
+          </span>
         ) : (
-          <span className="w-5 shrink-0" />
-        )}
-
-        {/* Icon */}
-        <span className="shrink-0">
-          {item.type === "folder" ? (
-            <FolderIconColored
-              className={`h-3.5 w-3.5 ${isSelected ? "text-yellow-300" : "text-yellow-500"}`}
-            />
-          ) : (
+          <span className="shrink-0 ml-0.5">
             <FileIcon
               filename={item.name}
               mimeType={item.file?.content_type || ""}
               className="h-3.5 w-3.5"
             />
-          )}
-        </span>
+          </span>
+        )}
 
-        {/* Name */}
-        <span className="min-w-0 flex-1 truncate text-xs">{item.name}</span>
+        {/* Name or inline input */}
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            defaultValue={t("knowledge.toolbar.newFolderPlaceholder")}
+            onKeyDown={handleInputKeyDown}
+            onBlur={handleInputBlur}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="min-w-0 flex-1 truncate text-xs bg-white dark:bg-neutral-800 border border-indigo-400 dark:border-indigo-500 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-indigo-400 text-neutral-900 dark:text-neutral-100"
+          />
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-xs">{item.name}</span>
+        )}
 
-        {/* Metadata — file size & date (like Finder list view) */}
-        {metaSize && (
+        {/* Date Modified column — fixed width */}
+        {!isEditing && (
           <span
-            className={`shrink-0 text-[10px] tabular-nums ${
+            className={`shrink-0 ${COL_DATE_WIDTH} text-right text-[10px] tabular-nums ${
+              isSelected
+                ? "text-indigo-200"
+                : "text-neutral-400 dark:text-neutral-500"
+            }`}
+          >
+            {formatDate(metaDate)}
+          </span>
+        )}
+        {/* Size column — fixed width */}
+        {!isEditing && (
+          <span
+            className={`shrink-0 ${COL_SIZE_WIDTH} text-right text-[10px] tabular-nums ${
               isSelected
                 ? "text-indigo-200"
                 : "text-neutral-400 dark:text-neutral-500"
@@ -228,29 +287,9 @@ const TreeItemContent = forwardRef<
             {metaSize}
           </span>
         )}
-        <span
-          className={`shrink-0 w-17.5 text-right text-[10px] tabular-nums ${
-            isSelected
-              ? "text-indigo-200"
-              : "text-neutral-400 dark:text-neutral-500"
-          }`}
-        >
-          {formatDate(metaDate)}
-        </span>
       </div>
     );
   },
 );
 
 TreeItemContent.displayName = "TreeItemContent";
-
-const FolderIconColored = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    className={className}
-  >
-    <path d="M3.75 3A1.75 1.75 0 002 4.75v3.26a3.235 3.235 0 011.75-.51h12.5c.644 0 1.245.188 1.75.51V6.75A1.75 1.75 0 0016.25 5h-4.836a.25.25 0 01-.177-.073L9.823 3.513A1.75 1.75 0 008.586 3H3.75zM3.75 9A1.75 1.75 0 002 10.75v4.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0018 15.25v-4.5A1.75 1.75 0 0016.25 9H3.75z" />
-  </svg>
-);

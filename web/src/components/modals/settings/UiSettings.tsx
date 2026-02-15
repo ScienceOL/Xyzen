@@ -1,6 +1,7 @@
 import { useXyzen } from "@/store";
 import type { UiSettingType } from "@/store/types";
 import {
+  ChevronRightIcon,
   GlobeAltIcon,
   PaintBrushIcon,
   ViewColumnsIcon,
@@ -17,78 +18,72 @@ export function UiSettings({ onSelect }: { onSelect?: () => void }) {
       label: t("settings.ui.options.theme.label"),
       description: t("settings.ui.options.theme.description"),
       icon: PaintBrushIcon,
+      color: "bg-orange-500",
     },
     {
       id: "style" as UiSettingType,
       label: t("settings.ui.options.style.label"),
       description: t("settings.ui.options.style.description"),
       icon: ViewColumnsIcon,
+      color: "bg-blue-500",
     },
     {
       id: "language" as UiSettingType,
       label: t("settings.ui.options.language.label"),
       description: t("settings.ui.options.language.description"),
       icon: GlobeAltIcon,
+      color: "bg-green-500",
     },
   ];
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
+      <div className="px-4 pb-2 pt-4">
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
           {t("settings.ui.title")}
         </h2>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
           {t("settings.ui.subtitle")}
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {uiOptions.map((option) => {
-          const Icon = option.icon;
-          const isActive = activeUiSetting === option.id;
+      <div className="custom-scrollbar flex-1 overflow-y-auto px-3 py-2">
+        <div className="overflow-hidden rounded-xl bg-neutral-100/80 dark:bg-neutral-800/50">
+          {uiOptions.map((option, index) => {
+            const Icon = option.icon;
+            const isActive = activeUiSetting === option.id;
 
-          return (
-            <button
-              key={option.id}
-              onClick={() => {
-                setActiveUiSetting(option.id);
-                onSelect?.();
-              }}
-              className={`mb-2 w-full rounded-sm border p-3 text-left transition-all ${
-                isActive
-                  ? "border-indigo-500 bg-indigo-50 dark:border-indigo-600 dark:bg-indigo-950/30"
-                  : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800"
-              }`}
-            >
-              <div className="flex items-start gap-3">
+            return (
+              <button
+                key={option.id}
+                onClick={() => {
+                  setActiveUiSetting(option.id);
+                  onSelect?.();
+                }}
+                className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                  isActive
+                    ? "bg-black/[0.06] dark:bg-white/[0.08]"
+                    : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+                } ${index > 0 ? "border-t border-neutral-200/60 dark:border-neutral-700/60" : ""}`}
+              >
                 <div
-                  className={`rounded-sm p-2 ${
-                    isActive
-                      ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400"
-                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-                  }`}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg ${option.color} text-white`}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-4 w-4" />
                 </div>
-                <div className="flex-1">
-                  <div
-                    className={`text-sm font-medium ${
-                      isActive
-                        ? "text-indigo-900 dark:text-indigo-300"
-                        : "text-neutral-900 dark:text-white"
-                    }`}
-                  >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-neutral-900 dark:text-white">
                     {option.label}
                   </div>
-                  <div className="mt-0.5 truncate line-clamp-1 w-36 max-w-full text-xs text-neutral-500 dark:text-neutral-400">
+                  <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
                     {option.description}
                   </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
+                <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-300 dark:text-neutral-600" />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

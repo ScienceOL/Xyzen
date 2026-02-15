@@ -98,9 +98,11 @@
     },
     "actions": {
       "title": "アクション",
-      "fork": "このエージェントをフォーク",
+      "fork": "このエージェントを使用",
       "liked": "いいね済み",
       "like": "このエージェントにいいね",
+      "loginToFork": "ログインして使用",
+      "loginToLike": "ログインしていいね",
       "manage": "エージェントを管理",
       "shareTitle": "共有"
     },

@@ -38,6 +38,15 @@ export function deriveTopicStatus(
     return "idle";
   }
 
+  // Use status field first, then legacy boolean flags
+  if (
+    latestAssistant.status === "streaming" ||
+    latestAssistant.status === "thinking" ||
+    latestAssistant.status === "pending"
+  ) {
+    return "running";
+  }
+
   if (latestAssistant.isStreaming || latestAssistant.isThinking) {
     return "running";
   }

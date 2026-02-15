@@ -895,12 +895,20 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="选择订阅方案"
-      maxWidth="max-w-5xl"
+      title=""
+      containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
+      panelClassName="flex w-full flex-col h-[95dvh] rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-auto md:max-h-[85vh] md:max-w-5xl md:rounded-2xl md:border md:border-neutral-200/20"
+      swipeToDismiss
     >
-      <div className="flex flex-col">
+      <div className="flex h-full flex-col overflow-hidden">
+        {/* Mobile title */}
+        <div className="shrink-0 px-5 pb-1 pt-2 md:px-6 md:pt-4">
+          <h2 className="text-xl font-bold text-neutral-900 dark:text-white md:text-lg">
+            选择订阅方案
+          </h2>
+        </div>
         {/* Scrollable content */}
-        <div className="relative max-h-[65vh] overflow-y-auto custom-scrollbar px-4 py-2 sm:px-6">
+        <div className="relative flex-1 overflow-y-auto custom-scrollbar px-4 py-2 sm:px-6">
           <div className="space-y-4">
             <Tabs defaultValue={defaultTab} key={defaultTab}>
               <TabsList className="mx-auto w-fit">
@@ -1039,7 +1047,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
         </div>
 
         {/* Fixed footer */}
-        <div className="flex justify-end border-t border-neutral-100 px-4 pt-3 pb-1 sm:px-6 dark:border-neutral-800">
+        <div className="shrink-0 flex justify-end border-t border-neutral-100 px-4 pt-3 pb-3 sm:px-6 dark:border-neutral-800">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

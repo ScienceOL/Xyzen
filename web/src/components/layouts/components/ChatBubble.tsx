@@ -1,6 +1,4 @@
 import ProfileIcon from "@/assets/ProfileIcon";
-// import { TYPEWRITER_CONFIG } from "@/configs/typewriterConfig";
-// import { useStreamingTypewriter } from "@/hooks/useTypewriterEffect";
 import {
   resolveMessageContent,
   getMessageDisplayMode,
@@ -38,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AgentExecutionTimeline from "./AgentExecutionTimeline";
+import ErrorMessageCard from "./ErrorMessageCard";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
@@ -109,7 +108,12 @@ function ChatBubble({ message }: ChatBubbleProps) {
     isThinking,
     thinkingContent,
     agentExecution,
+    status,
   } = message;
+
+  // Derive active states from both status and legacy boolean flags
+  const isMessageLoading = status === "pending" || isLoading;
+  const isMessageStreaming = status === "streaming" || isStreaming;
 
   // Use deferred value and memoization to optimize rendering performance
   const deferredContent = useDeferredValue(content);
@@ -124,12 +128,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
   // Edit state
   const isEditing = editingMessageId === message.id;
   const canEditUser =
-    isUserMessage && !channelResponding && !isLoading && !isStreaming;
+    isUserMessage &&
+    !channelResponding &&
+    !isMessageLoading &&
+    !isMessageStreaming;
   const canEditAssistant =
     !isUserMessage &&
     !channelResponding &&
-    !isLoading &&
-    !isStreaming &&
+    !isMessageLoading &&
+    !isMessageStreaming &&
     !isToolMessage;
 
   const handleEditClick = (mode: "edit_only" | "edit_and_regenerate") => {
@@ -272,7 +279,10 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   // Delete state - both user and assistant messages can be deleted
   const canDelete =
-    !channelResponding && !isLoading && !isStreaming && !isEditing;
+    !channelResponding &&
+    !isMessageLoading &&
+    !isMessageStreaming &&
+    !isEditing;
 
   const handleDeleteClick = async () => {
     await deleteMessage(message.id);
@@ -531,40 +541,44 @@ function ChatBubble({ message }: ChatBubbleProps) {
                     />
                   )}
 
+                {/* Error message card - rendered instead of normal content */}
+                {message.error && <ErrorMessageCard error={message.error} />}
+
                 {/* Message content based on display mode */}
-                {(() => {
-                  switch (displayMode) {
-                    case "loading":
-                    case "waiting":
-                      return (
-                        <span className="inline-flex items-center gap-1">
-                          <LoadingMessage size="small" />
-                        </span>
-                      );
+                {!message.error &&
+                  (() => {
+                    switch (displayMode) {
+                      case "loading":
+                      case "waiting":
+                        return (
+                          <span className="inline-flex items-center gap-1">
+                            <LoadingMessage size="small" />
+                          </span>
+                        );
 
-                    case "simple":
-                      return markdownContent;
+                      case "simple":
+                        return markdownContent;
 
-                    case "timeline_streaming":
-                      // Content is shown in AgentExecutionTimeline phases during streaming
-                      return null;
+                      case "timeline_streaming":
+                        // Content is shown in AgentExecutionTimeline phases during streaming
+                        return null;
 
-                    case "timeline_complete":
-                      // Show final content below timeline when completed
-                      // Guard against empty content to avoid rendering empty div with margin
-                      return resolvedContent.text ? (
-                        <div className="mt-4">
-                          <Markdown content={resolvedContent.text} />
-                        </div>
-                      ) : null;
+                      case "timeline_complete":
+                        // Show final content below timeline when completed
+                        // Guard against empty content to avoid rendering empty div with margin
+                        return resolvedContent.text ? (
+                          <div className="mt-4">
+                            <Markdown content={resolvedContent.text} />
+                          </div>
+                        ) : null;
 
-                    default:
-                      // Fallback for any unexpected display mode
-                      return markdownContent;
-                  }
-                })()}
+                      default:
+                        // Fallback for any unexpected display mode
+                        return markdownContent;
+                    }
+                  })()}
 
-                {isStreaming && !isLoading && (
+                {isMessageStreaming && !isMessageLoading && (
                   <motion.span
                     animate={{ opacity: [0.3, 1, 0.3] }}
                     transition={{ duration: 1, repeat: Infinity }}
@@ -650,7 +664,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
         )}
 
         {/* Toolbar with timestamp - shown for assistant messages on hover */}
-        {!isUserMessage && !isLoading && !isEditing && (
+        {!isUserMessage && !isMessageLoading && !isEditing && (
           <div
             className={toolbarStyles}
             onTouchStart={handleToolbarInteraction}

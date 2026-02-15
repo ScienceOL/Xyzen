@@ -6,6 +6,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.file import File, FileCreate, FileUpdate
+from app.models.file_knowledge_set_link import FileKnowledgeSetLink
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,7 @@ class FileRepository:
         parent_id: UUID | None = None,
         use_parent_filter: bool = False,
         is_dir: bool | None = None,
+        knowledge_set_id: UUID | None = None,
     ) -> list[File]:
         """
         Fetches files for a given user with optional filters.
@@ -155,6 +157,7 @@ class FileRepository:
             parent_id: Parent directory ID to filter by (if use_parent_filter is True).
             use_parent_filter: Whether to apply the parent_id filter.
             is_dir: Optional filter for directories (True) or files (False).
+            knowledge_set_id: Optional knowledge set ID to filter files linked to.
 
         Returns:
             List of File instances.
@@ -177,6 +180,12 @@ class FileRepository:
         if is_dir is not None:
             statement = statement.where(File.is_dir == is_dir)
 
+        if knowledge_set_id is not None:
+            statement = statement.join(
+                FileKnowledgeSetLink,
+                col(FileKnowledgeSetLink.file_id) == col(File.id),
+            ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+
         statement = statement.order_by(col(File.created_at).desc()).limit(limit).offset(offset)
 
         result = await self.db.exec(statement)
@@ -188,6 +197,7 @@ class FileRepository:
         parent_id: UUID | None = None,
         is_dir: bool | None = None,
         include_deleted: bool = False,
+        knowledge_set_id: UUID | None = None,
     ) -> list[File]:
         """
         List items under a parent directory.
@@ -197,6 +207,7 @@ class FileRepository:
             parent_id: Parent directory ID (None for root).
             is_dir: Filter for directories only (True) or files only (False).
             include_deleted: Whether to include soft-deleted items.
+            knowledge_set_id: Optional knowledge set ID to filter items linked to.
 
         Returns:
             List of File instances.
@@ -210,6 +221,12 @@ class FileRepository:
         if is_dir is not None:
             statement = statement.where(File.is_dir == is_dir)
 
+        if knowledge_set_id is not None:
+            statement = statement.join(
+                FileKnowledgeSetLink,
+                col(FileKnowledgeSetLink.file_id) == col(File.id),
+            ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+
         statement = statement.order_by(col(File.original_filename).asc())
 
         result = await self.db.exec(statement)
@@ -219,6 +236,8 @@ class FileRepository:
         self,
         user_id: str,
         include_deleted: bool = False,
+        only_deleted: bool = False,
+        knowledge_set_id: UUID | None = None,
     ) -> list[File]:
         """
         Fetch ALL files and folders for a user in a single query.
@@ -228,6 +247,8 @@ class FileRepository:
         Args:
             user_id: The user ID.
             include_deleted: Whether to include soft-deleted items.
+            only_deleted: If True, return ONLY soft-deleted items (for trash tree).
+            knowledge_set_id: Optional knowledge set ID to filter items linked to.
 
         Returns:
             Flat list of all File instances belonging to the user.
@@ -235,8 +256,16 @@ class FileRepository:
         logger.debug(f"Fetching all items for user_id: {user_id}")
         statement = select(File).where(File.user_id == user_id)
 
-        if not include_deleted:
+        if only_deleted:
+            statement = statement.where(col(File.is_deleted).is_(True))
+        elif not include_deleted:
             statement = statement.where(col(File.is_deleted).is_(False))
+
+        if knowledge_set_id is not None:
+            statement = statement.join(
+                FileKnowledgeSetLink,
+                col(FileKnowledgeSetLink.file_id) == col(File.id),
+            ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
 
         # Folders first, then files; alphabetical within each group
         statement = statement.order_by(
@@ -246,6 +275,34 @@ class FileRepository:
 
         result = await self.db.exec(statement)
         return list(result.all())
+
+    async def get_descendant_ids(self, folder_id: UUID, user_id: str) -> list[UUID]:
+        """
+        Get IDs of all descendants (files and subfolders) of a folder
+        recursively using BFS with one query per nesting level.
+        """
+        all_ids: list[UUID] = []
+        parent_ids: list[UUID] = [folder_id]
+
+        for _ in range(self._MAX_TREE_DEPTH):
+            if not parent_ids:
+                break
+            statement = select(File).where(
+                col(File.parent_id).in_(parent_ids),
+                File.user_id == user_id,
+                col(File.is_deleted).is_(False),
+            )
+            result = await self.db.exec(statement)
+            children = list(result.all())
+
+            next_parent_ids: list[UUID] = []
+            for child in children:
+                all_ids.append(child.id)
+                if child.is_dir:
+                    next_parent_ids.append(child.id)
+            parent_ids = next_parent_ids
+
+        return all_ids
 
     _MAX_TREE_DEPTH = 100
 
@@ -288,6 +345,7 @@ class FileRepository:
     async def hard_delete_recursive(self, file_id: UUID) -> list[str]:
         """
         Recursively hard deletes a directory and all its contents.
+        Also removes any knowledge set links referencing deleted items.
 
         Returns:
             List of storage keys that were removed from DB (caller should
@@ -295,6 +353,7 @@ class FileRepository:
         """
         logger.debug(f"Recursively hard deleting: {file_id}")
         storage_keys: list[str] = []
+        deleted_ids: list[UUID] = []
 
         # Find all direct children
         statement = select(File).where(File.parent_id == file_id)
@@ -308,12 +367,18 @@ class FileRepository:
             else:
                 if child.storage_key:
                     storage_keys.append(child.storage_key)
+                deleted_ids.append(child.id)
                 await self.db.delete(child)
 
         # Delete the item itself
         item = await self.db.get(File, file_id)
         if item:
+            deleted_ids.append(item.id)
             await self.db.delete(item)
+
+        # Remove knowledge set links for all deleted items
+        if deleted_ids:
+            await self._delete_knowledge_set_links(deleted_ids)
 
         await self.db.flush()
         return storage_keys
@@ -371,6 +436,7 @@ class FileRepository:
     async def hard_delete_file(self, file_id: UUID) -> bool:
         """
         Permanently deletes a file record from the database.
+        Also removes any knowledge set links referencing this file.
         This function does NOT commit the transaction.
 
         Args:
@@ -384,9 +450,23 @@ class FileRepository:
         if not file:
             return False
 
+        # Remove knowledge set links for this file
+        await self._delete_knowledge_set_links([file_id])
+
         await self.db.delete(file)
         await self.db.flush()
         return True
+
+    async def _delete_knowledge_set_links(self, file_ids: list[UUID]) -> None:
+        """
+        Delete all FileKnowledgeSetLink rows referencing any of the given file IDs.
+        """
+        if not file_ids:
+            return
+        statement = select(FileKnowledgeSetLink).where(col(FileKnowledgeSetLink.file_id).in_(file_ids))
+        links = (await self.db.exec(statement)).all()
+        for link in links:
+            await self.db.delete(link)
 
     async def restore_file(self, file_id: UUID) -> bool:
         """
@@ -410,6 +490,144 @@ class FileRepository:
         self.db.add(file)
         await self.db.flush()
         return True
+
+    async def soft_delete_recursive(self, file_id: UUID, user_id: str) -> bool:
+        """
+        Soft-delete a file/folder and all its descendants recursively.
+        Marks is_deleted=True and sets deleted_at on the item and every child.
+        This function does NOT commit the transaction.
+
+        Args:
+            file_id: The UUID of the file/folder to delete.
+            user_id: The user ID (for security check).
+
+        Returns:
+            True if the item was found and deleted.
+        """
+        logger.debug(f"Soft deleting recursively: {file_id}")
+        item = await self.db.get(File, file_id)
+        if not item or item.user_id != user_id:
+            return False
+
+        now = datetime.now(timezone.utc)
+        item.is_deleted = True
+        item.deleted_at = now
+        item.updated_at = now
+        self.db.add(item)
+
+        if item.is_dir:
+            # BFS to mark all descendants
+            parent_ids: list[UUID] = [file_id]
+            for _ in range(self._MAX_TREE_DEPTH):
+                if not parent_ids:
+                    break
+                statement = select(File).where(
+                    col(File.parent_id).in_(parent_ids),
+                    File.user_id == user_id,
+                )
+                result = await self.db.exec(statement)
+                children = list(result.all())
+
+                next_parent_ids: list[UUID] = []
+                for child in children:
+                    child.is_deleted = True
+                    child.deleted_at = now
+                    child.updated_at = now
+                    self.db.add(child)
+                    if child.is_dir:
+                        next_parent_ids.append(child.id)
+                parent_ids = next_parent_ids
+
+        await self.db.flush()
+        return True
+
+    async def restore_recursive(self, file_id: UUID, user_id: str) -> bool:
+        """
+        Restore a soft-deleted file/folder and all its descendants recursively.
+        Clears is_deleted and deleted_at on the item and every child.
+        This function does NOT commit the transaction.
+
+        Args:
+            file_id: The UUID of the file/folder to restore.
+            user_id: The user ID (for security check).
+
+        Returns:
+            True if the item was found and restored.
+        """
+        logger.debug(f"Restoring recursively: {file_id}")
+        item = await self.db.get(File, file_id)
+        if not item or item.user_id != user_id:
+            return False
+
+        now = datetime.now(timezone.utc)
+        item.is_deleted = False
+        item.deleted_at = None
+        item.updated_at = now
+        self.db.add(item)
+
+        if item.is_dir:
+            # BFS to restore all descendants
+            parent_ids: list[UUID] = [file_id]
+            for _ in range(self._MAX_TREE_DEPTH):
+                if not parent_ids:
+                    break
+                statement = select(File).where(
+                    col(File.parent_id).in_(parent_ids),
+                    File.user_id == user_id,
+                )
+                result = await self.db.exec(statement)
+                children = list(result.all())
+
+                next_parent_ids: list[UUID] = []
+                for child in children:
+                    child.is_deleted = False
+                    child.deleted_at = None
+                    child.updated_at = now
+                    self.db.add(child)
+                    if child.is_dir:
+                        next_parent_ids.append(child.id)
+                parent_ids = next_parent_ids
+
+        await self.db.flush()
+        return True
+
+    async def empty_trash(self, user_id: str) -> tuple[int, list[str]]:
+        """
+        Permanently delete ALL soft-deleted items for a user.
+        Also removes any knowledge set links referencing deleted items.
+        This function does NOT commit the transaction.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            Tuple of (deleted_count, storage_keys) — the caller should
+            delete the storage_keys from object storage.
+        """
+        logger.debug(f"Emptying trash for user_id: {user_id}")
+        statement = select(File).where(
+            File.user_id == user_id,
+            col(File.is_deleted).is_(True),
+        )
+        result = await self.db.exec(statement)
+        items = list(result.all())
+
+        storage_keys: list[str] = []
+        deleted_ids: list[UUID] = []
+        for item in items:
+            if item.storage_key:
+                storage_keys.append(item.storage_key)
+            deleted_ids.append(item.id)
+            await self.db.delete(item)
+
+        # Remove knowledge set links for all deleted items
+        if deleted_ids:
+            await self._delete_knowledge_set_links(deleted_ids)
+
+        if items:
+            await self.db.flush()
+
+        return len(items), storage_keys
 
     async def get_files_by_hash(self, file_hash: str, user_id: str | None = None) -> list[File]:
         """

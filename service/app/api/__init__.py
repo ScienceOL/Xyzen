@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
+from .og import router as og_router
 from .proxy import router as proxy_router
 from .v1 import v1_router
 from .ws import ws_router
@@ -81,3 +82,7 @@ root_router.include_router(ws_router)
 # Include proxy router directly under /xyzen (not under /xyzen/api)
 # This makes it accessible at /xyzen/api/bohrium/v1/... and /xyzen/api/openapi/v1/...
 root_router.include_router(proxy_router)
+
+# Include OG router directly under /xyzen for social media link previews
+# Accessible at /xyzen/og/share/{token} and /xyzen/og/agent/{id}
+root_router.include_router(og_router)

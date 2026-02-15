@@ -117,6 +117,7 @@ def process_chat_message(
     context: dict[str, Any] | None,
     pre_deducted_amount: float,
     access_token: str | None = None,
+    stream_id: str | None = None,
 ) -> None:
     """
     Celery task wrapper to run the async chat processing loop.
@@ -135,6 +136,7 @@ def process_chat_message(
                 context,
                 pre_deducted_amount,
                 access_token,
+                stream_id,
             )
         )
     finally:
@@ -170,6 +172,7 @@ async def _process_chat_message_async(
     context: dict[str, Any] | None,
     pre_deducted_amount: float,
     access_token: str | None,
+    stream_id: str | None = None,
 ) -> None:
     session_id = UUID(session_id_str)
     topic_id = UUID(topic_id_str)
@@ -214,13 +217,16 @@ async def _process_chat_message_async(
             topic = await topic_repo.get_topic_with_details(topic_id)
             if not topic:
                 logger.error(f"Topic {topic_id} not found in worker")
-                await publisher.publish(
-                    json.dumps({"type": ChatEventType.ERROR, "data": {"error": "Chat topic not found"}})
-                )
+                topic_error_data: dict[str, Any] = {"error": "Chat topic not found"}
+                if stream_id:
+                    topic_error_data["stream_id"] = stream_id
+                await publisher.publish(json.dumps({"type": ChatEventType.ERROR, "data": topic_error_data}))
                 return
 
             # Initialize tracking vars
-            ai_message_id = None
+            # active_stream_id holds the stream_id from StreamingEventHandler (ctx.stream_id).
+            # It is NOT the database message ID — that lives in ai_message_obj.id.
+            active_stream_id: str | None = None
             ai_message_obj: Message | None = None
             full_content = ""
             full_thinking_content = ""  # Track thinking content for persistence
@@ -243,10 +249,11 @@ async def _process_chat_message_async(
             ABORT_CHECK_INTERVAL_SEC = 0.5  # Check every N seconds (responsive but not too frequent)
             last_abort_check_time = time.time()
             is_aborted = False
+            error_handled = False
 
             # Stream response
             async for stream_event in get_ai_response_stream(
-                db, message_text, topic, user_id, None, publisher, connection_id, context
+                db, message_text, topic, user_id, None, publisher, connection_id, context, stream_id=stream_id
             ):
                 # stream_event: StreamingEvent  # Type annotation for better type narrowing
                 # Logic copied and adapted from chat.py
@@ -263,7 +270,7 @@ async def _process_chat_message_async(
                         break
 
                 if stream_event["type"] == ChatEventType.STREAMING_START:
-                    ai_message_id = stream_event["data"]["id"]
+                    active_stream_id = stream_event["data"]["stream_id"]
                     agent_run_start_time = time.time()  # Track agent run start time
                     if not ai_message_obj:
                         ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
@@ -271,7 +278,7 @@ async def _process_chat_message_async(
 
                     await publisher.publish(json.dumps(stream_event))
 
-                elif stream_event["type"] == ChatEventType.STREAMING_CHUNK and ai_message_id:
+                elif stream_event["type"] == ChatEventType.STREAMING_CHUNK and active_stream_id:
                     chunk_content = stream_event["data"]["content"]
                     text_content = extract_content_text(chunk_content)
                     full_content += text_content
@@ -318,7 +325,7 @@ async def _process_chat_message_async(
                             agent_run_repo = AgentRunRepository(db)
                             agent_run_create = AgentRunCreate(
                                 message_id=ai_message_obj.id,
-                                execution_id=agent_state_data.get("execution_id", ai_message_id or ""),
+                                execution_id=agent_state_data.get("execution_id", active_stream_id or ""),
                                 agent_id=agent_state_data.get("agent_id", ""),
                                 agent_name=agent_state_data.get("agent_name", ""),
                                 agent_type=agent_state_data.get("agent_type", "react"),
@@ -481,7 +488,7 @@ async def _process_chat_message_async(
                         break
 
                 elif stream_event["type"] == ChatEventType.MESSAGE:
-                    ai_message_id = stream_event["data"]["id"]
+                    active_stream_id = stream_event["data"]["id"]
                     full_content = stream_event["data"]["content"]
                     if not ai_message_obj:
                         ai_message_create = MessageCreate(role="assistant", content=full_content, topic_id=topic_id)
@@ -517,7 +524,41 @@ async def _process_chat_message_async(
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.ERROR:
+                    # Persist error fields on the AI message
+                    error_data: dict[str, Any] = dict(stream_event.get("data", {}))
+                    if not ai_message_obj:
+                        ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
+                        ai_message_obj = await message_repo.create_message(ai_message_create)
+                        active_stream_id = str(
+                            ai_message_obj.id
+                        )  # fallback: use db id when no streaming_start received
+                    ai_message_obj.error_code = error_data.get("error_code")
+                    ai_message_obj.error_category = error_data.get("error_category")
+                    ai_message_obj.error_detail = error_data.get("detail")
+                    # Keep any partial content that was streamed before the error
+                    ai_message_obj.content = full_content or ""
+                    db.add(ai_message_obj)
+                    await db.commit()
+
                     await publisher.publish(json.dumps(stream_event))
+
+                    # Send message_saved so frontend gets the DB ID
+                    if active_stream_id:
+                        await publisher.publish(
+                            json.dumps(
+                                {
+                                    "type": ChatEventType.MESSAGE_SAVED,
+                                    "data": {
+                                        "stream_id": active_stream_id,
+                                        "db_id": str(ai_message_obj.id),
+                                        "created_at": ai_message_obj.created_at.isoformat()
+                                        if ai_message_obj.created_at
+                                        else None,
+                                    },
+                                }
+                            )
+                        )
+                    error_handled = True
                     break
 
                 # Handle thinking events
@@ -676,8 +717,8 @@ async def _process_chat_message_async(
                 if not ai_message_obj:
                     ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
                     ai_message_obj = await message_repo.create_message(ai_message_create)
-                    ai_message_id = str(ai_message_obj.id)
-                    logger.info(f"Created message {ai_message_id} for abort state")
+                    active_stream_id = str(ai_message_obj.id)  # fallback: use db id when no streaming_start received
+                    logger.info(f"Created message {active_stream_id} for abort state")
 
                 # Save partial content
                 ai_message_obj.content = full_content
@@ -784,13 +825,13 @@ async def _process_chat_message_async(
                 await db.commit()
 
                 # Send message_saved event to update frontend with real DB ID
-                if ai_message_obj and ai_message_id:
+                if ai_message_obj and active_stream_id:
                     await publisher.publish(
                         json.dumps(
                             {
                                 "type": ChatEventType.MESSAGE_SAVED,
                                 "data": {
-                                    "stream_id": ai_message_id,
+                                    "stream_id": active_stream_id,
                                     "db_id": str(ai_message_obj.id),
                                     "created_at": ai_message_obj.created_at.isoformat()
                                     if ai_message_obj.created_at
@@ -801,15 +842,18 @@ async def _process_chat_message_async(
                     )
 
                 # Send abort acknowledgment to frontend
+                abort_event_data: dict[str, Any] = {
+                    "reason": "user_requested",
+                    "partial_content_length": len(full_content),
+                    "tokens_consumed": total_tokens,
+                }
+                if active_stream_id:
+                    abort_event_data["stream_id"] = active_stream_id
                 await publisher.publish(
                     json.dumps(
                         {
                             "type": ChatEventType.STREAM_ABORTED,
-                            "data": {
-                                "reason": "user_requested",
-                                "partial_content_length": len(full_content),
-                                "tokens_consumed": total_tokens,
-                            },
+                            "data": abort_event_data,
                         }
                     )
                 )
@@ -821,6 +865,10 @@ async def _process_chat_message_async(
                 return
 
             # --- Finalization (DB Updates & Settlement) ---
+            # Skip if error was already handled (committed + message_saved sent)
+            if error_handled:
+                return
+
             if ai_message_obj:
                 # Update content
                 if full_content and ai_message_obj.content != full_content:
@@ -896,15 +944,23 @@ async def _process_chat_message_async(
                         )
                 except ErrCodeError as e:
                     if e.code == ErrCode.INSUFFICIENT_BALANCE:
+                        # Persist billing error on the message
+                        ai_message_obj.error_code = "billing.insufficient_balance"
+                        ai_message_obj.error_category = "billing"
+                        db.add(ai_message_obj)
+
+                        insufficient_balance_data: dict[str, Any] = {
+                            "error_code": "billing.insufficient_balance",
+                            "message": "Insufficient photon balance for settlement",
+                            "action_required": "recharge",
+                        }
+                        if active_stream_id:
+                            insufficient_balance_data["stream_id"] = active_stream_id
                         await publisher.publish(
                             json.dumps(
                                 {
                                     "type": "insufficient_balance",
-                                    "data": {
-                                        "error_code": "INSUFFICIENT_BALANCE",
-                                        "message": "Insufficient photon balance for settlement",
-                                        "action_required": "recharge",
-                                    },
+                                    "data": insufficient_balance_data,
                                 }
                             )
                         )
@@ -920,7 +976,7 @@ async def _process_chat_message_async(
                         {
                             "type": ChatEventType.MESSAGE_SAVED,
                             "data": {
-                                "stream_id": ai_message_id,
+                                "stream_id": active_stream_id,
                                 "db_id": str(ai_message_obj.id),
                                 "created_at": ai_message_obj.created_at.isoformat()
                                 if ai_message_obj.created_at
@@ -932,8 +988,25 @@ async def _process_chat_message_async(
 
     except Exception as e:
         logger.error(f"Unhandled error in process_chat_message: {e}", exc_info=True)
+
+        from app.common.code.chat_error_code import classify_exception
+
+        error_code_val, safe_message = classify_exception(e)
+        error_event_data: dict[str, Any] = {
+            "error": safe_message,
+            "error_code": error_code_val.value,
+            "error_category": error_code_val.category,
+            "recoverable": error_code_val.recoverable,
+        }
+        if stream_id:
+            error_event_data["stream_id"] = stream_id
         await publisher.publish(
-            json.dumps({"type": ChatEventType.ERROR, "data": {"error": f"Internal system error: {str(e)}"}})
+            json.dumps(
+                {
+                    "type": ChatEventType.ERROR,
+                    "data": error_event_data,
+                }
+            )
         )
         # Finalize AgentRun with failed status on unhandled exceptions
         # Use a fresh db session since the original may be in a bad state

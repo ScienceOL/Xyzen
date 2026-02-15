@@ -4,10 +4,17 @@ import type { FlattenedItem, TreeItem } from "./types";
 export const INDENTATION_WIDTH = 24;
 
 // ---------------------------------------------------------------------------
+// Column width constants (shared between header and rows)
+// ---------------------------------------------------------------------------
+
+export const COL_DATE_WIDTH = "w-28"; // 112px
+export const COL_SIZE_WIDTH = "w-20"; // 80px
+
+// ---------------------------------------------------------------------------
 // Sorting
 // ---------------------------------------------------------------------------
 
-export type SortMode = "name" | "modified" | "created";
+export type SortMode = "name" | "modified" | "size";
 export type SortDirection = "asc" | "desc";
 
 /**
@@ -31,10 +38,10 @@ export function sortChildren(
         result = aTime < bTime ? -1 : aTime > bTime ? 1 : 0;
         break;
       }
-      case "created": {
-        const aTime = a.createdAt ?? a.name;
-        const bTime = b.createdAt ?? b.name;
-        result = aTime < bTime ? -1 : aTime > bTime ? 1 : 0;
+      case "size": {
+        const aSize = a.fileSize ?? -1; // folders get -1 → sort first
+        const bSize = b.fileSize ?? -1;
+        result = aSize - bSize;
         break;
       }
       default: // "name"
@@ -103,7 +110,7 @@ export function buildTreeFromFlat(
               user_id: "",
               parent_id: item.parent_id,
               name: item.name,
-              is_deleted: false,
+              is_deleted: item.is_deleted,
               created_at: item.created_at,
               updated_at: item.updated_at,
             },
@@ -120,14 +127,14 @@ export function buildTreeFromFlat(
               category: "others",
               file_hash: null,
               metainfo: null,
-              is_deleted: false,
+              is_deleted: item.is_deleted,
               is_dir: false,
               parent_id: item.parent_id,
               message_id: null,
               status: "confirmed" as const,
               created_at: item.created_at,
               updated_at: item.updated_at,
-              deleted_at: null,
+              deleted_at: item.deleted_at,
             },
           }),
     });

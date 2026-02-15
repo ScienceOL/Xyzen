@@ -33,6 +33,8 @@ export interface FileTreeItem {
   is_dir: boolean;
   file_size: number;
   content_type: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -76,6 +78,7 @@ class FolderService {
   async listFolders(
     parentId: string | null = null,
     includeDeleted: boolean = false,
+    knowledgeSetId?: string,
   ): Promise<Folder[]> {
     const baseUrl = getBackendUrl();
     const params = new URLSearchParams();
@@ -84,6 +87,9 @@ class FolderService {
     }
     if (includeDeleted) {
       params.append("include_deleted", "true");
+    }
+    if (knowledgeSetId) {
+      params.append("knowledge_set_id", knowledgeSetId);
     }
 
     const response = await fetch(
@@ -103,9 +109,21 @@ class FolderService {
    * Get a flat list of ALL folders and files (for building the tree client-side).
    * Uses a single query — no N+1 per-folder expansion.
    */
-  async getTree(): Promise<FileTreeItem[]> {
+  async getTree(
+    knowledgeSetId?: string,
+    onlyDeleted?: boolean,
+  ): Promise<FileTreeItem[]> {
     const baseUrl = getBackendUrl();
-    const response = await fetch(`${baseUrl}/xyzen/api/v1/folders/tree`, {
+    const params = new URLSearchParams();
+    if (knowledgeSetId) {
+      params.append("knowledge_set_id", knowledgeSetId);
+    }
+    if (onlyDeleted) {
+      params.append("only_deleted", "true");
+    }
+    const qs = params.toString();
+    const url = `${baseUrl}/xyzen/api/v1/folders/tree${qs ? `?${qs}` : ""}`;
+    const response = await fetch(url, {
       headers: { ...getAuthHeaders() },
     });
 

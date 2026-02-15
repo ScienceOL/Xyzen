@@ -10,13 +10,17 @@ import { useCallback, useEffect, useState } from "react";
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
 import { SecretCodePage } from "@/components/admin/SecretCodePage";
 import SharedAgentDetailPage from "@/app/marketplace/SharedAgentDetailPage";
+import SharedChatPage from "@/app/share/SharedChatPage";
 import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
 import useTheme from "@/hooks/useTheme";
+import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
+import { buildAuthorizeUrl } from "@/utils/authFlow";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
+import { MobileApp } from "./MobileApp";
 import { LandingPage } from "./landing/LandingPage";
 
 // Handle relink callback in popup - check at module level
@@ -24,6 +28,11 @@ handleRelinkCallback();
 
 function parseAgentShareHash(hash: string): string | null {
   const match = hash.match(/^#\/agent\/([a-zA-Z0-9_-]+)$/);
+  return match ? match[1] : null;
+}
+
+function parseChatShareHash(hash: string): string | null {
+  const match = hash.match(/^#\/share\/([a-zA-Z0-9_-]+)$/);
   return match ? match[1] : null;
 }
 
@@ -60,6 +69,7 @@ export function Xyzen({
     fetchChatHistory,
     activateChannel,
     setInputPosition,
+    setActivePanel,
   } = useXyzen();
   const { status } = useAuth();
 
@@ -152,17 +162,32 @@ export function Xyzen({
             fetchChatHistory(),
           ]);
 
-          // 2. If there is an active chat channel (persisted), try to connect to it
-          // We access the store directly to get the latest state after fetchChatHistory
-          const state = useXyzen.getState();
-          const currentActiveChannel = state.activeChatChannel;
+          // 2. Check for pending channel activation (from shared chat "continue conversation")
+          const pendingChannel = sessionStorage.getItem(
+            "pending_activate_channel",
+          );
+          if (pendingChannel) {
+            sessionStorage.removeItem("pending_activate_channel");
+            // Format is "session_id:topic_id"
+            const parts = pendingChannel.split(":");
+            const topicId = parts.length >= 2 ? parts[1] : parts[0];
+            if (topicId) {
+              setActivePanel("chat");
+              await activateChannel(topicId);
+            }
+          } else {
+            // 3. If there is an active chat channel (persisted), try to connect to it
+            // We access the store directly to get the latest state after fetchChatHistory
+            const state = useXyzen.getState();
+            const currentActiveChannel = state.activeChatChannel;
 
-          if (currentActiveChannel) {
-            console.log(
-              `[App] Pre-connecting to active channel: ${currentActiveChannel}`,
-            );
-            // activateChannel handles fetching messages and connecting via WebSocket
-            await activateChannel(currentActiveChannel);
+            if (currentActiveChannel) {
+              console.log(
+                `[App] Pre-connecting to active channel: ${currentActiveChannel}`,
+              );
+              // activateChannel handles fetching messages and connecting via WebSocket
+              await activateChannel(currentActiveChannel);
+            }
           }
         } catch (error) {
           console.error("Failed to load initial data:", error);
@@ -179,6 +204,7 @@ export function Xyzen({
     fetchMcpServers,
     fetchChatHistory,
     activateChannel,
+    setActivePanel,
   ]);
 
   // Unified progress bar logic
@@ -231,7 +257,32 @@ export function Xyzen({
     void autoLogin();
   }, []);
 
-  const handleShowAuthScreen = useCallback(() => {
+  const handleShowAuthScreen = useCallback(async () => {
+    // For OAuth providers (non-bohr_app), redirect directly to the login page
+    try {
+      const [status, config] = await Promise.all([
+        authService.getAuthStatus(),
+        authService.getAuthConfig(),
+      ]);
+      const provider = config?.provider ?? status?.provider;
+
+      if (provider && provider !== "bohr_app") {
+        let url: string | null = null;
+        if (provider === "casdoor") {
+          const state = Math.random().toString(36).substring(7);
+          sessionStorage.setItem("auth_state", state);
+          url = buildAuthorizeUrl(provider, config, state);
+        } else {
+          url = buildAuthorizeUrl(provider, config);
+        }
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      }
+    } catch {
+      // Fall through to show AuthErrorScreen
+    }
     setShowAuthScreen(true);
   }, []);
 
@@ -241,10 +292,34 @@ export function Xyzen({
     (status === "succeeded" && !initialLoadComplete);
   const authFailed = status === "failed";
   const sharedAgentId = parseAgentShareHash(currentHash);
+  const sharedChatToken = parseChatShareHash(currentHash);
   // 手机阈值：512px 以下强制 Sidebar（不可拖拽，全宽）
   const isMobile = viewportWidth < MOBILE_BREAKPOINT;
 
   if (!mounted) return null;
+
+  // Shared chat page — no auth required, highest priority
+  if (sharedChatToken) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SharedChatPage token={sharedChatToken} />
+      </QueryClientProvider>
+    );
+  }
+
+  // Shared agent detail page — no auth required
+  if (sharedAgentId) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SharedAgentDetailPage
+          marketplaceId={sharedAgentId}
+          onBack={() => {
+            window.location.hash = "";
+          }}
+        />
+      </QueryClientProvider>
+    );
+  }
 
   const shouldShowCompactInput =
     layoutStyle === LAYOUT_STYLE.Sidebar && !isXyzenOpen && !isMobile;
@@ -252,15 +327,12 @@ export function Xyzen({
   const mainLayout = shouldShowCompactInput ? (
     <CenteredInput position={centeredInputPosition} />
   ) : isMobile ? (
-    // 小于阈值：强制 Sidebar，全宽且不可拖拽
-    <AppSide
+    <MobileApp
       backendUrl={backendUrl}
-      isMobile
       showAuthError={authFailed}
       onRetryAuth={handleRetry}
     />
   ) : layoutStyle === LAYOUT_STYLE.Sidebar ? (
-    // 大于等于阈值：尊重设置为 Sidebar，桌面可拖拽
     <AppSide
       backendUrl={backendUrl}
       showAuthError={authFailed && isXyzenOpen}
@@ -279,13 +351,6 @@ export function Xyzen({
     ) : (
       <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />
     )
-  ) : sharedAgentId ? (
-    <SharedAgentDetailPage
-      marketplaceId={sharedAgentId}
-      onBack={() => {
-        window.location.hash = "";
-      }}
-    />
   ) : (
     <>{mainLayout}</>
   );

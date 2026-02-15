@@ -81,14 +81,14 @@ export function getLastNonEmptyPhaseContent(
  * @returns ResolvedContent with text and metadata
  */
 export function resolveMessageContent(message: Message): ResolvedContent {
-  const { content, agentExecution, isStreaming } = message;
+  const { content, agentExecution, isStreaming, status } = message;
 
   // Priority 1: Direct content field (populated after edit or streaming_end)
   if (content) {
     return {
       text: content,
       source: "message.content",
-      isIncomplete: Boolean(isStreaming),
+      isIncomplete: Boolean(status === "streaming" || isStreaming),
     };
   }
 
@@ -108,7 +108,12 @@ export function resolveMessageContent(message: Message): ResolvedContent {
   return {
     text: "",
     source: "empty",
-    isIncomplete: Boolean(isStreaming || agentExecution?.status === "running"),
+    isIncomplete: Boolean(
+      status === "streaming" ||
+      status === "pending" ||
+      isStreaming ||
+      agentExecution?.status === "running",
+    ),
   };
 }
 
@@ -122,11 +127,16 @@ export function resolveMessageContent(message: Message): ResolvedContent {
  * @returns MessageDisplayMode indicating how to render the message
  */
 export function getMessageDisplayMode(message: Message): MessageDisplayMode {
-  const { isLoading, isStreaming, agentExecution } = message;
+  const { isLoading, isStreaming, agentExecution, status } = message;
 
-  // Explicit loading state
-  if (isLoading) {
+  // Explicit loading/pending state
+  if (status === "pending" || isLoading) {
     return "loading";
+  }
+
+  // Failed messages are rendered as simple (with error card)
+  if (status === "failed") {
+    return "simple";
   }
 
   // No agent execution = simple chat
@@ -145,7 +155,12 @@ export function getMessageDisplayMode(message: Message): MessageDisplayMode {
   // Agent execution with phases
   if (agentExecution.phases.length > 0) {
     // Still running or streaming = show in timeline
-    if (isStreaming || agentExecution.status === "running") {
+    if (
+      status === "streaming" ||
+      status === "thinking" ||
+      isStreaming ||
+      agentExecution.status === "running"
+    ) {
       return "timeline_streaming";
     }
     // Completed = show final content below timeline

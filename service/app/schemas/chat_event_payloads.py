@@ -39,14 +39,14 @@ from app.schemas.chat_event_types import ChatEventType
 class StreamingStartData(TypedDict):
     """Data payload for STREAMING_START event."""
 
-    id: str
+    stream_id: str
     execution_id: NotRequired[str]
 
 
 class StreamingChunkData(TypedDict):
     """Data payload for STREAMING_CHUNK event."""
 
-    id: str
+    stream_id: str
     content: str
     execution_id: NotRequired[str]
 
@@ -54,7 +54,7 @@ class StreamingChunkData(TypedDict):
 class StreamingEndData(TypedDict):
     """Data payload for STREAMING_END event."""
 
-    id: str
+    stream_id: str
     created_at: float
     execution_id: NotRequired[str]
     content: NotRequired[str]  # Optional content for final streaming result
@@ -65,18 +65,28 @@ class ProcessingData(TypedDict):
     """Data payload for PROCESSING event."""
 
     status: str
+    stream_id: NotRequired[str]
 
 
 class LoadingData(TypedDict):
     """Data payload for LOADING event."""
 
     message: str
+    stream_id: NotRequired[str]
 
 
 class ErrorData(TypedDict):
-    """Data payload for ERROR event."""
+    """Data payload for ERROR event.
 
-    error: str
+    Enhanced with structured error fields while remaining backward compatible.
+    """
+
+    error: str  # User-safe display message (always present)
+    error_code: NotRequired[str]  # ChatErrorCode value, e.g. "provider.rate_limited"
+    error_category: NotRequired[str]  # Category, e.g. "provider"
+    recoverable: NotRequired[bool]  # Whether the user can retry
+    detail: NotRequired[str]  # Optional sanitized detail
+    stream_id: NotRequired[str]
 
 
 class ToolCallRequestData(TypedDict):
@@ -165,25 +175,26 @@ class InsufficientBalanceData(TypedDict):
     message_cn: NotRequired[str]
     details: NotRequired[dict[str, Any]]
     action_required: str
+    stream_id: NotRequired[str]
 
 
 class ThinkingStartData(TypedDict):
     """Data payload for THINKING_START event."""
 
-    id: str
+    stream_id: str
 
 
 class ThinkingChunkData(TypedDict):
     """Data payload for THINKING_CHUNK event."""
 
-    id: str
+    stream_id: str
     content: str
 
 
 class ThinkingEndData(TypedDict):
     """Data payload for THINKING_END event."""
 
-    id: str
+    stream_id: str
 
 
 class StreamAbortedData(TypedDict):
@@ -192,6 +203,7 @@ class StreamAbortedData(TypedDict):
     reason: str  # "user_requested", "timeout", "error"
     partial_content_length: NotRequired[int]
     tokens_consumed: NotRequired[int]
+    stream_id: NotRequired[str]
 
 
 # =============================================================================

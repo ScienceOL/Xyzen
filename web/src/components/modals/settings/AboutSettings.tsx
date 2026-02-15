@@ -33,12 +33,12 @@ export const AboutSettings = () => {
           <img
             src="/icon.png"
             alt="Xyzen"
-            className="h-24 w-24 rounded-[22px] shadow-lg shadow-black/20 dark:shadow-black/40"
+            className="h-24 w-24 rounded-[22px] shadow-lg shadow-black/10 dark:shadow-black/30"
           />
           {/* Version mismatch indicator */}
           {needsRefresh && (
             <span
-              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-1 ring-white dark:ring-neutral-900"
+              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900"
               title={t(
                 "settings.about.versionMismatch",
                 "New version available. Refresh to update.",
@@ -56,7 +56,7 @@ export const AboutSettings = () => {
 
       {/* Version Display - Using Accordion */}
       <div className="w-full">
-        <div className="overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800/60">
+        <div className="overflow-hidden rounded-xl bg-neutral-100/80 dark:bg-neutral-800/50">
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="version" className="border-none">
               <AccordionTrigger className="px-4 py-3.5 hover:no-underline">
@@ -66,30 +66,46 @@ export const AboutSettings = () => {
                       {t("settings.about.version", "Version")}
                     </span>
                     {needsRefresh && (
-                      <button
+                      <span
+                        role="button"
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           window.location.reload();
                         }}
-                        className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.stopPropagation();
+                            window.location.reload();
+                          }
+                        }}
+                        className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 cursor-pointer"
                       >
                         {t("settings.about.refresh", "Refresh")}
-                      </button>
+                      </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     {isLoading ? (
                       <ArrowPathIcon className="h-4 w-4 animate-spin text-neutral-400" />
                     ) : isError ? (
-                      <button
+                      <span
+                        role="button"
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           refresh();
                         }}
-                        className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.stopPropagation();
+                            refresh();
+                          }
+                        }}
+                        className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
                       >
                         {t("common.retry", "Retry")}
-                      </button>
+                      </span>
                     ) : (
                       <>
                         {/* Version Name (Codename) */}
@@ -149,11 +165,11 @@ export const AboutSettings = () => {
         </div>
 
         {/* Links */}
-        <div className="mt-6 overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800/60">
+        <div className="mt-6 overflow-hidden rounded-xl bg-neutral-100/80 dark:bg-neutral-800/50">
           <LinkRow href={GITHUB_REPO} label="GitHub" />
-          <div className="mx-4 h-px bg-neutral-200 dark:bg-neutral-700" />
+          <div className="mx-4 h-px bg-neutral-200/60 dark:bg-neutral-700/60" />
           <LinkRow href={`${GITHUB_REPO}/releases`} label="Releases" />
-          <div className="mx-4 h-px bg-neutral-200 dark:bg-neutral-700" />
+          <div className="mx-4 h-px bg-neutral-200/60 dark:bg-neutral-700/60" />
           <LinkRow
             href={`${GITHUB_REPO}/blob/main/CHANGELOG.md`}
             label="Changelog"

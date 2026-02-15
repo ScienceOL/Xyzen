@@ -3,6 +3,7 @@
 import * as React from "react";
 import { EmblaOptionsType, EmblaCarouselType } from "embla-carousel";
 import useEmblaCarousel from "embla-carousel-react";
+import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ type MotionCarouselProps = {
   showDots?: boolean;
   showArrows?: boolean;
   className?: string;
+  slideClassName?: string;
 };
 
 const useEmblaControls = (emblaApi: EmblaCarouselType | undefined) => {
@@ -67,8 +69,11 @@ function MotionCarousel({
   showDots = true,
   showArrows = true,
   className,
+  slideClassName,
 }: MotionCarouselProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel(options);
+  const [emblaRef, emblaApi] = useEmblaCarousel(options, [
+    WheelGesturesPlugin(),
+  ]);
   const {
     selectedIndex,
     scrollSnaps,
@@ -89,7 +94,11 @@ function MotionCarousel({
           {slides.map((child, index) => (
             <div
               key={index}
-              className="min-w-0 flex-none basis-[80%] pl-3 sm:basis-[45%] lg:basis-[33.33%]"
+              className={cn(
+                "min-w-0 flex-none pl-3",
+                slideClassName ??
+                  "basis-[80%] sm:basis-[45%] lg:basis-[33.33%]",
+              )}
             >
               {child}
             </div>

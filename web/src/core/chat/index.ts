@@ -16,26 +16,6 @@ export {
   reconstructAgentExecutionFromMetadata,
 } from "./messageProcessor";
 
-// WebSocket management
-export {
-  connectToChannel,
-  disconnect,
-  sendMessage,
-  confirmToolCall,
-  cancelToolCall,
-  getCurrentConnection,
-  isConnectedTo,
-} from "./websocketManager";
-
-// Types
-export type {
-  WebSocketMessageEvent,
-  ConnectionStatus,
-  WebSocketCallbacks,
-  IWebSocketManager,
-  XyzenServiceInterface,
-} from "./types";
-
 // Message content resolution utilities
 export {
   getLastNonEmptyPhaseContent,
@@ -50,3 +30,14 @@ export { mergeChannelPreservingRuntime } from "./channelState";
 // Channel/topic status utilities
 export { deriveTopicStatus, isActiveTopicStatus } from "./channelStatus";
 export type { TopicStatus } from "./channelStatus";
+
+// Channel helper functions (message lookup, state sync, execution lifecycle)
+export {
+  getNodeDisplayName,
+  ensureFallbackResponsePhase,
+  findMessageIndexByStream,
+  clearMessageTransientState,
+  finalizeExecutionPhases,
+  finalizeMessageExecution,
+  syncChannelResponding,
+} from "./channelHelpers";

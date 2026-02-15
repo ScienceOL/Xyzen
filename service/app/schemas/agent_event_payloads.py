@@ -89,6 +89,9 @@ class AgentExecutionContext(TypedDict):
     started_at: float  # Unix timestamp when execution started
     elapsed_ms: NotRequired[int]  # Milliseconds since started_at
 
+    # Stream identification (propagated from WebSocket handler)
+    stream_id: NotRequired[str]
+
 
 # === Agent Lifecycle Events ===
 

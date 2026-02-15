@@ -22,6 +22,7 @@ function makeAssistantMessage(
     role: "assistant",
     content: "",
     created_at: new Date().toISOString(),
+    status: "completed",
     agentExecution: status
       ? {
           agentId: "agent-1",

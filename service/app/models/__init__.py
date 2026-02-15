@@ -11,6 +11,7 @@ from .agent_marketplace import (
     AgentMarketplaceUpdate,
 )
 from .agent_snapshot import AgentSnapshot, AgentSnapshotCreate, AgentSnapshotRead
+from .chat_share import ChatShare, ChatShareCreate, ChatSharePublicRead, ChatShareRead
 from .checkin import CheckIn, CheckInCreate, CheckInRead
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
@@ -61,6 +62,10 @@ __all__ = [
     "AgentLike",
     "AgentLikeCreate",
     "AgentLikeRead",
+    "ChatShare",
+    "ChatShareCreate",
+    "ChatShareRead",
+    "ChatSharePublicRead",
     "Citation",
     "CitationCreate",
     "CitationRead",

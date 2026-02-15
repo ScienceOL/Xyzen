@@ -1,7 +1,8 @@
 import asyncio
 import json
 import logging
-from uuid import UUID
+import time
+from uuid import UUID, uuid4
 
 import redis.asyncio as redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -219,8 +220,14 @@ async def chat_websocket(
                             await websocket.send_text(json.dumps(limit_event))
                             continue
 
+                    # Generate stream_id for this response lifecycle
+                    stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
+
                     # Loading status
-                    loading_event = {"type": ChatEventType.LOADING, "data": {"message": "AI is thinking..."}}
+                    loading_event = {
+                        "type": ChatEventType.LOADING,
+                        "data": {"message": "AI is thinking...", "stream_id": stream_id},
+                    }
                     await websocket.send_text(json.dumps(loading_event))
 
                     # Pre-deduction / Balance Check
@@ -256,6 +263,7 @@ async def chat_websocket(
                                     "message_cn": "积分余额不足，请充值后继续使用",
                                     "details": e.as_dict(),
                                     "action_required": "recharge",
+                                    "stream_id": stream_id,
                                 },
                             }
                             await websocket.send_text(json.dumps(insufficient_balance_event, ensure_ascii=False))
@@ -281,6 +289,7 @@ async def chat_websocket(
                         context=None,
                         pre_deducted_amount=pre_deducted_amount,
                         access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
+                        stream_id=stream_id,
                     )
 
                     logger.info(f"Regeneration dispatched for topic {topic_id}, using message: {last_user_message.id}")
@@ -331,11 +340,17 @@ async def chat_websocket(
                 else:
                     await websocket.send_text(user_message.model_dump_json())
 
-                # 4. Loading status
-                loading_event = {"type": ChatEventType.LOADING, "data": {"message": "AI is thinking..."}}
+                # 4. Generate stream_id for this response lifecycle
+                stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
+
+                # 5. Loading status
+                loading_event = {
+                    "type": ChatEventType.LOADING,
+                    "data": {"message": "AI is thinking...", "stream_id": stream_id},
+                }
                 await websocket.send_text(json.dumps(loading_event))
 
-                # 5. Pre-deduction / Balance Check
+                # 6. Pre-deduction / Balance Check
                 base_cost = 3
                 pre_deducted_amount = 0.0
                 try:
@@ -366,6 +381,7 @@ async def chat_websocket(
                                 "message_cn": "积分余额不足，请充值后继续使用",
                                 "details": e.as_dict(),
                                 "action_required": "recharge",
+                                "stream_id": stream_id,
                             },
                         }
                         await websocket.send_text(json.dumps(insufficient_balance_event, ensure_ascii=False))
@@ -378,7 +394,7 @@ async def chat_websocket(
                 # This ensures the Celery worker can see the message in its separate DB session
                 await db.commit()
 
-                # 6. Dispatch Celery Task
+                # 7. Dispatch Celery Task
                 # Convert UUIDs to strings
                 process_chat_message.delay(
                     session_id_str=str(session_id),
@@ -389,16 +405,17 @@ async def chat_websocket(
                     context=context,
                     pre_deducted_amount=pre_deducted_amount,
                     access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
+                    stream_id=stream_id,
                 )
 
-                # 6b. Acknowledge message receipt to client
+                # 7b. Acknowledge message receipt to client
                 ack_event = {
                     "type": ChatEventType.MESSAGE_ACK,
                     "data": {"message_id": str(user_message.id)},
                 }
                 await websocket.send_text(json.dumps(ack_event))
 
-                # 7. Topic Renaming - uses Redis pub/sub for cross-pod delivery
+                # 8. Topic Renaming - uses Redis pub/sub for cross-pod delivery
                 topic_refreshed = await topic_repo.get_topic_with_details(topic_id)
                 if topic_refreshed and topic_refreshed.name in ["新的聊天", "New Chat", "New Topic"]:
                     msgs = await message_repo.get_messages_by_topic(topic_id, limit=5)

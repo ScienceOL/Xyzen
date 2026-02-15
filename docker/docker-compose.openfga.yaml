@@ -1,0 +1,72 @@
+# OpenFGA authorization services overlay for sciol-infra
+# Usage: docker compose -p sciol-infra -f docker-compose.infra.yaml -f docker-compose.openfga.yaml up
+#
+# Fully independent stack: own PostgreSQL, own network-service.
+# Xyzen containers reach OpenFGA HTTP API via host.docker.internal:8080 (cross-project)
+# or via the bridge network if running in the same compose project.
+
+services:
+  openfga-network-service:
+    image: alpine:3.22
+    ports:
+      - "${OPENFGA_HTTP_PORT:-8080}:8080"
+      - "${OPENFGA_GRPC_PORT:-8081}:8081"
+      - "${OPENFGA_PLAYGROUND_PORT:-3000}:3000"
+    command: tail -f /dev/null
+    networks:
+      - sciol-network
+
+  openfga-db:
+    image: postgres:16-alpine
+    network_mode: "service:openfga-network-service"
+    restart: always
+    environment:
+      POSTGRES_USER: openfga
+      POSTGRES_PASSWORD: openfga
+      POSTGRES_DB: openfga
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openfga -d openfga"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - openfga-db-data:/var/lib/postgresql/data
+
+  openfga-migrate:
+    image: openfga/openfga:latest
+    command: migrate
+    network_mode: "service:openfga-network-service"
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: "postgres://openfga:openfga@127.0.0.1:5432/openfga?sslmode=disable"
+    depends_on:
+      openfga-db:
+        condition: service_healthy
+    restart: "on-failure"
+
+  openfga:
+    image: openfga/openfga:latest
+    command: run
+    network_mode: "service:openfga-network-service"
+    restart: unless-stopped
+    attach: false
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: "postgres://openfga:openfga@127.0.0.1:5432/openfga?sslmode=disable"
+      OPENFGA_LOG_LEVEL: info
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/grpc_health_probe", "-addr=:8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  openfga-db-data:
+    driver: local
+
+networks:
+  sciol-network:
+    driver: bridge

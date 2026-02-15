@@ -108,7 +108,8 @@
     "subtitle": "Customize the appearance and behavior of Xyzen",
     "sections": {
       "layout": "Layout Style",
-      "inputPosition": "Quick Input Position"
+      "inputPosition": "Quick Input Position",
+      "workspace": "Workspace"
     },
     "layout": {
       "sidebar": {
@@ -164,6 +165,10 @@
     "tip": {
       "title": "💡 Pro Tip",
       "body": "Fullscreen layout is perfect for larger displays where you want to see everything at once. Sidebar layout is ideal for focused work and smaller screens."
+    },
+    "recommendations": {
+      "label": "Official Agent Recommendations",
+      "description": "Show recommended official agents on workspace when you have few agents"
     }
   },
   "providers": {

@@ -85,6 +85,16 @@ class SessionService:
         await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
 
         await self.db.commit()
+
+        # Write FGA owner tuple (best-effort)
+        try:
+            from app.core.fga.client import get_fga_client
+
+            fga = await get_fga_client()
+            await fga.write_tuple(user_id, "owner", "session", str(session.id))
+        except Exception:
+            pass
+
         return SessionRead(**session.model_dump())
 
     async def get_session_by_agent(self, user_id: str, agent_id: str) -> SessionRead:

@@ -15,12 +15,10 @@ import { DEFAULT_WIDTH, MIN_WIDTH } from "@/configs/common";
 import { useXyzen } from "@/store";
 import { useTranslation } from "react-i18next";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
-import MobileChatView, { type MobileChatViewHandle } from "./MobileChatView";
 
 export interface AppSideProps {
   backendUrl?: string;
-  isMobile?: boolean; // when true, sidebar occupies full viewport width and is not resizable
-  showAuthError?: boolean; // when auth failed, render error inline in panel
+  showAuthError?: boolean;
   onRetryAuth?: () => void;
 }
 
@@ -30,8 +28,6 @@ type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 export function AppSide({
   backendUrl = DEFAULT_BACKEND_URL,
-
-  isMobile = false,
   showAuthError = false,
   onRetryAuth,
 }: AppSideProps) {
@@ -46,8 +42,6 @@ export function AppSide({
   const { activeChatChannel, setActiveChatChannel } = useXyzen();
 
   const [mounted, setMounted] = useState(false);
-  const mobileChatRef = useRef<MobileChatViewHandle>(null);
-  const [mobilePage, setMobilePage] = useState(0);
 
   // Floating window state
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -96,7 +90,6 @@ export function AppSide({
   const windowStartPos = useRef({ x: 0, y: 0 });
 
   const handleDragStart = (e: React.PointerEvent) => {
-    if (isMobile) return;
     // Don't drag if clicking a button or interactive element
     if ((e.target as HTMLElement).closest("button, [role='button']")) return;
 
@@ -136,7 +129,6 @@ export function AppSide({
   const windowStartPosForResize = useRef({ x: 0, y: 0 });
 
   const handleResizeStart = (e: React.PointerEvent, dir: ResizeDirection) => {
-    if (isMobile) return;
     e.preventDefault();
     e.stopPropagation();
 
@@ -220,16 +212,6 @@ export function AppSide({
 
   if (!mounted) return null;
 
-  // Styles based on mode
-  const mobileStyle: React.CSSProperties = {
-    position: "fixed",
-    right: 0,
-    top: 0,
-    width: "100%",
-    height: "100%",
-    zIndex: 50,
-  };
-
   const desktopStyle: React.CSSProperties = {
     position: "fixed",
     left: position.x,
@@ -244,87 +226,74 @@ export function AppSide({
   return (
     <>
       <div
-        className={`flex flex-col bg-white dark:bg-black overflow-visible ${
-          !isMobile ? "rounded-sm" : ""
-        }`}
-        style={isMobile ? mobileStyle : desktopStyle}
+        className="flex flex-col bg-white dark:bg-black overflow-visible rounded-sm"
+        style={desktopStyle}
       >
-        {/* Resize Handles (Desktop Only) */}
-        {!isMobile && (
-          <>
-            {/* Edge Handles */}
-            <div
-              className="absolute top-0 left-0 w-full h-1.5 cursor-ns-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
-              onPointerDown={(e) => handleResizeStart(e, "n")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
-            <div
-              className="absolute bottom-0 left-0 w-full h-1.5 cursor-ns-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
-              onPointerDown={(e) => handleResizeStart(e, "s")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
-            <div
-              className="absolute top-0 left-0 w-1.5 h-full cursor-ew-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
-              onPointerDown={(e) => handleResizeStart(e, "w")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
-            <div
-              className="absolute top-0 right-0 w-1.5 h-full cursor-ew-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
-              onPointerDown={(e) => handleResizeStart(e, "e")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
+        {/* Resize Handles */}
+        <>
+          {/* Edge Handles */}
+          <div
+            className="absolute top-0 left-0 w-full h-1.5 cursor-ns-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+            onPointerDown={(e) => handleResizeStart(e, "n")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+          <div
+            className="absolute bottom-0 left-0 w-full h-1.5 cursor-ns-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+            onPointerDown={(e) => handleResizeStart(e, "s")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+          <div
+            className="absolute top-0 left-0 w-1.5 h-full cursor-ew-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+            onPointerDown={(e) => handleResizeStart(e, "w")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+          <div
+            className="absolute top-0 right-0 w-1.5 h-full cursor-ew-resize z-50 bg-transparent hover:bg-indigo-500/10 transition-colors"
+            onPointerDown={(e) => handleResizeStart(e, "e")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
 
-            {/* Corner Handles */}
-            <div
-              className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-51 bg-transparent"
-              onPointerDown={(e) => handleResizeStart(e, "nw")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
-            <div
-              className="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize z-51 bg-transparent"
-              onPointerDown={(e) => handleResizeStart(e, "ne")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
-            <div
-              className="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize z-51 bg-transparent"
-              onPointerDown={(e) => handleResizeStart(e, "sw")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
-            <div
-              className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-51 bg-transparent"
-              onPointerDown={(e) => handleResizeStart(e, "se")}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-            />
-          </>
-        )}
+          {/* Corner Handles */}
+          <div
+            className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-51 bg-transparent"
+            onPointerDown={(e) => handleResizeStart(e, "nw")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+          <div
+            className="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize z-51 bg-transparent"
+            onPointerDown={(e) => handleResizeStart(e, "ne")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+          <div
+            className="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize z-51 bg-transparent"
+            onPointerDown={(e) => handleResizeStart(e, "sw")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+          <div
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-51 bg-transparent"
+            onPointerDown={(e) => handleResizeStart(e, "se")}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+          />
+        </>
 
         {/* Header Area */}
         <AppHeader
           variant="side"
-          isMobile={isMobile}
+          isMobile={false}
           onDragStart={handleDragStart}
           onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
-          showBackButton={
-            activePanel === "chat" &&
-            (isMobile ? mobilePage > 0 : !!activeChatChannel)
-          }
+          showBackButton={activePanel === "chat" && !!activeChatChannel}
           onBackClick={() => {
-            if (isMobile) {
-              const page = mobileChatRef.current?.currentPage ?? 0;
-              if (page === 2) mobileChatRef.current?.goToPage(1);
-              else if (page === 1) mobileChatRef.current?.goToPage(0);
-            } else {
-              setActiveChatChannel(null);
-            }
+            setActiveChatChannel(null);
           }}
           backButtonLabel={
             activeChatChannel
@@ -335,25 +304,17 @@ export function AppSide({
 
         {/* Content Area with Sidebar */}
         <div className="flex flex-1 overflow-hidden relative">
-          {/* Activity Bar (Left Sidebar on Desktop) */}
-          {!isMobile && (
-            <ActivityBar
-              activePanel={activePanel}
-              onPanelChange={setActivePanel}
-              isMobile={false}
-            />
-          )}
+          {/* Activity Bar (Left Sidebar) */}
+          <ActivityBar
+            activePanel={activePanel}
+            onPanelChange={setActivePanel}
+            isMobile={false}
+          />
 
           {/* Main Content */}
           <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-neutral-950">
             {activePanel === "chat" &&
-              (isMobile ? (
-                <MobileChatView
-                  ref={mobileChatRef}
-                  onPageChange={setMobilePage}
-                />
-              ) : activeChatChannel ? (
-                // Desktop: side-by-side with Capsule
+              (activeChatChannel ? (
                 <div className="h-full flex">
                   <div className="flex-1 min-w-0 h-full bg-white dark:bg-black">
                     <XyzenChat />
@@ -408,15 +369,6 @@ export function AppSide({
             )}
           </div>
         </div>
-
-        {/* Mobile Activity Bar (Bottom) */}
-        {isMobile && (
-          <ActivityBar
-            activePanel={activePanel}
-            onPanelChange={setActivePanel}
-            isMobile={true}
-          />
-        )}
       </div>
 
       <SettingsModal />

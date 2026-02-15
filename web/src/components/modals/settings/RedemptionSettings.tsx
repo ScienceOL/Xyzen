@@ -41,28 +41,28 @@ export function RedemptionSettings() {
   };
 
   return (
-    <div className="relative h-full min-h-125 w-full overflow-hidden rounded-sm">
+    <div className="relative h-full min-h-125 w-full overflow-hidden">
       <BubbleBackground className="absolute inset-0" />
 
       <div className="relative z-10 flex h-full w-full flex-col items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-md md:p-8">
+        <div className="w-full max-w-md rounded-2xl bg-white/10 p-6 backdrop-blur-md md:p-8">
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-              <TicketIcon className="h-6 w-6 text-white" />
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
+              <TicketIcon className="h-7 w-7 text-white" />
             </div>
             <h2 className="mb-2 text-2xl font-bold text-white">
               {t("settings.redemption.title")}
             </h2>
-            <p className="text-sm text-white/80">
+            <p className="text-sm text-white/70">
               {t("settings.redemption.subtitle")}
             </p>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="space-y-2">
               <label
                 htmlFor="redemption-code"
-                className="ml-1 block text-sm font-medium text-white/90"
+                className="ml-1 block text-sm font-medium text-white/80"
               >
                 {t("settings.redemption.form.label")}
               </label>
@@ -80,7 +80,7 @@ export function RedemptionSettings() {
                   }
                 }}
                 autoComplete="off"
-                className="w-full rounded-sm border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 backdrop-blur-sm transition-all focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:opacity-50"
+                className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:opacity-50"
                 disabled={redeemMutation.isPending}
               />
             </div>
@@ -88,7 +88,7 @@ export function RedemptionSettings() {
             <Button
               onClick={handleRedeem}
               disabled={redeemMutation.isPending || !code.trim()}
-              className="h-12 w-full rounded-sm bg-white text-base font-semibold text-violet-900 shadow-lg transition-all hover:bg-white/90 active:scale-95 disabled:opacity-70"
+              className="h-12 w-full rounded-xl bg-white text-base font-semibold text-violet-900 transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-70"
             >
               {redeemMutation.isPending
                 ? t("settings.redemption.form.redeeming")
@@ -96,14 +96,14 @@ export function RedemptionSettings() {
             </Button>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-sm bg-red-500/20 p-3 text-sm text-red-100 backdrop-blur-sm border border-red-500/30">
+              <div className="flex items-center gap-2 rounded-xl bg-red-500/20 p-3 text-sm text-red-100 backdrop-blur-sm">
                 <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="flex items-center gap-2 rounded-sm bg-green-500/20 p-3 text-sm text-green-100 backdrop-blur-sm border border-green-500/30">
+              <div className="flex items-center gap-2 rounded-xl bg-green-500/20 p-3 text-sm text-green-100 backdrop-blur-sm">
                 <CheckCircleIcon className="h-5 w-5 shrink-0 text-green-400" />
                 {success}
               </div>

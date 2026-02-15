@@ -6,7 +6,12 @@
  */
 
 import { parseToolMessage } from "@/utils/toolMessageParser";
-import type { Message, ToolCall, AgentMetadata } from "@/store/types";
+import type {
+  Message,
+  MessageError,
+  ToolCall,
+  AgentMetadata,
+} from "@/store/types";
 import type { AgentExecutionState, PhaseExecution } from "@/types/agentEvents";
 
 /**
@@ -53,6 +58,8 @@ function cloneMessage(message: Message): Message {
 
   const cloned: Message = {
     ...message,
+    // Set status for all cloned messages (loaded from DB = completed)
+    status: message.status || "completed",
     toolCalls: message.toolCalls
       ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
       : undefined,
@@ -61,6 +68,27 @@ function cloneMessage(message: Message): Message {
     // Map thinking_content from backend to thinkingContent for frontend
     thinkingContent: backendThinkingContent ?? message.thinkingContent,
   };
+
+  // Reconstruct MessageError from backend error_code fields if available
+  const backendMsg = message as Message & {
+    error_code?: string;
+    error_category?: string;
+    error_detail?: string;
+  };
+  if (backendMsg.error_code && !cloned.error) {
+    const reconstructedError: MessageError = {
+      code: backendMsg.error_code,
+      category:
+        backendMsg.error_category || backendMsg.error_code.split(".")[0],
+      // Don't use cloned.content here — it may be partial streamed text.
+      // ErrorMessageCard resolves display text via i18n(app.chatError.{code}).
+      message: "An error occurred",
+      recoverable: false,
+      detail: backendMsg.error_detail || undefined,
+    };
+    cloned.error = reconstructedError;
+    cloned.status = "failed";
+  }
 
   // Reconstruct agentExecution from agent_metadata if available
   // This enables timeline display for historical messages after page refresh
@@ -177,6 +205,7 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
         role: "assistant",
         content: "",
         created_at: msg.created_at,
+        status: "completed",
         toolCalls: [toolCall],
       };
 
@@ -228,6 +257,7 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
         role: "assistant",
         content: "工具调用更新",
         created_at: msg.created_at,
+        status: "completed",
         toolCalls: [toolCall],
       };
 
@@ -263,13 +293,15 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
  * Create a loading message placeholder
  * Used when waiting for assistant response
  */
-export function createLoadingMessage(): Message {
+export function createLoadingMessage(streamId?: string): Message {
   return {
-    id: `loading-${Date.now()}`,
+    id: streamId || `loading-${Date.now()}`,
+    streamId: streamId,
     clientId: generateClientId(),
     role: "assistant" as const,
     content: "",
     created_at: new Date().toISOString(),
+    status: "pending",
     isLoading: true,
     isStreaming: false,
     isNewMessage: true,
@@ -289,6 +321,7 @@ export function convertToStreamingMessage(
   return {
     ...messageWithoutLoading,
     id: messageId,
+    status: "streaming",
     isStreaming: true,
     content: "",
   };
@@ -312,6 +345,7 @@ export function finalizeStreamingMessage(
 
   return {
     ...finalMessage,
+    status: "completed",
     created_at: createdAt || new Date().toISOString(),
   } as Message;
 }

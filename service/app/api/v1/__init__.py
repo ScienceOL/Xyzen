@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .agents import router as agents_router
 from .auth import router as auth_router
 from .avatar import router as avatar_router
+from .chat_shares import router as chat_shares_router
 from .checkin import router as checkin_router
 from .files import router as files_router
 from .folders import router as folders_router
@@ -105,5 +106,6 @@ v1_router.include_router(memories_router, prefix="/memories")
 v1_router.include_router(sandbox_router, prefix="/sessions")
 v1_router.include_router(subscription_router, prefix="/subscription", tags=["subscription"])
 v1_router.include_router(avatar_router, prefix="/avatar")
+v1_router.include_router(chat_shares_router, prefix="/chat-shares")
 v1_router.include_router(tools_router, prefix="/tools")
 v1_router.include_router(system_router, tags=["system"])

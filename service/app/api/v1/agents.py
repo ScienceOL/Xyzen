@@ -79,6 +79,14 @@ async def create_agent(
     created_agent = await agent_repo.create_agent(agent_data, user_id)
 
     await db.commit()
+
+    # Write FGA owner tuple (best-effort, don't fail the request)
+    if auth_service.fga:
+        try:
+            await auth_service.fga.write_tuple(user_id, "owner", "agent", str(created_agent.id))
+        except Exception:
+            pass
+
     return AgentRead(**created_agent.model_dump())
 
 

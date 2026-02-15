@@ -134,6 +134,10 @@ migrate-history:
 migrate-current:
     docker exec sciol-xyzen-service-1 sh -c "uv run alembic current"
 
+# Backfill existing agents/sessions into OpenFGA (one-time)
+migrate-fga:
+    docker exec sciol-xyzen-service-1 sh -c "uv run python -m app.core.fga.migrate_permissions"
+
 # List all database tables
 db-tables:
     docker exec sciol-xyzen-postgresql-1 psql -U postgres -d postgres -c "\dt"

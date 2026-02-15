@@ -221,11 +221,14 @@ class KnowledgeSetRepository:
 
     async def get_files_in_knowledge_set(self, knowledge_set_id: UUID) -> list[UUID]:
         """
-        Gets all file IDs linked to a knowledge set.
+        Gets all non-deleted file IDs linked to a knowledge set.
         """
         logger.debug(f"Fetching files in knowledge set {knowledge_set_id}")
-        statement = select(FileKnowledgeSetLink.file_id).where(
-            FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id
+        statement = (
+            select(FileKnowledgeSetLink.file_id)
+            .join(File, col(FileKnowledgeSetLink.file_id) == File.id)
+            .where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+            .where(col(File.is_deleted).is_(False))
         )
         result = await self.db.exec(statement)
         return list(result.all())
@@ -235,9 +238,7 @@ class KnowledgeSetRepository:
         Gets all knowledge set IDs that a file is linked to.
         """
         logger.debug(f"Fetching knowledge sets for file {file_id}")
-        statement = select(FileKnowledgeSetLink.knowledge_set_id).where(
-            FileKnowledgeSetLink.knowledge_set_id == file_id
-        )
+        statement = select(FileKnowledgeSetLink.knowledge_set_id).where(FileKnowledgeSetLink.file_id == file_id)
         result = await self.db.exec(statement)
         return list(result.all())
 

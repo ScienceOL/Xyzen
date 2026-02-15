@@ -33,6 +33,7 @@ describe("mergeChannelPreservingRuntime", () => {
           role: "assistant",
           content: "",
           created_at: new Date().toISOString(),
+          status: "streaming",
           isStreaming: true,
           agentExecution: {
             agentId: "agent-1",
