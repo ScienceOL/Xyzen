@@ -147,6 +147,29 @@ export function Xyzen({
     }
   }, [centeredInputPosition, setInputPosition]);
 
+  // After OAuth redirect, the hash is lost (redirect_uri has no hash).
+  // Restore the hash route from sessionStorage so the shared page re-renders
+  // and its auto-continue / auto-fork logic can fire.
+  useEffect(() => {
+    if (status !== "succeeded") return;
+    if (
+      currentHash.startsWith("#/share/") ||
+      currentHash.startsWith("#/agent/")
+    )
+      return;
+
+    const pendingShare = sessionStorage.getItem("pending_share_continue");
+    if (pendingShare) {
+      window.location.hash = `#/share/${pendingShare}`;
+      return;
+    }
+    const pendingAgent = sessionStorage.getItem("pending_agent_share");
+    if (pendingAgent) {
+      window.location.hash = `#/agent/${pendingAgent}`;
+      return;
+    }
+  }, [status, currentHash]);
+
   // Load initial data when auth succeeds
   useEffect(() => {
     if (status === "succeeded" && !initialLoadComplete) {
@@ -166,14 +189,21 @@ export function Xyzen({
           const pendingChannel = sessionStorage.getItem(
             "pending_activate_channel",
           );
+          console.log("[App] pending_activate_channel:", pendingChannel);
           if (pendingChannel) {
             sessionStorage.removeItem("pending_activate_channel");
             // Format is "session_id:topic_id"
             const parts = pendingChannel.split(":");
             const topicId = parts.length >= 2 ? parts[1] : parts[0];
+            console.log("[App] Activating pending channel, topicId:", topicId);
             if (topicId) {
               setActivePanel("chat");
-              await activateChannel(topicId);
+              try {
+                await activateChannel(topicId);
+                console.log("[App] Channel activated successfully");
+              } catch (err) {
+                console.error("[App] Failed to activate channel:", err);
+              }
             }
           } else {
             // 3. If there is an active chat channel (persisted), try to connect to it

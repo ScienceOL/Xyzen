@@ -19,18 +19,12 @@ def _make_agent(user_id: str = "owner-user", scope: AgentScope = AgentScope.USER
     return agent
 
 
-def _make_listing(is_published: bool = True):
-    listing = MagicMock()
-    listing.is_published = is_published
-    return listing
-
-
 class TestAgentPolicyAuthorizeRead:
     @pytest.fixture
     def policy(self) -> AgentPolicy:
         policy = AgentPolicy.__new__(AgentPolicy)
         policy.agent_repo = AsyncMock()
-        policy.marketplace_repo = AsyncMock()
+        policy.fga = None
         return policy
 
     async def test_owner_access(self, policy: AgentPolicy) -> None:
@@ -47,27 +41,32 @@ class TestAgentPolicyAuthorizeRead:
         result = await policy.authorize_read(agent.id, "any-user")
         assert result is agent
 
-    async def test_published_marketplace_access(self, policy: AgentPolicy) -> None:
+    async def test_published_marketplace_access_via_fga(self, policy: AgentPolicy) -> None:
+        """Non-owner access is granted when FGA check passes (e.g., published marketplace agent)."""
         agent = _make_agent(user_id="other-user")
         policy.agent_repo.get_agent_by_id.return_value = agent
-        policy.marketplace_repo.get_by_agent_id.return_value = _make_listing(is_published=True)
+        policy.fga = AsyncMock()
+        policy.fga.check.return_value = True
 
         result = await policy.authorize_read(agent.id, "reader-user")
         assert result is agent
+        policy.fga.check.assert_awaited_once_with("reader-user", "viewer", "agent", str(agent.id))
 
-    async def test_unpublished_listing_denied(self, policy: AgentPolicy) -> None:
+    async def test_non_owner_no_fga_denied(self, policy: AgentPolicy) -> None:
+        """Non-owner without FGA access is denied."""
         agent = _make_agent(user_id="other-user")
         policy.agent_repo.get_agent_by_id.return_value = agent
-        policy.marketplace_repo.get_by_agent_id.return_value = _make_listing(is_published=False)
 
         with pytest.raises(ErrCodeError) as exc_info:
             await policy.authorize_read(agent.id, "reader-user")
         assert exc_info.value.code == ErrCode.AGENT_ACCESS_DENIED
 
-    async def test_no_listing_non_owner_denied(self, policy: AgentPolicy) -> None:
+    async def test_non_owner_fga_denied(self, policy: AgentPolicy) -> None:
+        """Non-owner is denied when FGA check returns False."""
         agent = _make_agent(user_id="other-user")
         policy.agent_repo.get_agent_by_id.return_value = agent
-        policy.marketplace_repo.get_by_agent_id.return_value = None
+        policy.fga = AsyncMock()
+        policy.fga.check.return_value = False
 
         with pytest.raises(ErrCodeError) as exc_info:
             await policy.authorize_read(agent.id, "reader-user")
@@ -86,7 +85,8 @@ class TestAgentPolicyAuthorizeWrite:
     def policy(self) -> AgentPolicy:
         policy = AgentPolicy.__new__(AgentPolicy)
         policy.agent_repo = AsyncMock()
-        policy.marketplace_repo = AsyncMock()
+
+        policy.fga = None
         return policy
 
     async def test_owner_write(self, policy: AgentPolicy) -> None:
@@ -117,7 +117,8 @@ class TestAgentPolicyAuthorizeDelete:
     def policy(self) -> AgentPolicy:
         policy = AgentPolicy.__new__(AgentPolicy)
         policy.agent_repo = AsyncMock()
-        policy.marketplace_repo = AsyncMock()
+
+        policy.fga = None
         return policy
 
     async def test_owner_delete(self, policy: AgentPolicy) -> None:

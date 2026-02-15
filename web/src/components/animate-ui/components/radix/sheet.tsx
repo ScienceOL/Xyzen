@@ -5,7 +5,7 @@ import {
   SheetFooter as SheetFooterPrimitive,
   SheetHeader as SheetHeaderPrimitive,
   SheetOverlay as SheetOverlayPrimitive,
-  SheetPortal as SheetPortalPrimitive,
+  SheetPortal as SheetPortalAnimated,
   Sheet as SheetPrimitive,
   SheetTitle as SheetTitlePrimitive,
   SheetTrigger as SheetTriggerPrimitive,
@@ -63,7 +63,7 @@ function SheetContent({
   ...props
 }: SheetContentProps) {
   return (
-    <SheetPortalPrimitive>
+    <SheetPortalAnimated>
       <SheetOverlay />
       <SheetContentPrimitive
         side={side}
@@ -85,7 +85,7 @@ function SheetContent({
           </SheetClose>
         )}
       </SheetContentPrimitive>
-    </SheetPortalPrimitive>
+    </SheetPortalAnimated>
   );
 }
 

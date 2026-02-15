@@ -111,14 +111,16 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
     try {
       const result = await shareService.forkShare(token);
       setContinueDone(true);
+      console.log("[SharedChat] Fork succeeded:", result);
       // Navigate to the new conversation
       setTimeout(() => {
+        const pendingValue = `${result.session_id}:${result.topic_id}`;
+        sessionStorage.setItem("pending_activate_channel", pendingValue);
+        // Tell SpatialWorkspace to auto-focus the new agent node
+        if (result.agent_id) {
+          localStorage.setItem("xyzen_spatial_focused_agent", result.agent_id);
+        }
         window.location.hash = "";
-        // Store the channel to activate after reload
-        sessionStorage.setItem(
-          "pending_activate_channel",
-          `${result.session_id}:${result.topic_id}`,
-        );
         window.location.reload();
       }, 800);
     } catch {

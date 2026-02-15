@@ -54,7 +54,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uv run celery -A app.worker worker --loglevel=info
+    command: celery -A app.worker worker --loglevel=info
 
   searxng:
     image: registry.sciol.ac.cn/sciol/searxng:latest
