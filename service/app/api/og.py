@@ -4,7 +4,8 @@ Serves lightweight HTML pages with OG/Twitter Card meta tags for:
 - Shared conversations: /xyzen/og/share/{token}
 - Shared agents: /xyzen/og/agent/{marketplace_id}
 
-Real users are redirected to the SPA via JS; crawlers get the meta tags.
+Crawlers receive a static HTML page with OG meta tags.
+Real users receive a 302 redirect to the SPA.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.infra.database import get_session
@@ -27,6 +28,44 @@ _SITE_NAME = "Xyzen"
 _SITE_DESCRIPTION = "构建自主 Agent 的开放平台与社区"
 _DEFAULT_IMAGE = "https://storage.sciol.ac.cn/public/icon.png"
 
+_CRAWLER_KEYWORDS = (
+    "bot",
+    "crawler",
+    "spider",
+    "preview",
+    "fetch",
+    "lark",
+    "feishu",
+    "slack",
+    "telegram",
+    "twitter",
+    "whatsapp",
+    "facebookexternalhit",
+    "linkedinbot",
+    "discordbot",
+    "googlebot",
+    "bingbot",
+    "curl",
+    "wget",
+    "python-requests",
+    "httpx",
+)
+
+
+def _is_crawler(request: Request) -> bool:
+    """Detect crawlers / link-preview fetchers by User-Agent."""
+    ua = (request.headers.get("user-agent") or "").lower()
+    return any(kw in ua for kw in _CRAWLER_KEYWORDS)
+
+
+def _get_base_url(request: Request) -> str:
+    """Get the external base URL, respecting X-Forwarded-Proto."""
+    base = str(request.base_url).rstrip("/")
+    proto = request.headers.get("x-forwarded-proto")
+    if proto and base.startswith("http://"):
+        base = f"https://{base[len('http://') :]}"
+    return base
+
 
 def _build_og_html(
     *,
@@ -36,7 +75,7 @@ def _build_og_html(
     redirect_url: str,
     og_type: str = "website",
 ) -> str:
-    """Build a minimal HTML page with OG meta tags and JS redirect."""
+    """Build a minimal HTML page with OG meta tags (no JS redirect)."""
     t = html.escape(title)
     d = html.escape(description)
     img = html.escape(image)
@@ -56,7 +95,6 @@ def _build_og_html(
 <meta name="twitter:title" content="{t}" />
 <meta name="twitter:description" content="{d}" />
 <meta name="twitter:image" content="{img}" />
-<script>window.location.replace("{r}");</script>
 </head>
 <body>
 <p>Redirecting to <a href="{r}">{t}</a>...</p>
@@ -64,14 +102,17 @@ def _build_og_html(
 </html>"""
 
 
-@router.get("/share/{token}", response_class=HTMLResponse)
-async def og_share(token: str, request: Request) -> HTMLResponse:
-    """Serve OG meta tags for a shared conversation."""
-    # Build the SPA redirect URL
-    base = str(request.base_url).rstrip("/")
+@router.get("/share/{token}", response_model=None)
+async def og_share(token: str, request: Request) -> HTMLResponse | RedirectResponse:
+    """Serve OG meta tags for crawlers, or 302 redirect for real users."""
+    base = _get_base_url(request)
     redirect_url = f"{base}/#/share/{html.escape(token)}"
 
-    # Try to fetch share metadata for a richer preview
+    # Real users get an immediate redirect — no DB query needed
+    if not _is_crawler(request):
+        return RedirectResponse(redirect_url, status_code=302)
+
+    # Crawlers get a rich OG HTML page
     title = f"Shared Conversation — {_SITE_NAME}"
     description = _SITE_DESCRIPTION
     image = _DEFAULT_IMAGE
@@ -125,12 +166,17 @@ async def og_share(token: str, request: Request) -> HTMLResponse:
     )
 
 
-@router.get("/agent/{marketplace_id}", response_class=HTMLResponse)
-async def og_agent(marketplace_id: UUID, request: Request) -> HTMLResponse:
-    """Serve OG meta tags for a shared agent from the marketplace."""
-    base = str(request.base_url).rstrip("/")
+@router.get("/agent/{marketplace_id}", response_model=None)
+async def og_agent(marketplace_id: UUID, request: Request) -> HTMLResponse | RedirectResponse:
+    """Serve OG meta tags for crawlers, or 302 redirect for real users."""
+    base = _get_base_url(request)
     redirect_url = f"{base}/#/agent/{marketplace_id}"
 
+    # Real users get an immediate redirect — no DB query needed
+    if not _is_crawler(request):
+        return RedirectResponse(redirect_url, status_code=302)
+
+    # Crawlers get a rich OG HTML page
     title = f"Agent — {_SITE_NAME}"
     description = _SITE_DESCRIPTION
     image = _DEFAULT_IMAGE
