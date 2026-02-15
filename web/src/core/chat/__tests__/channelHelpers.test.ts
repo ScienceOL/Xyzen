@@ -282,9 +282,7 @@ describe("finalizeMessageExecution", () => {
       status: "streaming",
       isStreaming: true,
       agentExecution: makeExecution({
-        phases: [
-          { id: "p1", name: "P1", status: "running", nodes: [] },
-        ],
+        phases: [{ id: "p1", name: "P1", status: "running", nodes: [] }],
       }),
     });
 
@@ -391,6 +389,7 @@ describe("syncChannelResponding", () => {
               name: "search",
               arguments: {},
               status: "waiting_confirmation",
+              timestamp: new Date().toISOString(),
             },
           ],
         }),
@@ -413,7 +412,13 @@ describe("syncChannelResponding", () => {
     const channel = makeChannel({
       messages: [
         makeMessage({ status: "streaming" }),
-        { id: "u1", role: "user", content: "hi", created_at: "", status: "completed" },
+        {
+          id: "u1",
+          role: "user",
+          content: "hi",
+          created_at: "",
+          status: "completed",
+        },
       ],
     });
     syncChannelResponding(channel);

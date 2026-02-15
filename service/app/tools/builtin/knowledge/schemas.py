@@ -20,7 +20,9 @@ class KnowledgeReadFileInput(BaseModel):
 
     filename: str = Field(
         description=(
-            "The name of the file to read from the knowledge base. "
+            "The name or path of the file to read from the knowledge base. "
+            "Supports folder paths (e.g., 'folder/file.py'). "
+            "If the filename is ambiguous (exists in multiple folders), use the full path. "
             "Supported formats: PDF, DOCX, XLSX, PPTX, HTML, JSON, YAML, XML, "
             "images (PNG/JPG/GIF/WEBP with OCR), and plain text files."
         )
@@ -32,7 +34,9 @@ class KnowledgeWriteFileInput(BaseModel):
 
     filename: str = Field(
         description=(
-            "The name of the file to create or update. Use appropriate extensions: "
+            "The name or path of the file to create or update. "
+            "Supports folder paths (e.g., 'folder/file.txt') — missing folders will be created automatically. "
+            "Use appropriate extensions: "
             ".txt, .md (plain text), .pdf (PDF document), .docx (Word), "
             ".xlsx (Excel), .pptx (PowerPoint), .json, .yaml, .xml, .html."
         )

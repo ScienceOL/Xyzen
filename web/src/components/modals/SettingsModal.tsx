@@ -94,10 +94,6 @@ export function SettingsModal() {
       swipeToDismiss
     >
       <div className="flex h-full flex-col overflow-hidden md:flex-row">
-        {/* Mobile drag indicator */}
-        <div className="flex shrink-0 justify-center pb-0 pt-2 md:hidden">
-          <div className="h-1 w-9 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-        </div>
         {/* Sidebar (Categories) - Desktop: frosted sidebar; Mobile: full-screen list */}
         <AnimatePresence mode="wait">
           <motion.div

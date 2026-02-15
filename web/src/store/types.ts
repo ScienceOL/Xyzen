@@ -83,8 +83,6 @@ export interface Message {
   // Unified lifecycle status
   status: MessageStatus;
 
-  // Legacy fields for backward compatibility
-  sender?: "user" | "assistant" | "system";
   timestamp?: string;
 
   /** @deprecated Use status === "pending" */
@@ -95,8 +93,6 @@ export interface Message {
   isNewMessage?: boolean;
   // Tool call related fields
   toolCalls?: ToolCall[];
-  /** @deprecated Use status and toolCalls instead */
-  isToolCalling?: boolean;
   // Multimodal support
   attachments?: MessageAttachment[];
   // Search citations from built-in search

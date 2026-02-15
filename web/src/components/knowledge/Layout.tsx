@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { CreateKnowledgeSetModal } from "./CreateKnowledgeSetModal";
 import { FileList, type FileListHandle } from "./FileList";
 import { DRAG_MIME } from "./FileTreeView";
+import { KnowledgeFilePanel } from "./KnowledgeFilePanel";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { RecentsView } from "./RecentsView";
 import { Sidebar } from "./Sidebar";
@@ -717,125 +718,130 @@ export const KnowledgeLayout = () => {
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        {/* Drag Overlay */}
-        {isDragOver && activeTab !== "trash" && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-indigo-500/10 backdrop-blur-sm border-2 border-dashed border-indigo-500 rounded-lg m-2 pointer-events-none">
-            <div className="text-center">
-              <div className="text-4xl mb-2">📁</div>
-              <div className="text-lg font-medium text-indigo-600 dark:text-indigo-400">
-                {t("knowledge.upload.dropHere")}
+        {activeTab === "knowledge" && currentKnowledgeSetId ? (
+          <KnowledgeFilePanel
+            knowledgeSetId={currentKnowledgeSetId}
+            showToolbar
+            showStatusBar
+            enableUpload
+          />
+        ) : (
+          <>
+            {/* Drag Overlay */}
+            {isDragOver && activeTab !== "trash" && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-indigo-500/10 backdrop-blur-sm border-2 border-dashed border-indigo-500 rounded-lg m-2 pointer-events-none">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📁</div>
+                  <div className="text-lg font-medium text-indigo-600 dark:text-indigo-400">
+                    {t("knowledge.upload.dropHere")}
+                  </div>
+                  <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                    {currentFolderId
+                      ? t("knowledge.upload.dropToFolder")
+                      : t("knowledge.upload.dropToUpload")}
+                  </div>
+                </div>
               </div>
-              <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                {activeTab === "knowledge" && currentKnowledgeSetName
-                  ? t("knowledge.upload.dropToKnowledgeSet", {
-                      name: currentKnowledgeSetName,
-                    })
-                  : currentFolderId
-                    ? t("knowledge.upload.dropToFolder")
-                    : t("knowledge.upload.dropToUpload")}
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Toolbar */}
-        <KnowledgeToolbar
-          title={getTitle()}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          onSearch={(q) => console.log("Search", q)}
-          onUpload={handleUploadClick}
-          onUploadFolder={handleFolderUploadClick}
-          onRefresh={handleRefresh}
-          isTrash={activeTab === "trash"}
-          onEmptyTrash={handleEmptyTrash}
-          showCreateFolder={activeTab === "all" || activeTab === "knowledge"}
-          onCreateFolder={handleCreateFolder}
-          breadcrumbs={
-            currentFolderId &&
-            (activeTab === "all" || activeTab === "knowledge")
-              ? breadcrumbs
-              : undefined
-          }
-          onBreadcrumbClick={(id) => navigateToFolder(id)}
-          onDropOnBreadcrumb={handleDropOnBreadcrumb}
-          onMenuClick={() => setIsSidebarOpen(true)}
-          isLoading={isFileListLoading}
-        />
-
-        {/* File Content */}
-        <div
-          className="flex-1 overflow-y-auto custom-scrollbar"
-          onClick={() => {
-            /* Deselect */
-          }}
-        >
-          {activeTab === "home" ? (
-            <RecentsView
-              refreshTrigger={refreshKey}
-              onKnowledgeSetClick={(id) => handleNavigate("knowledge", id)}
-              onCreateKnowledgeSet={handleCreateKnowledgeSet}
-              onRefresh={handleRefresh}
-              onFileCountChange={setCurrentFileCount}
-              onStatsUpdate={handleStatsUpdate}
-              onLoadingChange={setIsFileListLoading}
-              onUpload={handleUploadClick}
-              treeItems={knowledgeTreeItems}
-              treeLoading={knowledgeTreeLoading}
-              onRefreshTree={refreshKnowledge}
-            />
-          ) : (
-            <FileList
-              ref={fileListRef}
-              filter={activeTab}
+            )}
+            {/* Toolbar */}
+            <KnowledgeToolbar
+              title={getTitle()}
               viewMode={viewMode}
-              refreshTrigger={refreshKey}
-              onRefresh={handleRefresh}
-              onFileCountChange={setCurrentFileCount}
-              onStatsUpdate={handleStatsUpdate}
-              onLoadingChange={setIsFileListLoading}
-              currentFolderId={currentFolderId}
-              currentKnowledgeSetId={currentKnowledgeSetId}
-              onFolderChange={(id) => navigateToFolder(id)}
-              onCreateFolder={handleCreateFolder}
+              onViewModeChange={setViewMode}
+              onSearch={(q) => console.log("Search", q)}
               onUpload={handleUploadClick}
-              treeItems={
-                activeTab === "trash" ? trashTreeItems : knowledgeTreeItems
+              onUploadFolder={handleFolderUploadClick}
+              onRefresh={handleRefresh}
+              isTrash={activeTab === "trash"}
+              onEmptyTrash={handleEmptyTrash}
+              showCreateFolder={activeTab === "all"}
+              onCreateFolder={handleCreateFolder}
+              breadcrumbs={
+                currentFolderId && activeTab === "all" ? breadcrumbs : undefined
               }
-              treeLoading={
-                activeTab === "trash" ? trashTreeLoading : knowledgeTreeLoading
-              }
-              onRefreshTree={refreshKnowledge}
-              removeTreeItems={removeTreeItems}
-              renameTreeItem={renameTreeItem}
+              onBreadcrumbClick={(id) => navigateToFolder(id)}
+              onDropOnBreadcrumb={handleDropOnBreadcrumb}
+              onMenuClick={() => setIsSidebarOpen(true)}
+              isLoading={isFileListLoading}
             />
-          )}
-        </div>
-        {/* Status Bar */}
-        <StatusBar
-          itemCount={
-            (currentFolderId && activeTab === "all") ||
-            activeTab === "knowledge"
-              ? currentFileCount
-              : stats.fileCount
-          }
-          stats={{
-            used: stats.used,
-            total: stats.total,
-            fileCount: stats.fileCount,
-          }}
-        />
 
-        {/* Upload Progress Floating Panel - inside main area for relative positioning */}
-        <AnimatePresence>
-          {uploads.length > 0 && (
-            <UploadProgress
-              uploads={uploads}
-              onCancel={handleCancelUpload}
-              onDismiss={handleDismissUpload}
-              onDismissAll={handleDismissAllUploads}
+            {/* File Content */}
+            <div
+              className="flex-1 overflow-y-auto custom-scrollbar"
+              onClick={() => {
+                /* Deselect */
+              }}
+            >
+              {activeTab === "home" ? (
+                <RecentsView
+                  refreshTrigger={refreshKey}
+                  onKnowledgeSetClick={(id) => handleNavigate("knowledge", id)}
+                  onCreateKnowledgeSet={handleCreateKnowledgeSet}
+                  onRefresh={handleRefresh}
+                  onFileCountChange={setCurrentFileCount}
+                  onStatsUpdate={handleStatsUpdate}
+                  onLoadingChange={setIsFileListLoading}
+                  onUpload={handleUploadClick}
+                  treeItems={knowledgeTreeItems}
+                  treeLoading={knowledgeTreeLoading}
+                  onRefreshTree={refreshKnowledge}
+                />
+              ) : (
+                <FileList
+                  ref={fileListRef}
+                  filter={activeTab}
+                  viewMode={viewMode}
+                  refreshTrigger={refreshKey}
+                  onRefresh={handleRefresh}
+                  onFileCountChange={setCurrentFileCount}
+                  onStatsUpdate={handleStatsUpdate}
+                  onLoadingChange={setIsFileListLoading}
+                  currentFolderId={currentFolderId}
+                  currentKnowledgeSetId={currentKnowledgeSetId}
+                  onFolderChange={(id) => navigateToFolder(id)}
+                  onCreateFolder={handleCreateFolder}
+                  onUpload={handleUploadClick}
+                  treeItems={
+                    activeTab === "trash" ? trashTreeItems : knowledgeTreeItems
+                  }
+                  treeLoading={
+                    activeTab === "trash"
+                      ? trashTreeLoading
+                      : knowledgeTreeLoading
+                  }
+                  onRefreshTree={refreshKnowledge}
+                  removeTreeItems={removeTreeItems}
+                  renameTreeItem={renameTreeItem}
+                />
+              )}
+            </div>
+            {/* Status Bar */}
+            <StatusBar
+              itemCount={
+                currentFolderId && activeTab === "all"
+                  ? currentFileCount
+                  : stats.fileCount
+              }
+              stats={{
+                used: stats.used,
+                total: stats.total,
+                fileCount: stats.fileCount,
+              }}
             />
-          )}
-        </AnimatePresence>
+
+            {/* Upload Progress Floating Panel - inside main area for relative positioning */}
+            <AnimatePresence>
+              {uploads.length > 0 && (
+                <UploadProgress
+                  uploads={uploads}
+                  onCancel={handleCancelUpload}
+                  onDismiss={handleDismissUpload}
+                  onDismissAll={handleDismissAllUploads}
+                />
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </div>
 
       {/* Hidden Upload Inputs */}

@@ -16,26 +16,6 @@ export {
   reconstructAgentExecutionFromMetadata,
 } from "./messageProcessor";
 
-// WebSocket management
-export {
-  connectToChannel,
-  disconnect,
-  sendMessage,
-  confirmToolCall,
-  cancelToolCall,
-  getCurrentConnection,
-  isConnectedTo,
-} from "./websocketManager";
-
-// Types
-export type {
-  WebSocketMessageEvent,
-  ConnectionStatus,
-  WebSocketCallbacks,
-  IWebSocketManager,
-  XyzenServiceInterface,
-} from "./types";
-
 // Message content resolution utilities
 export {
   getLastNonEmptyPhaseContent,

@@ -20,6 +20,7 @@ import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { buildAuthorizeUrl } from "@/utils/authFlow";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
+import { MobileApp } from "./MobileApp";
 import { LandingPage } from "./landing/LandingPage";
 
 // Handle relink callback in popup - check at module level
@@ -326,15 +327,12 @@ export function Xyzen({
   const mainLayout = shouldShowCompactInput ? (
     <CenteredInput position={centeredInputPosition} />
   ) : isMobile ? (
-    // 小于阈值：强制 Sidebar，全宽且不可拖拽
-    <AppSide
+    <MobileApp
       backendUrl={backendUrl}
-      isMobile
       showAuthError={authFailed}
       onRetryAuth={handleRetry}
     />
   ) : layoutStyle === LAYOUT_STYLE.Sidebar ? (
-    // 大于等于阈值：尊重设置为 Sidebar，桌面可拖拽
     <AppSide
       backendUrl={backendUrl}
       showAuthError={authFailed && isXyzenOpen}

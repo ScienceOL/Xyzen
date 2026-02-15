@@ -225,6 +225,7 @@ export function useMobileSwipe({
 
     const onTouchEnd = (e: TouchEvent) => {
       const g = gesture.current;
+      if (!g.active) return; // touch wasn't tracked by onTouchStart
       g.active = false;
       if (!g.locked || !g.horizontal) return;
 

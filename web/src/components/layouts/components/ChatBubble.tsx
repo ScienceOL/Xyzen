@@ -1,6 +1,4 @@
 import ProfileIcon from "@/assets/ProfileIcon";
-// import { TYPEWRITER_CONFIG } from "@/configs/typewriterConfig";
-// import { useStreamingTypewriter } from "@/hooks/useTypewriterEffect";
 import {
   resolveMessageContent,
   getMessageDisplayMode,

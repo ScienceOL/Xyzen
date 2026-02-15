@@ -1,5 +1,15 @@
 .venv/
-README.md
+.git/
+tests/
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+.ruff_cache/
+.DS_Store
 Dockerfile
+README.md
 *.pyc
 __pycache__/
+*.egg-info/
+.mypy_cache/

@@ -18,7 +18,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.storage import FileCategory, FileScope, generate_storage_key, get_storage_service
 from app.infra.database import get_task_db_session
-from app.models.file import FileCreate
+from app.models.file import File, FileCreate
 from app.repos.file import FileRepository
 from app.repos.knowledge_set import KnowledgeSetRepository
 
@@ -120,43 +120,89 @@ async def _resolve_image_ids_to_storage_urls(
     return content
 
 
-async def get_files_in_knowledge_set(db: AsyncSession, user_id: str, knowledge_set_id: UUID) -> list[UUID]:
-    """Get all file IDs in a knowledge set."""
+async def _validate_knowledge_set_access(db: AsyncSession, user_id: str, knowledge_set_id: UUID) -> None:
+    """Validate that the user has access to the knowledge set. Raises ValueError on failure."""
     knowledge_set_repo = KnowledgeSetRepository(db)
-
-    # Validate access
     try:
         await knowledge_set_repo.validate_access(user_id, knowledge_set_id)
     except ValueError as e:
         raise ValueError(f"Access denied: {e}")
 
-    # Get file IDs
+
+async def get_files_in_knowledge_set(db: AsyncSession, user_id: str, knowledge_set_id: UUID) -> list[UUID]:
+    """Get all file IDs in a knowledge set."""
+    await _validate_knowledge_set_access(db, user_id, knowledge_set_id)
+    knowledge_set_repo = KnowledgeSetRepository(db)
     file_ids = await knowledge_set_repo.get_files_in_knowledge_set(knowledge_set_id)
     return file_ids
+
+
+async def _build_path_map(db: AsyncSession, user_id: str, knowledge_set_id: UUID) -> dict[UUID, tuple[File, str]]:
+    """
+    Fetch all items in a knowledge set and compute full paths.
+    Returns {item_id: (file_obj, "folder/subfolder/filename")}.
+    """
+    file_repo = FileRepository(db)
+    items = await file_repo.get_all_items(user_id, knowledge_set_id=knowledge_set_id)
+
+    id_to_item: dict[UUID, File] = {item.id: item for item in items}
+
+    def compute_path(item: File) -> str:
+        parts: list[str] = []
+        current: File | None = item
+        while current:
+            parts.append(current.original_filename)
+            current = id_to_item.get(current.parent_id) if current.parent_id else None
+        parts.reverse()
+        return "/".join(parts)
+
+    return {item.id: (item, compute_path(item)) for item in items}
+
+
+def _find_file(path_map: dict[UUID, tuple[File, str]], filename: str) -> File | list[str] | None:
+    """
+    Find a file in the path map by exact path or unambiguous basename.
+    Returns: File on success, list of candidate paths if ambiguous, None if not found.
+    """
+    filename = filename.strip("/")
+    basename = filename.split("/")[-1]
+
+    # 1. Exact full-path match
+    for file_obj, path in path_map.values():
+        if not file_obj.is_dir and path == filename:
+            return file_obj
+
+    # 2. Basename match (fallback)
+    candidates: list[tuple[File, str]] = []
+    for file_obj, path in path_map.values():
+        if not file_obj.is_dir and file_obj.original_filename == basename:
+            candidates.append((file_obj, path))
+
+    if len(candidates) == 1:
+        return candidates[0][0]
+    if len(candidates) > 1:
+        return [path for _, path in candidates]
+    return None
 
 
 async def list_files(user_id: str, knowledge_set_id: UUID) -> dict[str, Any]:
     """List all files in the knowledge set."""
     try:
         async with get_task_db_session() as db:
-            file_repo = FileRepository(db)
-
             try:
-                file_ids = await get_files_in_knowledge_set(db, user_id, knowledge_set_id)
+                await _validate_knowledge_set_access(db, user_id, knowledge_set_id)
             except ValueError as e:
                 return {"error": str(e), "success": False}
 
-            # Fetch file objects
-            files = []
-            for file_id in file_ids:
-                file = await file_repo.get_file_by_id(file_id)
-                if file and not file.is_deleted:
-                    files.append(file)
+            path_map = await _build_path_map(db, user_id, knowledge_set_id)
 
-            # Format output
+            # Format output with full paths
             entries: list[str] = []
-            for f in files:
-                entries.append(f"[FILE] {f.original_filename} (ID: {f.id})")
+            for file_obj, path in path_map.values():
+                if file_obj.is_dir:
+                    entries.append(f"[DIR] {path}/")
+                else:
+                    entries.append(f"[FILE] {path}")
 
             return {
                 "success": True,
@@ -175,27 +221,25 @@ async def read_file(user_id: str, knowledge_set_id: UUID, filename: str) -> dict
     from app.tools.utils.documents.handlers import FileHandlerFactory
 
     try:
-        # Normalize filename
-        filename = filename.strip("/").split("/")[-1]
-
         async with get_task_db_session() as db:
-            file_repo = FileRepository(db)
-            target_file = None
-
             try:
-                file_ids = await get_files_in_knowledge_set(db, user_id, knowledge_set_id)
+                await _validate_knowledge_set_access(db, user_id, knowledge_set_id)
             except ValueError as e:
                 return {"error": str(e), "success": False}
 
-            # Find file by name
-            for file_id in file_ids:
-                file = await file_repo.get_file_by_id(file_id)
-                if file and file.original_filename == filename and not file.is_deleted:
-                    target_file = file
-                    break
+            path_map = await _build_path_map(db, user_id, knowledge_set_id)
+            result = _find_file(path_map, filename)
 
-            if not target_file:
+            if result is None:
                 return {"error": f"File '{filename}' not found in knowledge set.", "success": False}
+            if isinstance(result, list):
+                paths = ", ".join(result)
+                return {
+                    "error": f"Ambiguous filename '{filename}'. Multiple files match: {paths}. Please specify the full path.",
+                    "success": False,
+                }
+
+            target_file = result
 
             if not target_file.storage_key:
                 return {"error": f"File '{filename}' has no storage key (directory entry).", "success": False}
@@ -210,11 +254,11 @@ async def read_file(user_id: str, knowledge_set_id: UUID, filename: str) -> dict
             handler = FileHandlerFactory.get_handler(target_file.original_filename)
 
             try:
-                result = handler.read_content(file_bytes, mode="text")
+                content = handler.read_content(file_bytes, mode="text")
                 return {
                     "success": True,
                     "filename": target_file.original_filename,
-                    "content": result,
+                    "content": content,
                     "size_bytes": target_file.file_size,
                 }
             except Exception as e:
@@ -230,7 +274,8 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
     from app.tools.utils.documents.handlers import FileHandlerFactory
 
     try:
-        filename = filename.strip("/").split("/")[-1]
+        filename = filename.strip("/")
+        basename = filename.split("/")[-1]
 
         async with get_task_db_session() as db:
             file_repo = FileRepository(db)
@@ -238,41 +283,47 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
             storage = get_storage_service()
 
             try:
-                file_ids = await get_files_in_knowledge_set(db, user_id, knowledge_set_id)
+                await _validate_knowledge_set_access(db, user_id, knowledge_set_id)
             except ValueError as e:
                 return {"error": str(e), "success": False}
 
-            # Check if file exists
+            path_map = await _build_path_map(db, user_id, knowledge_set_id)
+
+            # Check if file exists by path
+            result = _find_file(path_map, filename)
             existing_file = None
-            for file_id in file_ids:
-                file = await file_repo.get_file_by_id(file_id)
-                if file and file.original_filename == filename and not file.is_deleted:
-                    existing_file = file
-                    break
+            if isinstance(result, list):
+                paths = ", ".join(result)
+                return {
+                    "error": f"Ambiguous filename '{filename}'. Multiple files match: {paths}. Please specify the full path.",
+                    "success": False,
+                }
+            if isinstance(result, File):
+                existing_file = result
 
             # Determine content type
-            content_type, _ = mimetypes.guess_type(filename)
+            content_type, _ = mimetypes.guess_type(basename)
             if not content_type:
-                if filename.endswith(".docx"):
+                if basename.endswith(".docx"):
                     content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                elif filename.endswith(".xlsx"):
+                elif basename.endswith(".xlsx"):
                     content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                elif filename.endswith(".pptx"):
+                elif basename.endswith(".pptx"):
                     content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                elif filename.endswith(".pdf"):
+                elif basename.endswith(".pdf"):
                     content_type = "application/pdf"
                 else:
                     content_type = "text/plain"
 
             # Resolve image_ids to storage URLs for PPTX files (async DB lookup here)
-            if filename.endswith(".pptx"):
+            if basename.endswith(".pptx"):
                 content = await _resolve_image_ids_to_storage_urls(content, file_repo, user_id)
 
             # Use handler to create content bytes
-            handler = FileHandlerFactory.get_handler(filename)
+            handler = FileHandlerFactory.get_handler(basename)
             encoded_content = handler.create_content(content)
 
-            new_key = generate_storage_key(user_id, filename, FileScope.PRIVATE)
+            new_key = generate_storage_key(user_id, basename, FileScope.PRIVATE)
             data = io.BytesIO(encoded_content)
             file_size_bytes = len(encoded_content)
 
@@ -288,11 +339,50 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
                 await db.commit()
                 return {"success": True, "message": f"Updated file: {filename}"}
             else:
-                # Create new and link
+                # Resolve parent folder for new file
+                parent_id: UUID | None = None
+                path_parts = filename.split("/")
+
+                if len(path_parts) > 1:
+                    # Need to find or create parent folders
+                    folder_parts = path_parts[:-1]
+
+                    # Build a lookup of existing folder paths to their IDs
+                    folder_path_to_id: dict[str, UUID] = {}
+                    for file_obj, path in path_map.values():
+                        if file_obj.is_dir:
+                            folder_path_to_id[path] = file_obj.id
+
+                    current_parent_id: UUID | None = None
+                    for i, folder_name in enumerate(folder_parts):
+                        folder_path = "/".join(folder_parts[: i + 1])
+                        if folder_path in folder_path_to_id:
+                            current_parent_id = folder_path_to_id[folder_path]
+                        else:
+                            # Create missing folder
+                            folder_create = FileCreate(
+                                user_id=user_id,
+                                parent_id=current_parent_id,
+                                original_filename=folder_name,
+                                storage_key=None,
+                                file_size=0,
+                                content_type=None,
+                                scope=FileScope.PRIVATE,
+                                category=FileCategory.DOCUMENT,
+                                is_dir=True,
+                            )
+                            created_folder = await file_repo.create_file(folder_create)
+                            await knowledge_set_repo.link_file_to_knowledge_set(created_folder.id, knowledge_set_id)
+                            current_parent_id = created_folder.id
+                            folder_path_to_id[folder_path] = created_folder.id
+
+                    parent_id = current_parent_id
+
+                # Create new file and link
                 new_file = FileCreate(
                     user_id=user_id,
-                    parent_id=None,
-                    original_filename=filename,
+                    parent_id=parent_id,
+                    original_filename=basename,
                     storage_key=new_key,
                     file_size=file_size_bytes,
                     content_type=content_type,
@@ -313,18 +403,18 @@ async def search_files(user_id: str, knowledge_set_id: UUID, query: str) -> dict
     """Search for files by name in the knowledge set."""
     try:
         async with get_task_db_session() as db:
-            file_repo = FileRepository(db)
-            matches: list[str] = []
-
             try:
-                file_ids = await get_files_in_knowledge_set(db, user_id, knowledge_set_id)
+                await _validate_knowledge_set_access(db, user_id, knowledge_set_id)
             except ValueError as e:
                 return {"error": str(e), "success": False}
 
-            for file_id in file_ids:
-                file = await file_repo.get_file_by_id(file_id)
-                if file and not file.is_deleted and query.lower() in file.original_filename.lower():
-                    matches.append(f"{file.original_filename} (ID: {file.id})")
+            path_map = await _build_path_map(db, user_id, knowledge_set_id)
+            query_lower = query.lower()
+
+            matches: list[str] = []
+            for file_obj, path in path_map.values():
+                if not file_obj.is_dir and query_lower in path.lower():
+                    matches.append(path)
 
             return {
                 "success": True,

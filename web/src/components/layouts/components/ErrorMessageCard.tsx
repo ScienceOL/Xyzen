@@ -48,14 +48,14 @@ export default function ErrorMessageCard({
       className="rounded-lg border border-red-200/60 bg-red-50/50 px-4 py-3 dark:border-red-800/40 dark:bg-red-950/20"
     >
       <div className="flex items-start gap-3">
-        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
+        <Icon className="mt-3 h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] leading-relaxed text-red-700 dark:text-red-300">
             {displayMessage}
           </p>
 
           {/* Detail toggle */}
-          {error.detail && (
+          {error.code && (
             <div className="mt-1.5">
               <button
                 type="button"
@@ -69,15 +69,29 @@ export default function ErrorMessageCard({
               </button>
               <AnimatePresence>
                 {showDetail && (
-                  <motion.pre
+                  <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="mt-1 overflow-hidden whitespace-pre-wrap break-all rounded bg-red-100/50 px-2 py-1.5 font-mono text-[11px] text-red-600/80 dark:bg-red-900/20 dark:text-red-400/70"
+                    className="mt-1 overflow-hidden rounded bg-red-100/50 px-2 py-1.5 font-mono text-[11px] text-red-600/80 dark:bg-red-900/20 dark:text-red-400/70"
                   >
-                    {error.detail}
-                  </motion.pre>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+                      <span className="text-red-500/60 dark:text-red-400/50">
+                        Code
+                      </span>
+                      <span className="break-all">{error.code}</span>
+                      <span className="text-red-500/60 dark:text-red-400/50">
+                        Category
+                      </span>
+                      <span>{error.category}</span>
+                    </div>
+                    {error.detail && (
+                      <pre className="mt-1 whitespace-pre-wrap break-all border-t border-red-200/40 pt-1 dark:border-red-800/30">
+                        {error.detail}
+                      </pre>
+                    )}
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
