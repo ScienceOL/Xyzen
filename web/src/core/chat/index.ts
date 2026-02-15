@@ -50,3 +50,14 @@ export { mergeChannelPreservingRuntime } from "./channelState";
 // Channel/topic status utilities
 export { deriveTopicStatus, isActiveTopicStatus } from "./channelStatus";
 export type { TopicStatus } from "./channelStatus";
+
+// Channel helper functions (message lookup, state sync, execution lifecycle)
+export {
+  getNodeDisplayName,
+  ensureFallbackResponsePhase,
+  findMessageIndexByStream,
+  clearMessageTransientState,
+  finalizeExecutionPhases,
+  finalizeMessageExecution,
+  syncChannelResponding,
+} from "./channelHelpers";

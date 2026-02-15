@@ -4,8 +4,16 @@ import {
   isValidUuid,
   mergeChannelPreservingRuntime,
 } from "@/core/chat";
+import {
+  clearMessageTransientState,
+  ensureFallbackResponsePhase,
+  finalizeMessageExecution,
+  findMessageIndexByStream,
+  getNodeDisplayName,
+  syncChannelResponding,
+} from "@/core/chat/channelHelpers";
 import { deriveTopicStatus } from "@/core/chat/channelStatus";
-import { getLastNonEmptyPhaseContent } from "@/core/chat/agentExecution";
+import { getLastNonEmptyPhaseContent } from "@/core/chat/messageContent";
 import { providerCore } from "@/core/provider";
 import { authService } from "@/service/authService";
 import { sessionService } from "@/service/sessionService";
@@ -153,125 +161,7 @@ export const createChatSlice: StateCreator<
     return agent?.name || "通用助理";
   };
 
-  // Helper function to get user-friendly display name for a node ID
-  // Humanizes the node ID (e.g., "clarify_with_user" -> "Clarify With User")
-  const getNodeDisplayName = (nodeId: string): string => {
-    return nodeId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  };
-
-  const ensureFallbackResponsePhase = (message: ChatMessage): void => {
-    const execution = message.agentExecution;
-    if (!execution || execution.phases.length > 0) {
-      return;
-    }
-
-    execution.phases.push({
-      id: "response",
-      name: "Response",
-      status: "running",
-      startedAt: Date.now(),
-      nodes: [],
-      streamedContent: "",
-    });
-    execution.currentNode = "response";
-  };
-
-  const findMessageIndexByStream = (
-    channel: ChatChannel,
-    streamId: string,
-    executionId?: string,
-  ): number => {
-    // Primary: match by streamId field or id
-    const byStreamId = channel.messages.findLastIndex(
-      (m) => m.streamId === streamId || m.id === streamId,
-    );
-    if (byStreamId !== -1) {
-      return byStreamId;
-    }
-
-    if (executionId) {
-      const byExecution = channel.messages.findLastIndex(
-        (m) => m.agentExecution?.executionId === executionId,
-      );
-      if (byExecution !== -1) {
-        return byExecution;
-      }
-    }
-
-    // Fallback: last pending assistant message (backward compat for events without stream_id)
-    for (let i = channel.messages.length - 1; i >= 0; i--) {
-      if (
-        channel.messages[i].role === "assistant" &&
-        channel.messages[i].status === "pending"
-      ) {
-        return i;
-      }
-    }
-
-    const runningAgentIndices = channel.messages
-      .map((m, index) => (m.agentExecution?.status === "running" ? index : -1))
-      .filter((index) => index !== -1);
-    return runningAgentIndices.length === 1 ? runningAgentIndices[0] : -1;
-  };
-
-  const clearMessageTransientState = (message: ChatMessage): void => {
-    delete message.isLoading;
-    delete message.isStreaming;
-    message.isThinking = false;
-    if (message.status !== "failed" && message.status !== "cancelled") {
-      message.status = "completed";
-    }
-  };
-
-  const finalizeExecutionPhases = (
-    message: ChatMessage,
-    status: "completed" | "failed" | "cancelled",
-    endedAt: number,
-  ): void => {
-    const execution = message.agentExecution;
-    if (!execution) {
-      return;
-    }
-
-    execution.phases.forEach((phase) => {
-      if (phase.status === "running") {
-        phase.status = status;
-        phase.endedAt = endedAt;
-        if (phase.startedAt) {
-          phase.durationMs = endedAt - phase.startedAt;
-        }
-      }
-    });
-  };
-
-  const finalizeMessageExecution = (
-    message: ChatMessage,
-    {
-      status,
-      durationMs,
-      onlyIfRunning = false,
-    }: {
-      status: "completed" | "failed" | "cancelled";
-      durationMs?: number;
-      onlyIfRunning?: boolean;
-    },
-  ): void => {
-    const execution = message.agentExecution;
-    const endedAt = Date.now();
-
-    if (execution) {
-      if (!onlyIfRunning || execution.status === "running") {
-        execution.status = status;
-        execution.endedAt = endedAt;
-        if (durationMs !== undefined) {
-          execution.durationMs = durationMs;
-        }
-        finalizeExecutionPhases(message, status, endedAt);
-      }
-    }
-
-    clearMessageTransientState(message);
-  };
+  // --- Channel helpers imported from @/core/chat/channelHelpers ---
 
   const waitForChannelConnection = async (
     topicId: string,
@@ -302,52 +192,6 @@ export const createChatSlice: StateCreator<
       console.warn(`Connection timeout for topic ${topicId}`);
     }
     return false;
-  };
-
-  const syncChannelResponding = (channel: ChatChannel): void => {
-    const latestAssistant = [...channel.messages]
-      .reverse()
-      .find((m) => m.role === "assistant");
-
-    if (!latestAssistant) {
-      channel.responding = false;
-      return;
-    }
-
-    // Use status field for active state detection
-    if (
-      latestAssistant.status === "pending" ||
-      latestAssistant.status === "streaming" ||
-      latestAssistant.status === "thinking"
-    ) {
-      channel.responding = true;
-      return;
-    }
-
-    // Also check legacy boolean flags for backward compatibility
-    if (
-      latestAssistant.isLoading ||
-      latestAssistant.isStreaming ||
-      latestAssistant.isThinking
-    ) {
-      channel.responding = true;
-      return;
-    }
-
-    if (latestAssistant.agentExecution?.status === "running") {
-      channel.responding = true;
-      return;
-    }
-
-    const hasActiveToolCall = Boolean(
-      latestAssistant.toolCalls?.some(
-        (toolCall) =>
-          toolCall.status === "executing" ||
-          toolCall.status === "pending" ||
-          toolCall.status === "waiting_confirmation",
-      ),
-    );
-    channel.responding = hasActiveToolCall;
   };
 
   /** Recompute derived status fields from all channels. Call on state transitions only. */
