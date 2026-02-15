@@ -724,10 +724,23 @@ function InnerWorkspace() {
             setConfirmModalOpen(false);
             setAgentToDelete(null);
           }}
-          title={t("agents.deleteAgent")}
-          message={t("agents.deleteConfirmation", { name: agentToDelete.name })}
-          confirmLabel={t("common.delete")}
+          title={
+            publishedAgentIds.has(agentToDelete.id)
+              ? t("agents.deleteBlockedTitle")
+              : t("agents.deleteTitle")
+          }
+          message={
+            publishedAgentIds.has(agentToDelete.id)
+              ? t("agents.deleteBlockedMessage")
+              : t("agents.deleteConfirm", { name: agentToDelete.name })
+          }
+          confirmLabel={
+            publishedAgentIds.has(agentToDelete.id)
+              ? t("common.ok")
+              : t("agents.deleteAgent")
+          }
           cancelLabel={t("common.cancel")}
+          destructive={!publishedAgentIds.has(agentToDelete.id)}
         />
       )}
     </div>

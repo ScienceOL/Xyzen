@@ -192,6 +192,7 @@
     "@types/upng-js": "^2",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "@vitest/coverage-v8": "^4.0.18",
     "cross-env": "^10.0.0",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
