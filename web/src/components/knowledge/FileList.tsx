@@ -5,6 +5,7 @@ import { PreviewModal } from "@/components/preview/PreviewModal";
 import type { PreviewFile } from "@/components/preview/types";
 import { fileService, type FileUploadResponse } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
+import type { FileTreeItem } from "@/service/folderService";
 import {
   knowledgeSetService,
   type KnowledgeSetWithFileCount,
@@ -35,7 +36,12 @@ import { useTranslation } from "react-i18next";
 import { useInView } from "react-intersection-observer";
 import { ContextMenu, type ContextMenuType } from "./ContextMenu";
 import { FileIcon } from "./FileIcon";
-import { DRAG_MIME, FileTreeView, getDragContext } from "./FileTreeView";
+import {
+  DRAG_MIME,
+  FileTreeView,
+  type FileTreeViewHandle,
+  getDragContext,
+} from "./FileTreeView";
 import { ImageThumbnail } from "./ImageThumbnail";
 import { MoveToModal } from "./MoveToModal";
 import type { KnowledgeTab, ViewMode } from "./types";
@@ -53,12 +59,19 @@ interface FileListProps {
   currentKnowledgeSetId?: string | null;
   onCreateFolder?: () => void;
   onUpload?: () => void;
+  /** Tree items from the centralized knowledge store (for "all" & "knowledge" tabs) */
+  treeItems?: FileTreeItem[];
+  treeLoading?: boolean;
+  /** Called to trigger a tree refetch in the store */
+  onRefreshTree?: () => void;
 }
 
 export interface FileListHandle {
   emptyTrash: () => Promise<void>;
   /** Move items (files/folders) to a target folder (null = root). Used by breadcrumb drop. */
   moveItems: (itemIds: string[], targetFolderId: string | null) => void;
+  /** Trigger inline folder creation in the tree view. */
+  createFolder: (parentId: string | null) => void;
 }
 
 const formatSize = (bytes: number) => {
@@ -93,6 +106,9 @@ export const FileList = React.memo(
         currentKnowledgeSetId,
         onCreateFolder,
         onUpload,
+        treeItems = [],
+        treeLoading = false,
+        onRefreshTree,
       },
       ref,
     ) => {
@@ -102,9 +118,11 @@ export const FileList = React.memo(
       const [isLoading, setIsLoading] = useState(false);
 
       // Notify parent when loading state changes
+      const effectiveLoading =
+        filter === "all" || filter === "knowledge" ? treeLoading : isLoading;
       useEffect(() => {
-        onLoadingChange?.(isLoading);
-      }, [isLoading, onLoadingChange]);
+        onLoadingChange?.(effectiveLoading);
+      }, [effectiveLoading, onLoadingChange]);
 
       // Refs to track current files/folders for imperative handle
       const filesRef = useRef<FileUploadResponse[]>([]);
@@ -150,6 +168,7 @@ export const FileList = React.memo(
         currentY: number;
       } | null>(null);
       const containerRef = useRef<HTMLDivElement>(null);
+      const treeViewRef = useRef<FileTreeViewHandle>(null);
       const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
       const didSelectionRef = useRef(false);
       // Track potential selection start (before drag threshold is met)
@@ -228,14 +247,17 @@ export const FileList = React.memo(
               }),
             );
             setSelectedIds(new Set());
-            // Silent reload — loadFiles no longer shows loading spinner
-            // when existing data is present, so no flash occurs.
-            loadFilesRef.current();
+            // For tree tabs, refresh via the store; for other tabs, reload locally
+            if ((filter === "all" || filter === "knowledge") && onRefreshTree) {
+              onRefreshTree();
+            } else {
+              loadFilesRef.current();
+            }
           } catch (e) {
             console.error("Drop move failed", e);
           }
         },
-        [folderIds],
+        [folderIds, filter, onRefreshTree],
       );
 
       // Drag start handler for flat list/grid items
@@ -442,7 +464,7 @@ export const FileList = React.memo(
 
       const [knowledgeSetModal, setKnowledgeSetModal] = useState<{
         isOpen: boolean;
-        file: FileUploadResponse;
+        item: Folder | FileUploadResponse;
       } | null>(null);
 
       const [knowledgeSets, setKnowledgeSets] = useState<
@@ -479,6 +501,9 @@ export const FileList = React.memo(
         () => ({
           moveItems: (itemIds: string[], targetFolderId: string | null) => {
             handleDropOnFolder(itemIds, targetFolderId);
+          },
+          createFolder: (parentId: string | null) => {
+            treeViewRef.current?.createFolder(parentId);
           },
           emptyTrash: async () => {
             // Use refs to get the latest values (avoid stale closure issues)
@@ -561,12 +586,16 @@ export const FileList = React.memo(
 
       const loadFiles = useCallback(
         async (append: boolean = false) => {
+          // "all" and "knowledge" tabs use the centralized tree from the store.
+          // No local fetching needed for these tabs.
+          if (filter === "all" || filter === "knowledge") {
+            return;
+          }
+
           if (append) {
             setIsLoadingMore(true);
           } else {
             // Only show full loading spinner on initial load (no existing data).
-            // Refreshes (after drag-drop, rename, etc.) keep the current list
-            // visible to avoid a jarring flash.
             if (
               filesRef.current.length === 0 &&
               foldersRef.current.length === 0
@@ -578,87 +607,6 @@ export const FileList = React.memo(
           }
 
           try {
-            // Handle Knowledge Set view — flat list of linked files (no folders)
-            if (filter === "knowledge" && currentKnowledgeSetId) {
-              if (!append) {
-                setFolders([]);
-              }
-
-              const fileIds = await knowledgeSetService.getFilesInKnowledgeSet(
-                currentKnowledgeSetId,
-              );
-
-              if (fileIds.length > 0) {
-                const filePromises = fileIds.map((id) =>
-                  fileService.getFile(id).catch(() => null),
-                );
-                const filesData = await Promise.all(filePromises);
-                const validFiles = filesData.filter(
-                  (f) => f !== null && !f.is_deleted,
-                ) as FileUploadResponse[];
-                setFiles(validFiles);
-                setHasMoreFiles(false);
-                if (onFileCountChange) onFileCountChange(validFiles.length);
-              } else {
-                setFiles([]);
-                setHasMoreFiles(false);
-                if (onFileCountChange) onFileCountChange(0);
-              }
-              return;
-            }
-
-            // "all" = Finder-like hierarchical browser (folders + files by parent_id)
-            if (filter === "all") {
-              let folderCount = folders.length;
-              if (!append) {
-                const folderData = await folderService.listFolders(
-                  currentFolderId || null,
-                );
-                setFolders(folderData);
-                folderCount = folderData.length;
-              }
-
-              const fileParams: {
-                limit: number;
-                offset: number;
-                parent_id?: string | null;
-                filter_by_parent?: boolean;
-                is_dir?: boolean;
-              } = {
-                limit: PAGE_SIZE,
-                offset: filesOffsetRef.current,
-                is_dir: false, // Exclude directories (loaded separately via folderService)
-              };
-
-              // Filter by parent_id (null = root level)
-              fileParams.parent_id = currentFolderId || null;
-              fileParams.filter_by_parent = true;
-
-              const fileData = await fileService.listFiles(fileParams);
-
-              if (append) {
-                setFiles((prev) => {
-                  const newFiles = [...prev, ...fileData];
-                  if (onFileCountChange) {
-                    setTimeout(
-                      () => onFileCountChange(newFiles.length + folderCount),
-                      0,
-                    );
-                  }
-                  return newFiles;
-                });
-              } else {
-                setFiles(fileData);
-                if (onFileCountChange) {
-                  onFileCountChange(fileData.length + folderCount);
-                }
-              }
-
-              filesOffsetRef.current += fileData.length;
-              setHasMoreFiles(fileData.length === PAGE_SIZE);
-              return;
-            }
-
             // "home" = Recents: flat list of recent files across all folders (no folders shown)
             if (filter === "home") {
               if (!append) {
@@ -772,11 +720,37 @@ export const FileList = React.memo(
           }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [filter, currentFolderId, currentKnowledgeSetId, onFileCountChange],
+        [filter, currentFolderId],
       );
 
       // Keep ref in sync so handleDropOnFolder (defined before loadFiles) can call it
       loadFilesRef.current = loadFiles;
+
+      // Callback for inline folder creation from the tree view
+      const handleFolderCreated = useCallback(
+        async (name: string, parentId: string | null) => {
+          try {
+            const folder = await folderService.createFolder({
+              name,
+              parent_id: parentId,
+            });
+            // If in knowledge view, link the new folder to the knowledge set
+            if (filter === "knowledge" && currentKnowledgeSetId) {
+              await knowledgeSetService.linkFileToKnowledgeSet(
+                currentKnowledgeSetId,
+                folder.id,
+              );
+            }
+            // Refresh the tree via the store
+            if (onRefreshTree) {
+              onRefreshTree();
+            }
+          } catch (e) {
+            console.error("Failed to create folder", e);
+          }
+        },
+        [filter, currentKnowledgeSetId, onRefreshTree],
+      );
 
       // Load more files when scrolling to bottom
       const loadMoreFiles = useCallback(() => {
@@ -957,8 +931,12 @@ export const FileList = React.memo(
               original_filename: newName,
             });
           }
-          loadFiles(); // Refresh
-          if (onRefresh) onRefresh();
+          // Refresh: tree tabs via store, others locally
+          if ((filter === "all" || filter === "knowledge") && onRefreshTree) {
+            onRefreshTree();
+          } else {
+            loadFiles();
+          }
         } catch (e) {
           console.error("Rename failed", e);
           alert(t("knowledge.fileList.rename.failed"));
@@ -979,8 +957,12 @@ export const FileList = React.memo(
               parent_id: targetFolderId,
             });
           }
-          loadFiles(); // Refresh list
-          if (onRefresh) onRefresh();
+          // Refresh: tree tabs via store, others locally
+          if ((filter === "all" || filter === "knowledge") && onRefreshTree) {
+            onRefreshTree();
+          } else {
+            loadFiles();
+          }
           setMoveModal(null);
         } catch (e) {
           console.error("Move failed", e);
@@ -1056,8 +1038,14 @@ export const FileList = React.memo(
                 }
 
                 setSelectedIds(new Set());
-                loadFiles();
-                if (onRefresh) onRefresh();
+                if (
+                  (filter === "all" || filter === "knowledge") &&
+                  onRefreshTree
+                ) {
+                  onRefreshTree();
+                } else {
+                  loadFiles();
+                }
               } catch (e) {
                 console.error("Bulk delete failed", e);
                 alert(t("knowledge.fileList.actions.deleteFailed"));
@@ -1102,54 +1090,17 @@ export const FileList = React.memo(
               }
 
               setSelectedIds(new Set());
-              loadFiles();
-              if (onRefresh) onRefresh();
+              if (
+                (filter === "all" || filter === "knowledge") &&
+                onRefreshTree
+              ) {
+                onRefreshTree();
+              } else {
+                loadFiles();
+              }
             } catch (e) {
               console.error("Delete failed", e);
               alert(t("knowledge.fileList.actions.deleteFailed"));
-            }
-          },
-        });
-      };
-
-      const handleDelete = async (fileId: string) => {
-        // If in trash, perform hard delete
-        const isHardDelete = filter === "trash";
-        const confirmMsg = isHardDelete
-          ? t("knowledge.fileList.deleteForever.message")
-          : t("knowledge.fileList.moveToTrash.message");
-
-        // Get file size for optimistic update
-        const fileToDelete = files.find((f) => f.id === fileId);
-        const fileSize = fileToDelete?.file_size || 0;
-
-        setConfirmation({
-          isOpen: true,
-          title: isHardDelete
-            ? t("knowledge.fileList.actions.deleteForever")
-            : t("knowledge.fileList.actions.moveToTrash"),
-          message: confirmMsg,
-          confirmLabel: isHardDelete
-            ? t("knowledge.fileList.actions.deleteForever")
-            : t("knowledge.fileList.actions.moveToTrash"),
-          destructive: true,
-          onConfirm: async () => {
-            try {
-              await fileService.deleteFile(fileId, isHardDelete);
-
-              // Optimistic update - only for hard delete (permanent deletion releases space)
-              if (isHardDelete && onStatsUpdate) {
-                onStatsUpdate(fileSize, 1);
-              }
-
-              setFiles((prev) => {
-                const next = prev.filter((f) => f.id !== fileId);
-                if (onFileCountChange) onFileCountChange(next.length);
-                return next;
-              });
-              if (onRefresh) onRefresh();
-            } catch (error) {
-              console.error("Delete failed", error);
             }
           },
         });
@@ -1227,18 +1178,22 @@ export const FileList = React.memo(
         }
       };
 
-      const handleAddToKnowledgeSet = (file: FileUploadResponse) => {
-        setKnowledgeSetModal({ isOpen: true, file });
+      const handleAddToKnowledgeSet = (item: Folder | FileUploadResponse) => {
+        setKnowledgeSetModal({ isOpen: true, item });
       };
 
-      const handleRemoveFromKnowledgeSet = async (file: FileUploadResponse) => {
+      const handleRemoveFromKnowledgeSet = async (
+        item: Folder | FileUploadResponse,
+      ) => {
         if (!currentKnowledgeSetId) return;
+        const itemName =
+          "original_filename" in item ? item.original_filename : item.name;
 
         setConfirmation({
           isOpen: true,
           title: t("knowledge.fileList.knowledgeSet.remove.title"),
           message: t("knowledge.fileList.knowledgeSet.remove.message", {
-            name: file.original_filename,
+            name: itemName,
           }),
           confirmLabel: t("knowledge.fileList.knowledgeSet.remove.confirm"),
           destructive: true,
@@ -1246,11 +1201,12 @@ export const FileList = React.memo(
             try {
               await knowledgeSetService.unlinkFileFromKnowledgeSet(
                 currentKnowledgeSetId,
-                file.id,
+                item.id,
               );
-              // Refresh the file list
-              loadFiles();
-              if (onRefresh) onRefresh();
+              // Refresh the tree via the store
+              if (onRefreshTree) {
+                onRefreshTree();
+              }
             } catch (error) {
               console.error("Failed to remove file from knowledge set", error);
               alert(t("knowledge.fileList.knowledgeSet.remove.failed"));
@@ -1265,7 +1221,7 @@ export const FileList = React.memo(
         try {
           await knowledgeSetService.linkFileToKnowledgeSet(
             knowledgeSetId,
-            knowledgeSetModal.file.id,
+            knowledgeSetModal.item.id,
           );
           setKnowledgeSetModal(null);
           if (onRefresh) onRefresh();
@@ -1299,22 +1255,37 @@ export const FileList = React.memo(
         }
       };
 
-      if (isLoading && files.length === 0 && folders.length === 0) {
-        // Initial load — show nothing (toolbar refresh icon spins)
-        return null;
-      }
+      // For tree tabs, use treeItems for empty/loading checks
+      const isTreeTab = filter === "all" || filter === "knowledge";
 
-      if (!isLoading && files.length === 0 && folders.length === 0) {
-        return (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
-            <DocumentIcon className="h-8 w-8 opacity-50" />
-            <span>
-              {filter === "trash"
-                ? t("knowledge.fileList.empty.trash")
-                : t("knowledge.fileList.empty.noItems")}
-            </span>
-          </div>
-        );
+      if (isTreeTab) {
+        if (treeLoading && treeItems.length === 0) {
+          return null;
+        }
+        if (!treeLoading && treeItems.length === 0) {
+          return (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
+              <DocumentIcon className="h-8 w-8 opacity-50" />
+              <span>{t("knowledge.fileList.empty.noItems")}</span>
+            </div>
+          );
+        }
+      } else {
+        if (isLoading && files.length === 0 && folders.length === 0) {
+          return null;
+        }
+        if (!isLoading && files.length === 0 && folders.length === 0) {
+          return (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
+              <DocumentIcon className="h-8 w-8 opacity-50" />
+              <span>
+                {filter === "trash"
+                  ? t("knowledge.fileList.empty.trash")
+                  : t("knowledge.fileList.empty.noItems")}
+              </span>
+            </div>
+          );
+        }
       }
 
       return (
@@ -1358,16 +1329,18 @@ export const FileList = React.memo(
               }}
             />
           )}
-          {filter === "all" ? (
+          {filter === "all" || filter === "knowledge" ? (
             <FileTreeView
-              folders={folders}
-              files={files}
+              ref={treeViewRef}
+              treeItems={treeItems}
               selectedIds={selectedIds}
               itemRefs={itemRefs}
               onItemClick={handleItemClick}
               onFileDoubleClick={handlePreview}
               onContextMenu={handleContextMenu}
               onDropOnFolder={handleDropOnFolder}
+              onFolderCreated={handleFolderCreated}
+              onRefresh={onRefreshTree}
             />
           ) : viewMode === "list" ? (
             <div className="min-w-full inline-block align-middle">
@@ -1576,7 +1549,7 @@ export const FileList = React.memo(
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(file.id);
+                              handleDeleteItem(file, "file");
                             }}
                             title={
                               filter === "trash"
@@ -1748,16 +1721,8 @@ export const FileList = React.memo(
                   ? (item) => handleFolderClick(item.id)
                   : undefined
               }
-              onAddToKnowledgeSet={
-                contextMenu.type === "file"
-                  ? handleAddToKnowledgeSet
-                  : undefined
-              }
-              onRemoveFromKnowledgeSet={
-                contextMenu.type === "file"
-                  ? handleRemoveFromKnowledgeSet
-                  : undefined
-              }
+              onAddToKnowledgeSet={handleAddToKnowledgeSet}
+              onRemoveFromKnowledgeSet={handleRemoveFromKnowledgeSet}
               onRestore={(item, type) => handleRestore(item.id, type)}
               onBulkDelete={
                 selectedIds.size > 1
@@ -1802,18 +1767,19 @@ export const FileList = React.memo(
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <div className="flex flex-col gap-0.5">
-                  {onCreateFolder && filter === "all" && (
-                    <button
-                      onClick={() => {
-                        onCreateFolder();
-                        setBgContextMenu(null);
-                      }}
-                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    >
-                      <FolderPlusIcon className="h-4 w-4" />
-                      {t("knowledge.toolbar.newFolder")}
-                    </button>
-                  )}
+                  {onCreateFolder &&
+                    (filter === "all" || filter === "knowledge") && (
+                      <button
+                        onClick={() => {
+                          onCreateFolder();
+                          setBgContextMenu(null);
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      >
+                        <FolderPlusIcon className="h-4 w-4" />
+                        {t("knowledge.toolbar.newFolder")}
+                      </button>
+                    )}
                   {onUpload && filter !== "trash" && (
                     <button
                       onClick={() => {
@@ -1863,7 +1829,10 @@ export const FileList = React.memo(
                 </h3>
                 <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
                   {t("knowledge.fileList.knowledgeSet.add.subtitle", {
-                    name: knowledgeSetModal.file.original_filename,
+                    name:
+                      "original_filename" in knowledgeSetModal.item
+                        ? knowledgeSetModal.item.original_filename
+                        : knowledgeSetModal.item.name,
                   })}
                 </p>
                 <div className="mb-4 max-h-64 space-y-2 overflow-y-auto">

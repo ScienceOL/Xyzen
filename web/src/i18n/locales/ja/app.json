@@ -23,7 +23,10 @@
       "executedAt": "実行時刻",
       "expandImage": "クリックで拡大",
       "imageAlt": "生成画像",
-      "confirmExecute": "実行を確認"
+      "confirmExecute": "実行を確認",
+      "status": "ステータス",
+      "tool": "ツール",
+      "node": "ノード"
     },
     "agent": {
       "stopped": "生成が停止されました",
@@ -131,7 +134,11 @@
     "image": "画像",
     "imageDesc": "画像を生成・読み取り",
     "memory": "メモリ",
-    "memoryDesc": "会話履歴を検索"
+    "memoryDesc": "会話履歴を検索",
+    "sandbox": "サンドボックス",
+    "sandboxDesc": "サンドボックスでコードを実行",
+    "subagent": "サブエージェント",
+    "subagentDesc": "他のエージェントにタスクを委任"
   },
   "input": {
     "placeholder": "メッセージを送信...",
@@ -142,6 +149,36 @@
     "escToStop": "停止",
     "enterToSend": "送信",
     "shiftEnterForNewline": "新しい行"
+  },
+  "dragDrop": {
+    "dropHere": "ここにファイルをドロップ",
+    "dropFiles": "ファイルをドロップ",
+    "maxFiles": "最大 {{count}} ファイル",
+    "maxReached": "ファイル数の上限に達しました"
+  },
+  "emptyChat": {
+    "title": "新しい会話を始める",
+    "description": "リストからアシスタントを選択するか、自由に会話を始めましょう。",
+    "creating": "作成中...",
+    "startChat": "新しい会話を開始"
+  },
+  "welcome": {
+    "titleWithAgent": "{{name}} との会話を始めましょう",
+    "titleDefault": "フリーチャットへようこそ",
+    "noDescription": "このアシスタントの説明はありません",
+    "defaultDescription": "自由に質問できます。特定のアシスタントを選ぶ必要はなく、質問に応じて適切な回答を提供します。",
+    "quickActions": {
+      "sayHello": "挨拶する",
+      "sayHelloMessage": "こんにちは！はじめまして。",
+      "askQuestion": "質問する",
+      "askQuestionMessage": "何か手伝ってもらえますか？",
+      "startTask": "タスクを始める",
+      "startTaskMessage": "新しいタスクを始めたいです。"
+    }
+  },
+  "chatHeader": {
+    "share": "共有",
+    "shareTooltip": "会話を共有"
   },
   "message": {
     "edit": "編集",
@@ -241,5 +278,60 @@
       }
     },
     "locked": "{{plan}} プランが必要"
+  },
+  "workspace": {
+    "recommendations": {
+      "title": "公式エージェントを探す",
+      "viewInMarketplace": "マーケットプレイスで見る"
+    }
+  },
+  "chatConfig": {
+    "defaultTitle": "新しいチャット",
+    "placeholders": {
+      "responding": "AIが応答中です。しばらくお待ちください…",
+      "default": "メッセージを入力..."
+    },
+    "connection": {
+      "connecting": "チャットサービスに接続中...",
+      "retrying": "再接続"
+    },
+    "response": {
+      "generating": "AIが回答を生成中…"
+    },
+    "emptyState": {
+      "title": "Xyzen Chat",
+      "description": "アシスタントを選択して会話を開始"
+    },
+    "welcomeMessage": {
+      "title": "Xyzen へようこそ",
+      "description": "ここでAIアシスタントと自由にトピックを議論できます"
+    },
+    "features": {
+      "smartChat": "スマートチャット",
+      "realtime": "リアルタイム応答",
+      "multimodal": "マルチモーダル対応"
+    }
+  },
+  "chatError": {
+    "provider.auth_failed": "認証に失敗しました。API設定を確認してください。",
+    "provider.rate_limited": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+    "provider.context_too_long": "会話が長すぎます。新しいチャットを開始するか、添付ファイルを減らしてください。",
+    "provider.unavailable": "AIサービスが一時的に利用できません。しばらくしてからもう一度お試しください。",
+    "provider.invalid_response": "AIプロバイダーから無効なレスポンスを受信しました。",
+    "content.filtered": "メッセージがコンテンツフィルターに引っかかりました。内容を修正してもう一度お試しください。",
+    "content.unsafe": "安全上の理由によりコンテンツがブロックされました。",
+    "agent.execution_failed": "エージェントの実行中にエラーが発生しました。",
+    "agent.timeout": "エージェントの実行がタイムアウトしました。",
+    "agent.recursion_limit": "エージェントが最大実行ステップ数に達しました。",
+    "tool.execution_failed": "ツール呼び出しの実行に失敗しました。",
+    "tool.timeout": "ツール呼び出しがタイムアウトしました。",
+    "tool.not_found": "リクエストされたツールが見つかりませんでした。",
+    "billing.insufficient_balance": "残高が不足しています。チャージしてから続行してください。",
+    "billing.settlement_failed": "課金処理に失敗しましたが、メッセージは処理されました。",
+    "system.internal_error": "内部エラーが発生しました。もう一度お試しください。",
+    "system.service_unavailable": "サービスが一時的に利用できません。",
+    "retryAction": "再試行",
+    "rechargeAction": "チャージ",
+    "detailToggle": "詳細"
   }
 }

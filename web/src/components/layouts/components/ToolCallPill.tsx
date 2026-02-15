@@ -3,6 +3,7 @@ import { CheckIcon } from "@heroicons/react/24/solid";
 import { WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import type { ToolCall } from "@/store/types";
 import LoadingMessage from "./LoadingMessage";
+import { useTranslation } from "react-i18next";
 
 interface ToolCallPillProps {
   toolCall: ToolCall;
@@ -23,6 +24,7 @@ export default function ToolCallPill({
   className = "",
   onClick,
 }: ToolCallPillProps) {
+  const { t } = useTranslation();
   const { name, status } = toolCall;
 
   // Get status indicator
@@ -85,7 +87,7 @@ export default function ToolCallPill({
           ? "cursor-pointer hover:bg-neutral-100/80 dark:hover:bg-neutral-700/30"
           : "cursor-default"
       } ${className}`}
-      title={`Tool: ${name}\nStatus: ${status}`}
+      title={`${t("app.chat.toolCall.tool")}: ${name}\n${t("app.chat.toolCall.status")}: ${status}`}
     >
       {/* Tool Icon */}
       <WrenchScrewdriverIcon className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />

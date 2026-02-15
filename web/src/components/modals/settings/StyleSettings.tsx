@@ -1,3 +1,4 @@
+import { Switch } from "@/components/base/Switch";
 import { useXyzen } from "@/store";
 import type { InputPosition, LayoutStyle } from "@/store/slices/uiSlice/types";
 
@@ -7,8 +8,14 @@ import { useTranslation } from "react-i18next";
 
 export function StyleSettings() {
   const { t } = useTranslation();
-  const { layoutStyle, setLayoutStyle, inputPosition, setInputPosition } =
-    useXyzen();
+  const {
+    layoutStyle,
+    setLayoutStyle,
+    inputPosition,
+    setInputPosition,
+    showOfficialRecommendations,
+    setShowOfficialRecommendations,
+  } = useXyzen();
 
   const styles: Array<{
     value: LayoutStyle;
@@ -239,6 +246,27 @@ export function StyleSettings() {
               ))}
             </div>
           </RadioGroup>
+        </section>
+
+        {/* Workspace Section */}
+        <section>
+          <h3 className="mb-4 text-sm font-medium text-neutral-900 dark:text-white">
+            {t("settings.style.sections.workspace")}
+          </h3>
+          <div className="flex items-center justify-between rounded-sm border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+            <div>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                {t("settings.style.recommendations.label")}
+              </p>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                {t("settings.style.recommendations.description")}
+              </p>
+            </div>
+            <Switch
+              checked={showOfficialRecommendations}
+              onChange={setShowOfficialRecommendations}
+            />
+          </div>
         </section>
 
         <div className="rounded-sm border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">

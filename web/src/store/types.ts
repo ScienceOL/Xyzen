@@ -4,6 +4,7 @@ import type {
   AuthSlice,
   ChatSlice,
   FileUploadSlice,
+  KnowledgeSlice,
   LoadingSlice,
   McpSlice,
   McpToolSlice,
@@ -47,6 +48,14 @@ export interface SearchCitation {
   search_queries?: string[];
 }
 
+export interface MessageError {
+  code: string; // ChatErrorCode value, e.g. "provider.rate_limited"
+  category: string; // "provider" | "content" | "agent" | "billing" | "system"
+  message: string; // User-safe display message
+  recoverable: boolean; // Show retry button?
+  detail?: string; // Optional sanitized detail
+}
+
 export interface Message {
   id: string;
   // Transient stream id used to route streaming events even after id is replaced by db_id.
@@ -77,6 +86,8 @@ export interface Message {
   agentExecution?: AgentExecutionState;
   // Scalable agent metadata structure for node/phase/subagent execution
   agent_metadata?: AgentMetadata;
+  // Structured error for error messages
+  error?: MessageError;
 }
 
 /**
@@ -219,4 +230,5 @@ export type XyzenState = UiSlice &
   ProviderSlice &
   AuthSlice &
   LoadingSlice &
-  FileUploadSlice;
+  FileUploadSlice &
+  KnowledgeSlice;

@@ -237,6 +237,7 @@ class FileService {
     parent_id?: string | null;
     filter_by_parent?: boolean;
     is_dir?: boolean;
+    knowledge_set_id?: string;
   }): Promise<FileUploadResponse[]> {
     const baseUrl = getBackendUrl();
     const queryParams = new URLSearchParams();
@@ -256,6 +257,9 @@ class FileService {
       }
       if (params.is_dir !== undefined) {
         queryParams.append("is_dir", params.is_dir.toString());
+      }
+      if (params.knowledge_set_id) {
+        queryParams.append("knowledge_set_id", params.knowledge_set_id);
       }
     }
 

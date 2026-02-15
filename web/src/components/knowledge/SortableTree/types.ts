@@ -16,6 +16,8 @@ export interface TreeItem {
   contentType?: string | null;
   folder?: Folder;
   file?: FileUploadResponse;
+  /** Temporary flag for inline-editing (e.g. newly created folder) */
+  isEditing?: boolean;
 }
 
 /** A flattened representation of a tree node for rendering. */

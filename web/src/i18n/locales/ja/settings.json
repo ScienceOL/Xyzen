@@ -108,7 +108,8 @@
     "subtitle": "Xyzenの外観と動作をカスタマイズ",
     "sections": {
       "layout": "レイアウトスタイル",
-      "inputPosition": "クイック入力位置"
+      "inputPosition": "クイック入力位置",
+      "workspace": "ワークスペース"
     },
     "layout": {
       "sidebar": {
@@ -164,6 +165,10 @@
     "tip": {
       "title": "💡 プロのヒント",
       "body": "フルスクリーンレイアウトは大きなディスプレイに最適で、すべてを一度に表示できます。サイドバーレイアウトは集中作業や小さな画面に理想的です。"
+    },
+    "recommendations": {
+      "label": "公式エージェントのおすすめ",
+      "description": "エージェントが少ない場合、ワークスペースにおすすめの公式エージェントを表示"
     }
   },
   "providers": {

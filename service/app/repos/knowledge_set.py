@@ -235,9 +235,7 @@ class KnowledgeSetRepository:
         Gets all knowledge set IDs that a file is linked to.
         """
         logger.debug(f"Fetching knowledge sets for file {file_id}")
-        statement = select(FileKnowledgeSetLink.knowledge_set_id).where(
-            FileKnowledgeSetLink.knowledge_set_id == file_id
-        )
+        statement = select(FileKnowledgeSetLink.knowledge_set_id).where(FileKnowledgeSetLink.file_id == file_id)
         result = await self.db.exec(statement)
         return list(result.all())
 

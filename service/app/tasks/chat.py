@@ -517,7 +517,37 @@ async def _process_chat_message_async(
                     await publisher.publish(json.dumps(stream_event))
 
                 elif stream_event["type"] == ChatEventType.ERROR:
+                    # Persist error fields on the AI message
+                    error_data = stream_event.get("data", {})
+                    if not ai_message_obj:
+                        ai_message_create = MessageCreate(role="assistant", content="", topic_id=topic_id)
+                        ai_message_obj = await message_repo.create_message(ai_message_create)
+                        ai_message_id = str(ai_message_obj.id)
+                    ai_message_obj.error_code = error_data.get("error_code")
+                    ai_message_obj.error_category = error_data.get("error_category")
+                    ai_message_obj.error_detail = error_data.get("detail")
+                    ai_message_obj.content = full_content or ""
+                    db.add(ai_message_obj)
+                    await db.commit()
+
                     await publisher.publish(json.dumps(stream_event))
+
+                    # Send message_saved so frontend gets the DB ID
+                    if ai_message_id:
+                        await publisher.publish(
+                            json.dumps(
+                                {
+                                    "type": ChatEventType.MESSAGE_SAVED,
+                                    "data": {
+                                        "stream_id": ai_message_id,
+                                        "db_id": str(ai_message_obj.id),
+                                        "created_at": ai_message_obj.created_at.isoformat()
+                                        if ai_message_obj.created_at
+                                        else None,
+                                    },
+                                }
+                            )
+                        )
                     break
 
                 # Handle thinking events
@@ -896,12 +926,17 @@ async def _process_chat_message_async(
                         )
                 except ErrCodeError as e:
                     if e.code == ErrCode.INSUFFICIENT_BALANCE:
+                        # Persist billing error on the message
+                        ai_message_obj.error_code = "billing.insufficient_balance"
+                        ai_message_obj.error_category = "billing"
+                        db.add(ai_message_obj)
+
                         await publisher.publish(
                             json.dumps(
                                 {
                                     "type": "insufficient_balance",
                                     "data": {
-                                        "error_code": "INSUFFICIENT_BALANCE",
+                                        "error_code": "billing.insufficient_balance",
                                         "message": "Insufficient photon balance for settlement",
                                         "action_required": "recharge",
                                     },
@@ -932,8 +967,22 @@ async def _process_chat_message_async(
 
     except Exception as e:
         logger.error(f"Unhandled error in process_chat_message: {e}", exc_info=True)
+
+        from app.common.code.chat_error_code import classify_exception
+
+        error_code_val, safe_message = classify_exception(e)
         await publisher.publish(
-            json.dumps({"type": ChatEventType.ERROR, "data": {"error": f"Internal system error: {str(e)}"}})
+            json.dumps(
+                {
+                    "type": ChatEventType.ERROR,
+                    "data": {
+                        "error": safe_message,
+                        "error_code": error_code_val.value,
+                        "error_category": error_code_val.category,
+                        "recoverable": error_code_val.recoverable,
+                    },
+                }
+            )
         )
         # Finalize AgentRun with failed status on unhandled exceptions
         # Use a fresh db session since the original may be in a bad state

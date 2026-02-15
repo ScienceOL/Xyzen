@@ -3,6 +3,7 @@
 import * as React from "react";
 import { EmblaOptionsType, EmblaCarouselType } from "embla-carousel";
 import useEmblaCarousel from "embla-carousel-react";
+import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +69,9 @@ function MotionCarousel({
   showArrows = true,
   className,
 }: MotionCarouselProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel(options);
+  const [emblaRef, emblaApi] = useEmblaCarousel(options, [
+    WheelGesturesPlugin(),
+  ]);
   const {
     selectedIndex,
     scrollSnaps,

@@ -299,6 +299,54 @@ class MarketplaceService {
   }
 
   /**
+   * Get a marketplace listing with its snapshot (public — auth optional)
+   */
+  async getListingPublic(
+    marketplaceId: string,
+  ): Promise<MarketplaceListingWithSnapshot> {
+    const headers: Record<string, string> = {};
+    const token = authService.getToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/${marketplaceId}`,
+      { method: "GET", headers },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get listing: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get requirements for a marketplace listing (public — auth optional)
+   */
+  async getRequirementsPublic(
+    marketplaceId: string,
+  ): Promise<RequirementsResponse> {
+    const headers: Record<string, string> = {};
+    const token = authService.getToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `${this.getBackendUrl()}/xyzen/api/v1/marketplace/${marketplaceId}/requirements`,
+      { method: "GET", headers },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get requirements: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
    * Get a marketplace listing with its snapshot
    */
   async getListing(

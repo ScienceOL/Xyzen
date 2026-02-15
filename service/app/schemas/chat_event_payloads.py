@@ -74,9 +74,16 @@ class LoadingData(TypedDict):
 
 
 class ErrorData(TypedDict):
-    """Data payload for ERROR event."""
+    """Data payload for ERROR event.
 
-    error: str
+    Enhanced with structured error fields while remaining backward compatible.
+    """
+
+    error: str  # User-safe display message (always present)
+    error_code: NotRequired[str]  # ChatErrorCode value, e.g. "provider.rate_limited"
+    error_category: NotRequired[str]  # Category, e.g. "provider"
+    recoverable: NotRequired[bool]  # Whether the user can retry
+    detail: NotRequired[str]  # Optional sanitized detail
 
 
 class ToolCallRequestData(TypedDict):

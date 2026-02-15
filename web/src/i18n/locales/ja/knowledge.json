@@ -45,6 +45,7 @@
     "listView": "リスト表示",
     "gridView": "グリッド表示",
     "newFolder": "新しいフォルダ",
+    "newFolderPlaceholder": "名称未設定フォルダ",
     "emptyTrash": "ゴミ箱を空にする",
     "empty": "空",
     "uploadFile": "ファイルをアップロード",
@@ -174,6 +175,15 @@
       "noticeTitle": "お知らせ",
       "errorTitle": "エラー"
     }
+  },
+  "recents": {
+    "knowledgeSets": "ナレッジベース",
+    "recentFiles": "最近のファイル",
+    "noKnowledgeSets": "ナレッジセットがありません",
+    "noRecentFiles": "最近のファイルがありません",
+    "fileCount": "{{count}}個のファイル",
+    "updated": "{{date}}に更新",
+    "createKnowledgeSet": "新規ナレッジセット"
   },
   "createKnowledgeSetModal": {
     "title": "ナレッジセットを作成",

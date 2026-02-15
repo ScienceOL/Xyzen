@@ -6,6 +6,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.file import File, FileCreate, FileUpdate
+from app.models.file_knowledge_set_link import FileKnowledgeSetLink
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,7 @@ class FileRepository:
         parent_id: UUID | None = None,
         use_parent_filter: bool = False,
         is_dir: bool | None = None,
+        knowledge_set_id: UUID | None = None,
     ) -> list[File]:
         """
         Fetches files for a given user with optional filters.
@@ -155,6 +157,7 @@ class FileRepository:
             parent_id: Parent directory ID to filter by (if use_parent_filter is True).
             use_parent_filter: Whether to apply the parent_id filter.
             is_dir: Optional filter for directories (True) or files (False).
+            knowledge_set_id: Optional knowledge set ID to filter files linked to.
 
         Returns:
             List of File instances.
@@ -177,6 +180,12 @@ class FileRepository:
         if is_dir is not None:
             statement = statement.where(File.is_dir == is_dir)
 
+        if knowledge_set_id is not None:
+            statement = statement.join(
+                FileKnowledgeSetLink,
+                col(FileKnowledgeSetLink.file_id) == col(File.id),
+            ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+
         statement = statement.order_by(col(File.created_at).desc()).limit(limit).offset(offset)
 
         result = await self.db.exec(statement)
@@ -188,6 +197,7 @@ class FileRepository:
         parent_id: UUID | None = None,
         is_dir: bool | None = None,
         include_deleted: bool = False,
+        knowledge_set_id: UUID | None = None,
     ) -> list[File]:
         """
         List items under a parent directory.
@@ -197,6 +207,7 @@ class FileRepository:
             parent_id: Parent directory ID (None for root).
             is_dir: Filter for directories only (True) or files only (False).
             include_deleted: Whether to include soft-deleted items.
+            knowledge_set_id: Optional knowledge set ID to filter items linked to.
 
         Returns:
             List of File instances.
@@ -210,6 +221,12 @@ class FileRepository:
         if is_dir is not None:
             statement = statement.where(File.is_dir == is_dir)
 
+        if knowledge_set_id is not None:
+            statement = statement.join(
+                FileKnowledgeSetLink,
+                col(FileKnowledgeSetLink.file_id) == col(File.id),
+            ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+
         statement = statement.order_by(col(File.original_filename).asc())
 
         result = await self.db.exec(statement)
@@ -219,6 +236,7 @@ class FileRepository:
         self,
         user_id: str,
         include_deleted: bool = False,
+        knowledge_set_id: UUID | None = None,
     ) -> list[File]:
         """
         Fetch ALL files and folders for a user in a single query.
@@ -228,6 +246,7 @@ class FileRepository:
         Args:
             user_id: The user ID.
             include_deleted: Whether to include soft-deleted items.
+            knowledge_set_id: Optional knowledge set ID to filter items linked to.
 
         Returns:
             Flat list of all File instances belonging to the user.
@@ -238,6 +257,12 @@ class FileRepository:
         if not include_deleted:
             statement = statement.where(col(File.is_deleted).is_(False))
 
+        if knowledge_set_id is not None:
+            statement = statement.join(
+                FileKnowledgeSetLink,
+                col(FileKnowledgeSetLink.file_id) == col(File.id),
+            ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+
         # Folders first, then files; alphabetical within each group
         statement = statement.order_by(
             col(File.is_dir).desc(),
@@ -246,6 +271,34 @@ class FileRepository:
 
         result = await self.db.exec(statement)
         return list(result.all())
+
+    async def get_descendant_ids(self, folder_id: UUID, user_id: str) -> list[UUID]:
+        """
+        Get IDs of all descendants (files and subfolders) of a folder
+        recursively using BFS with one query per nesting level.
+        """
+        all_ids: list[UUID] = []
+        parent_ids: list[UUID] = [folder_id]
+
+        for _ in range(self._MAX_TREE_DEPTH):
+            if not parent_ids:
+                break
+            statement = select(File).where(
+                col(File.parent_id).in_(parent_ids),
+                File.user_id == user_id,
+                col(File.is_deleted).is_(False),
+            )
+            result = await self.db.exec(statement)
+            children = list(result.all())
+
+            next_parent_ids: list[UUID] = []
+            for child in children:
+                all_ids.append(child.id)
+                if child.is_dir:
+                    next_parent_ids.append(child.id)
+            parent_ids = next_parent_ids
+
+        return all_ids
 
     _MAX_TREE_DEPTH = 100
 

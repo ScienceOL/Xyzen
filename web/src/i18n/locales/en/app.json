@@ -23,7 +23,10 @@
       "executedAt": "Executed at",
       "expandImage": "Click to expand",
       "imageAlt": "Generated image",
-      "confirmExecute": "Confirm"
+      "confirmExecute": "Confirm",
+      "status": "Status",
+      "tool": "Tool",
+      "node": "Node"
     },
     "agent": {
       "stopped": "Generation stopped",
@@ -133,7 +136,11 @@
     "literatureSearch": "Literature",
     "literatureSearchDesc": "Search academic papers",
     "memory": "Memory",
-    "memoryDesc": "Search conversation history"
+    "memoryDesc": "Search conversation history",
+    "sandbox": "Sandbox",
+    "sandboxDesc": "Execute code in sandbox",
+    "subagent": "Subagent",
+    "subagentDesc": "Delegate tasks to other agents"
   },
   "input": {
     "placeholder": "Send a message...",
@@ -144,6 +151,79 @@
     "escToStop": "Stop",
     "enterToSend": "Send",
     "shiftEnterForNewline": "New line"
+  },
+  "dragDrop": {
+    "dropHere": "Drop files here",
+    "dropFiles": "Drop your files",
+    "maxFiles": "Up to {{count}} files",
+    "maxReached": "Maximum files reached"
+  },
+  "emptyChat": {
+    "title": "Start a new conversation",
+    "description": "You can select an assistant from the list, or start a free conversation directly.",
+    "creating": "Creating...",
+    "startChat": "Start New Chat"
+  },
+  "welcome": {
+    "titleWithAgent": "Start a conversation with {{name}}",
+    "titleDefault": "Welcome to free chat",
+    "noDescription": "No description available for this assistant",
+    "defaultDescription": "You can ask any question freely. No need to select a specific assistant — the system will provide appropriate responses.",
+    "quickActions": {
+      "sayHello": "Say hello",
+      "sayHelloMessage": "Hello! Nice to meet you.",
+      "askQuestion": "Ask a question",
+      "askQuestionMessage": "Can you help me with something?",
+      "startTask": "Start a task",
+      "startTaskMessage": "I'd like to start a new task."
+    }
+  },
+  "chatHeader": {
+    "share": "Share",
+    "shareTooltip": "Share conversation"
+  },
+  "share": {
+    "title": "Share Conversation",
+    "selectMessages": "Select messages to share",
+    "tabs": {
+      "image": "Export Image",
+      "link": "Share Link"
+    },
+    "selectAll": "Select all",
+    "selectedCount": "{{count}} selected",
+    "generateImage": "Generate Image Preview",
+    "generateLink": "Generate Share Link",
+    "generating": "Generating...",
+    "linkReady": "Share link created!",
+    "linkDescription": "Anyone with this link can view the conversation",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "expires": "Expires",
+    "noExpiry": "Never",
+    "maxUses": "Max uses",
+    "unlimited": "Unlimited",
+    "revokeLink": "Revoke",
+    "revoked": "Revoked",
+    "allowFork": "Allow continue",
+    "allowForkDescription": "Recipients can continue the conversation with a copy of this agent (prompts only)",
+    "page": {
+      "title": "Shared Conversation",
+      "continueButton": "Continue Conversation",
+      "continueLoginRequired": "Sign in to continue",
+      "viewOnly": "This share is view-only",
+      "continueSuccess": "Redirecting...",
+      "continueFailed": "Failed to continue conversation",
+      "loading": "Loading...",
+      "notFound": "Share not found",
+      "expired": "This share has expired",
+      "revoked": "This share has been revoked",
+      "back": "Back"
+    },
+    "error": {
+      "noMessages": "Please select at least one message",
+      "createFailed": "Failed to create share link",
+      "revokeFailed": "Failed to revoke share link"
+    }
   },
   "message": {
     "edit": "Edit",
@@ -243,5 +323,60 @@
       }
     },
     "locked": "Requires {{plan}} plan"
+  },
+  "workspace": {
+    "recommendations": {
+      "title": "Discover Official Agents",
+      "viewInMarketplace": "View in Marketplace"
+    }
+  },
+  "chatConfig": {
+    "defaultTitle": "New Chat",
+    "placeholders": {
+      "responding": "AI is responding, please wait...",
+      "default": "Send a message..."
+    },
+    "connection": {
+      "connecting": "Connecting to chat service...",
+      "retrying": "Retry connection"
+    },
+    "response": {
+      "generating": "AI is generating a response..."
+    },
+    "emptyState": {
+      "title": "Xyzen Chat",
+      "description": "Select an assistant to start chatting"
+    },
+    "welcomeMessage": {
+      "title": "Welcome to Xyzen",
+      "description": "You can freely discuss any topic with the AI assistant here"
+    },
+    "features": {
+      "smartChat": "Smart Chat",
+      "realtime": "Realtime Response",
+      "multimodal": "Multimodal Support"
+    }
+  },
+  "chatError": {
+    "provider.auth_failed": "Authentication failed. Please check your API configuration.",
+    "provider.rate_limited": "Too many requests. Please wait a moment and try again.",
+    "provider.context_too_long": "The conversation is too long. Please start a new chat or remove attached files.",
+    "provider.unavailable": "The AI service is temporarily unavailable. Please try again later.",
+    "provider.invalid_response": "Received an invalid response from the AI provider.",
+    "content.filtered": "Your message was flagged by the content filter. Please rephrase and try again.",
+    "content.unsafe": "The content was blocked for safety reasons.",
+    "agent.execution_failed": "The agent encountered an error during execution.",
+    "agent.timeout": "The agent execution timed out.",
+    "agent.recursion_limit": "The agent reached its maximum execution steps.",
+    "tool.execution_failed": "A tool call failed during execution.",
+    "tool.timeout": "A tool call timed out.",
+    "tool.not_found": "The requested tool was not found.",
+    "billing.insufficient_balance": "Insufficient balance. Please recharge to continue.",
+    "billing.settlement_failed": "Billing settlement failed. Your message was still processed.",
+    "system.internal_error": "An internal error occurred. Please try again.",
+    "system.service_unavailable": "The service is temporarily unavailable.",
+    "retryAction": "Retry",
+    "rechargeAction": "Recharge",
+    "detailToggle": "Details"
   }
 }

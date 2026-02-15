@@ -48,14 +48,10 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
     def is_configured(self) -> bool:
         """检查提供商是否已正确配置 - Casdoor 只需要 issuer"""
-        is_valid = bool(self.issuer)
-        logger.debug(f"Casdoor 配置检查: issuer={self.issuer}, valid={is_valid}")
-        return is_valid
+        return bool(self.issuer)
 
     def validate_token(self, access_token: str) -> AuthResult:
         """验证 access_token 并获取用户信息"""
-        logger.debug(f"Casdoor: 开始验证 token (前20字符): {access_token[:20]}...")
-
         if not self.is_configured():
             logger.error("Casdoor: 认证服务未配置")
             return AuthResult(
@@ -64,38 +60,26 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 error_message="Casdoor authentication is not configured",
             )
 
-        logger.debug("Casdoor: 认证服务已配置，开始验证token...")
         try:
             # 优先使用 /api/get-account 获取完整用户信息（包含 avatar）
-            # 这个接口返回的数据比 /api/user 更完整
             account_info = self.get_account_info(access_token)
 
             if account_info:
-                logger.debug(f"Casdoor: get-account 成功，包含字段: {list(account_info.keys())}")
                 user_info = self._parse_account_info(account_info)
 
                 # 如果没有 avatar 且用户有 Bohrium 绑定，尝试从 Bohrium 直接获取
                 if not user_info.avatar_url and account_info.get("custom"):
-                    logger.debug("Casdoor: avatar_url 为空，尝试从 Bohrium 获取头像...")
                     bohrium_avatar = self._fetch_avatar_from_bohrium(access_token, account_info)
                     if bohrium_avatar:
                         user_info.avatar_url = bohrium_avatar
-                        logger.debug(f"Casdoor: 从 Bohrium 获取到 avatar: {bohrium_avatar}")
 
-                logger.debug(
-                    f"Casdoor: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}, 头像: {user_info.avatar_url}"
-                )
                 return AuthResult(success=True, user_info=user_info)
 
             # Fallback: 使用 JWT payload
             logger.warning("Casdoor: get-account 失败，尝试从 JWT 解析")
             jwt_payload = self._decode_jwt_payload(access_token)
             if jwt_payload:
-                logger.debug(f"Casdoor: JWT payload 解析成功，包含字段: {list(jwt_payload.keys())}")
                 user_info = self.parse_user_info(jwt_payload)
-                logger.debug(
-                    f"Casdoor: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}, 头像: {user_info.avatar_url}"
-                )
                 return AuthResult(success=True, user_info=user_info)
 
             # 最后尝试 /api/user
@@ -121,9 +105,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 return AuthResult(success=False, error_code="CASDOOR_API_ERROR", error_message=error_msg)
 
             user_info = self.parse_userinfo_response(userinfo_data)
-            logger.debug(
-                f"Casdoor: 用户信息解析完成，用户ID: {user_info.id}, 用户名: {user_info.username}, 头像: {user_info.avatar_url}"
-            )
             return AuthResult(success=True, user_info=user_info)
 
         except requests.RequestException as e:
@@ -144,23 +125,19 @@ class CasdoorAuthProvider(BaseAuthProvider):
             # 获取 Bohrium 的原始 token
             original_token = account_info.get("originalToken")
             if not original_token:
-                # 尝试从 properties 获取
                 properties = account_info.get("properties") or {}
                 original_token = properties.get("oauth_Custom_accessToken")
 
             if not original_token:
-                logger.debug("Casdoor: 没有 Bohrium 的 originalToken，无法获取头像")
                 return None
 
             # 获取 Bohrium userinfo URL
             userinfo_url = self.get_provider_userinfo_url("custom")
             if not userinfo_url:
-                logger.debug("Casdoor: 没有配置 Bohrium userinfo URL")
                 return None
 
             # 调用 Bohrium API
             headers = {"Authorization": f"Bearer {original_token}"}
-            logger.debug(f"Casdoor: 调用 Bohrium userinfo: {userinfo_url}")
             response = requests.get(userinfo_url, headers=headers, timeout=10)
 
             if not response.ok:
@@ -168,15 +145,11 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 return None
 
             data = response.json()
-            logger.debug(f"Casdoor: Bohrium userinfo 响应: {list(data.keys())}")
 
             # Bohrium 格式: {"code": 0, "data": {"avatarUrl": "..."}}
             if data.get("code") == 0 and data.get("data"):
                 user_data = data["data"]
-                avatar_url = user_data.get("avatarUrl") or user_data.get("avatar_url") or user_data.get("avatar")
-                if avatar_url:
-                    logger.debug(f"Casdoor: 从 Bohrium 获取到 avatar: {avatar_url}")
-                    return avatar_url
+                return user_data.get("avatarUrl") or user_data.get("avatar_url") or user_data.get("avatar")
 
             return None
         except Exception as e:
@@ -211,9 +184,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
         get-account 返回完整的用户数据，包括 avatar 字段
         """
-        logger.debug("Casdoor: 解析 get-account 响应中的用户信息")
-        logger.debug(f"Casdoor: account_info 全部字段: {list(account_info.keys())}")
-
         # Casdoor 用户数据结构
         user_id = account_info.get("id") or account_info.get("name") or ""
         username = account_info.get("name", "")
@@ -221,40 +191,31 @@ class CasdoorAuthProvider(BaseAuthProvider):
         email = account_info.get("email")
         avatar_url = account_info.get("avatar")  # Casdoor 使用 avatar 字段
 
-        logger.debug(f"Casdoor: 直接从 account_info 获取的 avatar: '{avatar_url}'")
-
         # 如果没有 avatar，尝试从 properties 中获取（可能是第三方登录保存的）
         if not avatar_url:
             properties = account_info.get("properties") or {}
-            logger.debug(f"Casdoor: properties 全部字段: {list(properties.keys())}")
 
-            # 尝试各种可能的第三方 avatar 字段 (Casdoor 可能使用不同的命名约定)
             avatar_keys = [
-                "oauth_Custom_avatarUrl",  # Casdoor Custom provider (Bohrium)
+                "oauth_Custom_avatarUrl",
                 "oauth_GitHub_avatarUrl",
                 "oauth_Google_avatarUrl",
-                "oauth_custom_avatarUrl",  # lowercase variant
-                "avatarUrl",  # direct field
-                "avatar_url",  # snake_case
+                "oauth_custom_avatarUrl",
+                "avatarUrl",
+                "avatar_url",
             ]
             for key in avatar_keys:
                 if properties.get(key):
                     avatar_url = properties[key]
-                    logger.debug(f"Casdoor: 从 properties['{key}'] 获取到 avatar: '{avatar_url}'")
                     break
 
             if not avatar_url:
-                logger.warning("Casdoor: properties 中没有找到 avatar，尝试遍历所有 avatarUrl 相关字段")
                 # 遍历所有包含 avatar 的字段
                 for key, value in properties.items():
                     if "avatar" in key.lower() and value:
                         avatar_url = value
-                        logger.debug(f"Casdoor: 从 properties['{key}'] 获取到 avatar: '{avatar_url}'")
                         break
 
-        logger.debug(f"Casdoor: 最终解析的 avatar_url: '{avatar_url}'")
-
-        user_info = UserInfo(
+        return UserInfo(
             id=user_id,
             username=username,
             email=email,
@@ -268,25 +229,15 @@ class CasdoorAuthProvider(BaseAuthProvider):
             },
         )
 
-        logger.debug(
-            f"Casdoor: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, display_name: {user_info.display_name}, 头像: {user_info.avatar_url}"
-        )
-        return user_info
-
     def parse_userinfo_response(self, userinfo_data: dict[str, Any]) -> UserInfo:
         """从 Casdoor userinfo API 响应解析用户信息"""
-        logger.debug("Casdoor: 解析 userinfo API 响应中的用户信息")
-        logger.debug(f"Casdoor: userinfo 数据: {userinfo_data}")
-
         # Extract user ID - try multiple fields
         user_id = userinfo_data.get("sub") or userinfo_data.get("id") or userinfo_data.get("name") or ""
         if not user_id:
             logger.error(f"Casdoor: 无法从 userinfo 中提取用户ID！数据: {userinfo_data}")
-        else:
-            logger.debug(f"Casdoor: 成功提取用户ID: {user_id}")
 
         # Casdoor 返回标准的 JWT userinfo 格式
-        user_info = UserInfo(
+        return UserInfo(
             id=user_id,
             username=userinfo_data.get("preferred_username", ""),
             email=userinfo_data.get("email"),
@@ -302,9 +253,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 "permissions": userinfo_data.get("permissions", []),
             },
         )
-
-        logger.debug(f"Casdoor: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 邮箱: {user_info.email}")
-        return user_info
 
     def exchange_code_for_token(self, code: str) -> str:
         """Exchange authorization code for access token"""
@@ -352,24 +300,18 @@ class CasdoorAuthProvider(BaseAuthProvider):
         - avatar: 头像 URL
         - email: 邮箱
         """
-        logger.debug("Casdoor: 解析token payload中的用户信息")
-        logger.debug(f"Casdoor: payload内容: {token_payload}")
-
         # Casdoor token 结构解析 - 同时支持 OIDC 标准字段和 Casdoor 原生字段
         user_id = token_payload.get("sub") or token_payload.get("id") or ""
         username = token_payload.get("preferred_username") or token_payload.get("name") or ""
         display_name = (
-            token_payload.get("displayName")  # Casdoor 原生 (camelCase)
-            or token_payload.get("display_name")  # snake_case
-            or token_payload.get("name")  # OIDC 标准
+            token_payload.get("displayName")
+            or token_payload.get("display_name")
+            or token_payload.get("name")
             or username
         )
-        avatar_url = (
-            token_payload.get("picture")  # OIDC 标准
-            or token_payload.get("avatar")  # Casdoor 原生
-        )
+        avatar_url = token_payload.get("picture") or token_payload.get("avatar")
 
-        user_info = UserInfo(
+        return UserInfo(
             id=user_id,
             username=username,
             email=token_payload.get("email"),
@@ -386,11 +328,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
             },
         )
 
-        logger.debug(
-            f"Casdoor: 解析结果 - ID: {user_info.id}, 用户名: {user_info.username}, 头像: {user_info.avatar_url}"
-        )
-        return user_info
-
     def get_account_info(self, access_token: str) -> dict[str, Any] | None:
         """获取完整的账户信息（包含第三方绑定）
 
@@ -406,28 +343,13 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 return None
 
             data = response.json()
-            logger.debug(f"Casdoor get-account 原始响应 keys: {list(data.keys())}")
 
             if data.get("status") == "error":
                 logger.error(f"Casdoor get-account error: {data.get('msg')}")
                 return None
 
             account_data = data.get("data")
-            if account_data:
-                # 详细记录 avatar 相关字段
-                logger.debug("Casdoor get-account 成功:")
-                logger.debug(f"  - avatar: '{account_data.get('avatar')}'")
-                logger.debug(f"  - displayName: '{account_data.get('displayName')}'")
-                logger.debug(f"  - custom (Bohrium ID): '{account_data.get('custom')}'")
-
-                # 记录 properties 中的 avatar 相关字段
-                properties = account_data.get("properties") or {}
-                avatar_props = {k: v for k, v in properties.items() if "avatar" in k.lower()}
-                if avatar_props:
-                    logger.debug(f"  - properties 中 avatar 相关: {avatar_props}")
-                else:
-                    logger.debug("  - properties 中没有 avatar 相关字段")
-            else:
+            if not account_data:
                 logger.warning("Casdoor get-account: data 字段为空")
 
             return account_data
@@ -440,8 +362,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
         account_info = self.get_account_info(access_token)
         if not account_info:
             return []
-
-        logger.debug(f"get_linked_accounts: account_info keys: {list(account_info.keys())}")
 
         # 一次性获取所有 OAuth providers 的配置
         providers_by_type = self.get_all_oauth_providers()
@@ -468,7 +388,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
         # Properties may contain additional OAuth info
         properties = account_info.get("properties", {}) or {}
-        logger.debug(f"get_linked_accounts: properties keys: {list(properties.keys())}")
 
         # 主账户头像（可能是从第三方同步过来的）
         main_avatar = account_info.get("avatar")
@@ -476,8 +395,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
         for field, (default_display_name, provider_type) in provider_mappings.items():
             value = account_info.get(field)
             if value:  # Has linked account
-                logger.debug(f"get_linked_accounts: found linked account for {field}: {value}")
-
                 # 从 providers 配置获取显示名称和图标
                 provider_config = providers_by_type.get(provider_type.lower())
                 display_name = (
@@ -507,8 +424,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
                     or properties.get(f"oauth_{field.capitalize()}_avatarUrl")
                     or main_avatar  # 如果 properties 中没有，使用主账户头像
                 )
-
-                logger.debug(f"get_linked_accounts: {field} - username={username}, email={email}, avatar={avatar}")
 
                 linked_accounts.append(
                     LinkedAccount(
@@ -626,26 +541,11 @@ class CasdoorAuthProvider(BaseAuthProvider):
     def validate_third_party_token(
         self, provider_name: str, original_token: str, userinfo_url: str | None = None
     ) -> bool:
-        """验证第三方 OAuth token 是否仍然有效
-
-        Args:
-            provider_name: Provider 名称 (e.g., "custom" for Bohrium)
-            original_token: 第三方平台的原始 access token
-            userinfo_url: 可选，直接提供 userinfo URL，否则从配置或 Casdoor 获取
-
-        Returns:
-            True if token is valid, False otherwise
-        """
-        logger.debug(f"validate_third_party_token: 验证 {provider_name} 的 token")
-
+        """验证第三方 OAuth token 是否仍然有效"""
         # 1. 优先使用传入的 URL
         if not userinfo_url:
             # 2. 从 Casdoor 动态获取 userinfo URL
             userinfo_url = self.get_provider_userinfo_url(provider_name)
-            if userinfo_url:
-                logger.debug(
-                    f"validate_third_party_token: 从 Casdoor 获取到 {provider_name} 的 userinfo URL: {userinfo_url}"
-                )
 
         if not userinfo_url:
             logger.warning(f"validate_third_party_token: 无法获取 {provider_name} 的 userinfo URL，跳过验证")
@@ -655,14 +555,12 @@ class CasdoorAuthProvider(BaseAuthProvider):
         # Call the provider's userinfo endpoint
         try:
             headers = {"Authorization": f"Bearer {original_token}"}
-            logger.debug(f"validate_third_party_token: 调用 {userinfo_url}")
             response = requests.get(userinfo_url, headers=headers, timeout=10)
 
             if not response.ok:
                 logger.debug(
                     f"validate_third_party_token: {provider_name} token 验证失败 (HTTP {response.status_code})"
                 )
-                logger.debug(f"validate_third_party_token: 响应内容: {response.text[:200]}")
                 return False
 
             # 解析响应，检查业务层面的成功状态
@@ -670,17 +568,9 @@ class CasdoorAuthProvider(BaseAuthProvider):
                 data = response.json()
                 # Bohrium 格式: {"code": 0, "data": {...}}
                 if "code" in data:
-                    is_valid = data.get("code") == 0
-                    logger.debug(
-                        f"validate_third_party_token: {provider_name} token 验证结果: {is_valid} (code: {data.get('code')})"
-                    )
-                    return is_valid
-                # 其他格式：HTTP 200 即为成功
-                logger.debug(f"validate_third_party_token: {provider_name} token 验证成功 (HTTP 200)")
+                    return data.get("code") == 0
                 return True
             except Exception:
-                # 无法解析 JSON，但 HTTP 200 也算成功
-                logger.debug(f"validate_third_party_token: {provider_name} token 验证成功 (HTTP 200, non-JSON)")
                 return True
 
         except Exception as e:
@@ -688,14 +578,7 @@ class CasdoorAuthProvider(BaseAuthProvider):
             return False
 
     def get_original_tokens(self, access_token: str) -> dict[str, str]:
-        """从 Casdoor 获取用户的第三方原始 token
-
-        注意: Casdoor 可能不会存储第三方的原始 token，或者 token 可能已经过期。
-        这个功能依赖于 Casdoor 的 originalToken 字段。
-
-        Returns:
-            dict mapping provider_name to original_token
-        """
+        """从 Casdoor 获取用户的第三方原始 token"""
         account_info = self.get_account_info(access_token)
         if not account_info:
             logger.warning("get_original_tokens: 无法获取账户信息")
@@ -704,11 +587,8 @@ class CasdoorAuthProvider(BaseAuthProvider):
         tokens = {}
         original_token = account_info.get("originalToken")
 
-        logger.debug(f"get_original_tokens: originalToken 存在: {bool(original_token)}")
-
         if not original_token:
-            logger.debug("get_original_tokens: Casdoor 没有存储 originalToken，尝试从 properties 获取")
-            # 尝试从 properties 中获取（某些 Casdoor 版本可能存储在这里）
+            # 尝试从 properties 中获取
             properties = account_info.get("properties") or {}
             for provider in ["custom", "github", "google", "wechat"]:
                 token_key = f"oauth_{provider.capitalize()}_accessToken"
@@ -716,19 +596,13 @@ class CasdoorAuthProvider(BaseAuthProvider):
                     token_key = "oauth_Custom_accessToken"
                 if properties.get(token_key):
                     tokens[provider] = properties[token_key]
-                    logger.debug(f"get_original_tokens: 从 properties 中找到 {provider} 的 token")
             return tokens
 
         # The originalToken is typically from the last OAuth login
-        # We need to determine which provider it belongs to
-        # Check which provider field is populated
         provider_fields = ["custom", "github", "google", "wechat", "qq", "dingtalk", "weibo", "gitlab", "gitee"]
         for provider in provider_fields:
             if account_info.get(provider):
                 tokens[provider] = original_token
-                logger.debug(
-                    f"get_original_tokens: 找到 {provider} 的 originalToken (用户ID: {account_info.get(provider)})"
-                )
 
         if not tokens:
             logger.warning("get_original_tokens: 有 originalToken 但无法确定属于哪个 provider")

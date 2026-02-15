@@ -11,7 +11,7 @@ services:
       - "${CASDOOR_PORT:-8000}:8000"
       # - '${NACOS_PORT:-8848}:8848'
       # - '${NACOS_GRPC_PORT:-9848}:9848'
-      # - '${NACOS_WEB_PORT:-7848}:8080'
+      # - '${NACOS_WEB_PORT:-7848}:7848'
     command: tail -f /dev/null
     networks:
       - sciol-network

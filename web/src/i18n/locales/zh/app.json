@@ -23,7 +23,10 @@
       "executedAt": "执行时间",
       "expandImage": "点击放大",
       "imageAlt": "生成的图片",
-      "confirmExecute": "确认执行"
+      "confirmExecute": "确认执行",
+      "status": "状态",
+      "tool": "工具",
+      "node": "节点"
     },
     "agent": {
       "stopped": "生成已停止",
@@ -133,7 +136,11 @@
     "literatureSearch": "文献搜索",
     "literatureSearchDesc": "搜索学术文献和论文",
     "memory": "记忆",
-    "memoryDesc": "搜索对话历史"
+    "memoryDesc": "搜索对话历史",
+    "sandbox": "沙盒",
+    "sandboxDesc": "在沙盒中执行代码",
+    "subagent": "子代理",
+    "subagentDesc": "将任务委派给其他代理"
   },
   "input": {
     "placeholder": "输入消息...",
@@ -144,6 +151,79 @@
     "escToStop": "停止",
     "enterToSend": "发送",
     "shiftEnterForNewline": "换行"
+  },
+  "dragDrop": {
+    "dropHere": "将文件拖放到此处",
+    "dropFiles": "拖放你的文件",
+    "maxFiles": "最多 {{count}} 个文件",
+    "maxReached": "已达到最大文件数"
+  },
+  "emptyChat": {
+    "title": "开始一个新对话",
+    "description": "您可以从列表选择一个专业助手，或者直接开始一个自由对话。",
+    "creating": "创建中...",
+    "startChat": "开始新对话"
+  },
+  "welcome": {
+    "titleWithAgent": "开始与 {{name}} 的对话",
+    "titleDefault": "欢迎使用自由对话",
+    "noDescription": "此助手没有任何描述",
+    "defaultDescription": "您现在可以自由提问任何问题。无需选择特定助手，系统将根据您的问题提供合适的回复。",
+    "quickActions": {
+      "sayHello": "打个招呼",
+      "sayHelloMessage": "你好！很高兴认识你。",
+      "askQuestion": "提个问题",
+      "askQuestionMessage": "你能帮我一个忙吗？",
+      "startTask": "开始任务",
+      "startTaskMessage": "我想开始一个新任务。"
+    }
+  },
+  "chatHeader": {
+    "share": "分享",
+    "shareTooltip": "分享对话"
+  },
+  "share": {
+    "title": "分享对话",
+    "selectMessages": "选择要分享的消息",
+    "tabs": {
+      "image": "导出图片",
+      "link": "分享链接"
+    },
+    "selectAll": "全选",
+    "selectedCount": "已选 {{count}} 条",
+    "generateImage": "生成图片预览",
+    "generateLink": "生成分享链接",
+    "generating": "生成中...",
+    "linkReady": "分享链接已创建！",
+    "linkDescription": "任何拥有此链接的人都可以查看对话",
+    "copyLink": "复制链接",
+    "copied": "已复制！",
+    "expires": "过期时间",
+    "noExpiry": "永不过期",
+    "maxUses": "最大使用次数",
+    "unlimited": "无限制",
+    "revokeLink": "撤销",
+    "revoked": "已撤销",
+    "allowFork": "允许继续对话",
+    "allowForkDescription": "接收者可以使用此助手的副本（仅包含提示词）继续对话",
+    "page": {
+      "title": "分享的对话",
+      "continueButton": "继续对话",
+      "continueLoginRequired": "登录以继续对话",
+      "viewOnly": "此分享仅供查看",
+      "continueSuccess": "正在跳转...",
+      "continueFailed": "继续对话失败",
+      "loading": "加载中...",
+      "notFound": "分享不存在",
+      "expired": "此分享已过期",
+      "revoked": "此分享已被撤销",
+      "back": "返回"
+    },
+    "error": {
+      "noMessages": "请至少选择一条消息",
+      "createFailed": "创建分享链接失败",
+      "revokeFailed": "撤销分享链接失败"
+    }
   },
   "message": {
     "edit": "编辑",
@@ -243,5 +323,60 @@
       }
     },
     "locked": "需要 {{plan}} 订阅"
+  },
+  "workspace": {
+    "recommendations": {
+      "title": "发现官方 Agent",
+      "viewInMarketplace": "在社区中查看"
+    }
+  },
+  "chatConfig": {
+    "defaultTitle": "新的聊天",
+    "placeholders": {
+      "responding": "AI 正在回复中，暂时无法发送…",
+      "default": "输入消息..."
+    },
+    "connection": {
+      "connecting": "正在连接聊天服务...",
+      "retrying": "重试连接"
+    },
+    "response": {
+      "generating": "AI 正在生成回复…"
+    },
+    "emptyState": {
+      "title": "Xyzen Chat",
+      "description": "选择一个智能助手开始对话"
+    },
+    "welcomeMessage": {
+      "title": "欢迎使用 Xyzen",
+      "description": "您可以在这里与AI助手自由讨论任何话题"
+    },
+    "features": {
+      "smartChat": "智能对话",
+      "realtime": "实时响应",
+      "multimodal": "多模态支持"
+    }
+  },
+  "chatError": {
+    "provider.auth_failed": "认证失败，请检查您的 API 配置。",
+    "provider.rate_limited": "请求过于频繁，请稍后再试。",
+    "provider.context_too_long": "对话内容过长，请开始新对话或减少附件文件。",
+    "provider.unavailable": "AI 服务暂时不可用，请稍后重试。",
+    "provider.invalid_response": "收到了来自 AI 服务商的无效响应。",
+    "content.filtered": "您的消息被内容过滤器标记，请修改后重试。",
+    "content.unsafe": "内容因安全原因被阻止。",
+    "agent.execution_failed": "智能体执行过程中遇到错误。",
+    "agent.timeout": "智能体执行超时。",
+    "agent.recursion_limit": "智能体已达到最大执行步数。",
+    "tool.execution_failed": "工具调用执行失败。",
+    "tool.timeout": "工具调用超时。",
+    "tool.not_found": "未找到请求的工具。",
+    "billing.insufficient_balance": "余额不足，请充值后继续使用。",
+    "billing.settlement_failed": "计费结算失败，但您的消息已处理。",
+    "system.internal_error": "发生内部错误，请重试。",
+    "system.service_unavailable": "服务暂时不可用。",
+    "retryAction": "重试",
+    "rechargeAction": "充值",
+    "detailToggle": "详情"
   }
 }

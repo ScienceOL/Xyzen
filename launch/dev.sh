@@ -209,7 +209,7 @@ CMD_ARGS=(
   -f "${PROJECT_DIR}/docker/docker-compose.dev.yaml"
   --env-file "${ENV_FILE}"
 )
-# 中间件服务 Docker Compose 参数
+# 基础设施服务 Docker Compose 参数
 MID_CMD_ARGS=(
   -p "sciol-infra"
   -f "${PROJECT_DIR}/docker/docker-compose.infra.yaml"
@@ -219,12 +219,16 @@ MID_CMD_ARGS=(
 if [ -f "${PROJECT_DIR}/docker/docker-compose.daytona.yaml" ]; then
   MID_CMD_ARGS+=(-f "${PROJECT_DIR}/docker/docker-compose.daytona.yaml")
 fi
+# Conditionally include OpenFGA authorization overlay on infra
+if [ -f "${PROJECT_DIR}/docker/docker-compose.openfga.yaml" ]; then
+  MID_CMD_ARGS+=(-f "${PROJECT_DIR}/docker/docker-compose.openfga.yaml")
+fi
 
 # 处理关闭并移除容器的命令
 if [ "${EXIT_COMMAND}" -eq 1 ]; then
   echo -e "${BRIGHT_YELLOW}▶  关闭并移除开发服务容器...${RESET}"
   docker compose "${CMD_ARGS[@]}" down
-  echo -e "${BRIGHT_YELLOW}▶  关闭并移除中间件服务容器...${RESET}"
+  echo -e "${BRIGHT_YELLOW}▶  关闭并移除基础设施服务容器...${RESET}"
   docker compose "${MID_CMD_ARGS[@]}" down
   exit
 fi
@@ -238,7 +242,7 @@ if [ "${STOP_COMMAND}" -eq 1 ]; then
   exit
 fi
 
-# 检查并启动中间件服务
+# 检查并启动基础设施服务
 echo -e "${BRIGHT_CYAN}\n🔧 检查基础设施服务状态...${RESET}"
 RUNNING_MID_SERVICES=$(docker compose "${MID_CMD_ARGS[@]}" ps --status=running -q)
 if [ -n "$RUNNING_MID_SERVICES" ]; then

@@ -32,6 +32,7 @@ import {
   FitViewButton,
   FOCUS_ZOOM,
   FocusedView,
+  OfficialAgentsOverlay,
   SaveStatusIndicator,
   STORAGE_KEY_FOCUSED_AGENT,
   STORAGE_KEY_VIEWPORT,
@@ -54,6 +55,8 @@ function InnerWorkspace() {
     dailyActivity,
     yesterdaySummary,
     chatHistory,
+    showOfficialRecommendations,
+    setActivePanel,
   } = useXyzen();
 
   // Derived state from store (only updates on state transitions, not streaming_chunk)
@@ -619,6 +622,18 @@ function InnerWorkspace() {
       </ReactFlow>
 
       <SaveStatusIndicator status={saveStatus} onRetry={handleRetrySave} />
+
+      <AnimatePresence>
+        {agents.length <= 2 &&
+          showOfficialRecommendations &&
+          !focusedAgentId && (
+            <OfficialAgentsOverlay
+              onNavigateToMarketplace={() => {
+                setActivePanel("marketplace");
+              }}
+            />
+          )}
+      </AnimatePresence>
 
       <div
         className="absolute right-6 z-10 flex items-center gap-2"

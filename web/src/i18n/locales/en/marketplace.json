@@ -98,9 +98,11 @@
     },
     "actions": {
       "title": "Actions",
-      "fork": "Fork This Agent",
+      "fork": "Use This Agent",
       "liked": "Liked",
       "like": "Like This Agent",
+      "loginToFork": "Login to Use",
+      "loginToLike": "Login to Like",
       "manage": "Manage Agent",
       "shareTitle": "Share"
     },

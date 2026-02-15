@@ -243,10 +243,16 @@ async def link_file_to_knowledge_set(
         if file.user_id != user_id:
             raise ErrCode.FILE_ACCESS_DENIED.with_messages("File access denied")
 
-        # Create the link
-        link = await knowledge_set_repo.link_file_to_knowledge_set(file_id, knowledge_set_id)
-        if not link:
-            raise ErrCode.KNOWLEDGE_SET_LINK_EXISTS.with_messages("File already linked to knowledge set")
+        if file.is_dir:
+            # For folders, link the folder itself and all descendants recursively
+            descendant_ids = await file_repo.get_descendant_ids(file_id, user_id)
+            all_ids = [file_id, *descendant_ids]
+            await knowledge_set_repo.bulk_link_files_to_knowledge_set(all_ids, knowledge_set_id)
+        else:
+            # Single file
+            link = await knowledge_set_repo.link_file_to_knowledge_set(file_id, knowledge_set_id)
+            if not link:
+                raise ErrCode.KNOWLEDGE_SET_LINK_EXISTS.with_messages("File already linked to knowledge set")
 
         await db.commit()
 

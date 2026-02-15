@@ -7,6 +7,7 @@ import {
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
+import { useKnowledge } from "@/hooks/useKnowledge";
 import { fileService, type UploadHandle } from "@/service/fileService";
 import { folderService, type Folder } from "@/service/folderService";
 import { knowledgeSetService } from "@/service/knowledgeSetService";
@@ -19,9 +20,10 @@ import { CreateKnowledgeSetModal } from "./CreateKnowledgeSetModal";
 import { FileList, type FileListHandle } from "./FileList";
 import { DRAG_MIME } from "./FileTreeView";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
+import { RecentsView } from "./RecentsView";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
-import type { KnowledgeTab, StorageStats, ViewMode } from "./types";
+import type { StorageStats, ViewMode } from "./types";
 import { UploadProgress, type UploadItem } from "./UploadProgress";
 
 /**
@@ -47,11 +49,19 @@ const getUniqueFilename = (name: string, existingNames: string[]): string => {
 
 export const KnowledgeLayout = () => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<KnowledgeTab>("home");
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [currentKnowledgeSetId, setCurrentKnowledgeSetId] = useState<
-    string | null
-  >(null);
+
+  // Centralized knowledge state from the store
+  const {
+    knowledgeActiveTab: activeTab,
+    knowledgeFolderId: currentFolderId,
+    knowledgeSetId: currentKnowledgeSetId,
+    knowledgeTreeItems,
+    knowledgeTreeLoading,
+    navigateKnowledge,
+    setKnowledgeFolderId,
+    refreshKnowledge,
+  } = useKnowledge();
+
   const [currentKnowledgeSetName, setCurrentKnowledgeSetName] = useState<
     string | null
   >(null);
@@ -65,24 +75,23 @@ export const KnowledgeLayout = () => {
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
 
   // Navigate into a subfolder (independent of tab)
-  const navigateToFolder = useCallback((folderId: string | null) => {
-    setCurrentFolderId(folderId);
-  }, []);
+  const navigateToFolder = useCallback(
+    (folderId: string | null) => {
+      setKnowledgeFolderId(folderId);
+    },
+    [setKnowledgeFolderId],
+  );
 
   // Navigation Helper — switches tabs (sidebar clicks)
   const handleNavigate = useCallback(
-    (tab: KnowledgeTab, idOrKnowledgeSetId: string | null = null) => {
-      setActiveTab(tab);
-      if (tab === "knowledge") {
-        setCurrentKnowledgeSetId(idOrKnowledgeSetId);
-      } else {
-        setCurrentKnowledgeSetId(null);
-      }
-      // Switching tabs always resets to root folder
-      setCurrentFolderId(null);
+    (
+      tab: Parameters<typeof navigateKnowledge>[0],
+      idOrKnowledgeSetId: string | null = null,
+    ) => {
+      navigateKnowledge(tab, idOrKnowledgeSetId);
       setIsSidebarOpen(false);
     },
-    [],
+    [navigateKnowledge],
   );
 
   // Fetch breadcrumbs when currentFolderId changes
@@ -295,6 +304,7 @@ export const KnowledgeLayout = () => {
             uploadHandlesRef.current.delete(uploadId);
             // Trigger refresh after successful upload
             setRefreshKey((prev) => prev + 1);
+            refreshKnowledge();
           })
           .catch((error: Error) => {
             if (error.message === "Upload cancelled") {
@@ -316,7 +326,14 @@ export const KnowledgeLayout = () => {
           });
       }
     },
-    [activeTab, currentFolderId, currentKnowledgeSetId, stats, t],
+    [
+      activeTab,
+      currentFolderId,
+      currentKnowledgeSetId,
+      stats,
+      t,
+      refreshKnowledge,
+    ],
   );
 
   // Cancel upload handler
@@ -473,6 +490,7 @@ export const KnowledgeLayout = () => {
             );
             uploadHandlesRef.current.delete(uploadId);
             setRefreshKey((prev) => prev + 1);
+            refreshKnowledge();
           })
           .catch((error: Error) => {
             if (error.message === "Upload cancelled") {
@@ -494,7 +512,13 @@ export const KnowledgeLayout = () => {
           });
       }
     },
-    [activeTab, currentFolderId, currentKnowledgeSetId, stats],
+    [
+      activeTab,
+      currentFolderId,
+      currentKnowledgeSetId,
+      stats,
+      refreshKnowledge,
+    ],
   );
 
   // Drag and drop state
@@ -557,28 +581,17 @@ export const KnowledgeLayout = () => {
     [],
   );
 
-  const handleCreateFolder = async () => {
-    const name = prompt(t("knowledge.prompts.folderName"));
-    if (name) {
-      try {
-        // Deduplicate folder name
-        const existingFolders = await folderService.listFolders(
-          currentFolderId || null,
-        );
-        const existingFolderNames = existingFolders.map((f) => f.name);
-        const uniqueName = getUniqueFilename(name, existingFolderNames);
-
-        await folderService.createFolder({
-          name: uniqueName,
-          parent_id: currentFolderId,
-        });
-        setRefreshKey((prev) => prev + 1);
-      } catch (e) {
-        console.error("Failed to create folder", e);
-        alert(t("knowledge.errors.createFolderFailed"));
-      }
+  const handleCreateFolder = useCallback(() => {
+    if (fileListRef.current) {
+      fileListRef.current.createFolder(currentFolderId);
     }
-  };
+  }, [currentFolderId]);
+
+  // Refresh both the local refreshKey and the store tree
+  const handleRefresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    refreshKnowledge();
+  }, [refreshKnowledge]);
 
   const handleCreateKnowledgeSet = async () => {
     setIsCreateKnowledgeSetOpen(true);
@@ -594,11 +607,12 @@ export const KnowledgeLayout = () => {
           ),
         );
         setRefreshKey((prev) => prev + 1);
+        refreshKnowledge();
       } catch (e) {
         console.error("Failed to add files to knowledge set", e);
       }
     },
-    [],
+    [refreshKnowledge],
   );
 
   const handleSubmitCreateKnowledgeSet = async (values: {
@@ -721,13 +735,16 @@ export const KnowledgeLayout = () => {
           onSearch={(q) => console.log("Search", q)}
           onUpload={handleUploadClick}
           onUploadFolder={handleFolderUploadClick}
-          onRefresh={() => setRefreshKey((k) => k + 1)}
+          onRefresh={handleRefresh}
           isTrash={activeTab === "trash"}
           onEmptyTrash={handleEmptyTrash}
-          showCreateFolder={activeTab === "all"}
+          showCreateFolder={activeTab === "all" || activeTab === "knowledge"}
           onCreateFolder={handleCreateFolder}
           breadcrumbs={
-            currentFolderId && activeTab === "all" ? breadcrumbs : undefined
+            currentFolderId &&
+            (activeTab === "all" || activeTab === "knowledge")
+              ? breadcrumbs
+              : undefined
           }
           onBreadcrumbClick={(id) => navigateToFolder(id)}
           onDropOnBreadcrumb={handleDropOnBreadcrumb}
@@ -742,21 +759,32 @@ export const KnowledgeLayout = () => {
             /* Deselect */
           }}
         >
-          <FileList
-            ref={fileListRef}
-            filter={activeTab}
-            viewMode={viewMode}
-            refreshTrigger={refreshKey}
-            onRefresh={() => setRefreshKey((k) => k + 1)}
-            onFileCountChange={setCurrentFileCount}
-            onStatsUpdate={handleStatsUpdate}
-            onLoadingChange={setIsFileListLoading}
-            currentFolderId={currentFolderId}
-            currentKnowledgeSetId={currentKnowledgeSetId}
-            onFolderChange={(id) => navigateToFolder(id)}
-            onCreateFolder={handleCreateFolder}
-            onUpload={handleUploadClick}
-          />
+          {activeTab === "home" ? (
+            <RecentsView
+              refreshTrigger={refreshKey}
+              onKnowledgeSetClick={(id) => handleNavigate("knowledge", id)}
+              onCreateKnowledgeSet={handleCreateKnowledgeSet}
+            />
+          ) : (
+            <FileList
+              ref={fileListRef}
+              filter={activeTab}
+              viewMode={viewMode}
+              refreshTrigger={refreshKey}
+              onRefresh={handleRefresh}
+              onFileCountChange={setCurrentFileCount}
+              onStatsUpdate={handleStatsUpdate}
+              onLoadingChange={setIsFileListLoading}
+              currentFolderId={currentFolderId}
+              currentKnowledgeSetId={currentKnowledgeSetId}
+              onFolderChange={(id) => navigateToFolder(id)}
+              onCreateFolder={handleCreateFolder}
+              onUpload={handleUploadClick}
+              treeItems={knowledgeTreeItems}
+              treeLoading={knowledgeTreeLoading}
+              onRefreshTree={refreshKnowledge}
+            />
+          )}
         </div>
         {/* Status Bar */}
         <StatusBar

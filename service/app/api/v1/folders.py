@@ -123,6 +123,7 @@ async def create_folder(
 async def list_folders(
     parent_id: UUID | None = None,
     include_deleted: bool = False,
+    knowledge_set_id: UUID | None = None,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[FolderReadResponse]:
@@ -133,6 +134,7 @@ async def list_folders(
             parent_id=parent_id,
             is_dir=True,
             include_deleted=include_deleted,
+            knowledge_set_id=knowledge_set_id,
         )
         return [_to_folder_response(f) for f in folders]
 
@@ -146,6 +148,7 @@ async def list_folders(
 
 @router.get("/tree", response_model=list[FileTreeItem])
 async def get_folder_tree(
+    knowledge_set_id: UUID | None = None,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[FileTreeItem]:
@@ -159,10 +162,17 @@ async def get_folder_tree(
 
     Items are sorted: folders first (alphabetical), then files (alphabetical).
     Soft-deleted items are excluded.
+
+    When ``knowledge_set_id`` is provided, only items linked to that knowledge
+    set are returned.
     """
     try:
         file_repo = FileRepository(db)
-        items = await file_repo.get_all_items(user_id=user_id, include_deleted=False)
+        items = await file_repo.get_all_items(
+            user_id=user_id,
+            include_deleted=False,
+            knowledge_set_id=knowledge_set_id,
+        )
         return [
             FileTreeItem(
                 id=f.id,

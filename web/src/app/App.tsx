@@ -10,11 +10,14 @@ import { useCallback, useEffect, useState } from "react";
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
 import { SecretCodePage } from "@/components/admin/SecretCodePage";
 import SharedAgentDetailPage from "@/app/marketplace/SharedAgentDetailPage";
+import SharedChatPage from "@/app/share/SharedChatPage";
 import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
 import useTheme from "@/hooks/useTheme";
+import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
+import { buildAuthorizeUrl } from "@/utils/authFlow";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { LandingPage } from "./landing/LandingPage";
@@ -24,6 +27,11 @@ handleRelinkCallback();
 
 function parseAgentShareHash(hash: string): string | null {
   const match = hash.match(/^#\/agent\/([a-zA-Z0-9_-]+)$/);
+  return match ? match[1] : null;
+}
+
+function parseChatShareHash(hash: string): string | null {
+  const match = hash.match(/^#\/share\/([a-zA-Z0-9_-]+)$/);
   return match ? match[1] : null;
 }
 
@@ -231,7 +239,32 @@ export function Xyzen({
     void autoLogin();
   }, []);
 
-  const handleShowAuthScreen = useCallback(() => {
+  const handleShowAuthScreen = useCallback(async () => {
+    // For OAuth providers (non-bohr_app), redirect directly to the login page
+    try {
+      const [status, config] = await Promise.all([
+        authService.getAuthStatus(),
+        authService.getAuthConfig(),
+      ]);
+      const provider = config?.provider ?? status?.provider;
+
+      if (provider && provider !== "bohr_app") {
+        let url: string | null = null;
+        if (provider === "casdoor") {
+          const state = Math.random().toString(36).substring(7);
+          sessionStorage.setItem("auth_state", state);
+          url = buildAuthorizeUrl(provider, config, state);
+        } else {
+          url = buildAuthorizeUrl(provider, config);
+        }
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      }
+    } catch {
+      // Fall through to show AuthErrorScreen
+    }
     setShowAuthScreen(true);
   }, []);
 
@@ -241,10 +274,34 @@ export function Xyzen({
     (status === "succeeded" && !initialLoadComplete);
   const authFailed = status === "failed";
   const sharedAgentId = parseAgentShareHash(currentHash);
+  const sharedChatToken = parseChatShareHash(currentHash);
   // 手机阈值：512px 以下强制 Sidebar（不可拖拽，全宽）
   const isMobile = viewportWidth < MOBILE_BREAKPOINT;
 
   if (!mounted) return null;
+
+  // Shared chat page — no auth required, highest priority
+  if (sharedChatToken) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SharedChatPage token={sharedChatToken} />
+      </QueryClientProvider>
+    );
+  }
+
+  // Shared agent detail page — no auth required
+  if (sharedAgentId) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SharedAgentDetailPage
+          marketplaceId={sharedAgentId}
+          onBack={() => {
+            window.location.hash = "";
+          }}
+        />
+      </QueryClientProvider>
+    );
+  }
 
   const shouldShowCompactInput =
     layoutStyle === LAYOUT_STYLE.Sidebar && !isXyzenOpen && !isMobile;
@@ -279,13 +336,6 @@ export function Xyzen({
     ) : (
       <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />
     )
-  ) : sharedAgentId ? (
-    <SharedAgentDetailPage
-      marketplaceId={sharedAgentId}
-      onBack={() => {
-        window.location.hash = "";
-      }}
-    />
   ) : (
     <>{mainLayout}</>
   );

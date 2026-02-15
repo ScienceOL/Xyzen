@@ -28,8 +28,8 @@ export interface ContextMenuProps {
   onDownload?: (item: FileUploadResponse) => void;
   onPreview?: (item: FileUploadResponse) => void;
   onOpen?: (item: Folder) => void;
-  onAddToKnowledgeSet?: (item: FileUploadResponse) => void;
-  onRemoveFromKnowledgeSet?: (item: FileUploadResponse) => void;
+  onAddToKnowledgeSet?: (item: Folder | FileUploadResponse) => void;
+  onRemoveFromKnowledgeSet?: (item: Folder | FileUploadResponse) => void;
   onRestore?: (
     item: Folder | FileUploadResponse,
     type: ContextMenuType,
@@ -288,10 +288,10 @@ export const ContextMenu = ({
           {t("knowledge.contextMenu.moveTo")}
         </button>
 
-        {type === "file" && onAddToKnowledgeSet && !isInKnowledgeSetView && (
+        {onAddToKnowledgeSet && !isInKnowledgeSetView && (
           <button
             onClick={() => {
-              onAddToKnowledgeSet(item as FileUploadResponse);
+              onAddToKnowledgeSet(item);
               onClose();
             }}
             className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -301,20 +301,18 @@ export const ContextMenu = ({
           </button>
         )}
 
-        {type === "file" &&
-          onRemoveFromKnowledgeSet &&
-          isInKnowledgeSetView && (
-            <button
-              onClick={() => {
-                onRemoveFromKnowledgeSet(item as FileUploadResponse);
-                onClose();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-            >
-              <MinusIcon className="h-4 w-4" />
-              {t("knowledge.contextMenu.removeFromKnowledgeSet")}
-            </button>
-          )}
+        {onRemoveFromKnowledgeSet && isInKnowledgeSetView && (
+          <button
+            onClick={() => {
+              onRemoveFromKnowledgeSet(item);
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          >
+            <MinusIcon className="h-4 w-4" />
+            {t("knowledge.contextMenu.removeFromKnowledgeSet")}
+          </button>
+        )}
 
         <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
 

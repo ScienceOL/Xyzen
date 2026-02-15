@@ -50,6 +50,7 @@ dependencies = [
     "trafilatura>=1.12.0",
     "daytona>=0.139.0",
     "langmem>=0.0.30",
+    "openfga-sdk>=0.9.0",
 ]
 
 [dependency-groups]

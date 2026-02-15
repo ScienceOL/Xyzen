@@ -254,6 +254,19 @@ async def get_current_user(authorization: str | None = Header(None)) -> str:
     return auth_result.user_info.id
 
 
+async def get_current_user_optional(authorization: str | None = Header(None)) -> str | None:
+    """Get the current user ID if a valid token is provided, otherwise return None."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+
+    access_token = authorization[7:]
+    auth_result = AuthProvider.validate_token(access_token)
+    if not auth_result.success or not auth_result.user_info:
+        return None
+
+    return auth_result.user_info.id
+
+
 async def get_current_user_info(authorization: str | None = Header(None)) -> UserInfo:
     """Get the current user info from the Authorization header (for HTTP API)"""
 

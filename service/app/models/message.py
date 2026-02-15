@@ -20,6 +20,10 @@ class MessageBase(SQLModel):
     thinking_content: str | None = None
     # Agent metadata for storing additional context (agent state, etc.)
     agent_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    # Structured error fields for chat errors
+    error_code: str | None = Field(default=None, index=True)
+    error_category: str | None = Field(default=None)
+    error_detail: str | None = Field(default=None)
 
 
 class Message(MessageBase, table=True):
@@ -69,3 +73,6 @@ class MessageUpdate(SQLModel):
     content: str | None = None
     thinking_content: str | None = None
     agent_metadata: dict[str, Any] | None = None
+    error_code: str | None = None
+    error_category: str | None = None
+    error_detail: str | None = None

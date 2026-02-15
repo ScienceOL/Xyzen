@@ -829,31 +829,19 @@ async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> As
 
 
 def _handle_streaming_error(e: Exception, user_id: str) -> StreamingEvent:
-    """Handle and format streaming errors."""
-    error_str = str(e).lower()
+    """Handle and format streaming errors using structured ChatErrorCode."""
+    from app.common.code.chat_error_code import classify_exception
 
-    if "context_length_exceeded" in error_str or (
-        hasattr(e, "code") and getattr(e, "code") == "context_length_exceeded"
-    ):
-        logger.warning(f"Context length exceeded for user {user_id}: {e}")
-        return StreamingEventHandler.create_error_event(
-            "The conversation is too long for the model to process. "
-            "Please try starting a new chat or reducing the number of attached files."
-        )
-    elif "content_filter" in error_str or "content_management_policy" in error_str:
-        # Azure OpenAI content filter triggered
-        logger.warning(f"Content filter triggered for user {user_id}: {e}")
-        return StreamingEventHandler.create_error_event(
-            "Your message was flagged by the content filter. Please rephrase your request and try again."
-        )
-    elif "rate_limit" in error_str or "429" in error_str:
-        logger.warning(f"Rate limit exceeded for user {user_id}: {e}")
-        return StreamingEventHandler.create_error_event("Too many requests. Please wait a moment and try again.")
-    elif "authentication" in error_str or "401" in error_str or "403" in error_str:
-        logger.error(f"Authentication error for user {user_id}: {e}")
-        return StreamingEventHandler.create_error_event("Authentication error. Please check your API configuration.")
+    code, safe_message = classify_exception(e)
+
+    if code.user_safe:
+        logger.warning(f"Chat error [{code}] for user {user_id}: {e}")
     else:
-        logger.error(f"Agent execution failed: {e}", exc_info=True)
-        return StreamingEventHandler.create_error_event(
-            "An error occurred while processing your request. Please try again."
-        )
+        logger.error(f"Chat error [{code}] for user {user_id}: {e}", exc_info=True)
+
+    return StreamingEventHandler.create_error_event(
+        error=safe_message,
+        error_code=code.value,
+        error_category=code.category,
+        recoverable=code.recoverable,
+    )

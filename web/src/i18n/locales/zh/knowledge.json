@@ -45,6 +45,7 @@
     "listView": "列表视图",
     "gridView": "网格视图",
     "newFolder": "新建文件夹",
+    "newFolderPlaceholder": "未命名文件夹",
     "emptyTrash": "清空回收站",
     "empty": "清空",
     "uploadFile": "上传文件",
@@ -174,6 +175,15 @@
       "noticeTitle": "提示",
       "errorTitle": "错误"
     }
+  },
+  "recents": {
+    "knowledgeSets": "知识库",
+    "recentFiles": "最近文件",
+    "noKnowledgeSets": "暂无知识库",
+    "noRecentFiles": "暂无最近文件",
+    "fileCount": "{{count}} 个文件",
+    "updated": "更新于 {{date}}",
+    "createKnowledgeSet": "新建知识库"
   },
   "createKnowledgeSetModal": {
     "title": "创建知识库",

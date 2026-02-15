@@ -3,17 +3,17 @@ from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
+from app.core.fga.client import FgaClient
 from app.models.agent import Agent, AgentScope
 from app.repos.agent import AgentRepository
-from app.repos.agent_marketplace import AgentMarketplaceRepository
 
 from .resource_policy import ResourcePolicyBase
 
 
 class AgentPolicy(ResourcePolicyBase[Agent]):
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, fga: FgaClient | None = None) -> None:
         self.agent_repo = AgentRepository(db)
-        self.marketplace_repo = AgentMarketplaceRepository(db)
+        self.fga = fga
 
     async def authorize_read(self, resource_id: UUID, user_id: str) -> Agent:
         agent = await self.agent_repo.get_agent_by_id(resource_id)
@@ -28,10 +28,10 @@ class AgentPolicy(ResourcePolicyBase[Agent]):
         if agent.scope == AgentScope.SYSTEM:
             return agent
 
-        # Check if published in marketplace
-        listing = await self.marketplace_repo.get_by_agent_id(agent.id)
-        if listing and listing.is_published:
-            return agent
+        # Check FGA if available
+        if self.fga:
+            if await self.fga.check(user_id, "viewer", "agent", str(resource_id)):
+                return agent
 
         raise ErrCode.AGENT_ACCESS_DENIED.with_messages(f"User {user_id} can not access agent {resource_id}")
 
@@ -39,8 +39,15 @@ class AgentPolicy(ResourcePolicyBase[Agent]):
         agent = await self.agent_repo.get_agent_by_id(resource_id)
         if not agent:
             raise ErrCode.AGENT_NOT_FOUND.with_messages(f"Agent with ID {resource_id} not found")
+
+        # Owner can always write
         if agent.user_id == user_id:
             return agent
+
+        # Check FGA editor permission
+        if self.fga:
+            if await self.fga.check(user_id, "editor", "agent", str(resource_id)):
+                return agent
 
         raise ErrCode.AGENT_NOT_OWNED.with_messages(f"Agent with ID {resource_id} now owned by user")
 
@@ -49,7 +56,14 @@ class AgentPolicy(ResourcePolicyBase[Agent]):
         agent = await self.agent_repo.get_agent_by_id_raw(resource_id)
         if not agent:
             raise ErrCode.AGENT_NOT_FOUND.with_messages(f"Agent with ID {resource_id} not found")
+
+        # Owner can always delete
         if agent.user_id == user_id:
             return agent
+
+        # Check FGA owner permission for delete
+        if self.fga:
+            if await self.fga.check(user_id, "owner", "agent", str(resource_id)):
+                return agent
 
         raise ErrCode.AGENT_NOT_OWNED.with_messages(f"Agent with ID {resource_id} now owned by user")

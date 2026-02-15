@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AgentExecutionTimeline from "./AgentExecutionTimeline";
+import ErrorMessageCard from "./ErrorMessageCard";
 import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
@@ -531,38 +532,42 @@ function ChatBubble({ message }: ChatBubbleProps) {
                     />
                   )}
 
+                {/* Error message card - rendered instead of normal content */}
+                {message.error && <ErrorMessageCard error={message.error} />}
+
                 {/* Message content based on display mode */}
-                {(() => {
-                  switch (displayMode) {
-                    case "loading":
-                    case "waiting":
-                      return (
-                        <span className="inline-flex items-center gap-1">
-                          <LoadingMessage size="small" />
-                        </span>
-                      );
+                {!message.error &&
+                  (() => {
+                    switch (displayMode) {
+                      case "loading":
+                      case "waiting":
+                        return (
+                          <span className="inline-flex items-center gap-1">
+                            <LoadingMessage size="small" />
+                          </span>
+                        );
 
-                    case "simple":
-                      return markdownContent;
+                      case "simple":
+                        return markdownContent;
 
-                    case "timeline_streaming":
-                      // Content is shown in AgentExecutionTimeline phases during streaming
-                      return null;
+                      case "timeline_streaming":
+                        // Content is shown in AgentExecutionTimeline phases during streaming
+                        return null;
 
-                    case "timeline_complete":
-                      // Show final content below timeline when completed
-                      // Guard against empty content to avoid rendering empty div with margin
-                      return resolvedContent.text ? (
-                        <div className="mt-4">
-                          <Markdown content={resolvedContent.text} />
-                        </div>
-                      ) : null;
+                      case "timeline_complete":
+                        // Show final content below timeline when completed
+                        // Guard against empty content to avoid rendering empty div with margin
+                        return resolvedContent.text ? (
+                          <div className="mt-4">
+                            <Markdown content={resolvedContent.text} />
+                          </div>
+                        ) : null;
 
-                    default:
-                      // Fallback for any unexpected display mode
-                      return markdownContent;
-                  }
-                })()}
+                      default:
+                        // Fallback for any unexpected display mode
+                        return markdownContent;
+                    }
+                  })()}
 
                 {isStreaming && !isLoading && (
                   <motion.span

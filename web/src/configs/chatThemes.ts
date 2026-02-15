@@ -1,40 +1,43 @@
+import type { TFunction } from "i18next";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 
-// Individual configuration exports for type safety
-export const XYZEN_CHAT_CONFIG: XyzenChatConfig = {
-  theme: "indigo" as const,
-  systemAgentTag: "default_chat",
-  storageKeys: {
-    historyPinned: "chatHistoryPinned",
-  },
-  defaultTitle: "新的聊天",
-  placeholders: {
-    responding: "AI 正在回复中，暂时无法发送…",
-    default: "输入消息...",
-  },
-  connectionMessages: {
-    connecting: "正在连接聊天服务...",
-    retrying: "重试连接",
-  },
-  responseMessages: {
-    generating: "AI 正在生成回复…",
-    creating: "",
-  },
-  emptyState: {
-    title: "Xyzen Chat",
-    description: "选择一个智能助手开始对话",
-    icon: "💬",
-    features: ["智能对话", "实时响应", "多模态支持"],
-  },
-  welcomeMessage: {
-    title: "欢迎使用 Xyzen",
-    description: "您可以在这里与AI助手自由讨论任何话题",
-    icon: "👋",
-  },
-} as const;
+// Build chat config with translated strings
+export function getXyzenChatConfig(t: TFunction): XyzenChatConfig {
+  return {
+    theme: "indigo" as const,
+    systemAgentTag: "default_chat",
+    storageKeys: {
+      historyPinned: "chatHistoryPinned",
+    },
+    defaultTitle: t("app.chatConfig.defaultTitle"),
+    placeholders: {
+      responding: t("app.chatConfig.placeholders.responding"),
+      default: t("app.chatConfig.placeholders.default"),
+    },
+    connectionMessages: {
+      connecting: t("app.chatConfig.connection.connecting"),
+      retrying: t("app.chatConfig.connection.retrying"),
+    },
+    responseMessages: {
+      generating: t("app.chatConfig.response.generating"),
+      creating: "",
+    },
+    emptyState: {
+      title: "Xyzen Chat",
+      description: t("app.chatConfig.emptyState.description"),
+      icon: "💬",
+      features: [
+        t("app.chatConfig.features.smartChat"),
+        t("app.chatConfig.features.realtime"),
+        t("app.chatConfig.features.multimodal"),
+      ],
+    },
+    welcomeMessage: {
+      title: t("app.chatConfig.welcomeMessage.title"),
+      description: t("app.chatConfig.welcomeMessage.description"),
+      icon: "👋",
+    },
+  };
+}
 
-export const CHAT_THEMES = {
-  xyzen: XYZEN_CHAT_CONFIG,
-} as const satisfies Record<string, XyzenChatConfig>;
-
-export type ChatThemeKey = keyof typeof CHAT_THEMES;
+export type ChatThemeKey = "xyzen";

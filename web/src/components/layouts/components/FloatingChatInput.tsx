@@ -220,7 +220,6 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
           {/* Drag & drop overlay */}
           <DragDropOverlay
             isVisible={isDragging}
-            title="Drop files here"
             maxFiles={fileUploadOptions.maxFiles}
             canAddMore={canAddMoreFiles()}
             className="rounded-2xl"

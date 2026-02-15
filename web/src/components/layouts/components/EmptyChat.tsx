@@ -1,8 +1,10 @@
 import { useXyzen } from "@/index";
 import { motion } from "framer-motion";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const EmptyChat: React.FC = () => {
+  const { t } = useTranslation();
   const [isCreating] = useState(false);
 
   const { createDefaultChannel } = useXyzen();
@@ -37,10 +39,10 @@ const EmptyChat: React.FC = () => {
         transition={{ delay: 0.2, duration: 0.5 }}
       >
         <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
-          开始一个新对话
+          {t("app.emptyChat.title")}
         </h3>
         <p className="mt-2 max-w-md text-sm text-neutral-600 dark:text-neutral-300">
-          您可以从列表选择一个专业助手，或者直接开始一个自由对话。
+          {t("app.emptyChat.description")}
         </p>
       </motion.div>
 
@@ -77,7 +79,7 @@ const EmptyChat: React.FC = () => {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              创建中...
+              {t("app.emptyChat.creating")}
             </>
           ) : (
             <>
@@ -95,7 +97,7 @@ const EmptyChat: React.FC = () => {
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-              开始新对话
+              {t("app.emptyChat.startChat")}
             </>
           )}
         </button>

@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
+from .fga import FgaConfig
 from .image import ImageConfig
 from .lab import LabConfig
 from .memory import MemoryConfig
@@ -112,6 +113,11 @@ class AppConfig(BaseSettings):
     Memory: MemoryConfig = Field(
         default_factory=lambda: MemoryConfig(),
         description="Cross-thread memory store configuration",
+    )
+
+    Fga: FgaConfig = Field(
+        default_factory=lambda: FgaConfig(),
+        description="OpenFGA authorization configuration",
     )
 
 

@@ -1431,9 +1431,33 @@ export const createChatSlice: StateCreator<
             }
 
             case "error": {
-              // Handle error - remove loading messages and show error
+              // Handle error - remove loading messages and show structured error
               channel.responding = false;
-              const errorData = event.data as { error: string };
+              const errorData = event.data as {
+                error: string;
+                error_code?: string;
+                error_category?: string;
+                recoverable?: boolean;
+                detail?: string;
+              };
+
+              const messageError = errorData.error_code
+                ? {
+                    code: errorData.error_code,
+                    category:
+                      errorData.error_category ||
+                      errorData.error_code.split(".")[0],
+                    message: errorData.error,
+                    recoverable: errorData.recoverable ?? false,
+                    detail: errorData.detail,
+                  }
+                : {
+                    code: "system.internal_error",
+                    category: "system",
+                    message: errorData.error || "An error occurred",
+                    recoverable: false,
+                  };
+
               const errorLoadingIndex = channel.messages.findIndex(
                 (m) => m.isLoading,
               );
@@ -1441,25 +1465,28 @@ export const createChatSlice: StateCreator<
               if (errorLoadingIndex !== -1) {
                 channel.messages[errorLoadingIndex] = {
                   ...channel.messages[errorLoadingIndex],
-                  content: `Error: ${errorData.error}`,
+                  content: "",
                   isLoading: false,
                   isStreaming: false,
+                  error: messageError,
                 };
               } else {
-                // Fallback: If no loading message found, create a new error message
-                // This ensures the error is visible in the chat usage context without duplicate notifications
                 const errorMessageId = `error-${Date.now()}`;
                 channel.messages.push({
                   id: errorMessageId,
                   clientId: generateClientId(),
-                  role: "assistant", // Use assistant role to show on left side
-                  content: `⚠️ Error: ${errorData.error || "An error occurred"}`,
+                  role: "assistant",
+                  content: "",
                   created_at: new Date().toISOString(),
                   isNewMessage: true,
+                  error: messageError,
                 });
               }
 
-              console.error("Chat error:", errorData.error);
+              console.error(
+                "Chat error:",
+                errorData.error_code || errorData.error,
+              );
               break;
             }
 
@@ -1478,16 +1505,24 @@ export const createChatSlice: StateCreator<
               // Reset responding state to unblock input
               channel.responding = false;
 
-              // Update loading message to show error
+              // Update loading message to show structured error
               const balanceLoadingIndex = channel.messages.findIndex(
                 (m) => m.isLoading,
               );
               if (balanceLoadingIndex !== -1) {
                 channel.messages[balanceLoadingIndex] = {
                   ...channel.messages[balanceLoadingIndex],
-                  content: "⚠️ 积分已用尽，欢迎填写问卷参与内测获取更多额度。",
+                  content: "",
                   isLoading: false,
                   isStreaming: false,
+                  error: {
+                    code: "billing.insufficient_balance",
+                    category: "billing",
+                    message:
+                      balanceData.message ||
+                      "Insufficient balance. Please recharge to continue.",
+                    recoverable: false,
+                  },
                 };
               }
 

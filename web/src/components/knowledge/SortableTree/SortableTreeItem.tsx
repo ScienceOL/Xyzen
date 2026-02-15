@@ -1,13 +1,15 @@
 import { FileIcon } from "@/components/knowledge/FileIcon";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { ChevronRightIcon } from "lucide-react";
-import React, { forwardRef } from "react";
+import React, { forwardRef, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type { FlattenedItem } from "./types";
 import {
+  COL_DATE_WIDTH,
+  COL_SIZE_WIDTH,
   INDENTATION_WIDTH,
   formatDate,
   formatFileSize,
-  type SortMode,
 } from "./utilities";
 
 // ---------------------------------------------------------------------------
@@ -21,7 +23,9 @@ interface TreeItemRowProps {
   isDragging?: boolean;
   isDropTarget?: boolean;
   indentationWidth?: number;
-  sortMode?: SortMode;
+  isEditing?: boolean;
+  onEditConfirm?: (name: string) => void;
+  onEditCancel?: () => void;
   onCollapse?: (id: string) => void;
   onClick?: (e: React.MouseEvent, id: string) => void;
   onDoubleClick?: (id: string) => void;
@@ -42,7 +46,9 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
   isDragging = false,
   isDropTarget = false,
   indentationWidth = INDENTATION_WIDTH,
-  sortMode = "name",
+  isEditing = false,
+  onEditConfirm,
+  onEditCancel,
   onCollapse,
   onClick,
   onDoubleClick,
@@ -53,7 +59,7 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
     attributes,
     listeners,
     setNodeRef: setDragRef,
-  } = useDraggable({ id: item.id });
+  } = useDraggable({ id: item.id, disabled: isEditing });
 
   const { setNodeRef: setDropRef } = useDroppable({ id: item.id });
 
@@ -65,14 +71,18 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         registerRef?.(item.id, el);
       }}
       style={{ opacity: isDragging ? 0.4 : 1 }}
-      {...attributes}
-      {...listeners}
+      {...(isEditing ? {} : attributes)}
+      {...(isEditing ? {} : listeners)}
       onMouseDown={(e) => {
         e.stopPropagation();
       }}
-      onClick={(e) => onClick?.(e, item.id)}
-      onDoubleClick={() => onDoubleClick?.(item.id)}
-      onContextMenu={onContextMenu}
+      onClick={(e) => {
+        if (!isEditing) onClick?.(e, item.id);
+      }}
+      onDoubleClick={() => {
+        if (!isEditing) onDoubleClick?.(item.id);
+      }}
+      onContextMenu={isEditing ? undefined : onContextMenu}
     >
       <TreeItemContent
         item={item}
@@ -81,7 +91,9 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         isDropTarget={isDropTarget}
         indentationWidth={indentationWidth}
         onCollapse={onCollapse}
-        sortMode={sortMode}
+        isEditing={isEditing}
+        onEditConfirm={onEditConfirm}
+        onEditCancel={onEditCancel}
       />
     </div>
   );
@@ -145,7 +157,9 @@ const TreeItemContent = forwardRef<
     isDropTarget?: boolean;
     indentationWidth?: number;
     onCollapse?: (id: string) => void;
-    sortMode?: SortMode;
+    isEditing?: boolean;
+    onEditConfirm?: (name: string) => void;
+    onEditCancel?: () => void;
   }
 >(
   (
@@ -156,14 +170,50 @@ const TreeItemContent = forwardRef<
       isDropTarget = false,
       indentationWidth = INDENTATION_WIDTH,
       onCollapse,
-      sortMode = "name",
+      isEditing = false,
+      onEditConfirm,
+      onEditCancel,
     },
     ref,
   ) => {
-    // Pick which date to show based on sort mode
-    const metaDate = sortMode === "created" ? item.createdAt : item.updatedAt;
+    const { t } = useTranslation();
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Auto-focus and select all text when entering editing mode
+    useEffect(() => {
+      if (isEditing && inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
+    }, [isEditing]);
+
+    // Always show updatedAt and file size
+    const metaDate = item.updatedAt;
     const metaSize =
-      item.type === "file" ? formatFileSize(item.fileSize ?? 0) : null;
+      item.type === "file" ? formatFileSize(item.fileSize ?? 0) : "--";
+
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        const value = (e.target as HTMLInputElement).value.trim();
+        if (value) {
+          onEditConfirm?.(value);
+        } else {
+          onEditCancel?.();
+        }
+      } else if (e.key === "Escape") {
+        onEditCancel?.();
+      }
+    };
+
+    const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      const value = e.target.value.trim();
+      if (value) {
+        onEditConfirm?.(value);
+      } else {
+        onEditCancel?.();
+      }
+    };
 
     return (
       <div
@@ -213,13 +263,37 @@ const TreeItemContent = forwardRef<
           )}
         </span>
 
-        {/* Name */}
-        <span className="min-w-0 flex-1 truncate text-xs">{item.name}</span>
+        {/* Name or inline input */}
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            defaultValue={t("knowledge.toolbar.newFolderPlaceholder")}
+            onKeyDown={handleInputKeyDown}
+            onBlur={handleInputBlur}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="min-w-0 flex-1 truncate text-xs bg-white dark:bg-neutral-800 border border-indigo-400 dark:border-indigo-500 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-indigo-400 text-neutral-900 dark:text-neutral-100"
+          />
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-xs">{item.name}</span>
+        )}
 
-        {/* Metadata — file size & date (like Finder list view) */}
-        {metaSize && (
+        {/* Date Modified column — fixed width */}
+        {!isEditing && (
           <span
-            className={`shrink-0 text-[10px] tabular-nums ${
+            className={`shrink-0 ${COL_DATE_WIDTH} text-right text-[10px] tabular-nums ${
+              isSelected
+                ? "text-indigo-200"
+                : "text-neutral-400 dark:text-neutral-500"
+            }`}
+          >
+            {formatDate(metaDate)}
+          </span>
+        )}
+        {/* Size column — fixed width */}
+        {!isEditing && (
+          <span
+            className={`shrink-0 ${COL_SIZE_WIDTH} text-right text-[10px] tabular-nums ${
               isSelected
                 ? "text-indigo-200"
                 : "text-neutral-400 dark:text-neutral-500"
@@ -228,15 +302,6 @@ const TreeItemContent = forwardRef<
             {metaSize}
           </span>
         )}
-        <span
-          className={`shrink-0 w-17.5 text-right text-[10px] tabular-nums ${
-            isSelected
-              ? "text-indigo-200"
-              : "text-neutral-400 dark:text-neutral-500"
-          }`}
-        >
-          {formatDate(metaDate)}
-        </span>
       </div>
     );
   },

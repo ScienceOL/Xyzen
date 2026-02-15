@@ -1,14 +1,16 @@
-import { CHAT_THEMES } from "@/configs/chatThemes";
+import { getXyzenChatConfig } from "@/configs/chatThemes";
 
 import EditableTitle from "@/components/base/EditableTitle";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { ShareModal } from "@/components/modals/ShareModal";
+import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
 import type { Agent } from "@/types/agents";
 import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import ChatBubble from "./components/ChatBubble";
 import FloatingChatInput from "./components/FloatingChatInput";
@@ -25,7 +27,6 @@ const getThemeStyles = () => {
   return {
     agentBorder: "border-indigo-100 dark:border-indigo-900",
     agentName: "text-indigo-600 dark:text-indigo-400",
-    scrollButton: "bg-indigo-600 hover:bg-indigo-700",
   };
 };
 
@@ -61,6 +62,7 @@ const ThemedWelcomeMessage: React.FC<{
 };
 
 function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
+  const { t } = useTranslation();
   const {
     // State
     autoScroll,
@@ -99,6 +101,10 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     updateTopicName,
   } = useXyzenChat(config);
 
+  // Channel IDs for share modal
+  const { sessionId: channelSessionId, channelId: channelTopicId } =
+    useActiveChannelStatus();
+
   // State for share modal
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -132,10 +138,17 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-neutral-50 dark:bg-black custom-scrollbar"
             onScroll={handleScroll}
           >
-            {/* Sticky Frosted Header */}
+            {/* Sticky Frosted Header — scroll-driven animation (CSS) */}
             {currentAgent ? (
-              <div className="sticky top-0 z-10">
-                <div className="bg-gradient-to-b from-white/95 to-white/40 px-4 py-3 backdrop-blur-xl dark:from-neutral-950/95 dark:to-neutral-950/40">
+              <div
+                className="header-dock-anim sticky top-0 z-10 overflow-hidden bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-xl dark:from-neutral-950/90 dark:to-neutral-950/50"
+                style={{
+                  animation: "header-dock linear both",
+                  animationTimeline: "scroll(nearest)",
+                  animationRange: "0px 48px",
+                }}
+              >
+                <div className="px-4 py-3">
                   <div className="flex items-start gap-3">
                     <div className="relative mt-1 h-8 w-8 shrink-0">
                       <div className="avatar-glow">
@@ -188,19 +201,24 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                     <button
                       onClick={handleShowShareModal}
                       className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-white/30 dark:text-neutral-400 dark:hover:bg-white/10"
-                      title="分享对话"
+                      title={t("app.chatHeader.shareTooltip")}
                     >
                       <ShareIcon className="h-3.5 w-3.5" />
-                      <span>分享</span>
+                      <span>{t("app.chatHeader.share")}</span>
                     </button>
                   </div>
                 </div>
-                {/* Gradient fade-out edge */}
-                <div className="h-6 bg-gradient-to-b from-white/30 to-transparent pointer-events-none dark:from-neutral-950/30" />
               </div>
             ) : (
-              <div className="sticky top-0 z-10">
-                <div className="bg-gradient-to-b from-white/95 to-white/40 px-4 py-3 backdrop-blur-xl dark:from-neutral-950/95 dark:to-neutral-950/40">
+              <div
+                className="header-dock-anim sticky top-0 z-10 overflow-hidden bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-xl dark:from-neutral-950/90 dark:to-neutral-950/50"
+                style={{
+                  animation: "header-dock linear both",
+                  animationTimeline: "scroll(nearest)",
+                  animationRange: "0px 48px",
+                }}
+              >
+                <div className="px-4 py-3">
                   <EditableTitle
                     title={channelTitle || config.defaultTitle}
                     onSave={(newTitle) => {
@@ -217,8 +235,6 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                       config.emptyState.description}
                   </p>
                 </div>
-                {/* Gradient fade-out edge */}
-                <div className="h-6 bg-gradient-to-b from-white/30 to-transparent pointer-events-none dark:from-neutral-950/30" />
               </div>
             )}
 
@@ -262,7 +278,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
           {!autoScroll && messages.length > 0 && (
             <button
               onClick={handleScrollToBottom}
-              className={`absolute bottom-4 right-4 z-20 rounded-full p-2 text-white shadow-md transition-colors ${themeStyles.scrollButton}`}
+              className="absolute bottom-4 right-4 z-20 rounded-full p-2.5 text-neutral-700 backdrop-blur-xl bg-white/70 shadow-lg shadow-black/5 active:scale-90 transition-transform duration-150 dark:bg-neutral-900/70 dark:text-neutral-200 dark:shadow-black/20"
               aria-label="Scroll to bottom"
             >
               <svg
@@ -338,10 +354,14 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             ? { ...currentAgent, avatar: currentAgent.avatar ?? undefined }
             : undefined
         }
+        sessionId={channelSessionId}
+        topicId={channelTopicId}
       />
     </div>
   );
 }
 export default function XyzenChat() {
-  return <BaseChat config={CHAT_THEMES.xyzen} historyEnabled={true} />;
+  const { t } = useTranslation();
+  const config = useMemo(() => getXyzenChatConfig(t), [t]);
+  return <BaseChat config={config} historyEnabled={true} />;
 }

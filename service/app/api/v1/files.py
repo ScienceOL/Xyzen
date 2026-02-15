@@ -184,6 +184,7 @@ async def list_files(
     parent_id: UUID | None = None,
     filter_by_parent: bool = False,
     is_dir: bool | None = None,
+    knowledge_set_id: UUID | None = None,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[FileRead]:
@@ -217,6 +218,7 @@ async def list_files(
             parent_id=parent_id,
             use_parent_filter=filter_by_parent,
             is_dir=is_dir,
+            knowledge_set_id=knowledge_set_id,
         )
 
         return [FileRead(**file.model_dump()) for file in files]

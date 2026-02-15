@@ -109,7 +109,7 @@ export default function AgentMarketplaceDetail({
 
   const isOwner = useIsMarketplaceOwner(listing);
 
-  const shareUrl = `${window.location.origin}/#/agent/${marketplaceId}`;
+  const shareUrl = `${window.location.origin}/xyzen/og/agent/${marketplaceId}`;
 
   const handleBack = () => {
     onBack();

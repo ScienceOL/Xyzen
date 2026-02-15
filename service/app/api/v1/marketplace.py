@@ -22,7 +22,12 @@ from app.common.code import ErrCodeError, handle_auth_error
 from app.core.auth import AuthorizationService, get_auth_service
 from app.core.marketplace import AgentMarketplaceService
 from app.infra.database import get_session
-from app.middleware.auth import UserInfo, get_current_user, get_current_user_info
+from app.middleware.auth import (
+    UserInfo,
+    get_current_user,
+    get_current_user_info,
+    get_current_user_optional,
+)
 from app.models.agent import AgentRead, ForkMode
 from app.models.agent_marketplace import (
     AgentMarketplaceRead,
@@ -511,7 +516,7 @@ async def get_recently_published_listings(
 @router.get("/{marketplace_id}", response_model=AgentMarketplaceReadWithSnapshot)
 async def get_marketplace_listing(
     marketplace_id: UUID,
-    user_id: str | None = Depends(get_current_user),
+    user_id: str | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_session),
 ) -> AgentMarketplaceReadWithSnapshot:
     """

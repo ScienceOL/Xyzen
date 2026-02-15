@@ -19,6 +19,7 @@ from langchain_core.messages import AIMessage
 
 from app.schemas.chat_event_payloads import (
     CitationData,
+    ErrorData,
     GeneratedFileInfo,
     GeneratedFilesData,
     SearchCitationsData,
@@ -186,9 +187,22 @@ class StreamingEventHandler:
         return {"type": ChatEventType.PROCESSING, "data": {"status": status}}
 
     @staticmethod
-    def create_error_event(error: str) -> StreamingEvent:
-        """Create error event."""
-        return {"type": ChatEventType.ERROR, "data": {"error": error}}
+    def create_error_event(
+        error: str,
+        error_code: str | None = None,
+        error_category: str | None = None,
+        recoverable: bool = False,
+        detail: str | None = None,
+    ) -> StreamingEvent:
+        """Create error event with optional structured fields."""
+        data: ErrorData = {"error": error}
+        if error_code is not None:
+            data["error_code"] = error_code
+            data["error_category"] = error_category or error_code.split(".")[0]
+            data["recoverable"] = recoverable
+        if detail is not None:
+            data["detail"] = detail
+        return {"type": ChatEventType.ERROR, "data": data}
 
 
 class ThinkingEventHandler:

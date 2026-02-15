@@ -98,9 +98,11 @@
     },
     "actions": {
       "title": "操作",
-      "fork": "复刻此助手",
+      "fork": "使用此助手",
       "liked": "已点赞",
       "like": "点赞",
+      "loginToFork": "登录以使用",
+      "loginToLike": "登录以点赞",
       "manage": "管理助手",
       "shareTitle": "分享"
     },

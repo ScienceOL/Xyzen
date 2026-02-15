@@ -57,7 +57,7 @@ export default function ToolCallDetailsModal({
                         {toolCall.name}
                       </div>
                       <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                        Status: {toolCall.status}
+                        {t("app.chat.toolCall.status")}: {toolCall.status}
                       </div>
                     </div>
 

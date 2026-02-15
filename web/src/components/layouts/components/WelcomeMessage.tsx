@@ -1,12 +1,13 @@
 import { useXyzen } from "@/store";
 import { motion } from "framer-motion";
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ChatData {
   id: string;
   title: string;
-  assistant?: string; // 助手ID
-  assistant_name?: string; // 助手名称
+  assistant?: string;
+  assistant_name?: string;
   messages_count: number;
   last_message?: {
     content: string;
@@ -19,14 +20,14 @@ export interface ChatData {
 
 export interface Assistant {
   id: string;
-  key?: string; // 助手的唯一标识符
+  key?: string;
   title: string;
   description: string;
   iconType: string;
   iconColor: string;
   category: string;
-  avatar?: string; // Agent avatar URL
-  chats?: ChatData[]; // 与该助手的历史对话列表
+  avatar?: string;
+  chats?: ChatData[];
 }
 
 interface WelcomeMessageProps {
@@ -38,21 +39,26 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
   assistant,
   onQuickAction,
 }) => {
+  const { t } = useTranslation();
   // Get sendMessage from store for quick actions
   const sendMessage = useXyzen((state) => state.sendMessage);
 
   // Quick action suggestions
   const quickActions = [
-    { emoji: "👋", label: "Say hello", message: "Hello! Nice to meet you." },
+    {
+      emoji: "👋",
+      label: t("app.welcome.quickActions.sayHello"),
+      message: t("app.welcome.quickActions.sayHelloMessage"),
+    },
     {
       emoji: "💡",
-      label: "Ask a question",
-      message: "Can you help me with something?",
+      label: t("app.welcome.quickActions.askQuestion"),
+      message: t("app.welcome.quickActions.askQuestionMessage"),
     },
     {
       emoji: "📝",
-      label: "Start a task",
-      message: "I'd like to start a new task.",
+      label: t("app.welcome.quickActions.startTask"),
+      message: t("app.welcome.quickActions.startTaskMessage"),
     },
   ];
 
@@ -66,11 +72,11 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
 
   // Determine title and message based on whether an assistant is selected
   const title = assistant
-    ? `Start a conversation with ${assistant.title}`
-    : "欢迎使用自由对话";
+    ? t("app.welcome.titleWithAgent", { name: assistant.title })
+    : t("app.welcome.titleDefault");
   const description = assistant
-    ? assistant.description || "此助手没有任何描述"
-    : "您现在可以自由提问任何问题。无需选择特定助手，系统将根据您的问题提供合适的回复。";
+    ? assistant.description || t("app.welcome.noDescription")
+    : t("app.welcome.defaultDescription");
 
   return (
     <motion.div
@@ -117,7 +123,7 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
           {title}
           <img
             src="https://storage.sciol.ac.cn/library/docs/1f44b.webp"
-            alt="wave emoji"
+            alt="👋"
             className="inline-block h-6 w-6"
             loading="lazy"
           />
