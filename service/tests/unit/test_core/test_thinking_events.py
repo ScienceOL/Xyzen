@@ -33,14 +33,14 @@ class TestThinkingEventHandler:
         event = ThinkingEventHandler.create_thinking_start("stream_123")
 
         assert event["type"] == ChatEventType.THINKING_START
-        assert event["data"]["id"] == "stream_123"
+        assert event["data"]["stream_id"] == "stream_123"
 
     def test_create_thinking_chunk_event(self) -> None:
         """Verify thinking_chunk event has correct structure."""
         event = ThinkingEventHandler.create_thinking_chunk("stream_123", "Let me think...")
 
         assert event["type"] == ChatEventType.THINKING_CHUNK
-        assert event["data"]["id"] == "stream_123"
+        assert event["data"]["stream_id"] == "stream_123"
         assert event["data"]["content"] == "Let me think..."
 
     def test_create_thinking_end_event(self) -> None:
@@ -48,7 +48,7 @@ class TestThinkingEventHandler:
         event = ThinkingEventHandler.create_thinking_end("stream_123")
 
         assert event["type"] == ChatEventType.THINKING_END
-        assert event["data"]["id"] == "stream_123"
+        assert event["data"]["stream_id"] == "stream_123"
 
 
 class TestExtractThinkingContent:

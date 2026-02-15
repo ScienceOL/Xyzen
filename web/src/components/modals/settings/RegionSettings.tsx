@@ -26,7 +26,6 @@ interface RegionCardProps {
   features: FeatureItem[];
   paymentMethods: string[];
   gradient: string;
-  borderColor: string;
   iconBg: string;
 }
 
@@ -38,7 +37,6 @@ function RegionCard({
   features,
   paymentMethods,
   gradient,
-  borderColor,
   iconBg,
 }: RegionCardProps) {
   const { t } = useTranslation();
@@ -48,11 +46,11 @@ function RegionCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`relative flex flex-col rounded-2xl border-2 p-6 transition-all duration-300 ${
+      className={`relative flex flex-col rounded-2xl p-6 transition-all duration-300 ${
         isDisabled
-          ? "cursor-not-allowed border-neutral-200 bg-neutral-50 opacity-60 dark:border-neutral-800 dark:bg-neutral-900/50"
-          : `${borderColor} bg-white shadow-lg hover:shadow-xl dark:bg-neutral-900`
-      } ${isActive ? "ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-neutral-950" : ""}`}
+          ? "cursor-not-allowed bg-neutral-50 opacity-60 dark:bg-neutral-900/50"
+          : `bg-neutral-50 dark:bg-neutral-800/50`
+      } ${isActive ? "ring-2 ring-indigo-500 dark:ring-indigo-500" : ""}`}
     >
       {/* Active Badge */}
       {isActive && (
@@ -267,7 +265,6 @@ export function RegionSettings() {
           features={internationalFeatures}
           paymentMethods={["PayPal", t("settings.region.internationalCard")]}
           gradient="bg-gradient-to-r from-indigo-500 to-purple-500"
-          borderColor="border-indigo-200 dark:border-indigo-800/50"
           iconBg="bg-gradient-to-br from-indigo-500 to-purple-600"
         />
 
@@ -283,7 +280,6 @@ export function RegionSettings() {
             t("settings.region.alipay"),
           ]}
           gradient="bg-gradient-to-r from-emerald-500 to-teal-500"
-          borderColor="border-emerald-200 dark:border-emerald-800/50"
           iconBg="bg-gradient-to-br from-emerald-500 to-teal-600"
         />
       </div>
@@ -293,7 +289,7 @@ export function RegionSettings() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="mt-8 rounded-sm border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20"
+        className="mt-8 rounded-xl bg-blue-50/80 p-4 dark:bg-blue-900/20"
       >
         <div className="flex gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">

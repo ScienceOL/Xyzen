@@ -110,7 +110,12 @@ function ChatBubble({ message }: ChatBubbleProps) {
     isThinking,
     thinkingContent,
     agentExecution,
+    status,
   } = message;
+
+  // Derive active states from both status and legacy boolean flags
+  const isMessageLoading = status === "pending" || isLoading;
+  const isMessageStreaming = status === "streaming" || isStreaming;
 
   // Use deferred value and memoization to optimize rendering performance
   const deferredContent = useDeferredValue(content);
@@ -125,12 +130,15 @@ function ChatBubble({ message }: ChatBubbleProps) {
   // Edit state
   const isEditing = editingMessageId === message.id;
   const canEditUser =
-    isUserMessage && !channelResponding && !isLoading && !isStreaming;
+    isUserMessage &&
+    !channelResponding &&
+    !isMessageLoading &&
+    !isMessageStreaming;
   const canEditAssistant =
     !isUserMessage &&
     !channelResponding &&
-    !isLoading &&
-    !isStreaming &&
+    !isMessageLoading &&
+    !isMessageStreaming &&
     !isToolMessage;
 
   const handleEditClick = (mode: "edit_only" | "edit_and_regenerate") => {
@@ -273,7 +281,10 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   // Delete state - both user and assistant messages can be deleted
   const canDelete =
-    !channelResponding && !isLoading && !isStreaming && !isEditing;
+    !channelResponding &&
+    !isMessageLoading &&
+    !isMessageStreaming &&
+    !isEditing;
 
   const handleDeleteClick = async () => {
     await deleteMessage(message.id);
@@ -569,7 +580,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
                     }
                   })()}
 
-                {isStreaming && !isLoading && (
+                {isMessageStreaming && !isMessageLoading && (
                   <motion.span
                     animate={{ opacity: [0.3, 1, 0.3] }}
                     transition={{ duration: 1, repeat: Infinity }}
@@ -655,7 +666,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
         )}
 
         {/* Toolbar with timestamp - shown for assistant messages on hover */}
-        {!isUserMessage && !isLoading && !isEditing && (
+        {!isUserMessage && !isMessageLoading && !isEditing && (
           <div
             className={toolbarStyles}
             onTouchStart={handleToolbarInteraction}

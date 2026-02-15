@@ -48,6 +48,7 @@ async def get_ai_response_stream_langchain_legacy(
     connection_manager: "ChatPublisher | None" = None,
     connection_id: str | None = None,
     context: dict[str, Any] | None = None,
+    stream_id: str | None = None,
 ) -> AsyncGenerator[StreamingEvent, None]:
     """
     Get a streaming response using LangChain Agent.
@@ -97,7 +98,7 @@ async def get_ai_response_stream_langchain_legacy(
     logger.info("System prompt provenance: %s", prompt_build.provenance)
 
     # Emit processing status
-    yield StreamingEventHandler.create_processing_event()
+    yield StreamingEventHandler.create_processing_event(stream_id=stream_id)
 
     try:
         # Create LangChain agent
@@ -113,11 +114,15 @@ async def get_ai_response_stream_langchain_legacy(
 
         # Initialize stream context
         ctx = StreamContext(
-            stream_id=f"stream_{int(asyncio.get_event_loop().time() * 1000)}",
+            stream_id=stream_id or f"stream_{int(asyncio.get_event_loop().time() * 1000)}",
             db=db,
             user_id=user_id,
             event_ctx=event_ctx,
         )
+
+        # Propagate stream_id to event context so all agent events include it
+        if event_ctx:
+            event_ctx.stream_id = ctx.stream_id
 
         # Load conversation history
         history_messages = await load_conversation_history(db, topic)
@@ -127,7 +132,7 @@ async def get_ai_response_stream_langchain_legacy(
             yield event
 
     except Exception as e:
-        yield _handle_streaming_error(e, user_id)
+        yield _handle_streaming_error(e, user_id, stream_id=stream_id)
 
 
 async def _resolve_agent(db: AsyncSession, agent: "Agent | None", topic: TopicModel) -> "Agent | None":
@@ -828,7 +833,7 @@ async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> As
             )
 
 
-def _handle_streaming_error(e: Exception, user_id: str) -> StreamingEvent:
+def _handle_streaming_error(e: Exception, user_id: str, stream_id: str | None = None) -> StreamingEvent:
     """Handle and format streaming errors using structured ChatErrorCode."""
     from app.common.code.chat_error_code import classify_exception
 
@@ -844,4 +849,5 @@ def _handle_streaming_error(e: Exception, user_id: str) -> StreamingEvent:
         error_code=code.value,
         error_category=code.category,
         recoverable=code.recoverable,
+        stream_id=stream_id,
     )

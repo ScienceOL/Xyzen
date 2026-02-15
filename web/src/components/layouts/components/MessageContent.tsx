@@ -8,11 +8,11 @@ interface MessageContentProps {
 }
 
 export default function MessageContent({ message }: MessageContentProps) {
-  const { role, content, isLoading } = message;
+  const { role, content, isLoading, status } = message;
 
   const isUserMessage = role === "user";
 
-  if (isLoading) {
+  if (status === "pending" || isLoading) {
     return <LoadingMessage size="medium" className="text-sm" />;
   }
 

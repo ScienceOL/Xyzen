@@ -46,6 +46,8 @@ class FileTreeItem(SQLModel):
     is_dir: bool = False
     file_size: int = 0
     content_type: str | None = None
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -149,6 +151,7 @@ async def list_folders(
 @router.get("/tree", response_model=list[FileTreeItem])
 async def get_folder_tree(
     knowledge_set_id: UUID | None = None,
+    only_deleted: bool = False,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[FileTreeItem]:
@@ -161,7 +164,10 @@ async def get_folder_tree(
     cache-consistency bugs.
 
     Items are sorted: folders first (alphabetical), then files (alphabetical).
-    Soft-deleted items are excluded.
+    Soft-deleted items are excluded by default.
+
+    When ``only_deleted`` is True, only soft-deleted items are returned (for
+    the trash tree view).
 
     When ``knowledge_set_id`` is provided, only items linked to that knowledge
     set are returned.
@@ -171,6 +177,7 @@ async def get_folder_tree(
         items = await file_repo.get_all_items(
             user_id=user_id,
             include_deleted=False,
+            only_deleted=only_deleted,
             knowledge_set_id=knowledge_set_id,
         )
         return [
@@ -181,6 +188,8 @@ async def get_folder_tree(
                 is_dir=f.is_dir,
                 file_size=f.file_size,
                 content_type=f.content_type,
+                is_deleted=f.is_deleted,
+                deleted_at=f.deleted_at,
                 created_at=f.created_at,
                 updated_at=f.updated_at,
             )
@@ -343,7 +352,7 @@ async def delete_folder(
             if storage_keys:
                 await storage.delete_files(storage_keys)
         else:
-            await file_repo.soft_delete_file(folder_id)
+            await file_repo.soft_delete_recursive(folder_id, user_id)
 
         await db.commit()
 

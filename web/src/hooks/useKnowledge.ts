@@ -10,10 +10,14 @@ export function useKnowledge() {
     knowledgeTreeItems,
     knowledgeTreeLoading,
     knowledgeTreeSignal,
+    trashTreeItems,
+    trashTreeLoading,
     navigateKnowledge,
     setKnowledgeFolderId,
     fetchKnowledgeTree,
     refreshKnowledge,
+    removeTreeItems,
+    renameTreeItem,
   } = useXyzen(
     useShallow((s) => ({
       knowledgeActiveTab: s.knowledgeActiveTab,
@@ -22,16 +26,24 @@ export function useKnowledge() {
       knowledgeTreeItems: s.knowledgeTreeItems,
       knowledgeTreeLoading: s.knowledgeTreeLoading,
       knowledgeTreeSignal: s.knowledgeTreeSignal,
+      trashTreeItems: s.trashTreeItems,
+      trashTreeLoading: s.trashTreeLoading,
       navigateKnowledge: s.navigateKnowledge,
       setKnowledgeFolderId: s.setKnowledgeFolderId,
       fetchKnowledgeTree: s.fetchKnowledgeTree,
       refreshKnowledge: s.refreshKnowledge,
+      removeTreeItems: s.removeTreeItems,
+      renameTreeItem: s.renameTreeItem,
     })),
   );
 
   // Auto-fetch tree when tab/knowledgeSetId/signal changes
   useEffect(() => {
-    if (knowledgeActiveTab === "all" || knowledgeActiveTab === "knowledge") {
+    if (
+      knowledgeActiveTab === "all" ||
+      knowledgeActiveTab === "knowledge" ||
+      knowledgeActiveTab === "trash"
+    ) {
       fetchKnowledgeTree();
     }
   }, [
@@ -48,9 +60,13 @@ export function useKnowledge() {
     knowledgeTreeItems,
     knowledgeTreeLoading,
     knowledgeTreeSignal,
+    trashTreeItems,
+    trashTreeLoading,
     navigateKnowledge,
     setKnowledgeFolderId,
     fetchKnowledgeTree,
     refreshKnowledge,
+    removeTreeItems,
+    renameTreeItem,
   };
 }

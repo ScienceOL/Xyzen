@@ -854,7 +854,11 @@ async def restore_file(
     db: AsyncSession = Depends(get_session),
 ) -> FileRead:
     """
-    Restore a soft-deleted file.
+    Restore a soft-deleted file or folder.
+
+    For folders, restores the folder and all its descendants recursively.
+    If the item's parent no longer exists or is still deleted, the item
+    is moved to root.
 
     Args:
         file_id: File UUID
@@ -878,8 +882,20 @@ async def restore_file(
         if file_record.user_id != user_id:
             raise ErrCode.FILE_ACCESS_DENIED.with_messages("You don't have access to this file")
 
-        # Restore file
-        success = await file_repo.restore_file(file_id)
+        # Check if parent still exists and is not deleted; if not, move to root
+        if file_record.parent_id:
+            parent = await file_repo.get_file_by_id(file_record.parent_id)
+            if not parent or parent.is_deleted:
+                file_record.parent_id = None
+                db.add(file_record)
+                await db.flush()
+
+        # Use recursive restore for folders, simple restore for files
+        if file_record.is_dir:
+            success = await file_repo.restore_recursive(file_id, user_id)
+        else:
+            success = await file_repo.restore_file(file_id)
+
         if not success:
             raise ErrCode.FILE_NOT_FOUND.with_messages(f"File {file_id} not found")
 
@@ -899,6 +915,39 @@ async def restore_file(
         raise handle_auth_error(e)
     except Exception as e:
         logger.error(f"Unexpected error restoring file {file_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.post("/empty-trash")
+async def empty_trash(
+    user_id: str = Depends(get_current_user),
+    storage: StorageServiceProto = Depends(get_storage_service),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """
+    Permanently delete all items in the trash for the current user.
+
+    Returns:
+        dict with deleted_count
+    """
+    try:
+        file_repo = FileRepository(db)
+        deleted_count, storage_keys = await file_repo.empty_trash(user_id)
+
+        if storage_keys:
+            await storage.delete_files(storage_keys)
+
+        await db.commit()
+
+        logger.info(f"Emptied trash for user {user_id}: {deleted_count} items deleted")
+
+        return {"deleted_count": deleted_count}
+
+    except Exception as e:
+        logger.error(f"Failed to empty trash for user {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),

@@ -181,8 +181,9 @@ export const createChatSlice: StateCreator<
     streamId: string,
     executionId?: string,
   ): number => {
+    // Primary: match by streamId field or id
     const byStreamId = channel.messages.findLastIndex(
-      (m) => m.id === streamId || m.streamId === streamId,
+      (m) => m.streamId === streamId || m.id === streamId,
     );
     if (byStreamId !== -1) {
       return byStreamId;
@@ -197,6 +198,16 @@ export const createChatSlice: StateCreator<
       }
     }
 
+    // Fallback: last pending assistant message (backward compat for events without stream_id)
+    for (let i = channel.messages.length - 1; i >= 0; i--) {
+      if (
+        channel.messages[i].role === "assistant" &&
+        channel.messages[i].status === "pending"
+      ) {
+        return i;
+      }
+    }
+
     const runningAgentIndices = channel.messages
       .map((m, index) => (m.agentExecution?.status === "running" ? index : -1))
       .filter((index) => index !== -1);
@@ -206,8 +217,10 @@ export const createChatSlice: StateCreator<
   const clearMessageTransientState = (message: ChatMessage): void => {
     delete message.isLoading;
     delete message.isStreaming;
-    delete message.streamId;
     message.isThinking = false;
+    if (message.status !== "failed" && message.status !== "cancelled") {
+      message.status = "completed";
+    }
   };
 
   const finalizeExecutionPhases = (
@@ -301,8 +314,17 @@ export const createChatSlice: StateCreator<
       return;
     }
 
-    // Runtime/transient flags are only considered on the latest assistant message.
-    // Old stale flags from previous turns should not keep the topic running forever.
+    // Use status field for active state detection
+    if (
+      latestAssistant.status === "pending" ||
+      latestAssistant.status === "streaming" ||
+      latestAssistant.status === "thinking"
+    ) {
+      channel.responding = true;
+      return;
+    }
+
+    // Also check legacy boolean flags for backward compatibility
     if (
       latestAssistant.isLoading ||
       latestAssistant.isStreaming ||
@@ -658,6 +680,9 @@ export const createChatSlice: StateCreator<
         if (!hasLiveWs) {
           const hasUnresolvedRuntimeState = channel.messages.some((m) =>
             Boolean(
+              m.status === "pending" ||
+              m.status === "streaming" ||
+              m.status === "thinking" ||
               m.isLoading ||
               m.isStreaming ||
               m.isThinking ||
@@ -836,11 +861,13 @@ export const createChatSlice: StateCreator<
                   role: "assistant" as const,
                   content: chunk.content,
                   created_at: new Date().toISOString(),
+                  status: "streaming",
                   isStreaming: true,
                 });
               } else {
                 const msg = channel.messages[streamingIndex];
                 msg.streamId = chunk.id;
+                msg.status = "streaming";
                 msg.isStreaming = true;
                 msg.isThinking = false;
 
@@ -920,13 +947,13 @@ export const createChatSlice: StateCreator<
         // --- Hot-path: buffer chunk events and flush at rAF cadence ---
         if (event.type === "streaming_chunk") {
           const eventData = event.data as {
-            id: string;
+            stream_id: string;
             content: string;
             execution_id?: string;
           };
           chunkBuffer.push({
             type: "streaming",
-            id: eventData.id,
+            id: eventData.stream_id,
             content: eventData.content,
             execution_id: eventData.execution_id,
           });
@@ -935,10 +962,13 @@ export const createChatSlice: StateCreator<
         }
 
         if (event.type === "thinking_chunk") {
-          const eventData = event.data as { id: string; content: string };
+          const eventData = event.data as {
+            stream_id: string;
+            content: string;
+          };
           chunkBuffer.push({
             type: "thinking",
-            id: eventData.id,
+            id: eventData.stream_id,
             content: eventData.content,
           });
           scheduleFlush();
@@ -962,18 +992,37 @@ export const createChatSlice: StateCreator<
             case "processing": {
               // Treat backend "processing" as our existing "loading" state
               channel.responding = true;
-              const loadingMessageId = `loading-${Date.now()}`;
+              const eventData = event.data as {
+                status?: string;
+                stream_id?: string;
+              };
+              const streamId = eventData.stream_id;
+
+              // If stream_id is provided, try to find existing message
+              if (streamId) {
+                const existingIndex = findMessageIndexByStream(
+                  channel,
+                  streamId,
+                );
+                if (existingIndex !== -1) {
+                  break; // Message already exists
+                }
+              }
+
               const existingLoadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
+                (m) => m.status === "pending" || m.isLoading,
               );
 
               if (existingLoadingIndex === -1) {
+                const loadingMessageId = streamId || `loading-${Date.now()}`;
                 channel.messages.push({
                   id: loadingMessageId,
+                  streamId: streamId,
                   clientId: generateClientId(),
                   role: "assistant" as const,
                   content: "",
                   created_at: new Date().toISOString(),
+                  status: "pending",
                   isLoading: true,
                   isStreaming: false,
                   isNewMessage: true,
@@ -984,19 +1033,38 @@ export const createChatSlice: StateCreator<
             case "loading": {
               // Add or update loading message
               channel.responding = true;
-              const loadingMessageId = `loading-${Date.now()}`;
+              const eventData = event.data as {
+                message?: string;
+                stream_id?: string;
+              };
+              const streamId = eventData.stream_id;
+
+              // If stream_id is provided, try to find existing message
+              if (streamId) {
+                const existingIndex = findMessageIndexByStream(
+                  channel,
+                  streamId,
+                );
+                if (existingIndex !== -1) {
+                  break; // Message already exists
+                }
+              }
+
               const existingLoadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
+                (m) => m.status === "pending" || m.isLoading,
               );
 
               if (existingLoadingIndex === -1) {
                 // Add new loading message
+                const loadingMessageId = streamId || `loading-${Date.now()}`;
                 channel.messages.push({
                   id: loadingMessageId,
+                  streamId: streamId,
                   clientId: generateClientId(),
                   role: "assistant" as const,
                   content: "",
                   created_at: new Date().toISOString(),
+                  status: "pending",
                   isLoading: true,
                   isStreaming: false,
                   isNewMessage: true,
@@ -1009,20 +1077,22 @@ export const createChatSlice: StateCreator<
               // Convert loading or thinking message to streaming message
               channel.responding = true;
               const eventData = event.data as {
-                id: string;
+                stream_id: string;
                 execution_id?: string;
               };
 
               // First try deterministic stream/execution lookup (handles concurrent streams correctly)
               let targetIndex = findMessageIndexByStream(
                 channel,
-                eventData.id,
+                eventData.stream_id,
                 eventData.execution_id,
               );
 
               // Then fallback to loading message conversion
               if (targetIndex === -1) {
-                targetIndex = channel.messages.findIndex((m) => m.isLoading);
+                targetIndex = channel.messages.findIndex(
+                  (m) => m.status === "pending" || m.isLoading,
+                );
               }
 
               if (targetIndex !== -1) {
@@ -1032,9 +1102,10 @@ export const createChatSlice: StateCreator<
                   isLoading?: boolean;
                 };
                 delete targetMessage.isLoading;
-                targetMessage.id = eventData.id;
-                targetMessage.streamId = eventData.id;
+                targetMessage.id = eventData.stream_id;
+                targetMessage.streamId = eventData.stream_id;
                 targetMessage.isThinking = false;
+                targetMessage.status = "streaming";
                 targetMessage.isStreaming = true;
                 if (!targetMessage.content) {
                   targetMessage.content = "";
@@ -1045,13 +1116,14 @@ export const createChatSlice: StateCreator<
 
               // No message found, create a streaming message now
               channel.messages.push({
-                id: eventData.id,
-                streamId: eventData.id,
+                id: eventData.stream_id,
+                streamId: eventData.stream_id,
                 clientId: generateClientId(),
                 role: "assistant" as const,
                 content: "",
                 isNewMessage: true,
                 created_at: new Date().toISOString(),
+                status: "streaming",
                 isStreaming: true,
               });
               break;
@@ -1060,20 +1132,22 @@ export const createChatSlice: StateCreator<
             case "streaming_end": {
               // Finalize streaming message
               const eventData = event.data as {
-                id: string;
+                stream_id: string;
                 created_at?: string;
                 execution_id?: string;
               };
 
               let endingIndex = findMessageIndexByStream(
                 channel,
-                eventData.id,
+                eventData.stream_id,
                 eventData.execution_id,
               );
 
               if (endingIndex === -1) {
                 const streamingIndices = channel.messages
-                  .map((m, idx) => (m.isStreaming ? idx : -1))
+                  .map((m, idx) =>
+                    m.status === "streaming" || m.isStreaming ? idx : -1,
+                  )
                   .filter((idx) => idx !== -1);
                 endingIndex =
                   streamingIndices.length === 1 ? streamingIndices[0] : -1;
@@ -1125,6 +1199,7 @@ export const createChatSlice: StateCreator<
               if (!channel.messages.some((m) => m.id === regularMessage.id)) {
                 channel.messages.push({
                   ...regularMessage,
+                  status: regularMessage.status || "completed",
                   isNewMessage: true,
                 });
               }
@@ -1250,13 +1325,28 @@ export const createChatSlice: StateCreator<
                 db_id: string;
                 created_at: string;
               };
-              const messageIndex = channel.messages.findIndex(
-                (m) =>
-                  m.id === eventData.stream_id ||
-                  m.streamId === eventData.stream_id,
+              let messageIndex = findMessageIndexByStream(
+                channel,
+                eventData.stream_id,
               );
+
+              // Fallback: when error occurs before streaming_start, the frontend
+              // message has a temporary id (e.g. "loading-xxx" or "error-xxx")
+              // that won't match the stream_id (which is a UUID from the backend).
+              // Find the most recent assistant error message with a non-UUID id.
+              if (messageIndex === -1) {
+                for (let i = channel.messages.length - 1; i >= 0; i--) {
+                  const m = channel.messages[i];
+                  if (m.role === "assistant" && m.error && !isValidUuid(m.id)) {
+                    messageIndex = i;
+                    break;
+                  }
+                }
+              }
+
               if (messageIndex !== -1) {
                 const savedMessage = channel.messages[messageIndex];
+                savedMessage.dbId = eventData.db_id;
                 savedMessage.id = eventData.db_id;
                 savedMessage.created_at = eventData.created_at;
 
@@ -1283,7 +1373,7 @@ export const createChatSlice: StateCreator<
 
               // Clear any existing loading messages
               const loadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
+                (m) => m.status === "pending" || m.isLoading,
               );
               if (loadingIndex !== -1) {
                 channel.messages.splice(loadingIndex, 1);
@@ -1349,6 +1439,7 @@ export const createChatSlice: StateCreator<
                 role: "assistant" as const,
                 content: "",
                 created_at: new Date().toISOString(),
+                status: "streaming" as const,
                 isLoading: false,
                 isStreaming: false,
                 isNewMessage: true,
@@ -1431,7 +1522,7 @@ export const createChatSlice: StateCreator<
             }
 
             case "error": {
-              // Handle error - remove loading messages and show structured error
+              // Handle error - replace loading/streaming message with structured error
               channel.responding = false;
               const errorData = event.data as {
                 error: string;
@@ -1439,6 +1530,7 @@ export const createChatSlice: StateCreator<
                 error_category?: string;
                 recoverable?: boolean;
                 detail?: string;
+                stream_id?: string;
               };
 
               const messageError = errorData.error_code
@@ -1458,26 +1550,66 @@ export const createChatSlice: StateCreator<
                     recoverable: false,
                   };
 
-              const errorLoadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
-              );
+              // Find target using stream_id first, then fallback
+              let targetIndex = -1;
+              if (errorData.stream_id) {
+                targetIndex = findMessageIndexByStream(
+                  channel,
+                  errorData.stream_id,
+                );
+              }
+              if (targetIndex === -1) {
+                targetIndex = channel.messages.findIndex(
+                  (m) => m.status === "pending" || m.isLoading,
+                );
+              }
+              if (targetIndex === -1) {
+                for (let i = channel.messages.length - 1; i >= 0; i--) {
+                  const m = channel.messages[i];
+                  if (
+                    m.role === "assistant" &&
+                    (m.status === "streaming" || m.isStreaming)
+                  ) {
+                    targetIndex = i;
+                    break;
+                  }
+                }
+              }
+              if (targetIndex === -1) {
+                // agent_start may have consumed the loading message and created
+                // an agent execution message (no isLoading, no isStreaming).
+                for (let i = channel.messages.length - 1; i >= 0; i--) {
+                  const m = channel.messages[i];
+                  if (
+                    m.role === "assistant" &&
+                    m.agentExecution?.status === "running"
+                  ) {
+                    targetIndex = i;
+                    break;
+                  }
+                }
+              }
 
-              if (errorLoadingIndex !== -1) {
-                channel.messages[errorLoadingIndex] = {
-                  ...channel.messages[errorLoadingIndex],
+              if (targetIndex !== -1) {
+                channel.messages[targetIndex] = {
+                  ...channel.messages[targetIndex],
                   content: "",
+                  status: "failed",
                   isLoading: false,
                   isStreaming: false,
                   error: messageError,
                 };
               } else {
-                const errorMessageId = `error-${Date.now()}`;
+                const errorMessageId =
+                  errorData.stream_id || `error-${Date.now()}`;
                 channel.messages.push({
                   id: errorMessageId,
+                  streamId: errorData.stream_id,
                   clientId: generateClientId(),
                   role: "assistant",
                   content: "",
                   created_at: new Date().toISOString(),
+                  status: "failed",
                   isNewMessage: true,
                   error: messageError,
                 });
@@ -1498,6 +1630,7 @@ export const createChatSlice: StateCreator<
                 message_cn?: string;
                 details?: Record<string, unknown>;
                 action_required?: string;
+                stream_id?: string;
               };
 
               console.warn("Insufficient balance:", balanceData);
@@ -1505,14 +1638,25 @@ export const createChatSlice: StateCreator<
               // Reset responding state to unblock input
               channel.responding = false;
 
-              // Update loading message to show structured error
-              const balanceLoadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
-              );
+              // Find target using stream_id first, then fallback
+              let balanceLoadingIndex = -1;
+              if (balanceData.stream_id) {
+                balanceLoadingIndex = findMessageIndexByStream(
+                  channel,
+                  balanceData.stream_id,
+                );
+              }
+              if (balanceLoadingIndex === -1) {
+                balanceLoadingIndex = channel.messages.findIndex(
+                  (m) => m.status === "pending" || m.isLoading,
+                );
+              }
+
               if (balanceLoadingIndex !== -1) {
                 channel.messages[balanceLoadingIndex] = {
                   ...channel.messages[balanceLoadingIndex],
                   content: "",
+                  status: "failed",
                   isLoading: false,
                   isStreaming: false,
                   error: {
@@ -1558,7 +1702,7 @@ export const createChatSlice: StateCreator<
 
               // Remove loading message
               const limitLoadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
+                (m) => m.status === "pending" || m.isLoading,
               );
               if (limitLoadingIndex !== -1) {
                 channel.messages.splice(limitLoadingIndex, 1);
@@ -1597,10 +1741,11 @@ export const createChatSlice: StateCreator<
 
               // Find any streaming message and finalize it
               const streamingIndex = channel.messages.findIndex(
-                (m) => m.isStreaming,
+                (m) => m.status === "streaming" || m.isStreaming,
               );
               if (streamingIndex !== -1) {
                 channel.messages[streamingIndex].isStreaming = false;
+                channel.messages[streamingIndex].status = "cancelled";
               }
 
               // Handle running agent execution - mark as cancelled
@@ -1627,7 +1772,7 @@ export const createChatSlice: StateCreator<
               // Handle loading message - convert to cancelled message instead of removing
               // This ensures the abort indicator shows even when streaming hasn't started
               const loadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
+                (m) => m.status === "pending" || m.isLoading,
               );
               if (loadingIndex !== -1) {
                 // Convert loading message to a cancelled agent execution message
@@ -1637,6 +1782,7 @@ export const createChatSlice: StateCreator<
                 channel.messages[loadingIndex] = {
                   ...messageWithoutLoading,
                   id: `aborted-${Date.now()}`,
+                  status: "cancelled",
                   agentExecution: {
                     agentId: "",
                     agentName: "",
@@ -1657,11 +1803,11 @@ export const createChatSlice: StateCreator<
             case "thinking_start": {
               // Start thinking mode - find or create the assistant message
               channel.responding = true;
-              const eventData = event.data as { id: string };
+              const eventData = event.data as { stream_id: string };
 
               // First check for loading message
               const loadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
+                (m) => m.status === "pending" || m.isLoading,
               );
               if (loadingIndex !== -1) {
                 // Convert loading message to thinking message
@@ -1670,7 +1816,8 @@ export const createChatSlice: StateCreator<
                   channel.messages[loadingIndex];
                 channel.messages[loadingIndex] = {
                   ...messageWithoutLoading,
-                  id: eventData.id,
+                  id: eventData.stream_id,
+                  status: "thinking",
                   isThinking: true,
                   thinkingContent: "",
                   content: "",
@@ -1687,6 +1834,7 @@ export const createChatSlice: StateCreator<
                 // Attach thinking to the agent execution message
                 channel.messages[agentMsgIndex] = {
                   ...channel.messages[agentMsgIndex],
+                  status: "thinking",
                   isThinking: true,
                   thinkingContent: "",
                 };
@@ -1695,12 +1843,13 @@ export const createChatSlice: StateCreator<
 
               // Fallback: No loading or agent message, create a thinking message
               channel.messages.push({
-                id: eventData.id,
+                id: eventData.stream_id,
                 clientId: `thinking-${Date.now()}`,
                 role: "assistant" as const,
                 content: "",
                 isNewMessage: true,
                 created_at: new Date().toISOString(),
+                status: "thinking",
                 isThinking: true,
                 thinkingContent: "",
               });
@@ -1709,11 +1858,11 @@ export const createChatSlice: StateCreator<
 
             case "thinking_end": {
               // End thinking mode
-              const eventData = event.data as { id: string };
+              const eventData = event.data as { stream_id: string };
 
               // Try to find by ID first
               let endThinkingIndex = channel.messages.findIndex(
-                (m) => m.id === eventData.id,
+                (m) => m.id === eventData.stream_id,
               );
 
               // If not found by ID, check for agent message with isThinking
@@ -1754,11 +1903,19 @@ export const createChatSlice: StateCreator<
               const data = event.data as AgentStartData;
               const { context } = data;
 
-              // Find or create a message for this agent execution
-              // First check for existing loading message
-              const loadingIndex = channel.messages.findIndex(
-                (m) => m.isLoading,
-              );
+              // Find message using stream_id from context, or fallback to loading message
+              let loadingIndex = -1;
+              if (context.stream_id) {
+                loadingIndex = findMessageIndexByStream(
+                  channel,
+                  context.stream_id,
+                );
+              }
+              if (loadingIndex === -1) {
+                loadingIndex = channel.messages.findIndex(
+                  (m) => m.status === "pending" || m.isLoading,
+                );
+              }
 
               const executionState: AgentExecutionState = {
                 agentId: context.agent_id,
@@ -1779,16 +1936,19 @@ export const createChatSlice: StateCreator<
                 channel.messages[loadingIndex] = {
                   ...messageWithoutLoading,
                   id: `agent-${context.execution_id}`,
+                  status: "pending",
                   agentExecution: executionState,
                 };
               } else {
                 // Create a new message with agent execution
                 channel.messages.push({
                   id: `agent-${context.execution_id}`,
+                  streamId: context.stream_id,
                   clientId: generateClientId(),
                   role: "assistant" as const,
                   content: "",
                   created_at: new Date().toISOString(),
+                  status: "pending",
                   isNewMessage: true,
                   agentExecution: executionState,
                 });
@@ -2043,6 +2203,7 @@ export const createChatSlice: StateCreator<
             if (!channel.messages.some((m) => m.id === message.id)) {
               channel.messages.push({
                 ...message,
+                status: message.status || "completed",
                 isNewMessage: true,
               });
             }
@@ -2069,6 +2230,9 @@ export const createChatSlice: StateCreator<
 
         const hasStaleState = channel.messages.some((m) =>
           Boolean(
+            m.status === "pending" ||
+            m.status === "streaming" ||
+            m.status === "thinking" ||
             m.isLoading ||
             m.isStreaming ||
             m.isThinking ||

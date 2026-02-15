@@ -77,6 +77,8 @@ interface SortableTreeProps {
   onFolderCreated?: (name: string, parentId: string | null) => Promise<void>;
   /** Called after drag-end to trigger a refetch from the store. */
   onRefresh?: () => void;
+  /** When true, disables drag-drop and folder creation (trash view) */
+  isTrashView?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +129,7 @@ const SortableTreeComp = React.forwardRef<
       onDropOnFolder,
       onFolderCreated,
       onRefresh,
+      isTrashView,
     },
     ref,
   ) => {
@@ -218,7 +221,9 @@ const SortableTreeComp = React.forwardRef<
 
     const sensors = useSensors(
       useSensor(PointerSensor, {
-        activationConstraint: { distance: 8 },
+        activationConstraint: isTrashView
+          ? { distance: Infinity }
+          : { distance: 8 },
       }),
     );
 
@@ -434,6 +439,8 @@ const SortableTreeComp = React.forwardRef<
       ref,
       () => ({
         createFolder: (parentId: string | null) => {
+          // Disable folder creation in trash view
+          if (isTrashView) return;
           // Remove any existing temp node first
           setItems((prev) => {
             const cleaned = removeItem(prev, TEMP_FOLDER_ID);
@@ -475,7 +482,7 @@ const SortableTreeComp = React.forwardRef<
           setEditingId(TEMP_FOLDER_ID);
         },
       }),
-      [],
+      [isTrashView],
     );
 
     // ===== Loading state =====

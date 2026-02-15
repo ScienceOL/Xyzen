@@ -4,8 +4,8 @@ import NotificationModal from "@/components/modals/NotificationModal";
 import { PreviewModal } from "@/components/preview/PreviewModal";
 import type { PreviewFile } from "@/components/preview/types";
 import { fileService, type FileUploadResponse } from "@/service/fileService";
-import { folderService, type Folder } from "@/service/folderService";
 import type { FileTreeItem } from "@/service/folderService";
+import { folderService, type Folder } from "@/service/folderService";
 import {
   knowledgeSetService,
   type KnowledgeSetWithFileCount,
@@ -13,7 +13,6 @@ import {
 import { useXyzen } from "@/store";
 import {
   ArrowDownTrayIcon,
-  ArrowPathRoundedSquareIcon,
   ArrowUpTrayIcon,
   DocumentIcon,
   EyeIcon,
@@ -39,8 +38,8 @@ import { FileIcon } from "./FileIcon";
 import {
   DRAG_MIME,
   FileTreeView,
-  type FileTreeViewHandle,
   getDragContext,
+  type FileTreeViewHandle,
 } from "./FileTreeView";
 import { ImageThumbnail } from "./ImageThumbnail";
 import { MoveToModal } from "./MoveToModal";
@@ -64,6 +63,10 @@ interface FileListProps {
   treeLoading?: boolean;
   /** Called to trigger a tree refetch in the store */
   onRefreshTree?: () => void;
+  /** Optimistically remove items from the tree */
+  removeTreeItems?: (ids: string[]) => void;
+  /** Optimistically rename an item in the tree */
+  renameTreeItem?: (id: string, newName: string) => void;
 }
 
 export interface FileListHandle {
@@ -90,6 +93,25 @@ const isImageFile = (mimeType: string, filename: string) => {
   );
 };
 
+/**
+ * Collect all descendant IDs of a given root item from a flat tree list.
+ * Uses BFS to find children by parent_id.
+ */
+function collectDescendantIds(items: FileTreeItem[], rootId: string): string[] {
+  const ids: string[] = [];
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const parentId = queue.shift()!;
+    for (const item of items) {
+      if (item.parent_id === parentId) {
+        ids.push(item.id);
+        if (item.is_dir) queue.push(item.id);
+      }
+    }
+  }
+  return ids;
+}
+
 export const FileList = React.memo(
   forwardRef<FileListHandle, FileListProps>(
     (
@@ -109,6 +131,8 @@ export const FileList = React.memo(
         treeItems = [],
         treeLoading = false,
         onRefreshTree,
+        removeTreeItems,
+        renameTreeItem,
       },
       ref,
     ) => {
@@ -119,7 +143,9 @@ export const FileList = React.memo(
 
       // Notify parent when loading state changes
       const effectiveLoading =
-        filter === "all" || filter === "knowledge" ? treeLoading : isLoading;
+        filter === "all" || filter === "knowledge" || filter === "trash"
+          ? treeLoading
+          : isLoading;
       useEffect(() => {
         onLoadingChange?.(effectiveLoading);
       }, [effectiveLoading, onLoadingChange]);
@@ -248,7 +274,12 @@ export const FileList = React.memo(
             );
             setSelectedIds(new Set());
             // For tree tabs, refresh via the store; for other tabs, reload locally
-            if ((filter === "all" || filter === "knowledge") && onRefreshTree) {
+            if (
+              (filter === "all" ||
+                filter === "knowledge" ||
+                filter === "trash") &&
+              onRefreshTree
+            ) {
               onRefreshTree();
             } else {
               loadFilesRef.current();
@@ -506,69 +537,51 @@ export const FileList = React.memo(
             treeViewRef.current?.createFolder(parentId);
           },
           emptyTrash: async () => {
-            // Use refs to get the latest values (avoid stale closure issues)
-            const currentFiles = filesRef.current;
-            const currentFolders = foldersRef.current;
-
-            if (currentFiles.length === 0 && currentFolders.length === 0)
-              return;
-            const count = currentFiles.length + currentFolders.length;
-
-            // Create copies to use in the confirmation callback
-            const filesToDelete = [...currentFiles];
-            const foldersToDelete = [...currentFolders];
+            // For tree-based trash, use treeItems count
+            const itemCount = treeItems.length;
+            if (itemCount === 0) return;
 
             setConfirmation({
               isOpen: true,
               title: t("knowledge.fileList.emptyTrash.title"),
               message: t("knowledge.fileList.emptyTrash.message", {
-                count,
+                count: itemCount,
               }),
               confirmLabel: t("knowledge.fileList.emptyTrash.confirm"),
               destructive: true,
               onConfirm: async () => {
+                // Optimistic: clear trash tree immediately
+                if (removeTreeItems) {
+                  removeTreeItems(treeItems.map((i) => i.id));
+                }
+
+                setFiles([]);
+                setFolders([]);
+                if (onFileCountChange) onFileCountChange(0);
+
                 try {
-                  setIsLoading(true);
-                  // Calculate total size before deletion for optimistic update
-                  const totalDeletedBytes = filesToDelete.reduce(
-                    (sum, f) => sum + f.file_size,
-                    0,
-                  );
-                  const totalDeletedFiles = filesToDelete.length;
-
-                  // Hard delete all currently listed files
-                  await Promise.all(
-                    filesToDelete.map((f) =>
-                      fileService.deleteFile(f.id, true),
-                    ),
-                  );
-                  // Hard delete all currently listed folders
-                  await Promise.all(
-                    foldersToDelete.map((f) =>
-                      folderService.deleteFolder(f.id, true),
-                    ),
-                  );
-
-                  // Optimistic update
-                  if (onStatsUpdate) {
-                    onStatsUpdate(totalDeletedBytes, totalDeletedFiles);
-                  }
-
-                  setFiles([]);
-                  setFolders([]);
-                  if (onFileCountChange) onFileCountChange(0);
+                  await fileService.emptyTrash();
                   if (onRefresh) onRefresh();
+                  if (onRefreshTree) onRefreshTree();
                 } catch (error) {
                   console.error("Failed to empty trash", error);
+                  // Revert by refetching
+                  if (onRefreshTree) onRefreshTree();
                   alert(t("knowledge.fileList.emptyTrash.failed"));
-                } finally {
-                  setIsLoading(false);
                 }
               },
             });
           },
         }),
-        [handleDropOnFolder, onFileCountChange, onRefresh, onStatsUpdate, t],
+        [
+          handleDropOnFolder,
+          onFileCountChange,
+          onRefresh,
+          onRefreshTree,
+          removeTreeItems,
+          t,
+          treeItems,
+        ],
       );
 
       // Load knowledge sets for the modal
@@ -586,9 +599,13 @@ export const FileList = React.memo(
 
       const loadFiles = useCallback(
         async (append: boolean = false) => {
-          // "all" and "knowledge" tabs use the centralized tree from the store.
+          // "all", "knowledge", and "trash" tabs use the centralized tree from the store.
           // No local fetching needed for these tabs.
-          if (filter === "all" || filter === "knowledge") {
+          if (
+            filter === "all" ||
+            filter === "knowledge" ||
+            filter === "trash"
+          ) {
             return;
           }
 
@@ -647,7 +664,7 @@ export const FileList = React.memo(
               limit: number;
               offset: number;
             } = {
-              include_deleted: filter === "trash",
+              include_deleted: false,
               limit: PAGE_SIZE,
               offset: filesOffsetRef.current,
             };
@@ -658,40 +675,9 @@ export const FileList = React.memo(
 
             const data = await fileService.listFiles(params);
 
-            let filteredData = data;
-
-            if (filter === "trash") {
-              filteredData = data.filter((f) => f.is_deleted);
-              if (!append) {
-                // For trash, load all deleted folders (regardless of parent) using file service
-                try {
-                  const deletedFolderData = await fileService.listFiles({
-                    include_deleted: true,
-                    is_dir: true,
-                    limit: 1000,
-                    offset: 0,
-                  });
-                  const deletedFolders: Folder[] = deletedFolderData
-                    .filter((f) => f.is_deleted && f.is_dir)
-                    .map((f) => ({
-                      id: f.id,
-                      user_id: f.user_id,
-                      parent_id: f.parent_id,
-                      name: f.original_filename,
-                      is_deleted: f.is_deleted,
-                      created_at: f.created_at,
-                      updated_at: f.updated_at,
-                    }));
-                  setFolders(deletedFolders);
-                } catch {
-                  setFolders([]);
-                }
-              }
-            } else {
-              filteredData = data.filter((f) => !f.is_deleted);
-              if (!append) {
-                setFolders([]);
-              }
+            const filteredData = data.filter((f) => !f.is_deleted);
+            if (!append) {
+              setFolders([]);
             }
 
             if (append) {
@@ -924,6 +910,14 @@ export const FileList = React.memo(
         }
 
         try {
+          // Optimistic: rename in tree immediately
+          if (
+            renameTreeItem &&
+            (filter === "all" || filter === "knowledge" || filter === "trash")
+          ) {
+            renameTreeItem(item.id, newName);
+          }
+
           if (type === "folder") {
             await folderService.updateFolder(item.id, { name: newName });
           } else {
@@ -932,13 +926,20 @@ export const FileList = React.memo(
             });
           }
           // Refresh: tree tabs via store, others locally
-          if ((filter === "all" || filter === "knowledge") && onRefreshTree) {
+          if (
+            (filter === "all" ||
+              filter === "knowledge" ||
+              filter === "trash") &&
+            onRefreshTree
+          ) {
             onRefreshTree();
           } else {
             loadFiles();
           }
         } catch (e) {
           console.error("Rename failed", e);
+          // Revert optimistic update
+          if (onRefreshTree) onRefreshTree();
           alert(t("knowledge.fileList.rename.failed"));
         }
       };
@@ -958,7 +959,12 @@ export const FileList = React.memo(
             });
           }
           // Refresh: tree tabs via store, others locally
-          if ((filter === "all" || filter === "knowledge") && onRefreshTree) {
+          if (
+            (filter === "all" ||
+              filter === "knowledge" ||
+              filter === "trash") &&
+            onRefreshTree
+          ) {
             onRefreshTree();
           } else {
             loadFiles();
@@ -988,6 +994,16 @@ export const FileList = React.memo(
               selectedFileIds.push(id);
             } else if (folders.some((f) => f.id === id)) {
               selectedFolderIds.push(id);
+            } else {
+              // Tree view fallback — treeItems has is_dir to classify
+              const treeItem = treeItems.find((ti) => ti.id === id);
+              if (treeItem) {
+                if (treeItem.is_dir) {
+                  selectedFolderIds.push(id);
+                } else {
+                  selectedFileIds.push(id);
+                }
+              }
             }
           });
 
@@ -995,13 +1011,16 @@ export const FileList = React.memo(
           const isHardDelete = filter === "trash";
 
           // Calculate total size of selected files for optimistic update
-          const selectedFiles = files.filter((f) =>
-            selectedFileIds.includes(f.id),
-          );
-          const totalDeletedBytes = selectedFiles.reduce(
-            (sum, f) => sum + f.file_size,
-            0,
-          );
+          let totalDeletedBytes = 0;
+          for (const id of selectedFileIds) {
+            const file = files.find((f) => f.id === id);
+            if (file) {
+              totalDeletedBytes += file.file_size;
+            } else {
+              const treeItem = treeItems.find((ti) => ti.id === id);
+              if (treeItem) totalDeletedBytes += treeItem.file_size;
+            }
+          }
 
           setConfirmation({
             isOpen: true,
@@ -1015,6 +1034,21 @@ export const FileList = React.memo(
             destructive: true,
             onConfirm: async () => {
               try {
+                // Optimistic: remove from tree immediately
+                if (
+                  removeTreeItems &&
+                  (filter === "all" ||
+                    filter === "knowledge" ||
+                    filter === "trash")
+                ) {
+                  // Collect all IDs including descendants of selected folders
+                  const allIds = [...selectedFileIds, ...selectedFolderIds];
+                  for (const folderId of selectedFolderIds) {
+                    allIds.push(...collectDescendantIds(treeItems, folderId));
+                  }
+                  removeTreeItems(allIds);
+                }
+
                 // Delete files one by one (more reliable than bulk API)
                 if (selectedFileIds.length > 0) {
                   await Promise.all(
@@ -1039,7 +1073,9 @@ export const FileList = React.memo(
 
                 setSelectedIds(new Set());
                 if (
-                  (filter === "all" || filter === "knowledge") &&
+                  (filter === "all" ||
+                    filter === "knowledge" ||
+                    filter === "trash") &&
                   onRefreshTree
                 ) {
                   onRefreshTree();
@@ -1048,6 +1084,8 @@ export const FileList = React.memo(
                 }
               } catch (e) {
                 console.error("Bulk delete failed", e);
+                // Revert optimistic update
+                if (onRefreshTree) onRefreshTree();
                 alert(t("knowledge.fileList.actions.deleteFailed"));
               }
             },
@@ -1078,6 +1116,21 @@ export const FileList = React.memo(
           onConfirm: async () => {
             try {
               const isHardDelete = filter === "trash";
+
+              // Optimistic: remove from tree immediately
+              if (
+                removeTreeItems &&
+                (filter === "all" ||
+                  filter === "knowledge" ||
+                  filter === "trash")
+              ) {
+                const descendantIds =
+                  type === "folder"
+                    ? collectDescendantIds(treeItems, item.id)
+                    : [];
+                removeTreeItems([item.id, ...descendantIds]);
+              }
+
               if (type === "folder") {
                 await folderService.deleteFolder(item.id, isHardDelete);
               } else {
@@ -1091,7 +1144,9 @@ export const FileList = React.memo(
 
               setSelectedIds(new Set());
               if (
-                (filter === "all" || filter === "knowledge") &&
+                (filter === "all" ||
+                  filter === "knowledge" ||
+                  filter === "trash") &&
                 onRefreshTree
               ) {
                 onRefreshTree();
@@ -1100,34 +1155,31 @@ export const FileList = React.memo(
               }
             } catch (e) {
               console.error("Delete failed", e);
+              // Revert optimistic update
+              if (onRefreshTree) onRefreshTree();
               alert(t("knowledge.fileList.actions.deleteFailed"));
             }
           },
         });
       };
 
-      const handleRestore = async (id: string, type: ContextMenuType) => {
+      const handleRestore = async (id: string, _type: ContextMenuType) => {
         try {
-          if (type === "folder") {
-            // Need to implement restoreFolder in service
-            await folderService.updateFolder(id, { is_deleted: false });
-          } else {
-            await fileService.restoreFile(id);
+          // Optimistic: remove from trash view immediately
+          if (removeTreeItems && filter === "trash") {
+            const descendantIds = collectDescendantIds(treeItems, id);
+            removeTreeItems([id, ...descendantIds]);
           }
 
-          // Remove from trash view
-          if (type === "folder") {
-            setFolders((prev) => prev.filter((f) => f.id !== id));
-          } else {
-            setFiles((prev) => {
-              const next = prev.filter((f) => f.id !== id);
-              if (onFileCountChange) onFileCountChange(next.length);
-              return next;
-            });
-          }
+          // Unified restore endpoint handles both files and folders (recursive for folders)
+          await fileService.restoreFile(id);
+
           if (onRefresh) onRefresh();
+          if (onRefreshTree) onRefreshTree();
         } catch (error) {
           console.error("Restore failed", error);
+          // Revert optimistic update
+          if (onRefreshTree) onRefreshTree();
           alert(t("knowledge.fileList.actions.restoreFailed"));
         }
       };
@@ -1256,7 +1308,8 @@ export const FileList = React.memo(
       };
 
       // For tree tabs, use treeItems for empty/loading checks
-      const isTreeTab = filter === "all" || filter === "knowledge";
+      const isTreeTab =
+        filter === "all" || filter === "knowledge" || filter === "trash";
 
       if (isTreeTab) {
         if (treeLoading && treeItems.length === 0) {
@@ -1266,7 +1319,11 @@ export const FileList = React.memo(
           return (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
               <DocumentIcon className="h-8 w-8 opacity-50" />
-              <span>{t("knowledge.fileList.empty.noItems")}</span>
+              <span>
+                {filter === "trash"
+                  ? t("knowledge.fileList.empty.trash")
+                  : t("knowledge.fileList.empty.noItems")}
+              </span>
             </div>
           );
         }
@@ -1278,11 +1335,7 @@ export const FileList = React.memo(
           return (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
               <DocumentIcon className="h-8 w-8 opacity-50" />
-              <span>
-                {filter === "trash"
-                  ? t("knowledge.fileList.empty.trash")
-                  : t("knowledge.fileList.empty.noItems")}
-              </span>
+              <span>{t("knowledge.fileList.empty.noItems")}</span>
             </div>
           );
         }
@@ -1329,7 +1382,7 @@ export const FileList = React.memo(
               }}
             />
           )}
-          {filter === "all" || filter === "knowledge" ? (
+          {filter === "all" || filter === "knowledge" || filter === "trash" ? (
             <FileTreeView
               ref={treeViewRef}
               treeItems={treeItems}
@@ -1341,6 +1394,7 @@ export const FileList = React.memo(
               onDropOnFolder={handleDropOnFolder}
               onFolderCreated={handleFolderCreated}
               onRefresh={onRefreshTree}
+              isTrashView={filter === "trash"}
             />
           ) : viewMode === "list" ? (
             <div className="min-w-full inline-block align-middle">
@@ -1419,32 +1473,12 @@ export const FileList = React.memo(
                       <div
                         className={`flex gap-2 ${selectedIds.has(folder.id) ? "text-white" : "text-neutral-400 opacity-0 group-hover:opacity-100"}`}
                       >
-                        {filter === "trash" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRestore(folder.id, "folder");
-                            }}
-                            title={t("knowledge.fileList.actions.restore")}
-                          >
-                            <ArrowPathRoundedSquareIcon
-                              className={`h-4 w-4 ${selectedIds.has(folder.id) ? "hover:text-white" : "hover:text-green-600"}`}
-                            />
-                          </button>
-                        )}
-
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteItem(folder, "folder");
                           }}
-                          title={
-                            filter === "trash"
-                              ? t(
-                                  "knowledge.fileList.actions.deleteImmediately",
-                                )
-                              : t("knowledge.fileList.actions.delete")
-                          }
+                          title={t("knowledge.fileList.actions.delete")}
                         >
                           <TrashIcon
                             className={`h-4 w-4 ${selectedIds.has(folder.id) ? "hover:text-red-200" : "hover:text-red-500"}`}
@@ -1520,44 +1554,24 @@ export const FileList = React.memo(
                             />
                           </button>
 
-                          {filter === "trash" ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRestore(file.id, "file");
-                              }}
-                              title={t("knowledge.fileList.actions.restore")}
-                            >
-                              <ArrowPathRoundedSquareIcon
-                                className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-green-600"}`}
-                              />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownload(file.id, file.original_filename);
-                              }}
-                              title={t("knowledge.fileList.actions.download")}
-                            >
-                              <ArrowDownTrayIcon
-                                className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-indigo-600"}`}
-                              />
-                            </button>
-                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(file.id, file.original_filename);
+                            }}
+                            title={t("knowledge.fileList.actions.download")}
+                          >
+                            <ArrowDownTrayIcon
+                              className={`h-4 w-4 ${isSelected ? "hover:text-white" : "hover:text-indigo-600"}`}
+                            />
+                          </button>
 
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteItem(file, "file");
                             }}
-                            title={
-                              filter === "trash"
-                                ? t(
-                                    "knowledge.fileList.actions.deleteImmediately",
-                                  )
-                                : t("knowledge.fileList.actions.moveToTrash")
-                            }
+                            title={t("knowledge.fileList.actions.moveToTrash")}
                           >
                             <TrashIcon
                               className={`h-4 w-4 ${isSelected ? "hover:text-red-200" : "hover:text-red-500"}`}

@@ -385,6 +385,19 @@ class FileService {
   }
 
   /**
+   * Permanently delete all items in the trash
+   */
+  async emptyTrash(): Promise<{ deleted_count: number }> {
+    const baseUrl = getBackendUrl();
+    const response = await fetch(`${baseUrl}/xyzen/api/v1/files/empty-trash`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+    });
+    if (!response.ok) throw new Error("Failed to empty trash");
+    return response.json();
+  }
+
+  /**
    * Bulk delete files
    */
   async bulkDeleteFiles(fileIds: string[]): Promise<void> {

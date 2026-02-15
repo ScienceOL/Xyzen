@@ -96,7 +96,7 @@ export function StyleSettings() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-neutral-200 p-6 dark:border-neutral-800">
+      <div className="px-6 pb-2 pt-6">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
           {t("settings.style.title")}
         </h2>
@@ -105,42 +105,40 @@ export function StyleSettings() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-8 p-6">
+      <div className="custom-scrollbar flex-1 overflow-y-auto space-y-6 p-6 pt-4">
         {/* Layout Style Section */}
         <section>
-          <h3 className="mb-4 text-sm font-medium text-neutral-900 dark:text-white">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
             {t("settings.style.sections.layout")}
           </h3>
           <RadioGroup value={layoutStyle} onChange={setLayoutStyle}>
-            <div className="space-y-4">
-              {styles.map((styleOption) => (
+            <div className="overflow-hidden rounded-xl bg-neutral-100/80 dark:bg-neutral-800/50">
+              {styles.map((styleOption, index) => (
                 <Field key={styleOption.value}>
                   <Radio
                     value={styleOption.value}
-                    className={({ checked }) =>
-                      `relative flex cursor-pointer rounded-sm border p-5 transition-all ${
-                        checked
-                          ? "border-indigo-500 bg-indigo-50 shadow-sm dark:border-indigo-600 dark:bg-indigo-950/30"
-                          : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800"
-                      }`
-                    }
+                    className={`relative flex cursor-pointer gap-4 px-4 py-4 transition-colors ${
+                      index > 0
+                        ? "border-t border-neutral-200/60 dark:border-neutral-700/60"
+                        : ""
+                    } data-[checked]:bg-black/[0.04] dark:data-[checked]:bg-white/[0.06]`}
                   >
                     {({ checked }) => (
                       <div className="flex w-full gap-4">
                         {/* Preview Icon */}
                         <div
-                          className={`flex h-16 w-24 shrink-0 items-center justify-center rounded-sm border-2 ${
+                          className={`flex h-14 w-20 shrink-0 items-center justify-center rounded-lg ${
                             checked
-                              ? "border-indigo-300 bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900/50"
-                              : "border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800"
+                              ? "bg-indigo-100 dark:bg-indigo-900/40"
+                              : "bg-neutral-200/80 dark:bg-neutral-700/60"
                           }`}
                         >
                           <svg
                             viewBox="0 0 24 24"
-                            className={`h-12 w-12 ${
+                            className={`h-10 w-10 ${
                               checked
-                                ? "text-indigo-600 dark:text-indigo-400"
-                                : "text-neutral-400 dark:text-neutral-600"
+                                ? "text-indigo-500 dark:text-indigo-400"
+                                : "text-neutral-400 dark:text-neutral-500"
                             }`}
                           >
                             <path d={styleOption.preview} fill="currentColor" />
@@ -151,37 +149,37 @@ export function StyleSettings() {
                         <div className="flex-1">
                           <div className="flex items-start justify-between">
                             <div>
-                              <Label
-                                className={`text-base font-semibold ${
-                                  checked
-                                    ? "text-indigo-900 dark:text-indigo-300"
-                                    : "text-neutral-900 dark:text-white"
-                                }`}
-                              >
+                              <Label className="text-sm font-semibold text-neutral-900 dark:text-white">
                                 {styleOption.label}
                               </Label>
-                              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                              <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                                 {styleOption.description}
                               </p>
                             </div>
-                            {checked && (
-                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500">
-                                <CheckIcon className="h-4 w-4" />
-                              </div>
-                            )}
+                            <div
+                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                                checked
+                                  ? "border-indigo-500 bg-indigo-500 dark:border-indigo-500 dark:bg-indigo-500"
+                                  : "border-neutral-300 dark:border-neutral-600"
+                              }`}
+                            >
+                              {checked && (
+                                <CheckIcon className="h-3 w-3 text-white" />
+                              )}
+                            </div>
                           </div>
 
                           {/* Features */}
-                          <ul className="mt-3 space-y-1">
+                          <ul className="mt-2 space-y-0.5">
                             {styleOption.features.map((feature, idx) => (
                               <li
                                 key={idx}
-                                className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400"
+                                className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400"
                               >
                                 <div
                                   className={`h-1 w-1 rounded-full ${
                                     checked
-                                      ? "bg-indigo-600 dark:bg-indigo-400"
+                                      ? "bg-indigo-500 dark:bg-indigo-400"
                                       : "bg-neutral-400 dark:bg-neutral-600"
                                   }`}
                                 />
@@ -201,28 +199,28 @@ export function StyleSettings() {
 
         {/* Input Position Section */}
         <section>
-          <h3 className="mb-4 text-sm font-medium text-neutral-900 dark:text-white">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
             {t("settings.style.sections.inputPosition")}
           </h3>
           <RadioGroup value={inputPosition} onChange={setInputPosition}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {inputPositions.map((pos) => (
                 <Field key={pos.value} className={pos.colSpan}>
                   <Radio
                     value={pos.value}
                     className={({ checked }) =>
-                      `relative flex cursor-pointer flex-col rounded-sm border p-4 transition-all h-full ${
+                      `relative flex cursor-pointer flex-col rounded-xl p-3.5 transition-colors h-full ${
                         checked
-                          ? "border-indigo-500 bg-indigo-50 shadow-sm dark:border-indigo-600 dark:bg-indigo-950/30"
-                          : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:bg-neutral-800"
+                          ? "bg-indigo-50 dark:bg-indigo-950/30"
+                          : "bg-neutral-100/80 hover:bg-neutral-100 dark:bg-neutral-800/50 dark:hover:bg-neutral-800/70"
                       }`
                     }
                   >
                     {({ checked }) => (
                       <>
-                        <div className="flex items-center justify-between w-full mb-2">
+                        <div className="flex items-center justify-between w-full mb-1.5">
                           <Label
-                            className={`font-semibold ${
+                            className={`text-sm font-medium ${
                               checked
                                 ? "text-indigo-900 dark:text-indigo-300"
                                 : "text-neutral-900 dark:text-white"
@@ -231,12 +229,12 @@ export function StyleSettings() {
                             {pos.label}
                           </Label>
                           {checked && (
-                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500">
+                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white">
                               <CheckIcon className="h-3 w-3" />
                             </div>
                           )}
                         </div>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
                           {pos.description}
                         </p>
                       </>
@@ -250,15 +248,15 @@ export function StyleSettings() {
 
         {/* Workspace Section */}
         <section>
-          <h3 className="mb-4 text-sm font-medium text-neutral-900 dark:text-white">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
             {t("settings.style.sections.workspace")}
           </h3>
-          <div className="flex items-center justify-between rounded-sm border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex items-center justify-between rounded-xl bg-neutral-100/80 p-4 dark:bg-neutral-800/50">
             <div>
               <p className="text-sm font-medium text-neutral-900 dark:text-white">
                 {t("settings.style.recommendations.label")}
               </p>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                 {t("settings.style.recommendations.description")}
               </p>
             </div>
@@ -269,11 +267,11 @@ export function StyleSettings() {
           </div>
         </section>
 
-        <div className="rounded-sm border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+        <div className="rounded-xl bg-amber-50/80 p-4 dark:bg-amber-950/20">
           <h3 className="text-sm font-medium text-amber-900 dark:text-amber-300">
             {t("settings.style.tip.title")}
           </h3>
-          <p className="mt-2 text-xs text-amber-800 dark:text-amber-400">
+          <p className="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
             {t("settings.style.tip.body")}
           </p>
         </div>

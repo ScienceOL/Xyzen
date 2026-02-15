@@ -1,6 +1,6 @@
 import { FileIcon } from "@/components/knowledge/FileIcon";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { ChevronRightIcon } from "lucide-react";
+import { FolderIcon, FolderOpenIcon } from "lucide-react";
 import React, { forwardRef, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { FlattenedItem } from "./types";
@@ -77,7 +77,10 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         e.stopPropagation();
       }}
       onClick={(e) => {
-        if (!isEditing) onClick?.(e, item.id);
+        if (!isEditing) {
+          onClick?.(e, item.id);
+          if (item.type === "folder") onCollapse?.(item.id);
+        }
       }}
       onDoubleClick={() => {
         if (!isEditing) onDoubleClick?.(item.id);
@@ -90,7 +93,6 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         isSelected={isSelected}
         isDropTarget={isDropTarget}
         indentationWidth={indentationWidth}
-        onCollapse={onCollapse}
         isEditing={isEditing}
         onEditConfirm={onEditConfirm}
         onEditCancel={onEditCancel}
@@ -118,9 +120,9 @@ export const TreeItemClone: React.FC<TreeItemCloneProps> = ({
 }) => (
   <div className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 max-w-64 pointer-events-none">
     {/* Icon */}
-    <span className="shrink-0">
+    <span className="shrink-0 text-yellow-400 dark:text-yellow-500">
       {item.type === "folder" ? (
-        <FolderIconColored className="h-4 w-4 text-yellow-500" />
+        <FolderIcon className="h-4 w-4" />
       ) : (
         <FileIcon
           filename={item.name}
@@ -156,7 +158,6 @@ const TreeItemContent = forwardRef<
     isSelected: boolean;
     isDropTarget?: boolean;
     indentationWidth?: number;
-    onCollapse?: (id: string) => void;
     isEditing?: boolean;
     onEditConfirm?: (name: string) => void;
     onEditCancel?: () => void;
@@ -169,7 +170,6 @@ const TreeItemContent = forwardRef<
       isSelected,
       isDropTarget = false,
       indentationWidth = INDENTATION_WIDTH,
-      onCollapse,
       isEditing = false,
       onEditConfirm,
       onEditCancel,
@@ -227,41 +227,26 @@ const TreeItemContent = forwardRef<
         }`}
         style={{ paddingLeft: depth * indentationWidth + 8 }}
       >
-        {/* Folder collapse/expand chevron or spacer */}
+        {/* Folder icon or file icon */}
         {item.type === "folder" ? (
-          <button
-            className={`shrink-0 p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 ${
-              isSelected ? "hover:bg-indigo-500" : ""
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onCollapse?.(item.id);
-            }}
+          <span
+            className={`shrink-0 ${isSelected ? "text-white" : "text-yellow-400 dark:text-yellow-500"}`}
           >
-            <ChevronRightIcon
-              className={`h-3.5 w-3.5 transition-transform ${
-                !item.collapsed ? "rotate-90" : ""
-              } ${isSelected ? "text-white" : "text-neutral-500"}`}
-            />
-          </button>
+            {item.collapsed ? (
+              <FolderIcon className="h-4 w-4" />
+            ) : (
+              <FolderOpenIcon className="h-4 w-4" />
+            )}
+          </span>
         ) : (
-          <span className="w-5 shrink-0" />
-        )}
-
-        {/* Icon */}
-        <span className="shrink-0">
-          {item.type === "folder" ? (
-            <FolderIconColored
-              className={`h-3.5 w-3.5 ${isSelected ? "text-yellow-300" : "text-yellow-500"}`}
-            />
-          ) : (
+          <span className="shrink-0 ml-0.5">
             <FileIcon
               filename={item.name}
               mimeType={item.file?.content_type || ""}
               className="h-3.5 w-3.5"
             />
-          )}
-        </span>
+          </span>
+        )}
 
         {/* Name or inline input */}
         {isEditing ? (
@@ -308,14 +293,3 @@ const TreeItemContent = forwardRef<
 );
 
 TreeItemContent.displayName = "TreeItemContent";
-
-const FolderIconColored = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    className={className}
-  >
-    <path d="M3.75 3A1.75 1.75 0 002 4.75v3.26a3.235 3.235 0 011.75-.51h12.5c.644 0 1.245.188 1.75.51V6.75A1.75 1.75 0 0016.25 5h-4.836a.25.25 0 01-.177-.073L9.823 3.513A1.75 1.75 0 008.586 3H3.75zM3.75 9A1.75 1.75 0 002 10.75v4.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0018 15.25v-4.5A1.75 1.75 0 0016.25 9H3.75z" />
-  </svg>
-);

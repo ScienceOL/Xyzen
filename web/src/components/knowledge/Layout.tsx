@@ -57,9 +57,13 @@ export const KnowledgeLayout = () => {
     knowledgeSetId: currentKnowledgeSetId,
     knowledgeTreeItems,
     knowledgeTreeLoading,
+    trashTreeItems,
+    trashTreeLoading,
     navigateKnowledge,
     setKnowledgeFolderId,
     refreshKnowledge,
+    removeTreeItems,
+    renameTreeItem,
   } = useKnowledge();
 
   const [currentKnowledgeSetName, setCurrentKnowledgeSetName] = useState<
@@ -453,17 +457,23 @@ export const KnowledgeLayout = () => {
         )
           continue;
 
+        // Extract bare filename (last segment of the relative path).
+        // Always create a new File so the multipart Content-Disposition
+        // header contains only the basename, not the webkitRelativePath.
+        const baseName = parts[parts.length - 1];
+        const uploadFile = new File([file], baseName, { type: file.type });
+
         const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const uploadItem: UploadItem = {
           id: uploadId,
-          fileName: file.name,
+          fileName: baseName,
           progress: 0,
           status: "uploading",
         };
         setUploads((prev) => [...prev, uploadItem]);
 
         const handle = fileService.uploadFileWithProgress(
-          file,
+          uploadFile,
           "private",
           undefined,
           parentId,
@@ -764,6 +774,14 @@ export const KnowledgeLayout = () => {
               refreshTrigger={refreshKey}
               onKnowledgeSetClick={(id) => handleNavigate("knowledge", id)}
               onCreateKnowledgeSet={handleCreateKnowledgeSet}
+              onRefresh={handleRefresh}
+              onFileCountChange={setCurrentFileCount}
+              onStatsUpdate={handleStatsUpdate}
+              onLoadingChange={setIsFileListLoading}
+              onUpload={handleUploadClick}
+              treeItems={knowledgeTreeItems}
+              treeLoading={knowledgeTreeLoading}
+              onRefreshTree={refreshKnowledge}
             />
           ) : (
             <FileList
@@ -780,9 +798,15 @@ export const KnowledgeLayout = () => {
               onFolderChange={(id) => navigateToFolder(id)}
               onCreateFolder={handleCreateFolder}
               onUpload={handleUploadClick}
-              treeItems={knowledgeTreeItems}
-              treeLoading={knowledgeTreeLoading}
+              treeItems={
+                activeTab === "trash" ? trashTreeItems : knowledgeTreeItems
+              }
+              treeLoading={
+                activeTab === "trash" ? trashTreeLoading : knowledgeTreeLoading
+              }
               onRefreshTree={refreshKnowledge}
+              removeTreeItems={removeTreeItems}
+              renameTreeItem={renameTreeItem}
             />
           )}
         </div>

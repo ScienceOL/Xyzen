@@ -57,6 +57,8 @@ class AgentEventContext:
     current_phase: str | None = None
     # Mapping of node_id -> component_key for v2 COMPONENT nodes
     node_component_keys: dict[str, str] = field(default_factory=dict)
+    # External stream_id propagated from WebSocket handler for unified event routing
+    stream_id: str | None = None
 
     def __post_init__(self) -> None:
         """Initialize execution path if empty."""
@@ -82,6 +84,8 @@ class AgentEventContext:
             ctx["current_node"] = self.current_node
         if self.current_phase:
             ctx["current_phase"] = self.current_phase
+        if self.stream_id:
+            ctx["stream_id"] = self.stream_id
 
         return ctx
 

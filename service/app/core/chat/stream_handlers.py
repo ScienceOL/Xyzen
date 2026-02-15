@@ -22,6 +22,7 @@ from app.schemas.chat_event_payloads import (
     ErrorData,
     GeneratedFileInfo,
     GeneratedFilesData,
+    ProcessingData,
     SearchCitationsData,
     StreamingChunkData,
     StreamingEndData,
@@ -141,7 +142,7 @@ class StreamingEventHandler:
     @staticmethod
     def create_streaming_start(stream_id: str, execution_id: str | None = None) -> StreamingEvent:
         """Create streaming start event."""
-        data: StreamingStartData = {"id": stream_id}
+        data: StreamingStartData = {"stream_id": stream_id}
         if execution_id:
             data["execution_id"] = execution_id
         return {"type": ChatEventType.STREAMING_START, "data": data}
@@ -149,7 +150,7 @@ class StreamingEventHandler:
     @staticmethod
     def create_streaming_chunk(stream_id: str, content: str, execution_id: str | None = None) -> StreamingEvent:
         """Create streaming chunk event."""
-        data: StreamingChunkData = {"id": stream_id, "content": content}
+        data: StreamingChunkData = {"stream_id": stream_id, "content": content}
         if execution_id:
             data["execution_id"] = execution_id
         return {"type": ChatEventType.STREAMING_CHUNK, "data": data}
@@ -162,7 +163,7 @@ class StreamingEventHandler:
     ) -> StreamingEvent:
         """Create streaming end event."""
         data: StreamingEndData = {
-            "id": stream_id,
+            "stream_id": stream_id,
             "created_at": asyncio.get_event_loop().time(),
         }
         if execution_id:
@@ -182,9 +183,15 @@ class StreamingEventHandler:
         return {"type": ChatEventType.TOKEN_USAGE, "data": data}
 
     @staticmethod
-    def create_processing_event(status: str = ProcessingStatus.PREPARING_REQUEST) -> StreamingEvent:
+    def create_processing_event(
+        status: str = ProcessingStatus.PREPARING_REQUEST,
+        stream_id: str | None = None,
+    ) -> StreamingEvent:
         """Create processing status event."""
-        return {"type": ChatEventType.PROCESSING, "data": {"status": status}}
+        data: ProcessingData = {"status": status}
+        if stream_id is not None:
+            data["stream_id"] = stream_id
+        return {"type": ChatEventType.PROCESSING, "data": data}
 
     @staticmethod
     def create_error_event(
@@ -193,6 +200,7 @@ class StreamingEventHandler:
         error_category: str | None = None,
         recoverable: bool = False,
         detail: str | None = None,
+        stream_id: str | None = None,
     ) -> StreamingEvent:
         """Create error event with optional structured fields."""
         data: ErrorData = {"error": error}
@@ -202,6 +210,8 @@ class StreamingEventHandler:
             data["recoverable"] = recoverable
         if detail is not None:
             data["detail"] = detail
+        if stream_id is not None:
+            data["stream_id"] = stream_id
         return {"type": ChatEventType.ERROR, "data": data}
 
 
@@ -211,19 +221,19 @@ class ThinkingEventHandler:
     @staticmethod
     def create_thinking_start(stream_id: str) -> StreamingEvent:
         """Create thinking start event."""
-        data: ThinkingStartData = {"id": stream_id}
+        data: ThinkingStartData = {"stream_id": stream_id}
         return {"type": ChatEventType.THINKING_START, "data": data}
 
     @staticmethod
     def create_thinking_chunk(stream_id: str, content: str) -> StreamingEvent:
         """Create thinking chunk event."""
-        data: ThinkingChunkData = {"id": stream_id, "content": content}
+        data: ThinkingChunkData = {"stream_id": stream_id, "content": content}
         return {"type": ChatEventType.THINKING_CHUNK, "data": data}
 
     @staticmethod
     def create_thinking_end(stream_id: str) -> StreamingEvent:
         """Create thinking end event."""
-        data: ThinkingEndData = {"id": stream_id}
+        data: ThinkingEndData = {"stream_id": stream_id}
         return {"type": ChatEventType.THINKING_END, "data": data}
 
     @staticmethod

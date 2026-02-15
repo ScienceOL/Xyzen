@@ -44,6 +44,8 @@ interface FileTreeViewProps {
   ) => void;
   onFolderCreated?: (name: string, parentId: string | null) => Promise<void>;
   onRefresh?: () => void;
+  /** When true, disables drag-drop and folder creation (trash view) */
+  isTrashView?: boolean;
 }
 
 const FileTreeViewComp = React.forwardRef<
@@ -61,6 +63,7 @@ const FileTreeViewComp = React.forwardRef<
       onDropOnFolder,
       onFolderCreated,
       onRefresh,
+      isTrashView,
     },
     ref,
   ) => {
@@ -76,6 +79,7 @@ const FileTreeViewComp = React.forwardRef<
         onDropOnFolder={onDropOnFolder}
         onFolderCreated={onFolderCreated}
         onRefresh={onRefresh}
+        isTrashView={isTrashView}
       />
     );
   },

@@ -68,6 +68,7 @@ export function Xyzen({
     fetchChatHistory,
     activateChannel,
     setInputPosition,
+    setActivePanel,
   } = useXyzen();
   const { status } = useAuth();
 
@@ -160,17 +161,32 @@ export function Xyzen({
             fetchChatHistory(),
           ]);
 
-          // 2. If there is an active chat channel (persisted), try to connect to it
-          // We access the store directly to get the latest state after fetchChatHistory
-          const state = useXyzen.getState();
-          const currentActiveChannel = state.activeChatChannel;
+          // 2. Check for pending channel activation (from shared chat "continue conversation")
+          const pendingChannel = sessionStorage.getItem(
+            "pending_activate_channel",
+          );
+          if (pendingChannel) {
+            sessionStorage.removeItem("pending_activate_channel");
+            // Format is "session_id:topic_id"
+            const parts = pendingChannel.split(":");
+            const topicId = parts.length >= 2 ? parts[1] : parts[0];
+            if (topicId) {
+              setActivePanel("chat");
+              await activateChannel(topicId);
+            }
+          } else {
+            // 3. If there is an active chat channel (persisted), try to connect to it
+            // We access the store directly to get the latest state after fetchChatHistory
+            const state = useXyzen.getState();
+            const currentActiveChannel = state.activeChatChannel;
 
-          if (currentActiveChannel) {
-            console.log(
-              `[App] Pre-connecting to active channel: ${currentActiveChannel}`,
-            );
-            // activateChannel handles fetching messages and connecting via WebSocket
-            await activateChannel(currentActiveChannel);
+            if (currentActiveChannel) {
+              console.log(
+                `[App] Pre-connecting to active channel: ${currentActiveChannel}`,
+              );
+              // activateChannel handles fetching messages and connecting via WebSocket
+              await activateChannel(currentActiveChannel);
+            }
           }
         } catch (error) {
           console.error("Failed to load initial data:", error);
@@ -187,6 +203,7 @@ export function Xyzen({
     fetchMcpServers,
     fetchChatHistory,
     activateChannel,
+    setActivePanel,
   ]);
 
   // Unified progress bar logic

@@ -58,6 +58,8 @@ function cloneMessage(message: Message): Message {
 
   const cloned: Message = {
     ...message,
+    // Set status for all cloned messages (loaded from DB = completed)
+    status: message.status || "completed",
     toolCalls: message.toolCalls
       ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
       : undefined,
@@ -78,13 +80,14 @@ function cloneMessage(message: Message): Message {
       code: backendMsg.error_code,
       category:
         backendMsg.error_category || backendMsg.error_code.split(".")[0],
-      message: cloned.content || "An error occurred",
+      // Don't use cloned.content here — it may be partial streamed text.
+      // ErrorMessageCard resolves display text via i18n(app.chatError.{code}).
+      message: "An error occurred",
       recoverable: false,
       detail: backendMsg.error_detail || undefined,
     };
     cloned.error = reconstructedError;
-    // Clear the content so ErrorMessageCard renders instead of markdown
-    cloned.content = "";
+    cloned.status = "failed";
   }
 
   // Reconstruct agentExecution from agent_metadata if available
@@ -202,6 +205,7 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
         role: "assistant",
         content: "",
         created_at: msg.created_at,
+        status: "completed",
         toolCalls: [toolCall],
       };
 
@@ -253,6 +257,7 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
         role: "assistant",
         content: "工具调用更新",
         created_at: msg.created_at,
+        status: "completed",
         toolCalls: [toolCall],
       };
 
@@ -288,13 +293,15 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
  * Create a loading message placeholder
  * Used when waiting for assistant response
  */
-export function createLoadingMessage(): Message {
+export function createLoadingMessage(streamId?: string): Message {
   return {
-    id: `loading-${Date.now()}`,
+    id: streamId || `loading-${Date.now()}`,
+    streamId: streamId,
     clientId: generateClientId(),
     role: "assistant" as const,
     content: "",
     created_at: new Date().toISOString(),
+    status: "pending",
     isLoading: true,
     isStreaming: false,
     isNewMessage: true,
@@ -314,6 +321,7 @@ export function convertToStreamingMessage(
   return {
     ...messageWithoutLoading,
     id: messageId,
+    status: "streaming",
     isStreaming: true,
     content: "",
   };
@@ -337,6 +345,7 @@ export function finalizeStreamingMessage(
 
   return {
     ...finalMessage,
+    status: "completed",
     created_at: createdAt || new Date().toISOString(),
   } as Message;
 }

@@ -59,6 +59,12 @@ export function useMobileSwipe({
   // Only when animating do we need to freeze the track on touchstart.
   const animatingRef = useRef(false);
 
+  // Monotonic counter to invalidate stale snap callbacks.
+  // Each snapTo() call bumps this; pending transitionend / timeout
+  // callbacks compare their captured epoch to the current value and
+  // bail out if a newer snap has started since.
+  const snapEpochRef = useRef(0);
+
   const getWidth = useCallback(
     () => wrapperRef.current?.offsetWidth ?? window.innerWidth,
     [],
@@ -85,6 +91,10 @@ export function useMobileSwipe({
       setCurrentPage(clamped);
 
       if (notify) {
+        // Bump epoch so any pending callbacks from a previous snapTo
+        // become stale and won't fire onSnap.
+        const epoch = ++snapEpochRef.current;
+
         const el = trackRef.current;
         if (!el) {
           onSnapRef.current?.(clamped);
@@ -94,6 +104,8 @@ export function useMobileSwipe({
         const fire = () => {
           if (fired) return;
           fired = true;
+          // Only fire if no newer snapTo has started since.
+          if (epoch !== snapEpochRef.current) return;
           onSnapRef.current?.(clamped);
         };
         const handler = () => {
