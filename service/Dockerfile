@@ -1,12 +1,12 @@
 # Stage 1: Build dependencies
-FROM python:3.13.5-slim AS builder
+FROM python:3.13.12-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-cache
 
 # Stage 2: Runtime image
-FROM python:3.13.5-slim
+FROM python:3.13.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
