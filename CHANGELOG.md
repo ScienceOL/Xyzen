@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.6](https://github.com/ScienceOL/Xyzen/compare/v1.3.5...v1.3.6) (2026-02-15)
+
+### 🐛 Bug Fixes
+
+* knowledge folders support, refactor error message, refactor message model, refactor websocket manage, share support. ([#248](https://github.com/ScienceOL/Xyzen/issues/248)) ([b5098bc](https://github.com/ScienceOL/Xyzen/commit/b5098bca0e78051fb53c59e76b02a4b8b53900c6))
+
 ## [1.3.5](https://github.com/ScienceOL/Xyzen/compare/v1.3.4...v1.3.5) (2026-02-14)
 
 ### 🐛 Bug Fixes
