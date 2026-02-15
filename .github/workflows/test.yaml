@@ -5,11 +5,13 @@ on:
     branches: [main, dev]
     paths:
       - "service/**"
+      - "web/**"
       - ".github/workflows/test.yaml"
   pull_request:
     branches: [main, dev]
     paths:
       - "service/**"
+      - "web/**"
       - ".github/workflows/test.yaml"
 
 concurrency:
@@ -60,6 +62,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./service/coverage.xml
+          flags: backend
           verbose: true
 
       - name: Upload coverage reports as artifact
@@ -156,8 +159,58 @@ jobs:
           # Run integration tests (if you have them)
           uv run pytest tests/integration/ -v --tb=short --no-cov
 
+  test-web:
+    runs-on: ubuntu-latest
+    name: Frontend Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "yarn"
+          cache-dependency-path: web/yarn.lock
+
+      - name: Install dependencies
+        working-directory: ./web
+        run: yarn install --immutable
+
+      - name: Type check
+        working-directory: ./web
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: ./web
+        run: yarn lint
+
+      - name: Run tests with coverage
+        working-directory: ./web
+        run: yarn test run --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./web/coverage/lcov.info
+          flags: frontend
+          verbose: true
+
+      - name: Upload coverage as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: web/coverage/
+          retention-days: 7
+
   test-summary:
-    needs: [test, test-matrix, integration-test]
+    needs: [test, test-matrix, integration-test, test-web]
     runs-on: ubuntu-latest
     if: always()
     name: Test Summary
@@ -186,10 +239,16 @@ jobs:
             echo "❌ **Integration Tests**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
 
+          if [ "${{ needs.test-web.result }}" == "success" ]; then
+            echo "✅ **Frontend Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Frontend Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Coverage Reports" >> $GITHUB_STEP_SUMMARY
           echo "Coverage reports are uploaded as artifacts and available for download." >> $GITHUB_STEP_SUMMARY
 
       - name: Fail if any test job failed
-        if: needs.test.result == 'failure' || needs.test-matrix.result == 'failure' || needs.integration-test.result == 'failure'
+        if: needs.test.result == 'failure' || needs.test-matrix.result == 'failure' || needs.integration-test.result == 'failure' || needs.test-web.result == 'failure'
         run: exit 1
