@@ -288,6 +288,7 @@ class RedemptionRepository:
     async def get_or_create_user_wallet(self, user_id: str) -> UserWallet:
         """
         Gets or creates a user wallet if it doesn't exist.
+        New wallets receive a 200-credit welcome bonus.
         This function does NOT commit the transaction.
 
         Args:
@@ -299,9 +300,15 @@ class RedemptionRepository:
         logger.debug(f"Getting or creating wallet for user: {user_id}")
         wallet = await self.get_user_wallet(user_id)
         if wallet is None:
-            wallet_data = UserWalletCreate(user_id=user_id, virtual_balance=0, total_credited=0, total_consumed=0)
+            welcome_bonus = 200
+            wallet_data = UserWalletCreate(
+                user_id=user_id,
+                virtual_balance=welcome_bonus,
+                total_credited=welcome_bonus,
+                total_consumed=0,
+            )
             wallet = await self.create_user_wallet(wallet_data)
-            logger.info(f"Created new wallet for user {user_id}")
+            logger.info(f"Created new wallet for user {user_id} with {welcome_bonus} welcome credits")
         return wallet
 
     async def update_user_wallet(self, user_id: str, wallet_data: UserWalletUpdate) -> UserWallet | None:

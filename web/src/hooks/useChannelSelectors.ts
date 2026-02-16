@@ -2,6 +2,11 @@ import { useXyzen } from "@/store";
 import type { ChatChannel, Message } from "@/store/types";
 import { useShallow } from "zustand/react/shallow";
 
+/** Stable empty array — avoids creating a new [] reference on every selector
+ *  call when the active channel doesn't exist yet, which would cause
+ *  useSyncExternalStore to detect a snapshot change → infinite re-render. */
+const EMPTY_MESSAGES: Message[] = [];
+
 /** Full active channel object (messages included — hot data). */
 export function useActiveChannel(): ChatChannel | null {
   return useXyzen((s) => {
@@ -36,7 +41,7 @@ export function useActiveChannelStatus() {
 export function useActiveChannelMessages(): Message[] {
   return useXyzen((s) => {
     const id = s.activeChatChannel;
-    return id ? (s.channels[id]?.messages ?? []) : [];
+    return id ? (s.channels[id]?.messages ?? EMPTY_MESSAGES) : EMPTY_MESSAGES;
   });
 }
 

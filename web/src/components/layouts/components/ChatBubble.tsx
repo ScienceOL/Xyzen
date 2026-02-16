@@ -480,7 +480,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="group relative w-full pl-8 my-6 first:mt-2"
+        className="group relative w-full pl-8 my-6 first:mt-0"
         onClick={handleBubbleClick}
       >
         {/* Avatar - positioned to the left */}

@@ -68,9 +68,9 @@ const internationalPlans: SubscriptionPlan[] = [
     parallelChats: "1 parallel",
     isFree: true,
     features: [
-      { text: "Lite models", included: true },
+      { text: "Lite & Standard models", included: true },
       { text: "Basic features", included: true },
-      { text: "Standard models", included: false },
+      { text: "Autonomous exploration", included: false },
       { text: "Pro & Ultra models", included: false },
     ],
   },
@@ -84,7 +84,7 @@ const internationalPlans: SubscriptionPlan[] = [
     sandboxes: "1 sandbox",
     features: [
       { text: "Lite & Standard models", included: true },
-      { text: "More storage & chats", included: true },
+      { text: "1 autonomous exploration", included: true },
       { text: "Sandbox access", included: true },
       { text: "Pro & Ultra models", included: false },
     ],
@@ -115,7 +115,7 @@ const internationalPlans: SubscriptionPlan[] = [
     features: [
       { text: "All Pro features", included: true },
       { text: "Ultra models", included: true },
-      { text: "Max performance", included: true },
+      { text: "3 autonomous explorations", included: true },
       { text: "Dedicated support", included: true },
     ],
   },
@@ -132,9 +132,9 @@ const chinaPlans: SubscriptionPlan[] = [
     parallelChats: "1 并行会话",
     isFree: true,
     features: [
-      { text: "Lite 模型", included: true },
+      { text: "Lite 和 Standard 模型", included: true },
       { text: "基础功能", included: true },
-      { text: "沙盒与并行会话", included: false },
+      { text: "自主探索", included: false },
       { text: "高级推理模型", included: false },
     ],
   },
@@ -149,7 +149,7 @@ const chinaPlans: SubscriptionPlan[] = [
     sandboxes: "1 沙盒",
     features: [
       { text: "Lite 和 Standard 模型", included: true },
-      { text: "更多存储和会话", included: true },
+      { text: "1 个自主探索", included: true },
       { text: "沙盒环境", included: true },
       { text: "Pro 和 Ultra 模型", included: false },
     ],
@@ -181,7 +181,7 @@ const chinaPlans: SubscriptionPlan[] = [
     features: [
       { text: "全部专业功能", included: true },
       { text: "Ultra 模型", included: true },
-      { text: "极致性能", included: true },
+      { text: "3 个自主探索", included: true },
       { text: "专属支持", included: true },
     ],
   },
