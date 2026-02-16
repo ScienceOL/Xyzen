@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.1](https://github.com/ScienceOL/Xyzen/compare/v1.4.0...v1.4.1) (2026-02-16)
+
+### 🐛 Bug Fixes
+
+* mobileApp and share 200 for new user ([#251](https://github.com/ScienceOL/Xyzen/issues/251)) ([5ba4a02](https://github.com/ScienceOL/Xyzen/commit/5ba4a02eacde5fc1d091d9a3ed201347f7ceff90))
+
 ## [1.4.0](https://github.com/ScienceOL/Xyzen/compare/v1.3.8...v1.4.0) (2026-02-16)
 
 ### ✨ Features
