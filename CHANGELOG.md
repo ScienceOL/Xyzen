@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.0](https://github.com/ScienceOL/Xyzen/compare/v1.3.8...v1.4.0) (2026-02-16)
+
+### ✨ Features
+
+* enhance chat functionality with message count diagnostics and sandbox management improvements ([15a4df6](https://github.com/ScienceOL/Xyzen/commit/15a4df64c9241cda3e967b7fac08869241d173aa))
+
 ## [1.3.8](https://github.com/ScienceOL/Xyzen/compare/v1.3.7...v1.3.8) (2026-02-16)
 
 ### 🐛 Bug Fixes
