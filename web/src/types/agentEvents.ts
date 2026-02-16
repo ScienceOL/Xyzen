@@ -32,7 +32,7 @@ export interface AgentExecutionContext {
   elapsed_ms?: number;
 
   // Stream identification (propagated from WebSocket handler)
-  stream_id?: string;
+  stream_id: string;
 }
 
 // === Agent Lifecycle Events ===

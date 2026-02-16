@@ -72,11 +72,14 @@ export function findMessageIndexByStream(
     }
   }
 
-  // Fallback: last pending assistant message (backward compat for events without stream_id)
+  // Fallback: last pending or streaming assistant message
+  // Includes "streaming" to handle post-reconnect reconciliation where
+  // DB messages lose their streamId but the message is still actively streaming.
   for (let i = channel.messages.length - 1; i >= 0; i--) {
+    const m = channel.messages[i];
     if (
-      channel.messages[i].role === "assistant" &&
-      channel.messages[i].status === "pending"
+      m.role === "assistant" &&
+      (m.status === "pending" || m.status === "streaming" || m.isStreaming)
     ) {
       return i;
     }
@@ -86,6 +89,52 @@ export function findMessageIndexByStream(
     .map((m, index) => (m.agentExecution?.status === "running" ? index : -1))
     .filter((index) => index !== -1);
   return runningAgentIndices.length === 1 ? runningAgentIndices[0] : -1;
+}
+
+/**
+ * Find the first loading/pending placeholder message.
+ * Matches `status === "pending" || isLoading`.
+ */
+export function findLoadingMessageIndex(channel: ChatChannel): number {
+  return channel.messages.findIndex(
+    (m) => m.status === "pending" || m.isLoading,
+  );
+}
+
+/**
+ * Find the first streaming message.
+ * Matches `status === "streaming" || isStreaming`.
+ */
+export function findStreamingMessageIndex(channel: ChatChannel): number {
+  return channel.messages.findIndex(
+    (m) => m.status === "streaming" || m.isStreaming,
+  );
+}
+
+/**
+ * Find message with a running agent execution (last match).
+ */
+export function findRunningAgentMessageIndex(channel: ChatChannel): number {
+  return channel.messages.findLastIndex(
+    (m) => m.agentExecution?.status === "running",
+  );
+}
+
+/**
+ * Find latest assistant message that's streaming or has no citations/attachments.
+ * Used to attach late-arriving search_citations and generated_files events.
+ */
+export function findLatestAssistantMessageIndex(
+  channel: ChatChannel,
+  field: "citations" | "attachments",
+): number {
+  for (let i = channel.messages.length - 1; i >= 0; i--) {
+    const m = channel.messages[i];
+    if (m.role === "assistant" && (m.isStreaming || !m[field])) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 /**
@@ -171,12 +220,19 @@ export function finalizeMessageExecution(
  * 4. Active tool calls (executing/pending/waiting_confirmation)
  */
 export function syncChannelResponding(channel: ChatChannel): void {
+  const prevResponding = channel.responding;
+
   const latestAssistant = [...channel.messages]
     .reverse()
     .find((m) => m.role === "assistant");
 
   if (!latestAssistant) {
     channel.responding = false;
+    if (prevResponding !== false) {
+      console.warn(
+        "[syncChannelResponding] responding: true → false (no assistant message)",
+      );
+    }
     return;
   }
 
@@ -212,4 +268,24 @@ export function syncChannelResponding(channel: ChatChannel): void {
     ),
   );
   channel.responding = hasActiveToolCall;
+
+  if (prevResponding && !channel.responding) {
+    console.warn(
+      "[syncChannelResponding] responding: true → false",
+      "| msg.id:",
+      latestAssistant.id,
+      "| status:",
+      latestAssistant.status,
+      "| isLoading:",
+      latestAssistant.isLoading,
+      "| isStreaming:",
+      latestAssistant.isStreaming,
+      "| isThinking:",
+      latestAssistant.isThinking,
+      "| agentExec:",
+      latestAssistant.agentExecution?.status,
+      "| toolCalls:",
+      latestAssistant.toolCalls?.map((t) => `${t.id}:${t.status}`),
+    );
+  }
 }

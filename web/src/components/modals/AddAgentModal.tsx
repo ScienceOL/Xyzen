@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
+import { useShallow } from "zustand/react/shallow";
 import { Field, Button as HeadlessButton, Label } from "@headlessui/react";
 import { CheckIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
@@ -223,7 +224,14 @@ interface AddAgentModalProps {
 
 function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
   const { t } = useTranslation();
-  const { createAgent, isCreatingAgent, backendUrl, agents } = useXyzen();
+  const { createAgent, isCreatingAgent, backendUrl, agents } = useXyzen(
+    useShallow((s) => ({
+      createAgent: s.createAgent,
+      isCreatingAgent: s.isCreatingAgent,
+      backendUrl: s.backendUrl,
+      agents: s.agents,
+    })),
+  );
 
   const [agent, setAgent] = useState<
     Omit<

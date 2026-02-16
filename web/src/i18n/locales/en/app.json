@@ -45,6 +45,8 @@
     "skills": "Skills",
     "community": "Community",
     "memory": "Memory",
+    "more": "More",
+    "account": "Account",
     "comingSoon": "Coming Soon"
   },
   "skillsPanel": {
@@ -233,7 +235,10 @@
     "editSave": "Save",
     "editSaveRegenerate": "Save & Regenerate",
     "delete": "Delete",
-    "copy": "Copy"
+    "copy": "Copy",
+    "sending": "Sending...",
+    "sendFailed": "Failed to send",
+    "retry": "Retry"
   },
   "authStatus": {
     "checking": "Checking authentication...",
@@ -378,5 +383,22 @@
     "retryAction": "Retry",
     "rechargeAction": "Recharge",
     "detailToggle": "Details"
+  },
+  "account": {
+    "checkIn": "Daily Check-in",
+    "streak": "{{days}} day streak",
+    "checkedIn": "Checked in",
+    "checkInAction": "Check in",
+    "credits": "Credits",
+    "balance": "{{amount}} points",
+    "viewPlans": "View Plans",
+    "usage": "Usage",
+    "storage": "Storage",
+    "files": "Files",
+    "parallelChats": "Parallel Chats",
+    "settings": "Settings",
+    "redeem": "Redeem",
+    "region": "Region",
+    "about": "About"
   }
 }

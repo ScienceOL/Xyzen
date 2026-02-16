@@ -21,6 +21,7 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import {
   HistorySheetButton,
   McpToolsButton,
@@ -74,7 +75,13 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen();
+  const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen(
+    useShallow((s) => ({
+      addFiles: s.addFiles,
+      canAddMoreFiles: s.canAddMoreFiles,
+      fileUploadOptions: s.fileUploadOptions,
+    })),
+  );
 
   // Toolbar state
   const toolbar = useToolbarState();

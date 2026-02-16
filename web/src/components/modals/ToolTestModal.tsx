@@ -12,6 +12,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import * as monaco from "monaco-editor";
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 interface ToolTestModalProps {
   isOpen: boolean;
@@ -35,7 +36,13 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
   toolName,
   toolDescription,
 }) => {
-  const { token, backendUrl, addToolExecution } = useXyzen();
+  const { token, backendUrl, addToolExecution } = useXyzen(
+    useShallow((s) => ({
+      token: s.token,
+      backendUrl: s.backendUrl,
+      addToolExecution: s.addToolExecution,
+    })),
+  );
   const [parameters, setParameters] = useState<string>("{}");
   const [result, setResult] = useState<ToolTestResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);

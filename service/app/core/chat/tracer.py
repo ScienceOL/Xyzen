@@ -183,6 +183,7 @@ class LangGraphTracer:
                     "depth": 0,
                     "execution_path": [self.event_ctx.agent_name],
                     "started_at": int(self.agent_start_time * 1000),
+                    "stream_id": self.stream_id,
                 },
             },
         }
@@ -410,6 +411,7 @@ class LangGraphTracer:
                     "depth": 0,
                     "execution_path": [self.event_ctx.agent_name],
                     "started_at": int(self.agent_start_time * 1000),
+                    "stream_id": self.stream_id,
                 },
                 "status": status,
                 "duration_ms": duration_ms,

@@ -12,6 +12,7 @@ import {
   useRef,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 
 export interface MobileChatViewHandle {
   /** Navigate to a page: 0 = agents, 1 = chat, 2 = capsule */
@@ -35,7 +36,12 @@ interface MobileChatViewProps {
 const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
   function MobileChatView({ onPageChange }, ref) {
     const { t } = useTranslation();
-    const { activeChatChannel, setActiveChatChannel } = useXyzen();
+    const { activeChatChannel, setActiveChatChannel } = useXyzen(
+      useShallow((s) => ({
+        activeChatChannel: s.activeChatChannel,
+        setActiveChatChannel: s.setActiveChatChannel,
+      })),
+    );
     const { knowledge_set_id } = useActiveChannelStatus();
 
     const hasChannel = !!activeChatChannel;

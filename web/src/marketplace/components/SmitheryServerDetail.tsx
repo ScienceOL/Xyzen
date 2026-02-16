@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import { useSmitheryServerDetail } from "../hooks/useSmitheryMcp";
 import {
   McpActivationStatus,
@@ -274,7 +275,13 @@ const ActivateSmitherySection: React.FC<{
   detail: import("../types/smithery").SmitheryServerDetail;
 }> = ({ detail }) => {
   const { t } = useTranslation();
-  const { activateSmitheryServer, getLoading, mcpServers } = useXyzen();
+  const { activateSmitheryServer, getLoading, mcpServers } = useXyzen(
+    useShallow((s) => ({
+      activateSmitheryServer: s.activateSmitheryServer,
+      getLoading: s.getLoading,
+      mcpServers: s.mcpServers,
+    })),
+  );
   const isLoading = getLoading(LoadingKeys.MCP_SERVER_CREATE);
   const [progress, setProgress] = useState<McpActivationProgressState>({
     status: McpActivationStatus.IDLE,

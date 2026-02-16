@@ -30,7 +30,7 @@ export default function WorkflowEditor({
   onClose,
 }: WorkflowEditorProps) {
   const { t } = useTranslation();
-  const { updateAgent } = useXyzen();
+  const updateAgent = useXyzen((s) => s.updateAgent);
   const [isSaving, setIsSaving] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
 

@@ -2,6 +2,7 @@ import { PaperClipIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useRef } from "react";
 import { useXyzen } from "@/store";
+import { useShallow } from "zustand/react/shallow";
 
 export interface FileUploadButtonProps {
   disabled?: boolean;
@@ -13,7 +14,13 @@ export function FileUploadButton({
   className,
 }: FileUploadButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen();
+  const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen(
+    useShallow((s) => ({
+      addFiles: s.addFiles,
+      canAddMoreFiles: s.canAddMoreFiles,
+      fileUploadOptions: s.fileUploadOptions,
+    })),
+  );
 
   const handleClick = () => {
     if (disabled || !canAddMoreFiles()) {

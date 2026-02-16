@@ -3,6 +3,7 @@ import {
   Bars3BottomRightIcon,
   ViewColumnsIcon,
 } from "@heroicons/react/24/outline";
+import { useShallow } from "zustand/react/shallow";
 
 export type LayoutToggleProps = {
   className?: string;
@@ -13,7 +14,12 @@ export const LayoutToggle = ({
   className,
   title = "Toggle Layout",
 }: LayoutToggleProps) => {
-  const { layoutStyle, setLayoutStyle } = useXyzen();
+  const { layoutStyle, setLayoutStyle } = useXyzen(
+    useShallow((s) => ({
+      layoutStyle: s.layoutStyle,
+      setLayoutStyle: s.setLayoutStyle,
+    })),
+  );
 
   const toggleLayout = () => {
     setLayoutStyle(layoutStyle === "sidebar" ? "fullscreen" : "sidebar");

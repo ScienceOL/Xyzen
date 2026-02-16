@@ -299,6 +299,7 @@ async def chat_websocket(
                 message_text = data.get("message")
                 file_ids = data.get("file_ids", [])
                 context = data.get("context")
+                client_id = data.get("client_id")  # For optimistic UI reconciliation
 
                 if not message_text:
                     continue
@@ -333,12 +334,13 @@ async def chat_websocket(
                     )
                     await db.flush()
 
-                # 3. Echo user message
+                # 3. Echo user message (include client_id for optimistic UI reconciliation)
                 user_message_with_files = await message_repo.get_message_with_files(user_message.id)
-                if user_message_with_files:
-                    await websocket.send_text(user_message_with_files.model_dump_json())
-                else:
-                    await websocket.send_text(user_message.model_dump_json())
+                echo_model = user_message_with_files if user_message_with_files else user_message
+                echo_data = json.loads(echo_model.model_dump_json())
+                if client_id:
+                    echo_data["client_id"] = client_id
+                await websocket.send_text(json.dumps(echo_data, default=str))
 
                 # 4. Generate stream_id for this response lifecycle
                 stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
@@ -409,9 +411,14 @@ async def chat_websocket(
                 )
 
                 # 7b. Acknowledge message receipt to client
+                ack_data: dict[str, str | None] = {
+                    "message_id": str(user_message.id),
+                }
+                if client_id:
+                    ack_data["client_id"] = client_id
                 ack_event = {
                     "type": ChatEventType.MESSAGE_ACK,
-                    "data": {"message_id": str(user_message.id)},
+                    "data": ack_data,
                 }
                 await websocket.send_text(json.dumps(ack_event))
 

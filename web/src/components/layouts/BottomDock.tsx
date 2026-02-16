@@ -41,11 +41,13 @@ import { TokenInputModal } from "@/components/features/TokenInputModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { logout } from "@/core/auth";
 import { useUserWallet } from "@/hooks/useUserWallet";
+import { checkInService } from "@/service/checkinService";
 import {
   ArrowRightOnRectangleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useQuery } from "@tanstack/react-query";
 import { GradientButton } from "@/components/ui/gradient-button";
 
 // Dock height constant - use this for bottom margin calculations in other components
@@ -59,7 +61,8 @@ export type ActivityPanel =
   | "knowledge"
   | "skills"
   | "marketplace"
-  | "memory";
+  | "memory"
+  | "account";
 
 interface BottomDockProps {
   activePanel: ActivityPanel;
@@ -188,7 +191,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
-  const { openSettingsModal } = useXyzen();
+  const openSettingsModal = useXyzen((s) => s.openSettingsModal);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
   const walletQuery = useUserWallet(auth.token, isAuthedForUi);
@@ -443,11 +446,13 @@ function StatusBarItem({
   label,
   onClick,
   className,
+  showDot,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick?: () => void;
   className?: string;
+  showDot?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -460,7 +465,7 @@ function StatusBarItem({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors",
+          "relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors",
           "bg-white/40 dark:bg-neutral-800/40",
           "hover:bg-white/70 dark:hover:bg-neutral-700/60",
           "border border-white/20 dark:border-neutral-700/30",
@@ -468,6 +473,12 @@ function StatusBarItem({
           className,
         )}
       >
+        {showDot && (
+          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+          </span>
+        )}
         <Icon className="h-4 w-4" />
         <span className="hidden sm:inline">{label}</span>
       </motion.button>
@@ -804,6 +815,13 @@ export function BottomDock({
   const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
+  const checkInStatus = useQuery({
+    queryKey: ["check-in", "status"],
+    queryFn: () => checkInService.getStatus(),
+    enabled: isAuthedForUi,
+  });
+  const showCheckInDot =
+    isAuthedForUi && checkInStatus.data?.checked_in_today === false;
 
   const dockItems: DockItem[] = [
     {
@@ -915,6 +933,7 @@ export function BottomDock({
                   label="签到"
                   onClick={() => setShowCheckInModal(true)}
                   className="text-amber-700 dark:text-amber-400"
+                  showDot={showCheckInDot}
                 />
               )}
 

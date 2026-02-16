@@ -82,14 +82,14 @@ describe("handleProcessingOrLoading", () => {
     const channel = makeChannel({
       messages: [makeMessage({ status: "pending", isLoading: true })],
     });
-    handleProcessingOrLoading(channel);
+    handleProcessingOrLoading(channel, "stream-2");
     expect(channel.messages).toHaveLength(1);
   });
 
-  it("generates fallback id when no stream_id provided", () => {
+  it("uses stream_id as message id", () => {
     const channel = makeChannel();
-    handleProcessingOrLoading(channel);
-    expect(channel.messages[0].id).toMatch(/^loading-/);
+    handleProcessingOrLoading(channel, "stream-42");
+    expect(channel.messages[0].id).toBe("stream-42");
   });
 });
 
@@ -143,7 +143,7 @@ describe("handleStreamingStart", () => {
 // ---------------------------------------------------------------------------
 
 describe("handleStreamingEnd", () => {
-  it("finalizes streaming message", () => {
+  it("finalizes streaming message without agent execution", () => {
     const channel = makeChannel({
       messages: [
         makeMessage({
@@ -162,6 +162,73 @@ describe("handleStreamingEnd", () => {
     expect(channel.messages[0].status).toBe("completed");
     expect(channel.messages[0].isStreaming).toBeUndefined();
     expect(channel.messages[0].created_at).toBe("2024-01-01T00:00:00Z");
+  });
+
+  it("preserves running agent execution (tool call cycle)", () => {
+    const channel = makeChannel({
+      messages: [
+        makeMessage({
+          id: "stream-1",
+          streamId: "stream-1",
+          status: "streaming",
+          isStreaming: true,
+          content: "",
+          agentExecution: makeExecution({
+            status: "running",
+            phases: [
+              {
+                id: "response",
+                name: "Response",
+                status: "running",
+                nodes: [],
+                streamedContent: "Using search tool...",
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+    handleStreamingEnd(channel, { stream_id: "stream-1" });
+
+    // Agent execution stays alive for upcoming tool_call_request
+    expect(channel.messages[0].agentExecution!.status).toBe("running");
+    expect(channel.messages[0].agentExecution!.phases[0].status).toBe(
+      "running",
+    );
+    // Streaming flag cleared
+    expect(channel.messages[0].isStreaming).toBe(false);
+    // Phase content copied to message.content
+    expect(channel.messages[0].content).toBe("Using search tool...");
+  });
+
+  it("fully finalizes completed agent execution", () => {
+    const channel = makeChannel({
+      messages: [
+        makeMessage({
+          id: "stream-1",
+          streamId: "stream-1",
+          status: "streaming",
+          isStreaming: true,
+          agentExecution: makeExecution({
+            status: "completed",
+            phases: [
+              {
+                id: "p1",
+                name: "P1",
+                status: "completed",
+                nodes: [],
+                streamedContent: "Done",
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+    handleStreamingEnd(channel, { stream_id: "stream-1" });
+
+    // Non-running execution is fully finalized
+    expect(channel.messages[0].status).toBe("completed");
+    expect(channel.messages[0].isStreaming).toBeUndefined();
   });
 
   it("copies phase content to message.content when empty", () => {

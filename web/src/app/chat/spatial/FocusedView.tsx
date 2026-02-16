@@ -16,6 +16,7 @@ import { ChevronLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import { AgentData } from "./types";
 
 interface FocusedViewProps {
@@ -48,7 +49,14 @@ export function FocusedView({
     reorderAgents,
     spatialSidebarCollapsed,
     setSpatialSidebarCollapsed,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      activateChannelForAgent: s.activateChannelForAgent,
+      reorderAgents: s.reorderAgents,
+      spatialSidebarCollapsed: s.spatialSidebarCollapsed,
+      setSpatialSidebarCollapsed: s.setSpatialSidebarCollapsed,
+    })),
+  );
   const collapsed = spatialSidebarCollapsed;
   const runningAgentIds = useRunningAgentIds();
   const { knowledge_set_id: focusedKnowledgeSetId } = useActiveChannelStatus();

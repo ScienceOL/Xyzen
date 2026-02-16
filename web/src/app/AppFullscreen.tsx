@@ -4,6 +4,7 @@ import { DndContext } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useShallow } from "zustand/react/shallow";
 
 import { SpatialWorkspace } from "@/app/chat/SpatialWorkspace";
 import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
@@ -24,12 +25,13 @@ export interface AppFullscreenProps {
 export function AppFullscreen({
   backendUrl = DEFAULT_BACKEND_URL,
 }: AppFullscreenProps) {
-  const {
-    setBackendUrl,
-    // centralized UI actions
-    activePanel,
-    setActivePanel,
-  } = useXyzen();
+  const { setBackendUrl, activePanel, setActivePanel } = useXyzen(
+    useShallow((s) => ({
+      setBackendUrl: s.setBackendUrl,
+      activePanel: s.activePanel,
+      setActivePanel: s.setActivePanel,
+    })),
+  );
 
   const [mounted, setMounted] = useState(false);
 

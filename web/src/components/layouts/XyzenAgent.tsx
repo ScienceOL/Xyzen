@@ -16,6 +16,7 @@ import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { useMyMarketplaceListings } from "@/hooks/useMarketplace";
 import { useXyzen } from "@/store";
+import { useShallow } from "zustand/react/shallow";
 
 // Import types from separate file
 import type { Agent } from "@/types/agents";
@@ -47,7 +48,20 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
     fetchMyProviders,
     llmProviders,
     llmProvidersLoading,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      agents: s.agents,
+      deleteAgent: s.deleteAgent,
+      updateAgentAvatar: s.updateAgentAvatar,
+      reorderAgents: s.reorderAgents,
+      chatHistory: s.chatHistory,
+      activateChannelForAgent: s.activateChannelForAgent,
+      fetchMcpServers: s.fetchMcpServers,
+      fetchMyProviders: s.fetchMyProviders,
+      llmProviders: s.llmProviders,
+      llmProvidersLoading: s.llmProvidersLoading,
+    })),
+  );
 
   // Derived state from store (stable across streaming chunks)
   const activeTopicCountByAgent = useActiveTopicCountByAgent();

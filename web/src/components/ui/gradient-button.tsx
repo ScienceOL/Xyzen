@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
 interface GradientButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
@@ -14,10 +13,6 @@ export function GradientButton({
   href,
   ...props
 }: GradientButtonProps) {
-  const [isHovering, setIsHovering] = useState(false);
-
-  console.log("GradientButton hover state:", isHovering);
-
   const baseClass =
     "group relative z-[1] flex items-center justify-center rounded px-3 py-1.5 text-sm font-medium outline-none transition-all duration-300";
 
@@ -36,8 +31,6 @@ export function GradientButton({
       <button
         className={cn(baseClass, textColorClass, className)}
         onClick={handleClick}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
         {...props}
       >
         {children}

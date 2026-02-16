@@ -7,7 +7,7 @@ const EmptyChat: React.FC = () => {
   const { t } = useTranslation();
   const [isCreating] = useState(false);
 
-  const { createDefaultChannel } = useXyzen();
+  const createDefaultChannel = useXyzen((s) => s.createDefaultChannel);
 
   return (
     <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 text-center">

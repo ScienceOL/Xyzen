@@ -25,6 +25,7 @@ import { generateClientId } from "../messageProcessor";
 import {
   clearMessageTransientState,
   finalizeMessageExecution,
+  findLoadingMessageIndex,
   findMessageIndexByStream,
   getNodeDisplayName,
 } from "../channelHelpers";
@@ -46,9 +47,7 @@ export function handleAgentStart(
     loadingIndex = findMessageIndexByStream(channel, context.stream_id);
   }
   if (loadingIndex === -1) {
-    loadingIndex = channel.messages.findIndex(
-      (m) => m.status === "pending" || m.isLoading,
-    );
+    loadingIndex = findLoadingMessageIndex(channel);
   }
 
   const executionState: AgentExecutionState = {
@@ -70,6 +69,7 @@ export function handleAgentStart(
     channel.messages[loadingIndex] = {
       ...messageWithoutLoading,
       id: `agent-${context.execution_id}`,
+      streamId: context.stream_id || messageWithoutLoading.streamId,
       status: "pending",
       agentExecution: executionState,
     };

@@ -45,6 +45,8 @@
     "skills": "スキル",
     "community": "コミュニティ",
     "memory": "メモリー",
+    "more": "その他",
+    "account": "マイページ",
     "comingSoon": "近日公開予定"
   },
   "skillsPanel": {
@@ -188,7 +190,10 @@
     "editSave": "保存",
     "editSaveRegenerate": "保存して再生成",
     "delete": "削除",
-    "copy": "コピー"
+    "copy": "コピー",
+    "sending": "送信中...",
+    "sendFailed": "送信に失敗しました",
+    "retry": "再試行"
   },
   "authStatus": {
     "checking": "認証状態を確認中...",
@@ -333,5 +338,22 @@
     "retryAction": "再試行",
     "rechargeAction": "チャージ",
     "detailToggle": "詳細"
+  },
+  "account": {
+    "checkIn": "デイリーチェックイン",
+    "streak": "{{days}} 日連続",
+    "checkedIn": "チェックイン済み",
+    "checkInAction": "チェックイン",
+    "credits": "クレジット",
+    "balance": "{{amount}} ポイント",
+    "viewPlans": "プランを見る",
+    "usage": "使用状況",
+    "storage": "ストレージ",
+    "files": "ファイル",
+    "parallelChats": "並行チャット",
+    "settings": "設定",
+    "redeem": "コード交換",
+    "region": "リージョン",
+    "about": "情報"
   }
 }

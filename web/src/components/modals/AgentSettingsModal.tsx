@@ -33,6 +33,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import WorkflowEditor from "./editSession/WorkflowEditor";
 
 // ============ Constants ============
@@ -403,7 +404,9 @@ function ProfileEditor({
 }: ProfileEditorProps) {
   const { t } = useTranslation();
   const backendUrl = useXyzen((state) => state.backendUrl);
-  const { updateAgent, agents: allAgents } = useXyzen();
+  const { updateAgent, agents: allAgents } = useXyzen(
+    useShallow((s) => ({ updateAgent: s.updateAgent, agents: s.agents })),
+  );
   const [agent, setAgent] = useState<Agent>(agentToEdit);
   const [isSaving, setIsSaving] = useState(false);
 

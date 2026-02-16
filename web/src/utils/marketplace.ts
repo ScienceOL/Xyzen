@@ -10,7 +10,7 @@ import type { MarketplaceListing } from "@/service/marketplaceService";
 export const useIsMarketplaceOwner = (
   listing: MarketplaceListing | undefined,
 ) => {
-  const { user } = useXyzen();
+  const user = useXyzen((s) => s.user);
 
   if (!listing || !user?.username) return false;
 

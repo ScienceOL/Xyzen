@@ -70,6 +70,7 @@ describe("handleError", () => {
       error_code: "provider.rate_limited",
       error_category: "provider",
       recoverable: true,
+      stream_id: "stream-1",
     });
 
     expect(channel.messages[0].status).toBe("failed");
@@ -80,7 +81,7 @@ describe("handleError", () => {
 
   it("creates error message when no target found", () => {
     const channel = makeChannel();
-    handleError(channel, { error: "Oops" });
+    handleError(channel, { error: "Oops", stream_id: "stream-1" });
 
     expect(channel.messages).toHaveLength(1);
     expect(channel.messages[0].status).toBe("failed");
@@ -91,7 +92,7 @@ describe("handleError", () => {
     const channel = makeChannel({
       messages: [makeMessage({ status: "streaming", isStreaming: true })],
     });
-    handleError(channel, { error: "Error" });
+    handleError(channel, { error: "Error", stream_id: "stream-1" });
 
     expect(channel.messages[0].status).toBe("failed");
   });
@@ -104,7 +105,7 @@ describe("handleError", () => {
         }),
       ],
     });
-    handleError(channel, { error: "Error" });
+    handleError(channel, { error: "Error", stream_id: "stream-1" });
 
     expect(channel.messages[0].status).toBe("failed");
   });
@@ -138,6 +139,7 @@ describe("handleInsufficientBalance", () => {
     });
     const notification = handleInsufficientBalance(channel, {
       message: "No credits",
+      stream_id: "stream-1",
     });
 
     expect(channel.responding).toBe(false);
@@ -152,7 +154,9 @@ describe("handleInsufficientBalance", () => {
 
   it("returns notification even without loading message", () => {
     const channel = makeChannel();
-    const notification = handleInsufficientBalance(channel, {});
+    const notification = handleInsufficientBalance(channel, {
+      stream_id: "stream-1",
+    });
     expect(notification).toBeDefined();
   });
 });
@@ -264,6 +268,7 @@ describe("handleToolCallRequest", () => {
       arguments: { query: "test" },
       status: "waiting_confirmation",
       timestamp: Date.now(),
+      stream_id: "stream-1",
     });
 
     const phase = channel.messages[0].agentExecution!.phases[0];
@@ -280,6 +285,7 @@ describe("handleToolCallRequest", () => {
       arguments: {},
       status: "waiting_confirmation",
       timestamp: Date.now(),
+      stream_id: "stream-1",
     });
 
     expect(channel.messages).toHaveLength(1);
@@ -297,11 +303,131 @@ describe("handleToolCallRequest", () => {
       arguments: {},
       status: "waiting_confirmation",
       timestamp: Date.now(),
+      stream_id: "stream-1",
     });
 
     // Loading removed, tool call message added
     expect(channel.messages).toHaveLength(1);
     expect(channel.messages[0].toolCalls).toBeDefined();
+  });
+
+  it("does NOT remove pending agent execution message", () => {
+    // Simulates: agent_start sets status="pending" with agentExecution,
+    // then tool_call_request arrives before streaming_start (LLM calls tool without text)
+    const channel = makeChannel({
+      messages: [
+        makeMessage({
+          id: "agent-exec-1",
+          streamId: "stream-1",
+          status: "pending",
+          agentExecution: makeExecution({
+            status: "running",
+            phases: [
+              {
+                id: "agent",
+                name: "Response",
+                status: "running",
+                nodes: [],
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+
+    handleToolCallRequest(channel, {
+      id: "tc-1",
+      name: "web_search",
+      arguments: {},
+      status: "executing",
+      timestamp: Date.now(),
+      stream_id: "stream-1",
+    });
+
+    // Agent execution message preserved, tool call added to its phase
+    expect(channel.messages).toHaveLength(1);
+    expect(channel.messages[0].agentExecution).toBeDefined();
+    expect(channel.messages[0].agentExecution!.status).toBe("running");
+    const phase = channel.messages[0].agentExecution!.phases[0];
+    expect(phase.toolCalls).toHaveLength(1);
+    expect(phase.toolCalls![0].name).toBe("web_search");
+  });
+
+  it("finds agent message by stream_id when execution not running", () => {
+    // Simulates the scenario after streaming_end cleared isStreaming
+    // but the agent execution is still logically active
+    const channel = makeChannel({
+      messages: [
+        makeMessage({
+          id: "stream-1",
+          streamId: "stream-1",
+          status: "streaming",
+          agentExecution: makeExecution({
+            status: "running",
+            phases: [
+              {
+                id: "response",
+                name: "Response",
+                status: "running",
+                nodes: [],
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+
+    handleToolCallRequest(channel, {
+      id: "tc-1",
+      name: "search",
+      arguments: {},
+      status: "executing",
+      timestamp: Date.now(),
+      stream_id: "stream-1",
+    });
+
+    // Should add to existing agent phase, not create new message
+    expect(channel.messages).toHaveLength(1);
+    const phase = channel.messages[0].agentExecution!.phases[0];
+    expect(phase.toolCalls).toHaveLength(1);
+  });
+
+  it("adds tool call to last phase when all phases completed", () => {
+    const channel = makeChannel({
+      messages: [
+        makeMessage({
+          id: "stream-1",
+          streamId: "stream-1",
+          status: "streaming",
+          agentExecution: makeExecution({
+            status: "running",
+            currentNode: "response",
+            phases: [
+              {
+                id: "response",
+                name: "Response",
+                status: "completed",
+                nodes: [],
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+
+    handleToolCallRequest(channel, {
+      id: "tc-1",
+      name: "search",
+      arguments: {},
+      status: "executing",
+      timestamp: Date.now(),
+      stream_id: "stream-1",
+    });
+
+    // Should fall back to last phase
+    expect(channel.messages).toHaveLength(1);
+    const phase = channel.messages[0].agentExecution!.phases[0];
+    expect(phase.toolCalls).toHaveLength(1);
   });
 });
 

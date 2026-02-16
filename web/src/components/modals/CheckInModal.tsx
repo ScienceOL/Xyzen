@@ -1,5 +1,5 @@
 import { BubbleBackground } from "@/components/animate-ui/components/backgrounds/bubble";
-import { ModalTitleLess } from "@/components/animate-ui/primitives/headless/modal-title-less";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { CheckInCalendar } from "@/components/features/CheckInCalendar";
 import type { CheckInResponse } from "@/service/checkinService";
 
@@ -15,23 +15,30 @@ export function CheckInModal({
   onCheckInSuccess,
 }: CheckInModalProps) {
   return (
-    <ModalTitleLess isOpen={isOpen} onClose={onClose} maxWidth="max-w-5xl">
-      <div className="relative h-180 max-h-[90vh] w-full overflow-hidden rounded-sm bg-white/50 flex flex-col dark:bg-black/50">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title=""
+      containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
+      panelClassName="flex w-full flex-col h-[95dvh] rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-auto md:max-h-[85vh] md:max-w-5xl md:rounded-2xl md:border md:border-neutral-200/20"
+      swipeToDismiss
+    >
+      <div className="relative flex h-full flex-col overflow-hidden">
         <BubbleBackground
-          className="absolute inset-0 opacity-30 dark:opacity-20"
+          className="pointer-events-none absolute inset-0 opacity-30 dark:opacity-20"
           colors={{
-            first: "99,102,241", // indigo-500
-            second: "168,85,247", // purple-500
-            third: "236,72,153", // pink-500
-            fourth: "59,130,246", // blue-500
-            fifth: "139,92,246", // violet-500
-            sixth: "217,70,239", // fuchsia-500
+            first: "99,102,241",
+            second: "168,85,247",
+            third: "236,72,153",
+            fourth: "59,130,246",
+            fifth: "139,92,246",
+            sixth: "217,70,239",
           }}
         />
-        <div className="relative z-10 h-full w-full overflow-y-auto p-3 sm:p-6">
+        <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6">
           <CheckInCalendar onCheckInSuccess={onCheckInSuccess} />
         </div>
       </div>
-    </ModalTitleLess>
+    </Modal>
   );
 }

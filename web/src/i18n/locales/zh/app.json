@@ -45,6 +45,8 @@
     "skills": "技能",
     "community": "社区",
     "memory": "记忆",
+    "more": "更多",
+    "account": "我的",
     "comingSoon": "敬请期待"
   },
   "skillsPanel": {
@@ -233,7 +235,10 @@
     "editSave": "保存",
     "editSaveRegenerate": "保存并重新生成",
     "delete": "删除",
-    "copy": "复制"
+    "copy": "复制",
+    "sending": "发送中...",
+    "sendFailed": "发送失败",
+    "retry": "重试"
   },
   "authStatus": {
     "checking": "检查认证状态...",
@@ -378,5 +383,22 @@
     "retryAction": "重试",
     "rechargeAction": "充值",
     "detailToggle": "详情"
+  },
+  "account": {
+    "checkIn": "每日签到",
+    "streak": "连续 {{days}} 天",
+    "checkedIn": "已签到",
+    "checkInAction": "签到",
+    "credits": "积分",
+    "balance": "{{amount}} 积分",
+    "viewPlans": "查看套餐",
+    "usage": "用量",
+    "storage": "存储空间",
+    "files": "文件数",
+    "parallelChats": "并行对话",
+    "settings": "设置",
+    "redeem": "兑换码",
+    "region": "地区",
+    "about": "关于"
   }
 }

@@ -48,7 +48,7 @@ async def get_ai_response_stream_langchain_legacy(
     connection_manager: "ChatPublisher | None" = None,
     connection_id: str | None = None,
     context: dict[str, Any] | None = None,
-    stream_id: str | None = None,
+    stream_id: str = "",
 ) -> AsyncGenerator[StreamingEvent, None]:
     """
     Get a streaming response using LangChain Agent.
@@ -534,7 +534,7 @@ async def _handle_updates_mode(
                         logger.info(f"[ToolEvent] Skipping already emitted tool call: {tool_id}")
                         continue
                     logger.info(f"[ToolEvent] >>> Emitting tool_call_request for {tool_name} (id={tool_id})")
-                    yield ToolEventHandler.create_tool_request_event(tool_call)
+                    yield ToolEventHandler.create_tool_request_event(tool_call, stream_id=ctx.stream_id)
 
             # Emit tool_call_response for ToolMessage
             if isinstance(msg, ToolMessage):
@@ -551,7 +551,9 @@ async def _handle_updates_mode(
                     raw_content = msg.content
                     result = format_tool_result(raw_content, tool_name)
                     logger.info(f"[ToolEvent] >>> Emitting tool_call_response for {tool_call_id}")
-                    yield ToolEventHandler.create_tool_response_event(tool_call_id, result, raw_result=raw_content)
+                    yield ToolEventHandler.create_tool_response_event(
+                        tool_call_id, result, raw_result=raw_content, stream_id=ctx.stream_id
+                    )
 
         last_message = messages[-1]
 
@@ -636,14 +638,14 @@ async def _handle_updates_mode(
                     last_message.content, ctx.user_id, ctx.db
                 )
                 if files_data:
-                    yield GeneratedFileHandler.create_generated_files_event(files_data)
+                    yield GeneratedFileHandler.create_generated_files_event(files_data, ctx.stream_id)
 
             # Handle citations
             if hasattr(last_message, "response_metadata"):
                 citations = CitationExtractor.extract_citations(last_message.response_metadata)
                 if citations:
                     logger.info(f"Emitting {len(citations)} unique search citations")
-                    yield CitationExtractor.create_citations_event(citations)
+                    yield CitationExtractor.create_citations_event(citations, ctx.stream_id)
 
 
 async def _handle_messages_mode(
@@ -829,11 +831,11 @@ async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> As
                 ctx.total_tokens,
             )
             yield StreamingEventHandler.create_token_usage_event(
-                ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens
+                ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens, ctx.stream_id
             )
 
 
-def _handle_streaming_error(e: Exception, user_id: str, stream_id: str | None = None) -> StreamingEvent:
+def _handle_streaming_error(e: Exception, user_id: str, stream_id: str = "") -> StreamingEvent:
     """Handle and format streaming errors using structured ChatErrorCode."""
     from app.common.code.chat_error_code import classify_exception
 

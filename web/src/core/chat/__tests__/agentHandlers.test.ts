@@ -64,6 +64,7 @@ function makeContext(overrides?: Record<string, unknown>) {
     depth: 0,
     execution_path: ["Agent"],
     started_at: Date.now(),
+    stream_id: "stream-test",
     ...overrides,
   };
 }
@@ -83,6 +84,35 @@ describe("handleAgentStart", () => {
     expect(channel.messages[0].agentExecution).toBeDefined();
     expect(channel.messages[0].agentExecution!.status).toBe("running");
     expect(channel.messages[0].id).toBe("agent-exec-1");
+  });
+
+  it("preserves streamId from loading message on conversion", () => {
+    const channel = makeChannel({
+      messages: [
+        makeMessage({
+          status: "pending",
+          isLoading: true,
+          streamId: "stream-1",
+        }),
+      ],
+    });
+    handleAgentStart(channel, {
+      context: makeContext({ stream_id: "stream-1" }),
+    });
+
+    expect(channel.messages).toHaveLength(1);
+    expect(channel.messages[0].streamId).toBe("stream-1");
+  });
+
+  it("sets streamId from context when loading message has none", () => {
+    const channel = makeChannel({
+      messages: [makeMessage({ status: "pending", isLoading: true })],
+    });
+    handleAgentStart(channel, {
+      context: makeContext({ stream_id: "stream-2" }),
+    });
+
+    expect(channel.messages[0].streamId).toBe("stream-2");
   });
 
   it("creates new message when no loading exists", () => {

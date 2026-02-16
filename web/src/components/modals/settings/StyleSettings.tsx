@@ -1,6 +1,7 @@
 import { Switch } from "@/components/base/Switch";
 import { useXyzen } from "@/store";
 import type { InputPosition, LayoutStyle } from "@/store/slices/uiSlice/types";
+import { useShallow } from "zustand/react/shallow";
 
 import { Field, Label, Radio, RadioGroup } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/24/outline";
@@ -15,7 +16,16 @@ export function StyleSettings() {
     setInputPosition,
     showOfficialRecommendations,
     setShowOfficialRecommendations,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      layoutStyle: s.layoutStyle,
+      setLayoutStyle: s.setLayoutStyle,
+      inputPosition: s.inputPosition,
+      setInputPosition: s.setInputPosition,
+      showOfficialRecommendations: s.showOfficialRecommendations,
+      setShowOfficialRecommendations: s.setShowOfficialRecommendations,
+    })),
+  );
 
   const styles: Array<{
     value: LayoutStyle;
