@@ -274,6 +274,23 @@ export const createChatSlice: StateCreator<
   ): Promise<void> => {
     const { backendUrl, setLoading } = get();
     const loadingKey = `topicMessages-${topicId}`;
+    const ch = get().channels[topicId];
+
+    // Guard: never reconcile from DB while streaming is active.
+    // In-memory state is the source of truth during streaming — DB lacks
+    // runtime fields (agentExecution, streamId, isStreaming, etc.).
+    // If the stream truly stalled, the 60s stale watchdog will handle it.
+    if (ch?.responding) {
+      console.warn(
+        `[reconcile] SKIP — channel is responding, topic=${topicId.slice(0, 8)} msgs=${ch.messages.length}`,
+      );
+      return;
+    }
+
+    console.warn(
+      `[reconcile] ENTER topic=${topicId.slice(0, 8)} responding=${ch?.responding} msgs=${ch?.messages.length}`,
+      new Error().stack?.split("\n").slice(1, 5).join(" <- "),
+    );
     setLoading(loadingKey, true);
 
     try {
@@ -297,6 +314,31 @@ export const createChatSlice: StateCreator<
         set((state: ChatSlice) => {
           const channel = state.channels[topicId];
           if (channel) {
+            // Build a set of DB message IDs for quick lookup
+            const dbMessageIds = new Set(processedMessages.map((m) => m.id));
+
+            // Collect in-memory-only messages that should be preserved:
+            // these are messages created by streaming events (agent execution,
+            // loading placeholders, streaming content) that haven't been
+            // persisted to DB yet. Without preservation, reconciliation
+            // during active streaming destroys the running agent execution.
+            const inMemoryMessages = channel.messages.filter((m) => {
+              // Skip messages that exist in DB — DB version is authoritative
+              if (dbMessageIds.has(m.id)) return false;
+              if (m.dbId && dbMessageIds.has(m.dbId)) return false;
+
+              // Preserve messages with active runtime state
+              return Boolean(
+                m.status === "pending" ||
+                m.status === "streaming" ||
+                m.status === "thinking" ||
+                m.isLoading ||
+                m.isStreaming ||
+                m.isThinking ||
+                m.agentExecution,
+              );
+            });
+
             // Preserve streamId from existing messages onto reconciled DB messages.
             // After WS reconnect, the Celery worker is still streaming with the
             // original stream_id, but DB messages don't have streamId. Without
@@ -316,7 +358,54 @@ export const createChatSlice: StateCreator<
               }
             }
 
-            channel.messages = processedMessages;
+            // Try to merge in-memory runtime state into matching DB messages
+            // instead of preserving them as separate duplicates.
+            // The in-memory message has a temp ID (e.g. "agent-exec_...") while
+            // the DB message has a real UUID — they're the same logical message.
+            const usedDbIndices = new Set<number>();
+            const trulyNewMessages: typeof inMemoryMessages = [];
+
+            for (const memMsg of inMemoryMessages) {
+              // Find a DB assistant message that could be the persisted version
+              // of this in-memory message. Match by role and pick the latest
+              // unmatched assistant message from DB.
+              let dbMatchIdx = -1;
+              if (memMsg.role === "assistant") {
+                for (let i = processedMessages.length - 1; i >= 0; i--) {
+                  if (
+                    processedMessages[i].role === "assistant" &&
+                    !usedDbIndices.has(i)
+                  ) {
+                    dbMatchIdx = i;
+                    break;
+                  }
+                }
+              }
+
+              if (dbMatchIdx !== -1) {
+                // Merge: keep DB message identity but apply in-memory runtime state
+                const dbMsg = processedMessages[dbMatchIdx];
+                dbMsg.streamId = memMsg.streamId;
+                dbMsg.status = memMsg.status;
+                dbMsg.isStreaming = memMsg.isStreaming;
+                dbMsg.isThinking = memMsg.isThinking;
+                dbMsg.isLoading = memMsg.isLoading;
+                dbMsg.agentExecution = memMsg.agentExecution;
+                dbMsg.thinkingContent = memMsg.thinkingContent;
+                usedDbIndices.add(dbMatchIdx);
+              } else {
+                // No DB counterpart — truly a new in-memory-only message
+                trulyNewMessages.push(memMsg);
+              }
+            }
+
+            // Merge: DB messages (with merged runtime state) + truly new messages
+            const mergedMessages = [...processedMessages, ...trulyNewMessages];
+
+            console.warn(
+              `[reconcile] OVERWRITE topic=${topicId.slice(0, 8)} oldMsgs=${channel.messages.length} dbMsgs=${processedMessages.length} preserved=${inMemoryMessages.length} merged=${inMemoryMessages.length - trulyNewMessages.length} new=${trulyNewMessages.length} responding=${channel.responding}`,
+            );
+            channel.messages = mergedMessages;
             syncChannelResponding(channel);
           }
         });
@@ -393,9 +482,21 @@ export const createChatSlice: StateCreator<
 
         const history: SessionResponse[] = await response.json();
 
-        // 获取当前的 channels 状态，避免覆盖现有的连接和消息
+        // Snapshot current channels AFTER fetch completes (not before).
+        // Use get() to read the latest Immer-committed state.
         const currentChannels = get().channels;
         const newChannels: Record<string, ChatChannel> = { ...currentChannels };
+
+        // Diagnostic: detect if any channel is responding when we're about to overwrite
+        const respondingTopics = Object.entries(currentChannels)
+          .filter(([, ch]) => ch.responding)
+          .map(([id, ch]) => `${id.slice(0, 8)}(msgs=${ch.messages.length})`);
+        if (respondingTopics.length > 0) {
+          console.warn(
+            `[fetchChatHistory] DANGER: overwriting channels while responding:`,
+            respondingTopics.join(", "),
+          );
+        }
 
         const chatHistory: ChatHistoryItem[] = history.flatMap(
           (session: SessionResponse) => {
@@ -439,11 +540,31 @@ export const createChatSlice: StateCreator<
           },
         );
 
-        set({
-          chatHistory,
-          channels: newChannels,
-          chatHistoryLoading: false,
-          // 不要自动设置 activeChatChannel，保持当前选中的
+        set((state: ChatSlice) => {
+          state.chatHistory = chatHistory;
+          state.chatHistoryLoading = false;
+
+          for (const [topicId, incomingChannel] of Object.entries(
+            newChannels,
+          )) {
+            const existing = state.channels[topicId];
+            if (!existing) {
+              // New topic — safe to insert
+              state.channels[topicId] = incomingChannel;
+            } else {
+              // Existing topic — only update metadata fields,
+              // preserve messages/runtime state from the live Immer draft
+              existing.sessionId = incomingChannel.sessionId;
+              existing.title = incomingChannel.title;
+              existing.agentId = incomingChannel.agentId;
+              if (incomingChannel.provider_id !== undefined)
+                existing.provider_id = incomingChannel.provider_id;
+              if (incomingChannel.model !== undefined)
+                existing.model = incomingChannel.model;
+              if (incomingChannel.model_tier !== undefined)
+                existing.model_tier = incomingChannel.model_tier;
+            }
+          }
         });
       } catch (error) {
         console.error("ChatSlice: Failed to fetch chat history:", error);
@@ -466,7 +587,12 @@ export const createChatSlice: StateCreator<
       const { channels, activeChatChannel, connectToChannel, backendUrl } =
         get();
 
+      console.warn(
+        `[activateChannel] topic=${topicId.slice(0, 8)} current=${activeChatChannel?.slice(0, 8)} connected=${channels[topicId]?.connected} msgs=${channels[topicId]?.messages.length} responding=${channels[topicId]?.responding}`,
+      );
+
       if (topicId === activeChatChannel && channels[topicId]?.connected) {
+        console.warn(`[activateChannel] SKIP (already active & connected)`);
         return;
       }
 
@@ -576,11 +702,17 @@ export const createChatSlice: StateCreator<
             ),
           );
 
+          console.warn(
+            `[activateChannel] noLiveWs, msgs=${channel.messages.length} stale=${hasUnresolvedRuntimeState} → ${channel.messages.length === 0 || hasUnresolvedRuntimeState ? "RECONCILE" : "SKIP"}`,
+          );
+
           // Reconcile with backend when no messages OR when runtime flags may be
           // stale (e.g. WS died during streaming and missed terminal events).
           if (channel.messages.length === 0 || hasUnresolvedRuntimeState) {
             await reconcileChannelFromBackend(topicId);
           }
+        } else {
+          console.warn(`[activateChannel] hasLiveWs, skipping reconcile`);
         }
         connectToChannel(channel.sessionId, channel.id);
 
@@ -699,6 +831,9 @@ export const createChatSlice: StateCreator<
     },
 
     connectToChannel: (sessionId: string, topicId: string) => {
+      console.warn(
+        `[connectToChannel] topic=${topicId.slice(0, 8)} hasExistingWs=${xyzenService.hasConnection(topicId)} msgs=${get().channels[topicId]?.messages.length}`,
+      );
       // --- 0. Build shared callbacks (defined early so they can be passed to setPrimary or connect) ---
 
       // Clean up stale watchdog for the *previous* primary topic (not the target)
@@ -745,6 +880,21 @@ export const createChatSlice: StateCreator<
         set((state: ChatSlice) => {
           const channel = state.channels[topicId];
           if (!channel) return;
+
+          // Diagnostic: log every event with timestamp and key state info
+          console.log(
+            `[ChatEvent] type=${event.type}`,
+            `| responding=${channel.responding}`,
+            `| msgs=${channel.messages.length}`,
+            `| latestAssist=${(() => {
+              const la = [...channel.messages]
+                .reverse()
+                .find((m) => m.role === "assistant");
+              return la
+                ? `id=${la.id.slice(0, 12)} status=${la.status} isLoading=${la.isLoading} isStreaming=${la.isStreaming} agentExec=${la.agentExecution?.status}`
+                : "none";
+            })()}`,
+          );
 
           switch (event.type) {
             case "processing":
@@ -988,6 +1138,9 @@ export const createChatSlice: StateCreator<
         );
 
         if (hasStaleState) {
+          console.warn(
+            `[onReconnect] stale state detected, reconciling topic=${topicId.slice(0, 8)} msgs=${channel.messages.length} responding=${channel.responding}`,
+          );
           reconcileChannelFromBackend(topicId);
         }
       };

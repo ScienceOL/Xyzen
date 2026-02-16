@@ -156,7 +156,7 @@ function InnerWorkspace() {
     handleLayoutChange,
     handleNodeDragStop,
     handleAvatarChange,
-    handleDeleteAgent,
+    handleDeleteAgent: handleDeleteAgentBase,
   } = useNodeHandlers({
     getNode: getNode as (id: string) => AgentFlowNode | undefined,
     setNodes,
@@ -539,6 +539,18 @@ function InnerWorkspace() {
     }, 1000);
   }, [setViewport, getViewport, fitView]);
 
+  // Wrap delete handler to clear focus when deleting the focused agent,
+  // so viewport is restored and FitViewButton becomes accessible
+  const handleDeleteAgent = useCallback(
+    async (agentId: string) => {
+      if (focusedAgentIdRef.current === agentId) {
+        handleCloseFocus();
+      }
+      return handleDeleteAgentBase(agentId);
+    },
+    [handleDeleteAgentBase, handleCloseFocus],
+  );
+
   // Agent edit/delete handlers for FocusedView (with confirmation modal)
   const handleEditAgentFromFocus = useCallback(
     (agentId: string) => {
@@ -717,6 +729,9 @@ function InnerWorkspace() {
             publishedAgentIds.has(editingAgent.id)
               ? undefined
               : () => {
+                  if (focusedAgentId === editingAgent.id) {
+                    handleCloseFocus();
+                  }
                   deleteAgent(editingAgent.id);
                   setEditModalOpen(false);
                   setEditingAgent(null);
@@ -735,6 +750,11 @@ function InnerWorkspace() {
           }}
           onConfirm={() => {
             if (publishedAgentIds.has(agentToDelete.id)) return;
+            // If deleting the currently focused agent, close focus first
+            // to restore viewport and clear stale focusedAgentId
+            if (focusedAgentId === agentToDelete.id) {
+              handleCloseFocus();
+            }
             deleteAgent(agentToDelete.id);
             setConfirmModalOpen(false);
             setAgentToDelete(null);

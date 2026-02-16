@@ -385,6 +385,8 @@ async def _process_agent_stream(
             yield agent_start_event
 
     chunk_count = 0
+    updates_count = 0
+    messages_count = 0
     agent_error: Exception | None = None
 
     try:
@@ -399,39 +401,18 @@ async def _process_agent_stream(
             chunk_count += 1
             try:
                 mode, data = chunk
-                logger.info(f"[Chunk {chunk_count}] mode={mode}, data_type={type(data).__name__}")
             except Exception:
                 logger.warning("Received malformed chunk from astream: %r", chunk)
                 continue
 
             if mode == "updates":
+                updates_count += 1
                 if isinstance(data, dict):
                     logger.info(f"[Updates] step_names={list(data.keys())}")
-                    # Log content of each step for debugging
-                    # NOTE: Node events are primarily emitted from messages mode for accurate timing
-                    # Updates mode handles non-streaming nodes (structured output nodes)
-                    # that were already handled in _handle_updates_mode
-                    for step_name, step_data in data.items():
-                        messages = step_data.get("messages", []) if isinstance(step_data, dict) else []
-                        logger.info(f"[Updates/{step_name}] messages_count={len(messages)}")
-                        if messages:
-                            last_msg = messages[-1]
-                            logger.info(
-                                f"[Updates/{step_name}] last_msg_type={type(last_msg).__name__}, has_content={hasattr(last_msg, 'content')}"
-                            )
                 async for event in _handle_updates_mode(data, ctx, tracer):
                     yield event
             elif mode == "messages":
-                if isinstance(data, tuple) and len(data) >= 2:
-                    msg_chunk, metadata = data
-                    if isinstance(metadata, dict):
-                        node = metadata.get("langgraph_node") or metadata.get("node")
-                        logger.info(f"[Messages] node={node}, chunk_type={type(msg_chunk).__name__}")
-                        # Log if there's content in the chunk
-                        if hasattr(msg_chunk, "content"):
-                            content = msg_chunk.content
-                            content_preview = str(content)[:100] if content else "None"
-                            logger.info(f"[Messages] content_preview={content_preview}")
+                messages_count += 1
                 async for event in _handle_messages_mode(data, ctx, tracer):
                     yield event
 
@@ -442,7 +423,13 @@ async def _process_agent_stream(
         # Don't re-raise - we'll yield finalization events and then an error event
 
     # Finalization (always runs, even after error)
-    logger.info(f"Stream finished after {chunk_count} chunks, is_streaming={ctx.is_streaming}")
+    logger.info(
+        "Stream finished: %d chunks (updates=%d, messages=%d), is_streaming=%s",
+        chunk_count,
+        updates_count,
+        messages_count,
+        ctx.is_streaming,
+    )
 
     # Emit node_end for the last node via tracer
     current_node_id = tracer.get_current_node_id()
@@ -663,7 +650,7 @@ async def _handle_messages_mode(
 
     # Track HumanMessage to distinguish history from current turn
     # Messages mode returns full conversation history - we only want to stream NEW AI responses
-    from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+    from langchain_core.messages import HumanMessage, AIMessage, AIMessageChunk, ToolMessage
 
     if isinstance(message_chunk, HumanMessage):
         # Each HumanMessage marks a turn boundary - reset buffer for next AI response
@@ -676,6 +663,19 @@ async def _handle_messages_mode(
     if isinstance(message_chunk, ToolMessage):
         logger.debug("Skipping ToolMessage (handled by tool event handler)")
         return
+
+    # Fast-path: skip empty AIMessageChunks early (common during history replay).
+    # LangGraph's messages mode replays the entire conversation history, producing
+    # hundreds of AIMessageChunks with no content. Without this guard each empty
+    # chunk still runs through node-transition detection, thinking extraction, and
+    # token extraction before being discarded — adding seconds of overhead in long
+    # conversations.
+    if isinstance(message_chunk, AIMessageChunk):
+        has_content = bool(TokenStreamProcessor.extract_token_text(message_chunk))
+        has_thinking = bool(ThinkingEventHandler.extract_thinking_content(message_chunk))
+        has_usage = bool(TokenStreamProcessor.extract_usage_metadata(message_chunk))
+        if not has_content and not has_thinking and not has_usage:
+            return
 
     # Get node from metadata early - needed for node transition detection
     node: str | None = None

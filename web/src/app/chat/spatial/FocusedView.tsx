@@ -44,19 +44,14 @@ export function FocusedView({
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const t = useTranslation().t;
 
-  const {
-    activateChannelForAgent,
-    reorderAgents,
-    spatialSidebarCollapsed,
-    setSpatialSidebarCollapsed,
-  } = useXyzen(
-    useShallow((s) => ({
-      activateChannelForAgent: s.activateChannelForAgent,
-      reorderAgents: s.reorderAgents,
-      spatialSidebarCollapsed: s.spatialSidebarCollapsed,
-      setSpatialSidebarCollapsed: s.setSpatialSidebarCollapsed,
-    })),
-  );
+  const { reorderAgents, spatialSidebarCollapsed, setSpatialSidebarCollapsed } =
+    useXyzen(
+      useShallow((s) => ({
+        reorderAgents: s.reorderAgents,
+        spatialSidebarCollapsed: s.spatialSidebarCollapsed,
+        setSpatialSidebarCollapsed: s.setSpatialSidebarCollapsed,
+      })),
+    );
   const collapsed = spatialSidebarCollapsed;
   const runningAgentIds = useRunningAgentIds();
   const { knowledge_set_id: focusedKnowledgeSetId } = useActiveChannelStatus();
@@ -169,11 +164,17 @@ export function FocusedView({
   // Activate the channel for the selected agent
   useEffect(() => {
     if (agent.agentId) {
-      activateChannelForAgent(agent.agentId).catch((error) => {
-        console.error("Failed to activate channel for agent:", error);
-      });
+      // Read action from store directly to avoid unstable function references
+      // in the dependency array, which would re-trigger this effect on every
+      // store update and race with active streaming.
+      useXyzen
+        .getState()
+        .activateChannelForAgent(agent.agentId)
+        .catch((error) => {
+          console.error("Failed to activate channel for agent:", error);
+        });
     }
-  }, [agent.agentId, activateChannelForAgent]);
+  }, [agent.agentId]);
 
   useEffect(() => {
     // Check if user is typing in an editable element

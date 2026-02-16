@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 import uuid
 
+import redis.asyncio as aioredis
+
 from app.infra.sandbox.backends.base import ExecResult, FileInfo, SandboxBackend, SearchMatch
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,16 @@ class SandboxManager:
     def redis_key(self) -> str:
         return f"{_REDIS_KEY_PREFIX}{self._session_id}"
 
+    async def _create_redis_client(self) -> aioredis.Redis:
+        """Create a dedicated Redis client for this manager.
+
+        Uses a fresh connection instead of the global singleton to avoid
+        event-loop cross-contamination in Celery workers.
+        """
+        from app.configs import configs
+
+        return aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+
     async def ensure_sandbox(self) -> str:
         """
         Ensure a sandbox exists for this session.
@@ -51,72 +63,72 @@ class SandboxManager:
         if self._sandbox_id:
             return self._sandbox_id
 
-        from app.infra.redis import get_redis_client
-
-        redis_client = await get_redis_client()
-
-        # Check Redis for existing mapping
-        existing_id = await redis_client.get(self.redis_key)
-        if existing_id:
-            self._sandbox_id = existing_id
-            logger.debug(f"Reusing sandbox {existing_id} for session {self._session_id}")
-            return existing_id
-
-        # Create new sandbox — use SET NX to prevent concurrent creation
-        lock_key = f"{self.redis_key}:lock"
-        lock_acquired = await redis_client.set(lock_key, "1", ex=60, nx=True)
-
-        if not lock_acquired:
-            # Another process is creating — wait and retry
-            import asyncio
-
-            for _ in range(10):
-                await asyncio.sleep(1)
-                existing_id = await redis_client.get(self.redis_key)
-                if existing_id:
-                    self._sandbox_id = existing_id
-                    return existing_id
-            raise RuntimeError(f"Timed out waiting for sandbox creation for session {self._session_id}")
-
+        redis_client = await self._create_redis_client()
         try:
-            # Check sandbox limit before creating
-            if self._user_id:
-                try:
-                    from app.core.limits import LimitsEnforcer
-                    from app.infra.database import AsyncSessionLocal
+            # Check Redis for existing mapping
+            existing_id = await redis_client.get(self.redis_key)
+            if existing_id:
+                self._sandbox_id = existing_id
+                logger.debug(f"Reusing sandbox {existing_id} for session {self._session_id}")
+                return existing_id
 
-                    async with AsyncSessionLocal() as db:
-                        enforcer = await LimitsEnforcer.create(db, self._user_id)
-                        await enforcer.check_sandbox_creation(db)
-                except ImportError:
-                    logger.warning("LimitsEnforcer not available, skipping sandbox limit check")
+            # Create new sandbox — use SET NX to prevent concurrent creation
+            lock_key = f"{self.redis_key}:lock"
+            lock_acquired = await redis_client.set(lock_key, "1", ex=60, nx=True)
 
-            sandbox_name = f"xyzen-{self._session_id[:8]}-{uuid.uuid4().hex[:6]}"
-            sandbox_id = await self._backend.create_sandbox(name=sandbox_name)
+            if not lock_acquired:
+                # Another process is creating — wait and retry
+                import asyncio
 
-            # Store mapping in Redis with TTL
-            await redis_client.set(self.redis_key, sandbox_id, ex=_REDIS_TTL_SECONDS)
-            self._sandbox_id = sandbox_id
-            logger.info(f"Created sandbox {sandbox_id} for session {self._session_id}")
-            return sandbox_id
+                for _ in range(10):
+                    await asyncio.sleep(1)
+                    existing_id = await redis_client.get(self.redis_key)
+                    if existing_id:
+                        self._sandbox_id = existing_id
+                        return existing_id
+                raise RuntimeError(f"Timed out waiting for sandbox creation for session {self._session_id}")
+
+            try:
+                # Check sandbox limit before creating
+                if self._user_id:
+                    try:
+                        from app.core.limits import LimitsEnforcer
+                        from app.infra.database import AsyncSessionLocal
+
+                        async with AsyncSessionLocal() as db:
+                            enforcer = await LimitsEnforcer.create(db, self._user_id)
+                            await enforcer.check_sandbox_creation(db)
+                    except ImportError:
+                        logger.warning("LimitsEnforcer not available, skipping sandbox limit check")
+
+                sandbox_name = f"xyzen-{self._session_id[:8]}-{uuid.uuid4().hex[:6]}"
+                sandbox_id = await self._backend.create_sandbox(name=sandbox_name)
+
+                # Store mapping in Redis with TTL
+                await redis_client.set(self.redis_key, sandbox_id, ex=_REDIS_TTL_SECONDS)
+                self._sandbox_id = sandbox_id
+                logger.info(f"Created sandbox {sandbox_id} for session {self._session_id}")
+                return sandbox_id
+            finally:
+                await redis_client.delete(lock_key)
         finally:
-            await redis_client.delete(lock_key)
+            await redis_client.aclose()
 
     async def cleanup(self) -> None:
         """Delete sandbox and remove Redis mapping."""
-        from app.infra.redis import get_redis_client
-
-        redis_client = await get_redis_client()
-
-        sandbox_id = await redis_client.get(self.redis_key)
-        if sandbox_id:
-            try:
-                await self._backend.delete_sandbox(sandbox_id)
-            except Exception as e:
-                logger.warning(f"Failed to delete sandbox {sandbox_id}: {e}")
-            await redis_client.delete(self.redis_key)
-            self._sandbox_id = None
-            logger.info(f"Cleaned up sandbox {sandbox_id} for session {self._session_id}")
+        redis_client = await self._create_redis_client()
+        try:
+            sandbox_id = await redis_client.get(self.redis_key)
+            if sandbox_id:
+                try:
+                    await self._backend.delete_sandbox(sandbox_id)
+                except Exception as e:
+                    logger.warning(f"Failed to delete sandbox {sandbox_id}: {e}")
+                await redis_client.delete(self.redis_key)
+                self._sandbox_id = None
+                logger.info(f"Cleaned up sandbox {sandbox_id} for session {self._session_id}")
+        finally:
+            await redis_client.aclose()
 
     # --- Delegated operations ---
 

@@ -52,3 +52,37 @@ export const useXyzen = create<XyzenState>()(
     },
   ),
 );
+
+// --- Diagnostic: detect unexpected message count drops ---
+if (typeof window !== "undefined") {
+  const prevMsgCounts = new Map<string, number>();
+
+  useXyzen.subscribe((state) => {
+    const activeId = state.activeChatChannel;
+    if (!activeId) return;
+
+    const channel = state.channels[activeId];
+    if (!channel) return;
+
+    const prevCount = prevMsgCounts.get(activeId) ?? 0;
+    const currCount = channel.messages.length;
+
+    if (prevCount > 0 && currCount < prevCount) {
+      console.error(
+        `[DIAGNOSTIC] MESSAGE COUNT DROP: ${activeId.slice(0, 8)} ${prevCount} → ${currCount}`,
+        `| responding=${channel.responding}`,
+        `| latestAssist=${(() => {
+          const la = [...channel.messages]
+            .reverse()
+            .find((m) => m.role === "assistant");
+          return la
+            ? `id=${la.id.slice(0, 12)} agentExec=${la.agentExecution?.status}`
+            : "none";
+        })()}`,
+        new Error("trace").stack,
+      );
+    }
+
+    prevMsgCounts.set(activeId, currCount);
+  });
+}
