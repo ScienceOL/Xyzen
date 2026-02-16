@@ -6,17 +6,13 @@ import {
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import XyzenChat from "@/components/layouts/XyzenChat";
-import {
-  useActiveChannelStatus,
-  useRunningAgentIds,
-} from "@/hooks/useChannelSelectors";
+import { useRunningAgentIds } from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { ChevronLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useShallow } from "zustand/react/shallow";
 import { AgentData } from "./types";
 
 interface FocusedViewProps {
@@ -42,19 +38,20 @@ export function FocusedView({
   const switcherRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
   const listContainerRef = useRef<HTMLDivElement | null>(null);
+  // Stable refs for event-listener callbacks — avoids re-attaching on every render
+  const onCloseRef = useRef(onClose);
+  const onCanvasClickRef = useRef(onCanvasClick);
+  onCloseRef.current = onClose;
+  onCanvasClickRef.current = onCanvasClick;
+
   const t = useTranslation().t;
 
-  const { reorderAgents, spatialSidebarCollapsed, setSpatialSidebarCollapsed } =
-    useXyzen(
-      useShallow((s) => ({
-        reorderAgents: s.reorderAgents,
-        spatialSidebarCollapsed: s.spatialSidebarCollapsed,
-        setSpatialSidebarCollapsed: s.setSpatialSidebarCollapsed,
-      })),
-    );
-  const collapsed = spatialSidebarCollapsed;
+  const collapsed = useXyzen((s) => s.spatialSidebarCollapsed);
   const runningAgentIds = useRunningAgentIds();
-  const { knowledge_set_id: focusedKnowledgeSetId } = useActiveChannelStatus();
+  const focusedKnowledgeSetId = useXyzen((s) => {
+    const id = s.activeChatChannel;
+    return id ? (s.channels[id]?.knowledge_set_id ?? null) : null;
+  });
 
   // Convert AgentData to Agent type for AgentList component
   const agentsForList: Agent[] = useMemo(
@@ -152,13 +149,13 @@ export function FocusedView({
 
       if (agentIds.length > 0) {
         try {
-          await reorderAgents(agentIds);
+          await useXyzen.getState().reorderAgents(agentIds);
         } catch (error) {
           console.error("Failed to reorder agents:", error);
         }
       }
     },
-    [agentDataMap, reorderAgents],
+    [agentDataMap],
   );
 
   // Activate the channel for the selected agent
@@ -196,7 +193,7 @@ export function FocusedView({
     const onKeyDown = (e: KeyboardEvent) => {
       // Don't close if user is typing in an input field
       if (e.key === "Escape" && !isEditableTarget(document.activeElement)) {
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -236,10 +233,10 @@ export function FocusedView({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (e as any).stopImmediatePropagation?.();
 
-      if (onCanvasClick) {
-        onCanvasClick();
+      if (onCanvasClickRef.current) {
+        onCanvasClickRef.current();
       } else {
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -249,7 +246,8 @@ export function FocusedView({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onPointerDownCapture, true);
     };
-  }, [onClose, onCanvasClick]);
+    // Refs are stable — register listeners once
+  }, []);
 
   return (
     <div
@@ -304,7 +302,9 @@ export function FocusedView({
               )}
             </AnimatePresence>
             <button
-              onClick={() => setSpatialSidebarCollapsed(!collapsed)}
+              onClick={() =>
+                useXyzen.getState().setSpatialSidebarCollapsed(!collapsed)
+              }
               className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
             >
               <motion.div

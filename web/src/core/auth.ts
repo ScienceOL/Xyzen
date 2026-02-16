@@ -220,9 +220,14 @@ export const login = async (token: string, userInfo?: UserInfo) => {
  * 处理用户登出
  */
 export const logout = () => {
-  const { setStatus, setUser, setToken } = useXyzen.getState();
+  const { setStatus, setUser, setToken, setActiveChatChannel } =
+    useXyzen.getState();
 
   authService.logout();
+
+  // Clear user-specific chat state so a subsequent login
+  // (possibly as a different user) doesn't inherit stale data.
+  setActiveChatChannel(null);
 
   setUser(null);
   setToken(null);

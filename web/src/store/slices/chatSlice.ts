@@ -674,11 +674,13 @@ export const createChatSlice: StateCreator<
               channel = newChannels[topicId];
             } else {
               console.error(`Topic ${topicId} still not found after refetch.`);
+              set({ activeChatChannel: null });
               return;
             }
           }
         } catch (error) {
           console.error("Failed to find session for topic:", error);
+          set({ activeChatChannel: null });
           return;
         }
       }
