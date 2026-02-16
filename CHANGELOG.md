@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.3.8](https://github.com/ScienceOL/Xyzen/compare/v1.3.7...v1.3.8) (2026-02-16)
+
+### 🐛 Bug Fixes
+
+* implement ChunkBuffer for efficient chunk handling in chat ([#250](https://github.com/ScienceOL/Xyzen/issues/250)) ([2c27f1f](https://github.com/ScienceOL/Xyzen/commit/2c27f1f1cc5a09ea09418f7e0c4c969e23039d51))
+
 ## [1.3.7](https://github.com/ScienceOL/Xyzen/compare/v1.3.6...v1.3.7) (2026-02-15)
 
 ### 🐛 Bug Fixes
