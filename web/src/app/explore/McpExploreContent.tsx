@@ -14,9 +14,15 @@ import {
   type SmitheryMcpData,
 } from "@/types/mcp";
 import React, { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 const McpExploreContent: React.FC = () => {
-  const { builtinMcpServers, quickAddBuiltinServer } = useXyzen();
+  const { builtinMcpServers, quickAddBuiltinServer } = useXyzen(
+    useShallow((s) => ({
+      builtinMcpServers: s.builtinMcpServers,
+      quickAddBuiltinServer: s.quickAddBuiltinServer,
+    })),
+  );
 
   const [selected, setSelected] = useState<ExplorableMcpServer | null>(null);
   const isOpen = useMemo(() => !!selected, [selected]);

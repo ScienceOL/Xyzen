@@ -12,7 +12,13 @@
 
 import type { ChatChannel, ChatHistoryItem, MessageError } from "@/store/types";
 import { generateClientId } from "../messageProcessor";
-import { findMessageIndexByStream } from "../channelHelpers";
+import {
+  findLatestAssistantMessageIndex,
+  findLoadingMessageIndex,
+  findMessageIndexByStream,
+  findRunningAgentMessageIndex,
+  findStreamingMessageIndex,
+} from "../channelHelpers";
 
 // ---------------------------------------------------------------------------
 // Side-effect return types
@@ -43,7 +49,7 @@ export function handleError(
     error_category?: string;
     recoverable?: boolean;
     detail?: string;
-    stream_id?: string;
+    stream_id: string;
   },
 ): void {
   channel.responding = false;
@@ -65,36 +71,16 @@ export function handleError(
       };
 
   // Find target using stream_id first, then fallback
-  let targetIndex = -1;
-  if (eventData.stream_id) {
-    targetIndex = findMessageIndexByStream(channel, eventData.stream_id);
+  let targetIndex = findMessageIndexByStream(channel, eventData.stream_id);
+  if (targetIndex === -1) {
+    targetIndex = findLoadingMessageIndex(channel);
   }
   if (targetIndex === -1) {
-    targetIndex = channel.messages.findIndex(
-      (m) => m.status === "pending" || m.isLoading,
-    );
-  }
-  if (targetIndex === -1) {
-    for (let i = channel.messages.length - 1; i >= 0; i--) {
-      const m = channel.messages[i];
-      if (
-        m.role === "assistant" &&
-        (m.status === "streaming" || m.isStreaming)
-      ) {
-        targetIndex = i;
-        break;
-      }
-    }
+    targetIndex = findStreamingMessageIndex(channel);
   }
   if (targetIndex === -1) {
     // agent_start may have consumed the loading message
-    for (let i = channel.messages.length - 1; i >= 0; i--) {
-      const m = channel.messages[i];
-      if (m.role === "assistant" && m.agentExecution?.status === "running") {
-        targetIndex = i;
-        break;
-      }
-    }
+    targetIndex = findRunningAgentMessageIndex(channel);
   }
 
   if (targetIndex !== -1) {
@@ -107,9 +93,8 @@ export function handleError(
       error: messageError,
     };
   } else {
-    const errorMessageId = eventData.stream_id || `error-${Date.now()}`;
     channel.messages.push({
-      id: errorMessageId,
+      id: eventData.stream_id,
       streamId: eventData.stream_id,
       clientId: generateClientId(),
       role: "assistant",
@@ -136,24 +121,19 @@ export function handleInsufficientBalance(
     message_cn?: string;
     details?: Record<string, unknown>;
     action_required?: string;
-    stream_id?: string;
+    stream_id: string;
   },
 ): NotificationEffect | null {
   console.warn("Insufficient balance:", eventData);
   channel.responding = false;
 
   // Find target using stream_id first, then fallback
-  let balanceLoadingIndex = -1;
-  if (eventData.stream_id) {
-    balanceLoadingIndex = findMessageIndexByStream(
-      channel,
-      eventData.stream_id,
-    );
-  }
+  let balanceLoadingIndex = findMessageIndexByStream(
+    channel,
+    eventData.stream_id,
+  );
   if (balanceLoadingIndex === -1) {
-    balanceLoadingIndex = channel.messages.findIndex(
-      (m) => m.status === "pending" || m.isLoading,
-    );
+    balanceLoadingIndex = findLoadingMessageIndex(channel);
   }
 
   if (balanceLoadingIndex !== -1) {
@@ -202,9 +182,7 @@ export function handleParallelChatLimit(
   channel.responding = false;
 
   // Remove loading message
-  const limitLoadingIndex = channel.messages.findIndex(
-    (m) => m.status === "pending" || m.isLoading,
-  );
+  const limitLoadingIndex = findLoadingMessageIndex(channel);
   if (limitLoadingIndex !== -1) {
     channel.messages.splice(limitLoadingIndex, 1);
   }
@@ -250,18 +228,14 @@ export function handleStreamAborted(
   channel.aborting = false;
 
   // Find any streaming message and finalize it
-  const streamingIndex = channel.messages.findIndex(
-    (m) => m.status === "streaming" || m.isStreaming,
-  );
+  const streamingIndex = findStreamingMessageIndex(channel);
   if (streamingIndex !== -1) {
     channel.messages[streamingIndex].isStreaming = false;
     channel.messages[streamingIndex].status = "cancelled";
   }
 
   // Handle running agent execution - mark as cancelled
-  const runningAgentIndex = channel.messages.findIndex(
-    (m) => m.agentExecution?.status === "running",
-  );
+  const runningAgentIndex = findRunningAgentMessageIndex(channel);
   if (runningAgentIndex !== -1) {
     const execution = channel.messages[runningAgentIndex].agentExecution;
     if (execution) {
@@ -277,9 +251,7 @@ export function handleStreamAborted(
   }
 
   // Handle loading message - convert to cancelled message
-  const loadingIndex = channel.messages.findIndex(
-    (m) => m.status === "pending" || m.isLoading,
-  );
+  const loadingIndex = findLoadingMessageIndex(channel);
   if (loadingIndex !== -1) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { isLoading: _, ...messageWithoutLoading } =
@@ -316,13 +288,15 @@ export function handleToolCallRequest(
     arguments: Record<string, unknown>;
     status: string;
     timestamp: number;
+    stream_id: string;
   },
 ): void {
   channel.responding = true;
 
-  // Clear any existing loading messages
+  // Clear plain loading placeholders (but NOT agent execution messages
+  // which also start in "pending" status after agent_start)
   const loadingIndex = channel.messages.findIndex(
-    (m) => m.status === "pending" || m.isLoading,
+    (m) => (m.status === "pending" || m.isLoading) && !m.agentExecution,
   );
   if (loadingIndex !== -1) {
     channel.messages.splice(loadingIndex, 1);
@@ -342,9 +316,13 @@ export function handleToolCallRequest(
   };
 
   // Check if there's a running agent execution with a running phase
-  const agentMsgIndex = channel.messages.findLastIndex(
-    (m) => m.agentExecution?.status === "running",
-  );
+  let agentMsgIndex = findRunningAgentMessageIndex(channel);
+
+  // Fallback: find message by stream_id (handles race where streaming_end
+  // already cleared isStreaming but execution is still logically active)
+  if (agentMsgIndex === -1 && toolCallData.stream_id) {
+    agentMsgIndex = findMessageIndexByStream(channel, toolCallData.stream_id);
+  }
 
   if (agentMsgIndex !== -1) {
     const execution = channel.messages[agentMsgIndex].agentExecution;
@@ -357,6 +335,11 @@ export function handleToolCallRequest(
       // Fallback to running phase
       if (!targetPhase) {
         targetPhase = execution.phases.find((p) => p.status === "running");
+      }
+
+      // Fallback to last phase (may be completed between streaming iterations)
+      if (!targetPhase && execution.phases.length > 0) {
+        targetPhase = execution.phases[execution.phases.length - 1];
       }
 
       if (targetPhase) {
@@ -376,6 +359,7 @@ export function handleToolCallRequest(
   const toolCallMessageId = `tool-call-${toolCallData.id}`;
   channel.messages.push({
     id: toolCallMessageId,
+    streamId: toolCallData.stream_id,
     clientId: generateClientId(),
     role: "assistant" as const,
     content: "",
@@ -405,9 +389,7 @@ export function handleToolCallResponse(
   },
 ): void {
   // First check agent execution phases for the tool call
-  const agentMsgIndex = channel.messages.findLastIndex(
-    (m) => m.agentExecution?.status === "running",
-  );
+  const agentMsgIndex = findRunningAgentMessageIndex(channel);
 
   if (agentMsgIndex !== -1) {
     const execution = channel.messages[agentMsgIndex].agentExecution;
@@ -496,18 +478,15 @@ export function handleSearchCitations(
   },
 ): void {
   // Find the most recent assistant message that's streaming or just finished
-  const lastAssistantIndex = channel.messages
-    .slice()
-    .reverse()
-    .findIndex(
-      (m) => m.role === "assistant" && (m.isStreaming || !m.citations),
-    );
+  const lastAssistantIndex = findLatestAssistantMessageIndex(
+    channel,
+    "citations",
+  );
 
   if (lastAssistantIndex !== -1) {
-    const actualIndex = channel.messages.length - 1 - lastAssistantIndex;
-    channel.messages[actualIndex].citations = eventData.citations;
+    channel.messages[lastAssistantIndex].citations = eventData.citations;
     console.log(
-      `Attached ${eventData.citations.length} citations to message ${channel.messages[actualIndex].id}`,
+      `Attached ${eventData.citations.length} citations to message ${channel.messages[lastAssistantIndex].id}`,
     );
   } else {
     console.warn(
@@ -534,27 +513,25 @@ export function handleGeneratedFiles(
     }>;
   },
 ): void {
-  const lastAssistantIndex = channel.messages
-    .slice()
-    .reverse()
-    .findIndex(
-      (m) => m.role === "assistant" && (m.isStreaming || !m.attachments),
-    );
+  const lastAssistantIndex = findLatestAssistantMessageIndex(
+    channel,
+    "attachments",
+  );
 
   if (lastAssistantIndex !== -1) {
-    const actualIndex = channel.messages.length - 1 - lastAssistantIndex;
-    const targetMessage = channel.messages[actualIndex];
+    const targetMessage = channel.messages[lastAssistantIndex];
 
     if (!targetMessage.attachments) {
-      channel.messages[actualIndex].attachments = [];
+      channel.messages[lastAssistantIndex].attachments = [];
     }
 
-    const currentAttachments = channel.messages[actualIndex].attachments || [];
+    const currentAttachments =
+      channel.messages[lastAssistantIndex].attachments || [];
     const newAttachments = eventData.files.filter(
       (newFile) => !currentAttachments.some((curr) => curr.id === newFile.id),
     );
 
-    channel.messages[actualIndex].attachments = [
+    channel.messages[lastAssistantIndex].attachments = [
       ...currentAttachments,
       ...newAttachments,
     ];

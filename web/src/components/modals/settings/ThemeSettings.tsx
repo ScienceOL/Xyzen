@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 
 export function ThemeSettings() {
   const { t } = useTranslation();
-  const { theme: currentTheme } = useXyzen();
+  const currentTheme = useXyzen((s) => s.theme);
   const { setTheme } = useTheme();
 
   const themes: Array<{

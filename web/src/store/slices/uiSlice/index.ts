@@ -13,7 +13,8 @@ export type ActivityPanel =
   | "knowledge"
   | "skills"
   | "marketplace"
-  | "memory";
+  | "memory"
+  | "account";
 
 export interface UiSlice {
   backendUrl: string;

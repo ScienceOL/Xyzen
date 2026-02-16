@@ -17,7 +17,7 @@ export function LoadingOverlay({
   spinnerSize = "md",
   overlay = true,
 }: LoadingOverlayProps) {
-  const { getLoading } = useXyzen();
+  const getLoading = useXyzen((s) => s.getLoading);
   const isLoading = getLoading(loadingKey);
 
   if (!isLoading) {
@@ -55,7 +55,7 @@ export function InlineLoading({
   children,
   spinnerSize = "sm",
 }: InlineLoadingProps) {
-  const { getLoading } = useXyzen();
+  const getLoading = useXyzen((s) => s.getLoading);
   const isLoading = getLoading(loadingKey);
 
   if (isLoading) {
@@ -84,7 +84,7 @@ export function LoadingButton({
   className = "",
   ...props
 }: LoadingButtonProps) {
-  const { getLoading } = useXyzen();
+  const getLoading = useXyzen((s) => s.getLoading);
   const isLoading = loadingKey
     ? getLoading(loadingKey)
     : externalLoading || false;

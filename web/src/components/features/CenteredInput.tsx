@@ -1,4 +1,5 @@
 import { useXyzen } from "@/store";
+import { useShallow } from "zustand/react/shallow";
 import type { InputPosition } from "@/store/slices/uiSlice/types";
 import { ChevronUpIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
@@ -21,7 +22,21 @@ export function CenteredInput({ position }: CenteredInputProps) {
     setTabIndex,
     inputPosition: storeInputPosition,
     isUploading,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      isXyzenOpen: s.isXyzenOpen,
+      pendingInput: s.pendingInput,
+      setPendingInput: s.setPendingInput,
+      submitInput: s.submitInput,
+      sendMessage: s.sendMessage,
+      activeChatChannel: s.activeChatChannel,
+      createDefaultChannel: s.createDefaultChannel,
+      openXyzen: s.openXyzen,
+      setTabIndex: s.setTabIndex,
+      inputPosition: s.inputPosition,
+      isUploading: s.isUploading,
+    })),
+  );
 
   // Use prop if provided, otherwise fallback to store setting
   const effectivePosition = position ?? storeInputPosition ?? "bottom";

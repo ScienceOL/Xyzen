@@ -7,12 +7,28 @@ import {
   usePrefetchMarketplaceListing,
   useStarredListings,
 } from "@/hooks/useMarketplace";
-import { FunnelIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import {
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+  CheckIcon,
+} from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useInView } from "react-intersection-observer";
 
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/animate-ui/components/animate/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/animate-ui/components/radix/dropdown-menu";
 import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
 import AgentListingCard from "./AgentListingCard";
@@ -155,105 +171,73 @@ export default function AgentMarketplace() {
           : { paddingBottom: DOCK_SAFE_AREA }
       }
     >
-      {/* Header Section */}
-      <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/80 px-6 py-4 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {t("marketplace.title")}
-              </h1>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-neutral-50/80 backdrop-blur-xl dark:bg-black/80">
+        <div className="mx-auto max-w-7xl px-4 pt-3 pb-2 md:px-6">
+          {/* Title + Tabs row */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              {t("marketplace.title")}
+            </h1>
 
-              {/* Tab Navigation */}
-              <div className="flex rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
-                <button
-                  onClick={() => setActiveTab("all")}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-                    activeTab === "all"
-                      ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
-                      : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
-                  }`}
-                >
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as AgentMarketplaceTab)}
+            >
+              <TabsList className="h-7">
+                <TabsTrigger value="all" className="text-xs px-2.5 py-0.5">
                   {t("marketplace.tabs.all")}
-                </button>
-                <button
-                  onClick={() => setActiveTab("starred")}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-                    activeTab === "starred"
-                      ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
-                      : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
-                  }`}
-                >
+                </TabsTrigger>
+                <TabsTrigger value="starred" className="text-xs px-2.5 py-0.5">
                   {t("marketplace.tabs.starred")}
-                </button>
-                <button
-                  onClick={() => setActiveTab("my-listings")}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-                    activeTab === "my-listings"
-                      ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
-                      : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
-                  }`}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="my-listings"
+                  className="text-xs px-2.5 py-0.5"
                 >
                   {t("marketplace.tabs.my")}
-                </button>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+        <div className="h-px bg-neutral-200/60 dark:bg-neutral-800/60" />
+      </div>
+
+      {/* Main Content */}
+      <div className="custom-scrollbar flex-1 overflow-auto px-4 py-4 md:px-6 md:py-6">
+        <div className="mx-auto max-w-7xl">
+          {/* Search bar — inside content, only for "all" tab */}
+          {activeTab === "all" && (
+            <div className="mb-4">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder={t("marketplace.search.placeholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-neutral-200/50 py-1.5 pl-8 pr-3 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition-colors focus:bg-white focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-800/60 dark:text-neutral-100 dark:placeholder-neutral-500 dark:focus:bg-neutral-800 dark:focus:ring-neutral-600"
+                />
               </div>
             </div>
+          )}
 
-            {/* Filter Bar - Only show for "All Agents" tab */}
-            {activeTab === "all" && (
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative flex-1">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                  <input
-                    type="text"
-                    placeholder={t("marketplace.search.placeholder")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-9 pr-4 text-sm text-neutral-900 placeholder-neutral-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <FunnelIcon className="h-4 w-4 text-neutral-400" />
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
-                  >
-                    {SORT_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {t(`marketplace.sort.${option}`)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Active filters */}
+          {/* Active tag filter chip */}
           {selectedTag && activeTab === "all" && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="mb-4 flex items-center gap-1.5">
+              <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
                 {t("marketplace.filters.filteredBy")}
               </span>
               <button
                 onClick={() => setSelectedTag(null)}
-                className="flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
+                className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 transition-colors hover:bg-indigo-500/20 dark:text-indigo-400"
               >
                 #{selectedTag}
-                <span className="ml-1 text-indigo-400 hover:text-indigo-600 dark:text-indigo-500">
-                  ×
-                </span>
+                <XMarkIcon className="h-3 w-3" />
               </button>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="mx-auto max-w-7xl">
           {activeTab === "all" || activeTab === "starred" ? (
             <>
               {isLoading ? (
@@ -361,21 +345,43 @@ export default function AgentMarketplace() {
               ) : (
                 <div>
                   {activeTab === "all" && !debouncedSearch && !selectedTag && (
-                    <>
-                      <MarketplaceSections
-                        onSelectListing={handleSelectListing}
-                        onMouseEnterListing={handleMouseEnter}
-                      />
-                      {listings && listings.length > 0 && (
-                        <div className="my-10 flex items-center gap-4">
-                          <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
-                          <h2 className="text-lg font-semibold text-neutral-700 dark:text-neutral-300">
-                            {t("marketplace.sections.allAgents")}
-                          </h2>
-                          <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
-                        </div>
-                      )}
-                    </>
+                    <MarketplaceSections
+                      onSelectListing={handleSelectListing}
+                      onMouseEnterListing={handleMouseEnter}
+                    />
+                  )}
+
+                  {activeTab === "all" && listings && listings.length > 0 && (
+                    <div className="mb-4 mt-8 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+                      <h2 className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                        {t("marketplace.sections.allAgents")}
+                      </h2>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200">
+                            <FunnelIcon className="h-3 w-3" />
+                            {t(`marketplace.sort.${sortBy}`)}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="center">
+                          {SORT_OPTIONS.map((option) => (
+                            <DropdownMenuItem
+                              key={option}
+                              onClick={() => setSortBy(option)}
+                            >
+                              <span className="flex-1">
+                                {t(`marketplace.sort.${option}`)}
+                              </span>
+                              {sortBy === option && (
+                                <CheckIcon className="h-3.5 w-3.5 text-indigo-500" />
+                              )}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+                    </div>
                   )}
 
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

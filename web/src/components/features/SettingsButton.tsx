@@ -10,7 +10,7 @@ export const SettingsButton = ({
   className,
   title = "设置",
 }: SettingsButtonProps) => {
-  const { openSettingsModal } = useXyzen();
+  const openSettingsModal = useXyzen((s) => s.openSettingsModal);
 
   const baseClass =
     "rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800";

@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { UserIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import { useBohriumAppDetail, useMcpActivation } from "../hooks/useBohriumMcp";
 
 interface McpServerDetailProps {
@@ -29,7 +30,12 @@ const McpServerDetail: React.FC<McpServerDetailProps> = ({
   const { t } = useTranslation();
   const { detail, loading, error } = useBohriumAppDetail(appKey);
   const { activateMcp } = useMcpActivation();
-  const { addMcpServer, mcpServers } = useXyzen();
+  const { addMcpServer, mcpServers } = useXyzen(
+    useShallow((s) => ({
+      addMcpServer: s.addMcpServer,
+      mcpServers: s.mcpServers,
+    })),
+  );
 
   const [isActivating, setIsActivating] = useState(false);
   const [isStarred, setIsStarred] = useState(false);

@@ -41,7 +41,7 @@ export interface AuthStatusProps {
 export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   const auth = useAuth();
   const { t } = useTranslation();
-  const { openSettingsModal } = useXyzen();
+  const openSettingsModal = useXyzen((s) => s.openSettingsModal);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showPointsInfo, setShowPointsInfo] = useState(false);

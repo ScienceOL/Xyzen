@@ -61,6 +61,7 @@ export interface MessageError {
  * Replaces the separate boolean flags (isLoading, isStreaming, isThinking).
  */
 export type MessageStatus =
+  | "sending" // Optimistic user message, awaiting backend echo
   | "pending" // Waiting for backend response (was isLoading)
   | "thinking" // Model is reasoning (was isThinking)
   | "streaming" // Content streaming in progress (was isStreaming)

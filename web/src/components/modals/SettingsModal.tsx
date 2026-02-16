@@ -1,5 +1,6 @@
 import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { useXyzen } from "@/store";
+import { useShallow } from "zustand/react/shallow";
 import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
@@ -11,7 +12,7 @@ import {
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -34,13 +35,38 @@ export function SettingsModal() {
     activeSettingsCategory,
     setActiveSettingsCategory,
     activeUiSetting,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      isSettingsModalOpen: s.isSettingsModalOpen,
+      closeSettingsModal: s.closeSettingsModal,
+      activeSettingsCategory: s.activeSettingsCategory,
+      setActiveSettingsCategory: s.setActiveSettingsCategory,
+      activeUiSetting: s.activeUiSetting,
+    })),
+  );
 
   // Mobile navigation state: 'categories' | 'content'
   const [mobileView, setMobileView] = useState<"categories" | "content">(
     "categories",
   );
   const [showUiDetail, setShowUiDetail] = useState(false);
+
+  // When the modal opens with a non-default category, jump straight to content
+  const prevOpen = useRef(isSettingsModalOpen);
+  useEffect(() => {
+    if (isSettingsModalOpen && !prevOpen.current) {
+      // Modal just opened
+      if (activeSettingsCategory !== "account") {
+        setMobileView("content");
+      } else {
+        setMobileView("categories");
+      }
+    } else if (!isSettingsModalOpen && prevOpen.current) {
+      // Modal just closed — reset
+      setMobileView("categories");
+    }
+    prevOpen.current = isSettingsModalOpen;
+  }, [isSettingsModalOpen, activeSettingsCategory]);
 
   const categories = [
     {

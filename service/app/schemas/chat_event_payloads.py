@@ -65,14 +65,14 @@ class ProcessingData(TypedDict):
     """Data payload for PROCESSING event."""
 
     status: str
-    stream_id: NotRequired[str]
+    stream_id: str
 
 
 class LoadingData(TypedDict):
     """Data payload for LOADING event."""
 
     message: str
-    stream_id: NotRequired[str]
+    stream_id: str
 
 
 class ErrorData(TypedDict):
@@ -86,7 +86,7 @@ class ErrorData(TypedDict):
     error_category: NotRequired[str]  # Category, e.g. "provider"
     recoverable: NotRequired[bool]  # Whether the user can retry
     detail: NotRequired[str]  # Optional sanitized detail
-    stream_id: NotRequired[str]
+    stream_id: str
 
 
 class ToolCallRequestData(TypedDict):
@@ -98,6 +98,7 @@ class ToolCallRequestData(TypedDict):
     arguments: dict[str, Any]
     status: str
     timestamp: float
+    stream_id: str
 
 
 class ToolCallResponseData(TypedDict):
@@ -108,6 +109,7 @@ class ToolCallResponseData(TypedDict):
     result: str  # Formatted result for display
     raw_result: NotRequired[str | dict | list]  # Raw result for cost calculation
     error: NotRequired[str]
+    stream_id: str
 
 
 class TokenUsageData(TypedDict):
@@ -116,6 +118,7 @@ class TokenUsageData(TypedDict):
     input_tokens: int
     output_tokens: int
     total_tokens: int
+    stream_id: str
 
 
 class CitationData(TypedDict):
@@ -133,6 +136,7 @@ class SearchCitationsData(TypedDict):
     """Data payload for SEARCH_CITATIONS event."""
 
     citations: list[CitationData]
+    stream_id: str
 
 
 class GeneratedFileInfo(TypedDict):
@@ -150,6 +154,7 @@ class GeneratedFilesData(TypedDict):
     """Data payload for GENERATED_FILES event."""
 
     files: list[GeneratedFileInfo]
+    stream_id: str
 
 
 class MessageSavedData(TypedDict):
@@ -175,7 +180,7 @@ class InsufficientBalanceData(TypedDict):
     message_cn: NotRequired[str]
     details: NotRequired[dict[str, Any]]
     action_required: str
-    stream_id: NotRequired[str]
+    stream_id: str
 
 
 class ThinkingStartData(TypedDict):
@@ -203,7 +208,7 @@ class StreamAbortedData(TypedDict):
     reason: str  # "user_requested", "timeout", "error"
     partial_content_length: NotRequired[int]
     tokens_consumed: NotRequired[int]
-    stream_id: NotRequired[str]
+    stream_id: str
 
 
 # =============================================================================

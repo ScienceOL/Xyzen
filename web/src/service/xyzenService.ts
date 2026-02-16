@@ -1,3 +1,4 @@
+import type { ChatEvent } from "@/types/chatEvents";
 import type { Message } from "@/store/types";
 import { authService } from "./authService";
 
@@ -6,49 +7,8 @@ interface StatusChangePayload {
   error: string | null;
 }
 
-interface MessageEvent {
-  type:
-    | "message"
-    | "processing"
-    | "loading"
-    | "streaming_start"
-    | "streaming_chunk"
-    | "streaming_end"
-    | "message_saved"
-    | "message_ack"
-    | "tool_call_request"
-    | "tool_call_response"
-    | "insufficient_balance"
-    | "parallel_chat_limit"
-    | "error"
-    | "topic_updated"
-    | "thinking_start"
-    | "thinking_chunk"
-    | "thinking_end"
-    // Agent execution events
-    | "agent_start"
-    | "agent_end"
-    | "agent_error"
-    | "phase_start"
-    | "phase_end"
-    | "node_start"
-    | "node_end"
-    | "subagent_start"
-    | "subagent_end"
-    | "progress_update"
-    | "iteration_start"
-    | "iteration_end"
-    | "state_update"
-    // Abort events
-    | "stream_aborted"
-    // Heartbeat
-    | "ping";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: Message | Record<string, any>;
-}
-
 type ServiceCallback<T> = (payload: T) => void;
-export type MessageEventCallback = (event: MessageEvent) => void;
+export type MessageEventCallback = (event: ChatEvent) => void;
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
 const MAX_RETRIES = 5;

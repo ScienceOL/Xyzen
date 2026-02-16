@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
@@ -38,8 +39,19 @@ export function AppSide({
     activePanel,
     setActivePanel,
     setBackendUrl,
-  } = useXyzen();
-  const { activeChatChannel, setActiveChatChannel } = useXyzen();
+    activeChatChannel,
+    setActiveChatChannel,
+  } = useXyzen(
+    useShallow((s) => ({
+      isXyzenOpen: s.isXyzenOpen,
+      closeXyzen: s.closeXyzen,
+      activePanel: s.activePanel,
+      setActivePanel: s.setActivePanel,
+      setBackendUrl: s.setBackendUrl,
+      activeChatChannel: s.activeChatChannel,
+      setActiveChatChannel: s.setActiveChatChannel,
+    })),
+  );
 
   const [mounted, setMounted] = useState(false);
 

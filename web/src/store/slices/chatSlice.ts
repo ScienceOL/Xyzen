@@ -1,14 +1,11 @@
 import {
-  generateClientId,
   groupToolMessagesWithAssistant,
   isValidUuid,
   mergeChannelPreservingRuntime,
 } from "@/core/chat";
-import {
-  ensureFallbackResponsePhase,
-  findMessageIndexByStream,
-  syncChannelResponding,
-} from "@/core/chat/channelHelpers";
+import { generateClientId } from "@/core/chat/messageProcessor";
+import { syncChannelResponding } from "@/core/chat/channelHelpers";
+import { ChunkBuffer } from "@/core/chat/chunkBuffer";
 import {
   handleAgentEnd,
   handleAgentError,
@@ -50,7 +47,7 @@ import type {
   XyzenState,
 } from "../types";
 
-// NOTE: groupToolMessagesWithAssistant and generateClientId have been moved to
+// NOTE: groupToolMessagesWithAssistant and generateClientId live in
 // @/core/chat/messageProcessor.ts as part of the frontend refactor.
 
 // Track abort timeout IDs per channel to allow cleanup
@@ -206,6 +203,8 @@ export const createChatSlice: StateCreator<
 
   /** Recompute derived status fields from all channels. Call on state transitions only. */
   const updateDerivedStatus = (): void => {
+    const prevRespondingIds = get().respondingChannelIds;
+
     set((state: ChatSlice) => {
       const respondingIds = new Set<string>();
       const runningIds = new Set<string>();
@@ -228,6 +227,19 @@ export const createChatSlice: StateCreator<
       state.respondingChannelIds = respondingIds;
       state.runningAgentIds = runningIds;
       state.activeTopicCountByAgent = topicCounts;
+
+      // Log if the active channel's derived responding status changed
+      const activeId = state.activeChatChannel;
+      if (activeId) {
+        const wasResponding = prevRespondingIds.has(activeId);
+        const isResponding = respondingIds.has(activeId);
+        if (wasResponding !== isResponding) {
+          console.warn(
+            `[updateDerivedStatus] active channel ${activeId}: respondingChannelIds ${wasResponding} → ${isResponding}`,
+            `| channel.responding: ${state.channels[activeId]?.responding}`,
+          );
+        }
+      }
     });
   };
 
@@ -283,9 +295,29 @@ export const createChatSlice: StateCreator<
         const processedMessages = groupToolMessagesWithAssistant(messages);
 
         set((state: ChatSlice) => {
-          if (state.channels[topicId]) {
-            state.channels[topicId].messages = processedMessages;
-            syncChannelResponding(state.channels[topicId]);
+          const channel = state.channels[topicId];
+          if (channel) {
+            // Preserve streamId from existing messages onto reconciled DB messages.
+            // After WS reconnect, the Celery worker is still streaming with the
+            // original stream_id, but DB messages don't have streamId. Without
+            // this, incoming chunks can't find the message and create a new bubble.
+            if (channel.responding) {
+              const existingStreamIds = new Map<string, string>();
+              for (const msg of channel.messages) {
+                if (msg.streamId && msg.id) {
+                  existingStreamIds.set(msg.id, msg.streamId);
+                }
+              }
+              for (const msg of processedMessages) {
+                const streamId = existingStreamIds.get(msg.id);
+                if (streamId) {
+                  msg.streamId = streamId;
+                }
+              }
+            }
+
+            channel.messages = processedMessages;
+            syncChannelResponding(channel);
           }
         });
         updateDerivedStatus();
@@ -680,163 +712,35 @@ export const createChatSlice: StateCreator<
       }
 
       // --- Chunk buffering: batch streaming_chunk and thinking_chunk at rAF cadence ---
-      type ChunkEntry = {
-        type: "streaming" | "thinking";
-        id: string;
-        content: string;
-        execution_id?: string;
-      };
-      let chunkBuffer: ChunkEntry[] = [];
-      let rafId: number | null = null;
-
-      const flushChunks = () => {
-        rafId = null;
-        if (chunkBuffer.length === 0) return;
-        const batch = chunkBuffer;
-        chunkBuffer = [];
-
+      const chunkBuffer = new ChunkBuffer((fn) => {
         set((state: ChatSlice) => {
           const channel = state.channels[topicId];
-          if (!channel) return;
-
-          for (const chunk of batch) {
-            if (chunk.type === "streaming") {
-              const streamingIndex = findMessageIndexByStream(
-                channel,
-                chunk.id,
-                chunk.execution_id,
-              );
-
-              if (streamingIndex === -1) {
-                channel.messages.push({
-                  id: chunk.id,
-                  streamId: chunk.id,
-                  clientId: generateClientId(),
-                  role: "assistant" as const,
-                  content: chunk.content,
-                  created_at: new Date().toISOString(),
-                  status: "streaming",
-                  isStreaming: true,
-                });
-              } else {
-                const msg = channel.messages[streamingIndex];
-                msg.streamId = chunk.id;
-                msg.status = "streaming";
-                msg.isStreaming = true;
-                msg.isThinking = false;
-
-                if (msg.agentExecution) {
-                  ensureFallbackResponsePhase(msg);
-                  const execution = msg.agentExecution;
-                  if (!execution || execution.phases.length === 0) {
-                    continue;
-                  }
-
-                  let targetPhase = execution.currentNode
-                    ? execution.phases.find(
-                        (p) => p.id === execution.currentNode,
-                      )
-                    : null;
-
-                  if (!targetPhase) {
-                    targetPhase = execution.phases.find(
-                      (p) => p.status === "running",
-                    );
-                  }
-
-                  if (!targetPhase) {
-                    targetPhase = execution.phases[execution.phases.length - 1];
-                  }
-
-                  const existingContent = targetPhase.streamedContent || "";
-                  if (
-                    existingContent.length > 100 &&
-                    chunk.content.length > existingContent.length &&
-                    chunk.content.startsWith(existingContent.slice(0, 100))
-                  ) {
-                    targetPhase.streamedContent = chunk.content;
-                  } else {
-                    targetPhase.streamedContent =
-                      existingContent + chunk.content;
-                  }
-                } else {
-                  const currentContent = msg.content;
-                  channel.messages[streamingIndex].content =
-                    currentContent + chunk.content;
-                }
-              }
-            } else {
-              // thinking chunk
-              let thinkingIndex = channel.messages.findIndex(
-                (m) => m.id === chunk.id,
-              );
-
-              if (thinkingIndex === -1) {
-                thinkingIndex = channel.messages.findLastIndex(
-                  (m) => m.isThinking && m.agentExecution?.status === "running",
-                );
-              }
-
-              if (thinkingIndex !== -1) {
-                const currentThinking =
-                  channel.messages[thinkingIndex].thinkingContent ?? "";
-                channel.messages[thinkingIndex].thinkingContent =
-                  currentThinking + chunk.content;
-              }
-            }
-          }
-
-          syncChannelResponding(channel);
+          if (channel) fn(channel);
         });
-      };
-
-      const scheduleFlush = () => {
-        if (rafId === null) {
-          rafId = requestAnimationFrame(flushChunks);
-        }
-      };
+      });
 
       // --- Define event callback ---
       const messageEventCallback: MessageEventCallback = (event) => {
         // --- Hot-path: buffer chunk events and flush at rAF cadence ---
         if (event.type === "streaming_chunk") {
-          const eventData = event.data as {
-            stream_id: string;
-            content: string;
-            execution_id?: string;
-          };
-          chunkBuffer.push({
-            type: "streaming",
-            id: eventData.stream_id,
-            content: eventData.content,
-            execution_id: eventData.execution_id,
-          });
-          scheduleFlush();
+          chunkBuffer.pushStreaming(
+            event.data.stream_id,
+            event.data.content,
+            event.data.execution_id,
+          );
           return;
         }
 
         if (event.type === "thinking_chunk") {
-          const eventData = event.data as {
-            stream_id: string;
-            content: string;
-          };
-          chunkBuffer.push({
-            type: "thinking",
-            id: eventData.stream_id,
-            content: eventData.content,
-          });
-          scheduleFlush();
+          chunkBuffer.pushThinking(event.data.stream_id, event.data.content);
           return;
         }
 
         // --- Non-chunk events: flush any pending chunks first, then process synchronously ---
-        if (chunkBuffer.length > 0) {
-          if (rafId !== null) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-          }
-          flushChunks();
-        }
+        const hadPendingChunks = chunkBuffer.hasPending;
+        chunkBuffer.flushSync();
+
+        const preEventResponding = get().channels[topicId]?.responding;
 
         set((state: ChatSlice) => {
           const channel = state.channels[topicId];
@@ -845,141 +749,79 @@ export const createChatSlice: StateCreator<
           switch (event.type) {
             case "processing":
             case "loading": {
-              const eventData = event.data as { stream_id?: string };
-              handleProcessingOrLoading(channel, eventData.stream_id);
+              handleProcessingOrLoading(channel, event.data.stream_id);
               break;
             }
 
             case "streaming_start": {
-              handleStreamingStart(
-                channel,
-                event.data as { stream_id: string; execution_id?: string },
-              );
+              handleStreamingStart(channel, event.data);
               break;
             }
 
             case "streaming_end": {
-              handleStreamingEnd(
-                channel,
-                event.data as {
-                  stream_id: string;
-                  created_at?: string;
-                  execution_id?: string;
-                },
-              );
+              handleStreamingEnd(channel, event.data);
               break;
             }
 
             case "message": {
-              handleMessage(channel, event.data as import("../types").Message);
+              handleMessage(channel, event.data);
               break;
             }
 
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore - search_citations is a valid event type from backend
             case "search_citations": {
-              handleSearchCitations(
-                channel,
-                event.data as {
-                  citations: Array<{
-                    url?: string;
-                    title?: string;
-                    cited_text?: string;
-                    start_index?: number;
-                    end_index?: number;
-                    search_queries?: string[];
-                  }>;
-                },
-              );
+              handleSearchCitations(channel, event.data);
               break;
             }
 
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore - generated_files is a valid event type from backend
             case "generated_files": {
-              handleGeneratedFiles(
-                channel,
-                event.data as unknown as {
-                  files: Array<{
-                    id: string;
-                    name: string;
-                    type: string;
-                    size: number;
-                    category: "images" | "documents" | "audio" | "others";
-                    download_url?: string;
-                    thumbnail_url?: string;
-                  }>;
-                },
-              );
+              handleGeneratedFiles(channel, event.data);
               break;
             }
 
             case "message_saved": {
-              handleMessageSaved(
-                channel,
-                event.data as {
-                  stream_id: string;
-                  db_id: string;
-                  created_at: string;
-                },
-              );
+              handleMessageSaved(channel, event.data);
+              break;
+            }
+
+            case "message_ack": {
+              // Reconcile optimistic user message with server-assigned ID.
+              // The backend echoes back the client_id we sent so we can
+              // upgrade the temporary clientId-based message to a real DB ID.
+              const { message_id, client_id } = event.data;
+              if (client_id) {
+                const optimisticIdx = channel.messages.findIndex(
+                  (m) => m.clientId === client_id,
+                );
+                if (optimisticIdx !== -1) {
+                  const msg = channel.messages[optimisticIdx];
+                  msg.id = message_id;
+                  if (msg.status === "sending") {
+                    msg.status = "completed";
+                  }
+                }
+              }
               break;
             }
 
             case "tool_call_request": {
-              handleToolCallRequest(
-                channel,
-                event.data as {
-                  id: string;
-                  name: string;
-                  description?: string;
-                  arguments: Record<string, unknown>;
-                  status: string;
-                  timestamp: number;
-                },
-              );
+              handleToolCallRequest(channel, event.data);
               break;
             }
 
             case "tool_call_response": {
-              handleToolCallResponse(
-                channel,
-                event.data as {
-                  toolCallId: string;
-                  status: string;
-                  result?: unknown;
-                  error?: string;
-                },
-              );
+              handleToolCallResponse(channel, event.data);
               break;
             }
 
             case "error": {
-              handleError(
-                channel,
-                event.data as {
-                  error: string;
-                  error_code?: string;
-                  error_category?: string;
-                  recoverable?: boolean;
-                  detail?: string;
-                  stream_id?: string;
-                },
-              );
+              handleError(channel, event.data);
               break;
             }
 
             case "insufficient_balance": {
               const notification = handleInsufficientBalance(
                 channel,
-                event.data as {
-                  error_code?: string;
-                  message?: string;
-                  message_cn?: string;
-                  details?: Record<string, unknown>;
-                  action_required?: string;
-                  stream_id?: string;
-                },
+                event.data,
               );
               if (notification) {
                 state.notification = {
@@ -993,117 +835,70 @@ export const createChatSlice: StateCreator<
             }
 
             case "parallel_chat_limit": {
-              const notification = handleParallelChatLimit(
-                channel,
-                event.data as {
-                  error_code?: string;
-                  current?: number;
-                  limit?: number;
-                },
-              );
+              const notification = handleParallelChatLimit(channel, event.data);
               state.notification = notification;
               break;
             }
 
             case "stream_aborted": {
-              handleStreamAborted(
-                channel,
-                event.data as {
-                  reason: string;
-                  partial_content_length?: number;
-                  tokens_consumed?: number;
-                },
-                abortTimeoutIds,
-              );
+              handleStreamAborted(channel, event.data, abortTimeoutIds);
               break;
             }
 
             case "thinking_start": {
-              handleThinkingStart(channel, event.data as { stream_id: string });
+              handleThinkingStart(channel, event.data);
               break;
             }
 
             case "thinking_end": {
-              handleThinkingEnd(channel, event.data as { stream_id: string });
+              handleThinkingEnd(channel, event.data);
               break;
             }
 
             case "topic_updated": {
-              handleTopicUpdated(
-                channel,
-                event.data as {
-                  id: string;
-                  name: string;
-                  updated_at: string;
-                },
-                state.chatHistory,
-              );
+              handleTopicUpdated(channel, event.data, state.chatHistory);
               break;
             }
 
             // === Agent Execution Events ===
 
             case "agent_start": {
-              handleAgentStart(
-                channel,
-                event.data as import("@/types/agentEvents").AgentStartData,
-              );
+              handleAgentStart(channel, event.data);
               break;
             }
 
             case "agent_end": {
-              handleAgentEnd(
-                channel,
-                event.data as import("@/types/agentEvents").AgentEndData,
-              );
+              handleAgentEnd(channel, event.data);
               break;
             }
 
             case "agent_error": {
-              handleAgentError(
-                channel,
-                event.data as import("@/types/agentEvents").AgentErrorData,
-              );
+              handleAgentError(channel, event.data);
               break;
             }
 
             case "node_start": {
-              handleNodeStart(
-                channel,
-                event.data as import("@/types/agentEvents").NodeStartData,
-              );
+              handleNodeStart(channel, event.data);
               break;
             }
 
             case "node_end": {
-              handleNodeEnd(
-                channel,
-                event.data as import("@/types/agentEvents").NodeEndData,
-              );
+              handleNodeEnd(channel, event.data);
               break;
             }
 
             case "subagent_start": {
-              handleSubagentStart(
-                channel,
-                event.data as import("@/types/agentEvents").SubagentStartData,
-              );
+              handleSubagentStart(channel, event.data);
               break;
             }
 
             case "subagent_end": {
-              handleSubagentEnd(
-                channel,
-                event.data as import("@/types/agentEvents").SubagentEndData,
-              );
+              handleSubagentEnd(channel, event.data);
               break;
             }
 
             case "progress_update": {
-              handleProgressUpdate(
-                channel,
-                event.data as import("@/types/agentEvents").ProgressUpdateData,
-              );
+              handleProgressUpdate(channel, event.data);
               break;
             }
           }
@@ -1112,23 +907,53 @@ export const createChatSlice: StateCreator<
           syncChannelResponding(channel);
         });
 
+        // Log state transition if responding changed
+        const postEventResponding = get().channels[topicId]?.responding;
+        if (preEventResponding !== postEventResponding) {
+          console.warn(
+            `[ChatSlice] responding changed: ${preEventResponding} → ${postEventResponding}`,
+            `| event: ${event.type}`,
+            `| hadPendingChunks: ${hadPendingChunks}`,
+          );
+        }
+
         // Chunk events return early above, so all events reaching here are state transitions
         updateDerivedStatus();
         closeIdleNonPrimaryConnection(topicId);
       };
 
       // --- Shared callbacks for onMessage, onStatusChange, onReconnect ---
-      const onMessage = (message: import("../types").Message) => {
+      const onMessage = (
+        message: import("../types").Message & { client_id?: string },
+      ) => {
         set((state: ChatSlice) => {
           const channel = state.channels[topicId];
-          if (channel) {
-            if (!channel.messages.some((m) => m.id === message.id)) {
-              channel.messages.push({
+          if (!channel) return;
+
+          // Reconcile with optimistic message if client_id matches
+          if (message.client_id) {
+            const optimisticIdx = channel.messages.findIndex(
+              (m) => m.clientId === message.client_id,
+            );
+            if (optimisticIdx !== -1) {
+              channel.messages[optimisticIdx] = {
+                ...channel.messages[optimisticIdx],
                 ...message,
+                id: message.id,
                 status: message.status || "completed",
-                isNewMessage: true,
-              });
+                isNewMessage: false,
+              };
+              return;
             }
+          }
+
+          // Normal path: push if not duplicate
+          if (!channel.messages.some((m) => m.id === message.id)) {
+            channel.messages.push({
+              ...message,
+              status: message.status || "completed",
+              isNewMessage: true,
+            });
           }
         });
       };
@@ -1304,19 +1129,52 @@ export const createChatSlice: StateCreator<
         return;
       }
 
-      // Mark the channel as responding immediately for snappier UX
-      set((state: ChatSlice) => {
-        const channel = state.channels[activeChatChannel];
-        if (channel) channel.responding = true;
-      });
-      updateDerivedStatus();
+      // Generate a client_id to correlate the optimistic message with the backend echo
+      const clientId = generateClientId();
 
       // Collect completed file IDs
       const completedFiles = uploadedFiles.filter(
         (f) => f.status === "completed" && f.uploadedId,
       );
 
-      const payload: Record<string, unknown> = { message };
+      // Build attachment previews from uploaded files for optimistic rendering
+      const optimisticAttachments = completedFiles.map((f) => ({
+        id: f.uploadedId!,
+        name: f.file.name,
+        type: f.file.type,
+        size: f.file.size,
+        category: (f.file.type.startsWith("image/")
+          ? "images"
+          : f.file.type.startsWith("audio/")
+            ? "audio"
+            : f.file.type === "application/pdf" ||
+                f.file.type.includes("document")
+              ? "documents"
+              : "others") as "images" | "documents" | "audio" | "others",
+      }));
+
+      // --- Optimistic insert: render user message immediately ---
+      set((state: ChatSlice) => {
+        const channel = state.channels[activeChatChannel];
+        if (channel) {
+          channel.responding = true;
+          channel.messages.push({
+            id: clientId,
+            clientId,
+            role: "user",
+            content: message,
+            created_at: new Date().toISOString(),
+            status: "sending",
+            isNewMessage: true,
+            ...(optimisticAttachments.length > 0
+              ? { attachments: optimisticAttachments }
+              : {}),
+          });
+        }
+      });
+      updateDerivedStatus();
+
+      const payload: Record<string, unknown> = { message, client_id: clientId };
       if (completedFiles.length > 0) {
         payload.file_ids = completedFiles.map((f) => f.uploadedId!);
       }
@@ -1329,17 +1187,20 @@ export const createChatSlice: StateCreator<
       const sendSuccess = xyzenService.sendStructuredMessage(payload);
 
       if (!sendSuccess) {
-        // Reset responding state since message was never sent
+        // Mark optimistic message as failed instead of removing it
         set((state: ChatSlice) => {
           const ch = state.channels[activeChatChannel];
-          if (ch) ch.responding = false;
+          if (ch) {
+            ch.responding = false;
+            const optimisticMsg = ch.messages.find(
+              (m) => m.clientId === clientId,
+            );
+            if (optimisticMsg) {
+              optimisticMsg.status = "failed";
+            }
+          }
         });
         updateDerivedStatus();
-        showNotification(
-          "Send Failed",
-          "Message could not be sent. Please check your connection and try again.",
-          "error",
-        );
         return;
       }
 

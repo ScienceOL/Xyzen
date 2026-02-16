@@ -10,13 +10,21 @@ import {
 } from "@/components/animate-ui/primitives/radix/tabs";
 import { useXyzen } from "@/store";
 import { useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import AgentExploreContent from "./AgentExploreContent";
 import AgentExploreTab from "./AgentExploreTab";
 import McpExploreContent from "./McpExploreContent";
 import McpExploreTab from "./McpExploreTab";
 
 export default function Explorer() {
-  const { fetchAgents, user, backendUrl, fetchBuiltinMcpServers } = useXyzen();
+  const { fetchAgents, user, backendUrl, fetchBuiltinMcpServers } = useXyzen(
+    useShallow((s) => ({
+      fetchAgents: s.fetchAgents,
+      user: s.user,
+      backendUrl: s.backendUrl,
+      fetchBuiltinMcpServers: s.fetchBuiltinMcpServers,
+    })),
+  );
 
   useEffect(() => {
     if (user && backendUrl) {

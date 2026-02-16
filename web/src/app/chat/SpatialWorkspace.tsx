@@ -23,6 +23,7 @@ import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 
 import {
   AddAgentButton,
@@ -57,7 +58,21 @@ function InnerWorkspace() {
     chatHistory,
     showOfficialRecommendations,
     setActivePanel,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      agents: s.agents,
+      updateAgentLayout: s.updateAgentLayout,
+      updateAgentAvatar: s.updateAgentAvatar,
+      deleteAgent: s.deleteAgent,
+      agentStats: s.agentStats,
+      sessionIdByAgentId: s.sessionIdByAgentId,
+      dailyActivity: s.dailyActivity,
+      yesterdaySummary: s.yesterdaySummary,
+      chatHistory: s.chatHistory,
+      showOfficialRecommendations: s.showOfficialRecommendations,
+      setActivePanel: s.setActivePanel,
+    })),
+  );
 
   // Derived state from store (only updates on state transitions, not streaming_chunk)
   const activeAgentIds = useRunningAgentIds();

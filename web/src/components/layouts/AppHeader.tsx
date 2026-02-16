@@ -3,6 +3,7 @@ import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserWallet } from "@/hooks/useUserWallet";
+import { checkInService } from "@/service/checkinService";
 import { useXyzen } from "@/store";
 import {
   CalendarDaysIcon,
@@ -10,6 +11,7 @@ import {
   InformationCircleIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
+import { useQuery } from "@tanstack/react-query";
 import { PanelRightCloseIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -38,13 +40,20 @@ export function AppHeader({
   onBackClick,
   backButtonLabel = "Chat",
 }: AppHeaderProps) {
-  const { closeXyzen } = useXyzen();
+  const closeXyzen = useXyzen((s) => s.closeXyzen);
   const auth = useAuth();
   const [showPointsInfo, setShowPointsInfo] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
   const walletQuery = useUserWallet(auth.token, isAuthedForUi);
+  const checkInStatus = useQuery({
+    queryKey: ["check-in", "status"],
+    queryFn: () => checkInService.getStatus(),
+    enabled: isAuthedForUi,
+  });
+  const showCheckInDot =
+    isAuthedForUi && checkInStatus.data?.checked_in_today === false;
 
   const isFullscreen = variant === "fullscreen";
   const isSide = variant === "side";
@@ -132,9 +141,15 @@ export function AppHeader({
               <button
                 type="button"
                 onClick={() => setShowCheckInModal(true)}
-                className="rounded-md border border-amber-100 bg-linear-to-br from-amber-50/80 to-white px-2 py-1 text-sm font-medium text-amber-700 transition-colors hover:from-amber-100/80 hover:to-amber-50 sm:px-2.5 sm:py-1.5 dark:border-amber-500/20 dark:from-amber-950/20 dark:to-neutral-900/20 dark:text-amber-400 dark:hover:from-amber-900/30 dark:hover:to-amber-950/30"
+                className="relative rounded-md border border-amber-100 bg-linear-to-br from-amber-50/80 to-white px-2 py-1 text-sm font-medium text-amber-700 transition-colors hover:from-amber-100/80 hover:to-amber-50 sm:px-2.5 sm:py-1.5 dark:border-amber-500/20 dark:from-amber-950/20 dark:to-neutral-900/20 dark:text-amber-400 dark:hover:from-amber-900/30 dark:hover:to-amber-950/30"
                 title="每日签到"
               >
+                {showCheckInDot && (
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                  </span>
+                )}
                 <div className="flex items-center gap-1.5">
                   <CalendarDaysIcon className="h-4 w-4" />
                   <span className="sr-only">签到</span>

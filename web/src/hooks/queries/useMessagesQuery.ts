@@ -22,7 +22,7 @@ import { queryKeys } from "./queryKeys";
  * ```
  */
 export function useTopicMessages(topicId: string | null) {
-  const { backendUrl } = useXyzen();
+  const backendUrl = useXyzen((s) => s.backendUrl);
 
   return useQuery({
     queryKey: queryKeys.topics.messages(topicId ?? ""),
@@ -95,7 +95,7 @@ export function useUpdateMessagesCache() {
  */
 export function usePrefetchTopicMessages() {
   const queryClient = useQueryClient();
-  const { backendUrl } = useXyzen();
+  const backendUrl = useXyzen((s) => s.backendUrl);
 
   return async (topicId: string) => {
     const token = authService.getToken();

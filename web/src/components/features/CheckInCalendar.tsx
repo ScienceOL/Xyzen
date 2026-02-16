@@ -112,14 +112,17 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   const isMonthlyLoading = monthlyQueries.some((q) => q.isLoading);
 
   // Get day consumption when date changes
+  // Use YYYY-MM-DD as cache key so the same calendar day always hits cache
+  const selectedDateKey = selectedDate
+    ? formatDateInCheckinTZ(selectedDate)
+    : null;
   const dayConsumptionQuery = useQuery({
-    queryKey: ["check-in", "consumption", selectedDate?.toISOString()],
+    queryKey: ["check-in", "consumption", selectedDateKey],
     queryFn: () => {
-      if (!selectedDate) return null;
-      const dateStr = formatDateInCheckinTZ(selectedDate);
-      return checkInService.getDayConsumption(dateStr);
+      if (!selectedDateKey) return null;
+      return checkInService.getDayConsumption(selectedDateKey);
     },
-    enabled: !!selectedDate,
+    enabled: !!selectedDateKey,
   });
 
   const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -333,17 +336,8 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="mx-auto w-full h-auto lg:h-full"
-    >
-      <motion.div
-        layout
-        transition={{ type: "spring", stiffness: 220, damping: 28 }}
-        className="grid h-auto lg:h-full grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]"
-      >
+    <div className="mx-auto w-full h-auto lg:h-full">
+      <div className="grid h-auto lg:h-full grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
         {/* Left Panel: Calendar */}
         <Card className="h-auto lg:h-full backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-xl">
           <CardContent className="flex h-auto lg:h-full flex-col p-4 sm:p-6">
@@ -364,11 +358,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
               )}
             </div>
 
-            <motion.div
-              layout
-              transition={{ type: "spring", stiffness: 220, damping: 28 }}
-              className="flex-1 rounded-sm border border-neutral-200/60 bg-white/80 p-2 shadow-sm backdrop-blur-sm sm:p-4 dark:border-neutral-700/60 dark:bg-neutral-800/80 overflow-hidden flex flex-col min-h-[320px]"
-            >
+            <div className="flex-1 rounded-sm border border-neutral-200/60 bg-white/80 p-2 shadow-sm backdrop-blur-sm sm:p-4 dark:border-neutral-700/60 dark:bg-neutral-800/80 overflow-hidden flex flex-col min-h-[320px]">
               <AnimatePresence mode="wait" custom={direction}>
                 <motion.div
                   key={displayMonth.toISOString()}
@@ -434,7 +424,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                   />
                 </motion.div>
               </AnimatePresence>
-            </motion.div>
+            </div>
 
             {/* Check-in Button (height transition) */}
             <AnimatePresence initial={false}>
@@ -551,7 +541,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
               <div className="space-y-4 flex-1 flex flex-col">
                 {checkInRecord && (
-                  <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-sm border border-indigo-200/60 bg-linear-to-br from-indigo-50/90 to-purple-50/90 p-5 shadow-sm transition-all hover:shadow-md dark:border-indigo-700/60 dark:from-indigo-950/50 dark:to-purple-950/50 shrink-0">
+                  <div className="animate-in fade-in duration-300 group relative overflow-hidden rounded-sm border border-indigo-200/60 bg-linear-to-br from-indigo-50/90 to-purple-50/90 p-5 shadow-sm transition-all hover:shadow-md dark:border-indigo-700/60 dark:from-indigo-950/50 dark:to-purple-950/50 shrink-0">
                     <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-linear-to-b from-indigo-500 to-purple-600 shadow-sm transition-all group-hover:w-1.5" />
                     <div className="pl-4">
                       <div className="flex items-center gap-2">
@@ -576,7 +566,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                 )}
 
                 {consumption && (
-                  <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 group relative overflow-hidden rounded-sm border border-neutral-200/60 bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
+                  <div className="animate-in fade-in duration-300 group relative overflow-hidden rounded-sm border border-neutral-200/60 bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
                     <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-linear-to-b from-neutral-400 to-neutral-500 shadow-sm transition-all group-hover:w-1.5 dark:from-neutral-600 dark:to-neutral-700" />
                     <div className="pl-4">
                       <div className="font-bold text-neutral-900 dark:text-neutral-100">
@@ -630,11 +620,30 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                 {!checkInRecord &&
                   !consumption &&
                   dayConsumptionQuery.isLoading && (
-                    <div className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-neutral-200/60 bg-white/90 py-12 backdrop-blur-sm dark:border-neutral-700/60 dark:bg-neutral-800/90">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-indigo-600 [animation-delay:-0.3s] dark:bg-indigo-400" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-purple-600 [animation-delay:-0.15s] dark:bg-purple-400" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-pink-600 dark:bg-pink-400" />
-                    </div>
+                    <>
+                      {/* Skeleton: 签到奖励 */}
+                      <div className="rounded-sm border border-neutral-200/60 bg-white/90 p-5 backdrop-blur-sm dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
+                        <div className="pl-4 space-y-3">
+                          <div className="h-4 w-20 animate-pulse rounded bg-neutral-200/80 dark:bg-neutral-700/60" />
+                          <div className="h-4 w-40 animate-pulse rounded bg-neutral-200/80 dark:bg-neutral-700/60" />
+                        </div>
+                      </div>
+                      {/* Skeleton: 使用统计 */}
+                      <div className="rounded-sm border border-neutral-200/60 bg-white/90 p-5 backdrop-blur-sm dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
+                        <div className="pl-4 space-y-4">
+                          <div className="h-4 w-20 animate-pulse rounded bg-neutral-200/80 dark:bg-neutral-700/60" />
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                            <div className="h-23 w-23 shrink-0 animate-pulse rounded-full bg-neutral-200/80 dark:bg-neutral-700/60" />
+                            <div className="flex-1 space-y-2.5">
+                              <div className="h-3.5 w-full animate-pulse rounded bg-neutral-200/80 dark:bg-neutral-700/60" />
+                              <div className="h-3.5 w-full animate-pulse rounded bg-neutral-200/80 dark:bg-neutral-700/60" />
+                              <div className="h-3.5 w-3/4 animate-pulse rounded bg-neutral-200/80 dark:bg-neutral-700/60" />
+                              <div className="h-3.5 w-3/4 animate-pulse rounded bg-neutral-200/80 dark:bg-neutral-700/60" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   )}
 
                 {!checkInRecord &&
@@ -654,7 +663,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
             </CardContent>
           </Card>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

@@ -90,7 +90,7 @@ class AgentExecutionContext(TypedDict):
     elapsed_ms: NotRequired[int]  # Milliseconds since started_at
 
     # Stream identification (propagated from WebSocket handler)
-    stream_id: NotRequired[str]
+    stream_id: str
 
 
 # === Agent Lifecycle Events ===

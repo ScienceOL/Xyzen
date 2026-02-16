@@ -34,7 +34,7 @@ interface GeneratedCode {
 }
 
 export function SecretCodePage() {
-  const { backendUrl } = useXyzen();
+  const backendUrl = useXyzen((s) => s.backendUrl);
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);

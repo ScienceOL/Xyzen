@@ -2,6 +2,7 @@ import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
 import type { McpServer, McpServerUpdate } from "@/types/mcp";
+import { useShallow } from "zustand/react/shallow";
 import { Button, Field, Label } from "@headlessui/react";
 import {
   CheckCircleIcon,
@@ -25,7 +26,17 @@ export function EditMcpServerModal() {
     getLoading,
     user,
     token,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      isEditMcpServerModalOpen: s.isEditMcpServerModalOpen,
+      closeEditMcpServerModal: s.closeEditMcpServerModal,
+      editMcpServer: s.editMcpServer,
+      editingMcpServer: s.editingMcpServer,
+      getLoading: s.getLoading,
+      user: s.user,
+      token: s.token,
+    })),
+  );
   const [server, setServer] = useState<McpServer | null>(editingMcpServer);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);

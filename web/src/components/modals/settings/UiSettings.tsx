@@ -7,10 +7,16 @@ import {
   ViewColumnsIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 
 export function UiSettings({ onSelect }: { onSelect?: () => void }) {
   const { t } = useTranslation();
-  const { activeUiSetting, setActiveUiSetting } = useXyzen();
+  const { activeUiSetting, setActiveUiSetting } = useXyzen(
+    useShallow((s) => ({
+      activeUiSetting: s.activeUiSetting,
+      setActiveUiSetting: s.setActiveUiSetting,
+    })),
+  );
 
   const uiOptions = [
     {

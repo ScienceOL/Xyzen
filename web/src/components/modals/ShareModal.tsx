@@ -1,10 +1,4 @@
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import Markdown from "@/lib/Markdown";
 import { shareService } from "@/service/shareService";
@@ -25,6 +19,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion } from "framer-motion";
 import ChatPreview from "./ChatPreview";
 
 export interface Agent {
@@ -60,17 +55,33 @@ const Checkbox = ({
     className="flex items-center gap-2 cursor-pointer select-none"
     onClick={() => onChange(!checked)}
   >
-    <div
-      className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+    <motion.div
+      animate={
         checked
-          ? "bg-blue-500 border-blue-500 text-white"
-          : "border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
-      }`}
+          ? {
+              backgroundColor: "rgb(99 102 241)",
+              borderColor: "rgb(99 102 241)",
+            }
+          : { backgroundColor: "transparent", borderColor: "rgb(163 163 163)" }
+      }
+      transition={{ duration: 0.15 }}
+      className="w-[18px] h-[18px] rounded-md border flex items-center justify-center dark:border-neutral-600"
     >
-      {checked && <CheckIcon className="w-3.5 h-3.5" />}
-    </div>
+      <AnimatePresence>
+        {checked && (
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.12 }}
+          >
+            <CheckIcon className="w-3 h-3 text-white" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
     {label && (
-      <span className="text-sm text-neutral-700 dark:text-neutral-300">
+      <span className="text-[13px] text-neutral-600 dark:text-neutral-400">
         {label}
       </span>
     )}
@@ -284,46 +295,54 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   }, [shareResult, t]);
 
+  // ── Determine which view is active ──────────────────────────────
+
+  const isSelectionView =
+    !(activeTab === "image" && step === "preview") &&
+    !(activeTab === "link" && shareResult);
+
   // ── Tab bar ──────────────────────────────
 
   const renderTabBar = () => (
-    <div className="flex border-b border-neutral-200 dark:border-neutral-800 px-6">
-      <button
-        className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-          activeTab === "link"
-            ? "border-blue-500 text-blue-600 dark:text-blue-400"
-            : "border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-        }`}
-        onClick={() => {
-          setActiveTab("link");
-          setError(null);
-        }}
-      >
-        <LinkIcon className="h-3.5 w-3.5" />
-        {t("app.share.tabs.link")}
-      </button>
-      <button
-        className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-          activeTab === "image"
-            ? "border-blue-500 text-blue-600 dark:text-blue-400"
-            : "border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-        }`}
-        onClick={() => {
-          setActiveTab("image");
-          setError(null);
-        }}
-      >
-        <ImageIcon className="h-3.5 w-3.5" />
-        {t("app.share.tabs.image")}
-      </button>
+    <div className="flex gap-1 px-5 pt-1 pb-3 shrink-0">
+      {(["link", "image"] as const).map((tab) => {
+        const isActive = activeTab === tab;
+        const Icon = tab === "link" ? LinkIcon : ImageIcon;
+        return (
+          <button
+            key={tab}
+            className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
+              isActive
+                ? "text-neutral-900 dark:text-white"
+                : "text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+            }`}
+            onClick={() => {
+              setActiveTab(tab);
+              setError(null);
+            }}
+          >
+            {isActive && (
+              <motion.div
+                layoutId="share-tab-bg"
+                className="absolute inset-0 rounded-lg bg-neutral-100/80 dark:bg-white/[0.08]"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              <Icon className="h-3.5 w-3.5" />
+              {t(`app.share.tabs.${tab}`)}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 
-  // ── Message list (shared between tabs) ──────────────────────────────
+  // ── Message list ──────────────────────────────
 
   const renderMessageList = () => (
-    <div className="flex-1 custom-scrollbar overflow-y-auto p-4 space-y-4 min-h-0 border-b border-neutral-100 dark:border-neutral-800">
-      {messages.map((msg) => {
+    <div className="flex-1 custom-scrollbar overflow-y-auto px-4 py-2 space-y-1 min-h-0">
+      {messages.map((msg, index) => {
         const isUser = msg.role === "user";
         const isSelected = selectedIds.has(msg.id);
         const robotAvatarUrl =
@@ -331,16 +350,22 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
 
         return (
-          <div
+          <motion.div
             key={msg.id}
-            className={`flex gap-3 p-3 rounded-lg border transition-colors ${
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: Math.min(index * 0.02, 0.3), duration: 0.2 }}
+            className={`flex gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
               isSelected
-                ? "bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800"
-                : "bg-transparent border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                ? "bg-indigo-50/60 dark:bg-indigo-500/[0.08]"
+                : "hover:bg-neutral-50 dark:hover:bg-white/[0.03]"
             }`}
             onClick={() => toggleMessage(msg.id)}
           >
-            <div className="pt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="pt-0.5 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Checkbox
                 checked={isSelected}
                 onChange={() => toggleMessage(msg.id)}
@@ -348,25 +373,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             </div>
             <div className="pt-0.5 shrink-0">
               {isUser ? (
-                <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-400 to-indigo-500 flex items-center justify-center text-white">
-                  <UserIcon className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shadow-indigo-500/20">
+                  <UserIcon className="w-3.5 h-3.5" />
                 </div>
               ) : (
                 <img
                   src={robotAvatarUrl}
                   alt="AI"
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-7 h-7 rounded-full object-cover"
                 />
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-sm text-neutral-900 dark:text-neutral-100">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="font-medium text-[13px] text-neutral-800 dark:text-neutral-200">
                   {isUser
                     ? currentUser?.username || "User"
                     : currentAgent?.name || "AI"}
                 </span>
-                <span className="text-xs text-neutral-400">
+                <span className="text-[11px] text-neutral-300 dark:text-neutral-600">
                   {new Date(msg.timestamp || Date.now()).toLocaleTimeString(
                     [],
                     {
@@ -376,29 +401,33 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   )}
                 </span>
               </div>
-              <div className="text-sm text-neutral-600 dark:text-neutral-300 line-clamp-3 wrap-break-word">
+              <div className="text-[13px] text-neutral-500 dark:text-neutral-400 line-clamp-3 wrap-break-word">
                 <div className="prose dark:prose-invert prose-sm max-w-none">
                   <Markdown content={msg.content} />
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         );
       })}
     </div>
   );
 
-  // ── Selection footer per tab ──────────────────────────────
+  // ── Selection footer ──────────────────────────────
 
   const renderSelectionFooter = () => (
-    <div className="p-4 bg-white dark:bg-neutral-950 shrink-0 space-y-3">
+    <div className="px-5 py-3.5 shrink-0 space-y-3 border-t border-neutral-100/80 dark:border-white/[0.04]">
       {activeTab === "link" && (
-        <div className="flex items-center justify-between">
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="flex items-center justify-between"
+        >
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
               {t("app.share.allowFork")}
             </span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-500">
+            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
               {t("app.share.allowForkDescription")}
             </span>
           </div>
@@ -407,20 +436,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             role="switch"
             aria-checked={allowFork}
             onClick={() => setAllowFork(!allowFork)}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-              allowFork ? "bg-blue-500" : "bg-neutral-200 dark:bg-neutral-700"
+            className={`relative inline-flex h-[22px] w-[40px] shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
+              allowFork ? "bg-indigo-500" : "bg-neutral-200 dark:bg-neutral-700"
             }`}
           >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
-                allowFork ? "translate-x-4" : "translate-x-0"
-              }`}
+            <motion.span
+              animate={{ x: allowFork ? 18 : 2 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              className="pointer-events-none mt-[2px] inline-block h-[18px] w-[18px] rounded-full bg-white shadow-sm"
             />
           </button>
-        </div>
+        </motion.div>
       )}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Checkbox
             checked={
               selectedIds.size === messages.length && messages.length > 0
@@ -428,36 +457,41 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             onChange={toggleAll}
             label={t("app.share.selectAll")}
           />
-          <span className="text-sm text-neutral-500 ml-2">
+          <span className="text-[12px] text-neutral-400 dark:text-neutral-500 tabular-nums">
             {t("app.share.selectedCount", { count: selectedIds.size })}
           </span>
         </div>
         {activeTab === "image" ? (
-          <Button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             onClick={handleGeneratePreview}
             disabled={selectedIds.size === 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-indigo-600 dark:hover:bg-indigo-500"
           >
+            <ImageIcon className="h-3.5 w-3.5" />
             {t("app.share.generateImage")}
-          </Button>
+          </motion.button>
         ) : (
-          <Button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             onClick={handleGenerateLink}
             disabled={selectedIds.size === 0 || isCreatingLink || !sessionId}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-indigo-600 dark:hover:bg-indigo-500"
           >
             {isCreatingLink ? (
               <>
-                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
                 {t("app.share.generating")}
               </>
             ) : (
               <>
-                <LinkIcon className="h-4 w-4 mr-2" />
+                <LinkIcon className="h-3.5 w-3.5" />
                 {t("app.share.generateLink")}
               </>
             )}
-          </Button>
+          </motion.button>
         )}
       </div>
     </div>
@@ -466,118 +500,165 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   // ── Link result view ──────────────────────────────
 
   const renderLinkResult = () => (
-    <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="flex flex-col flex-1 min-h-0"
+    >
+      <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar">
         <div className="space-y-4">
-          {/* Success state */}
-          <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-            <CheckIcon className="h-5 w-5" />
-            <span className="font-medium">{t("app.share.linkReady")}</span>
-          </div>
+          {/* Success badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="flex items-center gap-2"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/10">
+              <CheckIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <span className="text-[14px] font-semibold text-neutral-800 dark:text-neutral-200">
+              {t("app.share.linkReady")}
+            </span>
+          </motion.div>
 
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-[13px] text-neutral-400 dark:text-neutral-500"
+          >
             {t("app.share.linkDescription")}
-          </p>
+          </motion.p>
 
           {/* Link display + copy */}
-          <div className="flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 p-3">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="flex items-center gap-2 rounded-xl bg-neutral-50/80 p-3 dark:bg-white/[0.04]"
+          >
             <input
               type="text"
               readOnly
               value={shareUrl}
-              className="flex-1 bg-transparent text-sm text-neutral-800 dark:text-neutral-200 outline-none min-w-0"
+              className="flex-1 bg-transparent text-[13px] text-neutral-700 dark:text-neutral-300 outline-none min-w-0 font-mono"
             />
-            <Button
-              variant="outline"
-              size="sm"
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
               onClick={handleCopyLink}
-              className="shrink-0"
+              className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                copied
+                  ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                  : "bg-white text-neutral-600 shadow-sm shadow-neutral-200/50 hover:bg-neutral-50 dark:bg-white/[0.06] dark:text-neutral-300 dark:shadow-none dark:hover:bg-white/[0.1]"
+              }`}
             >
               {copied ? (
                 <>
-                  <CheckIcon className="h-3.5 w-3.5 mr-1 text-green-500" />
+                  <CheckIcon className="h-3 w-3" />
                   {t("app.share.copied")}
                 </>
               ) : (
                 <>
-                  <ClipboardCopyIcon className="h-3.5 w-3.5 mr-1" />
+                  <ClipboardCopyIcon className="h-3 w-3" />
                   {t("app.share.copyLink")}
                 </>
               )}
-            </Button>
-          </div>
+            </motion.button>
+          </motion.div>
 
           {/* Share info */}
           {shareResult && (
-            <div className="text-xs text-neutral-400 dark:text-neutral-500 space-y-1">
-              <p>
-                {t("app.share.selectedCount", {
-                  count: shareResult.message_count,
-                })}{" "}
-                &middot;{" "}
-                {shareResult.status === "revoked"
-                  ? t("app.share.revoked")
-                  : t("app.share.noExpiry")}
-              </p>
-            </div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-[12px] text-neutral-400 dark:text-neutral-500"
+            >
+              {t("app.share.selectedCount", {
+                count: shareResult.message_count,
+              })}{" "}
+              &middot;{" "}
+              {shareResult.status === "revoked"
+                ? t("app.share.revoked")
+                : t("app.share.noExpiry")}
+            </motion.p>
           )}
 
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-start gap-2">
-              <XIcon className="h-4 w-4 shrink-0 mt-0.5" />
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl bg-red-50/80 px-3.5 py-2.5 text-[13px] text-red-600 dark:bg-red-500/[0.08] dark:text-red-400 flex items-start gap-2"
+            >
+              <XIcon className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>{error}</span>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shrink-0">
-        <div className="flex gap-3 flex-wrap">
-          <Button
-            variant="outline"
-            className="flex-1 min-w-[120px]"
+      <div className="px-5 py-3.5 border-t border-neutral-100/80 dark:border-white/[0.04] shrink-0">
+        <div className="flex gap-2.5">
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-neutral-600 bg-neutral-100/80 hover:bg-neutral-200/70 transition-colors dark:text-neutral-300 dark:bg-white/[0.06] dark:hover:bg-white/[0.1]"
             onClick={() => {
               setShareResult(null);
               setError(null);
               setCopied(false);
             }}
           >
-            <ArrowLeftIcon className="h-4 w-4 mr-2" />
+            <ArrowLeftIcon className="h-3.5 w-3.5" />
             {t("common.back")}
-          </Button>
+          </motion.button>
           {shareResult && shareResult.status === "active" && (
-            <Button
-              variant="outline"
-              className="flex-1 min-w-[120px] text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 dark:text-red-400 dark:border-red-800"
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-red-500 bg-red-50/80 hover:bg-red-100/70 transition-colors dark:text-red-400 dark:bg-red-500/[0.06] dark:hover:bg-red-500/[0.12]"
               onClick={handleRevokeLink}
             >
               {t("app.share.revokeLink")}
-            </Button>
+            </motion.button>
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 
-  // ── Image preview (existing) ──────────────────────────────
+  // ── Image preview ──────────────────────────────
 
   const renderPreviewStep = () => (
-    <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="flex flex-col flex-1 min-h-0"
+    >
+      <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar">
         {isGenerating || (!imageUrl && !error) ? (
-          <div className="flex flex-col items-center justify-center h-full space-y-4">
-            <div className="relative">
-              <div className="h-12 w-12 rounded-full border-4 border-neutral-200 dark:border-neutral-700"></div>
-              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
-            </div>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
+          <div className="flex flex-col items-center justify-center h-full space-y-4 py-16">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="h-8 w-8 rounded-full border-2 border-neutral-200 border-t-indigo-500 dark:border-neutral-700 dark:border-t-indigo-400"
+            />
+            <motion.p
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="text-[13px] text-neutral-400 dark:text-neutral-500"
+            >
               {t("app.share.generating")}
-            </p>
+            </motion.p>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 overflow-hidden">
+            <div className="rounded-xl overflow-hidden bg-neutral-50/80 dark:bg-white/[0.03]">
               {imageUrl ? (
                 <img
                   src={imageUrl}
@@ -585,69 +666,70 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   className="w-full h-auto block"
                 />
               ) : (
-                <div className="p-4 text-center text-neutral-500">
+                <div className="p-8 text-center text-[13px] text-neutral-400">
                   {error ? t("app.share.error.createFailed") : ""}
                 </div>
               )}
             </div>
             {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-start gap-2">
-                <XIcon className="h-4 w-4 shrink-0 mt-0.5" />
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-xl bg-red-50/80 px-3.5 py-2.5 text-[13px] text-red-600 dark:bg-red-500/[0.08] dark:text-red-400 flex items-start gap-2"
+              >
+                <XIcon className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                 <span>{error}</span>
-              </div>
+              </motion.div>
             )}
           </div>
         )}
       </div>
       {!isGenerating && (imageUrl || error) && (
-        <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shrink-0 z-10">
-          <div className="flex gap-3 flex-wrap">
-            <Button
-              variant="outline"
-              className="flex-1 min-w-[120px]"
+        <div className="px-5 py-3.5 border-t border-neutral-100/80 dark:border-white/[0.04] shrink-0">
+          <div className="flex gap-2.5">
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-neutral-600 bg-neutral-100/80 hover:bg-neutral-200/70 transition-colors dark:text-neutral-300 dark:bg-white/[0.06] dark:hover:bg-white/[0.1]"
               onClick={() => setStep("selection")}
             >
-              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              <ArrowLeftIcon className="h-3.5 w-3.5" />
               {t("common.back")}
-            </Button>
-            <Button
-              variant="default"
-              className="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 dark:text-neutral-50"
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
               onClick={downloadImage}
               disabled={!imageUrl}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-neutral-800 disabled:opacity-40 dark:bg-indigo-600 dark:hover:bg-indigo-500"
             >
-              <DownloadIcon className="h-4 w-4 mr-2" />
+              <DownloadIcon className="h-3.5 w-3.5" />
               {t("app.share.generateImage")}
-            </Button>
+            </motion.button>
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 
   // ── Main content routing ──────────────────────────────
 
   const renderContent = () => {
-    // Image tab: preview step
     if (activeTab === "image" && step === "preview") {
       return renderPreviewStep();
     }
-
-    // Link tab: result ready
     if (activeTab === "link" && shareResult) {
       return renderLinkResult();
     }
-
-    // Default: selection step (both tabs)
     return (
-      <div className="flex flex-col h-full max-h-[60vh]">
+      <div className="flex flex-col h-full max-h-[55vh]">
         {renderMessageList()}
         {renderSelectionFooter()}
       </div>
     );
   };
 
-  // ── Dialog title ──────────────────────────────
+  // ── Title ──────────────────────────────
 
   const getTitle = () => {
     if (activeTab === "image" && step === "preview") {
@@ -706,36 +788,62 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         />
       </div>
 
-      <Dialog
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setStep("selection");
-            setImageUrl(null);
-            setError(null);
-            setShareResult(null);
-            setCopied(false);
-            resetScreenshot();
-            onClose();
-          }
+      <Modal
+        isOpen={isOpen}
+        onClose={() => {
+          setStep("selection");
+          setImageUrl(null);
+          setError(null);
+          setShareResult(null);
+          setCopied(false);
+          resetScreenshot();
+          onClose();
         }}
+        title=""
+        containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
+        panelClassName="flex w-full flex-col h-[85dvh] rounded-t-2xl border-t border-neutral-200/20 bg-white/95 shadow-2xl shadow-black/10 backdrop-blur-xl dark:border-neutral-700/20 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-auto md:max-h-[80vh] md:max-w-[640px] md:rounded-2xl md:border md:border-neutral-200/15 dark:md:border-neutral-700/20"
+        swipeToDismiss
       >
-        <DialogContent className="sm:max-w-[700px] w-[95vw] sm:w-full gap-0 p-0 overflow-hidden max-h-[80dvh] sm:max-h-[85vh] flex flex-col">
-          <DialogHeader className="p-6 pb-3 shrink-0">
-            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-              <Share2Icon className="h-5 w-5" />
-              {getTitle()}
-            </DialogTitle>
-          </DialogHeader>
+        <div className="flex h-full flex-col overflow-hidden">
+          {/* Header */}
+          <div className="shrink-0 px-5 pt-3 pb-1">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-sm shadow-indigo-500/20">
+                <Share2Icon className="h-4 w-4 text-white" />
+              </div>
+              <AnimatePresence mode="wait">
+                <motion.h2
+                  key={getTitle()}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-[16px] font-semibold text-neutral-900 dark:text-white"
+                >
+                  {getTitle()}
+                </motion.h2>
+              </AnimatePresence>
+            </div>
+          </div>
 
           {/* Tab bar (only shown during selection) */}
-          {!(activeTab === "image" && step === "preview") &&
-            !(activeTab === "link" && shareResult) &&
-            renderTabBar()}
+          {isSelectionView && renderTabBar()}
 
-          {renderContent()}
-        </DialogContent>
-      </Dialog>
+          {/* Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${activeTab}-${step}-${shareResult ? "result" : "select"}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col flex-1 min-h-0 overflow-hidden"
+            >
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </Modal>
     </>
   );
 };
@@ -751,17 +859,17 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
   disabled = false,
 }) => {
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
       disabled={disabled}
-      className="h-8 w-8"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-40 dark:text-neutral-400 dark:hover:bg-white/[0.06] dark:hover:text-neutral-200"
       title="Share"
       aria-label="Share"
     >
       <Share2Icon className="h-4 w-4" />
       <span className="sr-only">Share</span>
-    </Button>
+    </motion.button>
   );
 };

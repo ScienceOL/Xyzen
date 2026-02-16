@@ -87,12 +87,13 @@ class ToolEventHandler:
     """Handle tool call request and response events."""
 
     @staticmethod
-    def create_tool_request_event(tool_call: dict[str, Any]) -> StreamingEvent:
+    def create_tool_request_event(tool_call: dict[str, Any], stream_id: str) -> StreamingEvent:
         """
         Create a tool call request event.
 
         Args:
             tool_call: Tool call dict from LangChain agent
+            stream_id: Stream ID for frontend message correlation
 
         Returns:
             StreamingEvent for tool call request
@@ -104,6 +105,7 @@ class ToolEventHandler:
             "arguments": tool_call.get("args", {}),
             "status": ToolCallStatus.EXECUTING,
             "timestamp": asyncio.get_event_loop().time(),
+            "stream_id": stream_id,
         }
         return {"type": ChatEventType.TOOL_CALL_REQUEST, "data": data}
 
@@ -113,6 +115,7 @@ class ToolEventHandler:
         result: str,
         status: str = ToolCallStatus.COMPLETED,
         raw_result: str | dict | list | None = None,
+        stream_id: str = "",
     ) -> StreamingEvent:
         """
         Create a tool call response event.
@@ -122,6 +125,7 @@ class ToolEventHandler:
             result: Formatted result string for display
             status: Tool call status
             raw_result: Raw result for cost calculation (optional, unformatted)
+            stream_id: Stream ID for frontend message correlation
 
         Returns:
             StreamingEvent for tool call response
@@ -130,6 +134,7 @@ class ToolEventHandler:
             "toolCallId": tool_call_id,
             "status": status,
             "result": result,
+            "stream_id": stream_id,
         }
         if raw_result is not None:
             data["raw_result"] = raw_result
@@ -173,24 +178,25 @@ class StreamingEventHandler:
         return {"type": ChatEventType.STREAMING_END, "data": data}
 
     @staticmethod
-    def create_token_usage_event(input_tokens: int, output_tokens: int, total_tokens: int) -> StreamingEvent:
+    def create_token_usage_event(
+        input_tokens: int, output_tokens: int, total_tokens: int, stream_id: str
+    ) -> StreamingEvent:
         """Create token usage event."""
         data: TokenUsageData = {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "total_tokens": total_tokens,
+            "stream_id": stream_id,
         }
         return {"type": ChatEventType.TOKEN_USAGE, "data": data}
 
     @staticmethod
     def create_processing_event(
         status: str = ProcessingStatus.PREPARING_REQUEST,
-        stream_id: str | None = None,
+        stream_id: str = "",
     ) -> StreamingEvent:
         """Create processing status event."""
-        data: ProcessingData = {"status": status}
-        if stream_id is not None:
-            data["stream_id"] = stream_id
+        data: ProcessingData = {"status": status, "stream_id": stream_id}
         return {"type": ChatEventType.PROCESSING, "data": data}
 
     @staticmethod
@@ -200,18 +206,16 @@ class StreamingEventHandler:
         error_category: str | None = None,
         recoverable: bool = False,
         detail: str | None = None,
-        stream_id: str | None = None,
+        stream_id: str = "",
     ) -> StreamingEvent:
         """Create error event with optional structured fields."""
-        data: ErrorData = {"error": error}
+        data: ErrorData = {"error": error, "stream_id": stream_id}
         if error_code is not None:
             data["error_code"] = error_code
             data["error_category"] = error_category or error_code.split(".")[0]
             data["recoverable"] = recoverable
         if detail is not None:
             data["detail"] = detail
-        if stream_id is not None:
-            data["stream_id"] = stream_id
         return {"type": ChatEventType.ERROR, "data": data}
 
 
@@ -413,9 +417,9 @@ class CitationExtractor:
         return unique_citations
 
     @staticmethod
-    def create_citations_event(citations: list[CitationData]) -> StreamingEvent:
+    def create_citations_event(citations: list[CitationData], stream_id: str) -> StreamingEvent:
         """Create search citations event."""
-        data: SearchCitationsData = {"citations": citations}
+        data: SearchCitationsData = {"citations": citations, "stream_id": stream_id}
         return {"type": ChatEventType.SEARCH_CITATIONS, "data": data}
 
 
@@ -546,9 +550,9 @@ class GeneratedFileHandler:
         return generated_files, files_data
 
     @staticmethod
-    def create_generated_files_event(files: list[GeneratedFileInfo]) -> StreamingEvent:
+    def create_generated_files_event(files: list[GeneratedFileInfo], stream_id: str) -> StreamingEvent:
         """Create generated files event."""
-        data: GeneratedFilesData = {"files": files}
+        data: GeneratedFilesData = {"files": files, "stream_id": stream_id}
         return {"type": ChatEventType.GENERATED_FILES, "data": data}
 
 
@@ -652,7 +656,7 @@ class UpdatesStreamProcessor:
                 typed_content, ctx.user_id, ctx.db
             )
             if files_data:
-                yield GeneratedFileHandler.create_generated_files_event(files_data)
+                yield GeneratedFileHandler.create_generated_files_event(files_data, ctx.stream_id)
 
         # Extract and emit citations
         metadata = cast(Mapping[str, Any] | None, getattr(message, "response_metadata", None))
@@ -660,7 +664,7 @@ class UpdatesStreamProcessor:
             citations = CitationExtractor.extract_citations(metadata)
             if citations:
                 logger.info(f"Emitting {len(citations)} unique search citations")
-                yield CitationExtractor.create_citations_event(citations)
+                yield CitationExtractor.create_citations_event(citations, ctx.stream_id)
 
 
 class AgentEventStreamHandler:
@@ -691,6 +695,7 @@ class AgentEventStreamHandler:
                     "depth": 0,
                     "execution_path": [ctx.event_ctx.agent_name],
                     "started_at": int(ctx.agent_start_time * 1000),
+                    "stream_id": ctx.stream_id,
                 },
             },
         }
@@ -714,6 +719,7 @@ class AgentEventStreamHandler:
                     "depth": 0,
                     "execution_path": [ctx.event_ctx.agent_name],
                     "started_at": int(ctx.agent_start_time * 1000),
+                    "stream_id": ctx.stream_id,
                 },
                 "status": status,
                 "duration_ms": duration_ms,
@@ -753,6 +759,7 @@ class AgentEventStreamHandler:
                     "execution_path": [ctx.event_ctx.agent_name],
                     "current_node": node_name,
                     "started_at": int(ctx.agent_start_time * 1000),
+                    "stream_id": ctx.stream_id,
                 },
             },
         }
@@ -789,6 +796,7 @@ class AgentEventStreamHandler:
                     "execution_path": [ctx.event_ctx.agent_name],
                     "current_node": node_name,
                     "started_at": int(ctx.agent_start_time * 1000),
+                    "stream_id": ctx.stream_id,
                 },
             },
         }
@@ -812,6 +820,7 @@ class AgentEventStreamHandler:
                     "depth": 0,
                     "execution_path": [ctx.event_ctx.agent_name],
                     "started_at": int(ctx.agent_start_time * 1000),
+                    "stream_id": ctx.stream_id,
                 },
             },
         }

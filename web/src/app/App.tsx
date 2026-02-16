@@ -6,6 +6,7 @@ import { useXyzen } from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
 import { SecretCodePage } from "@/components/admin/SecretCodePage";
@@ -70,7 +71,20 @@ export function Xyzen({
     activateChannel,
     setInputPosition,
     setActivePanel,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      isXyzenOpen: s.isXyzenOpen,
+      layoutStyle: s.layoutStyle,
+      setBackendUrl: s.setBackendUrl,
+      toggleXyzen: s.toggleXyzen,
+      fetchAgents: s.fetchAgents,
+      fetchMcpServers: s.fetchMcpServers,
+      fetchChatHistory: s.fetchChatHistory,
+      activateChannel: s.activateChannel,
+      setInputPosition: s.setInputPosition,
+      setActivePanel: s.setActivePanel,
+    })),
+  );
   const { status } = useAuth();
 
   // Initialize theme at the top level so it works for both layouts

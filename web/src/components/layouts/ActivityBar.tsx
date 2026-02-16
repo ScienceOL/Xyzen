@@ -1,19 +1,29 @@
 import {
   ChatBubbleLeftRightIcon,
+  EllipsisHorizontalIcon,
   FolderIcon,
   LightBulbIcon,
   SparklesIcon,
+  UserCircleIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/animate-ui/components/radix/dropdown-menu";
 
 export type ActivityPanel =
   | "chat"
   | "knowledge"
   | "skills"
   | "marketplace"
-  | "memory";
+  | "memory"
+  | "account";
 
 interface ActivityBarProps {
   activePanel: ActivityPanel;
@@ -96,6 +106,73 @@ const ActivityButton: React.FC<ActivityButtonProps> = ({
   );
 };
 
+// ── Mobile "More" menu items ────────────────────────────────────────
+const MOBILE_MORE: ActivityPanel[] = ["skills", "memory"];
+
+interface MobileMoreButtonProps {
+  activePanel: ActivityPanel;
+  activities: {
+    panel: ActivityPanel;
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+  }[];
+  onPanelChange: (panel: ActivityPanel) => void;
+}
+
+const MobileMoreButton: React.FC<MobileMoreButtonProps> = ({
+  activePanel,
+  activities,
+  onPanelChange,
+}) => {
+  const { t } = useTranslation();
+  const isMoreActive = MOBILE_MORE.includes(activePanel);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
+            ${
+              isMoreActive
+                ? "text-indigo-600 dark:text-indigo-400"
+                : "text-neutral-500 dark:text-neutral-400"
+            }`}
+        >
+          <EllipsisHorizontalIcon className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">
+            {t("app.activityBar.more")}
+          </span>
+          {isMoreActive && (
+            <motion.div
+              layoutId="activeIndicatorMobile"
+              className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
+              initial={false}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
+          )}
+        </motion.button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" side="top" sideOffset={8}>
+        {activities.map(({ panel, icon: Icon, label }) => (
+          <DropdownMenuItem
+            key={panel}
+            onClick={() => onPanelChange(panel)}
+            className={
+              activePanel === panel
+                ? "text-indigo-600 dark:text-indigo-400"
+                : ""
+            }
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 export const ActivityBar: React.FC<ActivityBarProps> = ({
   activePanel,
   onPanelChange,
@@ -113,7 +190,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
     },
     {
       panel: "knowledge" as ActivityPanel,
-      icon: FolderIcon, // Using FolderIcon for Knowledge Base
+      icon: FolderIcon,
       label: t("app.activityBar.knowledge"),
       disabled: false,
     },
@@ -137,28 +214,124 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
     },
   ];
 
+  // Desktop: render all buttons
+  if (!isMobile) {
+    return (
+      <div
+        className={`flex w-16 flex-col items-center space-y-2 border-r bg-white py-4 dark:bg-black border-neutral-200 dark:border-neutral-800 ${className}`}
+      >
+        {activities.map((activity) => (
+          <ActivityButton
+            key={activity.panel}
+            icon={activity.icon}
+            label={activity.label}
+            panel={activity.panel}
+            isActive={activePanel === activity.panel}
+            isDisabled={activity.disabled}
+            onClick={() => onPanelChange(activity.panel)}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Mobile: Chat | Knowledge | More(↑) | Community | Account
+  const moreActivities = activities.filter((a) =>
+    MOBILE_MORE.includes(a.panel),
+  );
+
+  const mobileTabOrder: {
+    panel: ActivityPanel;
+    icon: React.ComponentType<{ className?: string }>;
+    labelKey: string;
+  }[] = [
+    {
+      panel: "chat",
+      icon: ChatBubbleLeftRightIcon,
+      labelKey: "app.activityBar.chat",
+    },
+    {
+      panel: "knowledge",
+      icon: FolderIcon,
+      labelKey: "app.activityBar.knowledge",
+    },
+  ];
+
+  const mobileTabOrderRight: typeof mobileTabOrder = [
+    {
+      panel: "marketplace",
+      icon: SparklesIcon,
+      labelKey: "app.activityBar.community",
+    },
+    {
+      panel: "account",
+      icon: UserCircleIcon,
+      labelKey: "app.activityBar.account",
+    },
+  ];
+
   return (
     <div
-      className={`flex bg-white dark:bg-black border-neutral-200 dark:border-neutral-800
-        ${
-          isMobile
-            ? "w-full h-14 flex-row items-center justify-around border-t px-2"
-            : "w-16 flex-col items-center space-y-2 border-r py-4"
-        }
-        ${className}`}
+      className={`flex w-full h-14 flex-row items-center justify-around border-t px-2 bg-white dark:bg-black border-neutral-200 dark:border-neutral-800 ${className}`}
     >
-      {activities.map((activity) => (
-        <ActivityButton
-          key={activity.panel}
-          icon={activity.icon}
-          label={activity.label}
-          panel={activity.panel}
-          isActive={activePanel === activity.panel}
-          isDisabled={activity.disabled}
-          onClick={() => onPanelChange(activity.panel)}
-          isMobile={isMobile}
-        />
-      ))}
+      {mobileTabOrder.map(({ panel, icon: Icon, labelKey }) => {
+        const isActive = activePanel === panel;
+        return (
+          <motion.button
+            key={panel}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onPanelChange(panel)}
+            className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
+              ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-500 dark:text-neutral-400"}`}
+          >
+            <Icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-none">
+              {t(labelKey)}
+            </span>
+            {isActive && (
+              <motion.div
+                layoutId="activeIndicatorMobile"
+                className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
+                initial={false}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              />
+            )}
+          </motion.button>
+        );
+      })}
+
+      {/* More (dropdown) */}
+      <MobileMoreButton
+        activePanel={activePanel}
+        activities={moreActivities}
+        onPanelChange={onPanelChange}
+      />
+
+      {mobileTabOrderRight.map(({ panel, icon: Icon, labelKey }) => {
+        const isActive = activePanel === panel;
+        return (
+          <motion.button
+            key={panel}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onPanelChange(panel)}
+            className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
+              ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-500 dark:text-neutral-400"}`}
+          >
+            <Icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-none">
+              {t(labelKey)}
+            </span>
+            {isActive && (
+              <motion.div
+                layoutId="activeIndicatorMobile"
+                className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
+                initial={false}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              />
+            )}
+          </motion.button>
+        );
+      })}
     </div>
   );
 };

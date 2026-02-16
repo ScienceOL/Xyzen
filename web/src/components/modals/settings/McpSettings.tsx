@@ -10,6 +10,7 @@ import SmitheryServerDetail from "@/marketplace/components/SmitheryServerDetail"
 import UnifiedMcpMarketList from "@/marketplace/components/UnifiedMcpMarketList";
 import { websocketService } from "@/service/websocketService";
 import { useXyzen } from "@/store";
+import { useShallow } from "zustand/react/shallow";
 import type {
   BohriumMcpData,
   BuiltinMcpData,
@@ -270,7 +271,25 @@ export function McpSettings() {
     builtinMcpServers,
     fetchBuiltinMcpServers,
     quickAddBuiltinServer,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      mcpServers: s.mcpServers,
+      fetchMcpServers: s.fetchMcpServers,
+      refreshMcpServers: s.refreshMcpServers,
+      removeMcpServer: s.removeMcpServer,
+      updateMcpServerInList: s.updateMcpServerInList,
+      backendUrl: s.backendUrl,
+      openAddMcpServerModal: s.openAddMcpServerModal,
+      openEditMcpServerModal: s.openEditMcpServerModal,
+      getLoading: s.getLoading,
+      toolTestModal: s.toolTestModal,
+      openToolTestModal: s.openToolTestModal,
+      closeToolTestModal: s.closeToolTestModal,
+      builtinMcpServers: s.builtinMcpServers,
+      fetchBuiltinMcpServers: s.fetchBuiltinMcpServers,
+      quickAddBuiltinServer: s.quickAddBuiltinServer,
+    })),
+  );
 
   const { t } = useTranslation();
   const mcpServersLoading = getLoading("mcpServers");

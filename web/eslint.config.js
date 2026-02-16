@@ -22,6 +22,15 @@ export default tseslint.config([
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^React$" },
       ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.name='useXyzen'][arguments.length=0]",
+          message:
+            "Bare useXyzen() subscribes to the entire store and causes unnecessary re-renders. Use a selector: useXyzen((s) => s.field) for single fields, or useXyzen(useShallow((s) => ({ ... }))) for multiple fields. See STORE_PERFORMANCE.md.",
+        },
+      ],
     },
     languageOptions: {
       ecmaVersion: 2020,

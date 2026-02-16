@@ -83,6 +83,8 @@ export interface KnowledgeFilePanelProps {
   showStatusBar?: boolean;
   /** Enable file uploads (drag-drop + button) */
   enableUpload?: boolean;
+  /** Mobile menu button handler (hamburger to reopen sidebar) */
+  onMenuClick?: () => void;
 }
 
 /**
@@ -97,6 +99,7 @@ export function KnowledgeFilePanel({
   showToolbar = true,
   showStatusBar = true,
   enableUpload = true,
+  onMenuClick,
 }: KnowledgeFilePanelProps) {
   const { t } = useTranslation();
 
@@ -705,6 +708,7 @@ export function KnowledgeFilePanel({
           onBreadcrumbClick={(id) => navigateToFolder(id)}
           onDropOnBreadcrumb={handleDropOnBreadcrumb}
           isLoading={isFileListLoading}
+          onMenuClick={onMenuClick}
         />
       )}
 

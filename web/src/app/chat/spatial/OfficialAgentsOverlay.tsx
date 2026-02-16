@@ -12,7 +12,9 @@ export function OfficialAgentsOverlay({
   onNavigateToMarketplace,
 }: OfficialAgentsOverlayProps) {
   const { t } = useTranslation();
-  const { setShowOfficialRecommendations } = useXyzen();
+  const setShowOfficialRecommendations = useXyzen(
+    (s) => s.setShowOfficialRecommendations,
+  );
 
   const { data: listings, isLoading } = useMarketplaceListings({
     scope: "official",

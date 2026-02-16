@@ -14,7 +14,9 @@ import { generateClientId, isValidUuid } from "../messageProcessor";
 import {
   ensureFallbackResponsePhase,
   finalizeMessageExecution,
+  findLoadingMessageIndex,
   findMessageIndexByStream,
+  findRunningAgentMessageIndex,
 } from "../channelHelpers";
 import { getLastNonEmptyPhaseContent } from "../messageContent";
 
@@ -28,26 +30,21 @@ import { getLastNonEmptyPhaseContent } from "../messageContent";
  */
 export function handleProcessingOrLoading(
   channel: ChatChannel,
-  streamId?: string,
+  streamId: string,
 ): void {
   channel.responding = true;
 
   // If stream_id is provided, try to find existing message
-  if (streamId) {
-    const existingIndex = findMessageIndexByStream(channel, streamId);
-    if (existingIndex !== -1) {
-      return; // Message already exists
-    }
+  const existingIndex = findMessageIndexByStream(channel, streamId);
+  if (existingIndex !== -1) {
+    return; // Message already exists
   }
 
-  const existingLoadingIndex = channel.messages.findIndex(
-    (m) => m.status === "pending" || m.isLoading,
-  );
+  const existingLoadingIndex = findLoadingMessageIndex(channel);
 
   if (existingLoadingIndex === -1) {
-    const loadingMessageId = streamId || `loading-${Date.now()}`;
     channel.messages.push({
-      id: loadingMessageId,
+      id: streamId,
       streamId: streamId,
       clientId: generateClientId(),
       role: "assistant" as const,
@@ -80,9 +77,7 @@ export function handleStreamingStart(
 
   // Then fallback to loading message conversion
   if (targetIndex === -1) {
-    targetIndex = channel.messages.findIndex(
-      (m) => m.status === "pending" || m.isLoading,
-    );
+    targetIndex = findLoadingMessageIndex(channel);
   }
 
   if (targetIndex !== -1) {
@@ -160,11 +155,20 @@ export function handleStreamingEnd(
       }
     }
 
-    // Fallback finalization when terminal agent event is delayed/missed.
-    finalizeMessageExecution(messageFinal, {
-      status: "completed",
-      onlyIfRunning: true,
-    });
+    if (messageFinal.agentExecution?.status === "running") {
+      // Agent execution is still in progress (e.g., between LLM iterations
+      // in a tool-calling loop). Only clear streaming flags; keep the
+      // execution alive for upcoming events (tool_call_request, next
+      // node_start / streaming_start, etc.). agent_end will finalize.
+      messageFinal.isStreaming = false;
+    } else {
+      // No running agent execution — fully finalize.
+      // Also serves as fallback when terminal agent event is delayed/missed.
+      finalizeMessageExecution(messageFinal, {
+        status: "completed",
+        onlyIfRunning: true,
+      });
+    }
     messageFinal.created_at = eventData.created_at || new Date().toISOString();
     console.debug(
       "[ChatSlice] streaming_end: finalized message at index",
@@ -241,9 +245,7 @@ export function handleThinkingStart(
   channel.responding = true;
 
   // First check for loading message
-  const loadingIndex = channel.messages.findIndex(
-    (m) => m.status === "pending" || m.isLoading,
-  );
+  const loadingIndex = findLoadingMessageIndex(channel);
   if (loadingIndex !== -1) {
     // Convert loading message to thinking message
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -262,9 +264,7 @@ export function handleThinkingStart(
 
   // Check for running agent execution message
   // (agent_start may have already consumed the loading message)
-  const agentMsgIndex = channel.messages.findLastIndex(
-    (m) => m.agentExecution?.status === "running",
-  );
+  const agentMsgIndex = findRunningAgentMessageIndex(channel);
   if (agentMsgIndex !== -1) {
     channel.messages[agentMsgIndex] = {
       ...channel.messages[agentMsgIndex],

@@ -7,6 +7,7 @@ import {
 import { Input } from "@/components/base/Input";
 import { useXyzen } from "@/store";
 import type { McpServerCreate } from "@/types/mcp";
+import { useShallow } from "zustand/react/shallow";
 import { Field, Label, Radio, RadioGroup } from "@headlessui/react";
 import {
   CheckCircleIcon,
@@ -28,7 +29,16 @@ export function AddMcpServerModal() {
     getLoading,
     user,
     token,
-  } = useXyzen();
+  } = useXyzen(
+    useShallow((s) => ({
+      isAddMcpServerModalOpen: s.isAddMcpServerModalOpen,
+      closeAddMcpServerModal: s.closeAddMcpServerModal,
+      addMcpServer: s.addMcpServer,
+      getLoading: s.getLoading,
+      user: s.user,
+      token: s.token,
+    })),
+  );
 
   const [newServer, setNewServer] = useState<McpServerCreate>({
     name: "",

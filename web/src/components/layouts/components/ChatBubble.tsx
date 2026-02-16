@@ -16,6 +16,8 @@ import {
   ClipboardDocumentIcon,
   PencilIcon,
   TrashIcon,
+  ArrowPathIcon,
+  ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import {
@@ -67,6 +69,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     cancelEditMessage,
     submitEditMessage,
     deleteMessage,
+    sendMessage,
   } = useXyzen(
     useShallow((s) => ({
       confirmToolCall: s.confirmToolCall,
@@ -75,6 +78,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
       cancelEditMessage: s.cancelEditMessage,
       submitEditMessage: s.submitEditMessage,
       deleteMessage: s.deleteMessage,
+      sendMessage: s.sendMessage,
     })),
   );
 
@@ -123,6 +127,16 @@ function ChatBubble({ message }: ChatBubbleProps) {
   );
 
   const isUserMessage = role === "user";
+  const isMessageSending = status === "sending";
+  const isMessageFailed =
+    isUserMessage && status === "failed" && !message.error;
+
+  const handleRetry = useCallback(() => {
+    if (isMessageFailed) {
+      deleteMessage(message.id);
+      sendMessage(content);
+    }
+  }, [isMessageFailed, deleteMessage, message.id, sendMessage, content]);
   const isToolMessage = toolCalls && toolCalls.length > 0;
 
   // Edit state
@@ -505,7 +519,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
         ) : (
           /* Message content */
           <div
-            className={`relative w-full min-w-0 ${messageStyles} transition-all duration-200 hover:shadow-sm`}
+            className={`relative w-full min-w-0 ${messageStyles} transition-all duration-200 hover:shadow-sm${isMessageSending ? " opacity-70" : ""}`}
           >
             <div className="px-4 py-3 min-w-0">
               {/* File Attachments - shown before text for user messages */}
@@ -605,61 +619,91 @@ function ChatBubble({ message }: ChatBubbleProps) {
         )}
 
         {/* Toolbar with timestamp - shown for user messages on hover */}
-        {isUserMessage && !isEditing && (
-          <div
-            className={toolbarStyles}
-            onTouchStart={handleToolbarInteraction}
-          >
-            {/* Timestamp */}
-            <span className={toolbarTimestampStyles}>{formattedTime}</span>
-
-            {/* Divider */}
-            <div className={toolbarDividerStyles} />
-
-            {canEditUser && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className={toolbarButtonStyles}
-                    title={t("app.message.edit")}
-                  >
-                    <PencilIcon className="h-3.5 w-3.5" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleEditClick("edit_only")}
-                  >
-                    {t("app.message.editOnly")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleEditClick("edit_and_regenerate")}
-                  >
-                    {t("app.message.editAndRegenerate")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <button
-              onClick={handleCopy}
-              className={toolbarButtonStyles}
-              title={t("app.message.copy")}
+        {isUserMessage &&
+          !isEditing &&
+          !isMessageSending &&
+          !isMessageFailed && (
+            <div
+              className={toolbarStyles}
+              onTouchStart={handleToolbarInteraction}
             >
-              {isCopied ? (
-                <CheckIcon className="h-3.5 w-3.5 text-green-400" />
-              ) : (
-                <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+              {/* Timestamp */}
+              <span className={toolbarTimestampStyles}>{formattedTime}</span>
+
+              {/* Divider */}
+              <div className={toolbarDividerStyles} />
+
+              {canEditUser && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={toolbarButtonStyles}
+                      title={t("app.message.edit")}
+                    >
+                      <PencilIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleEditClick("edit_only")}
+                    >
+                      {t("app.message.editOnly")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleEditClick("edit_and_regenerate")}
+                    >
+                      {t("app.message.editAndRegenerate")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-            </button>
-            {canDelete && (
               <button
-                onClick={handleDeleteClick}
-                className={toolbarDeleteButtonStyles}
-                title={t("app.message.delete")}
+                onClick={handleCopy}
+                className={toolbarButtonStyles}
+                title={t("app.message.copy")}
               >
-                <TrashIcon className="h-3.5 w-3.5" />
+                {isCopied ? (
+                  <CheckIcon className="h-3.5 w-3.5 text-green-400" />
+                ) : (
+                  <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+                )}
               </button>
-            )}
+              {canDelete && (
+                <button
+                  onClick={handleDeleteClick}
+                  className={toolbarDeleteButtonStyles}
+                  title={t("app.message.delete")}
+                >
+                  <TrashIcon className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
+        {/* Sending / Failed status indicator for user messages */}
+        {isUserMessage && isMessageSending && (
+          <div className="mt-1 flex items-center justify-end gap-1 text-xs text-neutral-400 dark:text-neutral-500">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="h-3 w-3"
+            >
+              <ArrowPathIcon className="h-3 w-3" />
+            </motion.div>
+            <span>{t("app.message.sending")}</span>
+          </div>
+        )}
+        {isUserMessage && isMessageFailed && (
+          <div className="mt-1 flex items-center justify-end gap-1.5 text-xs text-red-500 dark:text-red-400">
+            <ExclamationCircleIcon className="h-3.5 w-3.5" />
+            <span>{t("app.message.sendFailed")}</span>
+            <button
+              onClick={handleRetry}
+              className="ml-1 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              <ArrowPathIcon className="h-3 w-3" />
+              {t("app.message.retry")}
+            </button>
           </div>
         )}
 
