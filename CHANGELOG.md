@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.3](https://github.com/ScienceOL/Xyzen/compare/v1.4.2...v1.4.3) (2026-02-17)
+
+### 🐛 Bug Fixes
+
+* add PushPermissionPrompt component to AppSide and MobileApp for improved user notifications ([bf00853](https://github.com/ScienceOL/Xyzen/commit/bf00853b23fb2e0a1c9ad2ce17ec2d2f44e30906))
+
 ## [1.4.2](https://github.com/ScienceOL/Xyzen/compare/v1.4.1...v1.4.2) (2026-02-17)
 
 ### 🐛 Bug Fixes
