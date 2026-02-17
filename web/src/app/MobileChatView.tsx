@@ -120,7 +120,7 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
 
           {/* ---- Page 1: Chat ---- */}
           {hasChannel && (
-            <div className="h-full shrink-0 w-full bg-white dark:bg-black">
+            <div className="h-full shrink-0 w-full bg-white dark:bg-neutral-950">
               <XyzenChat />
             </div>
           )}

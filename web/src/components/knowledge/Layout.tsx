@@ -712,7 +712,7 @@ export const KnowledgeLayout = () => {
 
       {/* Main Area - Frosted Glass */}
       <div
-        className="flex flex-1 flex-col min-w-0 sm:rounded-2xl bg-neutral-50/70 dark:bg-neutral-900 overflow-hidden backdrop-blur-2xl sm:border sm:border-white/30 dark:border-neutral-700/50 shadow-lg relative"
+        className="flex flex-1 flex-col min-w-0 sm:rounded-2xl bg-neutral-50/70 dark:bg-neutral-950 overflow-hidden backdrop-blur-2xl sm:border sm:border-white/30 sm:dark:border-neutral-700/50 sm:shadow-lg relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
