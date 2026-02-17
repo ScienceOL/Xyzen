@@ -1,8 +1,7 @@
 import {
-  isPushConfigured,
-  registerPushToken,
-  setupForegroundMessageHandler,
-  unregisterPushToken,
+  isPushSupported,
+  registerPushSubscription,
+  unregisterPushSubscription,
 } from "@/core/notification/pushManager";
 import { notificationService } from "@/service/notificationService";
 import { useXyzen } from "@/store";
@@ -12,6 +11,12 @@ import { useShallow } from "zustand/react/shallow";
 /**
  * Encapsulates notification state, auto-fetches config, and
  * exposes push enable/disable actions.
+ *
+ * On every login:
+ * 1. Fetches notification config from the backend.
+ * 2. If the user has already granted notification permission,
+ *    silently (re-)subscribes to Web Push so the backend always
+ *    has a fresh subscription endpoint.
  */
 export function useNotifications() {
   const {
@@ -20,10 +25,10 @@ export function useNotifications() {
     novuApiUrl,
     novuWsUrl,
     pushPermission,
-    pushTokenRegistered,
+    pushSubscribed,
     setNotificationConfig,
     setPushPermission,
-    setPushTokenRegistered,
+    setPushSubscribed,
   } = useXyzen(
     useShallow((s) => ({
       notificationEnabled: s.notificationEnabled,
@@ -31,17 +36,17 @@ export function useNotifications() {
       novuApiUrl: s.novuApiUrl,
       novuWsUrl: s.novuWsUrl,
       pushPermission: s.pushPermission,
-      pushTokenRegistered: s.pushTokenRegistered,
+      pushSubscribed: s.pushSubscribed,
       setNotificationConfig: s.setNotificationConfig,
       setPushPermission: s.setPushPermission,
-      setPushTokenRegistered: s.setPushTokenRegistered,
+      setPushSubscribed: s.setPushSubscribed,
     })),
   );
 
   const token = useXyzen((s) => s.token);
   const fetchedRef = useRef(false);
 
-  // Fetch notification config once after login
+  // Fetch notification config once after login, then auto-resubscribe
   useEffect(() => {
     if (!token || fetchedRef.current) return;
     fetchedRef.current = true;
@@ -55,32 +60,42 @@ export function useNotifications() {
           cfg.api_url,
           cfg.ws_url,
         );
+
+        // If the user previously granted permission, silently ensure the
+        // push subscription is registered (handles key rotation, new device,
+        // expired subscription, etc.)
+        if (
+          cfg.enabled &&
+          isPushSupported() &&
+          Notification.permission === "granted"
+        ) {
+          registerPushSubscription().then((ok) => {
+            if (ok) {
+              setPushPermission(Notification.permission);
+              setPushSubscribed(true);
+            }
+          });
+        }
       })
       .catch(() => {
         // Silently ignore — notifications are optional
       });
-  }, [token, setNotificationConfig]);
-
-  // Set up foreground message handler when push is registered
-  useEffect(() => {
-    if (pushTokenRegistered && isPushConfigured()) {
-      void setupForegroundMessageHandler();
-    }
-  }, [pushTokenRegistered]);
+  }, [token, setNotificationConfig, setPushPermission, setPushSubscribed]);
 
   const enablePush = useCallback(async () => {
-    const ok = await registerPushToken();
+    if (!isPushSupported()) return false;
+    const ok = await registerPushSubscription();
     if (ok) {
       setPushPermission(Notification.permission);
-      setPushTokenRegistered(true);
+      setPushSubscribed(true);
     }
     return ok;
-  }, [setPushPermission, setPushTokenRegistered]);
+  }, [setPushPermission, setPushSubscribed]);
 
   const disablePush = useCallback(async () => {
-    await unregisterPushToken();
-    setPushTokenRegistered(false);
-  }, [setPushTokenRegistered]);
+    await unregisterPushSubscription();
+    setPushSubscribed(false);
+  }, [setPushSubscribed]);
 
   return {
     notificationEnabled,
@@ -88,7 +103,7 @@ export function useNotifications() {
     novuApiUrl,
     novuWsUrl,
     pushPermission,
-    pushTokenRegistered,
+    pushSubscribed,
     enablePush,
     disablePush,
   };

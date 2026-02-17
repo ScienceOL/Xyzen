@@ -6,9 +6,16 @@ export interface NotificationConfig {
   app_identifier: string;
   api_url: string;
   ws_url: string;
+  vapid_public_key: string;
 }
 
-interface DeviceTokenResponse {
+interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: Record<string, string>;
+  user_agent?: string;
+}
+
+interface PushSubscriptionResponse {
   success: boolean;
 }
 
@@ -48,41 +55,39 @@ class NotificationService {
     return response.json();
   }
 
-  async registerDeviceToken(
-    token: string,
-    providerId: string = "fcm",
-  ): Promise<DeviceTokenResponse> {
+  async registerPushSubscription(
+    subscription: PushSubscriptionPayload,
+  ): Promise<PushSubscriptionResponse> {
     const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/notifications/device-token`,
+      `${this.getBackendUrl()}/xyzen/api/v1/notifications/push-subscription`,
       {
         method: "POST",
         headers: this.createAuthHeaders(),
-        body: JSON.stringify({ token, provider_id: providerId }),
+        body: JSON.stringify(subscription),
       },
     );
 
     if (!response.ok) {
-      throw new Error("Failed to register device token");
+      throw new Error("Failed to register push subscription");
     }
 
     return response.json();
   }
 
-  async removeDeviceToken(
-    token: string,
-    providerId: string = "fcm",
-  ): Promise<DeviceTokenResponse> {
+  async removePushSubscription(
+    endpoint: string,
+  ): Promise<PushSubscriptionResponse> {
     const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/notifications/device-token`,
+      `${this.getBackendUrl()}/xyzen/api/v1/notifications/push-subscription`,
       {
         method: "DELETE",
         headers: this.createAuthHeaders(),
-        body: JSON.stringify({ token, provider_id: providerId }),
+        body: JSON.stringify({ endpoint, keys: {} }),
       },
     );
 
     if (!response.ok) {
-      throw new Error("Failed to remove device token");
+      throw new Error("Failed to remove push subscription");
     }
 
     return response.json();

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
-import { isPushConfigured } from "@/core/notification/pushManager";
+import { isPushSupported } from "@/core/notification/pushManager";
 import { BellIcon, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -25,7 +25,7 @@ export function PushPermissionPrompt() {
   useEffect(() => {
     if (!auth.isAuthenticated) return;
     if (!notificationEnabled) return;
-    if (!isPushConfigured()) return;
+    if (!isPushSupported()) return;
     if (pushPermission !== "default") return;
     if (localStorage.getItem("xyzen-push-prompt-dismissed")) return;
 

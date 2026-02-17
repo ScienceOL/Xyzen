@@ -69,7 +69,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     cancelEditMessage,
     submitEditMessage,
     deleteMessage,
-    sendMessage,
+    retryMessage,
   } = useXyzen(
     useShallow((s) => ({
       confirmToolCall: s.confirmToolCall,
@@ -78,7 +78,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
       cancelEditMessage: s.cancelEditMessage,
       submitEditMessage: s.submitEditMessage,
       deleteMessage: s.deleteMessage,
-      sendMessage: s.sendMessage,
+      retryMessage: s.retryMessage,
     })),
   );
 
@@ -133,10 +133,9 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   const handleRetry = useCallback(() => {
     if (isMessageFailed) {
-      deleteMessage(message.id);
-      sendMessage(content);
+      retryMessage(message.id);
     }
-  }, [isMessageFailed, deleteMessage, message.id, sendMessage, content]);
+  }, [isMessageFailed, retryMessage, message.id]);
   const isToolMessage = toolCalls && toolCalls.length > 0;
 
   // Edit state

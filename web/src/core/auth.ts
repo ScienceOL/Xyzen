@@ -223,9 +223,9 @@ export const logout = () => {
   const { setStatus, setUser, setToken, setActiveChatChannel } =
     useXyzen.getState();
 
-  // Unregister push token before clearing auth state (fire-and-forget)
+  // Unregister push subscription before clearing auth state (fire-and-forget)
   import("@/core/notification/pushManager")
-    .then((m) => m.unregisterPushToken())
+    .then((m) => m.unregisterPushSubscription())
     .catch(() => {});
 
   authService.logout();

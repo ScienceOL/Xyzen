@@ -29,8 +29,15 @@ logger = logging.getLogger(__name__)
 async def ensure_novu_setup() -> bool:
     """Register admin, sync SecretKey + AppIdentifier, create workflows.
 
+    Also ensures VAPID keys for Web Push are available.
+
     Returns True when Novu is ready.
     """
+    # Always try to initialise VAPID keys (independent of Novu)
+    from app.core.notification.vapid import ensure_vapid_keys
+
+    ensure_vapid_keys()
+
     novu = configs.Novu
 
     if not novu.Enable:

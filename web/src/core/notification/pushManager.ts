@@ -1,113 +1,109 @@
 /**
- * FCM push token lifecycle manager.
+ * Web Push subscription lifecycle manager.
  *
- * Firebase SDK is loaded lazily so that when the VITE_FIREBASE_* env vars
- * are absent the app never pulls in the Firebase bundle.
+ * Uses the standard Web Push API with VAPID keys fetched from the backend —
+ * no Firebase dependency, no static env vars.
  */
 
 import { notificationService } from "@/service/notificationService";
 
-// Cached token so we can remove it on logout
-let currentToken: string | null = null;
+/** Cache the VAPID public key after the first fetch. */
+let cachedVapidKey: string | null = null;
 
-/**
- * Check whether the Firebase env vars are configured.
- */
-export function isPushConfigured(): boolean {
-  return !!(
-    import.meta.env.VITE_FIREBASE_API_KEY &&
-    import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID &&
-    import.meta.env.VITE_FIREBASE_APP_ID
-  );
+async function getVapidPublicKey(): Promise<string | null> {
+  if (cachedVapidKey) return cachedVapidKey;
+  try {
+    const config = await notificationService.getConfig();
+    cachedVapidKey = config.vapid_public_key || null;
+    return cachedVapidKey;
+  } catch {
+    return null;
+  }
 }
 
-async function getFirebaseMessaging() {
-  const { initializeApp, getApps } = await import("firebase/app");
-  const { getMessaging, getToken, onMessage } =
-    await import("firebase/messaging");
+/** Convert a URL-safe base64 string to a Uint8Array (for applicationServerKey). */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
-  const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  };
-
-  const app =
-    getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  const messaging = getMessaging(app);
-
-  return { messaging, getToken, onMessage };
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 
 /**
- * Request push permission, retrieve FCM token, and register it with the backend.
- * Returns `true` if the token was successfully registered.
+ * Check whether the browser supports the Push API.
  */
-export async function registerPushToken(): Promise<boolean> {
-  if (!isPushConfigured()) return false;
+export function isPushSupported(): boolean {
+  return "serviceWorker" in navigator && "PushManager" in window;
+}
+
+/**
+ * Request push permission, subscribe via PushManager, and register with the backend.
+ * Returns `true` if the subscription was successfully registered.
+ */
+export async function registerPushSubscription(): Promise<boolean> {
+  if (!isPushSupported()) return false;
 
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return false;
 
-    const { messaging, getToken } = await getFirebaseMessaging();
+    const vapidKey = await getVapidPublicKey();
+    if (!vapidKey) return false;
 
-    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || undefined;
-    const token = await getToken(messaging, { vapidKey });
+    const reg = await navigator.serviceWorker.ready;
+    const appServerKey = urlBase64ToUint8Array(vapidKey);
 
-    if (!token) return false;
+    let subscription: PushSubscription;
+    try {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: appServerKey,
+      });
+    } catch (err) {
+      // If the server key changed (e.g. different VAPID key pair after
+      // redeployment), the browser rejects with InvalidStateError.
+      // Unsubscribe the stale subscription and retry.
+      if (err instanceof DOMException && err.name === "InvalidStateError") {
+        const old = await reg.pushManager.getSubscription();
+        if (old) await old.unsubscribe();
+        subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: appServerKey,
+        });
+      } else {
+        throw err;
+      }
+    }
 
-    await notificationService.registerDeviceToken(token);
-    currentToken = token;
+    const json = subscription.toJSON();
+    await notificationService.registerPushSubscription({
+      endpoint: json.endpoint ?? "",
+      keys: (json.keys as Record<string, string>) ?? {},
+    });
     return true;
   } catch (err) {
-    console.error("[PushManager] Failed to register push token:", err);
+    console.error("[PushManager] Failed to register push subscription:", err);
     return false;
   }
 }
 
 /**
- * Remove the current FCM token from the backend (call on logout).
+ * Unsubscribe from Web Push and remove the subscription from the backend.
  */
-export async function unregisterPushToken(): Promise<void> {
-  if (!currentToken) return;
-
+export async function unregisterPushSubscription(): Promise<void> {
   try {
-    await notificationService.removeDeviceToken(currentToken);
+    const reg = await navigator.serviceWorker?.ready;
+    const subscription = await reg?.pushManager?.getSubscription();
+    if (subscription) {
+      await notificationService.removePushSubscription(subscription.endpoint);
+      await subscription.unsubscribe();
+    }
   } catch (err) {
-    console.error("[PushManager] Failed to unregister push token:", err);
-  } finally {
-    currentToken = null;
-  }
-}
-
-/**
- * Set up the foreground message handler.
- * When the app is focused, Firebase messages arrive here rather than
- * through the service worker `onBackgroundMessage`.
- *
- * We dispatch a simple browser notification so the user still sees it.
- */
-export async function setupForegroundMessageHandler(): Promise<void> {
-  if (!isPushConfigured()) return;
-
-  try {
-    const { messaging, onMessage } = await getFirebaseMessaging();
-
-    onMessage(messaging, (payload) => {
-      const title = payload.notification?.title ?? "Xyzen";
-      const body = payload.notification?.body ?? "";
-
-      if (Notification.permission === "granted") {
-        new Notification(title, { body, icon: "/icon.png" });
-      }
-    });
-  } catch (err) {
-    console.error(
-      "[PushManager] Failed to set up foreground message handler:",
-      err,
-    );
+    console.error("[PushManager] Failed to unregister push subscription:", err);
   }
 }

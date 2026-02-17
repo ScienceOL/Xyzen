@@ -7,7 +7,7 @@ export interface NotificationSlice {
   novuApiUrl: string;
   novuWsUrl: string;
   pushPermission: NotificationPermission | "unsupported";
-  pushTokenRegistered: boolean;
+  pushSubscribed: boolean;
 
   setNotificationConfig: (
     enabled: boolean,
@@ -16,7 +16,7 @@ export interface NotificationSlice {
     wsUrl: string,
   ) => void;
   setPushPermission: (perm: NotificationPermission | "unsupported") => void;
-  setPushTokenRegistered: (registered: boolean) => void;
+  setPushSubscribed: (subscribed: boolean) => void;
 }
 
 export const createNotificationSlice: StateCreator<
@@ -33,7 +33,7 @@ export const createNotificationSlice: StateCreator<
     typeof Notification !== "undefined"
       ? Notification.permission
       : "unsupported",
-  pushTokenRegistered: false,
+  pushSubscribed: false,
 
   setNotificationConfig: (
     enabled: boolean,
@@ -55,9 +55,9 @@ export const createNotificationSlice: StateCreator<
     });
   },
 
-  setPushTokenRegistered: (registered: boolean) => {
+  setPushSubscribed: (subscribed: boolean) => {
     set((state) => {
-      state.pushTokenRegistered = registered;
+      state.pushSubscribed = subscribed;
     });
   },
 });

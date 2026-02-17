@@ -2,9 +2,13 @@
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.configs import configs
+from app.infra.database import get_session
 from app.middleware.auth import get_current_user
+from app.models.push_subscription import PushSubscription
+from app.repos.push_subscription import PushSubscriptionRepository
 
 router = APIRouter(tags=["notifications"])
 
@@ -17,14 +21,16 @@ class NotificationConfigResponse(BaseModel):
     app_identifier: str
     api_url: str
     ws_url: str
+    vapid_public_key: str
 
 
-class DeviceTokenRequest(BaseModel):
-    token: str
-    provider_id: str = "fcm"
+class PushSubscriptionRequest(BaseModel):
+    endpoint: str
+    keys: dict[str, str]  # {p256dh: "...", auth: "..."}
+    user_agent: str = ""
 
 
-class DeviceTokenResponse(BaseModel):
+class PushSubscriptionResponse(BaseModel):
     success: bool
 
 
@@ -39,30 +45,38 @@ async def get_notification_config() -> NotificationConfigResponse:
         app_identifier=configs.Novu.AppIdentifier if configs.Novu.Enable else "",
         api_url=configs.Novu.PublicApiUrl if configs.Novu.Enable else "",
         ws_url=configs.Novu.PublicWsUrl if configs.Novu.Enable else "",
+        vapid_public_key=configs.Novu.VapidPublicKey,
     )
 
 
-@router.post("/device-token", response_model=DeviceTokenResponse)
-async def register_device_token(
-    body: DeviceTokenRequest,
+@router.post("/push-subscription", response_model=PushSubscriptionResponse)
+async def register_push_subscription(
+    body: PushSubscriptionRequest,
     user_id: str = Depends(get_current_user),
-) -> DeviceTokenResponse:
-    """Register an FCM push token for the authenticated user."""
-    from app.core.notification.service import NotificationService
+    db: AsyncSession = Depends(get_session),
+) -> PushSubscriptionResponse:
+    """Register a Web Push subscription for the authenticated user."""
+    repo = PushSubscriptionRepository(db)
+    sub = PushSubscription(
+        user_id=user_id,
+        endpoint=body.endpoint,
+        keys_p256dh=body.keys.get("p256dh", ""),
+        keys_auth=body.keys.get("auth", ""),
+        user_agent=body.user_agent,
+    )
+    await repo.upsert(sub)
+    await db.commit()
+    return PushSubscriptionResponse(success=True)
 
-    svc = NotificationService()
-    ok = svc.set_device_token(subscriber_id=user_id, token=body.token, provider_id=body.provider_id)
-    return DeviceTokenResponse(success=ok)
 
-
-@router.delete("/device-token", response_model=DeviceTokenResponse)
-async def remove_device_token(
-    body: DeviceTokenRequest,
+@router.delete("/push-subscription", response_model=PushSubscriptionResponse)
+async def remove_push_subscription(
+    body: PushSubscriptionRequest,
     user_id: str = Depends(get_current_user),
-) -> DeviceTokenResponse:
-    """Remove an FCM push token for the authenticated user."""
-    from app.core.notification.service import NotificationService
-
-    svc = NotificationService()
-    ok = svc.remove_device_token(subscriber_id=user_id, token=body.token, provider_id=body.provider_id)
-    return DeviceTokenResponse(success=ok)
+    db: AsyncSession = Depends(get_session),
+) -> PushSubscriptionResponse:
+    """Remove a Web Push subscription for the authenticated user."""
+    repo = PushSubscriptionRepository(db)
+    ok = await repo.delete_by_endpoint(body.endpoint)
+    await db.commit()
+    return PushSubscriptionResponse(success=ok)

@@ -229,6 +229,7 @@ export interface TopicResponse {
   id: string;
   name: string;
   updated_at: string;
+  is_pinned: boolean;
 }
 
 export interface SessionResponse {

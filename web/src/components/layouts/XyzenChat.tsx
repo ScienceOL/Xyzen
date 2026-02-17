@@ -140,7 +140,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         <div className="relative grow overflow-y-auto min-w-0">
           <div
             ref={messagesContainerRef}
-            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-neutral-50 dark:bg-black custom-scrollbar"
+            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-white dark:bg-black custom-scrollbar"
             onScroll={handleScroll}
           >
             {/* Sticky Frosted Header — scroll-driven animation (CSS) */}

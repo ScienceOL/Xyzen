@@ -71,7 +71,7 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB
           // 排除 /api 和 /xyzen 开头的请求，避免 Service Worker 拦截后端接口
           navigateFallbackDenylist: [/^\/api/, /^\/xyzen/],
-          importScripts: ["firebase-messaging-sw.js"],
+          importScripts: ["push-sw.js"],
         },
       }),
     );

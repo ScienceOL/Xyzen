@@ -39,6 +39,7 @@ import { llmProviderService } from "@/service/llmProviderService";
 import { sessionService } from "@/service/sessionService";
 import xyzenService from "@/service/xyzenService";
 import type { MessageEventCallback } from "@/service/xyzenService";
+import i18n from "i18next";
 import type { StateCreator } from "zustand";
 import type {
   ChatChannel,
@@ -141,6 +142,9 @@ export interface ChatSlice {
 
   // Message deletion
   deleteMessage: (messageId: string) => Promise<void>;
+
+  // Retry a failed message (remove local-only message + resend)
+  retryMessage: (messageId: string) => void;
 
   // Notification methods
   showNotification: (
@@ -550,7 +554,7 @@ export const createChatSlice: StateCreator<
                   updatedAt: topic.updated_at,
                   assistantTitle: getAgentNameById(session.agent_id),
                   lastMessage: "",
-                  isPinned: false,
+                  isPinned: topic.is_pinned ?? false,
                 };
               }) || []
             );
@@ -592,12 +596,40 @@ export const createChatSlice: StateCreator<
     },
 
     togglePinChat: (chatId: string) => {
+      const chat = get().chatHistory.find((c) => c.id === chatId);
+      if (!chat) return;
+
+      const newPinned = !chat.isPinned;
+
+      // Optimistic update
       set((state: ChatSlice) => {
-        const chat = state.chatHistory.find((c) => c.id === chatId);
-        if (chat) {
-          chat.isPinned = !chat.isPinned;
+        const item = state.chatHistory.find((c) => c.id === chatId);
+        if (item) {
+          item.isPinned = newPinned;
         }
       });
+
+      // Persist to backend
+      const token = authService.getToken();
+      if (token) {
+        fetch(`${get().backendUrl}/xyzen/api/v1/topics/${chatId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ is_pinned: newPinned }),
+        }).catch((error) => {
+          console.error("Failed to persist pin state:", error);
+          // Revert on failure
+          set((state: ChatSlice) => {
+            const item = state.chatHistory.find((c) => c.id === chatId);
+            if (item) {
+              item.isPinned = !newPinned;
+            }
+          });
+        });
+      }
     },
 
     activateChannel: async (topicId: string) => {
@@ -2136,7 +2168,11 @@ export const createChatSlice: StateCreator<
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Failed to edit message:", errorText);
-          get().showNotification("Error", "Failed to edit message", "error");
+          get().showNotification(
+            "Error",
+            i18n.t("app.message.editFailed"),
+            "error",
+          );
           return;
         }
 
@@ -2176,7 +2212,11 @@ export const createChatSlice: StateCreator<
         }
       } catch (error) {
         console.error("Failed to edit message:", error);
-        get().showNotification("Error", "Failed to edit message", "error");
+        get().showNotification(
+          "Error",
+          i18n.t("app.message.editFailed"),
+          "error",
+        );
       }
     },
 
@@ -2210,12 +2250,16 @@ export const createChatSlice: StateCreator<
         // Find the message to provide contextual error
         const message = channel.messages.find((m) => m.id === messageId);
         const reason = message?.isStreaming
-          ? "Message is still streaming"
-          : "Message has not been saved to server yet";
+          ? i18n.t("app.message.deleteStillStreaming")
+          : i18n.t("app.message.deleteNotSaved");
         console.error(
           `Cannot delete message: ${reason} (id: ${messageId.slice(0, 20)}...)`,
         );
-        get().showNotification("Cannot Delete", reason, "warning");
+        get().showNotification(
+          i18n.t("app.message.cannotDelete"),
+          reason,
+          "warning",
+        );
         return;
       }
 
@@ -2247,7 +2291,11 @@ export const createChatSlice: StateCreator<
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Failed to delete message:", errorText);
-          get().showNotification("Error", "Failed to delete message", "error");
+          get().showNotification(
+            "Error",
+            i18n.t("app.message.deleteFailed"),
+            "error",
+          );
           return;
         }
 
@@ -2260,8 +2308,36 @@ export const createChatSlice: StateCreator<
         });
       } catch (error) {
         console.error("Failed to delete message:", error);
-        get().showNotification("Error", "Failed to delete message", "error");
+        get().showNotification(
+          "Error",
+          i18n.t("app.message.deleteFailed"),
+          "error",
+        );
       }
+    },
+
+    retryMessage: (messageId: string) => {
+      const { activeChatChannel, channels, sendMessage } = get();
+      if (!activeChatChannel) return;
+
+      const channel = channels[activeChatChannel];
+      if (!channel) return;
+
+      const message = channel.messages.find((m) => m.id === messageId);
+      if (!message || message.status !== "failed") return;
+
+      const content = message.content;
+
+      // Remove the failed message locally (it was never persisted)
+      set((state: ChatSlice) => {
+        const ch = state.channels[activeChatChannel];
+        if (ch) {
+          ch.messages = ch.messages.filter((m) => m.id !== messageId);
+        }
+      });
+
+      // Resend
+      sendMessage(content);
     },
 
     showNotification: (

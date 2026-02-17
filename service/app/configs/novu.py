@@ -35,6 +35,18 @@ class NovuConfig(BaseModel):
         description="Novu application identifier (bootstrap pushes this value into Novu)",
     )
 
+    # VAPID (Web Push) — dev defaults are a pre-generated key pair.
+    # Production MUST override via XYZEN_Novu_VapidPrivateKey / VapidPublicKey.
+    VapidPrivateKey: str = Field(
+        default="sgs4JDbRzKHx7rSQXCL_EF7rzNhaya_baP-NwVNKdaY",
+        description="VAPID private key (URL-safe base64, 32-byte raw scalar)",
+    )
+    VapidPublicKey: str = Field(
+        default="BEL5qcqsPF2Tce7054-Ou1StpkljqtT5i7MAQ_OjsTghmYlLPAcEaDOxr3Qxn79Dydhh1DdSrGLUrmLzc9Objcc",
+        description="VAPID public key (URL-safe base64, 65-byte uncompressed EC point)",
+    )
+    VapidContactEmail: str = Field(default="admin@xyzen.dev", description="VAPID contact email (mailto:...)")
+
     # Default admin credentials for auto-bootstrap (dev only).
     AdminEmail: str = Field(default="admin@xyzen.dev")
     AdminPassword: str = Field(default="Admin123!")

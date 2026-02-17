@@ -9,6 +9,7 @@ from .consume import ConsumeRepository
 from .file import FileRepository
 from .knowledge_set import KnowledgeSetRepository
 from .message import MessageRepository
+from .push_subscription import PushSubscriptionRepository
 from .provider import ProviderRepository
 from .session import SessionRepository
 from .skill import SkillRepository
@@ -28,6 +29,7 @@ __all__ = [
     "ConsumeRepository",
     "FileRepository",
     "MessageRepository",
+    "PushSubscriptionRepository",
     "TopicRepository",
     "SessionRepository",
     "SkillRepository",

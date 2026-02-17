@@ -13,6 +13,7 @@ class TopicBase(SQLModel):
     name: str = Field(max_length=100)
     description: str | None = Field(default=None, max_length=500)
     is_active: bool = Field(default=True)
+    is_pinned: bool = Field(default=False)
     session_id: UUID = Field(index=True)
 
 
@@ -47,3 +48,4 @@ class TopicUpdate(SQLModel):
     name: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    is_pinned: bool | None = None

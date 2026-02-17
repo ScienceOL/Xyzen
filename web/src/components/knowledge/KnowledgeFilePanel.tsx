@@ -1,4 +1,5 @@
 import { fileService, type UploadHandle } from "@/service/fileService";
+import { uploadQueue } from "@/service/uploadQueue";
 import { folderService, type Folder } from "@/service/folderService";
 import type { FileTreeItem } from "@/service/folderService";
 import { knowledgeSetService } from "@/service/knowledgeSetService";
@@ -353,24 +354,36 @@ export function KnowledgeFilePanel({
           id: uploadId,
           fileName: uniqueName,
           progress: 0,
-          status: "uploading",
+          status: "queued",
         };
 
         setUploads((prev) => [...prev, uploadItem]);
 
-        const handle = fileService.uploadFileWithProgress(
-          uploadFile,
-          "private",
-          undefined,
-          parentId,
-          knowledgeSetId,
-          (progress) => {
+        const handle = uploadQueue.enqueue(
+          uploadId,
+          () =>
             setUploads((prev) =>
               prev.map((u) =>
-                u.id === uploadId ? { ...u, progress: progress.percentage } : u,
+                u.id === uploadId ? { ...u, status: "uploading" } : u,
               ),
-            );
-          },
+            ),
+          () =>
+            fileService.uploadFileWithProgress(
+              uploadFile,
+              "private",
+              undefined,
+              parentId,
+              knowledgeSetId,
+              (progress) => {
+                setUploads((prev) =>
+                  prev.map((u) =>
+                    u.id === uploadId
+                      ? { ...u, progress: progress.percentage }
+                      : u,
+                  ),
+                );
+              },
+            ),
         );
 
         uploadHandlesRef.current.set(uploadId, handle);
@@ -499,23 +512,35 @@ export function KnowledgeFilePanel({
           id: uploadId,
           fileName: baseName,
           progress: 0,
-          status: "uploading",
+          status: "queued",
         };
         setUploads((prev) => [...prev, uploadItem]);
 
-        const handle = fileService.uploadFileWithProgress(
-          uploadFile,
-          "private",
-          undefined,
-          parentId,
-          knowledgeSetId,
-          (progress) => {
+        const handle = uploadQueue.enqueue(
+          uploadId,
+          () =>
             setUploads((prev) =>
               prev.map((u) =>
-                u.id === uploadId ? { ...u, progress: progress.percentage } : u,
+                u.id === uploadId ? { ...u, status: "uploading" } : u,
               ),
-            );
-          },
+            ),
+          () =>
+            fileService.uploadFileWithProgress(
+              uploadFile,
+              "private",
+              undefined,
+              parentId,
+              knowledgeSetId,
+              (progress) => {
+                setUploads((prev) =>
+                  prev.map((u) =>
+                    u.id === uploadId
+                      ? { ...u, progress: progress.percentage }
+                      : u,
+                  ),
+                );
+              },
+            ),
         );
 
         uploadHandlesRef.current.set(uploadId, handle);
@@ -591,7 +616,7 @@ export function KnowledgeFilePanel({
 
   const handleDismissAllUploads = useCallback(() => {
     uploads.forEach((u) => {
-      if (u.status === "uploading") {
+      if (u.status === "uploading" || u.status === "queued") {
         const handle = uploadHandlesRef.current.get(u.id);
         if (handle) handle.abort();
       }
