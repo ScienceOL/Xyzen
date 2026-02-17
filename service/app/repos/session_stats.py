@@ -25,6 +25,7 @@ from app.models.session_stats import (
     DailyMessageCount,
     DailyStatsResponse,
     SessionStatsRead,
+    TopicTokenStats,
     YesterdaySummary,
 )
 from app.models.sessions import Session
@@ -343,3 +344,30 @@ class SessionStatsRepository:
             message_count=int(message_count),
             last_message_content=last_content,
         )
+
+    async def get_topic_token_stats(self, topic_id: UUID) -> TopicTokenStats:
+        """Get current context window usage for a topic.
+
+        Returns the latest request's (input_tokens + output_tokens), which
+        represents the current conversation size — input_tokens already
+        includes system prompt + all prior messages.
+        """
+        token_stmt = (
+            select(
+                func.coalesce(ConsumeRecord.input_tokens, 0).label("input_tokens"),
+                func.coalesce(ConsumeRecord.output_tokens, 0).label("output_tokens"),
+            )
+            .where(
+                and_(
+                    col(ConsumeRecord.topic_id) == topic_id,
+                    col(ConsumeRecord.consume_state) == "success",
+                )
+            )
+            .order_by(col(ConsumeRecord.created_at).desc())
+            .limit(1)
+        )
+        result = await self.db.exec(token_stmt)
+        row = result.first()
+
+        total = (int(row[0]) + int(row[1])) if row else 0
+        return TopicTokenStats(topic_id=topic_id, total_tokens=total)

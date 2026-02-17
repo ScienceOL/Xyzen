@@ -32,6 +32,7 @@ export function useActiveChannelStatus() {
         knowledge_set_id: ch?.knowledge_set_id ?? null,
         provider_id: ch?.provider_id ?? null,
         title: ch?.title ?? "",
+        tokenUsage: ch?.tokenUsage ?? 0,
       };
     }),
   );

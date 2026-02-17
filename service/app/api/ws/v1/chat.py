@@ -91,7 +91,7 @@ async def redis_listener(websocket: WebSocket, connection_id: str):
         logger.error(f"Redis listener error: {e}")
     finally:
         await pubsub.unsubscribe(channel)
-        await r.close()
+        await r.aclose()
 
 
 HEARTBEAT_INTERVAL_SECONDS = 25

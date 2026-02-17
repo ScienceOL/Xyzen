@@ -180,7 +180,8 @@
   },
   "chatHeader": {
     "share": "共有",
-    "shareTooltip": "会話を共有"
+    "shareTooltip": "会話を共有",
+    "contextRemaining": "コンテキスト残量: {{percent}}%"
   },
   "message": {
     "edit": "編集",

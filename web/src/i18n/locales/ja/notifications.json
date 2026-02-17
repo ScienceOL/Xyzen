@@ -10,5 +10,15 @@
     "title": "通知",
     "empty": "通知はまだありません",
     "markAllRead": "すべて既読にする"
-  }
+  },
+  "filter": {
+    "all": "すべて",
+    "unread": "未読",
+    "archived": "アーカイブ済み"
+  },
+  "actions": {
+    "readAll": "すべて既読にする",
+    "archiveRead": "既読をアーカイブ"
+  },
+  "empty": "通知はまだありません"
 }

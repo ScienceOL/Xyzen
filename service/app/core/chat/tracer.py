@@ -175,16 +175,7 @@ class LangGraphTracer:
         return {
             "type": ChatEventType.AGENT_START,
             "data": {
-                "context": {
-                    "agent_id": self.event_ctx.agent_id,
-                    "agent_name": self.event_ctx.agent_name,
-                    "agent_type": self.event_ctx.agent_type,
-                    "execution_id": self.event_ctx.execution_id,
-                    "depth": 0,
-                    "execution_path": [self.event_ctx.agent_name],
-                    "started_at": int(self.agent_start_time * 1000),
-                    "stream_id": self.stream_id,
-                },
+                "context": self.event_ctx.to_context_dict(),
             },
         }
 
@@ -251,16 +242,7 @@ class LangGraphTracer:
             "node_id": node_id,
             "node_name": display_name,
             "node_type": node_type,
-            "context": {
-                "agent_id": self.event_ctx.agent_id,
-                "agent_name": self.event_ctx.agent_name,
-                "agent_type": self.event_ctx.agent_type,
-                "execution_id": self.event_ctx.execution_id,
-                "depth": 0,
-                "execution_path": [self.event_ctx.agent_name],
-                "current_node": node_id,
-                "started_at": int(self.agent_start_time * 1000),
-            },
+            "context": self.event_ctx.to_context_dict(),
         }
 
         if resolved_component_key:
@@ -350,16 +332,7 @@ class LangGraphTracer:
             "node_type": resolved_node_type,
             "status": status,
             "duration_ms": duration_ms,
-            "context": {
-                "agent_id": self.event_ctx.agent_id,
-                "agent_name": self.event_ctx.agent_name,
-                "agent_type": self.event_ctx.agent_type,
-                "execution_id": self.event_ctx.execution_id,
-                "depth": 0,
-                "execution_path": [self.event_ctx.agent_name],
-                "current_node": node_id,
-                "started_at": int(self.agent_start_time * 1000),
-            },
+            "context": self.event_ctx.to_context_dict(),
         }
 
         if resolved_component_key:
@@ -403,16 +376,7 @@ class LangGraphTracer:
         return {
             "type": ChatEventType.AGENT_END,
             "data": {
-                "context": {
-                    "agent_id": self.event_ctx.agent_id,
-                    "agent_name": self.event_ctx.agent_name,
-                    "agent_type": self.event_ctx.agent_type,
-                    "execution_id": self.event_ctx.execution_id,
-                    "depth": 0,
-                    "execution_path": [self.event_ctx.agent_name],
-                    "started_at": int(self.agent_start_time * 1000),
-                    "stream_id": self.stream_id,
-                },
+                "context": self.event_ctx.to_context_dict(),
                 "status": status,
                 "duration_ms": duration_ms,
             },
@@ -441,9 +405,9 @@ class LangGraphTracer:
 
         Now includes timeline data for componentKey persistence.
         """
-        logger.info(f"[Tracer] get_agent_state called, timeline has {len(self.timeline)} entries")
+        logger.debug(f"[Tracer] get_agent_state called, timeline has {len(self.timeline)} entries")
         for entry in self.timeline:
-            logger.info(f"[Tracer] Timeline entry: {entry.event_type} node={entry.node_id}")
+            logger.debug(f"[Tracer] Timeline entry: {entry.event_type} node={entry.node_id}")
 
         state: dict[str, Any] = {
             "timeline": [entry.to_dict() for entry in self.timeline],

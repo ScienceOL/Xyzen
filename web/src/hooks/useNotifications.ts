@@ -17,6 +17,8 @@ export function useNotifications() {
   const {
     notificationEnabled,
     novuAppIdentifier,
+    novuApiUrl,
+    novuWsUrl,
     pushPermission,
     pushTokenRegistered,
     setNotificationConfig,
@@ -26,6 +28,8 @@ export function useNotifications() {
     useShallow((s) => ({
       notificationEnabled: s.notificationEnabled,
       novuAppIdentifier: s.novuAppIdentifier,
+      novuApiUrl: s.novuApiUrl,
+      novuWsUrl: s.novuWsUrl,
       pushPermission: s.pushPermission,
       pushTokenRegistered: s.pushTokenRegistered,
       setNotificationConfig: s.setNotificationConfig,
@@ -45,7 +49,12 @@ export function useNotifications() {
     notificationService
       .getConfig()
       .then((cfg) => {
-        setNotificationConfig(cfg.enabled, cfg.app_identifier);
+        setNotificationConfig(
+          cfg.enabled,
+          cfg.app_identifier,
+          cfg.api_url,
+          cfg.ws_url,
+        );
       })
       .catch(() => {
         // Silently ignore — notifications are optional
@@ -76,6 +85,8 @@ export function useNotifications() {
   return {
     notificationEnabled,
     novuAppIdentifier,
+    novuApiUrl,
+    novuWsUrl,
     pushPermission,
     pushTokenRegistered,
     enablePush,

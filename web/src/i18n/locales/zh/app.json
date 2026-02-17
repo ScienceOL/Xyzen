@@ -182,7 +182,8 @@
   },
   "chatHeader": {
     "share": "分享",
-    "shareTooltip": "分享对话"
+    "shareTooltip": "分享对话",
+    "contextRemaining": "剩余上下文: {{percent}}%"
   },
   "share": {
     "title": "分享对话",

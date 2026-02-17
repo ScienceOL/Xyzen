@@ -47,6 +47,8 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const url = event.notification.data?.url ?? "/";
+  // Build an absolute URL relative to the SW's origin (handles hash routes like /#/chat/{id})
+  const targetUrl = new URL(url, self.location.origin).href;
 
   event.waitUntil(
     self.clients
@@ -60,8 +62,8 @@ self.addEventListener("notificationclick", (event) => {
             return;
           }
         }
-        // Otherwise open a new window
-        return self.clients.openWindow(url);
+        // Otherwise open a new window with the full absolute URL
+        return self.clients.openWindow(targetUrl);
       }),
   );
 });

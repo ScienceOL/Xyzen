@@ -49,6 +49,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useQuery } from "@tanstack/react-query";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { NotificationCenter } from "@/components/features/NotificationCenter";
 
 // Dock height constant - use this for bottom margin calculations in other components
 export const DOCK_HEIGHT = 64;
@@ -942,6 +943,9 @@ export function BottomDock({
 
               {/* Subscription Badge */}
               <SubscriptionBadge />
+
+              {/* Notification Center (rightmost) */}
+              <NotificationCenter />
             </div>
           </div>
         </motion.div>

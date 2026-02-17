@@ -37,6 +37,11 @@ function parseChatShareHash(hash: string): string | null {
   return match ? match[1] : null;
 }
 
+function parseChatTopicHash(hash: string): string | null {
+  const match = hash.match(/^#\/chat\/([a-zA-Z0-9_-]+)$/);
+  return match ? match[1] : null;
+}
+
 // 创建 React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -203,8 +208,25 @@ export function Xyzen({
           const pendingChannel = sessionStorage.getItem(
             "pending_activate_channel",
           );
+          // Also check for #/chat/{topicId} deep-link (from push notifications)
+          const hashTopicId = parseChatTopicHash(window.location.hash);
+
           console.log("[App] pending_activate_channel:", pendingChannel);
-          if (pendingChannel) {
+          if (hashTopicId) {
+            // Clear the hash so the app doesn't re-activate on next render
+            window.location.hash = "";
+            console.log(
+              "[App] Activating from hash deep-link, topicId:",
+              hashTopicId,
+            );
+            setActivePanel("chat");
+            try {
+              await activateChannel(hashTopicId);
+              console.log("[App] Channel activated from hash successfully");
+            } catch (err) {
+              console.error("[App] Failed to activate channel from hash:", err);
+            }
+          } else if (pendingChannel) {
             sessionStorage.removeItem("pending_activate_channel");
             // Format is "session_id:topic_id"
             const parts = pendingChannel.split(":");
@@ -251,6 +273,36 @@ export function Xyzen({
     setActivePanel,
   ]);
 
+  // Handle #/chat/{topicId} deep-link while app is already running
+  // (e.g. from SW notification_click postMessage or in-app hash navigation)
+  useEffect(() => {
+    if (!initialLoadComplete) return;
+    const topicId = parseChatTopicHash(currentHash);
+    if (!topicId) return;
+    window.location.hash = "";
+    setActivePanel("chat");
+    activateChannel(topicId);
+  }, [currentHash, initialLoadComplete, activateChannel, setActivePanel]);
+
+  // Listen for Service Worker notification click messages
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "notification_click" && event.data.url) {
+        const url: string = event.data.url;
+        // Extract topic ID from /chat?topic=xxx or /#/chat/xxx patterns
+        const hashMatch = /\/#\/chat\/([a-zA-Z0-9_-]+)/.exec(url);
+        const queryMatch = /[?&]topic=([^&]+)/.exec(url);
+        const topicId = hashMatch?.[1] ?? queryMatch?.[1];
+        if (topicId) {
+          setActivePanel("chat");
+          activateChannel(topicId);
+        }
+      }
+    };
+    navigator.serviceWorker?.addEventListener("message", handler);
+    return () =>
+      navigator.serviceWorker?.removeEventListener("message", handler);
+  }, [activateChannel, setActivePanel]);
   // Unified progress bar logic
   useEffect(() => {
     // Target progress based on current state

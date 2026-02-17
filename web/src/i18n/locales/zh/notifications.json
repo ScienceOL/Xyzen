@@ -10,5 +10,15 @@
     "title": "通知",
     "empty": "暂无通知",
     "markAllRead": "全部标记为已读"
-  }
+  },
+  "filter": {
+    "all": "全部",
+    "unread": "未读",
+    "archived": "已归档"
+  },
+  "actions": {
+    "readAll": "全部标记为已读",
+    "archiveRead": "归档已读通知"
+  },
+  "empty": "暂无通知"
 }

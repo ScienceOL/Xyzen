@@ -15,6 +15,8 @@ router = APIRouter(tags=["notifications"])
 class NotificationConfigResponse(BaseModel):
     enabled: bool
     app_identifier: str
+    api_url: str
+    ws_url: str
 
 
 class DeviceTokenRequest(BaseModel):
@@ -35,6 +37,8 @@ async def get_notification_config() -> NotificationConfigResponse:
     return NotificationConfigResponse(
         enabled=configs.Novu.Enable,
         app_identifier=configs.Novu.AppIdentifier if configs.Novu.Enable else "",
+        api_url=configs.Novu.PublicApiUrl if configs.Novu.Enable else "",
+        ws_url=configs.Novu.PublicWsUrl if configs.Novu.Enable else "",
     )
 
 

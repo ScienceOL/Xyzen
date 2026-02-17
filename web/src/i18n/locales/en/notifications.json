@@ -10,5 +10,15 @@
     "title": "Notifications",
     "empty": "No notifications yet",
     "markAllRead": "Mark all as read"
-  }
+  },
+  "filter": {
+    "all": "All",
+    "unread": "Unread",
+    "archived": "Archived"
+  },
+  "actions": {
+    "readAll": "Mark all as read",
+    "archiveRead": "Archive all read"
+  },
+  "empty": "No notifications yet"
 }

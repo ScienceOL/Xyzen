@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import ChatBubble from "./components/ChatBubble";
+import ContextUsageRing from "./components/ContextUsageRing";
 import FloatingChatInput from "./components/FloatingChatInput";
 import EmptyChat from "./components/EmptyChat";
 import WelcomeMessage from "./components/WelcomeMessage";
@@ -102,8 +103,12 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
   } = useXyzenChat(config);
 
   // Channel IDs for share modal
-  const { sessionId: channelSessionId, channelId: channelTopicId } =
-    useActiveChannelStatus();
+  const {
+    sessionId: channelSessionId,
+    channelId: channelTopicId,
+    tokenUsage,
+    model_tier: modelTier,
+  } = useActiveChannelStatus();
 
   // State for share modal
   const [showShareModal, setShowShareModal] = useState(false);
@@ -198,14 +203,20 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                         {currentAgent.description}
                       </p>
                     </div>
-                    <button
-                      onClick={handleShowShareModal}
-                      className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-white/30 dark:text-neutral-400 dark:hover:bg-white/10"
-                      title={t("app.chatHeader.shareTooltip")}
-                    >
-                      <ShareIcon className="h-3.5 w-3.5" />
-                      <span>{t("app.chatHeader.share")}</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <ContextUsageRing
+                        tokenUsage={tokenUsage}
+                        modelTier={modelTier}
+                      />
+                      <button
+                        onClick={handleShowShareModal}
+                        className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-white/30 dark:text-neutral-400 dark:hover:bg-white/10"
+                        title={t("app.chatHeader.shareTooltip")}
+                      >
+                        <ShareIcon className="h-3.5 w-3.5" />
+                        <span>{t("app.chatHeader.share")}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

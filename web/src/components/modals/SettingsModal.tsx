@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import { useXyzen } from "@/store";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -111,13 +111,10 @@ export function SettingsModal() {
   };
 
   return (
-    <Modal
+    <SheetModal
       isOpen={isSettingsModalOpen}
       onClose={closeSettingsModal}
-      title=""
-      containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
-      panelClassName="flex w-full flex-col h-[95dvh] rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-[85vh] md:max-w-[90vw] md:min-h-[600px] md:rounded-2xl md:border md:border-neutral-200/20"
-      swipeToDismiss
+      size="xl"
     >
       <div className="flex h-full flex-col overflow-hidden md:flex-row">
         {/* Sidebar (Categories) - Desktop: frosted sidebar; Mobile: full-screen list */}
@@ -257,6 +254,6 @@ export function SettingsModal() {
           </motion.div>
         </AnimatePresence>
       </div>
-    </Modal>
+    </SheetModal>
   );
 }

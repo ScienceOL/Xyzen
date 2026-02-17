@@ -182,7 +182,8 @@
   },
   "chatHeader": {
     "share": "Share",
-    "shareTooltip": "Share conversation"
+    "shareTooltip": "Share conversation",
+    "contextRemaining": "Context remaining: {{percent}}%"
   },
   "share": {
     "title": "Share Conversation",

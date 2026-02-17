@@ -4,10 +4,17 @@ import type { XyzenState } from "../types";
 export interface NotificationSlice {
   notificationEnabled: boolean;
   novuAppIdentifier: string;
+  novuApiUrl: string;
+  novuWsUrl: string;
   pushPermission: NotificationPermission | "unsupported";
   pushTokenRegistered: boolean;
 
-  setNotificationConfig: (enabled: boolean, appId: string) => void;
+  setNotificationConfig: (
+    enabled: boolean,
+    appId: string,
+    apiUrl: string,
+    wsUrl: string,
+  ) => void;
   setPushPermission: (perm: NotificationPermission | "unsupported") => void;
   setPushTokenRegistered: (registered: boolean) => void;
 }
@@ -20,16 +27,25 @@ export const createNotificationSlice: StateCreator<
 > = (set) => ({
   notificationEnabled: false,
   novuAppIdentifier: "",
+  novuApiUrl: "",
+  novuWsUrl: "",
   pushPermission:
     typeof Notification !== "undefined"
       ? Notification.permission
       : "unsupported",
   pushTokenRegistered: false,
 
-  setNotificationConfig: (enabled: boolean, appId: string) => {
+  setNotificationConfig: (
+    enabled: boolean,
+    appId: string,
+    apiUrl: string,
+    wsUrl: string,
+  ) => {
     set((state) => {
       state.notificationEnabled = enabled;
       state.novuAppIdentifier = appId;
+      state.novuApiUrl = apiUrl;
+      state.novuWsUrl = wsUrl;
     });
   },
 

@@ -14,11 +14,12 @@ def send_notification(
     event_type: str,
     subscriber_id: str,
     payload: dict[str, Any],
+    actor: dict[str, str] | None = None,
 ) -> None:
     """Send a notification to a single subscriber via Novu (sync wrapper)."""
     loop = asyncio.new_event_loop()
     try:
-        loop.run_until_complete(_send_notification_async(event_type, subscriber_id, payload))
+        loop.run_until_complete(_send_notification_async(event_type, subscriber_id, payload, actor))
     finally:
         loop.close()
 
@@ -27,11 +28,12 @@ async def _send_notification_async(
     event_type: str,
     subscriber_id: str,
     payload: dict[str, Any],
+    actor: dict[str, str] | None = None,
 ) -> None:
     from app.core.notification.service import NotificationService
 
     svc = NotificationService()
-    svc.trigger(event_type, subscriber_id, payload)
+    svc.trigger(event_type, subscriber_id, payload, actor=actor)
 
 
 @celery_app.task(name="broadcast_notification", ignore_result=True, soft_time_limit=30)

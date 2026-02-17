@@ -3156,9 +3156,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@novu/js@npm:3.14.0":
-  version: 3.14.0
-  resolution: "@novu/js@npm:3.14.0"
+"@novu/js@npm:3.13.0":
+  version: 3.13.0
+  resolution: "@novu/js@npm:3.13.0"
   dependencies:
     "@floating-ui/dom": "npm:^1.6.13"
     "@kobalte/core": "npm:^0.13.10"
@@ -3173,22 +3173,22 @@ __metadata:
     solid-js: "npm:^1.9.4"
     solid-motionone: "npm:^1.0.3"
     tailwind-merge: "npm:^2.4.0"
-  checksum: 10c0/401f479effcad0dbf8ec32f9d2df0068d9cc17d52ae7e07ba37edfec86c9e0058ddef5c1c29bf209e45f50b70481918ad16173790d126adfc71a2715e3892b53
+  checksum: 10c0/73aadc24871bbff87ef93349eab20daa2f664907b0d4ab3a1a7cf9faa2be37a22e192adeb67abf1e55e8ca03451f8813b4d91406c56cf9850240ba7d42920b9a
   languageName: node
   linkType: hard
 
-"@novu/react@npm:^3.14.0":
-  version: 3.14.0
-  resolution: "@novu/react@npm:3.14.0"
+"@novu/react@npm:3.13.0":
+  version: 3.13.0
+  resolution: "@novu/react@npm:3.13.0"
   dependencies:
-    "@novu/js": "npm:3.14.0"
+    "@novu/js": "npm:3.13.0"
   peerDependencies:
     react: ^18.0.0 || ^19.0.0 || ^19.0.0-0
     react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-0
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 10c0/cbdedea56b3c3a9011b7f3a2f82c407fcaff0aad854f5f22c294dfbe772a60a08bed0cd9448a41b6d8cdbd9e398a4e02cd99ca5a462158828f2a71882b824951
+  checksum: 10c0/fb834e51cc65726ca5642320e882cb9085ed5d8a78a70238f99c844698682e499af080e5fac9e91bc245b6a15d9b15f8a1c6d5ec56f99af0ac784d6629339e23
   languageName: node
   linkType: hard
 
@@ -6212,7 +6212,7 @@ __metadata:
     "@floating-ui/react": "npm:^0.27.16"
     "@headlessui/react": "npm:^2.2.9"
     "@heroicons/react": "npm:^2.2.0"
-    "@novu/react": "npm:^3.14.0"
+    "@novu/react": "npm:3.13.0"
     "@platejs/ai": "npm:^52.0.16"
     "@platejs/autoformat": "npm:^52.0.11"
     "@platejs/basic-nodes": "npm:^52.0.11"

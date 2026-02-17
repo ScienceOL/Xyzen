@@ -18,7 +18,7 @@ from app.repos.redemption import RedemptionRepository
 
 logger = logging.getLogger(__name__)
 
-# BohrApp consumption service configuration
+# BohrApp consumption service configuration (DEPRECATED — remote billing is no longer used)
 BOHRAPP_CONSUME_API = "https://openapi.dp.tech/openapi/v1/api/integral/consume"
 BOHRAPP_X_APP_KEY = "xyzen-uuid1760783737"
 BOHRAPP_DEFAULT_SKU_ID = 10049
@@ -124,7 +124,7 @@ class ConsumeService:
         # Save to database
         record = await self.consume_repo.create_consume_record(record_data, user_id)
 
-        # If we still need remote billing
+        # If we still need remote billing (DEPRECATED — remote billing no longer used)
         if amount_from_remote > 0:
             logger.info(f"Need remote billing for remaining amount: {amount_from_remote}")
 
@@ -209,6 +209,11 @@ class ConsumeService:
     async def _execute_remote_consume(self, record: ConsumeRecord, access_key: str) -> None:
         """
         Execute remote billing API call (BohrApp)
+
+        .. deprecated::
+            Remote billing via BohrApp is no longer used. All billing is handled
+            through virtual balance deduction only.
+
         Args:
             record: Consumption record
             access_key: User's access key

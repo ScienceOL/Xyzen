@@ -64,6 +64,8 @@ class ChatTaskContext:
     active_node_id: str | None = None
     tool_calls_by_node: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     tool_call_data: dict[str, dict[str, Any]] = field(default_factory=dict)
+    agent_name: str = ""
+    agent_avatar: str = ""
 
     # Token/cost tracking
     input_tokens: int = 0
@@ -474,6 +476,15 @@ async def handle_agent_start(ctx: ChatTaskContext, stream_event: dict[str, Any])
     ctx.agent_run_start_time = time.time()
     context_data = stream_event["data"].get("context", {})
 
+    # Capture agent identity for notifications
+    ctx.agent_name = context_data.get("agent_name", "")
+    ctx.agent_avatar = context_data.get("agent_avatar", "")
+    logger.debug(
+        "[Notification] handle_agent_start captured: agent_name=%r, agent_avatar=%r",
+        ctx.agent_name,
+        ctx.agent_avatar[:80] if ctx.agent_avatar else "<empty>",
+    )
+
     # Ensure we have a message object to link to
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
@@ -827,18 +838,29 @@ async def handle_normal_finalization(
 
     # --- Push notification (fire-and-forget, never blocks chat flow) ---
     try:
+        from app.core.notification.events import pack_notification_body
         from app.tasks.notification import send_notification
 
         if ctx.ai_message_obj and ctx.full_content:
+            _title = f"{ctx.agent_name or 'Agent'} replied"
+            _packed = pack_notification_body(
+                ctx.full_content[:200],
+                title=_title,
+                agent_name=ctx.agent_name,
+                agent_avatar=ctx.agent_avatar,
+                topic_id=str(ctx.topic_id),
+                url=f"/#/chat/{ctx.topic_id}",
+            )
             send_notification.delay(
                 event_type="agent-reply",
                 subscriber_id=ctx.user_id,
                 payload={
-                    "title": "Agent replied",
+                    "__packed": _packed,
+                    "title": _title,
                     "body": ctx.full_content[:200],
                     "topic_id": str(ctx.topic_id),
                     "session_id": str(ctx.session_id),
-                    "url": f"/chat?topic={ctx.topic_id}",
+                    "url": f"/#/chat/{ctx.topic_id}",
                 },
             )
     except Exception:

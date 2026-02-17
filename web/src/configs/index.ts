@@ -55,6 +55,3 @@ const getLayoutStyle = (): LayoutStyle => {
 export const DEFAULT_LAYOUT_STYLE = getLayoutStyle();
 
 console.log("Final DEFAULT_LAYOUT_STYLE:", DEFAULT_LAYOUT_STYLE);
-
-export const NOVU_API_URL = import.meta.env.VITE_XYZEN_NOVU_API_URL || "";
-export const NOVU_WS_URL = import.meta.env.VITE_XYZEN_NOVU_WS_URL || "";

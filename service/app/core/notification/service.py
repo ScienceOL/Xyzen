@@ -94,6 +94,7 @@ class NotificationService:
         event_type: NotificationEventType | str,
         subscriber_id: str,
         payload: dict[str, Any],
+        actor: dict[str, str] | None = None,
     ) -> bool:
         """Trigger a notification workflow for a single subscriber."""
         client = NovuClient.get()
@@ -101,13 +102,21 @@ class NotificationService:
             return False
 
         try:
-            client.trigger(
-                trigger_event_request_dto={
-                    "workflow_id": str(event_type),
-                    "to": subscriber_id,
-                    "payload": payload,
-                },
+            dto: dict[str, Any] = {
+                "workflow_id": str(event_type),
+                "to": subscriber_id,
+                "payload": payload,
+            }
+            if actor:
+                dto["actor"] = actor
+
+            logger.debug(
+                "[Notification] trigger: event=%s, subscriber=%s, payload_keys=%s",
+                event_type,
+                subscriber_id,
+                list(payload.keys()),
             )
+            client.trigger(trigger_event_request_dto=dto)
             logger.debug("Notification triggered: %s → %s", event_type, subscriber_id)
             return True
         except Exception:

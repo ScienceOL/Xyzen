@@ -4,6 +4,8 @@ import { useXyzen } from "@/store";
 export interface NotificationConfig {
   enabled: boolean;
   app_identifier: string;
+  api_url: string;
+  ws_url: string;
 }
 
 interface DeviceTokenResponse {

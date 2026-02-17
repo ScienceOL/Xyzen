@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import {
   Tabs,
   TabsContent,
@@ -892,14 +892,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   const defaultTab = hasPaidSub ? "subscription" : "international";
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title=""
-      containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
-      panelClassName="flex w-full flex-col h-[95dvh] rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-auto md:max-h-[85vh] md:max-w-5xl md:rounded-2xl md:border md:border-neutral-200/20"
-      swipeToDismiss
-    >
+    <SheetModal isOpen={isOpen} onClose={onClose}>
       <div className="flex h-full flex-col overflow-hidden">
         {/* Mobile title */}
         <div className="shrink-0 px-5 pb-1 pt-2 md:px-6 md:pt-4">
@@ -1059,6 +1052,6 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
           </motion.button>
         </div>
       </div>
-    </Modal>
+    </SheetModal>
   );
 }

@@ -48,6 +48,7 @@ class AgentEventContext:
     agent_id: str
     agent_name: str
     agent_type: str  # actual system key (e.g., "react", "deep_research") or "graph"
+    agent_avatar: str = ""
     execution_id: str = field(default_factory=lambda: f"exec_{uuid.uuid4().hex[:12]}")
     parent_execution_id: str | None = None
     depth: int = 0
@@ -71,6 +72,7 @@ class AgentEventContext:
             "agent_id": self.agent_id,
             "agent_name": self.agent_name,
             "agent_type": self.agent_type,
+            "agent_avatar": self.agent_avatar,
             "execution_id": self.execution_id,
             "depth": self.depth,
             "execution_path": self.execution_path,

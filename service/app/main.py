@@ -1,6 +1,7 @@
+import logging
+import warnings
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
-import logging
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -16,6 +17,9 @@ from app.core.logger import LOGGING_CONFIG
 # from app.middleware.auth.casdoor import casdoor_mcp_auth
 from app.infra.database import create_db_and_tables
 from app.mcp import setup_mcp_routes
+
+# Suppress websockets legacy deprecation triggered by uvicorn internals
+warnings.filterwarnings("ignore", message="remove second argument of ws_handler", category=DeprecationWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +45,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     register_builtin_tools()
 
     # Initialize system agents (Chat agent)
-    from app.infra.database import AsyncSessionLocal
+    # Bootstrap Novu notification (auto-create admin, fetch API keys)
+    from app.core.notification.bootstrap import ensure_novu_setup
     from app.core.system_agent import SystemAgentManager
+    from app.infra.database import AsyncSessionLocal
+
+    try:
+        await ensure_novu_setup()
+    except Exception as e:
+        logger.warning(f"Novu bootstrap skipped: {e}")
 
     async with AsyncSessionLocal() as db:
         try:

@@ -199,6 +199,8 @@ export interface ChatChannel {
   responding?: boolean;
   // Whether an abort request is in progress
   aborting?: boolean;
+  // Accumulated total tokens for context window tracking
+  tokenUsage?: number;
 }
 
 export interface ChatHistoryItem {

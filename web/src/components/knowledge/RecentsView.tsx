@@ -4,18 +4,12 @@ import {
   type KnowledgeSetWithFileCount,
 } from "@/service/knowledgeSetService";
 import { formatDistanceToNow } from "date-fns";
-import type { Locale } from "date-fns";
-import { enUS, ja, zhCN } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
+import { DATE_FNS_LOCALE_MAP } from "@/lib/formatDate";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileList } from "./FileList";
 import type { FileTreeItem } from "@/service/folderService";
-
-const dateFnsLocaleMap: Record<string, Locale> = {
-  zh: zhCN,
-  ja: ja,
-  en: enUS,
-};
 
 interface RecentsViewProps {
   refreshTrigger: number;
@@ -83,7 +77,7 @@ export const RecentsView = ({
 }: RecentsViewProps) => {
   const { t, i18n } = useTranslation();
   const dateFnsLocale = useMemo(
-    () => dateFnsLocaleMap[i18n.language] ?? enUS,
+    () => DATE_FNS_LOCALE_MAP[i18n.language] ?? enUS,
     [i18n.language],
   );
   const [knowledgeSets, setKnowledgeSets] = useState<
