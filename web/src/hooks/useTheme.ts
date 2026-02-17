@@ -22,6 +22,14 @@ const useTheme = () => {
     root.classList.toggle("dark", isDark);
     localStorage.setItem("theme", selectedTheme);
 
+    // Sync <meta name="theme-color"> so Safari browser chrome matches
+    const themeColor = isDark ? "#000000" : "#ffffff";
+    document
+      .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+      .forEach((meta) => {
+        meta.content = themeColor;
+      });
+
     // 在短时间后移除样式，以恢复过渡效果
     // 这确保了仅在主题切换的瞬间禁用过渡
     setTimeout(() => {

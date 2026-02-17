@@ -1,8 +1,8 @@
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -46,9 +46,12 @@ const ContextUsageRing = memo(function ContextUsageRing({
   const color = getColor(remainingPct);
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex cursor-default items-center">
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center p-2 -m-2 touch-manipulation"
+        >
           <svg
             width={SIZE}
             height={SIZE}
@@ -77,9 +80,9 @@ const ContextUsageRing = memo(function ContextUsageRing({
               transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
             />
           </svg>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="bottom" className="w-auto px-3 py-2">
         <p className="text-xs">
           {t("app.chatHeader.contextRemaining", {
             percent: Math.round(remainingPct * 100),
@@ -89,8 +92,8 @@ const ContextUsageRing = memo(function ContextUsageRing({
         <p className="text-[10px] opacity-60">
           {formatTokens(tokenUsage)} / {formatTokens(limit)}
         </p>
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   );
 });
 

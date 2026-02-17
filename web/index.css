@@ -208,17 +208,17 @@
     overscroll-behavior: none;
   }
 
-  /* Mobile / PWA: lock html+body to prevent iOS Safari rubber-band bounce
-     and address-bar resizing. Real scrolling happens inside .custom-scrollbar
-     containers which use overscroll-behavior-y: contain. */
+  /* Mobile: prevent rubber-band bounce without position:fixed side-effects */
   @media (max-width: 786px), (display-mode: standalone) {
     html,
     body {
-      position: fixed;
-      width: 100%;
-      height: 100%;
       overflow: hidden;
+      height: 100dvh;
     }
+  }
+
+  html {
+    @apply bg-background;
   }
 
   body {
