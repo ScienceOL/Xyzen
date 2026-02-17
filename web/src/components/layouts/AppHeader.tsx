@@ -1,4 +1,5 @@
 import { AuthStatus } from "@/components/features";
+import { NotificationBell } from "@/components/features/NotificationBell";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -160,6 +161,7 @@ export function AppHeader({
             </>
           )}
 
+          <NotificationBell />
           <AuthStatus className="ml-2" />
           {isSide && !isMobile && (
             <button

@@ -2136,6 +2136,20 @@ wheels = [
 ]
 
 [[package]]
+name = "novu-py"
+version = "3.13.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpcore" },
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/f4/203d038d6f27f7cf10e48b14f8df0bcd4b002658cf4c7ba1d7ac442b492d/novu_py-3.13.0.tar.gz", hash = "sha256:fb028398565042156ab13413b05e987980ba29e0d9967eb187a063373f79539e", size = 191106, upload-time = "2026-01-28T18:33:23.948Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/72/39/53f9b329866aa3b9e93a0ca7ecb2e1dba6cd3c5113bccfb6eeea6a44bf8c/novu_py-3.13.0-py3-none-any.whl", hash = "sha256:c9db269b7ea2646293c23e86170db8a684d760df10c7380c80c75b89602fca88", size = 470067, upload-time = "2026-01-28T18:33:22.178Z" },
+]
+
+[[package]]
 name = "numexpr"
 version = "2.14.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3282,6 +3296,7 @@ dependencies = [
     { name = "loguru" },
     { name = "lxml" },
     { name = "mcp" },
+    { name = "novu-py" },
     { name = "openai" },
     { name = "openfga-sdk" },
     { name = "openpyxl" },
@@ -3352,6 +3367,7 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "lxml", specifier = ">=6.0.2" },
     { name = "mcp", specifier = ">=1.11.0" },
+    { name = "novu-py", specifier = ">=0.6.0" },
     { name = "openai", specifier = ">=1.98.0" },
     { name = "openfga-sdk", specifier = ">=0.9.0" },
     { name = "openpyxl", specifier = ">=3.1.2" },

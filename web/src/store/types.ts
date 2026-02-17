@@ -8,6 +8,7 @@ import type {
   LoadingSlice,
   McpSlice,
   McpToolSlice,
+  NotificationSlice,
   ProviderSlice,
   UiSlice,
 } from "./slices";
@@ -250,4 +251,5 @@ export type XyzenState = UiSlice &
   AuthSlice &
   LoadingSlice &
   FileUploadSlice &
-  KnowledgeSlice;
+  KnowledgeSlice &
+  NotificationSlice;

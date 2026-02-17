@@ -25,6 +25,7 @@ dependencies = [
     "llm-sandbox[docker,k8s]>=0.3.20",
     "loguru>=0.7.3",
     "mcp>=1.11.0",
+    "novu-py>=0.6.0",
     "openai>=1.98.0",
     "psycopg[binary,pool]>=3.2.9",
     "pydantic-graph>=0.4.10",

@@ -1,0 +1,14 @@
+{
+  "push": {
+    "promptTitle": "Enable Notifications",
+    "promptDescription": "Get notified when agents finish responding.",
+    "enable": "Enable",
+    "enabled": "Push notifications enabled",
+    "disabled": "Push notifications disabled"
+  },
+  "bell": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "markAllRead": "Mark all as read"
+  }
+}

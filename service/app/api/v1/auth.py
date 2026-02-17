@@ -190,6 +190,20 @@ async def validate_token(
         logger.warning("验证成功但没有用户信息")
 
     logger.info("Token验证完成，返回成功结果")
+
+    # Fire-and-forget: ensure Novu subscriber exists (never blocks auth)
+    if user_info:
+        try:
+            from app.core.notification.service import NotificationService
+
+            NotificationService().ensure_subscriber(
+                user_id=user_info.id,
+                email=user_info.email,
+                name=user_info.display_name,
+            )
+        except Exception:
+            pass
+
     return AuthValidationResponse(success=True, user_info=user_info)
 
 

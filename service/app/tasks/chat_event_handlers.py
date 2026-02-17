@@ -824,3 +824,22 @@ async def handle_normal_finalization(
 
     # Send final saved confirmation
     await send_message_saved(ctx)
+
+    # --- Push notification (fire-and-forget, never blocks chat flow) ---
+    try:
+        from app.tasks.notification import send_notification
+
+        if ctx.ai_message_obj and ctx.full_content:
+            send_notification.delay(
+                event_type="agent-reply",
+                subscriber_id=ctx.user_id,
+                payload={
+                    "title": "Agent replied",
+                    "body": ctx.full_content[:200],
+                    "topic_id": str(ctx.topic_id),
+                    "session_id": str(ctx.session_id),
+                    "url": f"/chat?topic={ctx.topic_id}",
+                },
+            )
+    except Exception:
+        pass  # Never affect chat flow

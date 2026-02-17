@@ -1,0 +1,14 @@
+{
+  "push": {
+    "promptTitle": "开启通知",
+    "promptDescription": "Agent 回复完成后，您将收到推送通知。",
+    "enable": "开启",
+    "enabled": "推送通知已开启",
+    "disabled": "推送通知已关闭"
+  },
+  "bell": {
+    "title": "通知",
+    "empty": "暂无通知",
+    "markAllRead": "全部标记为已读"
+  }
+}

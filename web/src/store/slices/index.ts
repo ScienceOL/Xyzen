@@ -6,5 +6,6 @@ export * from "./knowledgeSlice";
 export * from "./loadingSlice";
 export * from "./mcpSlice";
 export * from "./mcpToolSlice";
+export * from "./notificationSlice";
 export * from "./providerSlice";
 export * from "./uiSlice/";

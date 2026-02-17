@@ -7,7 +7,7 @@ celery_app = Celery(
     "xyzen_worker",
     broker=configs.Redis.REDIS_URL,
     backend=configs.Redis.REDIS_URL,
-    include=["app.tasks.chat"],
+    include=["app.tasks.chat", "app.tasks.notification"],
 )
 
 celery_app.conf.update(

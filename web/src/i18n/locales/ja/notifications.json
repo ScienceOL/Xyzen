@@ -1,0 +1,14 @@
+{
+  "push": {
+    "promptTitle": "通知を有効にする",
+    "promptDescription": "エージェントの応答が完了したら通知を受け取ります。",
+    "enable": "有効にする",
+    "enabled": "プッシュ通知が有効です",
+    "disabled": "プッシュ通知が無効です"
+  },
+  "bell": {
+    "title": "通知",
+    "empty": "通知はまだありません",
+    "markAllRead": "すべて既読にする"
+  }
+}
