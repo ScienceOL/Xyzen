@@ -4,6 +4,7 @@ import { ActivityBar } from "@/components/layouts/ActivityBar";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import MemoryPanel from "@/components/layouts/MemoryPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
+import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { useXyzen } from "@/store";
 import { useShallow } from "zustand/react/shallow";
@@ -80,6 +81,7 @@ export function MobileApp({
       </div>
 
       <SettingsModal />
+      <PushPermissionPrompt />
     </>
   );
 }
