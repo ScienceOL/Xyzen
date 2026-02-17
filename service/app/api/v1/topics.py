@@ -7,9 +7,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.v1.sessions import get_current_user
 from app.infra.database import get_session
 from app.models.message import MessageReadWithFilesAndCitations
+from app.models.session_stats import TopicTokenStats
 from app.models.topic import Topic as TopicModel
 from app.models.topic import TopicCreate, TopicRead, TopicUpdate
 from app.repos import MessageRepository, SessionRepository, TopicRepository
+from app.repos.session_stats import SessionStatsRepository
 
 router = APIRouter(tags=["topics"])
 
@@ -244,3 +246,13 @@ async def delete_topic(
     await topic_repo.delete_topic(topic.id)
     await db.commit()
     return
+
+
+@router.get("/{topic_id}/token-stats", response_model=TopicTokenStats)
+async def get_topic_token_stats(
+    topic: TopicModel = Depends(get_authorized_topic),
+    db: AsyncSession = Depends(get_session),
+) -> TopicTokenStats:
+    """Get aggregated token usage stats for a topic."""
+    stats_repo = SessionStatsRepository(db)
+    return await stats_repo.get_topic_token_stats(topic.id)

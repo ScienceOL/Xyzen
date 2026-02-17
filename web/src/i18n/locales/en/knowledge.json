@@ -32,6 +32,8 @@
   },
   "uploadProgress": {
     "uploading": "Uploading {{count}} file(s)",
+    "queued": "{{count}} file(s) queued",
+    "waiting": "Waiting...",
     "complete": "Upload complete",
     "completed": "Completed",
     "failed": "Failed",

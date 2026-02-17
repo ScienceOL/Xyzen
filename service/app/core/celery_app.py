@@ -7,7 +7,7 @@ celery_app = Celery(
     "xyzen_worker",
     broker=configs.Redis.REDIS_URL,
     backend=configs.Redis.REDIS_URL,
-    include=["app.tasks.chat"],
+    include=["app.tasks.chat", "app.tasks.notification"],
 )
 
 celery_app.conf.update(
@@ -30,3 +30,13 @@ def init_worker_process(**kwargs: object) -> None:
     from app.tools.registry import register_builtin_tools
 
     register_builtin_tools()
+
+    # Bootstrap Novu so the worker has the real API key
+    import asyncio
+
+    from app.core.notification.bootstrap import ensure_novu_setup
+
+    try:
+        asyncio.run(ensure_novu_setup())
+    except Exception:
+        pass  # Logged inside ensure_novu_setup

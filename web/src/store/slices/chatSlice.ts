@@ -35,9 +35,11 @@ import {
 import { deriveTopicStatus } from "@/core/chat/channelStatus";
 import { providerCore } from "@/core/provider";
 import { authService } from "@/service/authService";
+import { llmProviderService } from "@/service/llmProviderService";
 import { sessionService } from "@/service/sessionService";
 import xyzenService from "@/service/xyzenService";
 import type { MessageEventCallback } from "@/service/xyzenService";
+import i18n from "i18next";
 import type { StateCreator } from "zustand";
 import type {
   ChatChannel,
@@ -141,6 +143,9 @@ export interface ChatSlice {
   // Message deletion
   deleteMessage: (messageId: string) => Promise<void>;
 
+  // Retry a failed message (remove local-only message + resend)
+  retryMessage: (messageId: string) => void;
+
   // Notification methods
   showNotification: (
     title: string,
@@ -234,7 +239,7 @@ export const createChatSlice: StateCreator<
         const wasResponding = prevRespondingIds.has(activeId);
         const isResponding = respondingIds.has(activeId);
         if (wasResponding !== isResponding) {
-          console.warn(
+          console.debug(
             `[updateDerivedStatus] active channel ${activeId}: respondingChannelIds ${wasResponding} → ${isResponding}`,
             `| channel.responding: ${state.channels[activeId]?.responding}`,
           );
@@ -281,16 +286,16 @@ export const createChatSlice: StateCreator<
     // runtime fields (agentExecution, streamId, isStreaming, etc.).
     // If the stream truly stalled, the 60s stale watchdog will handle it.
     if (ch?.responding) {
-      console.warn(
+      console.debug(
         `[reconcile] SKIP — channel is responding, topic=${topicId.slice(0, 8)} msgs=${ch.messages.length}`,
       );
       return;
     }
 
-    console.warn(
-      `[reconcile] ENTER topic=${topicId.slice(0, 8)} responding=${ch?.responding} msgs=${ch?.messages.length}`,
-      new Error().stack?.split("\n").slice(1, 5).join(" <- "),
+    console.groupCollapsed(
+      `[reconcile] topic=${topicId.slice(0, 8)} responding=${ch?.responding} msgs=${ch?.messages.length}`,
     );
+    console.debug(new Error().stack?.split("\n").slice(1, 5).join(" <- "));
     setLoading(loadingKey, true);
 
     try {
@@ -307,8 +312,20 @@ export const createChatSlice: StateCreator<
         `${backendUrl}/xyzen/api/v1/topics/${topicId}/messages`,
         { headers },
       );
+
+      // Fetch token stats in parallel (fire-and-forget on failure)
+      const tokenStatsPromise = fetch(
+        `${backendUrl}/xyzen/api/v1/topics/${topicId}/token-stats`,
+        { headers },
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
       if (response.ok) {
-        const messages = await response.json();
+        const [messages, tokenStats] = await Promise.all([
+          response.json(),
+          tokenStatsPromise,
+        ]);
         const processedMessages = groupToolMessagesWithAssistant(messages);
 
         set((state: ChatSlice) => {
@@ -402,10 +419,13 @@ export const createChatSlice: StateCreator<
             // Merge: DB messages (with merged runtime state) + truly new messages
             const mergedMessages = [...processedMessages, ...trulyNewMessages];
 
-            console.warn(
+            console.debug(
               `[reconcile] OVERWRITE topic=${topicId.slice(0, 8)} oldMsgs=${channel.messages.length} dbMsgs=${processedMessages.length} preserved=${inMemoryMessages.length} merged=${inMemoryMessages.length - trulyNewMessages.length} new=${trulyNewMessages.length} responding=${channel.responding}`,
             );
             channel.messages = mergedMessages;
+            if (tokenStats?.total_tokens != null) {
+              channel.tokenUsage = tokenStats.total_tokens;
+            }
             syncChannelResponding(channel);
           }
         });
@@ -419,6 +439,7 @@ export const createChatSlice: StateCreator<
     } catch (error) {
       console.error("Failed to reconcile topic messages:", error);
     } finally {
+      console.groupEnd();
       setLoading(loadingKey, false);
     }
   };
@@ -533,7 +554,7 @@ export const createChatSlice: StateCreator<
                   updatedAt: topic.updated_at,
                   assistantTitle: getAgentNameById(session.agent_id),
                   lastMessage: "",
-                  isPinned: false,
+                  isPinned: topic.is_pinned ?? false,
                 };
               }) || []
             );
@@ -575,24 +596,52 @@ export const createChatSlice: StateCreator<
     },
 
     togglePinChat: (chatId: string) => {
+      const chat = get().chatHistory.find((c) => c.id === chatId);
+      if (!chat) return;
+
+      const newPinned = !chat.isPinned;
+
+      // Optimistic update
       set((state: ChatSlice) => {
-        const chat = state.chatHistory.find((c) => c.id === chatId);
-        if (chat) {
-          chat.isPinned = !chat.isPinned;
+        const item = state.chatHistory.find((c) => c.id === chatId);
+        if (item) {
+          item.isPinned = newPinned;
         }
       });
+
+      // Persist to backend
+      const token = authService.getToken();
+      if (token) {
+        fetch(`${get().backendUrl}/xyzen/api/v1/topics/${chatId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ is_pinned: newPinned }),
+        }).catch((error) => {
+          console.error("Failed to persist pin state:", error);
+          // Revert on failure
+          set((state: ChatSlice) => {
+            const item = state.chatHistory.find((c) => c.id === chatId);
+            if (item) {
+              item.isPinned = !newPinned;
+            }
+          });
+        });
+      }
     },
 
     activateChannel: async (topicId: string) => {
       const { channels, activeChatChannel, connectToChannel, backendUrl } =
         get();
 
-      console.warn(
+      console.debug(
         `[activateChannel] topic=${topicId.slice(0, 8)} current=${activeChatChannel?.slice(0, 8)} connected=${channels[topicId]?.connected} msgs=${channels[topicId]?.messages.length} responding=${channels[topicId]?.responding}`,
       );
 
       if (topicId === activeChatChannel && channels[topicId]?.connected) {
-        console.warn(`[activateChannel] SKIP (already active & connected)`);
+        console.debug(`[activateChannel] SKIP (already active & connected)`);
         return;
       }
 
@@ -704,7 +753,7 @@ export const createChatSlice: StateCreator<
             ),
           );
 
-          console.warn(
+          console.debug(
             `[activateChannel] noLiveWs, msgs=${channel.messages.length} stale=${hasUnresolvedRuntimeState} → ${channel.messages.length === 0 || hasUnresolvedRuntimeState ? "RECONCILE" : "SKIP"}`,
           );
 
@@ -714,7 +763,7 @@ export const createChatSlice: StateCreator<
             await reconcileChannelFromBackend(topicId);
           }
         } else {
-          console.warn(`[activateChannel] hasLiveWs, skipping reconcile`);
+          console.debug(`[activateChannel] hasLiveWs, skipping reconcile`);
         }
         connectToChannel(channel.sessionId, channel.id);
 
@@ -833,7 +882,7 @@ export const createChatSlice: StateCreator<
     },
 
     connectToChannel: (sessionId: string, topicId: string) => {
-      console.warn(
+      console.debug(
         `[connectToChannel] topic=${topicId.slice(0, 8)} hasExistingWs=${xyzenService.hasConnection(topicId)} msgs=${get().channels[topicId]?.messages.length}`,
       );
       // --- 0. Build shared callbacks (defined early so they can be passed to setPrimary or connect) ---
@@ -879,15 +928,16 @@ export const createChatSlice: StateCreator<
 
         const preEventResponding = get().channels[topicId]?.responding;
 
+        console.groupCollapsed(
+          `[ChatEvent] ${event.type} | topic=${topicId.slice(0, 8)} | responding=${preEventResponding}`,
+        );
+
         set((state: ChatSlice) => {
           const channel = state.channels[topicId];
           if (!channel) return;
 
-          // Diagnostic: log every event with timestamp and key state info
-          console.log(
-            `[ChatEvent] type=${event.type}`,
-            `| responding=${channel.responding}`,
-            `| msgs=${channel.messages.length}`,
+          console.debug(
+            `msgs=${channel.messages.length}`,
             `| latestAssist=${(() => {
               const la = [...channel.messages]
                 .reverse()
@@ -1053,6 +1103,12 @@ export const createChatSlice: StateCreator<
               handleProgressUpdate(channel, event.data);
               break;
             }
+
+            case "token_usage": {
+              const { total_tokens } = event.data;
+              channel.tokenUsage = total_tokens;
+              break;
+            }
           }
 
           // Keep channel-level responding state consistent even with concurrent streams.
@@ -1062,12 +1118,13 @@ export const createChatSlice: StateCreator<
         // Log state transition if responding changed
         const postEventResponding = get().channels[topicId]?.responding;
         if (preEventResponding !== postEventResponding) {
-          console.warn(
-            `[ChatSlice] responding changed: ${preEventResponding} → ${postEventResponding}`,
-            `| event: ${event.type}`,
+          console.debug(
+            `responding changed: ${preEventResponding} → ${postEventResponding}`,
             `| hadPendingChunks: ${hadPendingChunks}`,
           );
         }
+
+        console.groupEnd();
 
         // Chunk events return early above, so all events reaching here are state transitions
         updateDerivedStatus();
@@ -1140,7 +1197,7 @@ export const createChatSlice: StateCreator<
         );
 
         if (hasStaleState) {
-          console.warn(
+          console.debug(
             `[onReconnect] stale state detected, reconciling topic=${topicId.slice(0, 8)} msgs=${channel.messages.length} responding=${channel.responding}`,
           );
           reconcileChannelFromBackend(topicId);
@@ -1409,10 +1466,9 @@ export const createChatSlice: StateCreator<
                   model = agent.model;
                 } else {
                   // Otherwise use system defaults
+                  const providers = await llmProviderService.getMyProviders();
                   const defaults =
-                    await providerCore.getDefaultProviderAndModel(
-                      state.llmProviders,
-                    );
+                    await providerCore.getDefaultProviderAndModel(providers);
                   providerId = providerId || defaults.providerId;
                   model = model || defaults.model;
                 }
@@ -1509,15 +1565,14 @@ export const createChatSlice: StateCreator<
           sessionPayload.mcp_server_ids = agent.mcp_servers.map((s) => s.id);
         }
 
-        // Ensure providers are loaded before proceeding
-        let currentProviders = state.llmProviders;
-        if (currentProviders.length === 0) {
-          try {
-            await get().fetchMyProviders();
-            currentProviders = get().llmProviders;
-          } catch (error) {
-            console.error("Failed to fetch providers:", error);
-          }
+        // Fetch providers for default model resolution
+        let currentProviders: Awaited<
+          ReturnType<typeof llmProviderService.getMyProviders>
+        > = [];
+        try {
+          currentProviders = await llmProviderService.getMyProviders();
+        } catch (error) {
+          console.error("Failed to fetch providers:", error);
         }
 
         try {
@@ -2113,7 +2168,11 @@ export const createChatSlice: StateCreator<
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Failed to edit message:", errorText);
-          get().showNotification("Error", "Failed to edit message", "error");
+          get().showNotification(
+            "Error",
+            i18n.t("app.message.editFailed"),
+            "error",
+          );
           return;
         }
 
@@ -2153,7 +2212,11 @@ export const createChatSlice: StateCreator<
         }
       } catch (error) {
         console.error("Failed to edit message:", error);
-        get().showNotification("Error", "Failed to edit message", "error");
+        get().showNotification(
+          "Error",
+          i18n.t("app.message.editFailed"),
+          "error",
+        );
       }
     },
 
@@ -2187,12 +2250,16 @@ export const createChatSlice: StateCreator<
         // Find the message to provide contextual error
         const message = channel.messages.find((m) => m.id === messageId);
         const reason = message?.isStreaming
-          ? "Message is still streaming"
-          : "Message has not been saved to server yet";
+          ? i18n.t("app.message.deleteStillStreaming")
+          : i18n.t("app.message.deleteNotSaved");
         console.error(
           `Cannot delete message: ${reason} (id: ${messageId.slice(0, 20)}...)`,
         );
-        get().showNotification("Cannot Delete", reason, "warning");
+        get().showNotification(
+          i18n.t("app.message.cannotDelete"),
+          reason,
+          "warning",
+        );
         return;
       }
 
@@ -2224,7 +2291,11 @@ export const createChatSlice: StateCreator<
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Failed to delete message:", errorText);
-          get().showNotification("Error", "Failed to delete message", "error");
+          get().showNotification(
+            "Error",
+            i18n.t("app.message.deleteFailed"),
+            "error",
+          );
           return;
         }
 
@@ -2237,8 +2308,36 @@ export const createChatSlice: StateCreator<
         });
       } catch (error) {
         console.error("Failed to delete message:", error);
-        get().showNotification("Error", "Failed to delete message", "error");
+        get().showNotification(
+          "Error",
+          i18n.t("app.message.deleteFailed"),
+          "error",
+        );
       }
+    },
+
+    retryMessage: (messageId: string) => {
+      const { activeChatChannel, channels, sendMessage } = get();
+      if (!activeChatChannel) return;
+
+      const channel = channels[activeChatChannel];
+      if (!channel) return;
+
+      const message = channel.messages.find((m) => m.id === messageId);
+      if (!message || message.status !== "failed") return;
+
+      const content = message.content;
+
+      // Remove the failed message locally (it was never persisted)
+      set((state: ChatSlice) => {
+        const ch = state.channels[activeChatChannel];
+        if (ch) {
+          ch.messages = ch.messages.filter((m) => m.id !== messageId);
+        }
+      });
+
+      // Resend
+      sendMessage(content);
     },
 
     showNotification: (

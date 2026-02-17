@@ -182,7 +182,8 @@
   },
   "chatHeader": {
     "share": "Share",
-    "shareTooltip": "Share conversation"
+    "shareTooltip": "Share conversation",
+    "contextRemaining": "Context remaining: {{percent}}%"
   },
   "share": {
     "title": "Share Conversation",
@@ -238,7 +239,12 @@
     "copy": "Copy",
     "sending": "Sending...",
     "sendFailed": "Failed to send",
-    "retry": "Retry"
+    "retry": "Retry",
+    "cannotDelete": "Cannot Delete",
+    "deleteStillStreaming": "Message is still streaming",
+    "deleteNotSaved": "Message has not been saved to server yet",
+    "deleteFailed": "Failed to delete message",
+    "editFailed": "Failed to edit message"
   },
   "authStatus": {
     "checking": "Checking authentication...",

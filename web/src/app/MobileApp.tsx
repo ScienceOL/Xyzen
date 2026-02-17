@@ -30,7 +30,7 @@ export function MobileApp({
   return (
     <>
       <div
-        className="flex flex-col bg-white dark:bg-black"
+        className="flex flex-col bg-white dark:bg-black select-none"
         style={{ height: "100dvh" }}
       >
         <div className="flex flex-1 overflow-hidden relative">

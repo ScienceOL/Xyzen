@@ -182,7 +182,8 @@
   },
   "chatHeader": {
     "share": "分享",
-    "shareTooltip": "分享对话"
+    "shareTooltip": "分享对话",
+    "contextRemaining": "剩余上下文: {{percent}}%"
   },
   "share": {
     "title": "分享对话",
@@ -238,7 +239,12 @@
     "copy": "复制",
     "sending": "发送中...",
     "sendFailed": "发送失败",
-    "retry": "重试"
+    "retry": "重试",
+    "cannotDelete": "无法删除",
+    "deleteStillStreaming": "消息仍在生成中",
+    "deleteNotSaved": "消息尚未保存到服务器",
+    "deleteFailed": "删除消息失败",
+    "editFailed": "编辑消息失败"
   },
   "authStatus": {
     "checking": "检查认证状态...",

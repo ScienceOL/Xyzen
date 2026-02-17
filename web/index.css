@@ -30,6 +30,8 @@
 @utility custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 
   &::-webkit-scrollbar {
     width: 6px;
@@ -199,6 +201,24 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Mobile: prevent rubber-band bounce without position:fixed side-effects */
+  @media (max-width: 786px), (display-mode: standalone) {
+    html,
+    body {
+      overflow: hidden;
+      height: 100dvh;
+    }
+  }
+
+  html {
+    @apply bg-background;
   }
 
   body {

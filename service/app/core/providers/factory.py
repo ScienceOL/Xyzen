@@ -130,6 +130,10 @@ class ChatModelFactory:
             tmp_path, scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
 
+        # Remove credential keys that were already consumed above
+        runtime_kwargs.pop("vertex_sa", None)
+        runtime_kwargs.pop("vertex_project", None)
+
         # Create the base model
         llm = ChatGoogleGenerativeAI(
             model=model,

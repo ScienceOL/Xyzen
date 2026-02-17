@@ -223,6 +223,11 @@ export const logout = () => {
   const { setStatus, setUser, setToken, setActiveChatChannel } =
     useXyzen.getState();
 
+  // Unregister push subscription before clearing auth state (fire-and-forget)
+  import("@/core/notification/pushManager")
+    .then((m) => m.unregisterPushSubscription())
+    .catch(() => {});
+
   authService.logout();
 
   // Clear user-specific chat state so a subsequent login

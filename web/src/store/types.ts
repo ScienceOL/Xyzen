@@ -8,6 +8,7 @@ import type {
   LoadingSlice,
   McpSlice,
   McpToolSlice,
+  NotificationSlice,
   ProviderSlice,
   UiSlice,
 } from "./slices";
@@ -198,6 +199,8 @@ export interface ChatChannel {
   responding?: boolean;
   // Whether an abort request is in progress
   aborting?: boolean;
+  // Accumulated total tokens for context window tracking
+  tokenUsage?: number;
 }
 
 export interface ChatHistoryItem {
@@ -226,6 +229,7 @@ export interface TopicResponse {
   id: string;
   name: string;
   updated_at: string;
+  is_pinned: boolean;
 }
 
 export interface SessionResponse {
@@ -250,4 +254,5 @@ export type XyzenState = UiSlice &
   AuthSlice &
   LoadingSlice &
   FileUploadSlice &
-  KnowledgeSlice;
+  KnowledgeSlice &
+  NotificationSlice;

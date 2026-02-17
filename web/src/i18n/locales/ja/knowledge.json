@@ -32,6 +32,8 @@
   },
   "uploadProgress": {
     "uploading": "{{count}}個のファイルをアップロード中",
+    "queued": "{{count}}個のファイルが待機中",
+    "waiting": "待機中...",
     "complete": "アップロード完了",
     "completed": "完了",
     "failed": "失敗",

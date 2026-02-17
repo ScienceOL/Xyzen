@@ -90,12 +90,16 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
       onPageChange?.(currentPage);
     }, [currentPage, onPageChange]);
 
-    // ---- Sync page position when channel is cleared externally ----
-    // Entering-chat navigation is handled imperatively via navigateToChat.
+    // ---- Sync page position when channel changes externally ----
     useEffect(() => {
       if (!hasChannel && prevHasChannel.current) {
+        // Channel cleared externally → snap back to agent list
         externalClear.current = true;
         setPageImmediate(0);
+      } else if (hasChannel && !prevHasChannel.current) {
+        // Channel activated externally (e.g. push notification deep-link)
+        // → navigate to chat page
+        goToPageRef.current(1);
       }
       prevHasChannel.current = hasChannel;
     }, [hasChannel, setPageImmediate]);
@@ -120,7 +124,7 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
 
           {/* ---- Page 1: Chat ---- */}
           {hasChannel && (
-            <div className="h-full shrink-0 w-full bg-white dark:bg-black">
+            <div className="h-full shrink-0 w-full bg-white dark:bg-neutral-950">
               <XyzenChat />
             </div>
           )}

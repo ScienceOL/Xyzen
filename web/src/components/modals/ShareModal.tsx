@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import Markdown from "@/lib/Markdown";
 import { shareService } from "@/service/shareService";
@@ -788,7 +788,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         />
       </div>
 
-      <Modal
+      <SheetModal
         isOpen={isOpen}
         onClose={() => {
           setStep("selection");
@@ -799,10 +799,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           resetScreenshot();
           onClose();
         }}
-        title=""
-        containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
-        panelClassName="flex w-full flex-col h-[85dvh] rounded-t-2xl border-t border-neutral-200/20 bg-white/95 shadow-2xl shadow-black/10 backdrop-blur-xl dark:border-neutral-700/20 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-auto md:max-h-[80vh] md:max-w-[640px] md:rounded-2xl md:border md:border-neutral-200/15 dark:md:border-neutral-700/20"
-        swipeToDismiss
+        mobileHeight="h-[85dvh]"
+        desktopClassName="md:h-auto md:max-h-[80vh] md:max-w-[640px]"
       >
         <div className="flex h-full flex-col overflow-hidden">
           {/* Header */}
@@ -843,7 +841,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             </motion.div>
           </AnimatePresence>
         </div>
-      </Modal>
+      </SheetModal>
     </>
   );
 };

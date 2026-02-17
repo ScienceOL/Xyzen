@@ -2,7 +2,6 @@
 
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { AgentList } from "@/components/agents";
-import { useAuth } from "@/hooks/useAuth";
 import {
   useActiveTopicCountByAgent,
   useChannelAgentIdMap,
@@ -45,9 +44,6 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
     activateChannelForAgent,
 
     fetchMcpServers,
-    fetchMyProviders,
-    llmProviders,
-    llmProvidersLoading,
   } = useXyzen(
     useShallow((s) => ({
       agents: s.agents,
@@ -57,18 +53,12 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
       chatHistory: s.chatHistory,
       activateChannelForAgent: s.activateChannelForAgent,
       fetchMcpServers: s.fetchMcpServers,
-      fetchMyProviders: s.fetchMyProviders,
-      llmProviders: s.llmProviders,
-      llmProvidersLoading: s.llmProvidersLoading,
     })),
   );
 
   // Derived state from store (stable across streaming chunks)
   const activeTopicCountByAgent = useActiveTopicCountByAgent();
   const channelAgentIdMap = useChannelAgentIdMap();
-
-  // Get auth state
-  const { isAuthenticated } = useAuth();
 
   // Fetch marketplace listings to check if deleted agent has a published version
   const { data: myListings } = useMyMarketplaceListings();
@@ -98,20 +88,6 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   // Note: fetchAgents is called in App.tsx during initial load
   // No need to fetch again here - agents are already in the store
 
-  // Ensure providers are loaded on mount (only if authenticated)
-  useEffect(() => {
-    if (isAuthenticated && llmProviders.length === 0 && !llmProvidersLoading) {
-      fetchMyProviders().catch((error) => {
-        console.error("Failed to fetch providers:", error);
-      });
-    }
-  }, [
-    isAuthenticated,
-    llmProviders.length,
-    llmProvidersLoading,
-    fetchMyProviders,
-  ]);
-
   // Ensure MCP servers are loaded first
   useEffect(() => {
     const loadMcps = async () => {
@@ -130,15 +106,6 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
 
     setLoadingAgentId(agentId);
     try {
-      // Ensure providers are loaded before creating a channel
-      if (llmProviders.length === 0) {
-        try {
-          await fetchMyProviders();
-        } catch (error) {
-          console.error("Failed to fetch providers:", error);
-        }
-      }
-
       // Use unified logic that always fetches from backend and gets the latest topic
       await activateChannelForAgent(agentId);
       onNavigateToChat?.();

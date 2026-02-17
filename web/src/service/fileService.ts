@@ -124,6 +124,10 @@ class FileService {
       xhr.addEventListener("load", () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(JSON.parse(xhr.responseText));
+        } else if (xhr.status === 429) {
+          reject(
+            new Error("Too many requests. Please wait a moment and try again."),
+          );
         } else {
           reject(new Error(`Upload failed: ${xhr.statusText}`));
         }
@@ -194,6 +198,10 @@ class FileService {
       xhr.addEventListener("load", () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(JSON.parse(xhr.responseText));
+        } else if (xhr.status === 429) {
+          reject(
+            new Error("Too many requests. Please wait a moment and try again."),
+          );
         } else {
           reject(new Error(`Upload failed: ${xhr.statusText}`));
         }

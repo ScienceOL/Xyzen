@@ -26,7 +26,7 @@ def upgrade() -> None:
     )
 
     # Seed tier limits per subscription role
-    op.execute("UPDATE subscriptionrole SET max_model_tier = 'lite' WHERE name = 'free'")
+    op.execute("UPDATE subscriptionrole SET max_model_tier = 'standard' WHERE name = 'free'")
     op.execute("UPDATE subscriptionrole SET max_model_tier = 'standard' WHERE name = 'standard'")
     op.execute("UPDATE subscriptionrole SET max_model_tier = 'pro' WHERE name = 'professional'")
     op.execute("UPDATE subscriptionrole SET max_model_tier = 'ultra' WHERE name = 'ultra'")

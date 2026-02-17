@@ -14,6 +14,7 @@ import MemoryPanel from "@/components/layouts/MemoryPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 
 import { PwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
+import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 
 import { DEFAULT_BACKEND_URL } from "@/configs";
@@ -110,6 +111,7 @@ export function AppFullscreen({
 
       <SettingsModal />
       <PwaInstallPrompt />
+      <PushPermissionPrompt />
     </>
   );
   return createPortal(fullscreenContent, document.body);

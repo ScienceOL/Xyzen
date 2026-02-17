@@ -111,10 +111,17 @@ async def create_chat_agent(
     resolved_config, agent_type_key = _resolve_agent_config(agent_config, system_prompt)
 
     # Create event context for tracking
+    _avatar = (agent_config.avatar or "") if agent_config else ""
     event_ctx = AgentEventContext(
         agent_id=str(agent_config.id) if agent_config else "default",
         agent_name=agent_config.name if agent_config else "Default Agent",
         agent_type=agent_type_key,
+        agent_avatar=_avatar,
+    )
+    logger.debug(
+        "AgentEventContext created: name=%s, avatar=%s",
+        event_ctx.agent_name,
+        event_ctx.agent_avatar[:80] if event_ctx.agent_avatar else "<empty>",
     )
 
     # Conditionally add subagent spawn tool

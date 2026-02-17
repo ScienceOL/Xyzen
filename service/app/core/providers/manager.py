@@ -198,7 +198,7 @@ async def get_user_provider_manager(user_id: str, db: AsyncSession) -> ProviderM
             provider_name = str(db_provider.id)
 
             extra_config: dict[str, Any] = db_provider.provider_config or {}
-            logger.debug(f"Add {extra_config} to {provider_name}")
+            logger.debug(f"Add provider {db_provider.name} ({db_provider.provider_type}) as {provider_name}")
             user_provider_manager.add_provider(
                 name=provider_name,
                 provider_scope=db_provider.scope,

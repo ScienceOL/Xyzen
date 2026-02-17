@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { NotificationCenter } from "@/components/features/NotificationCenter";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -92,6 +93,7 @@ export default function MobileAccountPage() {
               </span>
             )}
           </div>
+          <NotificationCenter />
         </div>
 
         {/* ── Check-in & Credits group ── */}

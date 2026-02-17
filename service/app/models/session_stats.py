@@ -70,3 +70,10 @@ class YesterdaySummary(BaseModel):
     message_count: int
     last_message_content: str | None = None
     summary: str | None = None  # Optional AI-generated summary
+
+
+class TopicTokenStats(BaseModel):
+    """Aggregated token stats for a single topic (computed on demand)."""
+
+    topic_id: UUID
+    total_tokens: int = 0

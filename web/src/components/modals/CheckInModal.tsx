@@ -1,5 +1,5 @@
 import { BubbleBackground } from "@/components/animate-ui/components/backgrounds/bubble";
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import { CheckInCalendar } from "@/components/features/CheckInCalendar";
 import type { CheckInResponse } from "@/service/checkinService";
 
@@ -15,14 +15,7 @@ export function CheckInModal({
   onCheckInSuccess,
 }: CheckInModalProps) {
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title=""
-      containerClassName="fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4"
-      panelClassName="flex w-full flex-col h-[95dvh] rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:h-auto md:max-h-[85vh] md:max-w-5xl md:rounded-2xl md:border md:border-neutral-200/20"
-      swipeToDismiss
-    >
+    <SheetModal isOpen={isOpen} onClose={onClose}>
       <div className="relative flex h-full flex-col overflow-hidden">
         <BubbleBackground
           className="pointer-events-none absolute inset-0 opacity-30 dark:opacity-20"
@@ -39,6 +32,6 @@ export function CheckInModal({
           <CheckInCalendar onCheckInSuccess={onCheckInSuccess} />
         </div>
       </div>
-    </Modal>
+    </SheetModal>
   );
 }

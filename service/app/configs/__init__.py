@@ -8,6 +8,7 @@ from .fga import FgaConfig
 from .image import ImageConfig
 from .lab import LabConfig
 from .memory import MemoryConfig
+from .novu import NovuConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
 from .mcps import McpProviderConfig
@@ -118,6 +119,11 @@ class AppConfig(BaseSettings):
     Fga: FgaConfig = Field(
         default_factory=lambda: FgaConfig(),
         description="OpenFGA authorization configuration",
+    )
+
+    Novu: NovuConfig = Field(
+        default_factory=lambda: NovuConfig(),
+        description="Novu notification service configuration",
     )
 
 

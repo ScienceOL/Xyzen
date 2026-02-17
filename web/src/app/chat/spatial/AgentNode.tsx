@@ -399,7 +399,7 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
           data.onFocus(id);
         }}
         className={cn(
-          "relative group rounded-3xl", // Removed bg/border from here
+          "relative group rounded-3xl shadow-2xl", // Removed bg/border from here
           data.isFocused ? "z-50" : "z-0", // focused node higher z-index
         )}
       >

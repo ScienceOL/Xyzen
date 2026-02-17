@@ -47,7 +47,7 @@ class SystemProviderManager:
                         model=provider_cfg.model,
                         provider_config=provider_cfg.to_extra_data(provider_type),
                     )
-                    logger.debug(f"Updating system provider: {provider_update_data}")
+                    logger.debug(f"Updating system provider: name={system_name} type={provider_type}")
                     ensured.append(await self._update_system_provider(existing, provider_update_data))
                 else:
                     provider_create_data: ProviderCreate = ProviderCreate(
@@ -60,7 +60,7 @@ class SystemProviderManager:
                         model=provider_cfg.model,
                         provider_config=provider_cfg.to_extra_data(provider_type),
                     )
-                    logger.debug(f"Creating system provider: {provider_create_data}")
+                    logger.debug(f"Creating system provider: name={system_name} type={provider_type}")
                     ensured.append(await self._create_system_provider(provider_create_data))
 
             return ensured

@@ -1,4 +1,5 @@
 import { AuthStatus } from "@/components/features";
+
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";

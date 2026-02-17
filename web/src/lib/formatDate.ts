@@ -1,32 +1,42 @@
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
-import { zhCN } from "date-fns/locale";
+import type { Locale } from "date-fns";
+import { enUS, ja, zhCN } from "date-fns/locale";
+import i18n from "i18next";
+
+/** Shared mapping from i18n language code → date-fns Locale. */
+export const DATE_FNS_LOCALE_MAP: Record<string, Locale> = {
+  zh: zhCN,
+  ja: ja,
+  en: enUS,
+};
+
+/** Resolve the current date-fns locale from the active i18n language. */
+export function getDateFnsLocale(): Locale {
+  return DATE_FNS_LOCALE_MAP[i18n.language] ?? enUS;
+}
 
 export function formatTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
+  const locale = getDateFnsLocale();
 
-  // 使用 formatDistanceToNow 显示相对时间，并添加中文支持
-  // addSuffix: true 会添加 "前" 或 "后"
-  const relativeTime = formatDistanceToNow(date, {
-    addSuffix: true,
-    locale: zhCN,
-  });
-
-  // 如果是一天内，直接返回相对时间，例如 "约5小时前"
+  // Within 24 hours — relative time, e.g. "5 hours ago" / "约5小时前"
   if (now.getTime() - date.getTime() < 24 * 60 * 60 * 1000) {
-    return relativeTime;
+    return formatDistanceToNow(date, { addSuffix: true, locale });
   }
 
-  // 如果是昨天
+  // Yesterday
   if (isYesterday(date)) {
-    return `昨天 ${format(date, "HH:mm")}`;
+    const yesterday =
+      locale === zhCN ? "昨天" : locale === ja ? "昨日" : "Yesterday";
+    return `${yesterday} ${format(date, "HH:mm")}`;
   }
 
-  // 如果是今天（理论上被前一个if覆盖，但作为保险）
+  // Today (safety fallback)
   if (isToday(date)) {
     return format(date, "HH:mm");
   }
 
-  // 如果是更早的时间，显示具体日期
+  // Older
   return format(date, "yyyy-MM-dd");
 }

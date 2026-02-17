@@ -74,6 +74,7 @@ class AgentExecutionContext(TypedDict):
     agent_id: str  # UUID of the executing agent
     agent_name: str  # Human-readable name
     agent_type: str  # "react", "graph", "system"
+    agent_avatar: NotRequired[str]  # Agent avatar URL
 
     # Execution tracking (flat, not hierarchical)
     execution_id: str  # Unique ID for this execution run

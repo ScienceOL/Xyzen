@@ -91,20 +91,29 @@ async def redis_listener(websocket: WebSocket, connection_id: str):
         logger.error(f"Redis listener error: {e}")
     finally:
         await pubsub.unsubscribe(channel)
-        await r.close()
+        await r.aclose()
 
 
 HEARTBEAT_INTERVAL_SECONDS = 25
+WS_PRESENCE_TTL_SECONDS = 120  # Safety-net TTL for presence key (refreshed every heartbeat)
 
 
-async def heartbeat_sender(websocket: WebSocket, connection_id: str) -> None:
-    """Send periodic ping messages to detect dead connections."""
+def _ws_presence_key(connection_id: str) -> str:
+    """Redis key indicating an active WebSocket for a given connection."""
+    return f"ws:active:{connection_id}"
+
+
+async def heartbeat_sender(websocket: WebSocket, connection_id: str, presence_redis: redis.Redis) -> None:
+    """Send periodic ping messages and refresh the WS presence key."""
+    presence_key = _ws_presence_key(connection_id)
     try:
         while True:
             await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
             try:
                 if websocket.client_state.value == 1:  # WebSocketState.CONNECTED
                     await websocket.send_text('{"type":"ping"}')
+                    # Refresh presence TTL so it survives across heartbeat cycles
+                    await presence_redis.expire(presence_key, WS_PRESENCE_TTL_SECONDS)
                 else:
                     break
             except Exception:
@@ -160,9 +169,15 @@ async def chat_websocket(
     if enforcer:
         await enforcer.track_chat_connect(connection_id)
 
+    # Track WebSocket presence in Redis so the Celery worker can decide
+    # whether to send a push notification (only when user is offline).
+    presence_redis = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+    presence_key = _ws_presence_key(connection_id)
+    await presence_redis.set(presence_key, "1", ex=WS_PRESENCE_TTL_SECONDS)
+
     # Start Redis listener task
     listener_task = asyncio.create_task(redis_listener(websocket, connection_id))
-    heartbeat_task = asyncio.create_task(heartbeat_sender(websocket, connection_id))
+    heartbeat_task = asyncio.create_task(heartbeat_sender(websocket, connection_id, presence_redis))
 
     try:
         while True:
@@ -443,6 +458,11 @@ async def chat_websocket(
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
     finally:
         manager.disconnect(connection_id)
+        # Remove presence key immediately so the worker knows we're offline
+        try:
+            await presence_redis.delete(presence_key)
+        except Exception:
+            pass  # TTL will expire anyway
         if enforcer:
             await enforcer.track_chat_disconnect(connection_id)
         listener_task.cancel()
@@ -454,4 +474,8 @@ async def chat_websocket(
         try:
             await heartbeat_task
         except asyncio.CancelledError:
+            pass
+        try:
+            await presence_redis.aclose()
+        except Exception:
             pass

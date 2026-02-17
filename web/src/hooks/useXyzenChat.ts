@@ -1,4 +1,3 @@
-import { useAuth } from "@/hooks/useAuth";
 import {
   useActiveChannelMessages,
   useActiveChannelStatus,
@@ -62,7 +61,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
     sendMessage,
     connectToChannel,
     updateTopicName,
-    fetchMyProviders,
     createDefaultChannel,
     activateChannel,
     abortGeneration,
@@ -73,7 +71,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
       sendMessage: s.sendMessage,
       connectToChannel: s.connectToChannel,
       updateTopicName: s.updateTopicName,
-      fetchMyProviders: s.fetchMyProviders,
       createDefaultChannel: s.createDefaultChannel,
       activateChannel: s.activateChannel,
       abortGeneration: s.abortGeneration,
@@ -84,7 +81,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
 
   // Individual scalar selectors
   const agents = useXyzen((s) => s.agents);
-  const llmProviders = useXyzen((s) => s.llmProviders);
   const notification = useXyzen((s) => s.notification);
   const pendingInput = useXyzen((s) => s.pendingInput);
   const chatHistoryLoading = useXyzen((s) => s.chatHistoryLoading);
@@ -216,18 +212,6 @@ export function useXyzenChat(config: XyzenChatConfig) {
       scrollToBottom();
     }
   }, [messages.length, autoScroll, scrollToBottom]);
-
-  // Get auth state
-  const { isAuthenticated } = useAuth();
-
-  // Fetch providers on mount if not already loaded AND user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && llmProviders.length === 0) {
-      fetchMyProviders().catch((error) => {
-        console.error("Failed to fetch providers:", error);
-      });
-    }
-  }, [isAuthenticated, llmProviders.length, fetchMyProviders]);
 
   // Auto-switch to correct system agent channel for this panel
   useEffect(() => {

@@ -6,7 +6,7 @@ export interface UploadItem {
   id: string;
   fileName: string;
   progress: number;
-  status: "uploading" | "completed" | "error" | "cancelled";
+  status: "queued" | "uploading" | "completed" | "error" | "cancelled";
   error?: string;
 }
 
@@ -35,7 +35,11 @@ export const UploadProgress = ({
 
   if (uploads.length === 0) return null;
 
-  const activeUploads = uploads.filter((u) => u.status === "uploading");
+  const activeUploads = uploads.filter(
+    (u) => u.status === "queued" || u.status === "uploading",
+  );
+  const uploadingCount = uploads.filter((u) => u.status === "uploading").length;
+  const queuedCount = uploads.filter((u) => u.status === "queued").length;
   // const completedUploads = uploads.filter((u) => u.status === "completed");
   // const hasErrors = uploads.some(
   //   (u) => u.status === "error" || u.status === "cancelled",
@@ -53,9 +57,13 @@ export const UploadProgress = ({
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
             {activeUploads.length > 0
-              ? t("knowledge.uploadProgress.uploading", {
-                  count: activeUploads.length,
-                })
+              ? uploadingCount > 0
+                ? t("knowledge.uploadProgress.uploading", {
+                    count: uploadingCount,
+                  }) + (queuedCount > 0 ? ` (+${queuedCount})` : "")
+                : t("knowledge.uploadProgress.queued", {
+                    count: queuedCount,
+                  })
               : t("knowledge.uploadProgress.complete")}
           </h3>
           {activeUploads.length > 0 && (
@@ -89,6 +97,11 @@ export const UploadProgress = ({
                     {upload.fileName}
                   </p>
                   <div className="mt-1 flex items-center gap-2">
+                    {upload.status === "queued" && (
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                        {t("knowledge.uploadProgress.waiting")}
+                      </span>
+                    )}
                     {upload.status === "uploading" && (
                       <>
                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
@@ -122,7 +135,8 @@ export const UploadProgress = ({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center">
-                  {upload.status === "uploading" ? (
+                  {upload.status === "queued" ||
+                  upload.status === "uploading" ? (
                     <button
                       onClick={() => onCancel(upload.id)}
                       className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-red-500 dark:hover:bg-neutral-800"

@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode, ErrCodeError, handle_auth_error
+from app.core.rate_limit import enforce_download_rate_limit, enforce_upload_rate_limit
 from app.core.storage import (
     FileCategory,
     FileScope,
@@ -42,7 +43,7 @@ async def upload_file(
     category: str | None = Form(None),
     parent_id: UUID | None = Form(None),
     knowledge_set_id: UUID | None = Form(None),
-    user_id: str = Depends(get_current_user),
+    user_id: str = Depends(enforce_upload_rate_limit),
     storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
 ) -> FileReadWithUrl:
@@ -288,7 +289,7 @@ async def get_file(
 @router.get("/{file_id}/download")
 async def download_file(
     file_id: UUID,
-    user_id: str = Depends(get_current_user),
+    user_id: str = Depends(enforce_download_rate_limit),
     storage: StorageServiceProto = Depends(get_storage_service),
     db: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:

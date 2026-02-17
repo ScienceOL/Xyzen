@@ -180,7 +180,8 @@
   },
   "chatHeader": {
     "share": "共有",
-    "shareTooltip": "会話を共有"
+    "shareTooltip": "会話を共有",
+    "contextRemaining": "コンテキスト残量: {{percent}}%"
   },
   "message": {
     "edit": "編集",
@@ -193,7 +194,12 @@
     "copy": "コピー",
     "sending": "送信中...",
     "sendFailed": "送信に失敗しました",
-    "retry": "再試行"
+    "retry": "再試行",
+    "cannotDelete": "削除できません",
+    "deleteStillStreaming": "メッセージはまだ生成中です",
+    "deleteNotSaved": "メッセージはまだサーバーに保存されていません",
+    "deleteFailed": "メッセージの削除に失敗しました",
+    "editFailed": "メッセージの編集に失敗しました"
   },
   "authStatus": {
     "checking": "認証状態を確認中...",
