@@ -32,7 +32,44 @@ export interface DayConsumptionResponse {
   input_tokens: number;
   output_tokens: number;
   record_count: number;
+  tool_call_count: number;
   message: string | null;
+  by_tier: Record<string, TierStats>;
+}
+
+export interface TierStats {
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_amount: number;
+  record_count: number;
+  tool_call_count: number;
+}
+
+export interface ConsumptionRangeResponse {
+  daily: DayConsumptionResponse[];
+  by_tier: Record<string, TierStats>;
+  total_tool_call_count: number;
+}
+
+export interface UserConsumeRecord {
+  id: string;
+  biz_no: number | null;
+  amount: number;
+  scene: string | null;
+  model_tier: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  total_tokens: number | null;
+  consume_state: string;
+  created_at: string;
+}
+
+export interface UserConsumeRecordsPage {
+  records: UserConsumeRecord[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 class CheckInService {
@@ -155,6 +192,66 @@ class CheckInService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || "Failed to get day consumption");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get consumption range statistics (daily breakdown, tier and scene distribution)
+   */
+  async getConsumptionRange(
+    startDate: string,
+    endDate: string,
+    tz: string = "Asia/Shanghai",
+  ): Promise<ConsumptionRangeResponse> {
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      tz,
+    });
+    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/consumption/range?${params}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: this.createAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to get consumption range");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get paginated consumption records
+   */
+  async getConsumptionRecords(
+    limit: number = 20,
+    offset: number = 0,
+    startDate?: string,
+    endDate?: string,
+    tz: string = "Asia/Shanghai",
+  ): Promise<UserConsumeRecordsPage> {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      tz,
+    });
+    if (startDate) params.set("start_date", startDate);
+    if (endDate) params.set("end_date", endDate);
+    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/consumption/records?${params}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: this.createAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to get consumption records");
     }
 
     return response.json();

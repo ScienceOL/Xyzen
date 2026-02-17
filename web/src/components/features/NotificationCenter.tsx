@@ -1,17 +1,18 @@
 import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
-import { useNotifications as useAppNotifications } from "@/hooks/useNotifications";
+import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useNotifications as useAppNotifications } from "@/hooks/useNotifications";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import { BellIcon } from "@heroicons/react/24/outline";
+import type { Notification } from "@novu/js";
 import {
   NovuProvider,
   useCounts,
   useNotifications as useNovuNotifications,
 } from "@novu/react";
-import type { Notification } from "@novu/js";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Archive,
@@ -27,7 +28,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
-import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 
 // ---------------------------------------------------------------------------
 // Filter tabs
@@ -343,7 +343,7 @@ function NotificationPanel({
 
       <div className="custom-scrollbar flex-1 overflow-y-auto">
         <AnimatePresence mode="popLayout">
-          {notifications?.map((n) => (
+          {notifications?.map((n: Notification) => (
             <NotificationItem
               key={n.id}
               notification={n}

@@ -361,5 +361,30 @@
     "redeem": "コード交換",
     "region": "リージョン",
     "about": "情報"
+  },
+  "consumption": {
+    "title": "利用分析",
+    "close": "閉じる",
+    "selectedDate": "選択中：{{date}}",
+    "clearDate": "選択日をクリア",
+    "totalToken": "トークン合計",
+    "totalCredits": "クレジット合計",
+    "inputToken": "入力トークン",
+    "outputToken": "出力トークン",
+    "conversations": "会話数",
+    "toolCalls": "ツール呼出",
+    "heatmapTitle": "クレジットカレンダー",
+    "heatmapTooltip": "クレジット: {{amount}}",
+    "tableTitle": "日別明細",
+    "tableDayCount": "{{count}}日分",
+    "colDate": "日付",
+    "colToken": "トークン",
+    "colInput": "入力",
+    "colOutput": "出力",
+    "colCredits": "クレジット",
+    "colRequests": "リクエスト",
+    "colToolCalls": "ツール呼出",
+    "noRecords": "消費記録なし",
+    "donutEmpty": "なし"
   }
 }

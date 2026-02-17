@@ -30,6 +30,10 @@ class ConsumeRecordBase(SQLModel):
     tier_rate: float | None = Field(default=None, description="Tier rate multiplier applied")
     calculation_breakdown: str | None = Field(default=None, description="JSON breakdown of calculation")
 
+    # Model metadata
+    model_name: str | None = Field(default=None, description="Actual model name used (e.g. gemini-3-pro-preview)")
+    tool_call_count: int | None = Field(default=None, description="Number of tool calls in this request")
+
     # Billing status
     consume_state: str = Field(default="pending", description="Consumption state: pending/success/failed")
     remote_error: str | None = Field(default=None, description="Remote billing error information")
@@ -92,6 +96,8 @@ class ConsumeRecordUpdate(SQLModel):
     consume_state: str | None = Field(default=None, description="Consumption state: pending/success/failed")
     remote_error: str | None = Field(default=None, description="Remote billing error information")
     remote_response: str | None = Field(default=None, description="Remote billing response")
+    model_name: str | None = Field(default=None, description="Actual model name used (e.g. gemini-3-pro-preview)")
+    tool_call_count: int | None = Field(default=None, description="Number of tool calls in this request")
 
 
 class UserConsumeSummaryBase(SQLModel):

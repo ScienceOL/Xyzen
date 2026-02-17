@@ -406,5 +406,30 @@
     "redeem": "Redeem",
     "region": "Region",
     "about": "About"
+  },
+  "consumption": {
+    "title": "Usage Analytics",
+    "close": "Close",
+    "selectedDate": "Selected: {{date}}",
+    "clearDate": "Clear selected date",
+    "totalToken": "Total Token",
+    "totalCredits": "Total Credits",
+    "inputToken": "Input Token",
+    "outputToken": "Output Token",
+    "conversations": "Conversations",
+    "toolCalls": "Tool Calls",
+    "heatmapTitle": "Credits Calendar",
+    "heatmapTooltip": "Credits: {{amount}}",
+    "tableTitle": "Daily Details",
+    "tableDayCount": "{{count}} days",
+    "colDate": "Date",
+    "colToken": "Token",
+    "colInput": "Input",
+    "colOutput": "Output",
+    "colCredits": "Credits",
+    "colRequests": "Requests",
+    "colToolCalls": "Tool Calls",
+    "noRecords": "No consumption records",
+    "donutEmpty": "None"
   }
 }
