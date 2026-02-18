@@ -136,3 +136,14 @@ class TestRegionCandidates:
         for tier in ModelTier:
             assert tier in candidates_map
             assert len(candidates_map[tier]) > 0
+
+    def test_region_is_case_insensitive(self, monkeypatch: "pytest.MonkeyPatch") -> None:
+        """Test that region matching is case-insensitive."""
+        from app.configs import configs
+
+        monkeypatch.setattr(configs, "Region", "ChInA")
+        candidates_map = get_tier_candidates()
+        # Should still return China candidates
+        for tier in ModelTier:
+            assert tier in candidates_map
+            assert len(candidates_map[tier]) == 1  # China has exactly 1 candidate per tier

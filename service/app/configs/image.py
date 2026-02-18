@@ -53,22 +53,14 @@ _REGION_IMAGE_OVERRIDES: dict[str, dict[str, str]] = {
 }
 
 
-def get_image_config() -> dict[str, str]:
-    """Return the effective image config dict for the current region.
+def get_image_config() -> ImageConfig:
+    """Return the effective image config for the current region.
 
-    Returns a dict with keys: Provider, Model, EditModel, VisionModel, VisionProvider.
+    Starts from the base config (env vars / defaults) and applies
+    region-specific overrides on top.
     """
     from app.configs import configs
 
-    base = {
-        "Provider": configs.Image.Provider,
-        "Model": configs.Image.Model,
-        "EditModel": configs.Image.EditModel,
-        "VisionModel": configs.Image.VisionModel,
-        "VisionProvider": configs.Image.VisionProvider,
-    }
-
     region = configs.Region.lower()
     overrides = _REGION_IMAGE_OVERRIDES.get(region, {})
-    base.update(overrides)
-    return base
+    return configs.Image.model_copy(update=overrides)

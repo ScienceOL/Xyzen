@@ -122,8 +122,8 @@ async def _generate_image_with_langchain(
         # Create LangChain model using the factory
         # ProviderManager handles all credential setup for Google Vertex
         llm = await provider_manager.create_langchain_model(
-            provider_id=ProviderType(image_cfg["Provider"]),
-            model=image_cfg["Model"],
+            provider_id=ProviderType(image_cfg.Provider),
+            model=image_cfg.Model,
         )
 
     # Request image generation via LangChain
@@ -246,7 +246,7 @@ async def _generate_image_with_dashscope(
     try:
         if has_references and images:
             # Use edit model — save reference images to temp files for SDK upload
-            model = image_cfg["EditModel"]
+            model = image_cfg.EditModel
             content: list[dict[str, str]] = []
 
             for img_bytes, img_mime in images:
@@ -272,8 +272,11 @@ async def _generate_image_with_dashscope(
             )
         else:
             # Use generation model — text only
-            model = image_cfg["Model"]
-            size = _ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1328*1328")
+            model = image_cfg.Model
+            if aspect_ratio not in _ASPECT_RATIO_TO_SIZE:
+                supported = ", ".join(sorted(_ASPECT_RATIO_TO_SIZE.keys()))
+                raise ValueError(f"Unsupported aspect ratio: {aspect_ratio}. Supported: {supported}")
+            size = _ASPECT_RATIO_TO_SIZE[aspect_ratio]
             messages = [{"role": "user", "content": [{"text": prompt}]}]
 
             response = await AioMultiModalConversation.call(
@@ -296,9 +299,10 @@ async def _generate_image_with_dashscope(
                 pass
 
     if response.status_code != 200:
+        raw_output = getattr(response, "output", None)
         raise ValueError(
             f"DashScope image generation failed (model={model}): "
-            f"code={response.code}, message={response.message}"
+            f"code={response.code}, message={response.message}, output={raw_output}"
         )
 
     # Extract image URL from response
@@ -421,7 +425,7 @@ async def _generate_image(
 
         # Generate image — route to DashScope or LangChain based on region
         image_cfg = get_image_config()
-        if image_cfg["Provider"] == "qwen":
+        if image_cfg.Provider == "qwen":
             image_bytes, mime_type = await _generate_image_with_dashscope(
                 prompt,
                 aspect_ratio,
@@ -543,8 +547,8 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     async with TaskSessionLocal() as db:
         provider_manager = await get_user_provider_manager("system", db)
         llm = await provider_manager.create_langchain_model(
-            provider_id=ProviderType(image_cfg["VisionProvider"]),
-            model=image_cfg["VisionModel"],
+            provider_id=ProviderType(image_cfg.VisionProvider),
+            model=image_cfg.VisionModel,
         )
 
     # Create multimodal message with image and question
