@@ -629,6 +629,21 @@ wheels = [
 ]
 
 [[package]]
+name = "dashscope"
+version = "1.25.12"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "certifi" },
+    { name = "cryptography" },
+    { name = "requests" },
+    { name = "websocket-client" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/7a/a1a9d0d293ca2cfabf54eedbea237d4d9e233251477d65c51c77667c407c/dashscope-1.25.12-py3-none-any.whl", hash = "sha256:92e98314bac0ff45b7f32f9120946771a85e614371b397f0874c1e579de60f98", size = 1342605, upload-time = "2026-02-09T09:02:50.82Z" },
+]
+
+[[package]]
 name = "databases"
 version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3312,6 +3327,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "celery", extra = ["redis"] },
     { name = "celery-types" },
+    { name = "dashscope" },
     { name = "databases", extra = ["postgresql", "sqlite"] },
     { name = "daytona" },
     { name = "fastapi", extra = ["standard"] },
@@ -3385,6 +3401,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.14.3" },
     { name = "celery", extras = ["redis"], specifier = ">=5.4.0" },
     { name = "celery-types", specifier = ">=0.24.0" },
+    { name = "dashscope", specifier = ">=1.25.12" },
     { name = "databases", extras = ["postgresql", "sqlite"], specifier = ">=0.9.0" },
     { name = "daytona", specifier = ">=0.139.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.116.1" },

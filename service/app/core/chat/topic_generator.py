@@ -8,7 +8,7 @@ from app.core.providers import get_user_provider_manager
 from app.infra.database import AsyncSessionLocal
 from app.models.topic import TopicUpdate
 from app.repos.topic import TopicRepository
-from app.schemas.model_tier import TOPIC_RENAME_MODEL, TOPIC_RENAME_PROVIDER
+from app.schemas.model_tier import get_topic_rename_config
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +55,10 @@ async def generate_and_update_topic_title(
                 f"{message_text}"
             )
 
+            topic_rename_model, topic_rename_provider = get_topic_rename_config()
             llm = await user_provider_manager.create_langchain_model(
-                provider_id=TOPIC_RENAME_PROVIDER,
-                model=TOPIC_RENAME_MODEL,
+                provider_id=topic_rename_provider,
+                model=topic_rename_model,
             )
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             logger.debug(f"LLM response: {response}")

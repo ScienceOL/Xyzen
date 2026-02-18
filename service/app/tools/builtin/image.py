@@ -17,6 +17,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, Field, model_validator
 
 from app.configs import configs
+from app.configs.image import get_image_config
 from app.core.storage import FileScope, generate_storage_key, get_storage_service
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,15 @@ class ReadImageInput(BaseModel):
 
 # --- Image Generation Implementation ---
 
+# DashScope qwen-image-max uses pixel dimensions, not aspect ratio strings
+_ASPECT_RATIO_TO_SIZE: dict[str, str] = {
+    "1:1": "1328*1328",
+    "16:9": "1664*928",
+    "9:16": "928*1664",
+    "4:3": "1472*1104",
+    "3:4": "1104*1472",
+}
+
 
 async def _generate_image_with_langchain(
     prompt: str,
@@ -99,6 +109,8 @@ async def _generate_image_with_langchain(
     from app.infra.database import create_task_session_factory
     from app.schemas.provider import ProviderType
 
+    image_cfg = get_image_config()
+
     # Create a fresh session factory for the current event loop (Celery worker)
     TaskSessionLocal = create_task_session_factory()
 
@@ -110,8 +122,8 @@ async def _generate_image_with_langchain(
         # Create LangChain model using the factory
         # ProviderManager handles all credential setup for Google Vertex
         llm = await provider_manager.create_langchain_model(
-            provider_id=ProviderType.GOOGLE_VERTEX,
-            model=configs.Image.Model,
+            provider_id=ProviderType(image_cfg.Provider),
+            model=image_cfg.Model,
         )
 
     # Request image generation via LangChain
@@ -194,6 +206,132 @@ async def _generate_image_with_langchain(
     raise ValueError("No image data in response. Model may not support image generation.")
 
 
+async def _generate_image_with_dashscope(
+    prompt: str,
+    aspect_ratio: str = "1:1",
+    images: list[tuple[bytes, str]] | None = None,
+) -> tuple[bytes, str]:
+    """
+    Generate an image using DashScope API.
+
+    Routes between two models:
+    - qwen-image-max: text-to-image (no reference images)
+    - qwen-image-edit-max: image editing (with reference images)
+
+    Reference images are saved to temp files so the DashScope SDK
+    can upload them to its own OSS (avoids SSRF issues with private URLs).
+
+    Args:
+        prompt: Text description of the image to generate
+        aspect_ratio: Aspect ratio for the generated image
+        images: Optional list of (image_bytes, mime_type) tuples for reference
+
+    Returns:
+        Tuple of (image_bytes, mime_type)
+    """
+    import os
+    import tempfile
+
+    import httpx
+    from dashscope import AioMultiModalConversation
+
+    image_cfg = get_image_config()
+    api_key = configs.LLM.qwen.key.get_secret_value()
+    if not api_key:
+        raise ValueError("QWEN API key is not configured (XYZEN_LLM_QWEN_KEY)")
+
+    has_references = bool(images)
+    temp_files: list[str] = []
+
+    try:
+        if has_references and images:
+            # Use edit model — save reference images to temp files for SDK upload
+            model = image_cfg.EditModel
+            content: list[dict[str, str]] = []
+
+            for img_bytes, img_mime in images:
+                ext_map = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+                ext = ext_map.get(img_mime, ".png")
+                tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+                tmp.write(img_bytes)
+                tmp.close()
+                temp_files.append(tmp.name)
+                content.append({"image": tmp.name})
+
+            content.append({"text": prompt})
+            messages = [{"role": "user", "content": content}]
+
+            response = await AioMultiModalConversation.call(
+                api_key=api_key,
+                model=model,
+                messages=messages,
+                result_format="message",
+                stream=False,
+                watermark=False,
+                negative_prompt="",
+            )
+        else:
+            # Use generation model — text only
+            model = image_cfg.Model
+            if aspect_ratio not in _ASPECT_RATIO_TO_SIZE:
+                supported = ", ".join(sorted(_ASPECT_RATIO_TO_SIZE.keys()))
+                raise ValueError(f"Unsupported aspect ratio: {aspect_ratio}. Supported: {supported}")
+            size = _ASPECT_RATIO_TO_SIZE[aspect_ratio]
+            messages = [{"role": "user", "content": [{"text": prompt}]}]
+
+            response = await AioMultiModalConversation.call(
+                api_key=api_key,
+                model=model,
+                messages=messages,
+                result_format="message",
+                stream=False,
+                watermark=False,
+                prompt_extend=True,
+                negative_prompt="",
+                size=size,
+            )
+    finally:
+        # Clean up temp files
+        for tmp_path in temp_files:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    if response.status_code != 200:
+        raw_output = getattr(response, "output", None)
+        raise ValueError(
+            f"DashScope image generation failed (model={model}): "
+            f"code={response.code}, message={response.message}, output={raw_output}"
+        )
+
+    # Extract image URL from response
+    # Response structure: output.choices[0].message.content -> list of dicts
+    # Image results come as: {"image": "https://..."}
+    image_url = None
+    choices = response.output.get("choices", [])
+    if choices:
+        msg_content = choices[0].get("message", {}).get("content", [])
+        for block in msg_content:
+            if isinstance(block, dict) and "image" in block:
+                image_url = block["image"]
+                break
+
+    if not image_url:
+        raise ValueError("No image URL in DashScope response")
+
+    # Download the image from the URL
+    async with httpx.AsyncClient(timeout=60) as client:
+        img_response = await client.get(image_url)
+        img_response.raise_for_status()
+        image_bytes = img_response.content
+        # Infer mime type from content-type header or URL
+        content_type_header = img_response.headers.get("content-type", "image/png")
+        mime_type = content_type_header.split(";")[0].strip()
+
+    return image_bytes, mime_type
+
+
 async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> list[tuple[bytes, str, str]]:
     """
     Load multiple images for generation from the database.
@@ -229,7 +367,11 @@ async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> lis
             file_record = await file_repo.get_file_by_id(file_uuid)
 
             if file_record is None:
-                raise ValueError(f"Image not found: {image_id}")
+                raise ValueError(
+                    f"Image not found: {image_id}. "
+                    "Make sure you are using the 'image_id' value from a previous generate_image result, "
+                    "not a user_id or session_id."
+                )
 
             if file_record.is_deleted:
                 raise ValueError(f"Image has been deleted: {image_id}")
@@ -281,12 +423,20 @@ async def _generate_image(
             images_for_generation = [(img[0], img[1]) for img in loaded_images]
             source_storage_keys = [img[2] for img in loaded_images]
 
-        # Generate image using LangChain via ProviderManager
-        image_bytes, mime_type = await _generate_image_with_langchain(
-            prompt,
-            aspect_ratio,
-            images=images_for_generation,
-        )
+        # Generate image — route to DashScope or LangChain based on region
+        image_cfg = get_image_config()
+        if image_cfg.Provider == "qwen":
+            image_bytes, mime_type = await _generate_image_with_dashscope(
+                prompt,
+                aspect_ratio,
+                images=images_for_generation,
+            )
+        else:
+            image_bytes, mime_type = await _generate_image_with_langchain(
+                prompt,
+                aspect_ratio,
+                images=images_for_generation,
+            )
 
         # Determine file extension from mime type
         ext_map = {
@@ -339,10 +489,10 @@ async def _generate_image(
                 },
             )
             file_record = await file_repo.create_file(file_data)
-            await db.commit()
-            # Refresh to get the generated UUID
-            await db.refresh(file_record)
+            # Capture ID right after create_file (which already flushes + refreshes).
+            # Must read before commit — post-commit refresh can return stale data.
             generated_image_id = str(file_record.id)
+            await db.commit()
 
         logger.info(f"Generated image for user {user_id}: {storage_key} (id={generated_image_id})")
 
@@ -386,6 +536,8 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     from app.infra.database import create_task_session_factory
     from app.schemas.provider import ProviderType
 
+    image_cfg = get_image_config()
+
     # Encode image to base64 for the vision model
     b64_data = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -395,8 +547,8 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     async with TaskSessionLocal() as db:
         provider_manager = await get_user_provider_manager("system", db)
         llm = await provider_manager.create_langchain_model(
-            provider_id=ProviderType.GOOGLE_VERTEX,
-            model=configs.Image.VisionModel,
+            provider_id=ProviderType(image_cfg.VisionProvider),
+            model=image_cfg.VisionModel,
         )
 
     # Create multimodal message with image and question

@@ -35,6 +35,9 @@ class AppConfig(BaseSettings):
     Description: str = Field(default="FastAPI + MCP integrated service", description="应用描述")
     Version: str = Field(default="0.1.0", description="应用版本")
 
+    # Deployment Region
+    Region: str = Field(default="global", description="Deployment region (global, china)")
+
     # Environment and Debug Settings
     Secret: str = Field(
         default=r"please$#@change&%me*in!production#2024@xyzen%secret^key",

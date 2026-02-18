@@ -3,6 +3,10 @@
 Users select from 4 tiers instead of specific models. The backend
 uses an LLM to intelligently select the best model for the task
 from available candidates in the tier.
+
+Model candidates are region-aware: set XYZEN_Region=china to use
+China-accessible models, or leave as "global" (default) for
+international models.
 """
 
 from dataclasses import dataclass, field
@@ -41,18 +45,11 @@ class TierModelCandidate:
     description: str = ""  # Human-readable description for LLM selection
 
 
-# Model for intelligent selection (Gemini 2.5 Flash)
-MODEL_SELECTOR_MODEL = "qwen3-next-80b-a3b-instruct"
-MODEL_SELECTOR_PROVIDER = ProviderType.QWEN
+# ---------------------------------------------------------------------------
+# Region: Global (default) — international models
+# ---------------------------------------------------------------------------
 
-# Model for topic title generation (fast, efficient model)
-TOPIC_RENAME_MODEL = "qwen3-next-80b-a3b-instruct"
-TOPIC_RENAME_PROVIDER = ProviderType.QWEN
-
-
-# Tier-to-model candidates mapping
-# Each tier has multiple candidates with a Gemini fallback
-TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
+_GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
     ModelTier.ULTRA: [
         TierModelCandidate(
             model="Vendor2/Claude-4.6-Opus",
@@ -145,12 +142,119 @@ TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
     ],
 }
 
+# ---------------------------------------------------------------------------
+# Region: China — China-accessible models only (all via QWEN provider)
+# ---------------------------------------------------------------------------
+
+_CHINA_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
+    ModelTier.ULTRA: [
+        TierModelCandidate(
+            model="kimi-k2.5",
+            provider_type=ProviderType.QWEN,
+            is_fallback=True,
+            priority=99,
+            capabilities=["reasoning", "coding", "multilingual"],
+            description="Top-tier model for complex reasoning and coding tasks.",
+        ),
+    ],
+    ModelTier.PRO: [
+        TierModelCandidate(
+            model="glm-4.7",
+            provider_type=ProviderType.QWEN,
+            is_fallback=True,
+            priority=99,
+            capabilities=["reasoning", "coding", "multilingual"],
+            description="Balanced model for production workloads.",
+        ),
+    ],
+    ModelTier.STANDARD: [
+        TierModelCandidate(
+            model="qwen3-max",
+            provider_type=ProviderType.QWEN,
+            is_fallback=True,
+            priority=99,
+            capabilities=["general", "fast"],
+            description="Efficient model for general tasks.",
+        ),
+    ],
+    ModelTier.LITE: [
+        TierModelCandidate(
+            model="deepseek-v3.2",
+            provider_type=ProviderType.QWEN,
+            is_fallback=True,
+            priority=99,
+            capabilities=["fast", "efficient"],
+            description="Lightweight model for quick responses.",
+        ),
+    ],
+}
+
+# ---------------------------------------------------------------------------
+# Region lookup
+# ---------------------------------------------------------------------------
+
+_REGION_TIER_CANDIDATES: dict[str, dict[ModelTier, list[TierModelCandidate]]] = {
+    "global": _GLOBAL_TIER_MODEL_CANDIDATES,
+    "china": _CHINA_TIER_MODEL_CANDIDATES,
+}
+
+# Region-specific helper model configs (selector LLM, topic rename LLM)
+_REGION_HELPER_MODELS: dict[str, dict[str, tuple[str, ProviderType]]] = {
+    "global": {
+        "selector": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
+        "topic_rename": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
+    },
+    "china": {
+        "selector": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),  # TODO: replace if needed
+        "topic_rename": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),  # TODO: replace if needed
+    },
+}
+
+
+def _get_region() -> str:
+    """Get the current deployment region (lazy import to avoid circular deps)."""
+    from app.configs import configs
+
+    return configs.Region.lower()
+
+
+# ---------------------------------------------------------------------------
+# Public accessor functions (region-aware)
+# ---------------------------------------------------------------------------
+
+
+def get_tier_candidates() -> dict[ModelTier, list[TierModelCandidate]]:
+    """Get the tier model candidates for the current deployment region."""
+    return _REGION_TIER_CANDIDATES.get(_get_region(), _GLOBAL_TIER_MODEL_CANDIDATES)
+
+
+def get_model_selector_config() -> tuple[str, ProviderType]:
+    """Get (model, provider) for the model selector LLM."""
+    helpers = _REGION_HELPER_MODELS.get(_get_region(), _REGION_HELPER_MODELS["global"])
+    return helpers["selector"]
+
+
+def get_topic_rename_config() -> tuple[str, ProviderType]:
+    """Get (model, provider) for topic title generation."""
+    helpers = _REGION_HELPER_MODELS.get(_get_region(), _REGION_HELPER_MODELS["global"])
+    return helpers["topic_rename"]
+
+
+# ---------------------------------------------------------------------------
+# Consumption rates (same for all regions)
+# ---------------------------------------------------------------------------
+
 TIER_MODEL_CONSUMPTION_RATE: dict[ModelTier, float] = {
     ModelTier.ULTRA: 6.8,
     ModelTier.PRO: 3.0,
     ModelTier.STANDARD: 1.0,
     ModelTier.LITE: 0.0,
 }
+
+
+# ---------------------------------------------------------------------------
+# Helper functions (region-aware)
+# ---------------------------------------------------------------------------
 
 
 def get_fallback_model_for_tier(tier: ModelTier) -> TierModelCandidate:
@@ -162,7 +266,8 @@ def get_fallback_model_for_tier(tier: ModelTier) -> TierModelCandidate:
     Returns:
         The fallback TierModelCandidate for the tier
     """
-    candidates = TIER_MODEL_CANDIDATES.get(tier, TIER_MODEL_CANDIDATES[ModelTier.STANDARD])
+    candidates_map = get_tier_candidates()
+    candidates = candidates_map.get(tier, candidates_map[ModelTier.STANDARD])
     for candidate in candidates:
         if candidate.is_fallback:
             return candidate
@@ -194,7 +299,7 @@ def get_candidate_for_model(model_name: str) -> TierModelCandidate | None:
     Returns:
         The TierModelCandidate if found, else None
     """
-    for candidates in TIER_MODEL_CANDIDATES.values():
+    for candidates in get_tier_candidates().values():
         for candidate in candidates:
             if candidate.model == model_name:
                 return candidate
