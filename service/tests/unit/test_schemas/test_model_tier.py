@@ -1,9 +1,9 @@
 """Unit tests for model tier resolution."""
 
 from app.schemas.model_tier import (
-    TIER_MODEL_CANDIDATES,
     ModelTier,
     get_fallback_model_for_tier,
+    get_tier_candidates,
     resolve_model_for_tier,
 )
 
@@ -52,16 +52,18 @@ class TestModelTier:
 
     def test_all_tiers_have_mapping(self) -> None:
         """Test that all tiers have a model mapping."""
+        candidates_map = get_tier_candidates()
         for tier in ModelTier:
-            assert tier in TIER_MODEL_CANDIDATES
+            assert tier in candidates_map
             model = resolve_model_for_tier(tier)
             assert model is not None
             assert len(model) > 0
 
     def test_all_tiers_have_candidates(self) -> None:
         """Test that all tiers have at least one candidate."""
+        candidates_map = get_tier_candidates()
         for tier in ModelTier:
-            candidates = TIER_MODEL_CANDIDATES[tier]
+            candidates = candidates_map[tier]
             assert len(candidates) > 0
             # Each tier should have at least one candidate
             assert all(c.model for c in candidates)
@@ -78,8 +80,9 @@ class TestModelTier:
 
     def test_fallback_models_are_marked(self) -> None:
         """Test that fallback models have is_fallback=True."""
+        candidates_map = get_tier_candidates()
         for tier in ModelTier:
-            candidates = TIER_MODEL_CANDIDATES[tier]
+            candidates = candidates_map[tier]
             fallback_candidates = [c for c in candidates if c.is_fallback]
             # Each tier should have at least one fallback
             assert len(fallback_candidates) >= 1
@@ -89,11 +92,47 @@ class TestModelTier:
 
     def test_candidate_priorities(self) -> None:
         """Test that candidates have valid priorities."""
+        candidates_map = get_tier_candidates()
         for tier in ModelTier:
-            candidates = TIER_MODEL_CANDIDATES[tier]
+            candidates = candidates_map[tier]
             for candidate in candidates:
                 # Priority should be non-negative
                 assert candidate.priority >= 0
                 # Fallback should have high priority number (low priority)
                 if candidate.is_fallback:
                     assert candidate.priority >= 90
+
+
+class TestRegionCandidates:
+    """Test region-based model candidate selection."""
+
+    def test_china_region_has_all_tiers(self, monkeypatch: "pytest.MonkeyPatch") -> None:
+        """Test that china region has valid candidates for all tiers."""
+        from app.configs import configs
+
+        monkeypatch.setattr(configs, "Region", "china")
+        candidates_map = get_tier_candidates()
+        for tier in ModelTier:
+            assert tier in candidates_map
+            assert len(candidates_map[tier]) > 0
+
+    def test_china_region_has_fallbacks(self, monkeypatch: "pytest.MonkeyPatch") -> None:
+        """Test that china region has fallback models for all tiers."""
+        from app.configs import configs
+
+        monkeypatch.setattr(configs, "Region", "china")
+        for tier in ModelTier:
+            fallback = get_fallback_model_for_tier(tier)
+            assert fallback is not None
+            assert fallback.is_fallback is True
+
+    def test_unknown_region_falls_back_to_global(self, monkeypatch: "pytest.MonkeyPatch") -> None:
+        """Test that unknown region falls back to global candidates."""
+        from app.configs import configs
+
+        monkeypatch.setattr(configs, "Region", "unknown")
+        candidates_map = get_tier_candidates()
+        # Should return global candidates
+        for tier in ModelTier:
+            assert tier in candidates_map
+            assert len(candidates_map[tier]) > 0
