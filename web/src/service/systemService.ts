@@ -1,30 +1,13 @@
-import { useXyzen } from "@/store";
+import { http } from "@/service/http/client";
 import type { BackendVersionInfo } from "@/types/version";
 
 class SystemService {
-  private getBackendUrl(): string {
-    const { backendUrl } = useXyzen.getState();
-    if (!backendUrl || backendUrl === "") {
-      if (typeof window !== "undefined") {
-        return `${window.location.protocol}//${window.location.host}`;
-      }
-    }
-    return backendUrl;
+  async getVersion(): Promise<BackendVersionInfo> {
+    return http.get("/xyzen/api/v1/system/version", { auth: false });
   }
 
-  /**
-   * Get the backend system version information
-   */
-  async getVersion(): Promise<BackendVersionInfo> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/system/version`,
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch version");
-    }
-
-    return response.json();
+  async getEdition(): Promise<{ edition: string }> {
+    return http.get("/xyzen/api/v1/system/edition", { auth: false });
   }
 }
 

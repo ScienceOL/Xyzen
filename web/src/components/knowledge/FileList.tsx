@@ -10,7 +10,6 @@ import {
   knowledgeSetService,
   type KnowledgeSetWithFileCount,
 } from "@/service/knowledgeSetService";
-import { useXyzen } from "@/store";
 import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
@@ -1184,20 +1183,9 @@ export const FileList = React.memo(
         }
       };
 
-      const backendUrl = useXyzen((state) => state.backendUrl);
-      const token = useXyzen((state) => state.token);
-
       const handleDownload = async (fileId: string, fileName: string) => {
         try {
-          // Use proxy download endpoint to handle auth and force download
-          const base = backendUrl || window.location.origin;
-          const url = `${base}${base.endsWith("/") ? "" : "/"}xyzen/api/v1/files/${fileId}/download`;
-
-          const response = await fetch(url, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-
-          if (!response.ok) throw new Error("Download failed");
+          const response = await fileService.downloadRaw(fileId);
 
           const blob = await response.blob();
           const objectUrl = URL.createObjectURL(blob);

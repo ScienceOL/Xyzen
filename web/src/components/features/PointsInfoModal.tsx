@@ -6,9 +6,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
-import { useAuth } from "@/hooks/useAuth";
-import { useSubscription, useSubscriptionUsage } from "@/hooks/useSubscription";
-import { useUserWallet } from "@/hooks/useUserWallet";
+import { useSubscriptionInfo, useBilling } from "@/hooks/ee";
 import { cn } from "@/lib/utils";
 import { subscriptionService } from "@/service/subscriptionService";
 import {
@@ -265,22 +263,23 @@ function UsageBar({
 // ---------- My Subscription Tab ----------
 
 function MySubscriptionTab() {
-  const auth = useAuth();
-  const isAuthed = auth.isAuthenticated || !!auth.token;
-  const subQuery = useSubscription(auth.token, isAuthed);
-  const usageQuery = useSubscriptionUsage(auth.token, isAuthed);
-  const walletQuery = useUserWallet(auth.token, isAuthed);
+  const subInfo = useSubscriptionInfo();
+  const billing = useBilling();
   const queryClient = useQueryClient();
   const [claiming, setClaiming] = useState(false);
   const [claimResult, setClaimResult] = useState<{
     amount: number;
   } | null>(null);
 
-  const role = subQuery.data?.role;
-  const sub = subQuery.data?.subscription;
-  const canClaim = subQuery.data?.can_claim_credits ?? false;
-  const usage = usageQuery.data;
-  const wallet = walletQuery.data;
+  const subQuery = subInfo?.subQuery;
+  const usageQuery = subInfo?.usageQuery;
+  const walletQuery = billing?.wallet;
+
+  const role = subQuery?.data?.role;
+  const sub = subQuery?.data?.subscription;
+  const canClaim = subQuery?.data?.can_claim_credits ?? false;
+  const usage = usageQuery?.data;
+  const wallet = walletQuery?.data;
 
   if (!role || !sub) return null;
 
@@ -882,11 +881,9 @@ function SandboxPackCard({
 // ---------- Modal ----------
 
 export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
-  const auth = useAuth();
-  const isAuthed = auth.isAuthenticated || !!auth.token;
-  const subQuery = useSubscription(auth.token, isAuthed);
+  const subInfo = useSubscriptionInfo();
 
-  const roleName = subQuery.data?.role?.name;
+  const roleName = subInfo?.roleName;
   const hasPaidSub = !!roleName && roleName !== "free";
 
   const defaultTab = hasPaidSub ? "subscription" : "international";

@@ -19,7 +19,7 @@ import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { TokenInputModal } from "@/components/features/TokenInputModal";
 import { logout } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserWallet } from "@/hooks/useUserWallet";
+import { useBilling } from "@/hooks/ee";
 import { useXyzen } from "@/store";
 import {
   ArrowTopRightOnSquareIcon,
@@ -47,7 +47,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   const [showPointsInfo, setShowPointsInfo] = useState(false);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
-  const walletQuery = useUserWallet(auth.token, isAuthedForUi);
+  const billing = useBilling();
 
   const maskedToken = (() => {
     const token = auth.token;
@@ -125,36 +125,38 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
             </DropdownMenuLabel>
 
             <div className="px-2 py-1.5">
-              <div className="relative overflow-hidden rounded-lg border border-indigo-100 bg-linear-to-br from-indigo-50/80 to-white p-3 dark:border-indigo-500/20 dark:from-indigo-950/20 dark:to-neutral-900/20">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-500/20 dark:text-indigo-400">
-                      <SparklesIcon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
-                        {t("app.authStatus.pointsBalance")}
+              {billing && (
+                <div className="relative overflow-hidden rounded-lg border border-indigo-100 bg-linear-to-br from-indigo-50/80 to-white p-3 dark:border-indigo-500/20 dark:from-indigo-950/20 dark:to-neutral-900/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-500/20 dark:text-indigo-400">
+                        <SparklesIcon className="h-4 w-4" />
                       </div>
-                      <div className="font-bold text-indigo-900 dark:text-indigo-100">
-                        {walletQuery.isLoading
-                          ? "..."
-                          : (walletQuery.data?.virtual_balance ?? "--")}
+                      <div>
+                        <div className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
+                          {t("app.authStatus.pointsBalance")}
+                        </div>
+                        <div className="font-bold text-indigo-900 dark:text-indigo-100">
+                          {billing.wallet.isLoading
+                            ? "..."
+                            : (billing.points ?? "--")}
+                        </div>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setShowPointsInfo(true);
+                      }}
+                      className="rounded-full p-1 text-neutral-400 transition-colors hover:bg-white/50 hover:text-indigo-600 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-indigo-400"
+                      title={t("app.authStatus.pointsInfo")}
+                    >
+                      <InformationCircleIcon className="h-5 w-5" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setShowPointsInfo(true);
-                    }}
-                    className="rounded-full p-1 text-neutral-400 transition-colors hover:bg-white/50 hover:text-indigo-600 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-indigo-400"
-                    title={t("app.authStatus.pointsInfo")}
-                  >
-                    <InformationCircleIcon className="h-5 w-5" />
-                  </button>
                 </div>
-              </div>
+              )}
             </div>
 
             <DropdownMenuSeparator />
@@ -258,10 +260,12 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <PointsInfoModal
-          isOpen={showPointsInfo}
-          onClose={() => setShowPointsInfo(false)}
-        />
+        {billing && (
+          <PointsInfoModal
+            isOpen={showPointsInfo}
+            onClose={() => setShowPointsInfo(false)}
+          />
+        )}
       </>
     );
   }

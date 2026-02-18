@@ -1,5 +1,6 @@
 import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
+import { mcpService } from "@/service/mcpService";
 import { useXyzen } from "@/store";
 import type { McpServer } from "@/types/mcp";
 import { Button } from "@headlessui/react";
@@ -12,7 +13,6 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import * as monaco from "monaco-editor";
 import { useEffect, useRef, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 
 interface ToolTestModalProps {
   isOpen: boolean;
@@ -36,13 +36,7 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
   toolName,
   toolDescription,
 }) => {
-  const { token, backendUrl, addToolExecution } = useXyzen(
-    useShallow((s) => ({
-      token: s.token,
-      backendUrl: s.backendUrl,
-      addToolExecution: s.addToolExecution,
-    })),
-  );
+  const addToolExecution = useXyzen((s) => s.addToolExecution);
   const [parameters, setParameters] = useState<string>("{}");
   const [result, setResult] = useState<ToolTestResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -130,69 +124,36 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
 
     try {
       const startTime = Date.now();
+      const parsedParams = JSON.parse(parameters);
 
-      // Call the actual MCP tool testing API
-      const response = await fetch(
-        `${backendUrl}/xyzen/api/v1/mcps/${server.id}/tools/${toolName}/test`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
-          body: JSON.stringify({
-            parameters: JSON.parse(parameters),
-          }),
-        },
-      );
+      const data = await mcpService.testTool(server.id, toolName, parsedParams);
 
-      const endTime = Date.now();
-      const executionTime = endTime - startTime;
+      const executionTime = data.execution_time_ms || Date.now() - startTime;
+      const testResult = {
+        success: data.success,
+        result: data.result,
+        error: data.error,
+        executionTime,
+      };
+      setResult(testResult);
 
-      if (response.ok) {
-        const data = await response.json();
-        const testResult = {
-          success: data.success,
-          result: data.result,
-          error: data.error,
-          executionTime: data.execution_time_ms || executionTime,
-        };
-        setResult(testResult);
-
-        // Add to execution history
-        addToolExecution({
-          serverId: server.id,
-          toolName,
-          parameters: JSON.parse(parameters),
-          result: data.result,
-          success: data.success,
-          error: data.error,
-          executionTime: data.execution_time_ms || executionTime,
-        });
-      } else {
-        const errorData = await response.json();
-        const errorResult = {
-          success: false,
-          error: errorData.detail || "Tool execution failed",
-          executionTime,
-        };
-        setResult(errorResult);
-
-        // Add to execution history
-        addToolExecution({
-          serverId: server.id,
-          toolName,
-          parameters: JSON.parse(parameters),
-          success: false,
-          error: errorData.detail || "Tool execution failed",
-          executionTime,
-        });
-      }
+      // Add to execution history
+      addToolExecution({
+        serverId: server.id,
+        toolName,
+        parameters: parsedParams,
+        result: data.result,
+        success: data.success,
+        error: data.error,
+        executionTime,
+      });
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Network error";
       const networkError = {
         success: false,
-        error: error instanceof Error ? error.message : "Network error",
-        executionTime: Date.now() - Date.now(),
+        error: errorMessage,
+        executionTime: 0,
       };
       setResult(networkError);
 
@@ -202,8 +163,8 @@ export const ToolTestModal: React.FC<ToolTestModalProps> = ({
         toolName,
         parameters: JSON.parse(parameters),
         success: false,
-        error: error instanceof Error ? error.message : "Network error",
-        executionTime: Date.now() - Date.now(),
+        error: errorMessage,
+        executionTime: 0,
       });
     } finally {
       setIsRunning(false);

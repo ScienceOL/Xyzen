@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription, useSubscriptionUsage } from "@/hooks/useSubscription";
+import { useBilling, useCheckIn, useSubscriptionInfo } from "@/hooks/ee";
 import { useVersion } from "@/hooks/useVersion";
 import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
@@ -40,14 +40,11 @@ import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { TokenInputModal } from "@/components/features/TokenInputModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { logout } from "@/core/auth";
-import { useUserWallet } from "@/hooks/useUserWallet";
-import { checkInService } from "@/service/checkinService";
 import {
   ArrowRightOnRectangleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
-import { useQuery } from "@tanstack/react-query";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { NotificationCenter } from "@/components/features/NotificationCenter";
 
@@ -194,8 +191,8 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
   const [showPointsInfo, setShowPointsInfo] = useState(false);
   const openSettingsModal = useXyzen((s) => s.openSettingsModal);
 
+  const billing = useBilling();
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
-  const walletQuery = useUserWallet(auth.token, isAuthedForUi);
 
   const avatarSize = compact ? "h-10 w-10" : "h-11 w-11";
 
@@ -268,32 +265,34 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
             <DropdownMenuSeparator />
 
             {/* Points Display */}
-            <div className="px-3 py-2">
-              <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <SparklesIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  <div>
-                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                      {t("app.authStatus.pointsBalance")}
-                    </div>
-                    <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                      {walletQuery.isLoading
-                        ? "..."
-                        : (walletQuery.data?.virtual_balance ?? "--")}
+            {billing && (
+              <div className="px-3 py-2">
+                <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <SparklesIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    <div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                        {t("app.authStatus.pointsBalance")}
+                      </div>
+                      <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                        {billing.wallet.isLoading
+                          ? "..."
+                          : (billing.points ?? "--")}
+                      </div>
                     </div>
                   </div>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowPointsInfo(true);
+                    }}
+                    className="rounded-full p-1.5 text-neutral-400 hover:bg-white/50 hover:text-indigo-600 dark:hover:bg-neutral-800 dark:hover:text-indigo-400 transition-colors"
+                  >
+                    <InformationCircleIcon className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowPointsInfo(true);
-                  }}
-                  className="rounded-full p-1.5 text-neutral-400 hover:bg-white/50 hover:text-indigo-600 dark:hover:bg-neutral-800 dark:hover:text-indigo-400 transition-colors"
-                >
-                  <InformationCircleIcon className="h-5 w-5" />
-                </button>
               </div>
-            </div>
+            )}
 
             <DropdownMenuSeparator />
 
@@ -323,10 +322,12 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <PointsInfoModal
-          isOpen={showPointsInfo}
-          onClose={() => setShowPointsInfo(false)}
-        />
+        {billing && (
+          <PointsInfoModal
+            isOpen={showPointsInfo}
+            onClose={() => setShowPointsInfo(false)}
+          />
+        )}
       </>
     );
   }
@@ -703,20 +704,18 @@ function SubscriptionTooltip({
 }
 
 function SubscriptionBadge() {
-  const auth = useAuth();
-  const isAuthedForUi = auth.isAuthenticated || !!auth.token;
-  const subQuery = useSubscription(auth.token, isAuthedForUi);
-  const usageQuery = useSubscriptionUsage(auth.token, isAuthedForUi);
+  const subInfo = useSubscriptionInfo();
+  const billing = useBilling();
   const respondingCount = useXyzen((s) => s.respondingChannelIds.size);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
   const [hovered, setHovered] = useState(false);
   const badgeRef = useRef<HTMLDivElement>(null);
 
-  if (!isAuthedForUi || subQuery.isLoading) {
+  if (!subInfo || subInfo.subQuery.isLoading) {
     return null;
   }
 
-  const roleName = subQuery.data?.role?.name ?? "free";
+  const { subQuery, usageQuery, roleName } = subInfo;
   const displayName = subQuery.data?.role?.display_name ?? "Free";
   const expiresAt = subQuery.data?.subscription?.expires_at;
   const canClaimCredits = subQuery.data?.can_claim_credits ?? false;
@@ -796,10 +795,12 @@ function SubscriptionBadge() {
         hasOverQuota={!!hasOverQuota}
       />
 
-      <PointsInfoModal
-        isOpen={showPointsInfo}
-        onClose={() => setShowPointsInfo(false)}
-      />
+      {billing && (
+        <PointsInfoModal
+          isOpen={showPointsInfo}
+          onClose={() => setShowPointsInfo(false)}
+        />
+      )}
     </>
   );
 }
@@ -813,16 +814,10 @@ export function BottomDock({
   const { t } = useTranslation();
   const auth = useAuth();
   const mouseX = useMotionValue(Infinity);
+  const checkIn = useCheckIn();
   const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
-  const checkInStatus = useQuery({
-    queryKey: ["check-in", "status"],
-    queryFn: () => checkInService.getStatus(),
-    enabled: isAuthedForUi,
-  });
-  const showCheckInDot =
-    isAuthedForUi && checkInStatus.data?.checked_in_today === false;
 
   const dockItems: DockItem[] = [
     {
@@ -927,14 +922,14 @@ export function BottomDock({
               {/* Divider */}
               <div className="h-6 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
 
-              {/* Check-in Button (only for authenticated users) */}
-              {isAuthedForUi && (
+              {/* Check-in Button (only for authenticated users with checkIn feature) */}
+              {checkIn && isAuthedForUi && (
                 <StatusBarItem
                   icon={CalendarDaysIcon}
                   label="签到"
                   onClick={() => setShowCheckInModal(true)}
                   className="text-amber-700 dark:text-amber-400"
-                  showDot={showCheckInDot}
+                  showDot={checkIn.showDot}
                 />
               )}
 
@@ -952,10 +947,12 @@ export function BottomDock({
       </div>
 
       {/* Check-in Modal */}
-      <CheckInModal
-        isOpen={showCheckInModal}
-        onClose={() => setShowCheckInModal(false)}
-      />
+      {checkIn && (
+        <CheckInModal
+          isOpen={showCheckInModal}
+          onClose={() => setShowCheckInModal(false)}
+        />
+      )}
     </>
   );
 }

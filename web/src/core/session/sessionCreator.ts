@@ -5,8 +5,8 @@
  * extracted from chatSlice.ts for better separation of concerns.
  */
 
-import { authService } from "@/service/authService";
 import { sessionService } from "@/service/sessionService";
+import { topicService } from "@/service/topicService";
 import { providerCore } from "@/core/provider";
 import type {
   SessionResponse,
@@ -119,70 +119,24 @@ export function buildSessionPayload(
  * Create a new topic in an existing session
  */
 export async function createTopicInSession(
-  backendUrl: string,
   sessionId: string,
   name: string = "新的聊天",
 ): Promise<TopicResponse> {
-  const token = authService.getToken();
-  if (!token) {
-    throw new Error("No authentication token available");
-  }
-
-  const response = await fetch(`${backendUrl}/xyzen/api/v1/topics/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      name,
-      session_id: sessionId,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to create topic: ${response.status} ${errorText}`);
-  }
-
-  return response.json();
+  return topicService.createTopic({ name, session_id: sessionId });
 }
 
 /**
  * Create a new session with a default topic
  */
 export async function createNewSession(
-  backendUrl: string,
   payload: SessionCreatePayload,
 ): Promise<SessionResponse> {
-  const token = authService.getToken();
-  if (!token) {
-    throw new Error("No authentication token available");
-  }
-
-  const response = await fetch(`${backendUrl}/xyzen/api/v1/sessions/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to create session: ${response.status} ${errorText}`,
-    );
-  }
-
-  return response.json();
+  return sessionService.createSession(payload) as Promise<SessionResponse>;
 }
 
 /**
  * Find existing session for agent or create new one
  *
- * @param backendUrl - Backend API URL
  * @param agentId - Agent ID to find/create session for
  * @param agent - Agent data for session creation
  * @param providers - Available LLM providers
@@ -190,7 +144,6 @@ export async function createNewSession(
  * @returns Session creation result
  */
 export async function findOrCreateSession(
-  backendUrl: string,
   agentId: string | undefined,
   agent: AgentSessionInfo | null,
   providers: ProviderInfo[],
@@ -199,10 +152,7 @@ export async function findOrCreateSession(
   const agentIdParam = agentId || "default";
 
   // Try to find existing session for this agent
-  const existingSession = await tryFindExistingSession(
-    backendUrl,
-    agentIdParam,
-  );
+  const existingSession = await tryFindExistingSession(agentIdParam);
 
   if (existingSession) {
     // Update session with provider/model if missing
@@ -213,11 +163,7 @@ export async function findOrCreateSession(
     );
 
     // Create new topic in existing session
-    const newTopic = await createTopicInSession(
-      backendUrl,
-      updatedSession.id,
-      "新的聊天",
-    );
+    const newTopic = await createTopicInSession(updatedSession.id, "新的聊天");
 
     return {
       channel: createChannelFromSession(updatedSession, newTopic),
@@ -234,14 +180,14 @@ export async function findOrCreateSession(
   // Create new session
   const { providerId, model } = await resolveProviderAndModel(agent, providers);
   const payload = buildSessionPayload(agent, providerId, model);
-  const newSession = await createNewSession(backendUrl, payload);
+  const newSession = await createNewSession(payload);
 
   // Get or create topic
   let topic: TopicResponse;
   if (newSession.topics && newSession.topics.length > 0) {
     topic = newSession.topics[0];
   } else {
-    topic = await createTopicInSession(backendUrl, newSession.id, "新的聊天");
+    topic = await createTopicInSession(newSession.id, "新的聊天");
   }
 
   return {
@@ -260,27 +206,12 @@ export async function findOrCreateSession(
  * Try to find an existing session for an agent
  */
 async function tryFindExistingSession(
-  backendUrl: string,
   agentId: string,
 ): Promise<SessionResponse | null> {
-  const token = authService.getToken();
-  if (!token) {
-    return null;
-  }
-
   try {
-    const response = await fetch(
-      `${backendUrl}/xyzen/api/v1/sessions/by-agent/${agentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
-
-    if (response.ok) {
-      return response.json();
-    }
+    return (await sessionService.getSessionByAgent(
+      agentId,
+    )) as unknown as SessionResponse;
   } catch {
     // Session lookup failed, will create new session
   }

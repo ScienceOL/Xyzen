@@ -5,7 +5,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
-import { useXyzen } from "@/store";
+import { http } from "@/service/http/client";
+import { redemptionService, type AdminCode } from "@/service/redemptionService";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { AdminAuthForm } from "./AdminAuthForm";
@@ -18,37 +19,12 @@ import { TrendChartTab } from "./TrendChartTab";
 import { UserActivityTab } from "./UserActivityTab";
 import { UserRankingsTab } from "./UserRankingsTab";
 
-interface GeneratedCode {
-  id: string;
-  code: string;
-  amount: number;
-  max_usage: number;
-  current_usage: number;
-  is_active: boolean;
-  expires_at: string | null;
-  description: string | null;
-  code_type: string;
-  role_name: string | null;
-  duration_days: number;
-  created_at: string;
-}
-
 export function SecretCodePage() {
-  const backendUrl = useXyzen((s) => s.backendUrl);
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [newCode, setNewCode] = useState<GeneratedCode | undefined>(undefined);
-
-  const getBackendUrl = () => {
-    if (!backendUrl || backendUrl === "") {
-      if (typeof window !== "undefined") {
-        return `${window.location.protocol}//${window.location.host}`;
-      }
-    }
-    return backendUrl;
-  };
+  const [newCode, setNewCode] = useState<AdminCode | undefined>(undefined);
 
   const verifySecretKey = async (secretKey: string) => {
     setIsVerifying(true);
@@ -56,26 +32,20 @@ export function SecretCodePage() {
 
     try {
       // Try to fetch codes list to verify the secret key
-      const response = await fetch(
-        `${getBackendUrl()}/xyzen/api/v1/redemption/admin/codes?limit=1`,
-        {
-          headers: {
-            "X-Admin-Secret": secretKey,
-          },
-        },
-      );
-
-      if (response.ok) {
-        // Secret key is valid
-        setAdminSecret(secretKey);
-        setIsAuthenticated(true);
-      } else if (response.status === 401) {
+      await redemptionService.adminListCodes(secretKey, 1);
+      // Secret key is valid
+      setAdminSecret(secretKey);
+      setIsAuthenticated(true);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        "status" in error &&
+        (error as { status: number }).status === 401
+      ) {
         setAuthError("Invalid admin secret key");
       } else {
         setAuthError("Failed to verify admin secret key");
       }
-    } catch {
-      setAuthError("Network error: Failed to verify secret key");
     } finally {
       setIsVerifying(false);
     }
@@ -85,7 +55,7 @@ export function SecretCodePage() {
     verifySecretKey(secretKey);
   };
 
-  const handleCodeGenerated = (code: GeneratedCode) => {
+  const handleCodeGenerated = (code: AdminCode) => {
     setNewCode(code);
     // Reset newCode after a short delay so it can be added to the list
     setTimeout(() => setNewCode(undefined), 100);
@@ -154,7 +124,7 @@ export function SecretCodePage() {
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <DailyStatsTab
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                 />
               </div>
             </TabsContent>
@@ -163,7 +133,7 @@ export function SecretCodePage() {
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <UserActivityTab
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                 />
               </div>
             </TabsContent>
@@ -172,7 +142,7 @@ export function SecretCodePage() {
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <TopUsersTab
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                 />
               </div>
             </TabsContent>
@@ -181,7 +151,7 @@ export function SecretCodePage() {
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <TrendChartTab
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                 />
               </div>
             </TabsContent>
@@ -190,7 +160,7 @@ export function SecretCodePage() {
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <UserRankingsTab
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                 />
               </div>
             </TabsContent>
@@ -199,7 +169,7 @@ export function SecretCodePage() {
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <SubscriptionsTab
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                 />
               </div>
             </TabsContent>
@@ -209,14 +179,14 @@ export function SecretCodePage() {
                 {/* Generate Code Form */}
                 <CodeGenerationForm
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                   onCodeGenerated={handleCodeGenerated}
                 />
 
                 {/* Generated Codes List */}
                 <CodesList
                   adminSecret={adminSecret!}
-                  backendUrl={getBackendUrl()}
+                  backendUrl={http.baseUrl}
                   newCode={newCode}
                 />
               </div>

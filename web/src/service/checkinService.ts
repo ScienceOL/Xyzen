@@ -1,5 +1,4 @@
-import { authService } from "@/service/authService";
-import { useXyzen } from "@/store";
+import { http } from "@/service/http/client";
 
 export interface CheckInResponse {
   success: boolean;
@@ -73,161 +72,44 @@ export interface UserConsumeRecordsPage {
 }
 
 class CheckInService {
-  private getBackendUrl(): string {
-    const { backendUrl } = useXyzen.getState();
-    if (!backendUrl || backendUrl === "") {
-      if (typeof window !== "undefined") {
-        return `${window.location.protocol}//${window.location.host}`;
-      }
-    }
-    return backendUrl;
-  }
-
-  private createAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    const token = authService.getToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
-    return headers;
-  }
-
-  /**
-   * Perform daily check-in
-   */
   async checkIn(): Promise<CheckInResponse> {
-    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/check-in`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: this.createAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to check in");
-    }
-
-    return response.json();
+    return http.post("/xyzen/api/v1/checkin/check-in");
   }
 
-  /**
-   * Get check-in status
-   */
   async getStatus(): Promise<CheckInStatusResponse> {
-    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/check-in/status`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.createAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to get check-in status");
-    }
-
-    return response.json();
+    return http.get("/xyzen/api/v1/checkin/check-in/status");
   }
 
-  /**
-   * Get check-in history
-   */
   async getHistory(
     limit: number = 30,
     offset: number = 0,
   ): Promise<CheckInRecordResponse[]> {
-    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/check-in/history?limit=${limit}&offset=${offset}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.createAuthHeaders(),
+    return http.get("/xyzen/api/v1/checkin/check-in/history", {
+      params: { limit, offset },
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to get check-in history");
-    }
-
-    return response.json();
   }
 
-  /**
-   * Get monthly check-in records
-   */
   async getMonthlyCheckIns(
     year: number,
     month: number,
   ): Promise<CheckInRecordResponse[]> {
-    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/check-in/monthly/${year}/${month}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.createAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to get monthly check-in records");
-    }
-
-    return response.json();
+    return http.get(`/xyzen/api/v1/checkin/check-in/monthly/${year}/${month}`);
   }
 
-  /**
-   * Get day consumption statistics
-   */
   async getDayConsumption(date: string): Promise<DayConsumptionResponse> {
-    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/check-in/consumption/${date}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.createAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to get day consumption");
-    }
-
-    return response.json();
+    return http.get(`/xyzen/api/v1/checkin/check-in/consumption/${date}`);
   }
 
-  /**
-   * Get consumption range statistics (daily breakdown, tier and scene distribution)
-   */
   async getConsumptionRange(
     startDate: string,
     endDate: string,
     tz: string = "Asia/Shanghai",
   ): Promise<ConsumptionRangeResponse> {
-    const params = new URLSearchParams({
-      start_date: startDate,
-      end_date: endDate,
-      tz,
+    return http.get("/xyzen/api/v1/checkin/consumption/range", {
+      params: { start_date: startDate, end_date: endDate, tz },
     });
-    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/consumption/range?${params}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.createAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to get consumption range");
-    }
-
-    return response.json();
   }
 
-  /**
-   * Get paginated consumption records
-   */
   async getConsumptionRecords(
     limit: number = 20,
     offset: number = 0,
@@ -235,26 +117,15 @@ class CheckInService {
     endDate?: string,
     tz: string = "Asia/Shanghai",
   ): Promise<UserConsumeRecordsPage> {
-    const params = new URLSearchParams({
-      limit: String(limit),
-      offset: String(offset),
-      tz,
+    return http.get("/xyzen/api/v1/checkin/consumption/records", {
+      params: {
+        limit,
+        offset,
+        tz,
+        start_date: startDate,
+        end_date: endDate,
+      },
     });
-    if (startDate) params.set("start_date", startDate);
-    if (endDate) params.set("end_date", endDate);
-    const url = `${this.getBackendUrl()}/xyzen/api/v1/checkin/consumption/records?${params}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.createAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to get consumption records");
-    }
-
-    return response.json();
   }
 }
 

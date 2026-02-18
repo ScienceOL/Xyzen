@@ -1,32 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-
-interface GeneratedCode {
-  id: string;
-  code: string;
-  amount: number;
-  max_usage: number;
-  current_usage: number;
-  is_active: boolean;
-  expires_at: string | null;
-  description: string | null;
-  code_type: string;
-  role_name: string | null;
-  duration_days: number;
-  created_at: string;
-}
+import { redemptionService, type AdminCode } from "@/service/redemptionService";
 
 interface CodesListProps {
   adminSecret: string;
   backendUrl: string;
-  newCode?: GeneratedCode;
+  newCode?: AdminCode;
 }
 
-export function CodesList({
-  adminSecret,
-  backendUrl,
-  newCode,
-}: CodesListProps) {
-  const [codes, setCodes] = useState<GeneratedCode[]>([]);
+export function CodesList({ adminSecret, newCode }: CodesListProps) {
+  const [codes, setCodes] = useState<AdminCode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -36,47 +18,21 @@ export function CodesList({
     setError(null);
 
     try {
-      const response = await fetch(
-        `${backendUrl}/xyzen/api/v1/redemption/admin/codes?limit=50`,
-        {
-          headers: {
-            "X-Admin-Secret": adminSecret,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to load codes");
-      }
-
-      const data = await response.json();
+      const data = await redemptionService.adminListCodes(adminSecret);
       setCodes(data.codes || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load codes");
     } finally {
       setIsLoading(false);
     }
-  }, [adminSecret, backendUrl]);
+  }, [adminSecret]);
 
   const handleDeactivate = async (codeId: string) => {
     if (!confirm("Are you sure you want to deactivate this code?")) return;
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${backendUrl}/xyzen/api/v1/redemption/admin/codes/${codeId}/deactivate`,
-        {
-          method: "POST",
-          headers: {
-            "X-Admin-Secret": adminSecret,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to deactivate code");
-      }
-
+      await redemptionService.adminDeactivateCode(adminSecret, codeId);
       await loadCodes();
       setSuccess("Code deactivated successfully");
       setTimeout(() => setSuccess(null), 3000);

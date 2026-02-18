@@ -1,21 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-interface GeneratedCode {
-  id: string;
-  code: string;
-  amount: number;
-  max_usage: number;
-  current_usage: number;
-  is_active: boolean;
-  expires_at: string | null;
-  description: string | null;
-  code_type: string;
-  role_name: string | null;
-  duration_days: number;
-  created_at: string;
-}
+import { subscriptionService } from "@/service/subscriptionService";
+import { redemptionService, type AdminCode } from "@/service/redemptionService";
 
 interface Plan {
   id: string;
@@ -26,12 +13,11 @@ interface Plan {
 interface CodeGenerationFormProps {
   adminSecret: string;
   backendUrl: string;
-  onCodeGenerated: (code: GeneratedCode) => void;
+  onCodeGenerated: (code: AdminCode) => void;
 }
 
 export function CodeGenerationForm({
   adminSecret,
-  backendUrl,
   onCodeGenerated,
 }: CodeGenerationFormProps) {
   const [codeType, setCodeType] = useState<"credits" | "subscription">(
@@ -52,8 +38,8 @@ export function CodeGenerationForm({
 
   useEffect(() => {
     if (codeType === "subscription" && plans.length === 0) {
-      fetch(`${backendUrl}/xyzen/api/v1/subscription/plans`)
-        .then((res) => res.json())
+      subscriptionService
+        .getPlans()
         .then((data) => {
           const loadedPlans: Plan[] = data.plans ?? [];
           setPlans(loadedPlans);
@@ -65,7 +51,7 @@ export function CodeGenerationForm({
           /* ignore fetch errors */
         });
     }
-  }, [codeType, backendUrl, plans.length, roleName]);
+  }, [codeType, plans.length, roleName]);
 
   const handleGenerate = async () => {
     setError(null);
@@ -123,26 +109,10 @@ export function CodeGenerationForm({
         payload.expires_at = new Date(expiresAt).toISOString();
       }
 
-      const response = await fetch(
-        `${backendUrl}/xyzen/api/v1/redemption/admin/codes`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Admin-Secret": adminSecret,
-          },
-          body: JSON.stringify(payload),
-        },
+      const data = await redemptionService.adminCreateCode(
+        adminSecret,
+        payload,
       );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.detail?.msg || error.detail || "Failed to generate code",
-        );
-      }
-
-      const data = await response.json();
       setSuccess(`Code generated successfully: ${data.code}`);
       onCodeGenerated(data);
 
