@@ -17,6 +17,7 @@ import {
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import React, { Suspense, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 const ConsumptionAnalyticsModal = React.lazy(() =>
@@ -30,6 +31,7 @@ interface CheckInCalendarProps {
 }
 
 export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
+  const { t, i18n } = useTranslation();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date(),
   );
@@ -134,6 +136,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [direction, setDirection] = useState(0);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const currentLocale = i18n.resolvedLanguage ?? i18n.language ?? "zh-CN";
 
   const variants = {
     enter: (direction: number) => ({
@@ -210,7 +213,9 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
       onCheckInSuccess?.(response);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "签到失败，请稍后重试";
+        error instanceof Error
+          ? error.message
+          : t("app.checkInCalendar.checkInFailed");
       toast.error(message);
     } finally {
       setIsCheckingIn(false);
@@ -229,13 +234,13 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
     !!selectedDate &&
     formatDateInCheckinTZ(selectedDate) === formatDateInCheckinTZ(today);
 
-  const selectedDateLabel = selectedDate?.toLocaleDateString("zh-CN", {
+  const selectedDateLabel = selectedDate?.toLocaleDateString(currentLocale, {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  const selectedWeekday = selectedDate?.toLocaleDateString("zh-CN", {
+  const selectedWeekday = selectedDate?.toLocaleDateString(currentLocale, {
     weekday: "long",
   });
 
@@ -300,10 +305,10 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-            Token
+            {t("app.consumption.colToken")}
           </div>
           <div className="text-sm font-bold text-neutral-900 dark:text-white">
-            {total.toLocaleString()}
+            {total.toLocaleString(currentLocale)}
           </div>
         </div>
       </div>
@@ -354,13 +359,13 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                   <CalendarIcon className="h-5 w-5 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
-                  签到日历
+                  {t("app.checkInCalendar.title")}
                 </h3>
               </div>
               {todayCheckedIn && (
                 <div className="animate-in fade-in slide-in-from-right-5 duration-500 flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 shadow-sm dark:bg-green-900/30 dark:text-green-400">
                   <CheckCircleIcon className="h-3.5 w-3.5 animate-pulse" />
-                  <span>已签</span>
+                  <span>{t("app.checkInCalendar.checkedBadge")}</span>
                 </div>
               )}
             </div>
@@ -453,7 +458,11 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                       <span className="absolute inset-0 bg-linear-to-r from-white/0 via-white/20 to-white/0 opacity-0 transition-opacity group-hover:animate-shimmer group-hover:opacity-100" />
                       <span className="relative flex items-center justify-center gap-2">
                         <SparklesIcon className="h-5 w-5 transition-transform group-hover:rotate-12" />
-                        <span>{isCheckingIn ? "签到中..." : "立即签到"}</span>
+                        <span>
+                          {isCheckingIn
+                            ? t("app.checkInCalendar.checkingIn")
+                            : t("app.checkInCalendar.checkInNow")}
+                        </span>
                       </span>
                     </Button>
                   </div>
@@ -470,13 +479,13 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
             <Card className="group cursor-pointer backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg transition-all hover:scale-105 hover:shadow-xl">
               <CardContent className="p-5 text-center">
                 <div className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                  连续签到
+                  {t("app.checkInCalendar.streak")}
                 </div>
                 <div className="mt-3 text-3xl font-bold text-neutral-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
                   {consecutiveDays}
                 </div>
                 <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-500">
-                  天
+                  {t("app.checkInCalendar.dayUnit")}
                 </div>
               </CardContent>
             </Card>
@@ -484,13 +493,13 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
             <Card className="group cursor-pointer backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg transition-all hover:scale-105 hover:shadow-xl">
               <CardContent className="p-5 text-center">
                 <div className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                  累计签到
+                  {t("app.checkInCalendar.totalCheckIns")}
                 </div>
                 <div className="mt-3 text-3xl font-bold text-neutral-900 transition-colors group-hover:text-purple-600 dark:text-white dark:group-hover:text-purple-400">
                   {status?.total_check_ins ?? 0}
                 </div>
                 <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-500">
-                  次
+                  {t("app.checkInCalendar.countUnit")}
                 </div>
               </CardContent>
             </Card>
@@ -498,7 +507,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
             <Card className="group cursor-pointer backdrop-blur-md bg-linear-to-br from-indigo-500/20 to-purple-600/20 border-indigo-300/30 dark:border-indigo-600/30 shadow-lg transition-all hover:scale-105 hover:shadow-xl">
               <CardContent className="p-5 text-center">
                 <div className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
-                  明日奖励
+                  {t("app.checkInCalendar.tomorrowReward")}
                 </div>
                 <div className="mt-3 flex items-center justify-center gap-1.5">
                   <SparklesIcon className="h-6 w-6 animate-pulse text-indigo-600 dark:text-indigo-400" />
@@ -507,7 +516,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                   </div>
                 </div>
                 <div className="mt-1 text-xs text-indigo-700 dark:text-indigo-300">
-                  积分
+                  {t("app.account.credits")}
                 </div>
               </CardContent>
             </Card>
@@ -539,7 +548,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
                 {selectedIsToday ? (
                   <div className="rounded-full bg-linear-to-r from-indigo-500/90 to-purple-600/90 px-3 py-1 text-xs font-semibold text-white shadow-sm shadow-indigo-500/20">
-                    今日
+                    {t("app.checkInCalendar.today")}
                   </div>
                 ) : null}
               </motion.div>
@@ -554,19 +563,20 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                       <div className="flex items-center gap-2">
                         <SparklesIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                         <div className="font-bold text-indigo-900 dark:text-indigo-100">
-                          签到奖励
+                          {t("app.checkInCalendar.rewardTitle")}
                         </div>
                       </div>
                       <div className="mt-3 text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                        获得{" "}
+                        {t("app.checkInCalendar.rewardEarned")}{" "}
                         <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                           {checkInRecord.points_awarded}
                         </span>{" "}
-                        积分 · 连续{" "}
+                        {t("app.account.credits")} ·{" "}
+                        {t("app.checkInCalendar.rewardStreak")}{" "}
                         <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                           {checkInRecord.consecutive_days}
                         </span>{" "}
-                        天
+                        {t("app.checkInCalendar.dayUnit")}
                       </div>
                     </div>
                   </div>
@@ -578,7 +588,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                     <div className="pl-4">
                       <div className="flex items-center justify-between">
                         <div className="font-bold text-neutral-900 dark:text-neutral-100">
-                          使用统计
+                          {t("app.consumption.usageStats")}
                         </div>
                         <Button
                           variant="ghost"
@@ -587,7 +597,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                           className="h-7 px-2 text-xs text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
                         >
                           <ChartBarIcon className="h-3.5 w-3.5 mr-1" />
-                          详细分析
+                          {t("app.consumption.detailedAnalysis")}
                         </Button>
                       </div>
                       <div className="mt-4">
@@ -600,34 +610,39 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
                             <div className="flex-1 space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
                               <div className="flex items-center justify-between">
-                                <span>消耗积分</span>
+                                <span>{t("app.consumption.colCredits")}</span>
                                 <span className="font-bold text-neutral-900 dark:text-white">
                                   {consumption.total_amount}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span>请求次数</span>
+                                <span>{t("app.consumption.colRequests")}</span>
                                 <span className="font-semibold text-neutral-900 dark:text-white">
                                   {consumption.record_count}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span>输入 Token</span>
+                                <span>{t("app.consumption.inputToken")}</span>
                                 <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                                  {consumption.input_tokens.toLocaleString()}
+                                  {consumption.input_tokens.toLocaleString(
+                                    currentLocale,
+                                  )}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span>输出 Token</span>
+                                <span>{t("app.consumption.outputToken")}</span>
                                 <span className="font-semibold text-pink-600 dark:text-pink-400">
-                                  {consumption.output_tokens.toLocaleString()}
+                                  {consumption.output_tokens.toLocaleString(
+                                    currentLocale,
+                                  )}
                                 </span>
                               </div>
                             </div>
                           </div>
                         ) : (
                           <div className="italic text-neutral-500">
-                            {consumption.message || "这一天还没有使用记录"}
+                            {consumption.message ||
+                              t("app.consumption.noRecords")}
                           </div>
                         )}
                       </div>
@@ -672,8 +687,8 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                       <div className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                         {formatDateForAPI(selectedDate) ===
                         formatDateForAPI(today)
-                          ? "今天还没有签到哦，快来签到吧～ 🎉"
-                          : "这一天暂无记录 📅"}
+                          ? t("app.checkInCalendar.noCheckInToday")
+                          : t("app.checkInCalendar.noRecordForDay")}
                       </div>
                     </div>
                   )}

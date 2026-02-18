@@ -407,6 +407,24 @@
     "region": "地区",
     "about": "关于"
   },
+  "checkInCalendar": {
+    "title": "签到日历",
+    "checkedBadge": "已签",
+    "checkingIn": "签到中...",
+    "checkInNow": "立即签到",
+    "streak": "连续签到",
+    "totalCheckIns": "累计签到",
+    "tomorrowReward": "明日奖励",
+    "today": "今日",
+    "rewardTitle": "签到奖励",
+    "rewardEarned": "获得",
+    "rewardStreak": "连续",
+    "dayUnit": "天",
+    "countUnit": "次",
+    "noCheckInToday": "今天还没有签到哦，快来签到吧～ 🎉",
+    "noRecordForDay": "这一天暂无记录 📅",
+    "checkInFailed": "签到失败，请稍后重试"
+  },
   "consumption": {
     "title": "使用分析",
     "close": "关闭",
@@ -430,6 +448,9 @@
     "colRequests": "请求次数",
     "colToolCalls": "工具调用",
     "noRecords": "暂无消费记录",
-    "donutEmpty": "暂无"
+    "donutEmpty": "暂无",
+    "usageStats": "使用统计",
+    "detailedAnalysis": "详细分析",
+    "clickDateHint": "点击日期查看详情"
   }
 }

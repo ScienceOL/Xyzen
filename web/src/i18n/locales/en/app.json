@@ -407,6 +407,24 @@
     "region": "Region",
     "about": "About"
   },
+  "checkInCalendar": {
+    "title": "Check-in Calendar",
+    "checkedBadge": "Done",
+    "checkingIn": "Checking in...",
+    "checkInNow": "Check in now",
+    "streak": "Current Streak",
+    "totalCheckIns": "Total Check-ins",
+    "tomorrowReward": "Tomorrow Reward",
+    "today": "Today",
+    "rewardTitle": "Check-in Reward",
+    "rewardEarned": "Earned",
+    "rewardStreak": "Streak",
+    "dayUnit": "days",
+    "countUnit": "times",
+    "noCheckInToday": "You haven’t checked in today. Check in now! 🎉",
+    "noRecordForDay": "No records for this day 📅",
+    "checkInFailed": "Check-in failed, please try again later"
+  },
   "consumption": {
     "title": "Usage Analytics",
     "close": "Close",
@@ -430,6 +448,9 @@
     "colRequests": "Requests",
     "colToolCalls": "Tool Calls",
     "noRecords": "No consumption records",
-    "donutEmpty": "None"
+    "donutEmpty": "None",
+    "usageStats": "Usage Statistics",
+    "detailedAnalysis": "Detailed Analysis",
+    "clickDateHint": "Tap a date to view details"
   }
 }

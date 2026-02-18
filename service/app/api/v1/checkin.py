@@ -1,5 +1,6 @@
 """Check-in API endpoints for daily sign-in rewards."""
 
+import asyncio
 import logging
 from datetime import datetime
 from uuid import UUID
@@ -17,6 +18,16 @@ from app.repos.consume import ConsumeRepository
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["check-in"])
+
+# Generic error messages to prevent internal details leakage
+GENERIC_ERROR_MESSAGES = {
+    "consumption_range": "Failed to fetch consumption range",
+    "consumption_records": "Failed to fetch consumption records",
+    "checkin": "Check-in operation failed",
+    "checkin_status": "Failed to fetch check-in status",
+    "checkin_history": "Failed to fetch check-in history",
+    "day_consumption": "Failed to fetch day consumption",
+}
 
 
 # ==================== Request/Response Models ====================
@@ -174,10 +185,13 @@ async def check_in(
         raise handle_auth_error(e)
     except Exception as e:
         await db.rollback()
-        logger.error(f"Unexpected error during check-in for user {user_id}: {e}")
+        logger.error(
+            f"Unexpected error during check-in for user {user_id}: {e}",
+            exc_info=True,  # Log full stack trace server-side
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=GENERIC_ERROR_MESSAGES["checkin"],  # Generic message to client
         )
 
 
@@ -208,10 +222,13 @@ async def get_check_in_status(
         return CheckInStatusResponse(**status_data)
 
     except Exception as e:
-        logger.error(f"Error fetching check-in status for user {user_id}: {e}")
+        logger.error(
+            f"Error fetching check-in status for user {user_id}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=GENERIC_ERROR_MESSAGES["checkin_status"],
         )
 
 
@@ -256,10 +273,13 @@ async def get_check_in_history(
         ]
 
     except Exception as e:
-        logger.error(f"Error fetching check-in history for user {user_id}: {e}")
+        logger.error(
+            f"Error fetching check-in history for user {user_id}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=GENERIC_ERROR_MESSAGES["checkin_history"],
         )
 
 
@@ -315,10 +335,13 @@ async def get_monthly_check_ins(
         ]
 
     except Exception as e:
-        logger.error(f"Error fetching monthly check-ins for user {user_id}: {e}")
+        logger.error(
+            f"Error fetching monthly check-ins for user {user_id}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=GENERIC_ERROR_MESSAGES["checkin_history"],
         )
 
 
@@ -381,10 +404,13 @@ async def get_day_consumption(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching day consumption for user {user_id}: {e}")
+        logger.error(
+            f"Error fetching day consumption for user {user_id}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=GENERIC_ERROR_MESSAGES["day_consumption"],
         )
 
 
@@ -454,10 +480,13 @@ async def get_consumption_range(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Error fetching consumption range for user {user_id}: {e}")
+        logger.error(
+            f"Error fetching consumption range for user {user_id}: {e}",
+            exc_info=True,  # Log full stack trace server-side
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=GENERIC_ERROR_MESSAGES["consumption_range"],  # Generic message to client
         )
 
 
@@ -509,15 +538,17 @@ async def get_consumption_records(
 
         consume_repo = ConsumeRepository(db)
 
-        total = await consume_repo.count_consume_records_by_user_range(user_id, start_date, end_date, tz)
-
-        user_records = await consume_repo.list_consume_records_by_user_range(
-            user_id=user_id,
-            start_date=start_date,
-            end_date=end_date,
-            tz=tz,
-            limit=limit,
-            offset=offset,
+        # Parallel execution of count and list queries
+        total, user_records = await asyncio.gather(
+            consume_repo.count_consume_records_by_user_range(user_id, start_date, end_date, tz),
+            consume_repo.list_consume_records_by_user_range(
+                user_id=user_id,
+                start_date=start_date,
+                end_date=end_date,
+                tz=tz,
+                limit=limit,
+                offset=offset,
+            ),
         )
 
         record_items = [
@@ -548,8 +579,11 @@ async def get_consumption_records(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Error fetching consumption records for user {user_id}: {e}")
+        logger.error(
+            f"Error fetching consumption records for user {user_id}: {e}",
+            exc_info=True,  # Log full stack trace server-side
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=GENERIC_ERROR_MESSAGES["consumption_records"],  # Generic message to client
         )

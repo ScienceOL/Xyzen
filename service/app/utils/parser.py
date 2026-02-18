@@ -7,11 +7,16 @@
 - parse_requirements: Python 包依赖解析
   - 支持多种格式的依赖声明
   - 可配置保留/移除额外选项和版本约束
+- parse_date_range / parse_date_start / parse_date_end: 日期时区解析
+  - 支持 IANA 时区
+  - 统一转换为 UTC
 
 """
 
 import re
+from datetime import datetime, timezone as dt_timezone
 from typing import List
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 def parse_requirements(requirements: str, preserve_extras: bool = True, keep_version: bool = False) -> List[str]:
@@ -84,3 +89,86 @@ def parse_requirements(requirements: str, preserve_extras: bool = True, keep_ver
             if pkg and pkg not in libraries:
                 libraries.append(pkg)
     return libraries
+
+
+def parse_date_range(
+    start_date: str,
+    end_date: str,
+    tz: str = "Asia/Shanghai",
+) -> tuple[datetime, datetime, ZoneInfo]:
+    """
+    Parse date range with timezone handling.
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        tz: Timezone name (IANA format)
+
+    Returns:
+        Tuple of (start_utc, end_utc, zone)
+
+    Raises:
+        ValueError: If timezone is invalid
+    """
+    try:
+        zone = ZoneInfo(tz)
+    except ZoneInfoNotFoundError as e:
+        raise ValueError(f"Invalid timezone: {tz}") from e
+
+    start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
+    end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
+        hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
+    )
+
+    start_utc = start_local.astimezone(dt_timezone.utc)
+    end_utc = end_local.astimezone(dt_timezone.utc)
+
+    return start_utc, end_utc, zone
+
+
+def parse_date_start(date_str: str, tz: str = "Asia/Shanghai") -> datetime:
+    """
+    Parse single date as start of day in given timezone.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+        tz: Timezone name (IANA format)
+
+    Returns:
+        UTC datetime at start of day in given timezone
+
+    Raises:
+        ValueError: If timezone is invalid
+    """
+    try:
+        zone = ZoneInfo(tz)
+    except ZoneInfoNotFoundError as e:
+        raise ValueError(f"Invalid timezone: {tz}") from e
+
+    local = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=zone)
+    return local.astimezone(dt_timezone.utc)
+
+
+def parse_date_end(date_str: str, tz: str = "Asia/Shanghai") -> datetime:
+    """
+    Parse single date as end of day in given timezone.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+        tz: Timezone name (IANA format)
+
+    Returns:
+        UTC datetime at end of day (23:59:59.999999) in given timezone
+
+    Raises:
+        ValueError: If timezone is invalid
+    """
+    try:
+        zone = ZoneInfo(tz)
+    except ZoneInfoNotFoundError as e:
+        raise ValueError(f"Invalid timezone: {tz}") from e
+
+    local = datetime.strptime(date_str, "%Y-%m-%d").replace(
+        hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
+    )
+    return local.astimezone(dt_timezone.utc)
