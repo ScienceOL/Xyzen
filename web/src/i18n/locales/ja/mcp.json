@@ -10,6 +10,7 @@
   },
   "added": {
     "title": "追加されたサーバー",
+    "loading": "MCPサーバーを読み込み中...",
     "online": "オンライン",
     "offline": "オフライン",
     "tools": "ツール",
