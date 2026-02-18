@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.4](https://github.com/ScienceOL/Xyzen/compare/v1.4.3...v1.4.4) (2026-02-18)
+
+### 🐛 Bug Fixes
+
+* fix share scroll, add ee and ec config. add region config ([#255](https://github.com/ScienceOL/Xyzen/issues/255)) ([321d5db](https://github.com/ScienceOL/Xyzen/commit/321d5db5ba2b3237a76493573204e70b883ee77e)), closes [#253](https://github.com/ScienceOL/Xyzen/issues/253)
+
 ## [1.4.3](https://github.com/ScienceOL/Xyzen/compare/v1.4.2...v1.4.3) (2026-02-17)
 
 ### 🐛 Bug Fixes
