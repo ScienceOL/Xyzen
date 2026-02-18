@@ -209,7 +209,7 @@ export default function SharedAgentDetailPage({
   // ── Loading state ──────────────────────────────────────────────────
   if (state.kind === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex h-[100dvh] items-center justify-center bg-background">
         <div className="text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600" />
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
@@ -223,7 +223,7 @@ export default function SharedAgentDetailPage({
   // ── Error state ────────────────────────────────────────────────────
   if (state.kind === "error") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex h-[100dvh] items-center justify-center bg-background">
         <div className="max-w-md w-full rounded-lg border border-red-500/50 bg-red-50 p-4 text-red-900 dark:bg-red-950/50 dark:text-red-400">
           <div className="flex gap-2">
             <InformationCircleIcon className="h-4 w-4 shrink-0" />

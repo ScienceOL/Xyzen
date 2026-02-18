@@ -135,7 +135,7 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
 
   if (state.kind === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex h-[100dvh] items-center justify-center bg-background">
         <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2Icon className="h-5 w-5 animate-spin" />
           <span>{t("app.share.page.loading")}</span>
@@ -146,7 +146,7 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
 
   if (state.kind === "error") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex h-[100dvh] items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <p className="text-lg text-muted-foreground">{t(state.errorKey)}</p>
           <Button variant="outline" onClick={handleBack}>
@@ -163,7 +163,7 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
   const agentAvatar = data.agent_snapshot?.avatar as string | undefined;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-[100dvh] flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 backdrop-blur px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
