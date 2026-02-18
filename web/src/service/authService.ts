@@ -1,15 +1,5 @@
 // Minimal service (pure HTTP + token storage). Higher-level orchestration lives in core/auth.ts
-import { useXyzen } from "@/store";
-
-const getBackendUrl = () => {
-  const url = useXyzen.getState().backendUrl;
-  if (!url || url === "") {
-    if (typeof window !== "undefined") {
-      return `${window.location.protocol}//${window.location.host}`;
-    }
-  }
-  return url;
-};
+import { http, HttpError } from "@/service/http/client";
 
 export interface AuthStatus {
   is_configured: boolean;
@@ -95,11 +85,7 @@ class AuthService {
   }
 
   async getAuthStatus(): Promise<AuthStatus> {
-    const response = await fetch(`${getBackendUrl()}/xyzen/api/v1/auth/status`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
+    return http.get("/xyzen/api/v1/auth/status", { auth: false });
   }
 
   async loginWithCasdoor(
@@ -110,21 +96,11 @@ class AuthService {
     token_type: string;
     user_info: UserInfo;
   }> {
-    const response = await fetch(
-      `${getBackendUrl()}/xyzen/api/v1/auth/login/casdoor`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ code, state }),
-      },
+    return http.post(
+      "/xyzen/api/v1/auth/login/casdoor",
+      { code, state },
+      { auth: false },
     );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
   }
 
   async validateToken(token?: string): Promise<AuthValidationResponse> {
@@ -137,33 +113,25 @@ class AuthService {
       };
     }
 
-    const response = await fetch(
-      `${getBackendUrl()}/xyzen/api/v1/auth/validate`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+    try {
+      return await http.post<AuthValidationResponse>(
+        "/xyzen/api/v1/auth/validate",
+        undefined,
+        {
+          auth: false,
+          headers: { Authorization: `Bearer ${accessToken}` },
         },
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
+      );
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 401) {
         this.removeToken();
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw error;
     }
-
-    return response.json();
   }
 
   async getAuthConfig(): Promise<AuthProviderConfig> {
-    const response = await fetch(`${getBackendUrl()}/xyzen/api/v1/auth/config`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
+    return http.get("/xyzen/api/v1/auth/config", { auth: false });
   }
 
   logout(): void {
@@ -171,103 +139,32 @@ class AuthService {
   }
 
   async getLinkedAccounts(validate = false): Promise<LinkedAccountsResponse> {
-    const token = this.getToken();
-    if (!token) {
-      throw new Error("No access token available");
-    }
-
-    const url = new URL(`${getBackendUrl()}/xyzen/api/v1/auth/linked-accounts`);
-    if (validate) {
-      url.searchParams.set("validate", "true");
-    }
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    return http.get("/xyzen/api/v1/auth/linked-accounts", {
+      params: validate ? { validate: true } : undefined,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
   }
 
   async getLinkUrl(
     providerType: string,
     redirectUri: string,
   ): Promise<LinkUrlResponse> {
-    const token = this.getToken();
-    if (!token) {
-      throw new Error("No access token available");
-    }
-
-    const url = new URL(`${getBackendUrl()}/xyzen/api/v1/auth/link-url`);
-    url.searchParams.set("provider_type", providerType);
-    url.searchParams.set("redirect_uri", redirectUri);
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    return http.get("/xyzen/api/v1/auth/link-url", {
+      params: { provider_type: providerType, redirect_uri: redirectUri },
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
   }
 
   async uploadAvatar(file: File): Promise<AvatarUpdateResponse> {
-    const token = this.getToken();
-    if (!token) {
-      throw new Error("No access token available");
-    }
-
     const formData = new FormData();
     formData.append("file", file);
-
-    const response = await fetch(
-      `${getBackendUrl()}/xyzen/api/v1/auth/avatar`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
+    return http.post("/xyzen/api/v1/auth/avatar", formData);
   }
 
   async updateDisplayName(
     displayName: string,
   ): Promise<DisplayNameUpdateResponse> {
-    const token = this.getToken();
-    if (!token) {
-      throw new Error("No access token available");
-    }
-
-    const response = await fetch(
-      `${getBackendUrl()}/xyzen/api/v1/auth/display-name`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ display_name: displayName }),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
+    return http.post("/xyzen/api/v1/auth/display-name", {
+      display_name: displayName,
+    });
   }
 }
 

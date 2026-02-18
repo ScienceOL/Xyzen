@@ -1,4 +1,5 @@
 import { useXyzen } from "@/store";
+import { http } from "@/service/http/client";
 import type { MessageAttachment } from "@/store/types";
 import {
   DocumentIcon,
@@ -36,18 +37,16 @@ export default function MessageAttachments({
     Record<string, boolean>
   >({});
   const backendUrl = useXyzen((state) => state.backendUrl);
-  const token = useXyzen((state) => state.token);
 
   const portalRoot = typeof document !== "undefined" ? document.body : null;
 
-  // Helper to convert relative URLs to absolute
+  // Helper to convert relative URLs to absolute (used for fallback src attributes)
   const getFullUrl = useCallback(
     (url: string | undefined): string => {
       if (!url) return "";
       if (url.startsWith("http://") || url.startsWith("https://")) {
         return url;
       }
-      // Relative URL - prepend backend URL
       const base = backendUrl || window.location.origin;
       return `${base}${url.startsWith("/") ? url : `/${url}`}`;
     },
@@ -62,27 +61,18 @@ export default function MessageAttachments({
 
     const fetchImages = async () => {
       const newBlobUrls: Record<string, string> = {};
-      const loadingStates: Record<string, boolean> = {};
 
       for (const image of imageAttachments) {
         if (!image.download_url) continue;
         if (imageBlobUrls[image.id]) continue; // Already fetched
 
-        // Set loading state
-        loadingStates[image.id] = true;
         setImageLoadingStates((prev) => ({ ...prev, [image.id]: true }));
 
         try {
-          const fullUrl = getFullUrl(image.download_url);
-          const response = await fetch(fullUrl, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-
-          if (response.ok) {
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            newBlobUrls[image.id] = blobUrl;
-          }
+          const response = await http.raw(image.download_url);
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          newBlobUrls[image.id] = blobUrl;
         } catch (error) {
           console.error(`Failed to fetch image ${image.id}:`, error);
         } finally {
@@ -101,9 +91,9 @@ export default function MessageAttachments({
     return () => {
       Object.values(imageBlobUrls).forEach((url) => URL.revokeObjectURL(url));
     };
-    // Intentionally omitting imageBlobUrls and getFullUrl - we check imageBlobUrls[image.id] to avoid re-fetching
+    // Intentionally omitting imageBlobUrls - we check imageBlobUrls[image.id] to avoid re-fetching
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attachments, backendUrl, token]);
+  }, [attachments]);
 
   // Fetch audio and document files with authentication
   useEffect(() => {
@@ -120,20 +110,13 @@ export default function MessageAttachments({
         if (!file.download_url) continue;
         if (fileBlobUrls[file.id]) continue; // Already fetched
 
-        // Set loading state
         setFileLoadingStates((prev) => ({ ...prev, [file.id]: true }));
 
         try {
-          const fullUrl = getFullUrl(file.download_url);
-          const response = await fetch(fullUrl, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-
-          if (response.ok) {
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            newBlobUrls[file.id] = blobUrl;
-          }
+          const response = await http.raw(file.download_url);
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          newBlobUrls[file.id] = blobUrl;
         } catch (error) {
           console.error(`Failed to fetch file ${file.id}:`, error);
         } finally {
@@ -152,9 +135,9 @@ export default function MessageAttachments({
     return () => {
       Object.values(fileBlobUrls).forEach((url) => URL.revokeObjectURL(url));
     };
-    // Intentionally omitting fileBlobUrls and getFullUrl - we check fileBlobUrls[file.id] to avoid re-fetching
+    // Intentionally omitting fileBlobUrls - we check fileBlobUrls[file.id] to avoid re-fetching
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attachments, backendUrl, token]);
+  }, [attachments]);
 
   const getImageUrl = (image: MessageAttachment): string => {
     // Use blob URL if available, otherwise fallback to thumbnail or download URL

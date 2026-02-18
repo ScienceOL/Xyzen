@@ -7,8 +7,7 @@
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { authService } from "@/service/authService";
-import { useXyzen } from "@/store";
+import { topicService } from "@/service/topicService";
 import { groupToolMessagesWithAssistant } from "@/core/chat";
 import type { Message } from "@/store/types";
 import { queryKeys } from "./queryKeys";
@@ -22,32 +21,12 @@ import { queryKeys } from "./queryKeys";
  * ```
  */
 export function useTopicMessages(topicId: string | null) {
-  const backendUrl = useXyzen((s) => s.backendUrl);
-
   return useQuery({
     queryKey: queryKeys.topics.messages(topicId ?? ""),
     queryFn: async (): Promise<Message[]> => {
       if (!topicId) return [];
 
-      const token = authService.getToken();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const response = await fetch(
-        `${backendUrl}/xyzen/api/v1/topics/${topicId}/messages`,
-        { headers },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch messages: ${response.status}`);
-      }
-
-      const messages = await response.json();
+      const messages = await topicService.getMessages(topicId);
 
       // Process messages to group tool events with assistant messages
       return groupToolMessagesWithAssistant(messages);
@@ -95,31 +74,12 @@ export function useUpdateMessagesCache() {
  */
 export function usePrefetchTopicMessages() {
   const queryClient = useQueryClient();
-  const backendUrl = useXyzen((s) => s.backendUrl);
 
   return async (topicId: string) => {
-    const token = authService.getToken();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
     await queryClient.prefetchQuery({
       queryKey: queryKeys.topics.messages(topicId),
       queryFn: async () => {
-        const response = await fetch(
-          `${backendUrl}/xyzen/api/v1/topics/${topicId}/messages`,
-          { headers },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch messages: ${response.status}`);
-        }
-
-        const messages = await response.json();
+        const messages = await topicService.getMessages(topicId);
         return groupToolMessagesWithAssistant(messages);
       },
     });

@@ -1,4 +1,4 @@
-import { useXyzen } from "@/store";
+import { fileService } from "@/service/fileService";
 import { PhotoIcon } from "@heroicons/react/24/solid";
 import { useEffect, useRef, useState } from "react";
 
@@ -18,8 +18,6 @@ export const ImageThumbnail = ({
   const [isInView, setIsInView] = useState(false);
   const [hasError, setHasError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const token = useXyzen((state) => state.token);
-  const backendUrl = useXyzen((state) => state.backendUrl);
 
   // Use Intersection Observer for lazy loading
   useEffect(() => {
@@ -59,16 +57,9 @@ export const ImageThumbnail = ({
 
     const fetchImage = async () => {
       try {
-        const base = backendUrl || window.location.origin;
-        const url = `${base}${base.endsWith("/") ? "" : "/"}xyzen/api/v1/files/${fileId}/download`;
-        const response = await fetch(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const response = await fileService.downloadRaw(fileId, {
           signal: controller.signal,
         });
-
-        if (!response.ok) {
-          throw new Error("Failed to load image");
-        }
 
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
@@ -92,7 +83,7 @@ export const ImageThumbnail = ({
       active = false;
       controller.abort();
     };
-  }, [isInView, fileId, token, hasError, blobUrl, backendUrl]);
+  }, [isInView, fileId, hasError, blobUrl]);
 
   // Cleanup blob URL on unmount
   useEffect(() => {

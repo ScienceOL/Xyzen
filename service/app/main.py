@@ -29,6 +29,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Create database tables
     await create_db_and_tables()
 
+    logger.info(f"Deployment region: {configs.Region}")
+
+    # Log Enterprise Edition status
+    from app.ee import edition, is_ee
+
+    logger.info(f"Edition: {edition().upper()}")
+    if is_ee():
+        logger.info(f"EE API: {configs.EE.ApiUrl}")
+
     # Initialize cross-thread memory store
     from app.core.memory import initialize_memory_service
 

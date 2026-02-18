@@ -1,19 +1,4 @@
-import { useXyzen } from "@/store";
-
-const getBackendUrl = () => {
-  const url = useXyzen.getState().backendUrl;
-  if (!url || url === "") {
-    if (typeof window !== "undefined") {
-      return `${window.location.protocol}//${window.location.host}`;
-    }
-  }
-  return url;
-};
-
-const getAuthHeaders = (): Record<string, string> => {
-  const token = useXyzen.getState().token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { http } from "@/service/http/client";
 
 export interface MemoryItem {
   key: string;
@@ -24,58 +9,27 @@ export interface MemoryItem {
 
 class MemoryService {
   async listMemories(limit = 100, offset = 0): Promise<MemoryItem[]> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/memories?limit=${limit}&offset=${offset}`,
-      { headers: { ...getAuthHeaders() } },
-    );
-    if (!response.ok) throw new Error("Failed to fetch memories");
-    return response.json();
+    return http.get("/xyzen/api/v1/memories", {
+      params: { limit, offset },
+    });
   }
 
   async createMemory(content: string): Promise<MemoryItem> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(`${baseUrl}/xyzen/api/v1/memories`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify({ content }),
-    });
-    if (!response.ok) throw new Error("Failed to create memory");
-    return response.json();
+    return http.post("/xyzen/api/v1/memories", { content });
   }
 
   async updateMemory(key: string, content: string): Promise<MemoryItem> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/memories/${encodeURIComponent(key)}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ content }),
-      },
-    );
-    if (!response.ok) throw new Error("Failed to update memory");
-    return response.json();
+    return http.put(`/xyzen/api/v1/memories/${encodeURIComponent(key)}`, {
+      content,
+    });
   }
 
   async searchMemories(query: string, limit = 20): Promise<MemoryItem[]> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(`${baseUrl}/xyzen/api/v1/memories/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify({ query, limit }),
-    });
-    if (!response.ok) throw new Error("Failed to search memories");
-    return response.json();
+    return http.post("/xyzen/api/v1/memories/search", { query, limit });
   }
 
   async deleteMemory(key: string): Promise<void> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/memories/${encodeURIComponent(key)}`,
-      { method: "DELETE", headers: { ...getAuthHeaders() } },
-    );
-    if (!response.ok) throw new Error("Failed to delete memory");
+    return http.delete(`/xyzen/api/v1/memories/${encodeURIComponent(key)}`);
   }
 }
 

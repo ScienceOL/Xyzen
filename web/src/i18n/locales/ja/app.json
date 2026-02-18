@@ -135,6 +135,8 @@
     "noKnowledge": "なし",
     "image": "画像",
     "imageDesc": "画像を生成・読み取り",
+    "literatureSearch": "文献検索",
+    "literatureSearchDesc": "学術論文を検索",
     "memory": "メモリ",
     "memoryDesc": "会話履歴を検索",
     "sandbox": "サンドボックス",
@@ -182,6 +184,49 @@
     "share": "共有",
     "shareTooltip": "会話を共有",
     "contextRemaining": "コンテキスト残量: {{percent}}%"
+  },
+  "share": {
+    "title": "会話を共有",
+    "selectMessages": "共有するメッセージを選択",
+    "tabs": {
+      "image": "画像をエクスポート",
+      "link": "リンクを共有"
+    },
+    "selectAll": "すべて選択",
+    "selectedCount": "{{count}}件選択",
+    "generateImage": "画像プレビューを生成",
+    "generateLink": "共有リンクを生成",
+    "generating": "生成中...",
+    "linkReady": "共有リンクが作成されました！",
+    "linkDescription": "このリンクを持っている人は誰でも会話を見ることができます",
+    "copyLink": "リンクをコピー",
+    "copied": "コピーしました！",
+    "expires": "有効期限",
+    "noExpiry": "なし",
+    "maxUses": "最大使用回数",
+    "unlimited": "無制限",
+    "revokeLink": "取り消し",
+    "revoked": "取り消し済み",
+    "allowFork": "続行を許可",
+    "allowForkDescription": "受信者はこのエージェントのコピー（プロンプトのみ）で会話を続けることができます",
+    "page": {
+      "title": "共有された会話",
+      "continueButton": "会話を続ける",
+      "continueLoginRequired": "続行するにはログイン",
+      "viewOnly": "この共有は閲覧専用です",
+      "continueSuccess": "リダイレクト中...",
+      "continueFailed": "会話の続行に失敗しました",
+      "loading": "読み込み中...",
+      "notFound": "共有が見つかりません",
+      "expired": "この共有は期限切れです",
+      "revoked": "この共有は取り消されました",
+      "back": "戻る"
+    },
+    "error": {
+      "noMessages": "少なくとも1つのメッセージを選択してください",
+      "createFailed": "共有リンクの作成に失敗しました",
+      "revokeFailed": "共有リンクの取り消しに失敗しました"
+    }
   },
   "message": {
     "edit": "編集",
@@ -361,5 +406,30 @@
     "redeem": "コード交換",
     "region": "リージョン",
     "about": "情報"
+  },
+  "consumption": {
+    "title": "利用分析",
+    "close": "閉じる",
+    "selectedDate": "選択中：{{date}}",
+    "clearDate": "選択日をクリア",
+    "totalToken": "トークン合計",
+    "totalCredits": "クレジット合計",
+    "inputToken": "入力トークン",
+    "outputToken": "出力トークン",
+    "conversations": "会話数",
+    "toolCalls": "ツール呼出",
+    "heatmapTitle": "クレジットカレンダー",
+    "heatmapTooltip": "クレジット: {{amount}}",
+    "tableTitle": "日別明細",
+    "tableDayCount": "{{count}}日分",
+    "colDate": "日付",
+    "colToken": "トークン",
+    "colInput": "入力",
+    "colOutput": "出力",
+    "colCredits": "クレジット",
+    "colRequests": "リクエスト",
+    "colToolCalls": "ツール呼出",
+    "noRecords": "消費記録なし",
+    "donutEmpty": "なし"
   }
 }

@@ -1,5 +1,4 @@
-import { authService } from "@/service/authService";
-import { useXyzen } from "@/store";
+import { http } from "@/service/http/client";
 import type { AgentSpatialLayout } from "@/types/agents";
 
 export interface SessionCreate {
@@ -45,126 +44,27 @@ export interface SessionRead {
 }
 
 class SessionService {
-  private getBackendUrl(): string {
-    const { backendUrl } = useXyzen.getState();
-    if (!backendUrl || backendUrl === "") {
-      if (typeof window !== "undefined") {
-        return `${window.location.protocol}//${window.location.host}`;
-      }
-    }
-    return backendUrl;
-  }
-
-  private createAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    const token = authService.getToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
-    return headers;
-  }
-
-  /**
-   * Create a new session
-   */
   async createSession(sessionData: SessionCreate): Promise<SessionRead> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/sessions/`,
-      {
-        method: "POST",
-        headers: this.createAuthHeaders(),
-        body: JSON.stringify(sessionData),
-      },
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to create session: ${error}`);
-    }
-
-    return response.json();
+    return http.post("/xyzen/api/v1/sessions/", sessionData);
   }
 
-  /**
-   * Get all sessions for the current user
-   */
   async getSessions(): Promise<SessionRead[]> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/sessions/`,
-      {
-        headers: this.createAuthHeaders(),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch sessions");
-    }
-
-    return response.json();
+    return http.get("/xyzen/api/v1/sessions/");
   }
 
-  /**
-   * Get session by agent ID
-   */
   async getSessionByAgent(agentId: string): Promise<SessionRead> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/sessions/by-agent/${agentId}`,
-      {
-        headers: this.createAuthHeaders(),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch session by agent");
-    }
-
-    return response.json();
+    return http.get(`/xyzen/api/v1/sessions/by-agent/${agentId}`);
   }
 
-  /**
-   * Update a session (including provider and model)
-   */
   async updateSession(
     sessionId: string,
     sessionData: SessionUpdate,
   ): Promise<SessionRead> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/sessions/${sessionId}`,
-      {
-        method: "PATCH",
-        headers: this.createAuthHeaders(),
-        body: JSON.stringify(sessionData),
-      },
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to update session: ${error}`);
-    }
-
-    return response.json();
+    return http.patch(`/xyzen/api/v1/sessions/${sessionId}`, sessionData);
   }
 
-  /**
-   * Clear all topics in a session
-   */
   async clearSessionTopics(sessionId: string): Promise<void> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/sessions/${sessionId}/topics`,
-      {
-        method: "DELETE",
-        headers: this.createAuthHeaders(),
-      },
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to clear session topics: ${error}`);
-    }
+    return http.delete(`/xyzen/api/v1/sessions/${sessionId}/topics`);
   }
 }
 

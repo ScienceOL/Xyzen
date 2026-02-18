@@ -52,6 +52,8 @@ class ConsumeService:
         model_tier: str | None = None,
         tier_rate: float | None = None,
         calculation_breakdown: str | None = None,
+        model_name: str | None = None,
+        tool_call_count: int | None = None,
     ) -> ConsumeRecord:
         """
         Create consumption record and execute remote billing (if needed)
@@ -73,6 +75,8 @@ class ConsumeService:
             model_tier: Model tier used (ultra/pro/standard/lite)
             tier_rate: Tier rate multiplier applied
             calculation_breakdown: JSON breakdown of calculation
+            model_name: Actual model name used (e.g. gemini-3-pro-preview)
+            tool_call_count: Number of tool calls in this request
 
         Returns:
             Created consumption record
@@ -118,6 +122,8 @@ class ConsumeService:
             model_tier=model_tier,
             tier_rate=tier_rate,
             calculation_breakdown=calculation_breakdown,
+            model_name=model_name,
+            tool_call_count=tool_call_count,
             consume_state=initial_state,
         )
 
@@ -369,6 +375,8 @@ async def create_consume_for_chat(
     model_tier: str | None = None,
     tier_rate: float | None = None,
     calculation_breakdown: str | None = None,
+    model_name: str | None = None,
+    tool_call_count: int | None = None,
 ) -> ConsumeRecord:
     """
     Convenience function to create consumption record for chat
@@ -389,6 +397,8 @@ async def create_consume_for_chat(
         model_tier: Model tier used (ultra/pro/standard/lite)
         tier_rate: Tier rate multiplier applied
         calculation_breakdown: JSON breakdown of calculation
+        model_name: Actual model name used (e.g. gemini-3-pro-preview)
+        tool_call_count: Number of tool calls in this request
 
     Returns:
         Consumption record
@@ -409,4 +419,6 @@ async def create_consume_for_chat(
         model_tier=model_tier,
         tier_rate=tier_rate,
         calculation_breakdown=calculation_breakdown,
+        model_name=model_name,
+        tool_call_count=tool_call_count,
     )

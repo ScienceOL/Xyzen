@@ -1,5 +1,4 @@
-import { authService } from "@/service/authService";
-import { useXyzen } from "@/store";
+import { http } from "@/service/http/client";
 
 // ==================== Types ====================
 
@@ -85,126 +84,39 @@ export interface UsageResponse {
 // ==================== Service ====================
 
 class SubscriptionService {
-  private getBackendUrl(): string {
-    const { backendUrl } = useXyzen.getState();
-    if (!backendUrl || backendUrl === "") {
-      if (typeof window !== "undefined") {
-        return `${window.location.protocol}//${window.location.host}`;
-      }
-    }
-    return backendUrl;
-  }
-
-  private createAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    const token = authService.getToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    return headers;
-  }
-
   async getSubscription(): Promise<SubscriptionResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/subscription`,
-      { method: "GET", headers: this.createAuthHeaders() },
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.detail?.msg || error.detail || "Failed to get subscription",
-      );
-    }
-    return response.json();
+    return http.get("/xyzen/api/v1/subscription");
   }
 
   async getPlans(): Promise<PlansResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/subscription/plans`,
-      { method: "GET" },
-    );
-    if (!response.ok) {
-      throw new Error("Failed to get plans");
-    }
-    return response.json();
+    return http.get("/xyzen/api/v1/subscription/plans", { auth: false });
   }
 
   async getUsage(): Promise<UsageResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/subscription/usage`,
-      { method: "GET", headers: this.createAuthHeaders() },
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.detail?.msg || error.detail || "Failed to get usage",
-      );
-    }
-    return response.json();
+    return http.get("/xyzen/api/v1/subscription/usage");
   }
 
   async claimCredits(): Promise<ClaimCreditsResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/subscription/claim-credits`,
-      { method: "POST", headers: this.createAuthHeaders() },
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.detail?.msg || error.detail || "Failed to claim credits",
-      );
-    }
-    return response.json();
+    return http.post("/xyzen/api/v1/subscription/claim-credits");
   }
 
   async adminListSubscriptions(
     adminSecret: string,
   ): Promise<AdminSubscriptionsResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/subscription/admin/subscriptions`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Admin-Secret": adminSecret,
-        },
-      },
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.detail?.msg ||
-          error.detail ||
-          "Failed to get admin subscriptions",
-      );
-    }
-    return response.json();
+    return http.get("/xyzen/api/v1/subscription/admin/subscriptions", {
+      auth: false,
+      headers: { "X-Admin-Secret": adminSecret },
+    });
   }
 
   async adminAssignRole(
     adminSecret: string,
     data: AdminAssignRoleRequest,
   ): Promise<SubscriptionResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/subscription/admin/assign`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Admin-Secret": adminSecret,
-        },
-        body: JSON.stringify(data),
-      },
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.detail?.msg || error.detail || "Failed to assign role",
-      );
-    }
-    return response.json();
+    return http.post("/xyzen/api/v1/subscription/admin/assign", data, {
+      auth: false,
+      headers: { "X-Admin-Secret": adminSecret },
+    });
   }
 }
 

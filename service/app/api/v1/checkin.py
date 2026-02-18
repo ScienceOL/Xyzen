@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -59,7 +59,52 @@ class DayConsumptionResponse(BaseModel):
     input_tokens: int
     output_tokens: int
     record_count: int
+    tool_call_count: int = 0
     message: str | None = None
+    by_tier: dict[str, "TierStats"] = {}
+
+
+class TierStats(BaseModel):
+    """Statistics for a model tier."""
+
+    total_tokens: int
+    input_tokens: int
+    output_tokens: int
+    total_amount: int
+    record_count: int
+    tool_call_count: int = 0
+
+
+class ConsumptionRangeResponse(BaseModel):
+    """Response model for consumption statistics over a date range."""
+
+    daily: list[DayConsumptionResponse]
+    by_tier: dict[str, TierStats]
+    total_tool_call_count: int = 0
+
+
+class UserConsumeRecordItem(BaseModel):
+    """Response model for a single consume record item."""
+
+    id: UUID
+    biz_no: int | None
+    amount: int
+    scene: str | None
+    model_tier: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    total_tokens: int | None
+    consume_state: str
+    created_at: datetime
+
+
+class UserConsumeRecordsPage(BaseModel):
+    """Paginated response model for user consume records."""
+
+    records: list[UserConsumeRecordItem]
+    total: int
+    limit: int
+    offset: int
 
 
 # ==================== User Endpoints ====================
@@ -337,6 +382,173 @@ async def get_day_consumption(
         raise
     except Exception as e:
         logger.error(f"Error fetching day consumption for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/consumption/range", response_model=ConsumptionRangeResponse)
+async def get_consumption_range(
+    start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    end_date: str = Query(..., description="End date in YYYY-MM-DD format"),
+    tz: str = Query(default="Asia/Shanghai", description="Timezone name (IANA)"),
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get aggregated consumption statistics for the current user over a date range.
+
+    Returns daily breakdown, model tier distribution, and scene distribution.
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        tz: Timezone name (IANA), defaults to Asia/Shanghai
+        current_user: Current authenticated user ID
+        db: Database session
+
+    Returns:
+        Consumption range statistics
+    """
+    user_id = current_user
+    logger.info(f"User {user_id} fetching consumption range from {start_date} to {end_date}")
+
+    try:
+        try:
+            datetime.strptime(start_date, "%Y-%m-%d")
+            datetime.strptime(end_date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format. Use YYYY-MM-DD",
+            )
+
+        consume_repo = ConsumeRepository(db)
+        data = await consume_repo.get_user_consumption_range(user_id, start_date, end_date, tz)
+
+        daily_responses = [
+            DayConsumptionResponse(
+                date=day["date"],
+                total_amount=day["total_amount"],
+                total_tokens=day["total_tokens"],
+                input_tokens=day["input_tokens"],
+                output_tokens=day["output_tokens"],
+                record_count=day["record_count"],
+                tool_call_count=day.get("tool_call_count", 0),
+                by_tier=day.get("by_tier", {}),
+            )
+            for day in data["daily"]
+        ]
+
+        total_tool_call_count = sum(d.tool_call_count for d in daily_responses)
+
+        return ConsumptionRangeResponse(
+            daily=daily_responses,
+            by_tier=data["by_tier"],
+            total_tool_call_count=total_tool_call_count,
+        )
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error fetching consumption range for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/consumption/records", response_model=UserConsumeRecordsPage)
+async def get_consumption_records(
+    limit: int = Query(default=20, ge=1, le=100, description="Number of records per page"),
+    offset: int = Query(default=0, ge=0, description="Number of records to skip"),
+    start_date: str | None = Query(default=None, description="Start date filter (YYYY-MM-DD)"),
+    end_date: str | None = Query(default=None, description="End date filter (YYYY-MM-DD)"),
+    tz: str = Query(default="Asia/Shanghai", description="Timezone name (IANA)"),
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get paginated consume records for the current user.
+
+    Args:
+        limit: Number of records per page (1-100, default 20)
+        offset: Records to skip (default 0)
+        start_date: Optional start date filter
+        end_date: Optional end date filter
+        tz: Timezone name (IANA), defaults to Asia/Shanghai
+        current_user: Current authenticated user ID
+        db: Database session
+
+    Returns:
+        Paginated list of consume records with total count
+    """
+    user_id = current_user
+    logger.info(f"User {user_id} fetching consumption records, limit={limit}, offset={offset}")
+
+    try:
+        if start_date:
+            try:
+                datetime.strptime(start_date, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid start_date format. Use YYYY-MM-DD",
+                )
+        if end_date:
+            try:
+                datetime.strptime(end_date, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid end_date format. Use YYYY-MM-DD",
+                )
+
+        consume_repo = ConsumeRepository(db)
+
+        total = await consume_repo.count_consume_records_by_user_range(user_id, start_date, end_date, tz)
+
+        user_records = await consume_repo.list_consume_records_by_user_range(
+            user_id=user_id,
+            start_date=start_date,
+            end_date=end_date,
+            tz=tz,
+            limit=limit,
+            offset=offset,
+        )
+
+        record_items = [
+            UserConsumeRecordItem(
+                id=r.id,
+                biz_no=r.biz_no,
+                amount=r.amount,
+                scene=r.scene,
+                model_tier=r.model_tier,
+                input_tokens=r.input_tokens,
+                output_tokens=r.output_tokens,
+                total_tokens=r.total_tokens,
+                consume_state=r.consume_state,
+                created_at=r.created_at,
+            )
+            for r in user_records
+        ]
+
+        return UserConsumeRecordsPage(
+            records=record_items,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error fetching consumption records for user {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),

@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
+from .ee import EEConfig
 from .fga import FgaConfig
 from .image import ImageConfig
 from .lab import LabConfig
@@ -34,6 +35,9 @@ class AppConfig(BaseSettings):
     Title: str = Field(default="Xyzen Service", description="应用标题")
     Description: str = Field(default="FastAPI + MCP integrated service", description="应用描述")
     Version: str = Field(default="0.1.0", description="应用版本")
+
+    # Deployment Region
+    Region: str = Field(default="global", description="Deployment region (global, zh-cn, etc.)")
 
     # Environment and Debug Settings
     Secret: str = Field(
@@ -124,6 +128,11 @@ class AppConfig(BaseSettings):
     Novu: NovuConfig = Field(
         default_factory=lambda: NovuConfig(),
         description="Novu notification service configuration",
+    )
+
+    EE: EEConfig = Field(
+        default_factory=lambda: EEConfig(),
+        description="Enterprise Edition configuration",
     )
 
 

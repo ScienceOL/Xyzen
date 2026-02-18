@@ -16,8 +16,14 @@ import {
 } from "@heroicons/react/24/outline";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { toast } from "sonner";
+
+const ConsumptionAnalyticsModal = React.lazy(() =>
+  import("@/components/modals/ConsumptionAnalyticsModal").then((m) => ({
+    default: m.ConsumptionAnalyticsModal,
+  })),
+);
 
 interface CheckInCalendarProps {
   onCheckInSuccess?: (response: CheckInResponse) => void;
@@ -127,6 +133,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
 
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [direction, setDirection] = useState(0);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const variants = {
     enter: (direction: number) => ({
@@ -569,8 +576,19 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                   <div className="animate-in fade-in duration-300 group relative overflow-hidden rounded-sm border border-neutral-200/60 bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:border-neutral-700/60 dark:bg-neutral-800/90 shrink-0">
                     <div className="absolute inset-y-4 left-4 w-1 rounded-full bg-linear-to-b from-neutral-400 to-neutral-500 shadow-sm transition-all group-hover:w-1.5 dark:from-neutral-600 dark:to-neutral-700" />
                     <div className="pl-4">
-                      <div className="font-bold text-neutral-900 dark:text-neutral-100">
-                        使用统计
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-neutral-900 dark:text-neutral-100">
+                          使用统计
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAnalytics(true)}
+                          className="h-7 px-2 text-xs text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                        >
+                          <ChartBarIcon className="h-3.5 w-3.5 mr-1" />
+                          详细分析
+                        </Button>
                       </div>
                       <div className="mt-4">
                         {consumption.record_count > 0 ? (
@@ -664,6 +682,13 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
           </Card>
         </div>
       </div>
+
+      <Suspense fallback={null}>
+        <ConsumptionAnalyticsModal
+          isOpen={showAnalytics}
+          onClose={() => setShowAnalytics(false)}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -476,6 +476,272 @@ class ConsumeRepository:
         logger.debug(f"Found {len(records)} consume records")
         return records
 
+    async def get_user_consumption_range(
+        self,
+        user_id: str,
+        start_date: str,
+        end_date: str,
+        tz: str = "Asia/Shanghai",
+    ) -> dict[str, Any]:
+        """
+        Get aggregated consumption statistics for a user over a date range.
+
+        Args:
+            user_id: The user ID to fetch data for.
+            start_date: Start date in YYYY-MM-DD format.
+            end_date: End date in YYYY-MM-DD format.
+            tz: Timezone name (IANA), defaults to Asia/Shanghai.
+
+        Returns:
+            Dictionary with keys: daily (list), by_tier (dict), by_scene (dict).
+        """
+        from datetime import date as date_type
+        from datetime import datetime, timedelta, timezone
+
+        logger.debug(f"Getting consumption range for user {user_id} from {start_date} to {end_date}, tz: {tz}")
+
+        try:
+            zone = ZoneInfo(tz)
+        except ZoneInfoNotFoundError as e:
+            raise ValueError(f"Invalid timezone: {tz}") from e
+
+        start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
+        end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
+        )
+        start_utc = start_local.astimezone(timezone.utc)
+        end_utc = end_local.astimezone(timezone.utc)
+
+        tz_name = tz
+
+        # Build day scaffold
+        start_day: date_type = start_local.date()
+        end_day: date_type = end_local.date()
+        days: list[str] = []
+        cursor = start_day
+        while cursor <= end_day:
+            days.append(cursor.strftime("%Y-%m-%d"))
+            cursor += timedelta(days=1)
+
+        daily: dict[str, dict[str, Any]] = {
+            d: {
+                "date": d,
+                "total_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_amount": 0,
+                "record_count": 0,
+                "tool_call_count": 0,
+            }
+            for d in days
+        }
+
+        base_filter = (
+            ConsumeRecord.user_id == user_id,
+            ConsumeRecord.created_at >= start_utc,
+            ConsumeRecord.created_at <= end_utc,
+        )
+
+        # Daily aggregation
+        date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
+        daily_stmt = (
+            select(  # type: ignore[call-overload]
+                date_expr.label("date"),
+                func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
+                func.count().label("record_count"),
+                func.coalesce(func.sum(ConsumeRecord.tool_call_count), 0).label("tool_call_count"),
+            )
+            .where(*base_filter)
+            .group_by(date_expr)
+            .order_by(date_expr)
+        )
+        daily_rows = (await self.db.exec(daily_stmt)).all()
+        for row in daily_rows:
+            date_str = str(row.date)
+            entry = {
+                "date": date_str,
+                "total_tokens": int(row.total_tokens),
+                "input_tokens": int(row.input_tokens),
+                "output_tokens": int(row.output_tokens),
+                "total_amount": int(row.total_amount),
+                "record_count": int(row.record_count),
+                "tool_call_count": int(row.tool_call_count),
+            }
+            if date_str in daily:
+                daily[date_str] = entry
+            else:
+                daily[date_str] = entry
+
+        # By model tier
+        tier_stmt = (
+            select(  # type: ignore[call-overload]
+                col(ConsumeRecord.model_tier).label("tier"),
+                func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
+                func.count().label("record_count"),
+                func.coalesce(func.sum(ConsumeRecord.tool_call_count), 0).label("tool_call_count"),
+            )
+            .where(*base_filter)
+            .group_by(ConsumeRecord.model_tier)
+        )
+        tier_rows = (await self.db.exec(tier_stmt)).all()
+        by_tier: dict[str, dict[str, int]] = {}
+        for row in tier_rows:
+            tier_key = str(row.tier) if row.tier is not None else "unknown"
+            by_tier[tier_key] = {
+                "total_tokens": int(row.total_tokens),
+                "input_tokens": int(row.input_tokens),
+                "output_tokens": int(row.output_tokens),
+                "total_amount": int(row.total_amount),
+                "record_count": int(row.record_count),
+                "tool_call_count": int(row.tool_call_count),
+            }
+
+        # Per-day by_tier aggregation
+        day_tier_stmt = (
+            select(  # type: ignore[call-overload]
+                date_expr.label("date"),
+                col(ConsumeRecord.model_tier).label("tier"),
+                func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
+                func.count().label("record_count"),
+                func.coalesce(func.sum(ConsumeRecord.tool_call_count), 0).label("tool_call_count"),
+            )
+            .where(*base_filter)
+            .group_by(date_expr, ConsumeRecord.model_tier)
+        )
+        day_tier_rows = (await self.db.exec(day_tier_stmt)).all()
+        for row in day_tier_rows:
+            date_str = str(row.date)
+            tier_key = str(row.tier) if row.tier is not None else "unknown"
+            if date_str in daily:
+                if "by_tier" not in daily[date_str]:
+                    daily[date_str]["by_tier"] = {}
+                daily[date_str]["by_tier"][tier_key] = {
+                    "total_tokens": int(row.total_tokens),
+                    "input_tokens": int(row.input_tokens),
+                    "output_tokens": int(row.output_tokens),
+                    "total_amount": int(row.total_amount),
+                    "record_count": int(row.record_count),
+                    "tool_call_count": int(row.tool_call_count),
+                }
+
+        # Ensure every day entry has a by_tier key
+        for d in daily:
+            if "by_tier" not in daily[d]:
+                daily[d]["by_tier"] = {}
+
+        result: dict[str, Any] = {
+            "daily": [daily[d] for d in sorted(daily.keys())],
+            "by_tier": by_tier,
+        }
+        logger.debug(f"Consumption range: {len(result['daily'])} days, {len(by_tier)} tiers")
+        return result
+
+    async def list_consume_records_by_user_range(
+        self,
+        user_id: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        tz: str = "Asia/Shanghai",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[ConsumeRecord]:
+        """
+        Get paginated consume records for a user, optionally filtered by date range.
+
+        Args:
+            user_id: The user ID.
+            start_date: Optional start date in YYYY-MM-DD format.
+            end_date: Optional end date in YYYY-MM-DD format.
+            tz: Timezone name (IANA).
+            limit: Maximum number of records to return.
+            offset: Number of records to skip.
+
+        Returns:
+            List of ConsumeRecord instances ordered by creation time (desc).
+        """
+        from datetime import datetime, timezone
+
+        try:
+            zone = ZoneInfo(tz)
+        except ZoneInfoNotFoundError as e:
+            raise ValueError(f"Invalid timezone: {tz}") from e
+
+        stmt = (
+            select(ConsumeRecord).where(ConsumeRecord.user_id == user_id).order_by(col(ConsumeRecord.created_at).desc())
+        )
+
+        if start_date:
+            start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
+            start_utc = start_local.astimezone(timezone.utc)
+            stmt = stmt.where(ConsumeRecord.created_at >= start_utc)
+
+        if end_date:
+            end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
+            )
+            end_utc = end_local.astimezone(timezone.utc)
+            stmt = stmt.where(ConsumeRecord.created_at <= end_utc)
+
+        stmt = stmt.offset(offset).limit(limit)
+        result = await self.db.exec(stmt)
+        records = list(result.all())
+        logger.debug(f"Found {len(records)} records for user {user_id} in range")
+        return records
+
+    async def count_consume_records_by_user_range(
+        self,
+        user_id: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        tz: str = "Asia/Shanghai",
+    ) -> int:
+        """
+        Count consume records for a user, optionally filtered by date range.
+
+        Args:
+            user_id: The user ID.
+            start_date: Optional start date in YYYY-MM-DD format.
+            end_date: Optional end date in YYYY-MM-DD format.
+            tz: Timezone name (IANA).
+
+        Returns:
+            Total count of matching records.
+        """
+        from datetime import datetime, timezone
+
+        try:
+            zone = ZoneInfo(tz)
+        except ZoneInfoNotFoundError as e:
+            raise ValueError(f"Invalid timezone: {tz}") from e
+
+        stmt = select(func.count()).select_from(ConsumeRecord).where(ConsumeRecord.user_id == user_id)
+
+        if start_date:
+            start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
+            start_utc = start_local.astimezone(timezone.utc)
+            stmt = stmt.where(ConsumeRecord.created_at >= start_utc)
+
+        if end_date:
+            end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
+            )
+            end_utc = end_local.astimezone(timezone.utc)
+            stmt = stmt.where(ConsumeRecord.created_at <= end_utc)
+
+        result = await self.db.exec(stmt)
+        count = result.one() or 0
+        logger.debug(f"Count consume records for user {user_id}: {count}")
+        return int(count)
+
     async def get_daily_user_activity_stats(
         self,
         start_date: str | None = None,

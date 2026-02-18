@@ -15,6 +15,8 @@ import SharedChatPage from "@/app/share/SharedChatPage";
 import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
+import { AdminGate } from "@/components/gates";
+import { resolveEdition } from "@/core/edition/edition";
 import useTheme from "@/hooks/useTheme";
 import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
@@ -202,6 +204,7 @@ export function Xyzen({
             fetchAgents(),
             fetchMcpServers(),
             fetchChatHistory(),
+            resolveEdition(),
           ]);
 
           // 2. Check for pending channel activation (from shared chat "continue conversation")
@@ -266,6 +269,7 @@ export function Xyzen({
   }, [
     status,
     initialLoadComplete,
+    backendUrl,
     fetchAgents,
     fetchMcpServers,
     fetchChatHistory,
@@ -451,11 +455,13 @@ export function Xyzen({
     <>{mainLayout}</>
   );
 
-  // Check if we're on the secret code page
+  // Check if we're on the secret code page (EE only)
   if (currentHash === "#secretcode") {
     return (
       <QueryClientProvider client={queryClient}>
-        <SecretCodePage />
+        <AdminGate>
+          <SecretCodePage />
+        </AdminGate>
       </QueryClientProvider>
     );
   }

@@ -1,9 +1,8 @@
 "use client";
 
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
-import { useAuth } from "@/hooks/useAuth";
+import { useSubscriptionInfo } from "@/hooks/ee";
 import { useIsMobile } from "@/hooks/useMediaQuery";
-import { useSubscription } from "@/hooks/useSubscription";
 import { useXyzen } from "@/store";
 import type { ModelTier } from "@/components/layouts/components/TierSelector";
 import { useCallback, useMemo, useState } from "react";
@@ -32,10 +31,9 @@ export function useToolbarState() {
   const isUploading = useXyzen((s) => s.isUploading);
 
   // Subscription tier limit
-  const auth = useAuth();
-  const subQuery = useSubscription(auth.token, auth.isAuthenticated);
-  const maxTier = (subQuery.data?.role?.max_model_tier ?? "lite") as ModelTier;
-  const userPlan = subQuery.data?.role?.name ?? "free";
+  const subInfo = useSubscriptionInfo();
+  const maxTier = subInfo?.maxTier ?? "lite";
+  const userPlan = subInfo?.userPlan ?? "free";
 
   // Fine-grained channel status (no messages)
   const channelStatus = useActiveChannelStatus();

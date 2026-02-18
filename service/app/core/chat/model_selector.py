@@ -10,12 +10,11 @@ from typing import TYPE_CHECKING
 from langchain_core.messages import HumanMessage
 
 from app.schemas.model_tier import (
-    MODEL_SELECTOR_MODEL,
-    MODEL_SELECTOR_PROVIDER,
-    TIER_MODEL_CANDIDATES,
     ModelTier,
     TierModelCandidate,
     get_fallback_model_for_tier,
+    get_model_selector_config,
+    get_tier_candidates,
 )
 from app.schemas.provider import ProviderType
 
@@ -69,7 +68,8 @@ def _filter_candidates_by_availability(
     Returns:
         Tuple of (available_candidates, fallback_candidate)
     """
-    candidates = TIER_MODEL_CANDIDATES.get(tier, TIER_MODEL_CANDIDATES[ModelTier.STANDARD])
+    candidates_map = get_tier_candidates()
+    candidates = candidates_map.get(tier, candidates_map[ModelTier.STANDARD])
     available_candidates: list[TierModelCandidate] = []
     fallback: TierModelCandidate | None = None
 
@@ -160,11 +160,12 @@ async def select_model_for_tier(
         return selected
 
     # Check if selector model provider is available
-    if MODEL_SELECTOR_PROVIDER not in available_types:
+    _, selector_provider = get_model_selector_config()
+    if selector_provider not in available_types:
         # Use highest priority candidate
         selected = available_candidates[0].model
         logger.warning(
-            f"Model selector provider ({MODEL_SELECTOR_PROVIDER.value}) not available, "
+            f"Model selector provider ({selector_provider.value}) not available, "
             f"using highest priority: {selected}"
         )
         return selected
@@ -221,9 +222,10 @@ async def _llm_select_model(
     logger.debug(f"Model selection prompt:\n{prompt}")
 
     # Create LLM and call
+    selector_model, selector_provider = get_model_selector_config()
     llm = await user_provider_manager.create_langchain_model(
-        provider_id=MODEL_SELECTOR_PROVIDER,
-        model=MODEL_SELECTOR_MODEL,
+        provider_id=selector_provider,
+        model=selector_model,
     )
 
     response = await llm.ainvoke([HumanMessage(content=prompt)])

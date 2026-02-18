@@ -149,6 +149,8 @@ async def finalize_and_settle(
         session_repo = SessionRepository(ctx.db)
         session = await session_repo.get_session_by_id(ctx.session_id)
         model_tier = session.model_tier if session else None
+        model_name = session.model if session else None
+        tool_call_count = sum(len(calls) for calls in ctx.tool_calls_by_node.values())
 
         consume_context = ConsumptionContext(
             model_tier=model_tier,
@@ -180,6 +182,8 @@ async def finalize_and_settle(
                 model_tier=model_tier.value if model_tier else None,
                 tier_rate=result.breakdown.get("tier_rate"),
                 calculation_breakdown=json.dumps(result.breakdown),
+                model_name=model_name,
+                tool_call_count=tool_call_count,
             )
     except Exception as e:
         logger.error(f"Settlement failed ({description_suffix}): {e}")

@@ -1,7 +1,7 @@
-import { useXyzen } from "@/store";
+import { fileService } from "@/service/fileService";
 import { Dialog, Transition } from "@headlessui/react";
 import { ArrowDownTrayIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { AudioRenderer } from "./renderers/AudioRenderer";
 import { ImageRenderer } from "./renderers/ImageRenderer";
 import { MarkdownRenderer } from "./renderers/MarkdownRenderer";
@@ -19,21 +19,6 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const backendUrl = useXyzen((state) => state.backendUrl);
-  const token = useXyzen((state) => state.token);
-
-  // Helper to ensure URL is absolute
-  const getFullUrl = useCallback(
-    (url: string | undefined): string => {
-      if (!url) return "";
-      if (url.startsWith("http://") || url.startsWith("https://")) {
-        return url;
-      }
-      const base = backendUrl || window.location.origin;
-      return `${base}${url.startsWith("/") ? url : `/${url}`}`;
-    },
-    [backendUrl],
-  );
 
   useEffect(() => {
     if (isOpen && file) {
@@ -52,21 +37,8 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
             return;
           }
 
-          // Construct the API Proxy URL for download.
-          // We DO NOT want the S3 presigned URL (fileService.getFileUrl) because it might
-          // point to an internal Docker host (e.g. host.docker.internal) which is unreachable from the browser.
-          // The proxy endpoint will stream the file through the backend.
-          const proxyDownloadPath = `/xyzen/api/v1/files/${file.id}/download`;
-          const fullUrl = getFullUrl(proxyDownloadPath);
-
-          // Fetch the actual content with auth headers
-          const response = await fetch(fullUrl, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to fetch file: ${response.statusText}`);
-          }
+          // Download via backend proxy
+          const response = await fileService.downloadRaw(file.id);
 
           const blob = await response.blob();
           const objectUrl = URL.createObjectURL(blob);
@@ -104,7 +76,7 @@ export const PreviewModal = ({ isOpen, onClose, file }: PreviewModalProps) => {
     }
     // Intentionally omitting blobUrl - it's used in cleanup and would cause infinite loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, file, backendUrl, token, getFullUrl]);
+  }, [isOpen, file]);
 
   const renderContent = () => {
     if (loading) return <div className="text-white">Loading preview...</div>;

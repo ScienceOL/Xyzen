@@ -1,19 +1,5 @@
-import { useXyzen } from "@/store";
-
-const getBackendUrl = () => {
-  const url = useXyzen.getState().backendUrl;
-  if (!url || url === "") {
-    if (typeof window !== "undefined") {
-      return `${window.location.protocol}//${window.location.host}`;
-    }
-  }
-  return url;
-};
-
-const getAuthHeaders = (): Record<string, string> => {
-  const token = useXyzen.getState().token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { authService } from "@/service/authService";
+import { http } from "@/service/http/client";
 
 export interface FileUploadResponse {
   id: string;
@@ -107,7 +93,7 @@ class FileService {
     }
 
     const xhr = new XMLHttpRequest();
-    const baseUrl = getBackendUrl();
+    const baseUrl = http.baseUrl;
 
     const promise = new Promise<FileUploadResponse>((resolve, reject) => {
       xhr.upload.addEventListener("progress", (e) => {
@@ -142,10 +128,10 @@ class FileService {
       });
 
       xhr.open("POST", `${baseUrl}/xyzen/api/v1/files/upload`);
-      const headers = getAuthHeaders();
-      Object.entries(headers).forEach(([key, value]) => {
-        xhr.setRequestHeader(key, value);
-      });
+      const token = authService.getToken();
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
 
       xhr.send(formData);
     });
@@ -181,7 +167,7 @@ class FileService {
     }
 
     const xhr = new XMLHttpRequest();
-    const baseUrl = getBackendUrl();
+    const baseUrl = http.baseUrl;
 
     return new Promise((resolve, reject) => {
       xhr.upload.addEventListener("progress", (e) => {
@@ -212,30 +198,19 @@ class FileService {
       });
 
       xhr.open("POST", `${baseUrl}/xyzen/api/v1/files/upload`);
-      const headers = getAuthHeaders();
-      Object.entries(headers).forEach(([key, value]) => {
-        xhr.setRequestHeader(key, value);
-      });
+      const token = authService.getToken();
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
 
       xhr.send(formData);
     });
   }
 
-  /**
-   * Get file by ID
-   */
   async getFile(fileId: string): Promise<FileUploadResponse> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(`${baseUrl}/xyzen/api/v1/files/${fileId}`, {
-      headers: { ...getAuthHeaders() },
-    });
-    if (!response.ok) throw new Error("Failed to get file");
-    return response.json();
+    return http.get(`/xyzen/api/v1/files/${fileId}`);
   }
 
-  /**
-   * List files for current user
-   */
   async listFiles(params?: {
     scope?: string;
     category?: string;
@@ -247,7 +222,6 @@ class FileService {
     is_dir?: boolean;
     knowledge_set_id?: string;
   }): Promise<FileUploadResponse[]> {
-    const baseUrl = getBackendUrl();
     const queryParams = new URLSearchParams();
 
     if (params) {
@@ -274,19 +248,9 @@ class FileService {
     const queryString = queryParams.toString()
       ? "?" + queryParams.toString()
       : "";
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/files/${queryString}`,
-      {
-        headers: { ...getAuthHeaders() },
-      },
-    );
-    if (!response.ok) throw new Error("Failed to list files");
-    return response.json();
+    return http.get(`/xyzen/api/v1/files/${queryString}`);
   }
 
-  /**
-   * Get presigned download URL for a file
-   */
   async getFileUrl(
     fileId: string,
     expiresIn: number = 3600,
@@ -295,20 +259,11 @@ class FileService {
     expires_in: number;
     storage_key: string;
   }> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/files/${fileId}/url?expires_in=${expiresIn}`,
-      {
-        headers: { ...getAuthHeaders() },
-      },
-    );
-    if (!response.ok) throw new Error("Failed to get file URL");
-    return response.json();
+    return http.get(`/xyzen/api/v1/files/${fileId}/url`, {
+      params: { expires_in: expiresIn },
+    });
   }
 
-  /**
-   * Update file metadata
-   */
   async updateFile(
     fileId: string,
     updates: {
@@ -319,22 +274,9 @@ class FileService {
       parent_id?: string | null;
     },
   ): Promise<FileUploadResponse> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(`${baseUrl}/xyzen/api/v1/files/${fileId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify(updates),
-    });
-    if (!response.ok) throw new Error("Failed to update file");
-    return response.json();
+    return http.patch(`/xyzen/api/v1/files/${fileId}`, updates);
   }
 
-  /**
-   * Confirm files and associate with message
-   */
   async confirmFiles(fileIds: string[], messageId: string): Promise<void> {
     await Promise.all(
       fileIds.map((fileId) =>
@@ -346,79 +288,39 @@ class FileService {
     );
   }
 
-  /**
-   * Delete a file (soft delete by default)
-   */
   async deleteFile(fileId: string, hardDelete: boolean = false): Promise<void> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/files/${fileId}?hard_delete=${hardDelete}`,
-      {
-        method: "DELETE",
-        headers: { ...getAuthHeaders() },
-      },
-    );
-    if (!response.ok) throw new Error("Failed to delete file");
+    return http.delete(`/xyzen/api/v1/files/${fileId}`, undefined, {
+      params: { hard_delete: hardDelete },
+    });
   }
 
-  /**
-   * Restore a soft-deleted file
-   */
   async restoreFile(fileId: string): Promise<FileUploadResponse> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/files/${fileId}/restore`,
-      {
-        method: "POST",
-        headers: { ...getAuthHeaders() },
-      },
-    );
-    if (!response.ok) throw new Error("Failed to restore file");
-    return response.json();
+    return http.post(`/xyzen/api/v1/files/${fileId}/restore`);
   }
 
-  /**
-   * Get storage statistics
-   */
   async getStorageStats(): Promise<FileStats> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(
-      `${baseUrl}/xyzen/api/v1/files/stats/summary`,
-      {
-        headers: { ...getAuthHeaders() },
-      },
-    );
-    if (!response.ok) throw new Error("Failed to get storage stats");
-    return response.json();
+    return http.get("/xyzen/api/v1/files/stats/summary");
   }
 
-  /**
-   * Permanently delete all items in the trash
-   */
   async emptyTrash(): Promise<{ deleted_count: number }> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(`${baseUrl}/xyzen/api/v1/files/empty-trash`, {
-      method: "POST",
-      headers: { ...getAuthHeaders() },
-    });
-    if (!response.ok) throw new Error("Failed to empty trash");
-    return response.json();
+    return http.post("/xyzen/api/v1/files/empty-trash");
+  }
+
+  async bulkDeleteFiles(fileIds: string[]): Promise<void> {
+    return http.delete("/xyzen/api/v1/files/bulk", fileIds);
   }
 
   /**
-   * Bulk delete files
+   * Download a file through the backend proxy as a raw Response.
+   * Returns a Response object — caller can use `.blob()` or `.text()`.
    */
-  async bulkDeleteFiles(fileIds: string[]): Promise<void> {
-    const baseUrl = getBackendUrl();
-    const response = await fetch(`${baseUrl}/xyzen/api/v1/files/bulk`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify(fileIds),
+  async downloadRaw(
+    fileId: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<Response> {
+    return http.raw(`/xyzen/api/v1/files/${fileId}/download`, {
+      signal: options?.signal,
     });
-    if (!response.ok) throw new Error("Failed to bulk delete files");
   }
 
   /**

@@ -406,5 +406,30 @@
     "redeem": "兑换码",
     "region": "地区",
     "about": "关于"
+  },
+  "consumption": {
+    "title": "使用分析",
+    "close": "关闭",
+    "selectedDate": "已选日期：{{date}}",
+    "clearDate": "清除选中日期",
+    "totalToken": "总 Token",
+    "totalCredits": "总积分",
+    "inputToken": "输入 Token",
+    "outputToken": "输出 Token",
+    "conversations": "对话次数",
+    "toolCalls": "工具调用",
+    "heatmapTitle": "积分消耗日历",
+    "heatmapTooltip": "积分: {{amount}}",
+    "tableTitle": "每日消费明细",
+    "tableDayCount": "共 {{count}} 天",
+    "colDate": "日期",
+    "colToken": "Token",
+    "colInput": "输入",
+    "colOutput": "输出",
+    "colCredits": "积分",
+    "colRequests": "请求次数",
+    "colToolCalls": "工具调用",
+    "noRecords": "暂无消费记录",
+    "donutEmpty": "暂无"
   }
 }

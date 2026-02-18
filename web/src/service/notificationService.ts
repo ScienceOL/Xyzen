@@ -1,5 +1,4 @@
-import { authService } from "@/service/authService";
-import { useXyzen } from "@/store";
+import { http } from "@/service/http/client";
 
 export interface NotificationConfig {
   enabled: boolean;
@@ -20,77 +19,26 @@ interface PushSubscriptionResponse {
 }
 
 class NotificationService {
-  private getBackendUrl(): string {
-    const { backendUrl } = useXyzen.getState();
-    if (!backendUrl || backendUrl === "") {
-      if (typeof window !== "undefined") {
-        return `${window.location.protocol}//${window.location.host}`;
-      }
-    }
-    return backendUrl;
-  }
-
-  private createAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    const token = authService.getToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
-    return headers;
-  }
-
   async getConfig(): Promise<NotificationConfig> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/notifications/config`,
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch notification config");
-    }
-
-    return response.json();
+    return http.get("/xyzen/api/v1/notifications/config", { auth: false });
   }
 
   async registerPushSubscription(
     subscription: PushSubscriptionPayload,
   ): Promise<PushSubscriptionResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/notifications/push-subscription`,
-      {
-        method: "POST",
-        headers: this.createAuthHeaders(),
-        body: JSON.stringify(subscription),
-      },
+    return http.post(
+      "/xyzen/api/v1/notifications/push-subscription",
+      subscription,
     );
-
-    if (!response.ok) {
-      throw new Error("Failed to register push subscription");
-    }
-
-    return response.json();
   }
 
   async removePushSubscription(
     endpoint: string,
   ): Promise<PushSubscriptionResponse> {
-    const response = await fetch(
-      `${this.getBackendUrl()}/xyzen/api/v1/notifications/push-subscription`,
-      {
-        method: "DELETE",
-        headers: this.createAuthHeaders(),
-        body: JSON.stringify({ endpoint, keys: {} }),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to remove push subscription");
-    }
-
-    return response.json();
+    return http.delete("/xyzen/api/v1/notifications/push-subscription", {
+      endpoint,
+      keys: {},
+    });
   }
 }
 

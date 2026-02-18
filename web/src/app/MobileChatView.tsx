@@ -51,8 +51,10 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
     // Prevent clearing activeChatChannel when the snap to page 0
     // was triggered by *us* due to an external channel-clear.
     const externalClear = useRef(false);
-    // Track whether we were previously in chat
-    const prevHasChannel = useRef(hasChannel);
+    // Track whether we were previously in chat — initialised to false so that
+    // mounting with an already-active channel (deep-link / notification) is
+    // detected as a false→true transition and auto-navigates to page 1.
+    const prevHasChannel = useRef(false);
 
     const handleSnap = useCallback(
       (page: number) => {

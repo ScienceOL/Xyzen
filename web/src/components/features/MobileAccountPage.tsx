@@ -8,7 +8,7 @@ import {
   InformationCircleIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,30 +16,26 @@ import { NotificationCenter } from "@/components/features/NotificationCenter";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription, useSubscriptionUsage } from "@/hooks/useSubscription";
-import { useUserWallet } from "@/hooks/useUserWallet";
+import { useBilling, useCheckIn, useSubscriptionInfo } from "@/hooks/ee";
 import { checkInService } from "@/service/checkinService";
-import type { CheckInStatusResponse } from "@/service/checkinService";
 import { useXyzen } from "@/store";
 import { useVersion } from "@/hooks/useVersion";
 
 export default function MobileAccountPage() {
   const { t } = useTranslation();
-  const { user, token, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const openSettingsModal = useXyzen((s) => s.openSettingsModal);
   const { frontend, backend } = useVersion();
 
-  const { data: subscription } = useSubscription(token, isAuthenticated);
-  const { data: usage } = useSubscriptionUsage(token, isAuthenticated);
-  const { data: wallet } = useUserWallet(token, isAuthenticated);
+  const subInfo = useSubscriptionInfo();
+  const subscription = subInfo?.subQuery.data;
+  const usage = subInfo?.usageQuery.data;
+  const billing = useBilling();
+  const wallet = billing?.wallet.data;
+  const checkIn = useCheckIn();
+  const checkInStatus = checkIn?.query.data;
 
   const queryClient = useQueryClient();
-  const { data: checkInStatus } = useQuery<CheckInStatusResponse>({
-    queryKey: ["check-in", "status"],
-    queryFn: () => checkInService.getStatus(),
-    enabled: isAuthenticated,
-    staleTime: 60_000,
-  });
 
   const [checkingIn, setCheckingIn] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);

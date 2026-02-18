@@ -1785,6 +1785,20 @@ export const createChatSlice: StateCreator<
           throw new Error("Failed to delete topic");
         }
 
+        // Find the sessionId before mutating state
+        const chatHistory = get().chatHistory;
+        const deletedItem = chatHistory.find((item) => item.id === topicId);
+        const deletedSessionId = deletedItem?.sessionId;
+        const wasActive = get().activeChatChannel === topicId;
+
+        // Find next topic in the same session (excluding the one being deleted)
+        const nextTopicId = wasActive
+          ? (chatHistory.find(
+              (item) =>
+                item.id !== topicId && item.sessionId === deletedSessionId,
+            )?.id ?? null)
+          : null;
+
         set((state: XyzenState) => {
           // Remove from channels
           delete state.channels[topicId];
@@ -1794,17 +1808,16 @@ export const createChatSlice: StateCreator<
             (item) => item.id !== topicId,
           );
 
-          // If the deleted topic was active, activate another one
-          if (state.activeChatChannel === topicId) {
-            const nextTopic = state.chatHistory[0];
-            if (nextTopic) {
-              state.activeChatChannel = nextTopic.id;
-              get().activateChannel(nextTopic.id);
-            } else {
-              state.activeChatChannel = null;
-            }
+          // If the deleted topic was active, switch to sibling or clear
+          if (wasActive) {
+            state.activeChatChannel = nextTopicId;
           }
         });
+
+        // Activate the new channel outside of Immer set()
+        if (wasActive && nextTopicId) {
+          get().activateChannel(nextTopicId);
+        }
 
         console.log(`Topic ${topicId} deleted`);
       } catch (error) {

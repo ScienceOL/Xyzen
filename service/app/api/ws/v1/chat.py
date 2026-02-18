@@ -10,8 +10,7 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.configs import configs
 from app.core.chat.topic_generator import generate_and_update_topic_title
-from app.core.consume import create_consume_for_chat
-from app.core.limits import LimitsEnforcer, ParallelChatLimitError
+from app.ee.lifecycle import get_chat_lifecycle
 from app.infra.database import AsyncSessionLocal
 from app.middleware.auth import AuthContext, get_auth_context_websocket
 from app.models.message import MessageCreate
@@ -133,13 +132,9 @@ async def chat_websocket(
     connection_id = f"{session_id}:{topic_id}"
     user = auth_ctx.user_id
 
-    # Create limits enforcer (no limit check on connect — only on message send)
-    enforcer: LimitsEnforcer | None = None
-    try:
-        async with AsyncSessionLocal() as db:
-            enforcer = await LimitsEnforcer.create(db, user)
-    except Exception as e:
-        logger.warning(f"Failed to create LimitsEnforcer (allowing connection): {e}")
+    # Create lifecycle handler (CE = no-op, EE = billing + limits)
+    async with AsyncSessionLocal() as db:
+        lifecycle = get_chat_lifecycle(user, db)
 
     # Validate session and topic access before tracking the connection
     async with AsyncSessionLocal() as db:
@@ -166,8 +161,7 @@ async def chat_websocket(
     await manager.connect(websocket, connection_id)
 
     # Track this connection for limit enforcement
-    if enforcer:
-        await enforcer.track_chat_connect(connection_id)
+    await lifecycle.on_connect(connection_id)
 
     # Track WebSocket presence in Redis so the Celery worker can decide
     # whether to send a push notification (only when user is offline).
@@ -220,20 +214,10 @@ async def chat_websocket(
                     # during history loading in load_conversation_history()
 
                     # Check parallel chat limit before processing
-                    if enforcer:
-                        try:
-                            await enforcer.check_and_start_responding(connection_id)
-                        except ParallelChatLimitError as e:
-                            limit_event = {
-                                "type": "parallel_chat_limit",
-                                "data": {
-                                    "error_code": "PARALLEL_CHAT_LIMIT",
-                                    "current": e.current,
-                                    "limit": e.limit,
-                                },
-                            }
-                            await websocket.send_text(json.dumps(limit_event))
-                            continue
+                    limit_err = await lifecycle.check_before_message(connection_id)
+                    if limit_err:
+                        await websocket.send_text(json.dumps(limit_err))
+                        continue
 
                     # Generate stream_id for this response lifecycle
                     stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
@@ -248,13 +232,12 @@ async def chat_websocket(
                     # Pre-deduction / Balance Check
                     base_cost = 3
                     pre_deducted_amount = 0.0
-                    pre_deduction_success = False
                     try:
                         access_key = None
                         if auth_ctx.auth_provider.lower() == "bohr_app":
                             access_key = auth_ctx.access_token
 
-                        await create_consume_for_chat(
+                        pre_deducted_amount = await lifecycle.pre_deduct(
                             db=db,
                             user_id=user,
                             auth_provider=auth_ctx.auth_provider,
@@ -265,8 +248,6 @@ async def chat_websocket(
                             message_id=last_user_message.id,
                             description="Chat regeneration (pre-deduction)",
                         )
-                        pre_deducted_amount = float(base_cost)
-                        pre_deduction_success = True
 
                     except ErrCodeError as e:
                         if e.code == ErrCode.INSUFFICIENT_BALANCE:
@@ -287,9 +268,6 @@ async def chat_websocket(
                         continue
                     except Exception as e:
                         logger.error(f"Pre-deduction failed for regeneration: {e}")
-                        continue
-
-                    if not pre_deduction_success:
                         continue
 
                     await db.commit()
@@ -320,20 +298,10 @@ async def chat_websocket(
                     continue
 
                 # Check parallel chat limit before processing
-                if enforcer:
-                    try:
-                        await enforcer.check_and_start_responding(connection_id)
-                    except ParallelChatLimitError as e:
-                        limit_event = {
-                            "type": "parallel_chat_limit",
-                            "data": {
-                                "error_code": "PARALLEL_CHAT_LIMIT",
-                                "current": e.current,
-                                "limit": e.limit,
-                            },
-                        }
-                        await websocket.send_text(json.dumps(limit_event))
-                        continue
+                limit_err = await lifecycle.check_before_message(connection_id)
+                if limit_err:
+                    await websocket.send_text(json.dumps(limit_err))
+                    continue
 
                 # 1. Save user message
                 user_message_create = MessageCreate(role="user", content=message_text, topic_id=topic_id)
@@ -375,7 +343,7 @@ async def chat_websocket(
                     if auth_ctx.auth_provider.lower() == "bohr_app":
                         access_key = auth_ctx.access_token
 
-                    await create_consume_for_chat(
+                    pre_deducted_amount = await lifecycle.pre_deduct(
                         db=db,
                         user_id=user,
                         auth_provider=auth_ctx.auth_provider,
@@ -386,7 +354,6 @@ async def chat_websocket(
                         message_id=user_message.id,
                         description="Chat base cost (pre-deduction)",
                     )
-                    pre_deducted_amount = float(base_cost)
 
                 except ErrCodeError as e:
                     if e.code == ErrCode.INSUFFICIENT_BALANCE:
@@ -463,8 +430,7 @@ async def chat_websocket(
             await presence_redis.delete(presence_key)
         except Exception:
             pass  # TTL will expire anyway
-        if enforcer:
-            await enforcer.track_chat_disconnect(connection_id)
+        await lifecycle.on_disconnect(connection_id)
         listener_task.cancel()
         heartbeat_task.cancel()
         try:
