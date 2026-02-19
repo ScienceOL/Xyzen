@@ -442,68 +442,6 @@ function VersionInfo() {
   );
 }
 
-// Status bar item (right side)
-function StatusBarItem({
-  icon: Icon,
-  label,
-  onClick,
-  className,
-  showDot,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  onClick?: () => void;
-  className?: string;
-  showDot?: boolean;
-}) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div className="relative">
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={onClick}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className={cn(
-          "relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors",
-          "bg-white/40 dark:bg-neutral-800/40",
-          "hover:bg-white/70 dark:hover:bg-neutral-700/60",
-          "border border-white/20 dark:border-neutral-700/30",
-          "text-sm font-medium",
-          className,
-        )}
-      >
-        {showDot && (
-          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-          </span>
-        )}
-        <Icon className="h-4 w-4" />
-        <span className="hidden sm:inline">{label}</span>
-      </motion.button>
-
-      {/* Tooltip for mobile */}
-      <AnimatePresence>
-        {hovered && (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900 sm:hidden"
-          >
-            {label}
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-100" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 // Subscription tier badge styles
 const TIER_STYLES: Record<
   string,
@@ -924,13 +862,21 @@ export function BottomDock({
 
               {/* Check-in Button (only for authenticated users with checkIn feature) */}
               {checkIn && isAuthedForUi && (
-                <StatusBarItem
-                  icon={CalendarDaysIcon}
-                  label="签到"
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setShowCheckInModal(true)}
-                  className="text-amber-700 dark:text-amber-400"
-                  showDot={checkIn.showDot}
-                />
+                  className="relative flex items-center justify-center h-8 w-8 rounded-lg text-amber-600 transition-colors hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                  title={t("app.toolbar.checkIn")}
+                >
+                  {checkIn.showDot && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                    </span>
+                  )}
+                  <CalendarDaysIcon className="h-5 w-5" />
+                </motion.button>
               )}
 
               {/* Divider */}

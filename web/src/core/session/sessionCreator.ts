@@ -131,7 +131,9 @@ export async function createTopicInSession(
 export async function createNewSession(
   payload: SessionCreatePayload,
 ): Promise<SessionResponse> {
-  return sessionService.createSession(payload) as Promise<SessionResponse>;
+  return sessionService.createSession(
+    payload,
+  ) as unknown as Promise<SessionResponse>;
 }
 
 /**

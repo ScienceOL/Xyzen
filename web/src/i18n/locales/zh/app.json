@@ -72,6 +72,7 @@
     "uploadFile": "上传文件",
     "resizeHint": "拖动调整输入框高度",
     "history": "历史记录",
+    "checkIn": "签到",
     "more": "更多",
     "search": "搜索",
     "searchBuiltin": "内置搜索",
@@ -143,6 +144,29 @@
     "sandboxDesc": "在沙盒中执行代码",
     "subagent": "子代理",
     "subagentDesc": "将任务委派给其他代理"
+  },
+  "topicHistory": {
+    "close": "关闭历史记录",
+    "searchPlaceholder": "搜索对话",
+    "clearAll": "清空所有对话",
+    "noSearchResults": "没有找到匹配的对话",
+    "empty": "当前会话暂无历史记录",
+    "cannotDeleteLast": "不能删除最后一个会话",
+    "deleteTopic": "删除会话",
+    "unpin": "取消置顶",
+    "pin": "置顶会话",
+    "deleteConfirmTitle": "删除会话",
+    "deleteConfirmMessage": "确定要删除会话「{{title}}」吗？",
+    "clearConfirmTitle": "清空所有对话",
+    "clearConfirmMessage": "确定要清空当前会话的所有对话记录吗？此操作不可恢复。",
+    "loginRequired": "请先登录",
+    "loginDescription": "登录后即可查看和管理您的会话历史记录",
+    "close": "关闭",
+    "emptyDescription": "开始对话即可创建历史记录",
+    "title": "会话历史",
+    "subtitle": "当前会话的对话主题",
+    "clearButton": "清空",
+    "searchResultCount": "找到 {{count}} 个结果"
   },
   "input": {
     "placeholder": "输入消息...",
@@ -452,5 +476,11 @@
     "usageStats": "使用统计",
     "detailedAnalysis": "详细分析",
     "clickDateHint": "点击日期查看详情"
+  },
+  "loft": {
+    "greeting": "你好，我是**阿鑫**，你的数字团队 CEO。",
+    "inputPlaceholder": "向 CEO 提问...",
+    "dragUpHint": "上拉查看全部助手",
+    "backToLoft": "回到阁楼"
   }
 }

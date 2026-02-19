@@ -11,6 +11,7 @@ from .knowledge_set import KnowledgeSetRepository
 from .message import MessageRepository
 from .push_subscription import PushSubscriptionRepository
 from .provider import ProviderRepository
+from .root_agent import RootAgentRepository
 from .session import SessionRepository
 from .skill import SkillRepository
 from .smithery_cache import SmitheryCacheRepository
@@ -30,6 +31,7 @@ __all__ = [
     "FileRepository",
     "MessageRepository",
     "PushSubscriptionRepository",
+    "RootAgentRepository",
     "TopicRepository",
     "SessionRepository",
     "SkillRepository",

@@ -64,6 +64,11 @@
     "updateFailed": "Failed to save, please try again later.",
     "nameDuplicate": "An agent with this name already exists. Please choose a different name."
   },
+  "rootAgent": {
+    "title": "CEO Agent",
+    "description": "Orchestrates and delegates to your other agents",
+    "badge": "Root"
+  },
   "sessionSettings": {
     "title": "{{name}} Settings",
     "tabs": {

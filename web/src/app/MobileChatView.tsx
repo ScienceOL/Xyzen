@@ -1,5 +1,5 @@
 import { Capsule } from "@/components/capsule";
-import XyzenAgent from "@/components/layouts/XyzenAgent";
+import MobileLoft from "@/components/mobile/MobileLoft";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { useMobileSwipe } from "@/hooks/useMobileSwipe";
@@ -11,7 +11,6 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 
 export interface MobileChatViewHandle {
@@ -35,7 +34,6 @@ interface MobileChatViewProps {
  */
 const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
   function MobileChatView({ onPageChange }, ref) {
-    const { t } = useTranslation();
     const { activeChatChannel, setActiveChatChannel } = useXyzen(
       useShallow((s) => ({
         activeChatChannel: s.activeChatChannel,
@@ -109,19 +107,9 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
     return (
       <div ref={wrapperRef} className="h-full overflow-hidden">
         <div ref={trackRef} className="flex h-full will-change-transform">
-          {/* ---- Page 0: Agent List ---- */}
-          <div className="h-full shrink-0 w-full bg-white dark:bg-neutral-950 flex flex-col">
-            <div className="sm:border-b border-neutral-200 p-4 dark:border-neutral-800 shrink-0">
-              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                {t("app.chat.assistantsTitle")}
-              </h2>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                {t("app.chat.chooseAgentHint")}
-              </p>
-            </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar py-4">
-              <XyzenAgent onNavigateToChat={navigateToChat} />
-            </div>
+          {/* ---- Page 0: Loft (Agent List + CEO) ---- */}
+          <div className="h-full shrink-0 w-full">
+            <MobileLoft onNavigateToChat={navigateToChat} />
           </div>
 
           {/* ---- Page 1: Chat ---- */}

@@ -21,7 +21,9 @@ export function normalizeTotalTokens(
   const normalizedInput = Math.max(0, Math.floor(inputTokens ?? 0));
   const normalizedOutput = Math.max(0, Math.floor(outputTokens ?? 0));
   const normalizedTotal = Math.max(0, Math.floor(totalTokens ?? 0));
-  return normalizedTotal > 0 ? normalizedTotal : normalizedInput + normalizedOutput;
+  return normalizedTotal > 0
+    ? normalizedTotal
+    : normalizedInput + normalizedOutput;
 }
 
 export function resolveContextLimit(params: {

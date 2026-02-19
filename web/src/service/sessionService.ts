@@ -12,6 +12,7 @@ export interface SessionCreate {
   knowledge_set_id?: string;
   avatar?: string;
   spatial_layout?: AgentSpatialLayout;
+  mcp_server_ids?: string[];
 }
 
 export interface SessionUpdate {
@@ -43,16 +44,29 @@ export interface SessionRead {
   updated_at: string;
 }
 
+export interface SessionTopicRead {
+  id: string;
+  name: string;
+  updated_at: string;
+  is_pinned: boolean;
+}
+
+export interface SessionReadWithTopics extends SessionRead {
+  topics: SessionTopicRead[];
+}
+
 class SessionService {
-  async createSession(sessionData: SessionCreate): Promise<SessionRead> {
+  async createSession(
+    sessionData: SessionCreate,
+  ): Promise<SessionReadWithTopics> {
     return http.post("/xyzen/api/v1/sessions/", sessionData);
   }
 
-  async getSessions(): Promise<SessionRead[]> {
+  async getSessions(): Promise<SessionReadWithTopics[]> {
     return http.get("/xyzen/api/v1/sessions/");
   }
 
-  async getSessionByAgent(agentId: string): Promise<SessionRead> {
+  async getSessionByAgent(agentId: string): Promise<SessionReadWithTopics> {
     return http.get(`/xyzen/api/v1/sessions/by-agent/${agentId}`);
   }
 

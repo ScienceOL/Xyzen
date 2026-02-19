@@ -141,6 +141,21 @@ async def create_chat_agent(
         )
         tools.extend(subagent_tools)
 
+    # Conditionally add delegation tools for root (CEO) agent
+    if agent_config and user_id and await _is_root_agent(db, agent_config.id, user_id):
+        from app.tools.builtin.delegation import create_delegation_tools_for_session
+
+        delegation_tools = await create_delegation_tools_for_session(
+            db=db,
+            user_id=user_id,
+            root_agent_id=agent_config.id,
+            user_provider_manager=user_provider_manager,
+            provider_id=provider_id,
+            model_name=model_name,
+            store=store,
+        )
+        tools.extend(delegation_tools)
+
     # Create LLM factory
     async def create_llm(**kwargs: Any) -> "BaseChatModel":
         override_model = kwargs.get("model") or model_name
@@ -227,7 +242,7 @@ def _resolve_agent_config(
 
         # Inject system_prompt into the agent's actual config (not a builtin replacement)
         if system_prompt:
-            raw_config = _inject_system_prompt(raw_config, system_prompt)
+            raw_config = inject_system_prompt(raw_config, system_prompt)
 
         return raw_config, agent_type_key
 
@@ -238,12 +253,12 @@ def _resolve_agent_config(
 
     config_dict = builtin_config.model_dump()
     if system_prompt:
-        config_dict = _inject_system_prompt(config_dict, system_prompt)
+        config_dict = inject_system_prompt(config_dict, system_prompt)
 
     return config_dict, DEFAULT_BUILTIN_AGENT
 
 
-def _inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> dict[str, Any]:
+def inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> dict[str, Any]:
     """
     Inject system_prompt into a graph config.
 
@@ -446,7 +461,7 @@ async def create_agent_from_builtin(
     # Get config and inject system prompt if needed
     config_dict = config.model_dump()
     if system_prompt:
-        config_dict = _inject_system_prompt(config_dict, system_prompt)
+        config_dict = inject_system_prompt(config_dict, system_prompt)
 
     # Build the agent
     try:
@@ -519,3 +534,11 @@ def _should_enable_subagent(agent_config: "Agent | None") -> bool:
             continue
 
     return False
+
+
+async def _is_root_agent(db: "AsyncSession", agent_id: "UUID", user_id: str) -> bool:
+    """Check if the given agent is the root (CEO) agent for this user."""
+    from app.repos.root_agent import RootAgentRepository
+
+    repo = RootAgentRepository(db)
+    return await repo.is_root_agent(agent_id, user_id)

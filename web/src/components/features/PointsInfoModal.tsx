@@ -892,7 +892,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
     <SheetModal isOpen={isOpen} onClose={onClose}>
       <div className="flex h-full flex-col overflow-hidden">
         {/* Mobile title */}
-        <div className="shrink-0 px-5 pb-1 pt-2 md:px-6 md:pt-4">
+        <div className="shrink-0 px-5 pb-1 pt-6 md:px-6 md:pt-4">
           <h2 className="text-xl font-bold text-neutral-900 dark:text-white md:text-lg">
             选择订阅方案
           </h2>

@@ -2,6 +2,7 @@
 
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { AgentList } from "@/components/agents";
+import CeoAgentCard from "@/components/agents/CeoAgentCard";
 import {
   useActiveTopicCountByAgent,
   useChannelAgentIdMap,
@@ -23,9 +24,14 @@ import type { Agent } from "@/types/agents";
 interface XyzenAgentProps {
   /** Called after a channel has been activated for the clicked agent. */
   onNavigateToChat?: () => void;
+  /** Whether to show the CEO agent card at the top. Defaults to true. */
+  showCeoCard?: boolean;
 }
 
-export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
+export default function XyzenAgent({
+  onNavigateToChat,
+  showCeoCard = true,
+}: XyzenAgentProps = {}) {
   const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -35,6 +41,7 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   const [loadingAgentId, setLoadingAgentId] = useState<string | null>(null);
   const {
     agents,
+    rootAgent,
 
     deleteAgent,
     updateAgentAvatar,
@@ -44,15 +51,18 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
     activateChannelForAgent,
 
     fetchMcpServers,
+    fetchRootAgent,
   } = useXyzen(
     useShallow((s) => ({
       agents: s.agents,
+      rootAgent: s.rootAgent,
       deleteAgent: s.deleteAgent,
       updateAgentAvatar: s.updateAgentAvatar,
       reorderAgents: s.reorderAgents,
       chatHistory: s.chatHistory,
       activateChannelForAgent: s.activateChannelForAgent,
       fetchMcpServers: s.fetchMcpServers,
+      fetchRootAgent: s.fetchRootAgent,
     })),
   );
 
@@ -88,18 +98,18 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   // Note: fetchAgents is called in App.tsx during initial load
   // No need to fetch again here - agents are already in the store
 
-  // Ensure MCP servers are loaded first
+  // Ensure MCP servers and root agent are loaded
   useEffect(() => {
-    const loadMcps = async () => {
+    const loadInitialData = async () => {
       try {
-        await fetchMcpServers();
+        await Promise.all([fetchMcpServers(), fetchRootAgent()]);
       } catch (error) {
-        console.error("Failed to load MCP servers:", error);
+        console.error("Failed to load initial data:", error);
       }
     };
 
-    loadMcps();
-  }, [fetchMcpServers]);
+    loadInitialData();
+  }, [fetchMcpServers, fetchRootAgent]);
 
   const handleAgentClick = async (agent: Agent) => {
     const agentId = agent.id;
@@ -113,6 +123,8 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
       setLoadingAgentId(null);
     }
   };
+
+  const handleRootAgentClick = handleAgentClick;
 
   const handleEditClick = (agent: Agent) => {
     setEditingAgent(agent);
@@ -143,6 +155,14 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
+        {showCeoCard && rootAgent && (
+          <CeoAgentCard
+            agent={rootAgent}
+            isLoading={loadingAgentId === rootAgent.id}
+            activeTopicCount={activeTopicCountByAgent[rootAgent.id] ?? 0}
+            onClick={handleRootAgentClick}
+          />
+        )}
         <AgentList
           agents={agents}
           variant="detailed"

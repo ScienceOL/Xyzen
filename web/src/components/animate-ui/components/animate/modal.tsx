@@ -96,11 +96,11 @@ export function Modal({
         >
           {swipeToDismiss && (
             <div
-              className="flex shrink-0 cursor-grab justify-center pb-1 pt-2 active:cursor-grabbing md:hidden"
+              className="absolute inset-x-0 top-0 z-10 flex cursor-grab justify-center pb-1 pt-2 active:cursor-grabbing md:hidden"
               onPointerDown={(e) => dragControls.start(e)}
               style={{ touchAction: "none" }}
             >
-              <div className="h-1 w-9 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+              <div className="h-1 w-9 rounded-full bg-white/50 dark:bg-white/20" />
             </div>
           )}
           {title && title.trim() !== "" ? (

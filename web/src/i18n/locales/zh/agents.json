@@ -64,6 +64,11 @@
     "updateFailed": "保存失败，请稍后重试。",
     "nameDuplicate": "已存在同名助手，请使用其他名称。"
   },
+  "rootAgent": {
+    "title": "CEO 助手",
+    "description": "管理和委派任务给其他助手",
+    "badge": "根助手"
+  },
   "sessionSettings": {
     "title": "{{name}} 设置",
     "tabs": {

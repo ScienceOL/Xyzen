@@ -520,7 +520,7 @@ function NotificationUI() {
         >
           <div className="flex h-full flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-2">
+            <div className="flex items-center justify-between px-5 pt-6 pb-2 md:py-2">
               <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
                 {t("notifications.bell.title")}
               </h2>

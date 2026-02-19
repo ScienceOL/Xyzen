@@ -16,8 +16,8 @@ import { useTranslation } from "react-i18next";
 
 import ChatBubble from "./components/ChatBubble";
 import ContextUsageRing from "./components/ContextUsageRing";
-import FloatingChatInput from "./components/FloatingChatInput";
 import EmptyChat from "./components/EmptyChat";
+import FloatingChatInput from "./components/FloatingChatInput";
 import WelcomeMessage from "./components/WelcomeMessage";
 
 interface BaseChatProps {
@@ -156,7 +156,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         <div className="relative grow overflow-y-auto min-w-0">
           <div
             ref={messagesContainerRef}
-            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-white dark:bg-black custom-scrollbar"
+            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-white dark:bg-neutral-950 custom-scrollbar"
             onScroll={handleScroll}
           >
             {/* Sticky Frosted Header — scroll-driven animation (CSS) */}

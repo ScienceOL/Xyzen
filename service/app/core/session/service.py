@@ -100,13 +100,17 @@ class SessionService:
             # Another request created the same user+agent session concurrently.
             # Roll back and resolve to the canonical existing session.
             await self.db.rollback()
-            session = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
-            if not session:
-                raise
-            topics = await self.topic_repo.get_topics_by_session(session.id, order_by_updated=True)
-            if not topics:
-                await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
-                await self.db.commit()
+            existing = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
+            if existing:
+                logger.info(f"Session already exists for user={user_id} agent={agent_uuid}, returning existing")
+                # Ensure the existing session has at least one topic (it may not if a previous
+                # creation was partially committed or topics were cleared).
+                topics = await self.topic_repo.get_topics_by_session(existing.id)
+                if not topics:
+                    await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing.id))
+                    await self.db.commit()
+                return SessionRead(**existing.model_dump())
+            raise
 
         # Write FGA owner tuple (best-effort)
         if created_new_session:
@@ -176,12 +180,16 @@ class SessionService:
                 "Access denied: You don't have permission to clear this session"
             )
 
-        topics = await self.topic_repo.get_topics_by_session(session_id)
-        for topic in topics:
-            await self.message_repo.delete_messages_by_topic(topic.id)
-            await self.topic_repo.delete_topic(topic.id)
+        # Use a savepoint so partial failures roll back the entire clear operation
+        # instead of leaving the session in an inconsistent state.
+        async with self.db.begin_nested():
+            topics = await self.topic_repo.get_topics_by_session(session_id)
+            for topic in topics:
+                await self.message_repo.delete_messages_by_topic(topic.id)
+                await self.topic_repo.delete_topic(topic.id)
 
-        await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session_id))
+            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session_id))
+
         await self.db.commit()
 
     async def update_session(self, session_id: UUID, session_data: SessionUpdate, user_id: str) -> SessionRead:

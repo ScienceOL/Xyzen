@@ -72,6 +72,7 @@
     "uploadFile": "Upload File",
     "resizeHint": "Drag to adjust input height",
     "history": "History",
+    "checkIn": "Check in",
     "more": "More",
     "search": "Search",
     "searchBuiltin": "Built-in Search",
@@ -143,6 +144,30 @@
     "sandboxDesc": "Execute code in sandbox",
     "subagent": "Subagent",
     "subagentDesc": "Delegate tasks to other agents"
+  },
+  "topicHistory": {
+    "close": "Close history",
+    "searchPlaceholder": "Search conversations",
+    "clearAll": "Clear all conversations",
+    "noSearchResults": "No matching conversations found",
+    "empty": "No conversation history yet",
+    "cannotDeleteLast": "Cannot delete the last conversation",
+    "deleteTopic": "Delete conversation",
+    "unpin": "Unpin",
+    "pin": "Pin conversation",
+    "deleteConfirmTitle": "Delete Conversation",
+    "deleteConfirmMessage": "Are you sure you want to delete the conversation \"{{title}}\"?",
+    "clearConfirmTitle": "Clear All Conversations",
+    "clearConfirmMessage": "Are you sure you want to clear all conversations in this session? This action cannot be undone.",
+    "loginRequired": "Please log in first",
+    "loginDescription": "Log in to view and manage your conversation history",
+    "close": "Close",
+    "emptyDescription": "Start a conversation to create history",
+    "title": "Conversation History",
+    "subtitle": "Topics in this session",
+    "clearButton": "Clear",
+    "searchResultCount": "{{count}} result found",
+    "searchResultCount_other": "{{count}} results found"
   },
   "input": {
     "placeholder": "Send a message...",
@@ -452,5 +477,11 @@
     "usageStats": "Usage Statistics",
     "detailedAnalysis": "Detailed Analysis",
     "clickDateHint": "Tap a date to view details"
+  },
+  "loft": {
+    "greeting": "Hello, I'm **Xyzen**, CEO of your Agents Group.",
+    "inputPlaceholder": "Ask the CEO anything...",
+    "dragUpHint": "Drag up to see all agents",
+    "backToLoft": "Back to Loft"
   }
 }
