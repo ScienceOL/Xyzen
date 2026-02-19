@@ -199,7 +199,7 @@ export interface ChatChannel {
   responding?: boolean;
   // Whether an abort request is in progress
   aborting?: boolean;
-  // Accumulated total tokens for context window tracking
+  // Latest context usage tokens for this topic (not cumulative historical spend)
   tokenUsage?: number;
 }
 

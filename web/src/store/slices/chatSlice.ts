@@ -2,6 +2,7 @@ import {
   groupToolMessagesWithAssistant,
   isValidUuid,
   mergeChannelPreservingRuntime,
+  normalizeTotalTokens,
 } from "@/core/chat";
 import { generateClientId } from "@/core/chat/messageProcessor";
 import { syncChannelResponding } from "@/core/chat/channelHelpers";
@@ -424,7 +425,11 @@ export const createChatSlice: StateCreator<
             );
             channel.messages = mergedMessages;
             if (tokenStats?.total_tokens != null) {
-              channel.tokenUsage = tokenStats.total_tokens;
+              channel.tokenUsage = normalizeTotalTokens(
+                0,
+                0,
+                tokenStats.total_tokens,
+              );
             }
             syncChannelResponding(channel);
           }
@@ -1105,8 +1110,12 @@ export const createChatSlice: StateCreator<
             }
 
             case "token_usage": {
-              const { total_tokens } = event.data;
-              channel.tokenUsage = total_tokens;
+              const { input_tokens, output_tokens, total_tokens } = event.data;
+              channel.tokenUsage = normalizeTotalTokens(
+                input_tokens,
+                output_tokens,
+                total_tokens,
+              );
               break;
             }
           }

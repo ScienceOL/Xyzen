@@ -4,8 +4,10 @@ import EditableTitle from "@/components/base/EditableTitle";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { ShareModal } from "@/components/modals/ShareModal";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
+import { useAvailableModels } from "@/hooks/queries/useProvidersQuery";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
+import { resolveContextLimit } from "@/core/chat/tokenUsage";
 import type { Agent } from "@/types/agents";
 import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 
@@ -108,7 +110,21 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     channelId: channelTopicId,
     tokenUsage,
     model_tier: modelTier,
+    provider_id: providerId,
+    model,
   } = useActiveChannelStatus();
+  const { data: availableModels } = useAvailableModels();
+
+  const contextLimit = useMemo(
+    () =>
+      resolveContextLimit({
+        modelTier,
+        providerId,
+        model,
+        availableModels,
+      }),
+    [modelTier, providerId, model, availableModels],
+  );
 
   // State for share modal
   const [showShareModal, setShowShareModal] = useState(false);
@@ -206,7 +222,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                     <div className="flex items-center gap-1">
                       <ContextUsageRing
                         tokenUsage={tokenUsage}
-                        modelTier={modelTier}
+                        limit={contextLimit}
                       />
                       <button
                         onClick={handleShowShareModal}

@@ -102,6 +102,19 @@ def extract_content_text(content: Any) -> str:
     return str(content)
 
 
+def normalize_token_usage(
+    input_tokens: int | None,
+    output_tokens: int | None,
+    total_tokens: int | None,
+) -> tuple[int, int, int]:
+    """Normalize token usage fields and derive total when missing/zero."""
+    normalized_input = max(int(input_tokens or 0), 0)
+    normalized_output = max(int(output_tokens or 0), 0)
+    raw_total = max(int(total_tokens or 0), 0)
+    normalized_total = raw_total if raw_total > 0 else normalized_input + normalized_output
+    return normalized_input, normalized_output, normalized_total
+
+
 # ---------------------------------------------------------------------------
 # Helper: send_message_saved
 # ---------------------------------------------------------------------------
@@ -300,9 +313,14 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
 
 async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:
     token_data = stream_event["data"]
-    ctx.input_tokens = token_data.get("input_tokens", 0)
-    ctx.output_tokens = token_data.get("output_tokens", 0)
-    ctx.total_tokens = token_data.get("total_tokens", 0)
+    ctx.input_tokens, ctx.output_tokens, ctx.total_tokens = normalize_token_usage(
+        token_data.get("input_tokens", 0),
+        token_data.get("output_tokens", 0),
+        token_data.get("total_tokens", 0),
+    )
+    token_data["input_tokens"] = ctx.input_tokens
+    token_data["output_tokens"] = ctx.output_tokens
+    token_data["total_tokens"] = ctx.total_tokens
     await ctx.publisher.publish(json.dumps(stream_event))
 
 

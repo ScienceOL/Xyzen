@@ -715,6 +715,16 @@ async def _handle_messages_mode(
     # LangGraph sends AIMessageChunk during streaming, then a final AIMessage with full content.
     # We must skip the final AIMessage to avoid duplicating content in the frontend.
     # Note: AIMessageChunk is a subclass of AIMessage, so check the exact type.
+    usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
+    if usage:
+        input_tokens, output_tokens, total_tokens = usage
+        # Some providers emit partial/intermediate usage snapshots; keep the
+        # largest observed total for stable latest-context semantics.
+        if total_tokens >= ctx.total_tokens:
+            ctx.total_input_tokens = input_tokens
+            ctx.total_output_tokens = output_tokens
+            ctx.total_tokens = total_tokens
+
     if type(message_chunk) is AIMessage:
         content = TokenStreamProcessor.extract_token_text(message_chunk)
         # Skip if this is historical (matches known historical content)
@@ -728,11 +738,6 @@ async def _handle_messages_mode(
         if ctx.is_streaming and buffered_content:
             logger.debug(f"Skipping final AIMessage (already have {len(buffered_content)} chars streamed)")
             return
-
-    # Extract token usage
-    usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
-    if usage:
-        ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens = usage
 
     # Batch logging
     ctx.token_count += 1

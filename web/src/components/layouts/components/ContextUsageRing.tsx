@@ -8,15 +8,8 @@ import { useTranslation } from "react-i18next";
 
 interface ContextUsageRingProps {
   tokenUsage: number;
-  modelTier: string | null;
+  limit: number;
 }
-
-const TIER_LIMITS: Record<string, number> = {
-  lite: 256_000,
-  standard: 1_000_000,
-  pro: 1_000_000,
-  ultra: 1_000_000,
-};
 
 const SIZE = 18;
 const STROKE = 2;
@@ -35,12 +28,12 @@ function formatTokens(n: number): string {
 
 const ContextUsageRing = memo(function ContextUsageRing({
   tokenUsage,
-  modelTier,
+  limit,
 }: ContextUsageRingProps) {
   const { t } = useTranslation();
 
-  const limit = TIER_LIMITS[modelTier ?? ""] ?? TIER_LIMITS.standard;
-  const usedPct = Math.min(tokenUsage / limit, 1);
+  const safeLimit = Math.max(1, limit);
+  const usedPct = Math.min(tokenUsage / safeLimit, 1);
   const remainingPct = 1 - usedPct;
   const offset = CIRCUMFERENCE * (1 - usedPct);
   const color = getColor(remainingPct);
@@ -90,7 +83,7 @@ const ContextUsageRing = memo(function ContextUsageRing({
           })}
         </p>
         <p className="text-[10px] opacity-60">
-          {formatTokens(tokenUsage)} / {formatTokens(limit)}
+          {formatTokens(tokenUsage)} / {formatTokens(safeLimit)}
         </p>
       </PopoverContent>
     </Popover>

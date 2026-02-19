@@ -560,6 +560,19 @@ class TokenStreamProcessor:
     """Process token-by-token streaming from LLM."""
 
     @staticmethod
+    def normalize_usage(
+        input_tokens: int | None,
+        output_tokens: int | None,
+        total_tokens: int | None,
+    ) -> tuple[int, int, int]:
+        """Normalize provider usage fields into a consistent total."""
+        normalized_input = max(int(input_tokens or 0), 0)
+        normalized_output = max(int(output_tokens or 0), 0)
+        raw_total = max(int(total_tokens or 0), 0)
+        normalized_total = raw_total if raw_total > 0 else normalized_input + normalized_output
+        return normalized_input, normalized_output, normalized_total
+
+    @staticmethod
     def extract_token_text(message_chunk: Any) -> str | None:
         """
         Extract text from a message chunk.
@@ -617,7 +630,7 @@ class TokenStreamProcessor:
         if not isinstance(usage_metadata, dict):
             return None
 
-        return (
+        return TokenStreamProcessor.normalize_usage(
             usage_metadata.get("input_tokens", 0),
             usage_metadata.get("output_tokens", 0),
             usage_metadata.get("total_tokens", 0),
