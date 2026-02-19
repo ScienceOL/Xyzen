@@ -166,9 +166,9 @@ logs-f *args='':
 ps:
     docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev ps
 
-# Restart a specific service
-restart service:
-    docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev restart {{ service }}
+# Restart one or more services
+restart +services:
+    docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev restart {{ services }}
 
 # Rebuild and restart services
 rebuild *services='':
