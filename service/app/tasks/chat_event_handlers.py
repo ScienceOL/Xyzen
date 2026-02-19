@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCode, ErrCodeError
+from app.core.chat.token_usage import normalize_token_usage
 from app.core.consume import create_consume_for_chat
 from app.core.consume_calculator import ConsumptionCalculator
 from app.core.consume_strategy import ConsumptionContext
@@ -100,19 +101,6 @@ def extract_content_text(content: Any) -> str:
                 text_parts.append(str(item.get("text", "")))
         return "".join(text_parts)
     return str(content)
-
-
-def normalize_token_usage(
-    input_tokens: int | None,
-    output_tokens: int | None,
-    total_tokens: int | None,
-) -> tuple[int, int, int]:
-    """Normalize token usage fields and derive total when missing/zero."""
-    normalized_input = max(int(input_tokens or 0), 0)
-    normalized_output = max(int(output_tokens or 0), 0)
-    raw_total = max(int(total_tokens or 0), 0)
-    normalized_total = raw_total if raw_total > 0 else normalized_input + normalized_output
-    return normalized_input, normalized_output, normalized_total
 
 
 # ---------------------------------------------------------------------------

@@ -217,7 +217,7 @@ function SandboxPreviewCard({ parsed }: { parsed: unknown }) {
             src={url}
             title="Sandbox Preview"
             className="w-full h-100 bg-white"
-            sandbox="allow-scripts allow-forms"
+            sandbox="allow-scripts allow-forms allow-same-origin"
           />
         </div>
       )}

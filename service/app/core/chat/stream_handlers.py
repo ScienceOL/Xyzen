@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Mapping, Sequence, cast
 
 from langchain_core.messages import AIMessage
 
+from app.core.chat.token_usage import normalize_token_usage
 from app.schemas.chat_event_payloads import (
     CitationData,
     ErrorData,
@@ -570,11 +571,7 @@ class TokenStreamProcessor:
         total_tokens: int | None,
     ) -> tuple[int, int, int]:
         """Normalize provider usage fields into a consistent total."""
-        normalized_input = max(int(input_tokens or 0), 0)
-        normalized_output = max(int(output_tokens or 0), 0)
-        raw_total = max(int(total_tokens or 0), 0)
-        normalized_total = raw_total if raw_total > 0 else normalized_input + normalized_output
-        return normalized_input, normalized_output, normalized_total
+        return normalize_token_usage(input_tokens, output_tokens, total_tokens)
 
     @staticmethod
     def extract_token_text(message_chunk: Any) -> str | None:
