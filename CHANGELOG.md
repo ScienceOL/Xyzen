@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.5](https://github.com/ScienceOL/Xyzen/compare/v1.4.4...v1.4.5) (2026-02-19)
+
+### 🐛 Bug Fixes
+
+* db pool leakage ([#257](https://github.com/ScienceOL/Xyzen/issues/257)) ([b601f7d](https://github.com/ScienceOL/Xyzen/commit/b601f7d616ba592ddbf3b086ad73f5dc5d40902c))
+
 ## [1.4.4](https://github.com/ScienceOL/Xyzen/compare/v1.4.3...v1.4.4) (2026-02-18)
 
 ### 🐛 Bug Fixes
