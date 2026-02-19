@@ -500,6 +500,44 @@ describe("handleToolCallResponse", () => {
     expect(channel.messages[0].toolCalls![0].status).toBe("failed");
     expect(channel.messages[0].toolCalls![0].error).toBe("Not found");
   });
+
+  it("stores failed status and error on tool call in agent phase", () => {
+    const channel = makeChannel({
+      messages: [
+        makeMessage({
+          agentExecution: makeExecution({
+            phases: [
+              {
+                id: "p1",
+                name: "P1",
+                status: "running",
+                nodes: [],
+                toolCalls: [
+                  {
+                    id: "tc-1",
+                    name: "spawn_subagent",
+                    arguments: {},
+                    status: "executing",
+                    timestamp: new Date().toISOString(),
+                  },
+                ],
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+
+    handleToolCallResponse(channel, {
+      toolCallId: "tc-1",
+      status: "failed",
+      error: "Subagent timed out.",
+    });
+
+    const tc = channel.messages[0].agentExecution!.phases[0].toolCalls![0];
+    expect(tc.status).toBe("failed");
+    expect(tc.error).toBe("Subagent timed out.");
+  });
 });
 
 // ---------------------------------------------------------------------------
