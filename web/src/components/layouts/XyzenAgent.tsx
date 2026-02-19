@@ -8,7 +8,7 @@ import {
   useChannelAgentIdMap,
 } from "@/hooks/useChannelSelectors";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
@@ -26,11 +26,14 @@ interface XyzenAgentProps {
   onNavigateToChat?: () => void;
   /** Whether to show the CEO agent card at the top. Defaults to true. */
   showCeoCard?: boolean;
+  /** External ref to the scroll container, used by parent for overscroll detection. */
+  scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export default function XyzenAgent({
   onNavigateToChat,
   showCeoCard = true,
+  scrollRef: externalScrollRef,
 }: XyzenAgentProps = {}) {
   const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -147,11 +150,29 @@ export default function XyzenAgent({
     [reorderAgents],
   );
 
+  // Merge external scroll ref with internal ref
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const scrollRefCallback = useCallback(
+    (el: HTMLDivElement | null) => {
+      (
+        internalScrollRef as React.MutableRefObject<HTMLDivElement | null>
+      ).current = el;
+      if (externalScrollRef) {
+        (
+          externalScrollRef as React.MutableRefObject<HTMLDivElement | null>
+        ).current = el;
+      }
+    },
+    [externalScrollRef],
+  );
+
   // Clean sidebar with auto-loaded MCPs for system agents
   return (
     <TooltipProvider>
       <motion.div
-        className="space-y-2 px-4 custom-scrollbar overflow-y-auto h-full"
+        ref={scrollRefCallback}
+        className="custom-scrollbar overflow-y-auto h-full px-4 pt-4 pb-4"
+        style={{ overscrollBehaviorY: "none" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -163,21 +184,23 @@ export default function XyzenAgent({
             onClick={handleRootAgentClick}
           />
         )}
-        <AgentList
-          agents={agents}
-          variant="detailed"
-          sortable={true}
-          publishedAgentIds={publishedAgentIds}
-          lastConversationTimeByAgent={lastConversationTimeByAgent}
-          activeTopicCountByAgent={activeTopicCountByAgent}
-          onAgentClick={handleAgentClick}
-          loadingAgentId={loadingAgentId}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-          onReorder={handleReorder}
-        />
+        <div className="mt-2 overflow-hidden rounded-xl bg-white dark:bg-neutral-900">
+          <AgentList
+            agents={agents}
+            variant="detailed"
+            sortable={true}
+            publishedAgentIds={publishedAgentIds}
+            lastConversationTimeByAgent={lastConversationTimeByAgent}
+            activeTopicCountByAgent={activeTopicCountByAgent}
+            onAgentClick={handleAgentClick}
+            loadingAgentId={loadingAgentId}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
+            onReorder={handleReorder}
+          />
+        </div>
         <button
-          className="w-full rounded-sm border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
+          className="mt-3 w-full rounded-xl border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
           onClick={() => setAddModalOpen(true)}
         >
           {t("agents.addButton")}

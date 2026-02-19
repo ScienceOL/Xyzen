@@ -281,7 +281,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
 
   return (
     <div
-      className="relative bg-white/50 dark:bg-black/40 backdrop-blur-2xl"
+      className="relative bg-white dark:bg-black"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <MobileMorePanel
@@ -292,9 +292,9 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
         onPanelChange={onPanelChange}
       />
 
-      {/* Tab bar */}
+      {/* Tab bar — backdrop-blur lives here, not on wrapper, so panel's blur isn't nested */}
       <div
-        className={`relative z-10 flex w-full h-14 flex-row items-center justify-around px-2 ${className}`}
+        className={`relative z-10 flex w-full h-14 flex-row items-center justify-around px-2 bg-white/50 dark:bg-black/40 backdrop-blur-2xl ${className}`}
       >
         {mobileTabs.map(({ panel, icon: Icon, labelKey }) => {
           const isActive = activePanel === panel;

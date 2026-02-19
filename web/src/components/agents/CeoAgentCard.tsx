@@ -24,52 +24,59 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
       onClick={() => onClick?.(agent)}
       className={`
-        flex cursor-pointer items-center gap-3 rounded-lg p-3
-        bg-gradient-to-r from-amber-50 to-orange-50
-        dark:from-amber-950/30 dark:to-orange-950/30
-        border border-amber-200/60 dark:border-amber-800/40
-        shadow-sm hover:shadow-md transition-shadow
+        relative cursor-pointer overflow-hidden rounded-2xl
+        bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500
+        dark:from-amber-600 dark:via-amber-700 dark:to-orange-700
+        p-4 shadow-lg shadow-amber-200/40 dark:shadow-amber-900/30
         ${isLoading ? "animate-pulse" : ""}
       `}
     >
-      {/* Avatar */}
-      <div className="relative h-10 w-10 shrink-0">
-        <img
-          src={
-            agent.avatar ||
-            "https://api.dicebear.com/7.x/avataaars/svg?seed=ceo"
-          }
-          alt={agent.name}
-          className="h-10 w-10 rounded-full border border-amber-200 dark:border-amber-700 object-cover"
-        />
-        <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 dark:bg-amber-600">
-          <Crown className="h-2.5 w-2.5 text-white" />
-        </div>
-      </div>
+      {/* Decorative circles */}
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
+      <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/10" />
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-100 truncate">
-            {agent.name}
-          </h3>
-          <span className="shrink-0 rounded-full bg-amber-200/60 dark:bg-amber-800/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-            {t("agents.rootAgent.badge", { defaultValue: "Root" })}
-          </span>
-          {activeTopicCount > 0 && (
-            <ChatStatusBadge status="running" size="xs" className="shrink-0" />
-          )}
+      <div className="relative flex items-center gap-3.5">
+        {/* Avatar */}
+        <div className="relative shrink-0">
+          <div className="h-14 w-14 overflow-hidden rounded-full border-2 border-white/50 shadow-md">
+            <img
+              src={
+                agent.avatar ||
+                "https://api.dicebear.com/7.x/avataaars/svg?seed=ceo"
+              }
+              alt={agent.name}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm">
+            <Crown className="h-3 w-3 text-amber-500" />
+          </div>
         </div>
-        <p className="mt-0.5 text-xs text-amber-700/70 dark:text-amber-300/60 line-clamp-1">
-          {agent.description ||
-            t("agents.rootAgent.description", {
-              defaultValue: "Orchestrates and delegates to your other agents",
-            })}
-        </p>
+
+        {/* Content */}
+        <div className="flex flex-1 flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-white truncate">
+              {agent.name}
+            </h3>
+            {activeTopicCount > 0 && (
+              <ChatStatusBadge
+                status="running"
+                size="xs"
+                className="shrink-0"
+              />
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-white/75 line-clamp-1">
+            {agent.description ||
+              t("agents.rootAgent.description", {
+                defaultValue: "Orchestrates and delegates to your other agents",
+              })}
+          </p>
+        </div>
       </div>
     </motion.div>
   );

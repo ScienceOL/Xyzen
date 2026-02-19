@@ -480,7 +480,7 @@
   "loft": {
     "greeting": "こんにちは、**Xyzen**です。エージェントグループのCEOです。",
     "inputPlaceholder": "CEOに聞く...",
-    "dragUpHint": "上にドラッグしてエージェント一覧を表示",
-    "backToLoft": "ロフトに戻る"
+    "dismissHint": "タップしてエージェント一覧を表示",
+    "backToLoft": "CEOに戻る"
   }
 }

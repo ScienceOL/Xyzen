@@ -436,7 +436,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
             ).current = node;
           }}
           style={style}
-          className={`relative overflow-hidden rounded-lg ${isDragging ? "z-50" : ""}`}
+          className={`relative overflow-hidden ${isDragging ? "z-50" : ""}`}
         >
           {/* Swipe action buttons (behind the content) - hidden during loading to prevent flicker */}
           {!isLoading && (
@@ -485,11 +485,11 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ transform: `translateX(${swipeOffset}px)` }}
             className={`
-              relative w-full flex cursor-pointer items-center gap-4 rounded-lg p-3
-              bg-white dark:bg-neutral-900 shadow-sm
+              relative w-full flex cursor-pointer items-center gap-3 px-4 py-3
+              bg-white dark:bg-neutral-900
               ${agent.id === "default-chat" ? "select-none" : ""}
               ${isDragging ? "shadow-xl cursor-grabbing" : ""}
-              ${!isSwiped ? "hover:bg-neutral-50 dark:hover:bg-neutral-800" : ""}
+              ${!isSwiped ? "active:bg-neutral-50 dark:active:bg-neutral-800" : ""}
               ${isLoading ? "animate-pulse" : ""}
               transition-transform duration-200 ease-out
             `}
@@ -519,7 +519,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   // Non-sortable: use motion.div with animations
   return (
     <>
-      <div ref={containerRef} className="relative overflow-hidden rounded-lg">
+      <div ref={containerRef} className="relative overflow-hidden">
         {/* Swipe action buttons (behind the content) - hidden during loading to prevent flicker */}
         {!isLoading && (
           <div className="absolute inset-y-0 right-0 flex items-stretch">
@@ -576,11 +576,11 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
           animate={{ x: swipeOffset }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
           className={`
-            relative w-full flex cursor-pointer items-center gap-4 rounded-lg p-3
-            bg-white dark:bg-neutral-900 shadow-sm
+            relative w-full flex cursor-pointer items-center gap-3 px-4 py-3
+            bg-white dark:bg-neutral-900
             ${agent.id === "default-chat" ? "select-none" : ""}
             ${isDragging ? "shadow-xl z-50 cursor-grabbing" : ""}
-            ${!isSwiped ? "hover:bg-neutral-50 dark:hover:bg-neutral-800" : ""}
+            ${!isSwiped ? "active:bg-neutral-50 dark:active:bg-neutral-800" : ""}
             ${isLoading ? "animate-pulse" : ""}
           `}
         >

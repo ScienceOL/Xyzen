@@ -480,7 +480,7 @@
   "loft": {
     "greeting": "你好，我是**阿鑫**，你的数字团队 CEO。",
     "inputPlaceholder": "向 CEO 提问...",
-    "dragUpHint": "上拉查看全部助手",
-    "backToLoft": "回到阁楼"
+    "dismissHint": "点击空白区域查看全部助手",
+    "backToLoft": "回到 CEO"
   }
 }

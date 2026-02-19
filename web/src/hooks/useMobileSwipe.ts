@@ -13,6 +13,8 @@ interface SwipeOptions {
   rubberBand?: number;
   /** Width in px from each screen edge that activates the swipe gesture */
   edgeWidth?: number;
+  /** When true, swipe activates from anywhere (bypasses edge detection) */
+  bypassEdge?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export function useMobileSwipe({
   distanceThreshold = 0.25,
   rubberBand = 0.25,
   edgeWidth = 24,
+  bypassEdge = false,
 }: SwipeOptions) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -143,6 +146,8 @@ export function useMobileSwipe({
   snapToRef.current = snapTo;
   const pageCountRef = useRef(pageCount);
   pageCountRef.current = pageCount;
+  const bypassEdgeRef = useRef(bypassEdge);
+  bypassEdgeRef.current = bypassEdge;
 
   // ---- Touch listeners (non-passive for preventDefault) ----
   useEffect(() => {
@@ -154,11 +159,14 @@ export function useMobileSwipe({
 
       // Only activate from screen edges to avoid conflicts with
       // in-content interactions (text selection, scrolling, etc.)
-      const fromLeftEdge = t.clientX <= edgeWidth;
-      const fromRightEdge =
-        t.clientX >=
-        (wrapperRef.current?.offsetWidth ?? window.innerWidth) - edgeWidth;
-      if (!fromLeftEdge && !fromRightEdge) return;
+      // unless bypassEdge is enabled.
+      if (!bypassEdgeRef.current) {
+        const fromLeftEdge = t.clientX <= edgeWidth;
+        const fromRightEdge =
+          t.clientX >=
+          (wrapperRef.current?.offsetWidth ?? window.innerWidth) - edgeWidth;
+        if (!fromLeftEdge && !fromRightEdge) return;
+      }
 
       gesture.current = {
         active: true,

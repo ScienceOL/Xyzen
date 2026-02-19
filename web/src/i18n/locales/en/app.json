@@ -481,7 +481,7 @@
   "loft": {
     "greeting": "Hello, I'm **Xyzen**, CEO of your Agents Group.",
     "inputPlaceholder": "Ask the CEO anything...",
-    "dragUpHint": "Drag up to see all agents",
-    "backToLoft": "Back to Loft"
+    "dismissHint": "Tap to see all agents",
+    "backToLoft": "Back to CEO"
   }
 }

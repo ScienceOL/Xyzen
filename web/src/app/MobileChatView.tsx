@@ -1,8 +1,10 @@
 import { Capsule } from "@/components/capsule";
-import MobileLoft from "@/components/mobile/MobileLoft";
+import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
+import CeoOverlay from "@/components/mobile/CeoOverlay";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { useMobileSwipe } from "@/hooks/useMobileSwipe";
+import { useOverscrollPull } from "@/hooks/useOverscrollPull";
 import { useXyzen } from "@/store";
 import {
   forwardRef,
@@ -10,6 +12,7 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -34,10 +37,17 @@ interface MobileChatViewProps {
  */
 const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
   function MobileChatView({ onPageChange }, ref) {
-    const { activeChatChannel, setActiveChatChannel } = useXyzen(
+    const {
+      activeChatChannel,
+      setActiveChatChannel,
+      rootAgent,
+      activateChannelForAgent,
+    } = useXyzen(
       useShallow((s) => ({
         activeChatChannel: s.activeChatChannel,
         setActiveChatChannel: s.setActiveChatChannel,
+        rootAgent: s.rootAgent,
+        activateChannelForAgent: s.activateChannelForAgent,
       })),
     );
     const { knowledge_set_id } = useActiveChannelStatus();
@@ -54,22 +64,68 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
     // detected as a false→true transition and auto-navigates to page 1.
     const prevHasChannel = useRef(false);
 
+    // ---- CEO overlay ----
+    const [showCeoOverlay, setShowCeoOverlay] = useState(true);
+    const dismissOverlay = useCallback(() => setShowCeoOverlay(false), []);
+
+    // Pre-activate CEO channel when overlay is visible so that
+    // useMobileSwipe has a page 1 (chat) to swipe to.
+    useEffect(() => {
+      if (showCeoOverlay && rootAgent && !activeChatChannel) {
+        activateChannelForAgent(rootAgent.id);
+      }
+    }, [showCeoOverlay, rootAgent, activeChatChannel, activateChannelForAgent]);
+
+    // Ref to the overlay backdrop element — direct DOM manipulation during
+    // pull gesture (no React re-renders → no flicker, same as useMobileSwipe).
+    const backdropRef = useRef<HTMLDivElement>(null);
+
+    // Pull-down-to-reveal: native touch events on the agent scroll container.
+    const agentScrollRef = useRef<HTMLDivElement>(null);
+    useOverscrollPull({
+      scrollRef: agentScrollRef,
+      enabled: !showCeoOverlay,
+      onPull: useCallback(() => setShowCeoOverlay(true), []),
+      onProgress: useCallback((progress: number) => {
+        const el = backdropRef.current;
+        if (!el) return;
+        if (progress > 0) {
+          const pct = Math.min(progress, 1) * 100;
+          el.style.transition = "none";
+          el.style.clipPath = `inset(0% 0% ${100 - pct}% 0%)`;
+        } else {
+          el.style.transition = "none";
+          el.style.clipPath = "inset(0% 0% 100% 0%)";
+        }
+      }, []),
+    });
+
+    // ---- Horizontal page swipe ----
     const handleSnap = useCallback(
       (page: number) => {
-        if (page === 0 && hasChannel && !externalClear.current) {
+        // Don't clear channel when overlay is visible — the CEO channel
+        // must stay alive so the user can swipe right to chat again.
+        if (
+          page === 0 &&
+          hasChannel &&
+          !externalClear.current &&
+          !showCeoOverlay
+        ) {
           setActiveChatChannel(null);
         }
         externalClear.current = false;
       },
-      [hasChannel, setActiveChatChannel],
+      [hasChannel, setActiveChatChannel, showCeoOverlay],
     );
 
     const { wrapperRef, trackRef, currentPage, goToPage, setPageImmediate } =
-      useMobileSwipe({ pageCount, onSnap: handleSnap });
+      useMobileSwipe({
+        pageCount,
+        onSnap: handleSnap,
+        bypassEdge: showCeoOverlay,
+      });
 
     // Keep goToPage always-current via ref so async callbacks never go stale.
-    // `goToPage` (= snapTo) is recreated whenever pageCount changes, but the
-    // ref is updated synchronously on every render — before any await resumes.
     const goToPageRef = useRef(goToPage);
     goToPageRef.current = goToPage;
 
@@ -107,9 +163,18 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
     return (
       <div ref={wrapperRef} className="h-full overflow-hidden">
         <div ref={trackRef} className="flex h-full will-change-transform">
-          {/* ---- Page 0: Loft (Agent List + CEO) ---- */}
-          <div className="h-full shrink-0 w-full">
-            <MobileLoft onNavigateToChat={navigateToChat} />
+          {/* ---- Page 0: Agent List + CEO Overlay ---- */}
+          <div className="relative h-full shrink-0 w-full">
+            <XyzenAgent
+              onNavigateToChat={navigateToChat}
+              scrollRef={agentScrollRef}
+            />
+            <CeoOverlay
+              visible={showCeoOverlay}
+              backdropRef={backdropRef}
+              onDismiss={dismissOverlay}
+              onNavigateToChat={navigateToChat}
+            />
           </div>
 
           {/* ---- Page 1: Chat ---- */}

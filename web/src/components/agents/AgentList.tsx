@@ -305,7 +305,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
 
     const content = (
       <motion.div
-        className="space-y-2"
+        className="divide-y divide-neutral-100 dark:divide-neutral-800"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
