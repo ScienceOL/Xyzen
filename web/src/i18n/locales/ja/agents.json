@@ -64,6 +64,11 @@
     "updateFailed": "保存に失敗しました。後でもう一度お試しください。",
     "nameDuplicate": "同じ名前のエージェントが既に存在します。別の名前を選択してください。"
   },
+  "rootAgent": {
+    "title": "CEOエージェント",
+    "description": "他のエージェントにタスクを調整・委任します",
+    "badge": "ルート"
+  },
   "sessionSettings": {
     "title": "{{name}} 設定",
     "tabs": {

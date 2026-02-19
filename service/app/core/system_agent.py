@@ -11,10 +11,11 @@ from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
+from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate, ConfigVisibility
 from app.models.provider import Provider
 from app.repos.agent import AgentRepository
 from app.repos.provider import ProviderRepository
+from app.repos.root_agent import RootAgentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class SystemAgentManager:
         self.db = db
         self.agent_repo = AgentRepository(db)
         self.provider_repo = ProviderRepository(db)
+        self.root_agent_repo = RootAgentRepository(db)
 
     async def ensure_user_default_agents(self, user_id: str) -> list[Agent]:
         """
@@ -140,7 +142,41 @@ class SystemAgentManager:
             created_agents.append(agent)
             logger.info(f"Created default {agent_key} agent for user {user_id}: {agent.id}")
 
+        # Ensure the user has a root (CEO) agent
+        await self.ensure_root_agent(user_id)
+
         return created_agents
+
+    async def ensure_root_agent(self, user_id: str) -> Agent:
+        """
+        Ensure the user has exactly one root (CEO) agent.
+        If missing, creates the Agent record and links it in the root_agent table.
+        """
+        existing = await self.root_agent_repo.get_agent_for_user(user_id)
+        if existing:
+            return existing
+
+        from app.agents.builtin import get_builtin_config
+
+        ceo_config = get_builtin_config("ceo")
+        system_provider = await self.provider_repo.get_system_provider()
+
+        agent_data = AgentCreate(
+            scope=AgentScope.USER,
+            name="CEO Agent",
+            description="Your root agent that can orchestrate other agents",
+            graph_config=ceo_config.model_dump() if ceo_config else None,
+            config_visibility=ConfigVisibility.HIDDEN,
+            config_editable=False,
+            tags=["root_agent", "ceo"],
+            provider_id=system_provider.id if system_provider else None,
+            require_tool_confirmation=False,
+        )
+
+        agent = await self.agent_repo.create_agent(agent_data, user_id)
+        await self.root_agent_repo.create(user_id=user_id, agent_id=agent.id)
+        logger.info(f"Created root (CEO) agent for user {user_id}: {agent.id}")
+        return agent
 
     async def ensure_system_agents(self) -> dict[str, Agent]:
         """

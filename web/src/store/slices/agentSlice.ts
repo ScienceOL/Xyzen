@@ -1,4 +1,5 @@
 import { authService } from "@/service/authService";
+import { rootAgentService } from "@/service/rootAgentService";
 import { sessionService } from "@/service/sessionService";
 import type {
   Agent,
@@ -14,6 +15,11 @@ import type { XyzenState } from "../types";
 export interface AgentSlice {
   agents: AgentWithLayout[];
   agentsLoading: boolean;
+
+  // Root (CEO) agent
+  rootAgent: AgentWithLayout | null;
+  rootAgentLoading: boolean;
+  fetchRootAgent: () => Promise<void>;
 
   // Map from agentId -> sessionId for layout persistence
   // Layout is stored in Session, not Agent
@@ -89,6 +95,10 @@ export const createAgentSlice: StateCreator<
 > = (set, get) => ({
   agents: [],
   agentsLoading: false,
+
+  // Root (CEO) agent
+  rootAgent: null,
+  rootAgentLoading: false,
 
   // Map from agentId -> sessionId
   sessionIdByAgentId: {},
@@ -179,6 +189,35 @@ export const createAgentSlice: StateCreator<
       console.error("Failed to fetch agents:", error);
       set({ agentsLoading: false });
       throw error;
+    }
+  },
+
+  fetchRootAgent: async () => {
+    set({ rootAgentLoading: true });
+    try {
+      const data = await rootAgentService.getRootAgent(get().backendUrl);
+      const agent = data.agent;
+
+      // Fetch session to get avatar/layout (same pattern as fetchAgents)
+      let spatialLayout: AgentSpatialLayout | undefined;
+      let avatar: string | undefined;
+      try {
+        const session = await sessionService.getSessionByAgent(agent.id);
+        if (session.spatial_layout) spatialLayout = session.spatial_layout;
+        if (session.avatar) avatar = session.avatar;
+      } catch {
+        // Session doesn't exist yet
+      }
+
+      const rootAgent: AgentWithLayout = {
+        ...agent,
+        spatial_layout: spatialLayout ?? defaultSpatialLayoutForIndex(0),
+        avatar: avatar ?? agent.avatar,
+      };
+      set({ rootAgent, rootAgentLoading: false });
+    } catch (error) {
+      console.error("Failed to fetch root agent:", error);
+      set({ rootAgentLoading: false });
     }
   },
 

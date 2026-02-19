@@ -1,21 +1,15 @@
 import {
   ChatBubbleLeftRightIcon,
-  EllipsisHorizontalIcon,
   FolderIcon,
   LightBulbIcon,
   SparklesIcon,
+  Squares2X2Icon,
   UserCircleIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/animate-ui/components/radix/dropdown-menu";
 
 export type ActivityPanel =
   | "chat"
@@ -106,10 +100,12 @@ const ActivityButton: React.FC<ActivityButtonProps> = ({
   );
 };
 
-// ── Mobile "More" menu items ────────────────────────────────────────
+// ── Mobile "More" popover items ──────────────────────────────────────
 const MOBILE_MORE: ActivityPanel[] = ["skills", "memory"];
 
-interface MobileMoreButtonProps {
+interface MobileMorePanelProps {
+  isOpen: boolean;
+  onClose: () => void;
   activePanel: ActivityPanel;
   activities: {
     panel: ActivityPanel;
@@ -119,57 +115,70 @@ interface MobileMoreButtonProps {
   onPanelChange: (panel: ActivityPanel) => void;
 }
 
-const MobileMoreButton: React.FC<MobileMoreButtonProps> = ({
+/**
+ * Slide-up grid panel clipped above the activity bar.
+ *
+ * A permanent `overflow-hidden` clip region sits above the bar. The panel
+ * slides from `y: "100%"` (fully below the clip edge = invisible) to `y: 0`
+ * (visible). It never travels behind the bar, so no bleed-through artifacts.
+ */
+const MobileMorePanel: React.FC<MobileMorePanelProps> = ({
+  isOpen,
+  onClose,
   activePanel,
   activities,
   onPanelChange,
 }) => {
-  const { t } = useTranslation();
-  const isMoreActive = MOBILE_MORE.includes(activePanel);
+  const handleItemClick = useCallback(
+    (panel: ActivityPanel) => {
+      onPanelChange(panel);
+      onClose();
+    },
+    [onPanelChange, onClose],
+  );
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
-            ${
-              isMoreActive
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-neutral-500 dark:text-neutral-400"
-            }`}
-        >
-          <EllipsisHorizontalIcon className="h-5 w-5" />
-          <span className="text-[10px] font-medium leading-none">
-            {t("app.activityBar.more")}
-          </span>
-          {isMoreActive && (
+    <>
+      {/* Click-catcher — closes panel on outside tap; below bar z-10 */}
+      {isOpen && <div className="fixed inset-0" onClick={onClose} />}
+
+      {/* Clip region above the bar */}
+      <div className="absolute bottom-full left-0 right-0 overflow-hidden pointer-events-none">
+        <AnimatePresence>
+          {isOpen && (
             <motion.div
-              layoutId="activeIndicatorMobile"
-              className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
-              initial={false}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            />
+              key="more-panel"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 300 }}
+              className="pointer-events-auto bg-white/70 dark:bg-neutral-900/60 backdrop-blur-2xl border-t border-white/40 dark:border-neutral-700/40"
+            >
+              <div className="grid grid-cols-4 gap-1 px-4 py-3">
+                {activities.map(({ panel, icon: Icon, label }) => {
+                  const isActive = activePanel === panel;
+                  return (
+                    <button
+                      key={panel}
+                      onClick={() => handleItemClick(panel)}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 transition-colors
+                        ${
+                          isActive
+                            ? "bg-indigo-50/80 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
+                            : "text-neutral-600 active:bg-white/50 dark:text-neutral-300 dark:active:bg-neutral-700/50"
+                        }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-[11px] font-medium">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
           )}
-        </motion.button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" side="top" sideOffset={8}>
-        {activities.map(({ panel, icon: Icon, label }) => (
-          <DropdownMenuItem
-            key={panel}
-            onClick={() => onPanelChange(panel)}
-            className={
-              activePanel === panel
-                ? "text-indigo-600 dark:text-indigo-400"
-                : ""
-            }
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </AnimatePresence>
+      </div>
+    </>
   );
 };
 
@@ -180,6 +189,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   isMobile = false,
 }) => {
   const { t } = useTranslation();
+  const [morePanelOpen, setMorePanelOpen] = useState(false);
 
   const activities = [
     {
@@ -235,12 +245,12 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
     );
   }
 
-  // Mobile: Chat | Knowledge | More(↑) | Community | Account
+  // Mobile: Chat | Knowledge | Community | Account | More
   const moreActivities = activities.filter((a) =>
     MOBILE_MORE.includes(a.panel),
   );
 
-  const mobileTabOrder: {
+  const mobileTabs: {
     panel: ActivityPanel;
     icon: React.ComponentType<{ className?: string }>;
     labelKey: string;
@@ -255,9 +265,6 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
       icon: FolderIcon,
       labelKey: "app.activityBar.knowledge",
     },
-  ];
-
-  const mobileTabOrderRight: typeof mobileTabOrder = [
     {
       panel: "marketplace",
       icon: SparklesIcon,
@@ -270,68 +277,76 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
     },
   ];
 
+  const isMoreActive = MOBILE_MORE.includes(activePanel);
+
   return (
     <div
-      className={`flex w-full h-14 flex-row items-center justify-around border-t px-2 bg-white dark:bg-black border-neutral-200 dark:border-neutral-800 ${className}`}
+      className="relative bg-white/50 dark:bg-black/40 backdrop-blur-2xl"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {mobileTabOrder.map(({ panel, icon: Icon, labelKey }) => {
-        const isActive = activePanel === panel;
-        return (
-          <motion.button
-            key={panel}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onPanelChange(panel)}
-            className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
-              ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-500 dark:text-neutral-400"}`}
-          >
-            <Icon className="h-5 w-5" />
-            <span className="text-[10px] font-medium leading-none">
-              {t(labelKey)}
-            </span>
-            {isActive && (
-              <motion.div
-                layoutId="activeIndicatorMobile"
-                className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
-                initial={false}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              />
-            )}
-          </motion.button>
-        );
-      })}
-
-      {/* More (dropdown) */}
-      <MobileMoreButton
+      <MobileMorePanel
+        isOpen={morePanelOpen}
+        onClose={() => setMorePanelOpen(false)}
         activePanel={activePanel}
         activities={moreActivities}
         onPanelChange={onPanelChange}
       />
 
-      {mobileTabOrderRight.map(({ panel, icon: Icon, labelKey }) => {
-        const isActive = activePanel === panel;
-        return (
-          <motion.button
-            key={panel}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onPanelChange(panel)}
-            className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
-              ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-500 dark:text-neutral-400"}`}
-          >
-            <Icon className="h-5 w-5" />
-            <span className="text-[10px] font-medium leading-none">
-              {t(labelKey)}
-            </span>
-            {isActive && (
-              <motion.div
-                layoutId="activeIndicatorMobile"
-                className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
-                initial={false}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              />
-            )}
-          </motion.button>
-        );
-      })}
+      {/* Tab bar */}
+      <div
+        className={`relative z-10 flex w-full h-14 flex-row items-center justify-around px-2 ${className}`}
+      >
+        {mobileTabs.map(({ panel, icon: Icon, labelKey }) => {
+          const isActive = activePanel === panel;
+          return (
+            <motion.button
+              key={panel}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onPanelChange(panel)}
+              className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
+                ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-500 dark:text-neutral-400"}`}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="text-[10px] font-medium leading-none">
+                {t(labelKey)}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="activeIndicatorMobile"
+                  className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+            </motion.button>
+          );
+        })}
+
+        {/* More button (rightmost) */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setMorePanelOpen((prev) => !prev)}
+          className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-sm py-1 transition-all duration-200
+            ${
+              isMoreActive || morePanelOpen
+                ? "text-indigo-600 dark:text-indigo-400"
+                : "text-neutral-500 dark:text-neutral-400"
+            }`}
+        >
+          <Squares2X2Icon className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">
+            {t("app.activityBar.more")}
+          </span>
+          {isMoreActive && !morePanelOpen && (
+            <motion.div
+              layoutId="activeIndicatorMobile"
+              className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full bg-indigo-600 dark:bg-indigo-400"
+              initial={false}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
+          )}
+        </motion.button>
+      </div>
     </div>
   );
 };

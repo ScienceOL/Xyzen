@@ -1,4 +1,4 @@
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import { Input } from "@/components/ui/input";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -59,72 +59,77 @@ export function CreateKnowledgeSetModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={t("knowledge.createKnowledgeSetModal.title")}
-      maxWidth="max-w-lg"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Input
-            id="knowledge-set-name"
-            placeholder={t(
-              "knowledge.createKnowledgeSetModal.fields.name.label",
-            )}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={isSubmitting}
-            autoFocus
-          />
+    <SheetModal isOpen={isOpen} onClose={onClose} size="sm">
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="shrink-0 px-5 pt-5 pb-1 md:pt-2">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+            {t("knowledge.createKnowledgeSetModal.title")}
+          </h2>
         </div>
-
-        <div className="space-y-1.5">
-          <label
-            htmlFor="knowledge-set-description"
-            className="text-sm font-medium text-neutral-800 dark:text-neutral-200"
-          >
-            {t("knowledge.createKnowledgeSetModal.fields.description.label")}
-          </label>
-          <textarea
-            id="knowledge-set-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={t(
-              "knowledge.createKnowledgeSetModal.fields.description.placeholder",
-            )}
-            disabled={isSubmitting}
-            rows={3}
-            className="w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
-          />
-        </div>
-
-        {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-            {error}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto custom-scrollbar px-5 pb-5 space-y-4"
+        >
+          <div>
+            <Input
+              id="knowledge-set-name"
+              placeholder={t(
+                "knowledge.createKnowledgeSetModal.fields.name.label",
+              )}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={isSubmitting}
+              autoFocus
+            />
           </div>
-        )}
 
-        <div className="flex items-center justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
-          >
-            {t("common.cancel")}
-          </button>
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-          >
-            {isSubmitting
-              ? t("knowledge.createKnowledgeSetModal.actions.creating")
-              : t("knowledge.createKnowledgeSetModal.actions.create")}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="knowledge-set-description"
+              className="text-sm font-medium text-neutral-800 dark:text-neutral-200"
+            >
+              {t("knowledge.createKnowledgeSetModal.fields.description.label")}
+            </label>
+            <textarea
+              id="knowledge-set-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t(
+                "knowledge.createKnowledgeSetModal.fields.description.placeholder",
+              )}
+              disabled={isSubmitting}
+              rows={3}
+              className="w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {isSubmitting
+                ? t("knowledge.createKnowledgeSetModal.actions.creating")
+                : t("knowledge.createKnowledgeSetModal.actions.create")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </SheetModal>
   );
 }
