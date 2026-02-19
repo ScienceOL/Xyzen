@@ -61,6 +61,29 @@ const CHANNEL_CONNECT_POLL_INTERVAL_MS = 100;
 // Per-topic stale-state watchdog interval IDs (separate from abort timeouts)
 const staleWatchdogIds = new Map<string, ReturnType<typeof setInterval>>();
 
+// Concurrency guard: track in-progress agent IDs to prevent duplicate calls
+const pendingChannelOps = new Set<string>();
+
+/**
+ * Clean up WebSocket connection and module-level timers for a given topic.
+ * Must be called before removing a channel from state.
+ */
+function cleanupTopicResources(topicId: string): void {
+  xyzenService.closeConnection(topicId);
+
+  const watchdog = staleWatchdogIds.get(topicId);
+  if (watchdog) {
+    clearInterval(watchdog);
+    staleWatchdogIds.delete(topicId);
+  }
+
+  const abortTimeout = abortTimeoutIds.get(topicId);
+  if (abortTimeout) {
+    clearTimeout(abortTimeout);
+    abortTimeoutIds.delete(topicId);
+  }
+}
+
 export interface ChatSlice {
   // Chat panel state
   activeChatChannel: string | null;
@@ -574,7 +597,11 @@ export const createChatSlice: StateCreator<
               state.channels[topicId] = incomingChannel;
             } else {
               // Existing topic — only update metadata fields,
-              // preserve messages/runtime state from the live Immer draft
+              // preserve messages/runtime state from the live Immer draft.
+              // Skip entirely if the channel is actively responding to avoid
+              // clobbering in-flight streaming state with stale DB data.
+              if (existing.responding) continue;
+
               existing.sessionId = incomingChannel.sessionId;
               existing.title = incomingChannel.title;
               existing.agentId = incomingChannel.agentId;
@@ -645,9 +672,7 @@ export const createChatSlice: StateCreator<
         return;
       }
 
-      set({ activeChatChannel: topicId });
-
-      // Track active topic per agent
+      // Track active topic per agent (optimistic — channel may already be in state)
       const existingChannel = channels[topicId];
       if (existingChannel?.agentId) {
         set((state: ChatSlice) => {
@@ -687,7 +712,7 @@ export const createChatSlice: StateCreator<
             if (topic) {
               sessionId = session.id;
               topicName = topic.name;
-              sessionAgentId = session.agent_id; // 获取 session 的 agent_id
+              sessionAgentId = session.agent_id;
               sessionProviderId = session.provider_id;
               sessionModel = session.model;
               sessionModelTier = session.model_tier;
@@ -702,7 +727,7 @@ export const createChatSlice: StateCreator<
               sessionId: sessionId,
               title: topicName,
               messages: [],
-              agentId: sessionAgentId, // 使用从 session 获取的 agentId
+              agentId: sessionAgentId,
               provider_id: sessionProviderId,
               model: sessionModel,
               model_tier: sessionModelTier,
@@ -723,18 +748,19 @@ export const createChatSlice: StateCreator<
               channel = newChannels[topicId];
             } else {
               console.error(`Topic ${topicId} still not found after refetch.`);
-              set({ activeChatChannel: null });
               return;
             }
           }
         } catch (error) {
           console.error("Failed to find session for topic:", error);
-          set({ activeChatChannel: null });
           return;
         }
       }
 
       if (channel) {
+        // Channel is confirmed to exist — NOW set it as active.
+        set({ activeChatChannel: topicId });
+
         // If the topic already has a live WS connection, the in-memory state is
         // authoritative (events are flowing in real-time). Skip reconciliation
         // to avoid replacing streaming content with stale DB data.
@@ -779,6 +805,10 @@ export const createChatSlice: StateCreator<
      * - If no session exists, creates one with a default topic
      */
     activateChannelForAgent: async (agentId: string) => {
+      const guardKey = `activate:${agentId}`;
+      if (pendingChannelOps.has(guardKey)) return;
+      pendingChannelOps.add(guardKey);
+      try {
       const { backendUrl } = get();
 
       // Fetch from backend to get the most recent topic
@@ -878,6 +908,9 @@ export const createChatSlice: StateCreator<
         console.error("Failed to activate channel for agent:", error);
         // Fallback to createDefaultChannel
         await get().createDefaultChannel(agentId);
+      }
+      } finally {
+        pendingChannelOps.delete(guardKey);
       }
     },
 
@@ -1300,6 +1333,15 @@ export const createChatSlice: StateCreator<
     },
 
     disconnectFromChannel: () => {
+      // Clear all module-level timers before closing connections
+      for (const [topicId, timer] of staleWatchdogIds) {
+        clearInterval(timer);
+        staleWatchdogIds.delete(topicId);
+      }
+      for (const [topicId, timer] of abortTimeoutIds) {
+        clearTimeout(timer);
+        abortTimeoutIds.delete(topicId);
+      }
       xyzenService.disconnect();
     },
 
@@ -1324,6 +1366,12 @@ export const createChatSlice: StateCreator<
 
       const activeChannel = channels[activeChatChannel];
       if (!activeChannel) return;
+
+      // Don't allow sending while the channel is still generating a response
+      if (activeChannel.responding) {
+        console.warn("Cannot send message while assistant is responding");
+        return;
+      }
 
       // Ensure websocket is connected to the active topic before sending.
       if (!activeChannel.connected) {
@@ -1421,6 +1469,9 @@ export const createChatSlice: StateCreator<
     },
 
     createDefaultChannel: async (agentId) => {
+      const guardKey = `create:${agentId || "default"}`;
+      if (pendingChannelOps.has(guardKey)) return;
+      pendingChannelOps.add(guardKey);
       try {
         const agentIdParam = agentId || "default";
         const token = authService.getToken();
@@ -1724,6 +1775,8 @@ export const createChatSlice: StateCreator<
         }
       } catch (error) {
         console.error("Failed to create channel:", error);
+      } finally {
+        pendingChannelOps.delete(guardKey);
       }
     },
 
@@ -1801,6 +1854,9 @@ export const createChatSlice: StateCreator<
           throw new Error("Failed to delete topic");
         }
 
+        // Clean up WebSocket and timers before removing from state
+        cleanupTopicResources(topicId);
+
         // Find the sessionId before mutating state
         const chatHistory = get().chatHistory;
         const deletedItem = chatHistory.find((item) => item.id === topicId);
@@ -1855,6 +1911,15 @@ export const createChatSlice: StateCreator<
           Authorization: `Bearer ${token}`,
         };
 
+        // Clean up WebSocket connections and timers for all topics in this session
+        // BEFORE the backend call, so we don't send/receive on stale channels.
+        const channels = get().channels;
+        for (const [topicId, ch] of Object.entries(channels)) {
+          if (ch.sessionId === sessionId) {
+            cleanupTopicResources(topicId);
+          }
+        }
+
         const response = await fetch(
           `${get().backendUrl}/xyzen/api/v1/sessions/${sessionId}/topics`,
           {
@@ -1865,6 +1930,12 @@ export const createChatSlice: StateCreator<
 
         if (!response.ok) {
           throw new Error("Failed to clear session topics");
+        }
+
+        // Reset activeChatChannel if it pointed to a topic in the cleared session
+        const activeCh = get().activeChatChannel;
+        if (activeCh && channels[activeCh]?.sessionId === sessionId) {
+          set({ activeChatChannel: null });
         }
 
         // Refresh chat history to get the new default topic
@@ -1900,19 +1971,14 @@ export const createChatSlice: StateCreator<
         const updatedSession = await response.json();
 
         set((state) => {
-          // Update active channel if it matches this session
-          const activeChannelId = state.activeChatChannel;
-          if (
-            activeChannelId &&
-            state.channels[activeChannelId]?.sessionId === sessionId
-          ) {
-            state.channels[activeChannelId].provider_id =
-              updatedSession.provider_id;
-            state.channels[activeChannelId].model = updatedSession.model;
-            state.channels[activeChannelId].model_tier =
-              updatedSession.model_tier;
-            state.channels[activeChannelId].knowledge_set_id =
-              updatedSession.knowledge_set_id;
+          // Update ALL channels that belong to this session, not just the active one
+          for (const ch of Object.values(state.channels)) {
+            if (ch.sessionId === sessionId) {
+              ch.provider_id = updatedSession.provider_id;
+              ch.model = updatedSession.model;
+              ch.model_tier = updatedSession.model_tier;
+              ch.knowledge_set_id = updatedSession.knowledge_set_id;
+            }
           }
         });
       } catch (error) {
