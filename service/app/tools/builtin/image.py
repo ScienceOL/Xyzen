@@ -394,11 +394,31 @@ async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> lis
     return results
 
 
+async def _try_mount_in_sandbox(session_id: str, image_bytes: bytes, filename: str) -> str | None:
+    """Try to write generated image into the sandbox. Returns sandbox path or None."""
+    try:
+        from app.infra.sandbox import get_sandbox_manager
+
+        manager = get_sandbox_manager(session_id)
+        sandbox_id = await manager.get_sandbox_id()
+        if not sandbox_id:
+            return None
+
+        sandbox_path = f"/workspace/images/{filename}"
+        await manager.write_file_bytes(sandbox_path, image_bytes)
+        logger.info(f"Auto-mounted generated image in sandbox: {sandbox_path}")
+        return sandbox_path
+    except Exception:
+        logger.debug("Failed to auto-mount image in sandbox (non-fatal)", exc_info=True)
+        return None
+
+
 async def _generate_image(
     user_id: str,
     prompt: str,
     aspect_ratio: str = "1:1",
     image_ids: list[str] | None = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Generate an image and store it to OSS, then register in database.
@@ -496,7 +516,7 @@ async def _generate_image(
 
         logger.info(f"Generated image for user {user_id}: {storage_key} (id={generated_image_id})")
 
-        return {
+        result: dict[str, Any] = {
             "success": True,
             "image_id": generated_image_id,
             "path": storage_key,
@@ -508,6 +528,14 @@ async def _generate_image(
             "mime_type": mime_type,
             "size_bytes": len(image_bytes),
         }
+
+        # Auto-mount in sandbox if active
+        if session_id:
+            sandbox_path = await _try_mount_in_sandbox(session_id, image_bytes, filename)
+            if sandbox_path:
+                result["sandbox_path"] = sandbox_path
+
+        return result
 
     except Exception as e:
         logger.error(f"Image generation failed: {e}")
@@ -744,7 +772,7 @@ def create_image_tools() -> dict[str, BaseTool]:
     return tools
 
 
-def create_image_tools_for_agent(user_id: str) -> list[BaseTool]:
+def create_image_tools_for_agent(user_id: str, session_id: str | None = None) -> list[BaseTool]:
     """
     Create image tools bound to a specific user's context.
 
@@ -752,6 +780,7 @@ def create_image_tools_for_agent(user_id: str) -> list[BaseTool]:
 
     Args:
         user_id: The user ID for storage organization
+        session_id: Optional session ID for auto-mounting images in sandbox
 
     Returns:
         List of BaseTool instances with context bound
@@ -764,7 +793,7 @@ def create_image_tools_for_agent(user_id: str) -> list[BaseTool]:
         aspect_ratio: str = "1:1",
         image_ids: list[str] | None = None,
     ) -> dict[str, Any]:
-        return await _generate_image(user_id, prompt, aspect_ratio, image_ids)
+        return await _generate_image(user_id, prompt, aspect_ratio, image_ids, session_id=session_id)
 
     tools.append(
         StructuredTool(

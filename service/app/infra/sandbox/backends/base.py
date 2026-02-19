@@ -11,6 +11,15 @@ from dataclasses import dataclass
 
 
 @dataclass
+class PreviewUrl:
+    """Preview URL for a sandbox port."""
+
+    url: str
+    token: str
+    port: int
+
+
+@dataclass
 class ExecResult:
     """Result of executing a command in a sandbox."""
 
@@ -124,8 +133,19 @@ class SandboxBackend(ABC):
         """Search file contents using a regex/string pattern."""
         ...
 
+    @abstractmethod
+    async def write_file_bytes(self, sandbox_id: str, path: str, data: bytes) -> None:
+        """Write raw bytes to a file in the sandbox."""
+        ...
+
+    @abstractmethod
+    async def get_preview_url(self, sandbox_id: str, port: int) -> PreviewUrl:
+        """Get a browser-accessible preview URL for a sandbox port."""
+        ...
+
 
 __all__ = [
+    "PreviewUrl",
     "ExecResult",
     "FileInfo",
     "SearchMatch",

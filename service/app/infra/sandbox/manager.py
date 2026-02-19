@@ -12,7 +12,7 @@ import uuid
 
 import redis.asyncio as aioredis
 
-from app.infra.sandbox.backends.base import ExecResult, FileInfo, SandboxBackend, SearchMatch
+from app.infra.sandbox.backends.base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SearchMatch
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,16 @@ class SandboxManager:
     @property
     def redis_key(self) -> str:
         return f"{_REDIS_KEY_PREFIX}{self._session_id}"
+
+    async def get_sandbox_id(self) -> str | None:
+        """Return existing sandbox ID without creating one."""
+        if self._sandbox_id:
+            return self._sandbox_id
+        redis_client = await self._create_redis_client()
+        try:
+            return await redis_client.get(self.redis_key)
+        finally:
+            await redis_client.aclose()
 
     async def _create_redis_client(self) -> aioredis.Redis:
         """Create a dedicated Redis client for this manager.
@@ -164,6 +174,14 @@ class SandboxManager:
     ) -> list[SearchMatch]:
         sandbox_id = await self.ensure_sandbox()
         return await self._backend.search_in_files(sandbox_id, root, pattern, include=include)
+
+    async def write_file_bytes(self, path: str, data: bytes) -> None:
+        sandbox_id = await self.ensure_sandbox()
+        await self._backend.write_file_bytes(sandbox_id, path, data)
+
+    async def get_preview_url(self, port: int) -> PreviewUrl:
+        sandbox_id = await self.ensure_sandbox()
+        return await self._backend.get_preview_url(sandbox_id, port)
 
 
 __all__ = ["SandboxManager"]

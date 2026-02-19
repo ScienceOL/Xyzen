@@ -111,6 +111,28 @@ class SandboxExportInput(BaseModel):
     )
 
 
+class SandboxPreviewInput(BaseModel):
+    """Input schema for sandbox_preview tool."""
+
+    port: int = Field(
+        description="Port number of the running service in the sandbox (e.g. 3000, 5000, 8080).",
+        ge=1,
+        le=65535,
+    )
+
+
+class SandboxUploadInput(BaseModel):
+    """Input schema for sandbox_upload tool."""
+
+    file_id: str = Field(
+        description="File ID from the user's file library to upload into the sandbox.",
+    )
+    path: str = Field(
+        default="/workspace",
+        description="Destination directory in the sandbox. The original filename is preserved.",
+    )
+
+
 __all__ = [
     "SandboxBashInput",
     "SandboxReadInput",
@@ -119,4 +141,6 @@ __all__ = [
     "SandboxGlobInput",
     "SandboxGrepInput",
     "SandboxExportInput",
+    "SandboxPreviewInput",
+    "SandboxUploadInput",
 ]

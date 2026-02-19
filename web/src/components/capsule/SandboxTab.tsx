@@ -5,6 +5,7 @@ import {
   FolderItem,
   FolderTrigger,
 } from "@/components/animate-ui/components/radix/files";
+import { SandboxFileViewer } from "@/components/capsule/SandboxFileViewer";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { sandboxService, type SandboxFileInfo } from "@/service/sandboxService";
 import {
@@ -59,6 +60,11 @@ function fileIcon(name: string): ReactNode {
   return <DocumentTextIcon className="h-3.5 w-3.5" />;
 }
 
+interface SelectedFile {
+  path: string;
+  name: string;
+}
+
 export function SandboxTab() {
   const { t } = useTranslation();
   const { sessionId } = useActiveChannelStatus();
@@ -67,6 +73,7 @@ export function SandboxTab() {
   const [rootFiles, setRootFiles] = useState<SandboxFileInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
 
   // Cache of fetched folder contents keyed by path
   const [childrenCache, setChildrenCache] = useState<
@@ -103,6 +110,7 @@ export function SandboxTab() {
     if (!sessionId) {
       setRootFiles([]);
       setSandboxActive(false);
+      setSelectedFile(null);
       return;
     }
     void loadRoot();
@@ -149,6 +157,24 @@ export function SandboxTab() {
     },
     [childrenCache, loadingFolders, loadFolder],
   );
+
+  const handleFileClick = useCallback((file: SandboxFileInfo) => {
+    if (!file.is_dir) {
+      setSelectedFile({ path: file.path, name: file.name });
+    }
+  }, []);
+
+  // Show file viewer if a file is selected
+  if (selectedFile && sessionId) {
+    return (
+      <SandboxFileViewer
+        sessionId={sessionId}
+        filePath={selectedFile.path}
+        fileName={selectedFile.name}
+        onClose={() => setSelectedFile(null)}
+      />
+    );
+  }
 
   if (!sessionId) {
     return (
@@ -223,7 +249,13 @@ export function SandboxTab() {
             onValueChange={handleValueChange}
             className="space-y-0.5"
           >
-            {renderFileList(rootFiles, childrenCache, loadingFolders, t)}
+            {renderFileList(
+              rootFiles,
+              childrenCache,
+              loadingFolders,
+              handleFileClick,
+              t,
+            )}
           </Files>
         )}
       </div>
@@ -243,6 +275,7 @@ function renderFileList(
   files: SandboxFileInfo[],
   childrenCache: Record<string, SandboxFileInfo[]>,
   loadingFolders: Set<string>,
+  onFileClick: (file: SandboxFileInfo) => void,
   t: (key: string) => string,
 ): ReactNode[] {
   return files.map((file) => {
@@ -266,7 +299,13 @@ function renderFileList(
                 {t("capsule.sandbox.emptyFolder")}
               </p>
             ) : children ? (
-              renderFileList(children, childrenCache, loadingFolders, t)
+              renderFileList(
+                children,
+                childrenCache,
+                loadingFolders,
+                onFileClick,
+                t,
+              )
             ) : null}
           </FolderContent>
         </FolderItem>
@@ -274,7 +313,12 @@ function renderFileList(
     }
 
     return (
-      <FileItem key={file.path} icon={fileIcon(file.name)}>
+      <FileItem
+        key={file.path}
+        icon={fileIcon(file.name)}
+        className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors"
+        onClick={() => onFileClick(file)}
+      >
         <span className="truncate">{file.name}</span>
         {file.size != null && (
           <span className="ml-auto pl-2 shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">

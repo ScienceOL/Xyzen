@@ -40,7 +40,12 @@
     "loading": "Loading files...",
     "error": "Failed to load sandbox files",
     "emptyFolder": "Empty folder",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "viewer": {
+      "download": "Download",
+      "loadError": "Failed to load file",
+      "binaryFile": "Binary file — download to view"
+    }
   },
   "collapse": "Collapse panel",
   "expand": "Expand panel",

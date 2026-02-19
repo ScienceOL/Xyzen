@@ -66,17 +66,30 @@ class TestSessionStatsRepository:
         return msg
 
     async def _create_consume_record(
-        self, db: AsyncSession, session_id, user_id: str = "test-user",
-        input_tokens: int = 100, output_tokens: int = 50, consume_state: str = "success",
+        self,
+        db: AsyncSession,
+        session_id,
+        user_id: str = "test-user",
+        input_tokens: int | None = 100,
+        output_tokens: int | None = 50,
+        total_tokens: int | None = None,
+        consume_state: str = "success",
+        topic_id=None,
+        derive_total: bool = True,
     ) -> ConsumeRecord:
+        resolved_total = total_tokens
+        if derive_total and resolved_total is None and input_tokens is not None and output_tokens is not None:
+            resolved_total = input_tokens + output_tokens
+
         record = ConsumeRecord(
             user_id=user_id,
             amount=10,
             auth_provider="test",
             session_id=session_id,
+            topic_id=topic_id,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            total_tokens=input_tokens + output_tokens,
+            total_tokens=resolved_total,
             consume_state=consume_state,
         )
         db.add(record)
@@ -297,3 +310,86 @@ class TestSessionStatsRepository:
         assert result.last_message_content is not None
         assert len(result.last_message_content) == 203  # 200 chars + "..."
         assert result.last_message_content.endswith("...")
+
+    # ------------------------------------------------------------------
+    # get_topic_token_stats
+    # ------------------------------------------------------------------
+
+    async def test_get_topic_token_stats_ignores_latest_tokenless_success_row(
+        self, stats_repo: SessionStatsRepository, db_session: AsyncSession
+    ) -> None:
+        session = await self._create_session(db_session, "user-topic-stats-1")
+        topic = await self._create_topic(db_session, session.id)
+
+        # Tokenized settlement row (older)
+        await self._create_consume_record(
+            db_session,
+            session.id,
+            user_id="user-topic-stats-1",
+            input_tokens=120,
+            output_tokens=30,
+            topic_id=topic.id,
+        )
+
+        # Newer pre-deduction row with no token fields
+        await self._create_consume_record(
+            db_session,
+            session.id,
+            user_id="user-topic-stats-1",
+            input_tokens=None,
+            output_tokens=None,
+            total_tokens=None,
+            topic_id=topic.id,
+        )
+
+        result = await stats_repo.get_topic_token_stats(topic.id)
+        assert result.total_tokens == 150
+
+    async def test_get_topic_token_stats_derives_total_when_total_tokens_missing(
+        self, stats_repo: SessionStatsRepository, db_session: AsyncSession
+    ) -> None:
+        session = await self._create_session(db_session, "user-topic-stats-2")
+        topic = await self._create_topic(db_session, session.id)
+
+        await self._create_consume_record(
+            db_session,
+            session.id,
+            user_id="user-topic-stats-2",
+            input_tokens=200,
+            output_tokens=55,
+            total_tokens=None,
+            derive_total=False,
+            topic_id=topic.id,
+        )
+
+        result = await stats_repo.get_topic_token_stats(topic.id)
+        assert result.total_tokens == 255
+
+    async def test_get_topic_token_stats_returns_zero_when_no_tokenized_rows(
+        self, stats_repo: SessionStatsRepository, db_session: AsyncSession
+    ) -> None:
+        session = await self._create_session(db_session, "user-topic-stats-3")
+        topic = await self._create_topic(db_session, session.id)
+
+        await self._create_consume_record(
+            db_session,
+            session.id,
+            user_id="user-topic-stats-3",
+            input_tokens=None,
+            output_tokens=None,
+            total_tokens=None,
+            topic_id=topic.id,
+        )
+
+        await self._create_consume_record(
+            db_session,
+            session.id,
+            user_id="user-topic-stats-3",
+            input_tokens=50,
+            output_tokens=20,
+            consume_state="failed",
+            topic_id=topic.id,
+        )
+
+        result = await stats_repo.get_topic_token_stats(topic.id)
+        assert result.total_tokens == 0

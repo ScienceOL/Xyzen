@@ -80,10 +80,50 @@ def patch_ws_dependencies(monkeypatch: pytest.MonkeyPatch) -> WsDeps:
     async def fake_redis_listener(_websocket: object, _connection_id: str) -> None:
         return
 
+    class DummyLifecycle:
+        async def on_connect(self, _connection_id: str) -> None:
+            return
+
+        async def check_before_message(self, _connection_id: str) -> None:
+            return
+
+        async def pre_deduct(self, **_kwargs: object) -> float:
+            return 0.0
+
+        async def on_disconnect(self, _connection_id: str) -> None:
+            return
+
+    class FakePresenceRedis:
+        async def set(self, *_args: object, **_kwargs: object) -> None:
+            return
+
+        async def expire(self, *_args: object, **_kwargs: object) -> None:
+            return
+
+        async def delete(self, *_args: object, **_kwargs: object) -> None:
+            return
+
+        async def aclose(self) -> None:
+            return
+
+    async def fake_heartbeat_sender(
+        _websocket: object, _connection_id: str, _presence_redis: object
+    ) -> None:
+        return
+
+    def fake_get_chat_lifecycle(_user_id: str, _db: object) -> DummyLifecycle:
+        return DummyLifecycle()
+
+    def fake_redis_from_url(*_args: object, **_kwargs: object) -> FakePresenceRedis:
+        return FakePresenceRedis()
+
     monkeypatch.setattr(chat_ws, "AsyncSessionLocal", fake_session_local)
     monkeypatch.setattr(chat_ws, "TopicRepository", DummyTopicRepository)
     monkeypatch.setattr(chat_ws, "SessionRepository", DummySessionRepository)
     monkeypatch.setattr(chat_ws, "redis_listener", fake_redis_listener)
+    monkeypatch.setattr(chat_ws, "heartbeat_sender", fake_heartbeat_sender)
+    monkeypatch.setattr(chat_ws, "get_chat_lifecycle", fake_get_chat_lifecycle)
+    monkeypatch.setattr(chat_ws.redis, "from_url", fake_redis_from_url)
 
     return {
         "session_id": session_id,

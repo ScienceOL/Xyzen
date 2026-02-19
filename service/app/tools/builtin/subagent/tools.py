@@ -16,8 +16,9 @@ from typing import TYPE_CHECKING, Any
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import BaseTool, StructuredTool
 
+from app.common.code.chat_error_code import ChatErrorCode
 from app.agents.utils import extract_text_from_content
-from app.tools.builtin.subagent.schemas import SpawnSubagentInput
+from app.tools.builtin.subagent.schemas import SpawnSubagentInput, SpawnSubagentOutcome
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -33,11 +34,46 @@ logger = logging.getLogger(__name__)
 # Maximum nesting depth for subagent spawning
 MAX_SUBAGENT_DEPTH = 3
 
-# Timeout for subagent execution (5 minutes)
-SUBAGENT_TIMEOUT_SECONDS = 300
+# Maximum number of subagent delegations in one parent agent turn
+MAX_SUBAGENT_CALLS_PER_TURN = 2
+
+# Timeout for subagent execution (seconds)
+SUBAGENT_TIMEOUT_SECONDS = 120
+
+# Recursion limit for subagent graph execution
+SUBAGENT_RECURSION_LIMIT = 20
 
 # Subagent always uses the react builtin
 SUBAGENT_TYPE_KEY = "react"
+
+
+def _serialize_subagent_outcome(
+    *,
+    ok: bool,
+    output: str = "",
+    error_code: str | None = None,
+    error_message: str | None = None,
+    duration_ms: int = 0,
+) -> str:
+    """Serialize a structured subagent outcome payload."""
+    payload = SpawnSubagentOutcome(
+        ok=ok,
+        error_code=error_code,
+        error_message=error_message,
+        output=output,
+        duration_ms=max(0, duration_ms),
+    )
+    return payload.model_dump_json()
+
+
+def _is_recursion_limit_error(error: Exception) -> bool:
+    """Detect recursion-limit failures without depending on provider-specific types."""
+    error_text = str(error).lower()
+    return (
+        "recursion limit" in error_text
+        or "recursion_limit" in error_text
+        or type(error).__name__.lower() == "graphrecursionerror"
+    )
 
 
 async def create_subagent_tool_for_session(
@@ -77,11 +113,36 @@ async def create_subagent_tool_for_session(
         "returns its result.\n\n"
         "Use this when you want to delegate a sub-task that can be "
         "handled independently (e.g., research a topic, analyze data, "
-        "generate content)."
+        "generate content).\n\n"
+        "Important: avoid repeated retries. If subagent returns timeout or "
+        "recursion-limit failure, summarize the failure and continue with a "
+        "best-effort direct answer."
     )
+
+    # Per-parent-turn budget for subagent delegations.
+    budget_state = {"calls": 0}
 
     async def spawn_subagent_bound(task: str) -> str:
         """Spawn a subagent to handle the given task."""
+        budget_state["calls"] += 1
+        attempt_index = budget_state["calls"]
+        if attempt_index > MAX_SUBAGENT_CALLS_PER_TURN:
+            error_message = (
+                f"Subagent delegation budget exceeded ({MAX_SUBAGENT_CALLS_PER_TURN} per turn). "
+                "Continue with a best-effort answer without further subagent calls."
+            )
+            logger.warning(
+                "Subagent budget guard triggered: attempt=%d max_calls=%d depth=%d",
+                attempt_index,
+                MAX_SUBAGENT_CALLS_PER_TURN,
+                current_depth,
+            )
+            return _serialize_subagent_outcome(
+                ok=False,
+                error_code=ChatErrorCode.TOOL_EXECUTION_FAILED.value,
+                error_message=error_message,
+            )
+
         return await _spawn_subagent_impl(
             task=task,
             user_id=user_id,
@@ -92,6 +153,7 @@ async def create_subagent_tool_for_session(
             model_name=model_name,
             current_depth=current_depth,
             store=store,
+            attempt_index=attempt_index,
         )
 
     tool = StructuredTool(
@@ -114,6 +176,7 @@ async def _spawn_subagent_impl(
     model_name: str | None,
     current_depth: int,
     store: "BaseStore | None",
+    attempt_index: int,
 ) -> str:
     """
     Core implementation: build a react subagent, run it, return the text result.
@@ -125,17 +188,38 @@ async def _spawn_subagent_impl(
 
     # 1. Depth check
     if current_depth >= MAX_SUBAGENT_DEPTH:
-        return (
-            f"Error: Maximum subagent nesting depth ({MAX_SUBAGENT_DEPTH}) reached. "
+        error_message = (
+            f"Maximum subagent nesting depth ({MAX_SUBAGENT_DEPTH}) reached. "
             "Cannot spawn further subagents."
+        )
+        logger.warning(
+            "Subagent depth guard triggered: attempt=%d depth=%d max_depth=%d",
+            attempt_index,
+            current_depth,
+            MAX_SUBAGENT_DEPTH,
+        )
+        return _serialize_subagent_outcome(
+            ok=False,
+            error_code=ChatErrorCode.TOOL_EXECUTION_FAILED.value,
+            error_message=error_message,
         )
 
     # 2. Get session factory from context
     session_factory = get_session_factory()
     if not session_factory:
-        raise RuntimeError(
+        error_message = (
             "No session factory available for subagent. "
             "Ensure set_session_factory(...) is called in task setup."
+        )
+        logger.error(
+            "Subagent session factory missing: attempt=%d depth=%d",
+            attempt_index,
+            current_depth,
+        )
+        return _serialize_subagent_outcome(
+            ok=False,
+            error_code=ChatErrorCode.TOOL_EXECUTION_FAILED.value,
+            error_message=error_message,
         )
 
     start_time = time.time()
@@ -162,16 +246,59 @@ async def _spawn_subagent_impl(
         )
 
     except asyncio.TimeoutError:
-        elapsed = time.time() - start_time
-        logger.warning("Subagent timed out after %.1fs", elapsed)
-        return f"[Subagent timed out after {SUBAGENT_TIMEOUT_SECONDS}s]"
+        duration_ms = int((time.time() - start_time) * 1000)
+        error_message = f"Subagent timed out after {SUBAGENT_TIMEOUT_SECONDS}s."
+        logger.warning(
+            "Subagent timed out: attempt=%d depth=%d duration_ms=%d timeout_s=%d",
+            attempt_index,
+            current_depth,
+            duration_ms,
+            SUBAGENT_TIMEOUT_SECONDS,
+        )
+        return _serialize_subagent_outcome(
+            ok=False,
+            error_code=ChatErrorCode.AGENT_TIMEOUT.value,
+            error_message=error_message,
+            duration_ms=duration_ms,
+        )
     except Exception as e:
-        logger.exception("Subagent failed")
-        return f"Error running subagent: {e}"
+        duration_ms = int((time.time() - start_time) * 1000)
+        error_code = (
+            ChatErrorCode.AGENT_RECURSION_LIMIT.value
+            if _is_recursion_limit_error(e)
+            else ChatErrorCode.TOOL_EXECUTION_FAILED.value
+        )
+        error_message = (
+            "Subagent reached recursion limit."
+            if error_code == ChatErrorCode.AGENT_RECURSION_LIMIT.value
+            else "Subagent execution failed."
+        )
+        logger.exception(
+            "Subagent failed: attempt=%d depth=%d duration_ms=%d error_code=%s",
+            attempt_index,
+            current_depth,
+            duration_ms,
+            error_code,
+        )
+        return _serialize_subagent_outcome(
+            ok=False,
+            error_code=error_code,
+            error_message=error_message,
+            duration_ms=duration_ms,
+        )
 
-    elapsed = time.time() - start_time
-    logger.info("Subagent completed in %.1fs", elapsed)
-    return result or "No output from subagent."
+    duration_ms = int((time.time() - start_time) * 1000)
+    logger.info(
+        "Subagent completed: attempt=%d depth=%d duration_ms=%d",
+        attempt_index,
+        current_depth,
+        duration_ms,
+    )
+    return _serialize_subagent_outcome(
+        ok=True,
+        output=result or "No output from subagent.",
+        duration_ms=duration_ms,
+    )
 
 
 async def _build_subagent_graph(
@@ -203,21 +330,9 @@ async def _build_subagent_graph(
         topic_id=topic_id,
     )
 
-    # If the subagent itself should have spawn capability (depth < max),
-    # add the spawn_subagent tool recursively
-    if current_depth + 1 < MAX_SUBAGENT_DEPTH:
-        nested_tools = await create_subagent_tool_for_session(
-            db=db,
-            user_id=user_id,
-            session_id=session_id,
-            topic_id=topic_id,
-            user_provider_manager=user_provider_manager,
-            provider_id=provider_id,
-            model_name=model_name,
-            current_depth=current_depth + 1,
-            store=store,
-        )
-        subagent_tools.extend(nested_tools)
+    # Intentional guardrail: nested subagent delegation is disabled.
+    # Only root agents can call spawn_subagent.
+    _ = current_depth
 
     # Always use react builtin config
     react_config = get_builtin_config(SUBAGENT_TYPE_KEY)
@@ -261,7 +376,7 @@ async def _run_subagent(
     """
     state = await graph.ainvoke(
         {"messages": [HumanMessage(content=task)]},
-        config={"recursion_limit": 30},
+        config={"recursion_limit": SUBAGENT_RECURSION_LIMIT},
     )
 
     messages: list[Any]

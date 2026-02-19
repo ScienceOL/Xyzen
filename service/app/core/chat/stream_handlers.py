@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Mapping, Sequence, cast
 
 from langchain_core.messages import AIMessage
 
+from app.core.chat.token_usage import normalize_token_usage
 from app.schemas.chat_event_payloads import (
     CitationData,
     ErrorData,
@@ -115,6 +116,7 @@ class ToolEventHandler:
         result: str,
         status: str = ToolCallStatus.COMPLETED,
         raw_result: str | dict | list | None = None,
+        error: str | None = None,
         stream_id: str = "",
     ) -> StreamingEvent:
         """
@@ -125,6 +127,7 @@ class ToolEventHandler:
             result: Formatted result string for display
             status: Tool call status
             raw_result: Raw result for cost calculation (optional, unformatted)
+            error: Optional error message for failed tool calls
             stream_id: Stream ID for frontend message correlation
 
         Returns:
@@ -138,6 +141,8 @@ class ToolEventHandler:
         }
         if raw_result is not None:
             data["raw_result"] = raw_result
+        if error:
+            data["error"] = error
         return {"type": ChatEventType.TOOL_CALL_RESPONSE, "data": data}
 
 
@@ -560,6 +565,15 @@ class TokenStreamProcessor:
     """Process token-by-token streaming from LLM."""
 
     @staticmethod
+    def normalize_usage(
+        input_tokens: int | None,
+        output_tokens: int | None,
+        total_tokens: int | None,
+    ) -> tuple[int, int, int]:
+        """Normalize provider usage fields into a consistent total."""
+        return normalize_token_usage(input_tokens, output_tokens, total_tokens)
+
+    @staticmethod
     def extract_token_text(message_chunk: Any) -> str | None:
         """
         Extract text from a message chunk.
@@ -617,7 +631,7 @@ class TokenStreamProcessor:
         if not isinstance(usage_metadata, dict):
             return None
 
-        return (
+        return TokenStreamProcessor.normalize_usage(
             usage_metadata.get("input_tokens", 0),
             usage_metadata.get("output_tokens", 0),
             usage_metadata.get("total_tokens", 0),

@@ -29,6 +29,7 @@ export function useActiveChannelStatus() {
         responding: ch?.responding ?? false,
         aborting: ch?.aborting ?? false,
         model_tier: ch?.model_tier ?? null,
+        model: ch?.model ?? null,
         knowledge_set_id: ch?.knowledge_set_id ?? null,
         provider_id: ch?.provider_id ?? null,
         title: ch?.title ?? "",

@@ -41,3 +41,10 @@ export {
   finalizeMessageExecution,
   syncChannelResponding,
 } from "./channelHelpers";
+
+// Token usage helpers
+export {
+  normalizeTotalTokens,
+  resolveContextLimit,
+  TIER_LIMITS,
+} from "./tokenUsage";
