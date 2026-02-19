@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.6](https://github.com/ScienceOL/Xyzen/compare/v1.4.5...v1.4.6) (2026-02-19)
+
+### 🐛 Bug Fixes
+
+* enhance session management by adding unique constraint and improving session retrieval logic ([e4c6d84](https://github.com/ScienceOL/Xyzen/commit/e4c6d846d80df5709f06481a343e489cb979958a))
+
 ## [1.4.5](https://github.com/ScienceOL/Xyzen/compare/v1.4.4...v1.4.5) (2026-02-19)
 
 ### 🐛 Bug Fixes
