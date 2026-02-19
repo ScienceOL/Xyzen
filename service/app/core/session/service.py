@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
@@ -81,10 +82,19 @@ class SessionService:
             spatial_layout=session_data.spatial_layout,
         )
 
-        session = await self.session_repo.create_session(validated, user_id)
-        await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
-
-        await self.db.commit()
+        try:
+            session = await self.session_repo.create_session(validated, user_id)
+            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
+            await self.db.commit()
+        except IntegrityError:
+            # Unique constraint violation: a session for this (user_id, agent_id) already exists.
+            # This can happen due to a race condition. Return the existing session instead.
+            await self.db.rollback()
+            existing = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
+            if existing:
+                logger.info(f"Session already exists for user={user_id} agent={agent_uuid}, returning existing")
+                return SessionRead(**existing.model_dump())
+            raise
 
         # Write FGA owner tuple (best-effort)
         try:

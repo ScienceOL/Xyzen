@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, TIMESTAMP
+from sqlalchemy import JSON, TIMESTAMP, Index, text
 from sqlmodel import Column, Field, SQLModel
 
 if TYPE_CHECKING:
@@ -94,6 +94,16 @@ class SessionBase(SQLModel):
 
 
 class Session(SessionBase, table=True):
+    __table_args__ = (
+        Index(
+            "ix_session_user_id_agent_id_unique",
+            "user_id",
+            "agent_id",
+            unique=True,
+            postgresql_where=text("agent_id IS NOT NULL"),
+        ),
+    )
+
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

@@ -58,7 +58,11 @@ class SessionRepository:
             The SessionModel, or None if not found.
         """
         logger.debug(f"Fetching session for user_id: {user_id}, agent_id: {agent_id}")
-        statement = select(SessionModel).where(SessionModel.user_id == user_id, SessionModel.agent_id == agent_id)
+        statement = (
+            select(SessionModel)
+            .where(SessionModel.user_id == user_id, SessionModel.agent_id == agent_id)
+            .order_by(col(SessionModel.updated_at).desc())
+        )
         result = await self.db.exec(statement)
         return result.first()
 
