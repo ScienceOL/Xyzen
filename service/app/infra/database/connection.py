@@ -40,8 +40,24 @@ SYNC_DATABASE_URL, ASYNC_DATABASE_URL = _build_database_urls()
 
 
 # The engine is the gateway to the database.
-async_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True, pool_pre_ping=True, pool_recycle=3600)
-engine = create_engine(SYNC_DATABASE_URL, echo=False, future=True, pool_pre_ping=True, pool_recycle=3600)
+async_engine = create_async_engine(
+    ASYNC_DATABASE_URL,
+    echo=False,
+    future=True,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_size=configs.Database.Postgres.PoolSize,
+    max_overflow=configs.Database.Postgres.MaxOverflow,
+)
+engine = create_engine(
+    SYNC_DATABASE_URL,
+    echo=False,
+    future=True,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_size=configs.Database.Postgres.PoolSize,
+    max_overflow=configs.Database.Postgres.MaxOverflow,
+)
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,
     class_=AsyncSession,  # Necessary for type checking

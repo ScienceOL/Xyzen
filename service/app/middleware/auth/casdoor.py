@@ -1,5 +1,3 @@
-import base64
-import json
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -75,9 +73,9 @@ class CasdoorAuthProvider(BaseAuthProvider):
 
                 return AuthResult(success=True, user_info=user_info)
 
-            # Fallback: 使用 JWT payload
-            logger.warning("Casdoor: get-account 失败，尝试从 JWT 解析")
-            jwt_payload = self._decode_jwt_payload(access_token)
+            # Fallback: 使用 JWKS 验证 JWT（验证签名 + 过期时间）
+            logger.warning("Casdoor: get-account 失败，尝试本地 JWT 验证")
+            jwt_payload = self.decode_jwt_token(access_token)
             if jwt_payload:
                 user_info = self.parse_user_info(jwt_payload)
                 return AuthResult(success=True, user_info=user_info)
@@ -154,29 +152,6 @@ class CasdoorAuthProvider(BaseAuthProvider):
             return None
         except Exception as e:
             logger.error(f"Casdoor: 从 Bohrium 获取 avatar 失败: {e}")
-            return None
-
-    def _decode_jwt_payload(self, token: str) -> dict[str, Any] | None:
-        """解码 JWT token 的 payload 部分（不验证签名，仅提取数据）"""
-        try:
-            # JWT 格式: header.payload.signature
-            parts = token.split(".")
-            if len(parts) != 3:
-                logger.warning("Casdoor: Invalid JWT format")
-                return None
-
-            # Base64 解码 payload（第二部分）
-            payload_b64 = parts[1]
-            # 添加必要的 padding
-            padding = 4 - len(payload_b64) % 4
-            if padding != 4:
-                payload_b64 += "=" * padding
-
-            payload_bytes = base64.urlsafe_b64decode(payload_b64)
-            payload = json.loads(payload_bytes.decode("utf-8"))
-            return payload
-        except Exception as e:
-            logger.error(f"Casdoor: JWT payload 解码失败: {e}")
             return None
 
     def _parse_account_info(self, account_info: dict[str, Any]) -> UserInfo:

@@ -1453,118 +1453,134 @@ export const createChatSlice: StateCreator<
           };
 
           // First, try to find an existing session for this user-agent combination
+          let existingSessionResponse: Response;
           try {
-            const existingSessionResponse = await fetch(
+            existingSessionResponse = await fetch(
               `${get().backendUrl}/xyzen/api/v1/sessions/by-agent/${agentIdParam}`,
               { headers },
             );
+          } catch (networkError) {
+            // fetch() throws TypeError on network failures (DNS, offline, CORS, etc.)
+            // Do NOT fall through to session creation — that would create duplicates.
+            throw new Error(
+              `Session lookup network error: ${networkError instanceof Error ? networkError.message : networkError}`,
+            );
+          }
 
-            if (existingSessionResponse.ok) {
-              // Found existing session, create a new topic for it
-              const existingSession = await existingSessionResponse.json();
+          if (existingSessionResponse.ok) {
+            // Found existing session, create a new topic for it
+            const existingSession = await existingSessionResponse.json();
 
-              // If existing session doesn't have provider/model, update it with defaults
-              if (!existingSession.provider_id || !existingSession.model) {
-                console.log(
-                  "  - 🔄 Existing session missing provider/model, updating with defaults...",
+            // If existing session doesn't have provider/model, update it with defaults
+            if (!existingSession.provider_id || !existingSession.model) {
+              console.log(
+                "  - 🔄 Existing session missing provider/model, updating with defaults...",
+              );
+              try {
+                const state = get();
+                const agent = state.agents.find(
+                  (a) => a.id === existingSession.agent_id,
                 );
-                try {
-                  const state = get();
-                  const agent = state.agents.find(
-                    (a) => a.id === existingSession.agent_id,
-                  );
 
-                  let providerId = existingSession.provider_id;
-                  let model = existingSession.model;
+                let providerId = existingSession.provider_id;
+                let model = existingSession.model;
 
-                  // Use agent's provider/model if available
-                  if (agent?.provider_id && agent?.model) {
-                    providerId = agent.provider_id;
-                    model = agent.model;
-                  } else {
-                    // Otherwise use system defaults
-                    const providers = await llmProviderService.getMyProviders();
-                    const defaults =
-                      await providerCore.getDefaultProviderAndModel(providers);
-                    providerId = providerId || defaults.providerId;
-                    model = model || defaults.model;
-                  }
+                // Use agent's provider/model if available
+                if (agent?.provider_id && agent?.model) {
+                  providerId = agent.provider_id;
+                  model = agent.model;
+                } else {
+                  // Otherwise use system defaults
+                  const providers = await llmProviderService.getMyProviders();
+                  const defaults =
+                    await providerCore.getDefaultProviderAndModel(providers);
+                  providerId = providerId || defaults.providerId;
+                  model = model || defaults.model;
+                }
 
-                  if (providerId && model) {
-                    // Update the session with provider/model
-                    await sessionService.updateSession(existingSession.id, {
-                      provider_id: providerId,
-                      model: model,
-                    });
-                    existingSession.provider_id = providerId;
-                    existingSession.model = model;
-                    console.log(
-                      `  - ✅ Updated session with provider (${providerId}) and model (${model})`,
-                    );
-                  }
-                } catch (error) {
-                  console.warn(
-                    "  - ⚠️ Failed to update session with defaults:",
-                    error,
+                if (providerId && model) {
+                  // Update the session with provider/model
+                  await sessionService.updateSession(existingSession.id, {
+                    provider_id: providerId,
+                    model: model,
+                  });
+                  existingSession.provider_id = providerId;
+                  existingSession.model = model;
+                  console.log(
+                    `  - ✅ Updated session with provider (${providerId}) and model (${model})`,
                   );
                 }
+              } catch (error) {
+                console.warn(
+                  "  - ⚠️ Failed to update session with defaults:",
+                  error,
+                );
               }
-
-              const newTopicResponse = await fetch(
-                `${get().backendUrl}/xyzen/api/v1/topics/`,
-                {
-                  method: "POST",
-                  headers,
-                  body: JSON.stringify({
-                    name: "新的聊天",
-                    session_id: existingSession.id,
-                  }),
-                },
-              );
-
-              if (!newTopicResponse.ok) {
-                throw new Error("Failed to create new topic in existing session");
-              }
-
-              const newTopic = await newTopicResponse.json();
-
-              const newChannel: ChatChannel = {
-                id: newTopic.id,
-                sessionId: existingSession.id,
-                title: newTopic.name,
-                messages: [],
-                agentId: existingSession.agent_id,
-                provider_id: existingSession.provider_id,
-                model: existingSession.model,
-                model_tier: existingSession.model_tier,
-                knowledge_set_id: existingSession.knowledge_set_id,
-                connected: false,
-                error: null,
-              };
-
-              const newHistoryItem: ChatHistoryItem = {
-                id: newTopic.id,
-                sessionId: existingSession.id,
-                title: newTopic.name,
-                updatedAt: newTopic.updated_at,
-                assistantTitle: getAgentNameById(existingSession.agent_id),
-                lastMessage: "",
-                isPinned: false,
-              };
-
-              set((state: XyzenState) => {
-                state.channels[newTopic.id] = newChannel;
-                state.chatHistory.unshift(newHistoryItem);
-                state.activeChatChannel = newTopic.id;
-                state.activeTabIndex = 1;
-              });
-
-              get().connectToChannel(existingSession.id, newTopic.id);
-              return;
             }
-          } catch {
-            // If session lookup fails, we'll create a new session below
-            console.log("No existing session found, creating new session");
+
+            const newTopicResponse = await fetch(
+              `${get().backendUrl}/xyzen/api/v1/topics/`,
+              {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                  name: "新的聊天",
+                  session_id: existingSession.id,
+                }),
+              },
+            );
+
+            if (!newTopicResponse.ok) {
+              throw new Error("Failed to create new topic in existing session");
+            }
+
+            const newTopic = await newTopicResponse.json();
+
+            const newChannel: ChatChannel = {
+              id: newTopic.id,
+              sessionId: existingSession.id,
+              title: newTopic.name,
+              messages: [],
+              agentId: existingSession.agent_id,
+              provider_id: existingSession.provider_id,
+              model: existingSession.model,
+              model_tier: existingSession.model_tier,
+              knowledge_set_id: existingSession.knowledge_set_id,
+              connected: false,
+              error: null,
+            };
+
+            const newHistoryItem: ChatHistoryItem = {
+              id: newTopic.id,
+              sessionId: existingSession.id,
+              title: newTopic.name,
+              updatedAt: newTopic.updated_at,
+              assistantTitle: getAgentNameById(existingSession.agent_id),
+              lastMessage: "",
+              isPinned: false,
+            };
+
+            set((state: XyzenState) => {
+              state.channels[newTopic.id] = newChannel;
+              state.chatHistory.unshift(newHistoryItem);
+              state.activeChatChannel = newTopic.id;
+              state.activeTabIndex = 1;
+            });
+
+            get().connectToChannel(existingSession.id, newTopic.id);
+            return;
+          }
+
+          // Only create a new session if the server confirmed no session exists (404).
+          // For other errors (network failures, 500s, etc.), propagate the error
+          // to avoid creating duplicate sessions.
+          if (
+            !existingSessionResponse.ok &&
+            existingSessionResponse.status !== 404
+          ) {
+            throw new Error(
+              `Session lookup failed: ${existingSessionResponse.status} ${existingSessionResponse.statusText}`,
+            );
           }
 
           // No existing session found, create a new session

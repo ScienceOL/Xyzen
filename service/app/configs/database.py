@@ -8,8 +8,8 @@ class PostgresConfig(BaseModel):
     User: str = Field(default="postgres", description="PostgreSQL user")
     Password: str = Field(default="postgres", description="PostgreSQL password")
     DBName: str = Field(default="postgres", description="PostgreSQL database name")
-    MinConnections: int = Field(default=1, description="Minimum connections in the pool")
-    MaxConnections: int = Field(default=10, description="Maximum connections in the pool")
+    PoolSize: int = Field(default=10, description="Number of persistent connections in the pool")
+    MaxOverflow: int = Field(default=20, description="Max temporary connections beyond pool_size")
 
 
 class SQLiteConfig(BaseModel):
