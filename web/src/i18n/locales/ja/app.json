@@ -407,6 +407,24 @@
     "region": "リージョン",
     "about": "情報"
   },
+  "checkInCalendar": {
+    "title": "チェックインカレンダー",
+    "checkedBadge": "済",
+    "checkingIn": "チェックイン中...",
+    "checkInNow": "今すぐチェックイン",
+    "streak": "連続チェックイン",
+    "totalCheckIns": "累計チェックイン",
+    "tomorrowReward": "明日の報酬",
+    "today": "今日",
+    "rewardTitle": "チェックイン報酬",
+    "rewardEarned": "獲得",
+    "rewardStreak": "連続",
+    "dayUnit": "日",
+    "countUnit": "回",
+    "noCheckInToday": "今日はまだチェックインしていません。今すぐチェックインしよう！🎉",
+    "noRecordForDay": "この日の記録はありません 📅",
+    "checkInFailed": "チェックインに失敗しました。後でもう一度お試しください"
+  },
   "consumption": {
     "title": "利用分析",
     "close": "閉じる",
@@ -430,6 +448,9 @@
     "colRequests": "リクエスト",
     "colToolCalls": "ツール呼出",
     "noRecords": "消費記録なし",
-    "donutEmpty": "なし"
+    "donutEmpty": "なし",
+    "usageStats": "利用統計",
+    "detailedAnalysis": "詳細分析",
+    "clickDateHint": "日付をタップして詳細を表示"
   }
 }

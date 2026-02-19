@@ -15,6 +15,7 @@ from app.models.consume import (
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
 )
+from app.utils.parser import parse_date_end, parse_date_range, parse_date_start
 
 logger = logging.getLogger(__name__)
 
@@ -496,27 +497,17 @@ class ConsumeRepository:
             Dictionary with keys: daily (list), by_tier (dict), by_scene (dict).
         """
         from datetime import date as date_type
-        from datetime import datetime, timedelta, timezone
+        from datetime import timedelta
 
         logger.debug(f"Getting consumption range for user {user_id} from {start_date} to {end_date}, tz: {tz}")
 
-        try:
-            zone = ZoneInfo(tz)
-        except ZoneInfoNotFoundError as e:
-            raise ValueError(f"Invalid timezone: {tz}") from e
-
-        start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
-        end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
-            hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
-        )
-        start_utc = start_local.astimezone(timezone.utc)
-        end_utc = end_local.astimezone(timezone.utc)
-
+        # Parse date range using shared utility
+        start_utc, end_utc, zone = parse_date_range(start_date, end_date, tz)
         tz_name = tz
 
         # Build day scaffold
-        start_day: date_type = start_local.date()
-        end_day: date_type = end_local.date()
+        start_day: date_type = start_utc.astimezone(zone).date()
+        end_day: date_type = end_utc.astimezone(zone).date()
         days: list[str] = []
         cursor = start_day
         while cursor <= end_day:
@@ -542,67 +533,8 @@ class ConsumeRepository:
             ConsumeRecord.created_at <= end_utc,
         )
 
-        # Daily aggregation
+        # Single query: aggregate by date AND tier (superset of daily and by_tier)
         date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
-        daily_stmt = (
-            select(  # type: ignore[call-overload]
-                date_expr.label("date"),
-                func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
-                func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
-                func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
-                func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
-                func.count().label("record_count"),
-                func.coalesce(func.sum(ConsumeRecord.tool_call_count), 0).label("tool_call_count"),
-            )
-            .where(*base_filter)
-            .group_by(date_expr)
-            .order_by(date_expr)
-        )
-        daily_rows = (await self.db.exec(daily_stmt)).all()
-        for row in daily_rows:
-            date_str = str(row.date)
-            entry = {
-                "date": date_str,
-                "total_tokens": int(row.total_tokens),
-                "input_tokens": int(row.input_tokens),
-                "output_tokens": int(row.output_tokens),
-                "total_amount": int(row.total_amount),
-                "record_count": int(row.record_count),
-                "tool_call_count": int(row.tool_call_count),
-            }
-            if date_str in daily:
-                daily[date_str] = entry
-            else:
-                daily[date_str] = entry
-
-        # By model tier
-        tier_stmt = (
-            select(  # type: ignore[call-overload]
-                col(ConsumeRecord.model_tier).label("tier"),
-                func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
-                func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
-                func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
-                func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
-                func.count().label("record_count"),
-                func.coalesce(func.sum(ConsumeRecord.tool_call_count), 0).label("tool_call_count"),
-            )
-            .where(*base_filter)
-            .group_by(ConsumeRecord.model_tier)
-        )
-        tier_rows = (await self.db.exec(tier_stmt)).all()
-        by_tier: dict[str, dict[str, int]] = {}
-        for row in tier_rows:
-            tier_key = str(row.tier) if row.tier is not None else "unknown"
-            by_tier[tier_key] = {
-                "total_tokens": int(row.total_tokens),
-                "input_tokens": int(row.input_tokens),
-                "output_tokens": int(row.output_tokens),
-                "total_amount": int(row.total_amount),
-                "record_count": int(row.record_count),
-                "tool_call_count": int(row.tool_call_count),
-            }
-
-        # Per-day by_tier aggregation
         day_tier_stmt = (
             select(  # type: ignore[call-overload]
                 date_expr.label("date"),
@@ -618,12 +550,46 @@ class ConsumeRepository:
             .group_by(date_expr, ConsumeRecord.model_tier)
         )
         day_tier_rows = (await self.db.exec(day_tier_stmt)).all()
+
+        # Python-level aggregation: derive daily and by_tier from day_tier data
+        by_tier: dict[str, dict[str, int]] = {}
+
         for row in day_tier_rows:
             date_str = str(row.date)
             tier_key = str(row.tier) if row.tier is not None else "unknown"
+
+            # Update daily data (accumulate to date dimension)
+            if date_str in daily:
+                daily[date_str]["total_tokens"] += int(row.total_tokens)
+                daily[date_str]["input_tokens"] += int(row.input_tokens)
+                daily[date_str]["output_tokens"] += int(row.output_tokens)
+                daily[date_str]["total_amount"] += int(row.total_amount)
+                daily[date_str]["record_count"] += int(row.record_count)
+                daily[date_str]["tool_call_count"] += int(row.tool_call_count)
+
+            # Build by_tier data (accumulate to tier dimension)
+            if tier_key not in by_tier:
+                by_tier[tier_key] = {
+                    "total_tokens": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "total_amount": 0,
+                    "record_count": 0,
+                    "tool_call_count": 0,
+                }
+
+            by_tier[tier_key]["total_tokens"] += int(row.total_tokens)
+            by_tier[tier_key]["input_tokens"] += int(row.input_tokens)
+            by_tier[tier_key]["output_tokens"] += int(row.output_tokens)
+            by_tier[tier_key]["total_amount"] += int(row.total_amount)
+            by_tier[tier_key]["record_count"] += int(row.record_count)
+            by_tier[tier_key]["tool_call_count"] += int(row.tool_call_count)
+
+            # Build nested by_tier data in daily (each day's tier breakdown)
             if date_str in daily:
                 if "by_tier" not in daily[date_str]:
                     daily[date_str]["by_tier"] = {}
+
                 daily[date_str]["by_tier"][tier_key] = {
                     "total_tokens": int(row.total_tokens),
                     "input_tokens": int(row.input_tokens),
@@ -668,10 +634,9 @@ class ConsumeRepository:
         Returns:
             List of ConsumeRecord instances ordered by creation time (desc).
         """
-        from datetime import datetime, timezone
-
+        # Validate timezone upfront
         try:
-            zone = ZoneInfo(tz)
+            ZoneInfo(tz)
         except ZoneInfoNotFoundError as e:
             raise ValueError(f"Invalid timezone: {tz}") from e
 
@@ -680,15 +645,11 @@ class ConsumeRepository:
         )
 
         if start_date:
-            start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
-            start_utc = start_local.astimezone(timezone.utc)
+            start_utc = parse_date_start(start_date, tz)
             stmt = stmt.where(ConsumeRecord.created_at >= start_utc)
 
         if end_date:
-            end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
-                hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
-            )
-            end_utc = end_local.astimezone(timezone.utc)
+            end_utc = parse_date_end(end_date, tz)
             stmt = stmt.where(ConsumeRecord.created_at <= end_utc)
 
         stmt = stmt.offset(offset).limit(limit)
@@ -716,25 +677,20 @@ class ConsumeRepository:
         Returns:
             Total count of matching records.
         """
-        from datetime import datetime, timezone
-
+        # Validate timezone upfront
         try:
-            zone = ZoneInfo(tz)
+            ZoneInfo(tz)
         except ZoneInfoNotFoundError as e:
             raise ValueError(f"Invalid timezone: {tz}") from e
 
         stmt = select(func.count()).select_from(ConsumeRecord).where(ConsumeRecord.user_id == user_id)
 
         if start_date:
-            start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
-            start_utc = start_local.astimezone(timezone.utc)
+            start_utc = parse_date_start(start_date, tz)
             stmt = stmt.where(ConsumeRecord.created_at >= start_utc)
 
         if end_date:
-            end_local = datetime.strptime(end_date, "%Y-%m-%d").replace(
-                hour=23, minute=59, second=59, microsecond=999999, tzinfo=zone
-            )
-            end_utc = end_local.astimezone(timezone.utc)
+            end_utc = parse_date_end(end_date, tz)
             stmt = stmt.where(ConsumeRecord.created_at <= end_utc)
 
         result = await self.db.exec(stmt)

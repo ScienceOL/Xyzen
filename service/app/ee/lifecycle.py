@@ -53,31 +53,40 @@ class ChatLifecycle(Protocol):
 class DefaultChatLifecycle:
     """Default lifecycle: wraps LimitsEnforcer + create_consume_for_chat.
 
-    Behaviour is identical to the pre-EE codebase.
+    Behaviour is identical to the pre-EE codebase.  The enforcer (which
+    requires a DB session to resolve subscription limits) is created
+    eagerly.  If that fails, limits enforcement is skipped but billing
+    (``pre_deduct``) still works because it receives its own ``db`` from
+    the caller.
     """
 
-    def __init__(self, user_id: str, db: AsyncSession) -> None:
-        self._user_id = user_id
-        self._db = db
-        self._enforcer: Any | None = None
+    def __init__(self, enforcer: Any | None) -> None:
+        self._enforcer = enforcer
 
-    async def _ensure_enforcer(self) -> Any:
-        if self._enforcer is None:
+    @staticmethod
+    async def create(user_id: str, db: AsyncSession) -> "DefaultChatLifecycle":
+        """Create a lifecycle, tolerating enforcer creation failures."""
+        enforcer = None
+        try:
             from app.core.limits import LimitsEnforcer
 
-            self._enforcer = await LimitsEnforcer.create(self._db, self._user_id)
-        return self._enforcer
+            enforcer = await LimitsEnforcer.create(db, user_id)
+        except Exception as e:
+            logger.warning(f"Failed to create LimitsEnforcer (limits disabled): {e}")
+        return DefaultChatLifecycle(enforcer)
 
     async def on_connect(self, connection_id: str) -> None:
-        enforcer = await self._ensure_enforcer()
-        await enforcer.track_chat_connect(connection_id)
+        if self._enforcer:
+            await self._enforcer.track_chat_connect(connection_id)
 
     async def check_before_message(self, connection_id: str) -> dict[str, Any] | None:
+        if not self._enforcer:
+            return None
+
         from app.core.limits import ParallelChatLimitError
 
-        enforcer = await self._ensure_enforcer()
         try:
-            await enforcer.check_and_start_responding(connection_id)
+            await self._enforcer.check_and_start_responding(connection_id)
         except ParallelChatLimitError as e:
             return {
                 "type": "parallel_chat_limit",
@@ -117,7 +126,7 @@ class DefaultChatLifecycle:
         return float(amount)
 
     async def on_disconnect(self, connection_id: str) -> None:
-        if self._enforcer is not None:
+        if self._enforcer:
             await self._enforcer.track_chat_disconnect(connection_id)
 
 
@@ -158,11 +167,11 @@ class NoopChatLifecycle:
 # ---------------------------------------------------------------------------
 
 
-def get_chat_lifecycle(user_id: str, db: AsyncSession) -> ChatLifecycle:
+async def get_chat_lifecycle(user_id: str, db: AsyncSession) -> ChatLifecycle:
     """Return the appropriate ChatLifecycle for the current deployment.
 
     Currently always returns ``DefaultChatLifecycle`` (local billing/limits).
     When the remote EE billing API is ready, this factory will select the
     implementation based on ``is_ee()``.
     """
-    return DefaultChatLifecycle(user_id, db)
+    return await DefaultChatLifecycle.create(user_id, db)

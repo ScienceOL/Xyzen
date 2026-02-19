@@ -134,7 +134,7 @@ async def chat_websocket(
 
     # Create lifecycle handler (CE = no-op, EE = billing + limits)
     async with AsyncSessionLocal() as db:
-        lifecycle = get_chat_lifecycle(user, db)
+        lifecycle = await get_chat_lifecycle(user, db)
 
     # Validate session and topic access before tracking the connection
     async with AsyncSessionLocal() as db:
