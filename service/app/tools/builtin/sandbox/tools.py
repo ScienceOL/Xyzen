@@ -19,7 +19,9 @@ from .operations import (
     sandbox_export,
     sandbox_glob,
     sandbox_grep,
+    sandbox_preview,
     sandbox_read,
+    sandbox_upload,
     sandbox_write,
 )
 from .schemas import (
@@ -28,7 +30,9 @@ from .schemas import (
     SandboxExportInput,
     SandboxGlobInput,
     SandboxGrepInput,
+    SandboxPreviewInput,
     SandboxReadInput,
+    SandboxUploadInput,
     SandboxWriteInput,
 )
 
@@ -142,6 +146,34 @@ def create_sandbox_tools() -> dict[str, BaseTool]:
         ),
         args_schema=SandboxExportInput,
         coroutine=export_placeholder,
+    )
+
+    async def preview_placeholder(port: int) -> dict[str, Any]:
+        return _placeholder_error
+
+    tools["sandbox_preview"] = StructuredTool(
+        name="sandbox_preview",
+        description=(
+            "Get a browser-accessible URL for a service running in the sandbox. "
+            "Start a web server (e.g. Flask, Express, HTTP server) on a port, "
+            "then call this tool to get a public URL the user can open in their browser."
+        ),
+        args_schema=SandboxPreviewInput,
+        coroutine=preview_placeholder,
+    )
+
+    async def upload_placeholder(file_id: str, path: str = "/workspace") -> dict[str, Any]:
+        return _placeholder_error
+
+    tools["sandbox_upload"] = StructuredTool(
+        name="sandbox_upload",
+        description=(
+            "Upload a file from the user's file library into the sandbox. "
+            "Provide the file_id and an optional destination directory. "
+            "The original filename is preserved."
+        ),
+        args_schema=SandboxUploadInput,
+        coroutine=upload_placeholder,
     )
 
     return tools
@@ -291,6 +323,40 @@ def create_sandbox_tools_for_session(
             ),
             args_schema=SandboxExportInput,
             coroutine=export_bound,
+        )
+    )
+
+    # --- sandbox_preview ---
+    async def preview_bound(port: int) -> dict[str, Any]:
+        return await sandbox_preview(manager, port=port)
+
+    tools.append(
+        StructuredTool(
+            name="sandbox_preview",
+            description=(
+                "Get a browser-accessible URL for a service running in the sandbox. "
+                "Start a web server (e.g. Flask, Express, HTTP server) on a port, "
+                "then call this tool to get a public URL the user can open in their browser."
+            ),
+            args_schema=SandboxPreviewInput,
+            coroutine=preview_bound,
+        )
+    )
+
+    # --- sandbox_upload ---
+    async def upload_bound(file_id: str, path: str = "/workspace") -> dict[str, Any]:
+        return await sandbox_upload(manager, user_id=user_id, file_id=file_id, path=path)
+
+    tools.append(
+        StructuredTool(
+            name="sandbox_upload",
+            description=(
+                "Upload a file from the user's file library into the sandbox. "
+                "Provide the file_id and an optional destination directory. "
+                "The original filename is preserved."
+            ),
+            args_schema=SandboxUploadInput,
+            coroutine=upload_bound,
         )
     )
 

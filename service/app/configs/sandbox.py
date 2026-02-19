@@ -50,3 +50,12 @@ class SandboxConfig(BaseModel):
         default="/workspace",
         description="Default working directory inside sandbox",
     )
+    ProxyBaseUrl: str = Field(
+        default="localhost:14000",
+        description="Base URL for sandbox preview proxy (reachable from user browser). "
+        "Set to your wildcard domain in production (e.g., sandbox.sciol.ac.cn).",
+    )
+    ProxyProtocol: str = Field(
+        default="http",
+        description="Protocol for preview URLs (http or https)",
+    )

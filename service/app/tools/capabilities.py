@@ -90,6 +90,8 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     "sandbox_glob": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
     "sandbox_grep": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
     "sandbox_export": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
+    "sandbox_preview": [ToolCapability.CODE_EXECUTION],
+    "sandbox_upload": [ToolCapability.CODE_EXECUTION, ToolCapability.FILE_OPERATIONS],
     # Skill tools
     "activate_skill": [ToolCapability.SKILLS],
     "list_skill_resources": [ToolCapability.SKILLS],

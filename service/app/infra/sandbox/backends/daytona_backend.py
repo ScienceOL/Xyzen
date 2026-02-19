@@ -18,7 +18,7 @@ from daytona import (
 
 from app.configs import configs
 
-from .base import ExecResult, FileInfo, SandboxBackend, SearchMatch
+from .base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SearchMatch
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +183,36 @@ class DaytonaBackend(SandboxBackend):
                 except ValueError:
                     continue
         return matches
+
+    async def write_file_bytes(self, sandbox_id: str, path: str, data: bytes) -> None:
+        import shlex
+
+        async with AsyncDaytona(self._get_config()) as daytona:
+            sandbox = await daytona.get(sandbox_id)
+            # Ensure parent directory exists
+            parent = "/".join(path.rsplit("/", 1)[:-1])
+            if parent:
+                await sandbox.process.exec(f"mkdir -p {shlex.quote(parent)}")
+            await sandbox.fs.upload_file(data, path)
+
+    async def get_preview_url(self, sandbox_id: str, port: int) -> PreviewUrl:
+        cfg = configs.Sandbox
+        async with AsyncDaytona(self._get_config()) as daytona:
+            sandbox = await daytona.get(sandbox_id)
+            # Use signed preview URL — the token is embedded in the subdomain
+            # so the URL is directly clickable in a browser (no auth headers needed).
+            # Standard get_preview_link() returns a token that requires an
+            # x-daytona-preview-token header, which browsers can't send on link clicks.
+            signed = await sandbox.create_signed_preview_url(port, expires_in_seconds=3600)
+
+        token = signed.token or ""
+
+        # The SDK returns a Docker-internal URL (host.docker.internal:14000).
+        # Rebuild using configured ProxyBaseUrl so it's reachable from the browser.
+        # Signed URL subdomain pattern: {port}-{token}.{proxy_domain}
+        url = f"{cfg.ProxyProtocol}://{port}-{token}.{cfg.ProxyBaseUrl}"
+
+        return PreviewUrl(url=url, token=token, port=port)
 
 
 __all__ = ["DaytonaBackend"]

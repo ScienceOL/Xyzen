@@ -40,7 +40,12 @@
     "loading": "加载中...",
     "error": "加载沙盒文件失败",
     "emptyFolder": "空文件夹",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "viewer": {
+      "download": "下载",
+      "loadError": "加载文件失败",
+      "binaryFile": "二进制文件 — 请下载查看"
+    }
   },
   "collapse": "收起面板",
   "expand": "展开面板",

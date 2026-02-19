@@ -329,6 +329,93 @@ async def sandbox_export(
         return {"success": False, "error": str(e)}
 
 
+async def sandbox_preview(
+    manager: SandboxManager,
+    *,
+    port: int,
+) -> dict[str, Any]:
+    """Get a browser-accessible preview URL for a port in the sandbox."""
+    try:
+        preview = await manager.get_preview_url(port)
+        return {
+            "success": True,
+            "url": preview.url,
+            "port": preview.port,
+            "message": f"Service is accessible at: {preview.url}",
+        }
+    except Exception as e:
+        logger.error("sandbox_preview failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
+async def sandbox_upload(
+    manager: SandboxManager,
+    *,
+    user_id: str | None,
+    file_id: str,
+    path: str = "/workspace",
+) -> dict[str, Any]:
+    """Upload a file from user's library into the sandbox."""
+    if not user_id:
+        return {"success": False, "error": "sandbox_upload requires user context"}
+
+    try:
+        from uuid import UUID
+
+        from app.core.storage import get_storage_service
+        from app.infra.database import create_task_session_factory
+        from app.repos.file import FileRepository
+
+        # Validate file_id
+        try:
+            file_uuid = UUID(file_id)
+        except ValueError:
+            return {"success": False, "error": f"Invalid file_id format: {file_id}"}
+
+        TaskSessionLocal = create_task_session_factory()
+        async with TaskSessionLocal() as db:
+            file_repo = FileRepository(db)
+            file_record = await file_repo.get_file_by_id(file_uuid)
+
+            if file_record is None:
+                return {"success": False, "error": f"File not found: {file_id}"}
+            if file_record.is_deleted:
+                return {"success": False, "error": f"File has been deleted: {file_id}"}
+            if file_record.user_id != user_id and file_record.scope != "public":
+                return {"success": False, "error": "Permission denied: you don't have access to this file"}
+
+            storage_key = file_record.storage_key
+            if not storage_key:
+                return {"success": False, "error": f"File has no storage key: {file_id}"}
+            raw_filename = file_record.original_filename or PurePosixPath(storage_key).name
+            try:
+                filename = _resolve_export_filename("/workspace/upload.bin", raw_filename)
+            except ValueError as e:
+                return {"success": False, "error": f"Invalid filename in file record: {e}"}
+
+        # Download from OSS
+        storage = get_storage_service()
+        buffer = BytesIO()
+        await storage.download_file(storage_key, buffer)
+        file_bytes = buffer.getvalue()
+
+        # Validate and upload to sandbox
+        dest_dir = _normalize_export_path(path)
+        _validate_export_root(dest_dir)
+        dest_path = f"{dest_dir.rstrip('/')}/{filename}"
+        await manager.write_file_bytes(dest_path, file_bytes)
+
+        return {
+            "success": True,
+            "filename": filename,
+            "sandbox_path": dest_path,
+            "size_bytes": len(file_bytes),
+        }
+    except Exception as e:
+        logger.error("sandbox_upload failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
 __all__ = [
     "sandbox_exec",
     "sandbox_read",
@@ -337,4 +424,6 @@ __all__ = [
     "sandbox_glob",
     "sandbox_grep",
     "sandbox_export",
+    "sandbox_preview",
+    "sandbox_upload",
 ]
