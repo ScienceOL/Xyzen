@@ -496,36 +496,28 @@ class ConsumeRepository:
         Returns:
             Dictionary with keys: daily (list), by_tier (dict), by_scene (dict).
         """
-        from datetime import date as date_type
-        from datetime import timedelta
-
         logger.debug(f"Getting consumption range for user {user_id} from {start_date} to {end_date}, tz: {tz}")
 
         # Parse date range using shared utility
-        start_utc, end_utc, zone = parse_date_range(start_date, end_date, tz)
+        start_utc, end_utc, _zone = parse_date_range(start_date, end_date, tz)
         tz_name = tz
 
-        # Build day scaffold
-        start_day: date_type = start_utc.astimezone(zone).date()
-        end_day: date_type = end_utc.astimezone(zone).date()
-        days: list[str] = []
-        cursor = start_day
-        while cursor <= end_day:
-            days.append(cursor.strftime("%Y-%m-%d"))
-            cursor += timedelta(days=1)
+        # Sparse daily dict — only days with actual records will be populated
+        daily: dict[str, dict[str, Any]] = {}
 
-        daily: dict[str, dict[str, Any]] = {
-            d: {
-                "date": d,
-                "total_tokens": 0,
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "total_amount": 0,
-                "record_count": 0,
-                "tool_call_count": 0,
-            }
-            for d in days
-        }
+        def _ensure_day(d: str) -> dict[str, Any]:
+            if d not in daily:
+                daily[d] = {
+                    "date": d,
+                    "total_tokens": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "total_amount": 0,
+                    "record_count": 0,
+                    "tool_call_count": 0,
+                    "by_tier": {},
+                }
+            return daily[d]
 
         base_filter = (
             ConsumeRecord.user_id == user_id,
@@ -559,13 +551,13 @@ class ConsumeRepository:
             tier_key = str(row.tier) if row.tier is not None else "unknown"
 
             # Update daily data (accumulate to date dimension)
-            if date_str in daily:
-                daily[date_str]["total_tokens"] += int(row.total_tokens)
-                daily[date_str]["input_tokens"] += int(row.input_tokens)
-                daily[date_str]["output_tokens"] += int(row.output_tokens)
-                daily[date_str]["total_amount"] += int(row.total_amount)
-                daily[date_str]["record_count"] += int(row.record_count)
-                daily[date_str]["tool_call_count"] += int(row.tool_call_count)
+            day = _ensure_day(date_str)
+            day["total_tokens"] += int(row.total_tokens)
+            day["input_tokens"] += int(row.input_tokens)
+            day["output_tokens"] += int(row.output_tokens)
+            day["total_amount"] += int(row.total_amount)
+            day["record_count"] += int(row.record_count)
+            day["tool_call_count"] += int(row.tool_call_count)
 
             # Build by_tier data (accumulate to tier dimension)
             if tier_key not in by_tier:
@@ -586,23 +578,14 @@ class ConsumeRepository:
             by_tier[tier_key]["tool_call_count"] += int(row.tool_call_count)
 
             # Build nested by_tier data in daily (each day's tier breakdown)
-            if date_str in daily:
-                if "by_tier" not in daily[date_str]:
-                    daily[date_str]["by_tier"] = {}
-
-                daily[date_str]["by_tier"][tier_key] = {
-                    "total_tokens": int(row.total_tokens),
-                    "input_tokens": int(row.input_tokens),
-                    "output_tokens": int(row.output_tokens),
-                    "total_amount": int(row.total_amount),
-                    "record_count": int(row.record_count),
-                    "tool_call_count": int(row.tool_call_count),
-                }
-
-        # Ensure every day entry has a by_tier key
-        for d in daily:
-            if "by_tier" not in daily[d]:
-                daily[d]["by_tier"] = {}
+            day["by_tier"][tier_key] = {
+                "total_tokens": int(row.total_tokens),
+                "input_tokens": int(row.input_tokens),
+                "output_tokens": int(row.output_tokens),
+                "total_amount": int(row.total_amount),
+                "record_count": int(row.record_count),
+                "tool_call_count": int(row.tool_call_count),
+            }
 
         result: dict[str, Any] = {
             "daily": [daily[d] for d in sorted(daily.keys())],

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import TIMESTAMP, BigInteger
+from sqlalchemy import TIMESTAMP, BigInteger, Index
 from sqlmodel import Column, Field, SQLModel
 
 
@@ -42,6 +42,8 @@ class ConsumeRecordBase(SQLModel):
 
 class ConsumeRecord(ConsumeRecordBase, table=True):
     """Consumption record table - records each user's consumption details"""
+
+    __table_args__ = (Index("idx_consumerecord_user_created", "user_id", "created_at"),)
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     biz_no: int | None = Field(

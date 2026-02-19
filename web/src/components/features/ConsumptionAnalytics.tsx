@@ -10,6 +10,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { DEFAULT_TIMEZONE } from "@/configs/common";
+import { echarts } from "@/lib/echarts";
 import {
   checkInService,
   type ConsumptionRangeResponse,
@@ -20,7 +21,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useQuery } from "@tanstack/react-query";
-import ReactECharts from "echarts-for-react";
+import ReactECharts from "echarts-for-react/lib/core";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -490,6 +491,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
                 ) : (
                   <ReactECharts
+                    echarts={echarts}
                     option={donutOptions.tokens}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
@@ -514,6 +516,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
                 ) : (
                   <ReactECharts
+                    echarts={echarts}
                     option={donutOptions.amount}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
@@ -538,6 +541,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
                 ) : (
                   <ReactECharts
+                    echarts={echarts}
                     option={donutOptions.inputTokens}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
@@ -562,6 +566,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
                 ) : (
                   <ReactECharts
+                    echarts={echarts}
                     option={donutOptions.count}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
@@ -586,6 +591,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
                 ) : (
                   <ReactECharts
+                    echarts={echarts}
                     option={donutOptions.outputTokens}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
@@ -610,6 +616,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
                 ) : (
                   <ReactECharts
+                    echarts={echarts}
                     option={donutOptions.toolCalls}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
@@ -684,6 +691,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                 <div className="h-35 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
               ) : (
                 <ReactECharts
+                  echarts={echarts}
                   option={heatmapOption}
                   style={{ height: isMobile ? "155px" : "140px" }}
                   opts={{ renderer: "svg" }}
