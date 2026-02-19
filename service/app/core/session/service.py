@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
@@ -71,6 +72,14 @@ class SessionService:
     async def create_session_with_default_topic(self, session_data: SessionCreate, user_id: str) -> SessionRead:
         agent_uuid = await self._resolve_agent_uuid_for_create(session_data.agent_id)
 
+        existing_session = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
+        if existing_session:
+            existing_topics = await self.topic_repo.get_topics_by_session(existing_session.id, order_by_updated=True)
+            if not existing_topics:
+                await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing_session.id))
+                await self.db.commit()
+            return SessionRead(**existing_session.model_dump())
+
         validated = SessionCreate(
             name=session_data.name,
             description=session_data.description,
@@ -81,19 +90,33 @@ class SessionService:
             spatial_layout=session_data.spatial_layout,
         )
 
-        session = await self.session_repo.create_session(validated, user_id)
-        await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
-
-        await self.db.commit()
+        created_new_session = False
+        try:
+            session = await self.session_repo.create_session(validated, user_id)
+            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
+            await self.db.commit()
+            created_new_session = True
+        except IntegrityError:
+            # Another request created the same user+agent session concurrently.
+            # Roll back and resolve to the canonical existing session.
+            await self.db.rollback()
+            session = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
+            if not session:
+                raise
+            topics = await self.topic_repo.get_topics_by_session(session.id, order_by_updated=True)
+            if not topics:
+                await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
+                await self.db.commit()
 
         # Write FGA owner tuple (best-effort)
-        try:
-            from app.core.fga.client import get_fga_client
+        if created_new_session:
+            try:
+                from app.core.fga.client import get_fga_client
 
-            fga = await get_fga_client()
-            await fga.write_tuple(user_id, "owner", "session", str(session.id))
-        except Exception:
-            pass
+                fga = await get_fga_client()
+                await fga.write_tuple(user_id, "owner", "session", str(session.id))
+            except Exception:
+                pass
 
         return SessionRead(**session.model_dump())
 

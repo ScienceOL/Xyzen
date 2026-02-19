@@ -59,6 +59,41 @@ class TestSessionRepository:
         assert found.user_id == user_id
         assert found.agent_id is None
 
+    async def test_get_session_by_user_and_agent_prefers_latest_topic_activity(
+        self, session_repo: SessionRepository, db_session: AsyncSession
+    ):
+        """When duplicate sessions exist, the most recently active one should be returned."""
+        import asyncio
+        from uuid import uuid4
+
+        from app.repos.topic import TopicRepository
+        from tests.factories.topic import TopicCreateFactory
+
+        user_id = "test-user-session-agent-activity"
+        agent_id = uuid4()
+        topic_repo = TopicRepository(db_session)
+
+        older_session = await session_repo.create_session(
+            SessionCreateFactory.build(agent_id=agent_id, name="older"),
+            user_id,
+        )
+        newer_session = await session_repo.create_session(
+            SessionCreateFactory.build(agent_id=agent_id, name="newer"),
+            user_id,
+        )
+
+        await topic_repo.create_topic(
+            TopicCreateFactory.build(session_id=older_session.id, name="older-topic"),
+        )
+        await asyncio.sleep(0.01)
+        await topic_repo.create_topic(
+            TopicCreateFactory.build(session_id=newer_session.id, name="newer-topic"),
+        )
+
+        found = await session_repo.get_session_by_user_and_agent(user_id, agent_id)
+        assert found is not None
+        assert found.id == newer_session.id
+
     async def test_update_session(self, session_repo: SessionRepository):
         """Test updating a session."""
         user_id = "test-user-session-update"

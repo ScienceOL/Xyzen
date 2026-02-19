@@ -58,7 +58,31 @@ class SessionRepository:
             The SessionModel, or None if not found.
         """
         logger.debug(f"Fetching session for user_id: {user_id}, agent_id: {agent_id}")
-        statement = select(SessionModel).where(SessionModel.user_id == user_id, SessionModel.agent_id == agent_id)
+        latest_topic_activity = (
+            select(
+                Topic.session_id.label("session_id"),
+                func.max(Topic.updated_at).label("latest_topic_updated_at"),
+            )
+            .group_by(col(Topic.session_id))
+            .subquery()
+        )
+        statement = (
+            select(SessionModel)
+            .where(SessionModel.user_id == user_id, SessionModel.agent_id == agent_id)
+            .outerjoin(
+                latest_topic_activity,
+                col(SessionModel.id) == latest_topic_activity.c.session_id,
+            )
+            .order_by(
+                func.coalesce(
+                    latest_topic_activity.c.latest_topic_updated_at,
+                    col(SessionModel.updated_at),
+                ).desc(),
+                col(SessionModel.created_at).desc(),
+                col(SessionModel.id).desc(),
+            )
+            .limit(1)
+        )
         result = await self.db.exec(statement)
         return result.first()
 

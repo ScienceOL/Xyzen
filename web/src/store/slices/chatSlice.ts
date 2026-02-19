@@ -61,6 +61,7 @@ const CHANNEL_CONNECT_POLL_INTERVAL_MS = 100;
 
 // Per-topic stale-state watchdog interval IDs (separate from abort timeouts)
 const staleWatchdogIds = new Map<string, ReturnType<typeof setInterval>>();
+const createDefaultChannelInFlight = new Map<string, Promise<void>>();
 
 export interface ChatSlice {
   // Chat panel state
@@ -1430,116 +1431,288 @@ export const createChatSlice: StateCreator<
     },
 
     createDefaultChannel: async (agentId) => {
-      try {
-        const agentIdParam = agentId || "default";
-        const token = authService.getToken();
+      const agentIdParam = agentId || "default";
+      const existingRequest = createDefaultChannelInFlight.get(agentIdParam);
+      if (existingRequest) {
+        await existingRequest;
+        return;
+      }
 
-        if (!token) {
-          console.error("No authentication token available");
-          return;
-        }
-
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-
-        // First, try to find an existing session for this user-agent combination
+      const request = (async () => {
         try {
-          const existingSessionResponse = await fetch(
-            `${get().backendUrl}/xyzen/api/v1/sessions/by-agent/${agentIdParam}`,
-            { headers },
-          );
+          const token = authService.getToken();
 
-          if (existingSessionResponse.ok) {
-            // Found existing session, create a new topic for it
-            const existingSession = await existingSessionResponse.json();
+          if (!token) {
+            console.error("No authentication token available");
+            return;
+          }
 
-            // If existing session doesn't have provider/model, update it with defaults
-            if (!existingSession.provider_id || !existingSession.model) {
-              console.log(
-                "  - 🔄 Existing session missing provider/model, updating with defaults...",
-              );
-              try {
-                const state = get();
-                const agent = state.agents.find(
-                  (a) => a.id === existingSession.agent_id,
-                );
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          };
 
-                let providerId = existingSession.provider_id;
-                let model = existingSession.model;
-
-                // Use agent's provider/model if available
-                if (agent?.provider_id && agent?.model) {
-                  providerId = agent.provider_id;
-                  model = agent.model;
-                } else {
-                  // Otherwise use system defaults
-                  const providers = await llmProviderService.getMyProviders();
-                  const defaults =
-                    await providerCore.getDefaultProviderAndModel(providers);
-                  providerId = providerId || defaults.providerId;
-                  model = model || defaults.model;
-                }
-
-                if (providerId && model) {
-                  // Update the session with provider/model
-                  await sessionService.updateSession(existingSession.id, {
-                    provider_id: providerId,
-                    model: model,
-                  });
-                  existingSession.provider_id = providerId;
-                  existingSession.model = model;
-                  console.log(
-                    `  - ✅ Updated session with provider (${providerId}) and model (${model})`,
-                  );
-                }
-              } catch (error) {
-                console.warn(
-                  "  - ⚠️ Failed to update session with defaults:",
-                  error,
-                );
-              }
-            }
-
-            const newTopicResponse = await fetch(
-              `${get().backendUrl}/xyzen/api/v1/topics/`,
-              {
-                method: "POST",
-                headers,
-                body: JSON.stringify({
-                  name: "新的聊天",
-                  session_id: existingSession.id,
-                }),
-              },
+          // First, try to find an existing session for this user-agent combination
+          try {
+            const existingSessionResponse = await fetch(
+              `${get().backendUrl}/xyzen/api/v1/sessions/by-agent/${agentIdParam}`,
+              { headers },
             );
 
-            if (!newTopicResponse.ok) {
-              throw new Error("Failed to create new topic in existing session");
-            }
+            if (existingSessionResponse.ok) {
+              // Found existing session, create a new topic for it
+              const existingSession = await existingSessionResponse.json();
 
-            const newTopic = await newTopicResponse.json();
+              // If existing session doesn't have provider/model, update it with defaults
+              if (!existingSession.provider_id || !existingSession.model) {
+                console.log(
+                  "  - 🔄 Existing session missing provider/model, updating with defaults...",
+                );
+                try {
+                  const state = get();
+                  const agent = state.agents.find(
+                    (a) => a.id === existingSession.agent_id,
+                  );
+
+                  let providerId = existingSession.provider_id;
+                  let model = existingSession.model;
+
+                  // Use agent's provider/model if available
+                  if (agent?.provider_id && agent?.model) {
+                    providerId = agent.provider_id;
+                    model = agent.model;
+                  } else {
+                    // Otherwise use system defaults
+                    const providers = await llmProviderService.getMyProviders();
+                    const defaults =
+                      await providerCore.getDefaultProviderAndModel(providers);
+                    providerId = providerId || defaults.providerId;
+                    model = model || defaults.model;
+                  }
+
+                  if (providerId && model) {
+                    // Update the session with provider/model
+                    await sessionService.updateSession(existingSession.id, {
+                      provider_id: providerId,
+                      model: model,
+                    });
+                    existingSession.provider_id = providerId;
+                    existingSession.model = model;
+                    console.log(
+                      `  - ✅ Updated session with provider (${providerId}) and model (${model})`,
+                    );
+                  }
+                } catch (error) {
+                  console.warn(
+                    "  - ⚠️ Failed to update session with defaults:",
+                    error,
+                  );
+                }
+              }
+
+              const newTopicResponse = await fetch(
+                `${get().backendUrl}/xyzen/api/v1/topics/`,
+                {
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify({
+                    name: "新的聊天",
+                    session_id: existingSession.id,
+                  }),
+                },
+              );
+
+              if (!newTopicResponse.ok) {
+                throw new Error("Failed to create new topic in existing session");
+              }
+
+              const newTopic = await newTopicResponse.json();
+
+              const newChannel: ChatChannel = {
+                id: newTopic.id,
+                sessionId: existingSession.id,
+                title: newTopic.name,
+                messages: [],
+                agentId: existingSession.agent_id,
+                provider_id: existingSession.provider_id,
+                model: existingSession.model,
+                model_tier: existingSession.model_tier,
+                knowledge_set_id: existingSession.knowledge_set_id,
+                connected: false,
+                error: null,
+              };
+
+              const newHistoryItem: ChatHistoryItem = {
+                id: newTopic.id,
+                sessionId: existingSession.id,
+                title: newTopic.name,
+                updatedAt: newTopic.updated_at,
+                assistantTitle: getAgentNameById(existingSession.agent_id),
+                lastMessage: "",
+                isPinned: false,
+              };
+
+              set((state: XyzenState) => {
+                state.channels[newTopic.id] = newChannel;
+                state.chatHistory.unshift(newHistoryItem);
+                state.activeChatChannel = newTopic.id;
+                state.activeTabIndex = 1;
+              });
+
+              get().connectToChannel(existingSession.id, newTopic.id);
+              return;
+            }
+          } catch {
+            // If session lookup fails, we'll create a new session below
+            console.log("No existing session found, creating new session");
+          }
+
+          // No existing session found, create a new session
+          // Get agent data to include MCP servers
+          const state = get();
+          const agent = state.agents.find((a) => a.id === agentId);
+
+          const sessionPayload: Record<string, unknown> = {
+            name: "New Session",
+            agent_id: agentId,
+          };
+
+          // Include MCP server IDs if agent has them
+          if (agent?.mcp_servers?.length) {
+            sessionPayload.mcp_server_ids = agent.mcp_servers.map((s) => s.id);
+          }
+
+          // Fetch providers for default model resolution
+          let currentProviders: Awaited<
+            ReturnType<typeof llmProviderService.getMyProviders>
+          > = [];
+          try {
+            currentProviders = await llmProviderService.getMyProviders();
+          } catch (error) {
+            console.error("Failed to fetch providers:", error);
+          }
+
+          try {
+            if (agent?.provider_id && agent?.model) {
+              sessionPayload.provider_id = agent.provider_id;
+              sessionPayload.model = agent.model;
+            } else {
+              const { providerId, model } =
+                await providerCore.getDefaultProviderAndModel(currentProviders);
+              if (providerId && model) {
+                sessionPayload.provider_id = providerId;
+                sessionPayload.model = model;
+              }
+            }
+          } catch (error) {
+            console.error("Error getting provider/model:", error);
+          }
+
+          // The backend will automatically extract user_id from the token
+          const response = await fetch(
+            `${get().backendUrl}/xyzen/api/v1/sessions/`,
+            {
+              method: "POST",
+              headers,
+              body: JSON.stringify(sessionPayload),
+            },
+          );
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(
+              "Session creation failed:",
+              response.status,
+              errorText,
+            );
+            throw new Error(
+              `Failed to create new session: ${response.status} ${errorText}`,
+            );
+          }
+
+          const newSession: SessionResponse = await response.json();
+
+          if (newSession.topics && newSession.topics.length > 0) {
+            const newTopic = newSession.topics[0];
 
             const newChannel: ChatChannel = {
               id: newTopic.id,
-              sessionId: existingSession.id,
+              sessionId: newSession.id,
               title: newTopic.name,
               messages: [],
-              agentId: existingSession.agent_id,
-              provider_id: existingSession.provider_id,
-              model: existingSession.model,
-              model_tier: existingSession.model_tier,
-              knowledge_set_id: existingSession.knowledge_set_id,
+              agentId: newSession.agent_id,
+              provider_id: newSession.provider_id,
+              model: newSession.model,
+              model_tier: newSession.model_tier,
               connected: false,
               error: null,
             };
 
             const newHistoryItem: ChatHistoryItem = {
               id: newTopic.id,
-              sessionId: existingSession.id,
+              sessionId: newSession.id,
               title: newTopic.name,
               updatedAt: newTopic.updated_at,
-              assistantTitle: getAgentNameById(existingSession.agent_id),
+              assistantTitle: getAgentNameById(newSession.agent_id),
+              lastMessage: "",
+              isPinned: false,
+            };
+            set((state: XyzenState) => {
+              state.channels[newTopic.id] = newChannel;
+              state.chatHistory.unshift(newHistoryItem);
+              state.activeChatChannel = newTopic.id;
+              state.activeTabIndex = 1;
+            });
+
+            get().connectToChannel(newSession.id, newTopic.id);
+          } else {
+            // Session created but no default topic - create one manually
+            const topicResponse = await fetch(
+              `${get().backendUrl}/xyzen/api/v1/topics/`,
+              {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                  name: "新的聊天",
+                  session_id: newSession.id,
+                }),
+              },
+            );
+
+            if (!topicResponse.ok) {
+              const errorText = await topicResponse.text();
+              console.error(
+                "Failed to create default topic:",
+                topicResponse.status,
+                errorText,
+              );
+              throw new Error(
+                `Failed to create default topic for new session: ${topicResponse.status} ${errorText}`,
+              );
+            }
+
+            const newTopic = await topicResponse.json();
+
+            // Same navigation logic as above
+            const newChannel: ChatChannel = {
+              id: newTopic.id,
+              sessionId: newSession.id,
+              title: newTopic.name,
+              messages: [],
+              agentId: newSession.agent_id,
+              provider_id: newSession.provider_id,
+              model: newSession.model,
+              model_tier: newSession.model_tier,
+              connected: false,
+              error: null,
+            };
+
+            const newHistoryItem: ChatHistoryItem = {
+              id: newTopic.id,
+              sessionId: newSession.id,
+              title: newTopic.name,
+              updatedAt: newTopic.updated_at,
+              assistantTitle: getAgentNameById(newSession.agent_id),
               lastMessage: "",
               isPinned: false,
             };
@@ -1551,172 +1724,20 @@ export const createChatSlice: StateCreator<
               state.activeTabIndex = 1;
             });
 
-            get().connectToChannel(existingSession.id, newTopic.id);
-            return;
-          }
-        } catch {
-          // If session lookup fails, we'll create a new session below
-          console.log("No existing session found, creating new session");
-        }
-
-        // No existing session found, create a new session
-        // Get agent data to include MCP servers
-        const state = get();
-        const agent = state.agents.find((a) => a.id === agentId);
-
-        const sessionPayload: Record<string, unknown> = {
-          name: "New Session",
-          agent_id: agentId,
-        };
-
-        // Include MCP server IDs if agent has them
-        if (agent?.mcp_servers?.length) {
-          sessionPayload.mcp_server_ids = agent.mcp_servers.map((s) => s.id);
-        }
-
-        // Fetch providers for default model resolution
-        let currentProviders: Awaited<
-          ReturnType<typeof llmProviderService.getMyProviders>
-        > = [];
-        try {
-          currentProviders = await llmProviderService.getMyProviders();
-        } catch (error) {
-          console.error("Failed to fetch providers:", error);
-        }
-
-        try {
-          if (agent?.provider_id && agent?.model) {
-            sessionPayload.provider_id = agent.provider_id;
-            sessionPayload.model = agent.model;
-          } else {
-            const { providerId, model } =
-              await providerCore.getDefaultProviderAndModel(currentProviders);
-            if (providerId && model) {
-              sessionPayload.provider_id = providerId;
-              sessionPayload.model = model;
-            }
+            get().connectToChannel(newSession.id, newTopic.id);
           }
         } catch (error) {
-          console.error("Error getting provider/model:", error);
+          console.error("Failed to create channel:", error);
         }
+      })();
 
-        // The backend will automatically extract user_id from the token
-        const response = await fetch(
-          `${get().backendUrl}/xyzen/api/v1/sessions/`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify(sessionPayload),
-          },
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Session creation failed:", response.status, errorText);
-          throw new Error(
-            `Failed to create new session: ${response.status} ${errorText}`,
-          );
+      createDefaultChannelInFlight.set(agentIdParam, request);
+      try {
+        await request;
+      } finally {
+        if (createDefaultChannelInFlight.get(agentIdParam) === request) {
+          createDefaultChannelInFlight.delete(agentIdParam);
         }
-
-        const newSession: SessionResponse = await response.json();
-
-        if (newSession.topics && newSession.topics.length > 0) {
-          const newTopic = newSession.topics[0];
-
-          const newChannel: ChatChannel = {
-            id: newTopic.id,
-            sessionId: newSession.id,
-            title: newTopic.name,
-            messages: [],
-            agentId: newSession.agent_id,
-            provider_id: newSession.provider_id,
-            model: newSession.model,
-            model_tier: newSession.model_tier,
-            connected: false,
-            error: null,
-          };
-
-          const newHistoryItem: ChatHistoryItem = {
-            id: newTopic.id,
-            sessionId: newSession.id,
-            title: newTopic.name,
-            updatedAt: newTopic.updated_at,
-            assistantTitle: getAgentNameById(newSession.agent_id),
-            lastMessage: "",
-            isPinned: false,
-          };
-
-          set((state: XyzenState) => {
-            state.channels[newTopic.id] = newChannel;
-            state.chatHistory.unshift(newHistoryItem);
-            state.activeChatChannel = newTopic.id;
-            state.activeTabIndex = 1;
-          });
-
-          get().connectToChannel(newSession.id, newTopic.id);
-        } else {
-          // Session created but no default topic - create one manually
-          const topicResponse = await fetch(
-            `${get().backendUrl}/xyzen/api/v1/topics/`,
-            {
-              method: "POST",
-              headers,
-              body: JSON.stringify({
-                name: "新的聊天",
-                session_id: newSession.id,
-              }),
-            },
-          );
-
-          if (!topicResponse.ok) {
-            const errorText = await topicResponse.text();
-            console.error(
-              "Failed to create default topic:",
-              topicResponse.status,
-              errorText,
-            );
-            throw new Error(
-              `Failed to create default topic for new session: ${topicResponse.status} ${errorText}`,
-            );
-          }
-
-          const newTopic = await topicResponse.json();
-
-          // Same navigation logic as above
-          const newChannel: ChatChannel = {
-            id: newTopic.id,
-            sessionId: newSession.id,
-            title: newTopic.name,
-            messages: [],
-            agentId: newSession.agent_id,
-            provider_id: newSession.provider_id,
-            model: newSession.model,
-            model_tier: newSession.model_tier,
-            connected: false,
-            error: null,
-          };
-
-          const newHistoryItem: ChatHistoryItem = {
-            id: newTopic.id,
-            sessionId: newSession.id,
-            title: newTopic.name,
-            updatedAt: newTopic.updated_at,
-            assistantTitle: getAgentNameById(newSession.agent_id),
-            lastMessage: "",
-            isPinned: false,
-          };
-
-          set((state: XyzenState) => {
-            state.channels[newTopic.id] = newChannel;
-            state.chatHistory.unshift(newHistoryItem);
-            state.activeChatChannel = newTopic.id;
-            state.activeTabIndex = 1;
-          });
-
-          get().connectToChannel(newSession.id, newTopic.id);
-        }
-      } catch (error) {
-        console.error("Failed to create channel:", error);
       }
     },
 
