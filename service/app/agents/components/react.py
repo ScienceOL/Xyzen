@@ -90,9 +90,9 @@ class ReActComponent(ExecutableComponent):
                     "max_iterations": {
                         "type": "integer",
                         "description": "Maximum tool-calling iterations",
-                        "default": 10,
+                        "default": 200,
                         "minimum": 1,
-                        "maximum": 100,
+                        "maximum": 500,
                     },
                 },
             },

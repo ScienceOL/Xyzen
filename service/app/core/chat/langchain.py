@@ -397,7 +397,7 @@ async def _process_agent_stream(
             {"messages": history_messages},
             stream_mode=["updates", "messages"],
             config={
-                "recursion_limit": 50,
+                "recursion_limit": 500,
                 "configurable": {"user_id": ctx.user_id},
             },
         ):
