@@ -102,9 +102,7 @@ services:
       IS_NEW_MESSAGES_API_RESPONSE_ENABLED: "true"
       IS_V2_ENABLED: "true"
       API_CONTEXT_PATH: ""
-      # Lock down registration after initial admin is created by bootstrap.
-      # Bootstrap handles the 403 gracefully and falls back to login.
-      DISABLE_USER_REGISTRATION: "true"
+      DISABLE_USER_REGISTRATION: "false"
     healthcheck:
       test:
         [

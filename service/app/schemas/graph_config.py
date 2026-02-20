@@ -157,7 +157,7 @@ class LLMNodeConfig(BaseModel):
     max_tokens: int | None = None
     tools_enabled: bool = True
     tool_filter: list[str] | None = None
-    max_iterations: int = Field(default=10, ge=1)
+    max_iterations: int = Field(default=200, ge=1)
     message_key: str | None = None
 
 

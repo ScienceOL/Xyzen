@@ -134,16 +134,11 @@ export default defineConfig(() => {
     },
     server: {
       host: true, // 监听所有地址
-      port: 32234,
+      port: 32233,
       strictPort: true,
       watch: {
         usePolling: true, // Docker 环境下必须启用轮询
         interval: 100, // 轮询间隔（毫秒）
-      },
-      hmr: {
-        // 热模块替换配置
-        host: "localhost",
-        port: 32233,
       },
       proxy: {
         // 代理 Bohrium API 请求以解决 CORS 问题

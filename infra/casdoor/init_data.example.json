@@ -30,6 +30,310 @@
     }
   ],
   "applications": [
+        {
+      "owner": "admin",
+      "name": "scienceol",
+      "createdTime": "2026-02-04T00:11:23+08:00",
+      "displayName": "ScienceOL",
+      "logo": "https://storage.sciol.ac.cn/library/BLogo-normal.svg",
+      "title": "ScienceOL",
+      "favicon": "",
+      "order": 0,
+      "homepageUrl": "http://localhost:48197",
+      "description": "ScienceOL build OpenSource Self-driven lab kernel.",
+      "organization": "scienceol",
+      "cert": "cert-built-in",
+      "defaultGroup": "",
+      "headerHtml": "",
+      "enablePassword": true,
+      "enableSignUp": true,
+      "disableSignin": false,
+      "enableSigninSession": true,
+      "enableAutoSignin": false,
+      "enableCodeSignin": false,
+      "enableExclusiveSignin": false,
+      "enableSamlCompress": false,
+      "enableSamlC14n10": false,
+      "enableSamlPostBinding": false,
+      "disableSamlAttributes": false,
+      "enableSamlAssertionSignature": false,
+      "useEmailAsSamlNameId": false,
+      "enableWebAuthn": false,
+      "enableLinkWithEmail": true,
+      "orgChoiceMode": "",
+      "samlReplyUrl": "",
+      "providers": [
+        {
+          "owner": "",
+          "name": "provider-storage-built-in",
+          "canSignUp": false,
+          "canSignIn": false,
+          "canUnlink": false,
+          "countryCodes": null,
+          "prompted": false,
+          "signupGroup": "",
+          "rule": "None",
+          "provider": null
+        }
+      ],
+      "signinMethods": [
+        {
+          "name": "Password",
+          "displayName": "Password",
+          "rule": "All"
+        }
+      ],
+      "signupItems": [
+        {
+          "name": "ID",
+          "visible": false,
+          "required": true,
+          "prompted": false,
+          "type": "",
+          "customCss": "",
+          "label": "",
+          "placeholder": "",
+          "options": null,
+          "regex": "",
+          "rule": "Random"
+        },
+        {
+          "name": "Username",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "type": "",
+          "customCss": "",
+          "label": "",
+          "placeholder": "",
+          "options": null,
+          "regex": "",
+          "rule": "None"
+        },
+        {
+          "name": "Email",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "type": "",
+          "customCss": ".signup-email{}\n.signup-email-input{}\n.signup-email-code{}\n.signup-email-code-input{}\n",
+          "label": "",
+          "placeholder": "",
+          "options": [],
+          "regex": "",
+          "rule": "None"
+        },
+        {
+          "name": "Display name",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "type": "",
+          "customCss": "",
+          "label": "",
+          "placeholder": "",
+          "options": null,
+          "regex": "",
+          "rule": "None"
+        },
+        {
+          "name": "Password",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "type": "",
+          "customCss": "",
+          "label": "",
+          "placeholder": "",
+          "options": null,
+          "regex": "",
+          "rule": "None"
+        },
+        {
+          "name": "Confirm password",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "type": "",
+          "customCss": "",
+          "label": "",
+          "placeholder": "",
+          "options": null,
+          "regex": "",
+          "rule": "None"
+        },
+        {
+          "name": "Signup button",
+          "visible": true,
+          "required": false,
+          "prompted": false,
+          "type": "",
+          "customCss": "",
+          "label": "",
+          "placeholder": "",
+          "options": null,
+          "regex": "",
+          "rule": ""
+        }
+      ],
+      "signinItems": [
+        {
+          "name": "Back button",
+          "visible": true,
+          "label": "",
+          "customCss": ".back-button {\n      top: 65px;\n      left: 15px;\n      position: absolute;\n}\n.back-inner-button{}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Languages",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-languages {\n    top: 55px;\n    right: 5px;\n    position: absolute;\n}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Logo",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-logo-box {} \n.panel-logo {\n    width: 80px;\n}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Signin methods",
+          "visible": true,
+          "label": "",
+          "customCss": ".signin-methods {}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Username",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-username {}\n.login-username-input{}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Password",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-password {}\n.login-password-input{}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Captcha",
+          "visible": false,
+          "label": "",
+          "customCss": "",
+          "placeholder": "",
+          "rule": "inline",
+          "isCustom": false
+        },
+        {
+          "name": "Agreement",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-agreement {}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Forgot password?",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-forget-password {\n    display: inline-flex;\n    justify-content: space-between;\n    width: 320px;\n    margin-bottom: 25px;\n}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Login button",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-button-box {\n    margin-bottom: 5px;\n}\n.login-button {\n    width: 100%;\n}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Signup link",
+          "visible": true,
+          "label": "",
+          "customCss": ".login-signup-link {\n    margin-bottom: 24px;\n    display: flex;\n    justify-content: end;\n}",
+          "placeholder": "",
+          "rule": "None",
+          "isCustom": false
+        },
+        {
+          "name": "Providers",
+          "visible": false,
+          "label": "",
+          "customCss": ".provider-img {\n      width: 30px;\n      margin: 5px;\n}\n.provider-big-img {\n      margin-bottom: 10px;\n}",
+          "placeholder": "",
+          "rule": "small",
+          "isCustom": false
+        }
+      ],
+      "grantTypes": [
+        "authorization_code",
+        "password",
+        "client_credentials",
+        "token",
+        "id_token",
+        "refresh_token"
+      ],
+      "organizationObj": null,
+      "certPublicKey": "",
+      "tags": [],
+      "samlAttributes": null,
+      "samlHashAlgorithm": "",
+      "isShared": false,
+      "ipRestriction": "",
+      "clientId": "scienceol-demo-client-id",
+      "clientSecret": "scienceol-demo-client-secret",
+      "redirectUris": [
+        "http://localhost:48197/api/auth/callback/casdoor"
+      ],
+      "forcedRedirectOrigin": "",
+      "tokenFormat": "JWT",
+      "tokenSigningMethod": "",
+      "tokenFields": [],
+      "tokenAttributes": null,
+      "expireInHours": 72,
+      "refreshExpireInHours": 720,
+      "cookieExpireInHours": 0,
+      "signupUrl": "",
+      "signinUrl": "",
+      "forgetUrl": "",
+      "affiliationUrl": "",
+      "ipWhitelist": "",
+      "termsOfUse": "",
+      "signupHtml": "",
+      "signinHtml": "",
+      "themeData": null,
+      "footerHtml": "<></>",
+      "formCss": "<style>\n  .login-panel {\n    padding: 40px 70px 0 70px;\n    border-radius: 10px;\n    background-color: #ffffff;\n    box-shadow: 0 0 30px 20px rgba(0, 0, 0, 0.20);\n  }\n  .login-panel-dark {\n    padding: 40px 70px 0 70px;\n    border-radius: 10px;\n    background-color: #333333;\n    box-shadow: 0 0 30px 20px rgba(255, 255, 255, 0.20);\n  }\n  .forget-content {\n    padding: 10px 100px 20px;\n    margin: 30px auto;\n    border: 2px solid #fff;\n    border-radius: 7px;\n    background-color: rgb(255 255 255);\n    box-shadow: 0 0 20px rgb(0 0 0 / 20%);\n  }\n/* 1. 限制 Logo 图片的大小 */\n.panel-logo {\n  /* 强制最大高度，防止 Logo 过大 */\n  max-height: 60px !important; \n  \n  /* 宽度自适应，保持原比例 */\n  width: auto !important; \n  \n  /* 确保 Logo 居中显示（如果它是块级元素或在 flex 容器中）*/\n  display: block;\n  margin: 0 auto 24px auto !important; /* 底部留白 24px */\n}\n</style>",
+      "formCssMobile": "",
+      "formOffset": 2,
+      "formSideHtml": "",
+      "formBackgroundUrl": "",
+      "formBackgroundUrlMobile": "",
+      "failedSigninLimit": 5,
+      "failedSigninFrozenTime": 15,
+      "codeResendTimeout": 0
+    },
     {
       "owner": "admin",
       "name": "app-built-in",
@@ -353,6 +657,410 @@
     }
   ],
   "organizations": [
+        {
+      "owner": "admin",
+      "name": "scienceol",
+      "createdTime": "2026-02-04T00:06:19+08:00",
+      "displayName": "Organization - ScienceOL",
+      "websiteUrl": "http://localhost:48197",
+      "logo": "https://storage.sciol.ac.cn/library/BLogo-normal.svg",
+      "logoDark": "https://storage.sciol.ac.cn/library/BLogo-dark.svg",
+      "favicon": "https://storage.sciol.ac.cn/library/BLogo-normal.svg",
+      "hasPrivilegeConsent": false,
+      "passwordType": "argon2id",
+      "passwordSalt": "",
+      "passwordOptions": [
+        "AtLeast8",
+        "Aa123"
+      ],
+      "passwordObfuscatorType": "Plain",
+      "passwordObfuscatorKey": "",
+      "passwordExpireDays": 0,
+      "countryCodes": [
+        "US",
+        "CN",
+        "JP",
+        "KR"
+      ],
+      "defaultAvatar": "https://storage.sciol.ac.cn/library/default_avatar.png",
+      "defaultApplication": "scienceol",
+      "userTypes": null,
+      "tags": [],
+      "languages": [
+        "en",
+        "zh",
+        "ja",
+        "ko"
+      ],
+      "themeData": null,
+      "masterPassword": "",
+      "defaultPassword": "",
+      "masterVerificationCode": "",
+      "ipWhitelist": "",
+      "initScore": 0,
+      "enableSoftDeletion": false,
+      "isProfilePublic": true,
+      "useEmailAsUsername": false,
+      "enableTour": true,
+      "disableSignin": false,
+      "ipRestriction": "",
+      "navItems": null,
+      "userNavItems": null,
+      "widgetItems": null,
+      "mfaItems": null,
+      "mfaRememberInHours": 12,
+      "accountMenu": "",
+      "accountItems": [
+        {
+          "name": "Organization",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "ID",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Immutable",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Name",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Display name",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Avatar",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "User type",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Password",
+          "visible": true,
+          "viewRule": "Self",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Email",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Phone",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Country code",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Country/Region",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Location",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Address",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Affiliation",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Title",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "ID card type",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "ID card",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "ID card info",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Homepage",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Bio",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Tag",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Language",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Gender",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Birthday",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Education",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Score",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Karma",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Ranking",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Signup application",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "API key",
+          "visible": false,
+          "viewRule": "",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Groups",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Roles",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Immutable",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Permissions",
+          "visible": true,
+          "viewRule": "Public",
+          "modifyRule": "Immutable",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "3rd-party logins",
+          "visible": true,
+          "viewRule": "Self",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Properties",
+          "visible": false,
+          "viewRule": "Admin",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Is online",
+          "visible": true,
+          "viewRule": "Admin",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Is admin",
+          "visible": true,
+          "viewRule": "Admin",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Is forbidden",
+          "visible": true,
+          "viewRule": "Admin",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Is deleted",
+          "visible": true,
+          "viewRule": "Admin",
+          "modifyRule": "Admin",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Multi-factor authentication",
+          "visible": true,
+          "viewRule": "Self",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "WebAuthn credentials",
+          "visible": true,
+          "viewRule": "Self",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "Managed accounts",
+          "visible": true,
+          "viewRule": "Self",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        },
+        {
+          "name": "MFA accounts",
+          "visible": true,
+          "viewRule": "Self",
+          "modifyRule": "Self",
+          "regex": "",
+          "tab": ""
+        }
+      ],
+      "orgBalance": 0,
+      "userBalance": 0,
+      "balanceCredit": 0,
+      "balanceCurrency": "USD"
+    },
     {
       "owner": "admin",
       "name": "built-in",
@@ -850,6 +1558,71 @@
         "apiKey": "studio",
         "apiKeyEnabled": "true"
       },
+      "roles": null,
+      "permissions": null,
+      "groups": null,
+      "lastSigninWrongTime": "",
+      "signinWrongTimes": 0,
+      "managedAccounts": null,
+      "mfaAccounts": null,
+      "needUpdatePassword": false
+    },
+    {
+      "owner": "scienceol",
+      "name": "admin",
+      "createdTime": "2026-02-04T00:11:23+08:00",
+      "updatedTime": "",
+      "deletedTime": "",
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "externalId": "",
+      "type": "normal-user",
+      "password": "123",
+      "passwordSalt": "",
+      "passwordType": "plain",
+      "displayName": "Admin",
+      "firstName": "",
+      "lastName": "",
+      "avatar": "https://storage.sciol.ac.cn/library/default_avatar.png",
+      "avatarType": "",
+      "permanentAvatar": "",
+      "email": "admin@example.com",
+      "emailVerified": false,
+      "phone": "",
+      "countryCode": "CN",
+      "region": "",
+      "location": "",
+      "address": [],
+      "affiliation": "",
+      "title": "",
+      "idCardType": "",
+      "idCard": "",
+      "homepage": "",
+      "bio": "",
+      "tag": "staff",
+      "language": "",
+      "gender": "",
+      "birthday": "",
+      "education": "",
+      "score": 0,
+      "karma": 0,
+      "ranking": 1,
+      "balance": 0,
+      "currency": "",
+      "isDefaultAvatar": false,
+      "isOnline": false,
+      "isAdmin": true,
+      "isForbidden": false,
+      "isDeleted": false,
+      "signupApplication": "scienceol",
+      "hash": "",
+      "preHash": "",
+      "accessKey": "",
+      "accessSecret": "",
+      "accessToken": "",
+      "createdIp": "127.0.0.1",
+      "lastSigninTime": "",
+      "lastSigninIp": "",
+      "properties": {},
       "roles": null,
       "permissions": null,
       "groups": null,

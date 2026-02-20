@@ -4,8 +4,10 @@ import EditableTitle from "@/components/base/EditableTitle";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { ShareModal } from "@/components/modals/ShareModal";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
+import { useAvailableModels } from "@/hooks/queries/useProvidersQuery";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
+import { resolveContextLimit } from "@/core/chat/tokenUsage";
 import type { Agent } from "@/types/agents";
 import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 
@@ -14,8 +16,8 @@ import { useTranslation } from "react-i18next";
 
 import ChatBubble from "./components/ChatBubble";
 import ContextUsageRing from "./components/ContextUsageRing";
-import FloatingChatInput from "./components/FloatingChatInput";
 import EmptyChat from "./components/EmptyChat";
+import FloatingChatInput from "./components/FloatingChatInput";
 import WelcomeMessage from "./components/WelcomeMessage";
 
 interface BaseChatProps {
@@ -108,7 +110,21 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
     channelId: channelTopicId,
     tokenUsage,
     model_tier: modelTier,
+    provider_id: providerId,
+    model,
   } = useActiveChannelStatus();
+  const { data: availableModels } = useAvailableModels();
+
+  const contextLimit = useMemo(
+    () =>
+      resolveContextLimit({
+        modelTier,
+        providerId,
+        model,
+        availableModels,
+      }),
+    [modelTier, providerId, model, availableModels],
+  );
 
   // State for share modal
   const [showShareModal, setShowShareModal] = useState(false);
@@ -140,7 +156,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         <div className="relative grow overflow-y-auto min-w-0">
           <div
             ref={messagesContainerRef}
-            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-white dark:bg-black custom-scrollbar"
+            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-white dark:bg-neutral-950 custom-scrollbar"
             onScroll={handleScroll}
           >
             {/* Sticky Frosted Header — scroll-driven animation (CSS) */}
@@ -206,7 +222,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
                     <div className="flex items-center gap-1">
                       <ContextUsageRing
                         tokenUsage={tokenUsage}
-                        modelTier={modelTier}
+                        limit={contextLimit}
                       />
                       <button
                         onClick={handleShowShareModal}
@@ -268,7 +284,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
               </div>
             )}
 
-            <div className="px-3 pt-6 min-w-0">
+            <div className="px-3 pt-10 min-w-0">
               {messages.length === 0 ? (
                 <ThemedWelcomeMessage
                   config={config}

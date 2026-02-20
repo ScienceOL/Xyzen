@@ -122,11 +122,13 @@ def _ensure_loaded() -> None:
 
 def _load_builtin_configs() -> None:
     """Load all builtin agent configs."""
+    from app.agents.builtin.ceo import CEO_CONFIG
     from app.agents.builtin.deep_research import DEEP_RESEARCH_CONFIG
     from app.agents.builtin.react import REACT_CONFIG
 
     _register_builtin("react", REACT_CONFIG)
     _register_builtin("deep_research", DEEP_RESEARCH_CONFIG)
+    _register_builtin("ceo", CEO_CONFIG)
 
     logger.info(f"Loaded {len(_BUILTIN_CONFIGS)} builtin agent configs")
 

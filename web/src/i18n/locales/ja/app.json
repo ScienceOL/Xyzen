@@ -72,6 +72,7 @@
     "uploadFile": "ファイルをアップロード",
     "resizeHint": "ドラッグして入力フレームの高さを調整",
     "history": "履歴",
+    "checkIn": "チェックイン",
     "more": "もっと見る",
     "search": "検索",
     "searchBuiltin": "ビルトイン検索",
@@ -143,6 +144,29 @@
     "sandboxDesc": "サンドボックスでコードを実行",
     "subagent": "サブエージェント",
     "subagentDesc": "他のエージェントにタスクを委任"
+  },
+  "topicHistory": {
+    "close": "履歴を閉じる",
+    "searchPlaceholder": "会話を検索",
+    "clearAll": "すべての会話を削除",
+    "noSearchResults": "一致する会話が見つかりません",
+    "empty": "会話履歴はまだありません",
+    "cannotDeleteLast": "最後の会話は削除できません",
+    "deleteTopic": "会話を削除",
+    "unpin": "ピンを解除",
+    "pin": "会話をピン留め",
+    "deleteConfirmTitle": "会話を削除",
+    "deleteConfirmMessage": "会話「{{title}}」を削除してもよろしいですか？",
+    "clearConfirmTitle": "すべての会話を削除",
+    "clearConfirmMessage": "このセッションのすべての会話履歴を削除してもよろしいですか？この操作は元に戻せません。",
+    "loginRequired": "ログインしてください",
+    "loginDescription": "ログインすると会話履歴を表示・管理できます",
+    "close": "閉じる",
+    "emptyDescription": "会話を始めると履歴が作成されます",
+    "title": "会話履歴",
+    "subtitle": "このセッションの会話トピック",
+    "clearButton": "クリア",
+    "searchResultCount": "{{count}} 件の結果"
   },
   "input": {
     "placeholder": "メッセージを送信...",
@@ -452,5 +476,11 @@
     "usageStats": "利用統計",
     "detailedAnalysis": "詳細分析",
     "clickDateHint": "日付をタップして詳細を表示"
+  },
+  "loft": {
+    "greeting": "こんにちは、**{{name}}**です。エージェントグループのCEOです。",
+    "inputPlaceholder": "CEOに聞く...",
+    "dismissHint": "タップしてエージェント一覧を表示",
+    "backToLoft": "CEOに戻る"
   }
 }

@@ -64,12 +64,12 @@ MIIE3TCCAsWgAwIBAgIDAeJAMA0GCSqGSIb3DQEBCwUAMCgxDjAMBgNVBAoTBWFkbWluMRYwFAYDVQQD
         description="Encryption algorithm used for authentication, typically RS256",
     )
     Audience: str = Field(
-        default="please-change-client-id-in-production",
+        default="scienceol-demo-client-id",
         description="Casdoor application Client ID",
     )
 
     ClientSecret: str = Field(
-        default="please-change-client-secret-in-production",
+        default="scienceol-demo-client-secret",
         description="Casdoor application Client Secret",
     )
 

@@ -14,6 +14,21 @@ services:
       - /app/.venv
       - /var/run/docker.sock:/var/run/docker.sock
     command: sh -c "uv sync && uv run python -m app.main"
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://localhost:48196/xyzen/api/health', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      replicas: 3
+      resources: {}
 
   celery:
     image: ghcr.io/scienceol/xyzen-service:beta
@@ -23,6 +38,9 @@ services:
       - ../service:/app
       - /app/.venv
     command: sh -c "uv sync && uv run celery -A app.worker worker --loglevel=info"
+    deploy:
+      replicas: 2
+      resources: {}
 
   web:
     image: ghcr.io/scienceol/xyzen-web:beta
@@ -39,3 +57,19 @@ services:
       - /app/node_modules
       - /app/.yarn
     command: sh -c "corepack enable && yarn install && yarn dev"
+    deploy:
+      resources: {}
+
+  # Dev overrides: remove resource limits for infra services
+  nginx:
+    deploy:
+      resources: {}
+  postgresql:
+    deploy:
+      resources: {}
+  redis:
+    deploy:
+      resources: {}
+  searxng:
+    deploy:
+      resources: {}

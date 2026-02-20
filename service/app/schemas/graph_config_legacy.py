@@ -164,7 +164,7 @@ class LLMNodeConfig(BaseModel):
         description="Specific tool names to enable (None = all)",
     )
     max_iterations: int = Field(
-        default=10,
+        default=200,
         ge=1,
         description="Maximum iterations for tool loops",
     )
@@ -510,7 +510,7 @@ def migrate_v1_to_v2(v1_config: dict[str, Any]) -> GraphConfig:
                 max_tokens=v1_llm.get("max_tokens"),
                 tools_enabled=v1_llm.get("tools_enabled", True),
                 tool_filter=v1_llm.get("tool_filter"),
-                max_iterations=v1_llm.get("max_iterations", 10),
+                max_iterations=v1_llm.get("max_iterations", 200),
             )
 
         elif node_type == "tool" and v1_node.get("tool_config"):
@@ -651,7 +651,7 @@ def create_react_config(
     model: str | None = None,
     temperature: float | None = None,
     tools_enabled: bool = True,
-    max_iterations: int = 10,
+    max_iterations: int = 200,
 ) -> GraphConfig:
     """Create a standard ReAct agent configuration.
 

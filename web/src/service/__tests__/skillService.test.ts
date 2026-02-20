@@ -47,8 +47,8 @@ describe("skillService", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://api.test/xyzen/api/v1/skills/",
       expect.objectContaining({
+        method: "GET",
         headers: expect.objectContaining({
-          "Content-Type": "application/json",
           Authorization: "Bearer token-123",
         }),
       }),

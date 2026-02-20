@@ -22,11 +22,7 @@ const getBackendURL = (): string => {
     return import.meta.env.VITE_XYZEN_BACKEND_URL;
   }
 
-  if (isProduction && window !== undefined) {
-    return `${window.location.protocol}//${window.location.host}`;
-  }
-
-  return "http://localhost:48196";
+  return `${window.location.protocol}//${window.location.host}`;
 };
 
 export const DEFAULT_BACKEND_URL = getBackendURL();

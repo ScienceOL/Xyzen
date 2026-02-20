@@ -42,6 +42,7 @@ from .sessions import Session, SessionReadWithTopics
 from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
 from .push_subscription import PushSubscription
+from .root_agent import RootAgent, RootAgentRead
 from .topic import Topic, TopicRead, TopicReadWithMessages
 
 logger = logging.getLogger(__name__)
@@ -115,6 +116,8 @@ __all__ = [
     "SmitheryServersCache",
     "RedemptionCode",
     "RedemptionHistory",
+    "RootAgent",
+    "RootAgentRead",
     "UserWallet",
     "SubscriptionRole",
     "SubscriptionRoleRead",

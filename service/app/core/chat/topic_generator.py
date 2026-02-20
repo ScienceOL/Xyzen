@@ -49,9 +49,12 @@ async def generate_and_update_topic_title(
             user_provider_manager = await get_user_provider_manager(user_id, db)
 
             prompt = (
-                "Please generate a short, concise title (3-5 words) based on the following user query. "
-                "Do not use quotes. "
-                "Return ONLY the title text.\n\n"
+                "Generate a concise title for the following user message.\n"
+                "Rules:\n"
+                "- The title MUST be in the same language as the user's message.\n"
+                "- Maximum 10 words (or 10 Chinese/Japanese/Korean characters).\n"
+                "- Do not use quotes or punctuation.\n"
+                "- Return ONLY the title text, nothing else.\n\n"
                 f"{message_text}"
             )
 

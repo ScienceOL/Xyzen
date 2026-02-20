@@ -90,9 +90,9 @@ class ReActComponent(ExecutableComponent):
                     "max_iterations": {
                         "type": "integer",
                         "description": "Maximum tool-calling iterations",
-                        "default": 10,
+                        "default": 200,
                         "minimum": 1,
-                        "maximum": 100,
+                        "maximum": 500,
                     },
                 },
             },
@@ -138,7 +138,7 @@ class ReActComponent(ExecutableComponent):
         """
         cfg = config or {}
         system_prompt = cfg.get("system_prompt", "You are a helpful assistant.")
-        max_iterations = cfg.get("max_iterations", 10)
+        max_iterations = cfg.get("max_iterations", 200)
 
         logger.info(f"Building ReActComponent graph with {len(tools)} tools")
 

@@ -10,15 +10,18 @@ import ChatStatusBadge from "@/components/base/ChatStatusBadge";
 import { formatTime } from "@/lib/formatDate";
 import type { Agent } from "@/types/agents";
 import {
-  Bars3Icon,
   PencilIcon,
   ShoppingBagIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { motion, type Variants } from "framer-motion";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+
+// Swipe action layout constants
+const SWIPE_THRESHOLD = 45;
+const ACTION_WIDTH = 92; // 2×36px buttons + 8px gap + 12px right pad
 
 // Animation variants for detailed variant
 const itemVariants: Variants = {
@@ -151,8 +154,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   );
 };
 
-// Drag handle props type
-export interface DragHandleProps {
+// Whole-item drag props (replaces old DragHandleProps)
+export interface WholeDragProps {
   attributes: React.HTMLAttributes<HTMLElement>;
   listeners: React.DOMAttributes<HTMLElement>;
 }
@@ -165,7 +168,9 @@ interface AgentListItemBaseProps {
   isLoading?: boolean;
   // Drag and drop support
   isDragging?: boolean;
-  dragHandleProps?: DragHandleProps;
+  sortMode?: boolean;
+  onLongPress?: () => void;
+  wholeDragProps?: WholeDragProps;
   style?: React.CSSProperties;
   setNodeRef?: (node: HTMLElement | null) => void;
 }
@@ -200,6 +205,112 @@ interface CompactVariantProps extends AgentListItemBaseProps {
 
 export type AgentListItemProps = DetailedVariantProps | CompactVariantProps;
 
+/**
+ * Long-press hook for triggering sort mode (touch-only, 550ms).
+ * Cancels if pointer moves >10px.
+ */
+function useLongPress(onLongPress?: () => void, disabled?: boolean) {
+  const timerRef = useRef<number | null>(null);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const firedRef = useRef(false);
+
+  const clear = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    startRef.current = null;
+  }, []);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (disabled || !onLongPress || e.pointerType !== "touch") return;
+      firedRef.current = false;
+      startRef.current = { x: e.clientX, y: e.clientY };
+      clear();
+      timerRef.current = window.setTimeout(() => {
+        firedRef.current = true;
+        try {
+          if ("vibrate" in navigator) navigator.vibrate(10);
+        } catch {
+          // ignore
+        }
+        onLongPress();
+      }, 550);
+    },
+    [disabled, onLongPress, clear],
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      const start = startRef.current;
+      if (!start) return;
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) {
+        clear();
+      }
+    },
+    [clear],
+  );
+
+  const onPointerUp = useCallback(() => clear(), [clear]);
+  const onPointerCancel = useCallback(() => clear(), [clear]);
+
+  // Clean up on unmount
+  useEffect(() => () => clear(), [clear]);
+
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    /** Whether the long-press fired (use to suppress click) */
+    didFire: firedRef,
+  };
+}
+
+/** iOS-style swipe action buttons (edit + delete) */
+const SwipeActions: React.FC<{
+  isMarketplacePublished: boolean;
+  onEdit: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+  t: (key: string, opts?: Record<string, string>) => string;
+}> = ({ isMarketplacePublished, onEdit, onDelete, t }) => (
+  <div className="absolute inset-y-0 right-0 flex items-center justify-end gap-2 pr-3">
+    <button
+      onClick={onEdit}
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-200/80 text-neutral-600 active:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 dark:active:bg-neutral-600"
+    >
+      <PencilIcon className="h-4 w-4" />
+    </button>
+    {isMarketplacePublished ? (
+      <Tooltip side="top">
+        <TooltipTrigger asChild>
+          <button
+            disabled
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-200/80 text-neutral-400 cursor-not-allowed dark:bg-neutral-700 dark:text-neutral-500"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {t("agents.deleteBlockedMessage", {
+            defaultValue:
+              "This agent is published to Agent Market. Please unpublish it first, then delete it.",
+          })}
+        </TooltipContent>
+      </Tooltip>
+    ) : (
+      <button
+        onClick={onDelete}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-500 active:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:active:bg-red-800/50"
+      >
+        <TrashIcon className="h-4 w-4" />
+      </button>
+    )}
+  </div>
+);
+
 // Detailed variant component (for sidebar)
 const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   agent,
@@ -211,7 +322,9 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   onDelete,
   isLoading = false,
   isDragging = false,
-  dragHandleProps,
+  sortMode = false,
+  onLongPress,
+  wholeDragProps,
   style,
   setNodeRef,
 }) => {
@@ -229,12 +342,17 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   const swipeStartOffset = useRef(0);
   const isSwipingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentElRef = useRef<HTMLDivElement | null>(null);
 
-  const SWIPE_THRESHOLD = 60; // Minimum swipe distance to show actions
-  const ACTION_WIDTH = 113; // Width of action buttons area (56px * 2 + 1px divider)
+  // Stable ref for sortMode so the native listener always reads the latest value
+  const sortModeRef = useRef(sortMode);
+  sortModeRef.current = sortMode;
 
   // Check if it's a default agent based on tags
   const isDefaultAgent = agent.tags?.some((tag) => tag.startsWith("default_"));
+
+  // Long-press to enter sort mode (disabled when already in sort mode)
+  const longPress = useLongPress(onLongPress, sortMode);
 
   // Close swipe when clicking outside
   useEffect(() => {
@@ -259,52 +377,59 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
     };
   }, [isSwiped]);
 
-  // Desktop right-click handler
+  // Non-passive touchmove listener to allow preventDefault during horizontal swipe
+  useEffect(() => {
+    const el = contentElRef.current;
+    if (!el) return;
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current || sortModeRef.current) return;
+
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - touchStartRef.current.x;
+      const deltaY = touch.clientY - touchStartRef.current.y;
+
+      if (!isSwipingRef.current) {
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+          isSwipingRef.current = true;
+        } else if (Math.abs(deltaY) > 10) {
+          touchStartRef.current = null;
+          return;
+        }
+      }
+
+      if (isSwipingRef.current) {
+        if (e.cancelable) e.preventDefault();
+        const newOffset = Math.min(
+          0,
+          Math.max(-ACTION_WIDTH, swipeStartOffset.current + deltaX),
+        );
+        setSwipeOffset(newOffset);
+      }
+    };
+
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, []);
+
+  // Desktop right-click handler (suppress in sort mode / after long-press)
   const handleContextMenu = (e: React.MouseEvent) => {
+    if (sortMode || longPress.didFire.current) {
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
-  // Mobile swipe handlers
+  // Mobile swipe handlers (disabled in sort mode)
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Don't start swipe if touching the drag handle
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-drag-handle]")) return;
-
+    if (sortMode) return;
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
     swipeStartOffset.current = swipeOffset;
     isSwipingRef.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-
-    // Determine if this is a horizontal swipe (not vertical scroll)
-    if (!isSwipingRef.current) {
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-        isSwipingRef.current = true;
-      } else if (Math.abs(deltaY) > 10) {
-        // Vertical scroll, cancel swipe detection
-        touchStartRef.current = null;
-        return;
-      }
-    }
-
-    if (isSwipingRef.current) {
-      e.preventDefault();
-      // Calculate new offset (only allow left swipe, negative values)
-      const newOffset = Math.min(
-        0,
-        Math.max(-ACTION_WIDTH, swipeStartOffset.current + deltaX),
-      );
-      setSwipeOffset(newOffset);
-    }
   };
 
   const handleTouchEnd = () => {
@@ -325,12 +450,14 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
 
   const handleClick = () => {
     if (isDragging) return;
+    if (longPress.didFire.current) return;
     // If swiped, close it instead of navigating
     if (isSwiped) {
       setIsSwiped(false);
       setSwipeOffset(0);
       return;
     }
+    if (sortMode) return;
     onClick?.(agent);
   };
 
@@ -409,92 +536,62 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
           </p>
         )}
       </div>
-
-      {/* Drag handle - only visible when drag is enabled */}
-      {dragHandleProps && (
-        <div
-          data-drag-handle
-          className="shrink-0 flex items-center justify-center w-8 h-full cursor-grab active:cursor-grabbing touch-none"
-          {...dragHandleProps.attributes}
-          {...dragHandleProps.listeners}
-        >
-          <Bars3Icon className="h-5 w-5 text-neutral-400 dark:text-neutral-500" />
-        </div>
-      )}
     </>
   );
 
-  // When sortable (dragHandleProps provided), use simple div to avoid motion conflicts
-  if (dragHandleProps) {
+  // When inside SortableItem (setNodeRef provided), use simple div to avoid motion conflicts
+  if (setNodeRef) {
     return (
       <>
+        {/* Outer: dnd-kit positioning (transform/transition) — no CSS animation here */}
         <div
           ref={(node) => {
-            setNodeRef?.(node);
+            setNodeRef(node);
             (
               containerRef as React.MutableRefObject<HTMLDivElement | null>
             ).current = node;
           }}
           style={style}
-          className={`relative overflow-hidden rounded-lg ${isDragging ? "z-50" : ""}`}
+          className={isDragging ? "z-50" : ""}
         >
-          {/* Swipe action buttons (behind the content) - hidden during loading to prevent flicker */}
-          {!isLoading && (
-            <div className="absolute inset-y-0 right-0 flex items-stretch">
-              <button
-                onClick={handleEditClick}
-                className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 active:bg-neutral-200 dark:active:bg-neutral-600"
-              >
-                <PencilIcon className="h-5 w-5" />
-              </button>
-              <div className="w-px bg-neutral-200 dark:bg-neutral-600" />
-              {isMarketplacePublished ? (
-                <Tooltip side="top">
-                  <TooltipTrigger asChild>
-                    <button
-                      disabled
-                      className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("agents.deleteBlockedMessage", {
-                      defaultValue:
-                        "This agent is published to Agent Market. Please unpublish it first, then delete it.",
-                    })}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <button
-                  onClick={handleDeleteClick}
-                  className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-red-500 dark:text-red-400 active:bg-red-50 dark:active:bg-red-900/30"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Main content (slides left on swipe) */}
+          {/* Inner: jiggle animation (separate div so CSS animation doesn't override dnd-kit transform) */}
           <div
-            onClick={handleClick}
-            onContextMenu={handleContextMenu}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{ transform: `translateX(${swipeOffset}px)` }}
-            className={`
-              relative w-full flex cursor-pointer items-center gap-4 rounded-lg p-3
-              bg-white dark:bg-neutral-900 shadow-sm
-              ${agent.id === "default-chat" ? "select-none" : ""}
-              ${isDragging ? "shadow-xl cursor-grabbing" : ""}
-              ${!isSwiped ? "hover:bg-neutral-50 dark:hover:bg-neutral-800" : ""}
-              ${isLoading ? "animate-pulse" : ""}
-              transition-transform duration-200 ease-out
-            `}
+            className={`relative overflow-hidden ${sortMode && !isDragging ? "agent-jiggle" : ""}`}
           >
-            {itemContent}
+            {/* Swipe action buttons - hidden during loading or sort mode */}
+            {!isLoading && !sortMode && (
+              <SwipeActions
+                isMarketplacePublished={isMarketplacePublished}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteClick}
+                t={t}
+              />
+            )}
+
+            {/* Main content (slides left on swipe) */}
+            <div
+              ref={contentElRef}
+              onClick={handleClick}
+              onContextMenu={handleContextMenu}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              {...longPress}
+              {...(sortMode ? wholeDragProps?.attributes : {})}
+              {...(sortMode ? wholeDragProps?.listeners : {})}
+              style={{ transform: `translateX(${swipeOffset}px)` }}
+              className={`
+                relative w-full flex cursor-pointer items-center gap-3 px-4 py-3
+                bg-white dark:bg-neutral-900
+                ${agent.id === "default-chat" ? "select-none" : ""}
+                ${isDragging ? "shadow-xl cursor-grabbing" : ""}
+                ${sortMode ? "touch-none" : ""}
+                ${!isSwiped && !sortMode ? "active:bg-neutral-50 dark:active:bg-neutral-800" : ""}
+                ${isLoading ? "animate-pulse" : ""}
+                transition-transform duration-200 ease-out
+              `}
+            >
+              {itemContent}
+            </div>
           </div>
         </div>
 
@@ -519,47 +616,20 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   // Non-sortable: use motion.div with animations
   return (
     <>
-      <div ref={containerRef} className="relative overflow-hidden rounded-lg">
-        {/* Swipe action buttons (behind the content) - hidden during loading to prevent flicker */}
+      <div ref={containerRef} className="relative overflow-hidden">
+        {/* Swipe action buttons - hidden during loading to prevent flicker */}
         {!isLoading && (
-          <div className="absolute inset-y-0 right-0 flex items-stretch">
-            <button
-              onClick={handleEditClick}
-              className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 active:bg-neutral-200 dark:active:bg-neutral-600"
-            >
-              <PencilIcon className="h-5 w-5" />
-            </button>
-            <div className="w-px bg-neutral-200 dark:bg-neutral-600" />
-            {isMarketplacePublished ? (
-              <Tooltip side="top">
-                <TooltipTrigger asChild>
-                  <button
-                    disabled
-                    className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("agents.deleteBlockedMessage", {
-                    defaultValue:
-                      "This agent is published to Agent Market. Please unpublish it first, then delete it.",
-                  })}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <button
-                onClick={handleDeleteClick}
-                className="flex w-14 items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-red-500 dark:text-red-400 active:bg-red-50 dark:active:bg-red-900/30"
-              >
-                <TrashIcon className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <SwipeActions
+            isMarketplacePublished={isMarketplacePublished}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
+            t={t}
+          />
         )}
 
         {/* Main content (slides left on swipe) */}
         <motion.div
+          ref={contentElRef}
           layout={!isDragging}
           variants={itemVariants}
           whileHover={
@@ -571,16 +641,16 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
           onClick={handleClick}
           onContextMenu={handleContextMenu}
           onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          {...longPress}
           animate={{ x: swipeOffset }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
           className={`
-            relative w-full flex cursor-pointer items-center gap-4 rounded-lg p-3
-            bg-white dark:bg-neutral-900 shadow-sm
+            relative w-full flex cursor-pointer items-center gap-3 px-4 py-3
+            bg-white dark:bg-neutral-900
             ${agent.id === "default-chat" ? "select-none" : ""}
             ${isDragging ? "shadow-xl z-50 cursor-grabbing" : ""}
-            ${!isSwiped ? "hover:bg-neutral-50 dark:hover:bg-neutral-800" : ""}
+            ${!isSwiped ? "active:bg-neutral-50 dark:active:bg-neutral-800" : ""}
             ${isLoading ? "animate-pulse" : ""}
           `}
         >
@@ -617,7 +687,9 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
   onEdit,
   onDelete,
   isDragging = false,
-  dragHandleProps,
+  sortMode = false,
+  onLongPress,
+  wholeDragProps,
   style,
   setNodeRef,
 }) => {
@@ -628,6 +700,9 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
 
   // Check if it's a default agent based on tags
   const isDefaultAgent = agent.tags?.some((tag) => tag.startsWith("default_"));
+
+  // Long-press to enter sort mode
+  const longPress = useLongPress(onLongPress, sortMode);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (!onEdit && !onDelete) return;
@@ -647,24 +722,27 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
         aria-pressed={isSelected}
         onClick={() => {
           if (isDragging) return;
+          if (longPress.didFire.current) return;
+          if (sortMode) return;
           onClick?.(agent);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            if (!isDragging) {
+            if (!isDragging && !sortMode) {
               onClick?.(agent);
             }
           }
         }}
         onContextMenu={handleContextMenu}
+        {...longPress}
+        {...(sortMode ? wholeDragProps?.attributes : {})}
+        {...(sortMode ? wholeDragProps?.listeners : {})}
         className={`w-full flex items-center gap-3 p-2 rounded-sm transition-all duration-200 group ${
           isSelected
             ? "bg-white/80 dark:bg-white/20 shadow-sm"
             : "hover:bg-white/40 dark:hover:bg-white/10"
-        } ${isDragging ? "shadow-xl z-50 cursor-grabbing" : "cursor-pointer"}`}
-        {...dragHandleProps?.attributes}
-        {...dragHandleProps?.listeners}
+        } ${isDragging ? "shadow-xl z-50 cursor-grabbing" : "cursor-pointer"} ${sortMode && !isDragging ? "agent-jiggle" : ""} ${sortMode ? "touch-none" : ""}`}
       >
         <div className="relative">
           <img

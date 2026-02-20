@@ -22,7 +22,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { motion, type Variants } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AgentListItem, type DragHandleProps } from "./AgentListItem";
+import { useTranslation } from "react-i18next";
+import { AgentListItem } from "./AgentListItem";
 
 // Container animation variants for detailed variant
 const containerVariants: Variants = {
@@ -40,6 +41,8 @@ const containerVariants: Variants = {
 interface SortableItemProps {
   agent: Agent;
   variant: "detailed" | "compact";
+  sortMode: boolean;
+  onLongPress: () => void;
   // Detailed variant props
   isMarketplacePublished?: boolean;
   lastConversationTime?: string;
@@ -58,6 +61,8 @@ interface SortableItemProps {
 const SortableItem: React.FC<SortableItemProps> = ({
   agent,
   variant,
+  sortMode,
+  onLongPress,
   isMarketplacePublished,
   lastConversationTime,
   activeTopicCount,
@@ -76,18 +81,20 @@ const SortableItem: React.FC<SortableItemProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: agent.id });
+  } = useSortable({ id: agent.id, disabled: !sortMode });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    // In sort mode items move in-place (no overlay), keep full opacity
+    opacity: isDragging && !sortMode ? 0.5 : 1,
   };
 
-  const dragHandleProps: DragHandleProps = {
-    attributes,
-    listeners: listeners ?? {},
-  };
+  // In sort mode: attach drag listeners to the whole item
+  // In normal mode: no drag listeners (long-press enters sort mode)
+  const wholeDragProps = sortMode
+    ? { attributes, listeners: listeners ?? {} }
+    : undefined;
 
   if (variant === "detailed") {
     return (
@@ -102,7 +109,9 @@ const SortableItem: React.FC<SortableItemProps> = ({
         onDelete={onDelete}
         isLoading={isLoading}
         isDragging={isDragging}
-        dragHandleProps={dragHandleProps}
+        sortMode={sortMode}
+        onLongPress={onLongPress}
+        wholeDragProps={wholeDragProps}
         style={style}
         setNodeRef={setNodeRef}
       />
@@ -121,7 +130,9 @@ const SortableItem: React.FC<SortableItemProps> = ({
       onEdit={onEdit}
       onDelete={onDelete}
       isDragging={isDragging}
-      dragHandleProps={dragHandleProps}
+      sortMode={sortMode}
+      onLongPress={onLongPress}
+      wholeDragProps={wholeDragProps}
       style={style}
       setNodeRef={setNodeRef}
     />
@@ -137,6 +148,8 @@ interface AgentListBaseProps {
   // Sorting support
   sortable?: boolean;
   onReorder?: (agentIds: string[]) => void;
+  /** Fires when sort mode toggles (long-press enter / Done exit). */
+  onSortModeChange?: (active: boolean) => void;
 }
 
 // Props for detailed variant
@@ -177,11 +190,14 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
     loadingAgentId,
     sortable = false,
     onReorder,
+    onSortModeChange,
   } = props;
+  const { t } = useTranslation();
 
   // Local state for drag ordering
   const [items, setItems] = useState<Agent[]>(agents);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState(false);
 
   // Track whether user is actively dragging to prevent sync during drag
   const isDraggingRef = useRef(false);
@@ -210,7 +226,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
     ? displayAgents.find((a) => a.id === activeId)
     : null;
 
-  // Sensors for mouse and touch - no delay needed since we use a dedicated drag handle
+  // Sensors: only active in sort mode, 5px distance constraint on whole item
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
@@ -256,9 +272,20 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
     setActiveId(null);
   }, []);
 
-  // Render overlay item
+  const handleEnterSortMode = useCallback(() => {
+    if (!sortable) return;
+    setSortMode(true);
+    onSortModeChange?.(true);
+  }, [sortable, onSortModeChange]);
+
+  const handleExitSortMode = useCallback(() => {
+    setSortMode(false);
+    onSortModeChange?.(false);
+  }, [onSortModeChange]);
+
+  // Render overlay item (disabled in sort mode — items move in-place)
   const renderOverlayItem = () => {
-    if (!activeAgent) return null;
+    if (!activeAgent || sortMode) return null;
 
     if (variant === "detailed") {
       const { publishedAgentIds, lastConversationTimeByAgent } =
@@ -294,6 +321,18 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
     );
   };
 
+  // "Done" button for exiting sort mode
+  const doneButton = sortMode && (
+    <div className="sticky bottom-0 z-10 flex justify-center py-3 bg-gradient-to-t from-white via-white dark:from-neutral-900 dark:via-neutral-900">
+      <button
+        onClick={handleExitSortMode}
+        className="rounded-full bg-neutral-800 px-6 py-2 text-sm font-medium text-white shadow-lg active:scale-95 transition-transform dark:bg-neutral-200 dark:text-neutral-900"
+      >
+        {t("common.done", { defaultValue: "Done" })}
+      </button>
+    </div>
+  );
+
   if (variant === "detailed") {
     const {
       publishedAgentIds,
@@ -305,7 +344,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
 
     const content = (
       <motion.div
-        className="space-y-2"
+        className="divide-y divide-neutral-100 dark:divide-neutral-800"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -316,6 +355,8 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
               key={agent.id}
               agent={agent}
               variant="detailed"
+              sortMode={sortMode}
+              onLongPress={handleEnterSortMode}
               isMarketplacePublished={publishedAgentIds?.has(agent.id)}
               lastConversationTime={lastConversationTimeByAgent?.[agent.id]}
               activeTopicCount={activeTopicCountByAgent?.[agent.id]}
@@ -357,6 +398,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
           >
             {content}
           </SortableContext>
+          {doneButton}
           {/* NOTE: Render DragOverlay into document.body to avoid positioning bugs when
               this list is inside a transformed/animated container (e.g. framer-motion).
               CSS transforms create a new containing block, which can cause @dnd-kit's
@@ -391,6 +433,8 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
             key={agent.id}
             agent={agent}
             variant="compact"
+            sortMode={sortMode}
+            onLongPress={handleEnterSortMode}
             isSelected={agent.id === selectedAgentId}
             status={getAgentStatus?.(agent) ?? "idle"}
             role={getAgentRole?.(agent)}
@@ -432,6 +476,7 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
         >
           {content}
         </SortableContext>
+        {doneButton}
         {/* NOTE: Render DragOverlay into document.body to avoid positioning bugs when
             this list is inside a transformed/animated container (e.g. framer-motion).
             CSS transforms create a new containing block, which can cause @dnd-kit's

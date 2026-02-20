@@ -21,6 +21,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { memo, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface SessionHistoryProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ function SessionHistory({
   onClose,
   onSelectTopic,
 }: SessionHistoryProps) {
+  const { t } = useTranslation();
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [topicToDelete, setTopicToDelete] = useState<ChatHistoryItem | null>(
     null,
@@ -154,17 +156,17 @@ function SessionHistory({
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
       <UserIcon className="h-16 w-16 text-neutral-300 dark:text-neutral-600" />
       <h3 className="mt-4 text-lg font-medium text-neutral-800 dark:text-white">
-        请先登录
+        {t("app.topicHistory.loginRequired")}
       </h3>
       <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-        登录后即可查看和管理您的会话历史记录
+        {t("app.topicHistory.loginDescription")}
       </p>
       <div className="mt-6">
         <button
           onClick={onClose}
           className="rounded-sm bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
         >
-          关闭
+          {t("app.topicHistory.close")}
         </button>
       </div>
     </div>
@@ -182,10 +184,10 @@ function SessionHistory({
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
       <ClockIcon className="h-16 w-16 text-neutral-300 dark:text-neutral-600" />
       <h3 className="mt-4 text-lg font-medium text-neutral-800 dark:text-white">
-        当前会话暂无历史记录
+        {t("app.topicHistory.empty")}
       </h3>
       <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-        开始对话即可创建历史记录
+        {t("app.topicHistory.emptyDescription")}
       </p>
     </div>
   );
@@ -197,18 +199,18 @@ function SessionHistory({
       <div className="border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-800 dark:text-white">
-            会话历史
+            {t("app.topicHistory.title")}
           </h2>
           <button
             onClick={onClose}
             className="rounded-sm p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-            title="关闭历史记录"
+            title={t("app.topicHistory.close")}
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          当前会话的对话主题
+          {t("app.topicHistory.subtitle")}
         </p>
       </div>
 
@@ -219,7 +221,7 @@ function SessionHistory({
           <div className="relative flex-1">
             <Input
               type="text"
-              placeholder="搜索对话"
+              placeholder={t("app.topicHistory.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -237,17 +239,19 @@ function SessionHistory({
           <button
             onClick={handleClearAllTopics}
             className="flex items-center gap-1.5 rounded-sm border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-red-50 hover:border-red-200 hover:text-red-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-red-950/30 dark:hover:border-red-800 dark:hover:text-red-400"
-            title="清空所有对话"
+            title={t("app.topicHistory.clearAll")}
           >
             <ArchiveBoxXMarkIcon className="h-4 w-4" />
-            <span>清空</span>
+            <span>{t("app.topicHistory.clearButton")}</span>
           </button>
         </div>
 
         {/* Search Results Count */}
         {searchQuery && (
           <div className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-            找到 {sortedHistory.length} 个结果
+            {t("app.topicHistory.searchResultCount", {
+              count: sortedHistory.length,
+            })}
           </div>
         )}
       </div>
@@ -258,7 +262,9 @@ function SessionHistory({
           <div className="flex h-full flex-col items-center justify-center px-6 text-center">
             <MagnifyingGlassIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" />
             <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
-              {searchQuery ? "没有找到匹配的对话" : "当前会话暂无历史记录"}
+              {searchQuery
+                ? t("app.topicHistory.noSearchResults")
+                : t("app.topicHistory.empty")}
             </p>
           </div>
         ) : (
@@ -324,8 +330,8 @@ function SessionHistory({
                     }`}
                     title={
                       sortedHistory.length <= 1
-                        ? "不能删除最后一个会话"
-                        : "删除会话"
+                        ? t("app.topicHistory.cannotDeleteLast")
+                        : t("app.topicHistory.deleteTopic")
                     }
                     onClick={(e) => handleDeleteTopic(e, chat)}
                     disabled={sortedHistory.length <= 1}
@@ -334,7 +340,11 @@ function SessionHistory({
                   </button>
                   <button
                     className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700 md:invisible md:group-hover:visible dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-                    title={chat.isPinned ? "取消置顶" : "置顶会话"}
+                    title={
+                      chat.isPinned
+                        ? t("app.topicHistory.unpin")
+                        : t("app.topicHistory.pin")
+                    }
                     onClick={(e) => handleTogglePin(e, chat.id)}
                   >
                     <MapPinIcon
@@ -384,8 +394,10 @@ function SessionHistory({
             setConfirmModalOpen(false);
             setTopicToDelete(null);
           }}
-          title="Delete Topic"
-          message={`Are you sure you want to delete the topic "${topicToDelete?.title}"?`}
+          title={t("app.topicHistory.deleteConfirmTitle")}
+          message={t("app.topicHistory.deleteConfirmMessage", {
+            title: topicToDelete?.title,
+          })}
         />
       )}
 
@@ -394,8 +406,8 @@ function SessionHistory({
         isOpen={isClearConfirmOpen}
         onClose={() => setIsClearConfirmOpen(false)}
         onConfirm={confirmClearAll}
-        title="清空所有对话"
-        message="确定要清空当前会话的所有对话记录吗？此操作不可恢复。"
+        title={t("app.topicHistory.clearConfirmTitle")}
+        message={t("app.topicHistory.clearConfirmMessage")}
       />
     </>
   );

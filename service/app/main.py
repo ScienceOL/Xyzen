@@ -45,8 +45,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize system provider from environment config
     from app.core.providers import initialize_providers_on_startup
+    from app.infra.redis import run_once
 
-    await initialize_providers_on_startup()
+    await run_once("startup:providers", initialize_providers_on_startup)
 
     # Register builtin tools (web_search, knowledge_*, etc.)
     from app.tools.registry import register_builtin_tools
@@ -64,33 +65,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"Novu bootstrap skipped: {e}")
 
-    async with AsyncSessionLocal() as db:
-        try:
-            system_manager = SystemAgentManager(db)
-            system_agents = await system_manager.ensure_system_agents()
-            await db.commit()
+    async def _ensure_system_agents() -> None:
+        async with AsyncSessionLocal() as db:
+            try:
+                system_manager = SystemAgentManager(db)
+                system_agents = await system_manager.ensure_system_agents()
+                await db.commit()
 
-            agent_names = [agent.name for agent in system_agents.values()]
-            logger.info(f"System agents initialized: {', '.join(agent_names)}")
+                agent_names = [agent.name for agent in system_agents.values()]
+                logger.info(f"System agents initialized: {', '.join(agent_names)}")
 
-        except Exception as e:
-            logger.error(f"Failed to initialize system agents: {e}")
-            await db.rollback()
-            # Don't fail startup if system agents can't be created
-            pass
+            except Exception as e:
+                logger.error(f"Failed to initialize system agents: {e}")
+                await db.rollback()
+
+    await run_once("startup:system_agents", _ensure_system_agents)
 
     # Publish builtin agents to marketplace
     from app.core.marketplace import BuiltinMarketplacePublisher
 
-    async with AsyncSessionLocal() as db:
-        try:
-            publisher = BuiltinMarketplacePublisher(db)
-            listings = await publisher.ensure_builtin_listings()
-            await db.commit()
-            logger.info(f"Builtin marketplace listings ensured: {list(listings.keys())}")
-        except Exception as e:
-            logger.error(f"Failed to publish builtin agents to marketplace: {e}")
-            await db.rollback()
+    async def _ensure_builtin_listings() -> None:
+        async with AsyncSessionLocal() as db:
+            try:
+                publisher = BuiltinMarketplacePublisher(db)
+                listings = await publisher.ensure_builtin_listings()
+                await db.commit()
+                logger.info(f"Builtin marketplace listings ensured: {list(listings.keys())}")
+            except Exception as e:
+                logger.error(f"Failed to publish builtin agents to marketplace: {e}")
+                await db.rollback()
+
+    await run_once("startup:builtin_listings", _ensure_builtin_listings)
 
     # 自动创建和管理所有 MCP 服务器
     from app.mcp import registry

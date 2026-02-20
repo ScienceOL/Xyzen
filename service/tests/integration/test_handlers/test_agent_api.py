@@ -48,7 +48,7 @@ class TestAgentAPI:
         assert response.status_code == 200
         agents = response.json()
         assert len(agents) >= 1
-        assert any(a["name"] == "随便聊聊" for a in agents)
+        assert any(a["name"] == "小二" for a in agents)
 
     async def test_delete_default_agent_heuristic(self, async_client: AsyncClient):
         """
@@ -58,7 +58,7 @@ class TestAgentAPI:
         # 1. Fetch to ensure created
         response = await async_client.get("/xyzen/api/v1/agents/")
         agents = response.json()
-        default_agent = next(a for a in agents if a["name"] == "随便聊聊")
+        default_agent = next(a for a in agents if a["name"] == "小二")
 
         # 2. Delete it
         response = await async_client.delete(f"/xyzen/api/v1/agents/{default_agent['id']}")
@@ -67,7 +67,7 @@ class TestAgentAPI:
         # 3. Verify it reappears because NO sessions exist
         response = await async_client.get("/xyzen/api/v1/agents/")
         agents = response.json()
-        assert any(a["name"] == "随便聊聊" for a in agents)
+        assert any(a["name"] == "小二" for a in agents)
 
     async def test_delete_default_agent_with_session(self, async_client: AsyncClient, db_session: AsyncSession):
         """
@@ -77,7 +77,7 @@ class TestAgentAPI:
         # 1. Ensure default agent exists
         response = await async_client.get("/xyzen/api/v1/agents/")
         agents = response.json()
-        default_agent = next(a for a in agents if a["name"] == "随便聊聊")
+        default_agent = next(a for a in agents if a["name"] == "小二")
 
         # 2. Create a session (simulate chat history)
         # Using the same user_id "test-user-id" as configured in async_client fixture
@@ -94,7 +94,7 @@ class TestAgentAPI:
         # 4. Verify it does NOT reappear
         response = await async_client.get("/xyzen/api/v1/agents/")
         agents = response.json()
-        assert not any(a["name"] == "随便聊聊" for a in agents)
+        assert not any(a["name"] == "小二" for a in agents)
 
     async def test_delete_legacy_graph_config_agent(self, async_client: AsyncClient, db_session: AsyncSession):
         """Delete should work even if agent graph_config is legacy/non-v3."""

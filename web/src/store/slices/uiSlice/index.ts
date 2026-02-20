@@ -39,6 +39,9 @@ export interface UiSlice {
   capsuleOpen: boolean;
   capsuleActiveTab: "knowledge" | "tools" | "sandbox" | "memory";
   showOfficialRecommendations: boolean;
+  // Mobile navigation
+  mobileCeoOverlay: boolean;
+  mobilePage: number;
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -73,6 +76,8 @@ export interface UiSlice {
     tab: "knowledge" | "tools" | "sandbox" | "memory",
   ) => void;
   setShowOfficialRecommendations: (show: boolean) => void;
+  setMobileCeoOverlay: (visible: boolean) => void;
+  setMobilePage: (page: number) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -104,6 +109,8 @@ export const createUiSlice: StateCreator<
   capsuleActiveTab: "knowledge",
   showOfficialRecommendations:
     localStorage.getItem("officialRecommendationsDismissed") !== "true",
+  mobileCeoOverlay: true,
+  mobilePage: 0,
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -171,4 +178,6 @@ export const createUiSlice: StateCreator<
     );
     set({ showOfficialRecommendations: show });
   },
+  setMobileCeoOverlay: (visible) => set({ mobileCeoOverlay: visible }),
+  setMobilePage: (page) => set({ mobilePage: page }),
 });

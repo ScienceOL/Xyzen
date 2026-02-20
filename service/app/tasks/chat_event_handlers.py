@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCode, ErrCodeError
+from app.core.chat.token_usage import normalize_token_usage
 from app.core.consume import create_consume_for_chat
 from app.core.consume_calculator import ConsumptionCalculator
 from app.core.consume_strategy import ConsumptionContext
@@ -300,9 +301,14 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
 
 async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:
     token_data = stream_event["data"]
-    ctx.input_tokens = token_data.get("input_tokens", 0)
-    ctx.output_tokens = token_data.get("output_tokens", 0)
-    ctx.total_tokens = token_data.get("total_tokens", 0)
+    ctx.input_tokens, ctx.output_tokens, ctx.total_tokens = normalize_token_usage(
+        token_data.get("input_tokens", 0),
+        token_data.get("output_tokens", 0),
+        token_data.get("total_tokens", 0),
+    )
+    token_data["input_tokens"] = ctx.input_tokens
+    token_data["output_tokens"] = ctx.output_tokens
+    token_data["total_tokens"] = ctx.total_tokens
     await ctx.publisher.publish(json.dumps(stream_event))
 
 

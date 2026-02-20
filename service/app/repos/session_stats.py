@@ -14,7 +14,7 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, case, func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -348,19 +348,26 @@ class SessionStatsRepository:
     async def get_topic_token_stats(self, topic_id: UUID) -> TopicTokenStats:
         """Get current context window usage for a topic.
 
-        Returns the latest request's (input_tokens + output_tokens), which
-        represents the current conversation size — input_tokens already
-        includes system prompt + all prior messages.
+        Returns the latest successful tokenized request for the topic.
+        Tokenless pre-deduction rows are excluded.
         """
         token_stmt = (
             select(
-                func.coalesce(ConsumeRecord.input_tokens, 0).label("input_tokens"),
-                func.coalesce(ConsumeRecord.output_tokens, 0).label("output_tokens"),
+                case(
+                    (func.coalesce(ConsumeRecord.total_tokens, 0) > 0, ConsumeRecord.total_tokens),
+                    else_=func.coalesce(ConsumeRecord.input_tokens, 0)
+                    + func.coalesce(ConsumeRecord.output_tokens, 0),
+                ).label("total_tokens")
             )
             .where(
                 and_(
                     col(ConsumeRecord.topic_id) == topic_id,
                     col(ConsumeRecord.consume_state) == "success",
+                    (
+                        col(ConsumeRecord.total_tokens).is_not(None)
+                        | col(ConsumeRecord.input_tokens).is_not(None)
+                        | col(ConsumeRecord.output_tokens).is_not(None)
+                    ),
                 )
             )
             .order_by(col(ConsumeRecord.created_at).desc())
@@ -369,5 +376,5 @@ class SessionStatsRepository:
         result = await self.db.exec(token_stmt)
         row = result.first()
 
-        total = (int(row[0]) + int(row[1])) if row else 0
+        total = int(row) if row is not None else 0
         return TopicTokenStats(topic_id=topic_id, total_tokens=total)

@@ -40,7 +40,12 @@
     "loading": "読み込み中...",
     "error": "サンドボックスファイルの読み込みに失敗しました",
     "emptyFolder": "空のフォルダ",
-    "refresh": "更新"
+    "refresh": "更新",
+    "viewer": {
+      "download": "ダウンロード",
+      "loadError": "ファイルの読み込みに失敗しました",
+      "binaryFile": "バイナリファイル — ダウンロードして閲覧"
+    }
   },
   "collapse": "パネルを閉じる",
   "expand": "パネルを開く",

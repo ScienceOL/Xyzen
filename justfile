@@ -150,6 +150,12 @@ db-query query:
 db-shell:
     docker exec -it sciol-xyzen-postgresql-1 psql -U postgres -d postgres
 
+# Reset Casdoor database and restart (re-imports init_data.json)
+init-casdoor:
+    docker exec sciol-infra-postgresql-1 psql -U postgres -c "DROP DATABASE IF EXISTS casdoor;"
+    docker exec sciol-infra-postgresql-1 psql -U postgres -c "CREATE DATABASE casdoor;"
+    docker restart sciol-casdoor
+
 # =============================================================================
 # Docker
 # =============================================================================
@@ -166,9 +172,9 @@ logs-f *args='':
 ps:
     docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev ps
 
-# Restart a specific service
-restart service:
-    docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev restart {{ service }}
+# Restart one or more services
+restart +services:
+    docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev restart {{ services }}
 
 # Rebuild and restart services
 rebuild *services='':

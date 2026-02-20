@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -25,6 +25,137 @@ const ConsumptionAnalyticsModal = React.lazy(() =>
     default: m.ConsumptionAnalyticsModal,
   })),
 );
+
+// --- Pure utility functions (no component state dependency) ---
+
+/** Format a Date to YYYY-MM-DD in check-in timezone (Asia/Shanghai) */
+function formatDateInCheckinTZ(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  return `${year}-${month}-${day}`;
+}
+
+/** Format date to YYYY-MM-DD (local timezone) */
+function formatDateForAPI(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** Static animation variants — no need to recreate per render */
+const calendarVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 20 : -20,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -20 : 20,
+    opacity: 0,
+  }),
+};
+
+// --- Extracted sub-components ---
+
+const TokenDonut = React.memo(function TokenDonut({
+  input,
+  output,
+  tokenLabel,
+  locale,
+}: {
+  input: number;
+  output: number;
+  tokenLabel: string;
+  locale: string;
+}) {
+  const total = Math.max(0, input) + Math.max(0, output);
+  const safeTotal = total > 0 ? total : 1;
+
+  const size = 92;
+  const strokeWidth = 10;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  const inputRatio = Math.max(0, input) / safeTotal;
+  const outputRatio = Math.max(0, output) / safeTotal;
+
+  const inputDash = circumference * inputRatio;
+  const outputDash = circumference * outputRatio;
+  const outputDashOffset = circumference - inputDash;
+
+  return (
+    <div className="relative h-23 w-23 shrink-0">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="-rotate-90"
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          className="text-neutral-200/70 dark:text-white/10"
+          strokeWidth={strokeWidth}
+        />
+
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${inputDash} ${circumference - inputDash}`}
+          strokeDashoffset={0}
+          strokeWidth={strokeWidth}
+          className="text-indigo-500 dark:text-indigo-400"
+        />
+
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${outputDash} ${circumference - outputDash}`}
+          strokeDashoffset={outputDashOffset}
+          strokeWidth={strokeWidth}
+          className="text-pink-500 dark:text-pink-400"
+        />
+      </svg>
+
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          {tokenLabel}
+        </div>
+        <div className="text-sm font-bold text-neutral-900 dark:text-white">
+          {total.toLocaleString(locale)}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 interface CheckInCalendarProps {
   onCheckInSuccess?: (response: CheckInResponse) => void;
@@ -48,29 +179,6 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   // Calculate prev and next month for fetching data
   const prevMonthDate = new Date(displayYear, displayMonthNumber - 2, 1);
   const nextMonthDate = new Date(displayYear, displayMonthNumber, 1);
-
-  // Format a Date to YYYY-MM-DD in check-in timezone (Asia/Shanghai)
-  function formatDateInCheckinTZ(date: Date): string {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Shanghai",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(date);
-
-    const year = parts.find((p) => p.type === "year")?.value;
-    const month = parts.find((p) => p.type === "month")?.value;
-    const day = parts.find((p) => p.type === "day")?.value;
-
-    if (!year || !month || !day) {
-      // Fallback (should be rare)
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, "0");
-      const d = String(date.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
-    }
-    return `${year}-${month}-${day}`;
-  }
 
   // Get check-in status
   const statusQuery = useQuery({
@@ -116,8 +224,26 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
     ],
   });
 
-  const monthlyData = monthlyQueries.flatMap((q) => q.data || []);
+  const prevMonthData = monthlyQueries[0].data;
+  const currMonthData = monthlyQueries[1].data;
+  const nextMonthData = monthlyQueries[2].data;
+  const monthlyData = useMemo(
+    () => [prevMonthData, currMonthData, nextMonthData].flatMap((d) => d || []),
+    [prevMonthData, currMonthData, nextMonthData],
+  );
   const isMonthlyLoading = monthlyQueries.some((q) => q.isLoading);
+
+  // Pre-compute O(1) lookup structures for calendar day rendering
+  const { checkedInDates, checkInByDate } = useMemo(() => {
+    const dates = new Set<string>();
+    const byDate = new Map<string, CheckInRecordResponse>();
+    for (const record of monthlyData) {
+      const key = formatDateInCheckinTZ(new Date(record.check_in_date));
+      dates.add(key);
+      byDate.set(key, record);
+    }
+    return { checkedInDates: dates, checkInByDate: byDate };
+  }, [monthlyData]);
 
   // Get day consumption when date changes
   // Use YYYY-MM-DD as cache key so the same calendar day always hits cache
@@ -138,65 +264,13 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const currentLocale = i18n.resolvedLanguage ?? i18n.language ?? "zh-CN";
 
-  const variants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 20 : -20,
-      opacity: 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: (direction: number) => ({
-      x: direction > 0 ? -20 : 20,
-      opacity: 0,
-    }),
-  };
-
-  // function handlePreviousMonth() {
-  //   setDirection(-1);
-  //   setDisplayMonth((prev) => {
-  //     const newDate = new Date(prev);
-  //     newDate.setMonth(prev.getMonth() - 1);
-  //     return newDate;
-  //   });
-  // }
-
-  // function handleNextMonth() {
-  //   setDirection(1);
-  //   setDisplayMonth((prev) => {
-  //     const newDate = new Date(prev);
-  //     newDate.setMonth(prev.getMonth() + 1);
-  //     return newDate;
-  //   });
-  // }
-
-  // Format date to YYYY-MM-DD
-  function formatDateForAPI(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-
-  // Check if a date has been checked in
+  // O(1) lookup helpers using pre-computed Set/Map
   function isDateCheckedIn(date: Date): boolean {
-    if (monthlyData.length === 0) return false;
-    const dateStr = formatDateInCheckinTZ(date);
-    return monthlyData.some(
-      (record: CheckInRecordResponse) =>
-        formatDateInCheckinTZ(new Date(record.check_in_date)) === dateStr,
-    );
+    return checkedInDates.has(formatDateInCheckinTZ(date));
   }
 
-  // Get check-in record for a date
   function getCheckInForDate(date: Date): CheckInRecordResponse | undefined {
-    if (monthlyData.length === 0) return undefined;
-    const dateStr = formatDateInCheckinTZ(date);
-    return monthlyData.find(
-      (record: CheckInRecordResponse) =>
-        formatDateInCheckinTZ(new Date(record.check_in_date)) === dateStr,
-    );
+    return checkInByDate.get(formatDateInCheckinTZ(date));
   }
 
   // Handle check-in
@@ -243,77 +317,6 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   const selectedWeekday = selectedDate?.toLocaleDateString(currentLocale, {
     weekday: "long",
   });
-
-  function TokenDonut({ input, output }: { input: number; output: number }) {
-    const total = Math.max(0, input) + Math.max(0, output);
-    const safeTotal = total > 0 ? total : 1;
-
-    const size = 92;
-    const strokeWidth = 10;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * radius;
-
-    const inputRatio = Math.max(0, input) / safeTotal;
-    const outputRatio = Math.max(0, output) / safeTotal;
-
-    const inputDash = circumference * inputRatio;
-    const outputDash = circumference * outputRatio;
-    const outputDashOffset = circumference - inputDash;
-
-    return (
-      <div className="relative h-23 w-23 shrink-0">
-        <svg
-          width={size}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          className="-rotate-90"
-        >
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            className="text-neutral-200/70 dark:text-white/10"
-            strokeWidth={strokeWidth}
-          />
-
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${inputDash} ${circumference - inputDash}`}
-            strokeDashoffset={0}
-            strokeWidth={strokeWidth}
-            className="text-indigo-500 dark:text-indigo-400"
-          />
-
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${outputDash} ${circumference - outputDash}`}
-            strokeDashoffset={outputDashOffset}
-            strokeWidth={strokeWidth}
-            className="text-pink-500 dark:text-pink-400"
-          />
-        </svg>
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-            {t("app.consumption.colToken")}
-          </div>
-          <div className="text-sm font-bold text-neutral-900 dark:text-white">
-            {total.toLocaleString(currentLocale)}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Loading state
   if (statusQuery.isLoading || isMonthlyLoading) {
@@ -375,7 +378,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                 <motion.div
                   key={displayMonth.toISOString()}
                   custom={direction}
-                  variants={variants}
+                  variants={calendarVariants}
                   initial="enter"
                   animate="center"
                   exit="exit"
@@ -606,6 +609,8 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                             <TokenDonut
                               input={consumption.input_tokens}
                               output={consumption.output_tokens}
+                              tokenLabel={t("app.consumption.colToken")}
+                              locale={currentLocale}
                             />
 
                             <div className="flex-1 space-y-2 text-sm text-neutral-600 dark:text-neutral-400">

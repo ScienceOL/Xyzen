@@ -129,7 +129,7 @@ export function SettingsModal() {
             transition={{ duration: 0.15 }}
           >
             {/* Mobile title */}
-            <div className="px-5 pb-1 pt-2 md:hidden">
+            <div className="px-5 pb-1 pt-6 md:hidden">
               <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {t("settings.modal.title")}
               </h2>
@@ -183,7 +183,7 @@ export function SettingsModal() {
             transition={{ duration: 0.15 }}
           >
             {/* Mobile Header - iOS-style back navigation */}
-            <div className="flex items-center gap-2 px-2 py-2.5 md:hidden">
+            <div className="flex items-center gap-2 px-2 pt-4 pb-2.5 md:hidden md:pt-0">
               <button
                 onClick={handleBackToCategories}
                 className="flex items-center gap-0.5 rounded-lg px-1.5 py-1 text-indigo-500 transition-colors active:bg-indigo-50 dark:text-indigo-400 dark:active:bg-indigo-950/30"

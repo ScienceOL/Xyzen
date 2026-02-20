@@ -141,7 +141,10 @@ def _load_all_builtin_tools(
     if user_id:
         from app.tools.builtin.image import create_image_tools_for_agent
 
-        image_tools = create_image_tools_for_agent(user_id=user_id)
+        image_tools = create_image_tools_for_agent(
+            user_id=user_id,
+            session_id=str(session_id) if session_id else None,
+        )
         tools.extend(image_tools)
 
     # Load memory tools if user_id is available and memory is enabled

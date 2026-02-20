@@ -16,6 +16,7 @@ from .messages import router as messages_router
 from .notifications import router as notifications_router
 from .providers import router as providers_router
 from .redemption import router as redemption_router
+from .root_agent import router as root_agent_router
 from .sandbox import router as sandbox_router
 from .sessions import router as sessions_router
 from .skills import agent_skills_router, router as skills_router
@@ -108,6 +109,7 @@ v1_router.include_router(memories_router, prefix="/memories")
 v1_router.include_router(sandbox_router, prefix="/sessions")
 v1_router.include_router(subscription_router, prefix="/subscription", tags=["subscription"])
 v1_router.include_router(avatar_router, prefix="/avatar")
+v1_router.include_router(root_agent_router, prefix="/root-agent")
 v1_router.include_router(chat_shares_router, prefix="/chat-shares")
 v1_router.include_router(tools_router, prefix="/tools")
 v1_router.include_router(system_router, tags=["system"])

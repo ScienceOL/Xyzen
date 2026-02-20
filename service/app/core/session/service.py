@@ -72,6 +72,14 @@ class SessionService:
     async def create_session_with_default_topic(self, session_data: SessionCreate, user_id: str) -> SessionRead:
         agent_uuid = await self._resolve_agent_uuid_for_create(session_data.agent_id)
 
+        existing_session = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
+        if existing_session:
+            existing_topics = await self.topic_repo.get_topics_by_session(existing_session.id, order_by_updated=True)
+            if not existing_topics:
+                await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing_session.id))
+                await self.db.commit()
+            return SessionRead(**existing_session.model_dump())
+
         validated = SessionCreate(
             name=session_data.name,
             description=session_data.description,
@@ -82,28 +90,37 @@ class SessionService:
             spatial_layout=session_data.spatial_layout,
         )
 
+        created_new_session = False
         try:
             session = await self.session_repo.create_session(validated, user_id)
             await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
             await self.db.commit()
+            created_new_session = True
         except IntegrityError:
-            # Unique constraint violation: a session for this (user_id, agent_id) already exists.
-            # This can happen due to a race condition. Return the existing session instead.
+            # Another request created the same user+agent session concurrently.
+            # Roll back and resolve to the canonical existing session.
             await self.db.rollback()
             existing = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
             if existing:
                 logger.info(f"Session already exists for user={user_id} agent={agent_uuid}, returning existing")
+                # Ensure the existing session has at least one topic (it may not if a previous
+                # creation was partially committed or topics were cleared).
+                topics = await self.topic_repo.get_topics_by_session(existing.id)
+                if not topics:
+                    await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing.id))
+                    await self.db.commit()
                 return SessionRead(**existing.model_dump())
             raise
 
         # Write FGA owner tuple (best-effort)
-        try:
-            from app.core.fga.client import get_fga_client
+        if created_new_session:
+            try:
+                from app.core.fga.client import get_fga_client
 
-            fga = await get_fga_client()
-            await fga.write_tuple(user_id, "owner", "session", str(session.id))
-        except Exception:
-            pass
+                fga = await get_fga_client()
+                await fga.write_tuple(user_id, "owner", "session", str(session.id))
+            except Exception:
+                pass
 
         return SessionRead(**session.model_dump())
 
@@ -163,12 +180,16 @@ class SessionService:
                 "Access denied: You don't have permission to clear this session"
             )
 
-        topics = await self.topic_repo.get_topics_by_session(session_id)
-        for topic in topics:
-            await self.message_repo.delete_messages_by_topic(topic.id)
-            await self.topic_repo.delete_topic(topic.id)
+        # Use a savepoint so partial failures roll back the entire clear operation
+        # instead of leaving the session in an inconsistent state.
+        async with self.db.begin_nested():
+            topics = await self.topic_repo.get_topics_by_session(session_id)
+            for topic in topics:
+                await self.message_repo.delete_messages_by_topic(topic.id)
+                await self.topic_repo.delete_topic(topic.id)
 
-        await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session_id))
+            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session_id))
+
         await self.db.commit()
 
     async def update_session(self, session_id: UUID, session_data: SessionUpdate, user_id: str) -> SessionRead:

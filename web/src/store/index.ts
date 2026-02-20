@@ -50,6 +50,8 @@ export const useXyzen = create<XyzenState>()(
         spatialSidebarCollapsed: state.spatialSidebarCollapsed,
         capsuleOpen: state.capsuleOpen,
         capsuleActiveTab: state.capsuleActiveTab,
+        mobileCeoOverlay: state.mobileCeoOverlay,
+        mobilePage: state.mobilePage,
       }),
     },
   ),

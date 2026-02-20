@@ -8,6 +8,7 @@ This module orchestrates the streaming process using extracted helper modules.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import TYPE_CHECKING, Any, AsyncGenerator
 
@@ -31,6 +32,8 @@ from app.core.prompts import build_system_prompt_with_provenance
 from app.core.providers import get_user_provider_manager
 from app.models.topic import Topic as TopicModel
 from app.schemas.chat_event_payloads import StreamingEvent
+from app.schemas.chat_event_types import ToolCallStatus
+from app.tools.builtin.subagent.schemas import parse_subagent_outcome
 
 if TYPE_CHECKING:
     from app.core.chat.interfaces import ChatPublisher
@@ -394,7 +397,7 @@ async def _process_agent_stream(
             {"messages": history_messages},
             stream_mode=["updates", "messages"],
             config={
-                "recursion_limit": 50,
+                "recursion_limit": 500,
                 "configurable": {"user_id": ctx.user_id},
             },
         ):
@@ -536,10 +539,15 @@ async def _handle_updates_mode(
                     ctx.emitted_tool_result_ids.add(tool_call_id)
                     # Get raw content before formatting (for cost calculation)
                     raw_content = msg.content
-                    result = format_tool_result(raw_content, tool_name)
+                    status, result, error = _resolve_tool_response(raw_content, tool_name)
                     logger.info(f"[ToolEvent] >>> Emitting tool_call_response for {tool_call_id}")
                     yield ToolEventHandler.create_tool_response_event(
-                        tool_call_id, result, raw_result=raw_content, stream_id=ctx.stream_id
+                        tool_call_id,
+                        result,
+                        status=status,
+                        raw_result=raw_content,
+                        error=error,
+                        stream_id=ctx.stream_id,
                     )
 
         last_message = messages[-1]
@@ -635,6 +643,79 @@ async def _handle_updates_mode(
                     yield CitationExtractor.create_citations_event(citations, ctx.stream_id)
 
 
+def _extract_structured_tool_error(raw_content: Any) -> str | None:
+    """Extract an explicit tool error from structured tool payloads."""
+    payload: Any = raw_content
+    if isinstance(payload, list) and len(payload) == 1:
+        payload = payload[0]
+
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except json.JSONDecodeError:
+            return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    if payload.get("ok") is False and isinstance(payload.get("error_message"), str):
+        error_message = payload["error_message"].strip()
+        if error_message:
+            return error_message
+
+    error_value = payload.get("error")
+    if isinstance(error_value, str):
+        error_text = error_value.strip()
+        if error_text:
+            return error_text
+
+    errors_value = payload.get("errors")
+    if isinstance(errors_value, list):
+        messages = [str(item).strip() for item in errors_value if str(item).strip()]
+        if messages:
+            return "; ".join(messages)
+
+    return None
+
+
+def _resolve_tool_response(raw_content: Any, tool_name: str) -> tuple[str, str, str | None]:
+    """
+    Resolve tool_call_response status/result/error from ToolMessage raw content.
+
+    Returns:
+        (status, result, error) tuple
+    """
+    if tool_name == "spawn_subagent":
+        outcome = parse_subagent_outcome(raw_content)
+        if outcome:
+            if outcome.ok:
+                logger.info(
+                    "[ToolEvent] Subagent succeeded: duration_ms=%d",
+                    outcome.duration_ms,
+                )
+                return (
+                    ToolCallStatus.COMPLETED,
+                    outcome.output or "No output from subagent.",
+                    None,
+                )
+
+            error_message = outcome.error_message or "Subagent execution failed."
+            logger.warning(
+                "[ToolEvent] Subagent failed: error_code=%s duration_ms=%d message=%s",
+                outcome.error_code or "<none>",
+                outcome.duration_ms,
+                error_message,
+            )
+            return (ToolCallStatus.FAILED, error_message, error_message)
+
+    structured_error = _extract_structured_tool_error(raw_content)
+    if structured_error:
+        logger.warning("[ToolEvent] Structured tool error detected for %s: %s", tool_name, structured_error)
+        return (ToolCallStatus.FAILED, structured_error, structured_error)
+
+    return (ToolCallStatus.COMPLETED, format_tool_result(raw_content, tool_name), None)
+
+
 async def _handle_messages_mode(
     data: Any, ctx: StreamContext, tracer: LangGraphTracer
 ) -> AsyncGenerator[StreamingEvent, None]:
@@ -715,6 +796,16 @@ async def _handle_messages_mode(
     # LangGraph sends AIMessageChunk during streaming, then a final AIMessage with full content.
     # We must skip the final AIMessage to avoid duplicating content in the frontend.
     # Note: AIMessageChunk is a subclass of AIMessage, so check the exact type.
+    usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
+    if usage:
+        input_tokens, output_tokens, total_tokens = usage
+        # Some providers emit partial/intermediate usage snapshots; keep the
+        # largest observed total for stable latest-context semantics.
+        if total_tokens >= ctx.total_tokens:
+            ctx.total_input_tokens = input_tokens
+            ctx.total_output_tokens = output_tokens
+            ctx.total_tokens = total_tokens
+
     if type(message_chunk) is AIMessage:
         content = TokenStreamProcessor.extract_token_text(message_chunk)
         # Skip if this is historical (matches known historical content)
@@ -728,11 +819,6 @@ async def _handle_messages_mode(
         if ctx.is_streaming and buffered_content:
             logger.debug(f"Skipping final AIMessage (already have {len(buffered_content)} chars streamed)")
             return
-
-    # Extract token usage
-    usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
-    if usage:
-        ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens = usage
 
     # Batch logging
     ctx.token_count += 1

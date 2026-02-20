@@ -25,7 +25,7 @@ export function ConsumptionAnalyticsModal({
             sixth: "217,70,239",
           }}
         />
-        <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6">
+        <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar px-3 pb-3 pt-7 sm:p-6">
           <ConsumptionAnalytics onClose={onClose} />
         </div>
       </div>

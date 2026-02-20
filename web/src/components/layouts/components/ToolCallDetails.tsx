@@ -2,7 +2,11 @@ import JsonDisplay from "@/components/shared/JsonDisplay";
 import { zIndexClasses } from "@/constants/zIndex";
 import type { ToolCall } from "@/store/types";
 import { Dialog, DialogPanel } from "@headlessui/react";
-import { ArrowsPointingOutIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowsPointingOutIcon,
+  ArrowTopRightOnSquareIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +16,8 @@ interface ToolCallDetailsProps {
   showSectionTitles?: boolean;
   showTimestamp?: boolean;
 }
+
+const IMAGE_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|webp)$/i;
 
 const getImageFromResult = (result: unknown): string | null => {
   if (!result || typeof result !== "object") return null;
@@ -58,6 +64,167 @@ const parseToolResult = (result: ToolCall["result"]): unknown => {
   return result;
 };
 
+/** Check if a tool result has a sandbox file path pointing to an image */
+const getSandboxImagePath = (
+  toolName: string,
+  parsed: unknown,
+): string | null => {
+  if (!parsed || typeof parsed !== "object") return null;
+  const obj = parsed as Record<string, unknown>;
+
+  // sandbox_write: check the written path
+  if (toolName === "sandbox_write" && typeof obj.path === "string") {
+    if (IMAGE_EXTENSIONS.test(obj.path)) return obj.path;
+  }
+
+  // sandbox_bash: check for image files mentioned in stdout
+  // Not reliable enough to auto-detect, skip for now
+
+  // generate_image auto-mount
+  if (typeof obj.sandbox_path === "string") {
+    if (IMAGE_EXTENSIONS.test(obj.sandbox_path)) return obj.sandbox_path;
+  }
+
+  return null;
+};
+
+/** Terminal-style rendering for sandbox_bash results */
+function SandboxBashResult({ parsed }: { parsed: unknown }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
+  if (!parsed || typeof parsed !== "object") return null;
+  const obj = parsed as Record<string, unknown>;
+
+  const exitCode =
+    typeof obj.exit_code === "number" ? obj.exit_code : undefined;
+  const stdout = typeof obj.stdout === "string" ? obj.stdout : "";
+  const stderr = typeof obj.stderr === "string" ? obj.stderr : "";
+  const success = obj.success === true;
+
+  const stdoutLines = stdout.split("\n");
+  const isLong = stdoutLines.length > 20;
+  const displayStdout =
+    isLong && !expanded ? stdoutLines.slice(0, 20).join("\n") : stdout;
+
+  return (
+    <div className="rounded-md overflow-hidden border border-neutral-800">
+      {/* Header bar */}
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border-b border-neutral-800">
+        <span className="text-[10px] font-mono text-neutral-500">
+          {t("app.chat.toolCall.terminal", { defaultValue: "Terminal" })}
+        </span>
+        {exitCode !== undefined && (
+          <span
+            className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded ${
+              exitCode === 0
+                ? "bg-green-900/40 text-green-400"
+                : "bg-red-900/40 text-red-400"
+            }`}
+          >
+            exit {exitCode}
+          </span>
+        )}
+        {exitCode === undefined && !success && (
+          <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-900/40 text-red-400">
+            {t("app.chat.toolCall.error", { defaultValue: "Error" })}
+          </span>
+        )}
+      </div>
+
+      {/* Output */}
+      <div className="bg-neutral-950 p-3 max-h-100 overflow-auto">
+        {displayStdout && (
+          <pre className="text-xs font-mono text-neutral-200 whitespace-pre-wrap wrap-break-words">
+            {displayStdout}
+          </pre>
+        )}
+        {isLong && !expanded && (
+          <button
+            onClick={() => setExpanded(true)}
+            className="text-[10px] text-blue-400 hover:text-blue-300 mt-1 font-mono"
+          >
+            ... {stdoutLines.length - 20}{" "}
+            {t("app.chat.toolCall.moreLines", {
+              defaultValue: "more lines",
+            })}
+          </button>
+        )}
+        {stderr && (
+          <pre className="text-xs font-mono text-red-400 whitespace-pre-wrap wrap-break-words mt-2">
+            {stderr}
+          </pre>
+        )}
+        {!stdout && !stderr && (
+          <span className="text-xs font-mono text-neutral-600 italic">
+            {t("app.chat.toolCall.noOutput", {
+              defaultValue: "(no output)",
+            })}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Preview URL card for sandbox_preview results */
+function SandboxPreviewCard({ parsed }: { parsed: unknown }) {
+  const { t } = useTranslation();
+  const [showIframe, setShowIframe] = useState(false);
+
+  if (!parsed || typeof parsed !== "object") return null;
+  const obj = parsed as Record<string, unknown>;
+  if (!obj.success || typeof obj.url !== "string") return null;
+
+  const url = obj.url;
+  const port = typeof obj.port === "number" ? obj.port : undefined;
+
+  return (
+    <div className="rounded-md border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800/50">
+        <ArrowTopRightOnSquareIcon className="w-4 h-4 text-blue-500" />
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate"
+        >
+          {url}
+        </a>
+        {port && (
+          <span className="ml-auto shrink-0 text-[10px] font-mono bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 px-1.5 py-0.5 rounded">
+            :{port}
+          </span>
+        )}
+      </div>
+      <div className="px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-700">
+        <button
+          onClick={() => setShowIframe(!showIframe)}
+          className="text-[10px] text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+        >
+          {showIframe
+            ? t("app.chat.toolCall.hidePreview", {
+                defaultValue: "Hide preview",
+              })
+            : t("app.chat.toolCall.showPreview", {
+                defaultValue: "Show preview",
+              })}
+        </button>
+      </div>
+      {showIframe && (
+        <div className="border-t border-neutral-200 dark:border-neutral-700">
+          <iframe
+            src={url}
+            title="Sandbox Preview"
+            className="w-full h-100 bg-white"
+            sandbox="allow-scripts allow-forms allow-same-origin"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ToolCallDetails({
   toolCall,
   showSectionTitles = true,
@@ -75,6 +242,15 @@ export default function ToolCallDetails({
     if (parsedResult === undefined) return null;
     return getImageFromResult(parsedResult);
   }, [parsedResult]);
+
+  // Check for sandbox image paths (from sandbox_write, generate_image auto-mount)
+  const sandboxImagePath = useMemo(() => {
+    if (parsedResult === undefined) return null;
+    return getSandboxImagePath(toolCall.name, parsedResult);
+  }, [parsedResult, toolCall.name]);
+
+  const isSandboxBash = toolCall.name === "sandbox_bash";
+  const isSandboxPreview = toolCall.name === "sandbox_preview";
 
   const jsonVariant: "success" | "error" | "default" =
     toolCall.status === "completed"
@@ -105,13 +281,20 @@ export default function ToolCallDetails({
       {/* Result */}
       {toolCall.result && (
         <div className="mb-3">
-          {showSectionTitles && (
+          {showSectionTitles && !isSandboxBash && !isSandboxPreview && (
             <h4 className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-2">
               {t("app.chat.toolCall.result", { defaultValue: "Result" })}:
             </h4>
           )}
 
-          {imageUrl && parsedResult !== undefined ? (
+          {/* Terminal rendering for sandbox_bash */}
+          {isSandboxBash && parsedResult !== undefined ? (
+            <SandboxBashResult parsed={parsedResult} />
+          ) : /* Preview card for sandbox_preview */
+          isSandboxPreview && parsedResult !== undefined ? (
+            <SandboxPreviewCard parsed={parsedResult} />
+          ) : /* Image rendering */
+          imageUrl && parsedResult !== undefined ? (
             <div className="space-y-3">
               <div
                 className="inline-block cursor-pointer group"
@@ -123,7 +306,7 @@ export default function ToolCallDetails({
                     alt={t("app.chat.toolCall.imageAlt", {
                       defaultValue: "Generated image",
                     })}
-                    className="max-w-[280px] max-h-[280px] w-auto h-auto object-contain"
+                    className="max-w-70 max-h-70 w-auto h-auto object-contain"
                     loading="lazy"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
@@ -197,13 +380,23 @@ export default function ToolCallDetails({
               />
             </div>
           ) : (
-            <JsonDisplay
-              data={parsedResult}
-              compact
-              variant={jsonVariant}
-              hideHeader
-              enableCharts={true}
-            />
+            <div className="space-y-3">
+              {/* Inline sandbox image preview if path detected */}
+              {sandboxImagePath && (
+                <div className="rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700 shadow-sm inline-block">
+                  <div className="px-2 py-1 bg-neutral-50 dark:bg-neutral-800/50 text-[10px] font-mono text-neutral-500">
+                    {sandboxImagePath}
+                  </div>
+                </div>
+              )}
+              <JsonDisplay
+                data={parsedResult}
+                compact
+                variant={jsonVariant}
+                hideHeader
+                enableCharts={true}
+              />
+            </div>
           )}
         </div>
       )}

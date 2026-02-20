@@ -804,7 +804,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       >
         <div className="flex h-full flex-col overflow-hidden">
           {/* Header */}
-          <div className="shrink-0 px-5 pt-3 pb-1">
+          <div className="shrink-0 px-5 pt-7 pb-1 md:pt-3">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-sm shadow-indigo-500/20">
                 <Share2Icon className="h-4 w-4 text-white" />

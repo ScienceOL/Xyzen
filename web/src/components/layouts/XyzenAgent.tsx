@@ -2,12 +2,13 @@
 
 import { TooltipProvider } from "@/components/animate-ui/components/animate/tooltip";
 import { AgentList } from "@/components/agents";
+import CeoAgentCard from "@/components/agents/CeoAgentCard";
 import {
   useActiveTopicCountByAgent,
   useChannelAgentIdMap,
 } from "@/hooks/useChannelSelectors";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAgentModal from "@/components/modals/AddAgentModal";
@@ -23,9 +24,20 @@ import type { Agent } from "@/types/agents";
 interface XyzenAgentProps {
   /** Called after a channel has been activated for the clicked agent. */
   onNavigateToChat?: () => void;
+  /** Whether to show the CEO agent card at the top. Defaults to true. */
+  showCeoCard?: boolean;
+  /** External ref to the scroll container, used by parent for overscroll detection. */
+  scrollRef?: React.RefObject<HTMLDivElement | null>;
+  /** Fires when agent list enters/exits drag-sort mode. */
+  onSortModeChange?: (active: boolean) => void;
 }
 
-export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
+export default function XyzenAgent({
+  onNavigateToChat,
+  showCeoCard = true,
+  scrollRef: externalScrollRef,
+  onSortModeChange,
+}: XyzenAgentProps = {}) {
   const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -35,6 +47,7 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   const [loadingAgentId, setLoadingAgentId] = useState<string | null>(null);
   const {
     agents,
+    rootAgentId,
 
     deleteAgent,
     updateAgentAvatar,
@@ -47,6 +60,7 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   } = useXyzen(
     useShallow((s) => ({
       agents: s.agents,
+      rootAgentId: s.rootAgentId,
       deleteAgent: s.deleteAgent,
       updateAgentAvatar: s.updateAgentAvatar,
       reorderAgents: s.reorderAgents,
@@ -59,6 +73,18 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   // Derived state from store (stable across streaming chunks)
   const activeTopicCountByAgent = useActiveTopicCountByAgent();
   const channelAgentIdMap = useChannelAgentIdMap();
+
+  // Derive root agent object from agents[] + rootAgentId
+  const rootAgent = useMemo(
+    () => agents.find((a) => a.id === rootAgentId) ?? null,
+    [agents, rootAgentId],
+  );
+
+  // Non-root agents for the sortable list
+  const nonRootAgents = useMemo(
+    () => agents.filter((a) => a.id !== rootAgentId),
+    [agents, rootAgentId],
+  );
 
   // Fetch marketplace listings to check if deleted agent has a published version
   const { data: myListings } = useMyMarketplaceListings();
@@ -88,17 +114,9 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
   // Note: fetchAgents is called in App.tsx during initial load
   // No need to fetch again here - agents are already in the store
 
-  // Ensure MCP servers are loaded first
+  // Ensure MCP servers are loaded
   useEffect(() => {
-    const loadMcps = async () => {
-      try {
-        await fetchMcpServers();
-      } catch (error) {
-        console.error("Failed to load MCP servers:", error);
-      }
-    };
-
-    loadMcps();
+    fetchMcpServers().catch(console.error);
   }, [fetchMcpServers]);
 
   const handleAgentClick = async (agent: Agent) => {
@@ -113,6 +131,8 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
       setLoadingAgentId(null);
     }
   };
+
+  const handleRootAgentClick = handleAgentClick;
 
   const handleEditClick = (agent: Agent) => {
     setEditingAgent(agent);
@@ -135,33 +155,82 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
     [reorderAgents],
   );
 
+  // Merge external scroll ref with internal ref
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const scrollRefCallback = useCallback(
+    (el: HTMLDivElement | null) => {
+      (
+        internalScrollRef as React.MutableRefObject<HTMLDivElement | null>
+      ).current = el;
+      if (externalScrollRef) {
+        (
+          externalScrollRef as React.MutableRefObject<HTMLDivElement | null>
+        ).current = el;
+      }
+    },
+    [externalScrollRef],
+  );
+
   // Clean sidebar with auto-loaded MCPs for system agents
   return (
     <TooltipProvider>
       <motion.div
-        className="space-y-2 px-4 custom-scrollbar overflow-y-auto h-full"
+        className="relative flex h-full flex-col"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <AgentList
-          agents={agents}
-          variant="detailed"
-          sortable={true}
-          publishedAgentIds={publishedAgentIds}
-          lastConversationTimeByAgent={lastConversationTimeByAgent}
-          activeTopicCountByAgent={activeTopicCountByAgent}
-          onAgentClick={handleAgentClick}
-          loadingAgentId={loadingAgentId}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-          onReorder={handleReorder}
-        />
-        <button
-          className="w-full rounded-sm border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
-          onClick={() => setAddModalOpen(true)}
+        {/* Scrollable agent list — extra bottom padding so last items aren't hidden behind CEO card */}
+        <div
+          ref={scrollRefCallback}
+          className="custom-scrollbar flex-1 overflow-y-auto px-4 pt-4"
+          style={{ overscrollBehaviorY: "none" }}
         >
-          {t("agents.addButton")}
-        </button>
+          <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-900">
+            <AgentList
+              agents={nonRootAgents}
+              variant="detailed"
+              sortable={true}
+              publishedAgentIds={publishedAgentIds}
+              lastConversationTimeByAgent={lastConversationTimeByAgent}
+              activeTopicCountByAgent={activeTopicCountByAgent}
+              onAgentClick={handleAgentClick}
+              loadingAgentId={loadingAgentId}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
+              onReorder={handleReorder}
+              onSortModeChange={onSortModeChange}
+            />
+          </div>
+          <button
+            className="mt-3 mb-4 w-full rounded-xl border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
+            onClick={() => setAddModalOpen(true)}
+          >
+            {t("agents.addButton")}
+          </button>
+          {/* Spacer so content can scroll past the floating CEO card */}
+          {showCeoCard && rootAgent && <div className="h-24" />}
+        </div>
+
+        {/* CEO card floating above the list */}
+        {showCeoCard && rootAgent && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+            {/* Upward fade — list content dissolves before reaching the card */}
+            <div className="h-16 bg-gradient-to-t from-neutral-50 dark:from-neutral-950 to-transparent" />
+            {/* Transparent wrapper — no bg so card's backdrop-blur can see through to the list */}
+            <div className="pointer-events-auto px-4">
+              <CeoAgentCard
+                agent={rootAgent}
+                isLoading={loadingAgentId === rootAgent.id}
+                activeTopicCount={activeTopicCountByAgent[rootAgent.id] ?? 0}
+                onClick={handleRootAgentClick}
+                onEdit={handleEditClick}
+              />
+            </div>
+            {/* Opaque base below the card — fills bottom gap without blocking backdrop-blur */}
+            <div className="h-4 bg-neutral-50 dark:bg-neutral-950" />
+          </div>
+        )}
+
         <AddAgentModal
           isOpen={isAddModalOpen}
           onClose={() => setAddModalOpen(false)}
@@ -185,6 +254,7 @@ export default function XyzenAgent({ onNavigateToChat }: XyzenAgentProps = {}) {
             }}
             onGridSizeChange={() => {}}
             onDelete={
+              editingAgent.id === rootAgentId ||
               publishedAgentIds.has(editingAgent.id)
                 ? undefined
                 : () => {

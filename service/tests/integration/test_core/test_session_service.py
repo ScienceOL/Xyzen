@@ -5,6 +5,7 @@ from app.core.session import SessionService
 from app.models.message import MessageCreate
 from app.models.sessions import SessionUpdate
 from app.repos.message import MessageRepository
+from app.repos.session import SessionRepository
 from app.repos.topic import TopicRepository
 from tests.factories.session import SessionCreateFactory
 from tests.factories.topic import TopicCreateFactory
@@ -67,3 +68,34 @@ class TestSessionService:
         updated = await session_service.update_session(created.id, SessionUpdate(name="S3-updated"), user_id)
         assert updated.id == created.id
         assert updated.name == "S3-updated"
+
+    async def test_create_session_with_default_topic_is_idempotent_for_same_agent(
+        self, db_session: AsyncSession, session_service: SessionService
+    ):
+        from uuid import uuid4
+
+        user_id = "test-user-session-service-idempotent"
+        agent_id = uuid4()
+        session_repo = SessionRepository(db_session)
+        topic_repo = TopicRepository(db_session)
+
+        created_first = await session_service.create_session_with_default_topic(
+            SessionCreateFactory.build(name="S4", agent_id=agent_id), user_id
+        )
+        await topic_repo.create_topic(
+            TopicCreateFactory.build(session_id=created_first.id, name="extra-topic"),
+        )
+        await db_session.commit()
+
+        created_second = await session_service.create_session_with_default_topic(
+            SessionCreateFactory.build(name="S4-again", agent_id=agent_id), user_id
+        )
+
+        assert created_first.id == created_second.id
+
+        sessions = await session_repo.get_sessions_by_user(user_id)
+        matching_sessions = [session for session in sessions if session.agent_id == agent_id]
+        assert len(matching_sessions) == 1
+
+        topics = await topic_repo.get_topics_by_session(created_second.id)
+        assert any(topic.name == "extra-topic" for topic in topics)

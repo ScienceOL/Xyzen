@@ -87,9 +87,7 @@ export function useXyzenChat(config: XyzenChatConfig) {
 
   // Computed from channel status
   const connected = channelStatus.connected;
-  const currentAgent = channelStatus.agentId
-    ? agents.find((a) => a.id === channelStatus.agentId)
-    : null;
+  const currentAgent = useXyzen((s) => s.resolveAgent(channelStatus.agentId));
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);

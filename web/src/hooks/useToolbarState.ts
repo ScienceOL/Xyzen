@@ -26,6 +26,7 @@ export function useToolbarState() {
   );
 
   const agents = useXyzen((s) => s.agents);
+  const resolveAgent = useXyzen((s) => s.resolveAgent);
   const mcpServers = useXyzen((s) => s.mcpServers);
   const uploadedFiles = useXyzen((s) => s.uploadedFiles);
   const isUploading = useXyzen((s) => s.isUploading);
@@ -39,17 +40,11 @@ export function useToolbarState() {
   const channelStatus = useActiveChannelStatus();
   const activeChatChannel = channelStatus.channelId;
 
-  // All user agents for lookup
-  const allAgents = useMemo(() => agents, [agents]);
-
   // Get current channel and associated MCP tools
   const currentMcpInfo = useMemo(() => {
     if (!activeChatChannel) return null;
 
-    const agentId = channelStatus.agentId;
-    if (!agentId) return null;
-
-    const agent = allAgents.find((a) => a.id === agentId);
+    const agent = resolveAgent(channelStatus.agentId);
     if (!agent?.mcp_servers?.length) return null;
 
     const connectedServers = mcpServers.filter((server) =>
@@ -60,15 +55,13 @@ export function useToolbarState() {
       agent,
       servers: connectedServers,
     };
-  }, [activeChatChannel, channelStatus.agentId, allAgents, mcpServers]);
+  }, [activeChatChannel, channelStatus.agentId, resolveAgent, mcpServers]);
 
   // Get current agent
   const currentAgent = useMemo(() => {
     if (!activeChatChannel) return null;
-    const agentId = channelStatus.agentId;
-    if (!agentId) return null;
-    return allAgents.find((a) => a.id === agentId) || null;
-  }, [activeChatChannel, channelStatus.agentId, allAgents]);
+    return resolveAgent(channelStatus.agentId);
+  }, [activeChatChannel, channelStatus.agentId, resolveAgent]);
 
   // Get current channel status for tier/knowledge
   const currentSessionTier = channelStatus.model_tier;
@@ -136,7 +129,7 @@ export function useToolbarState() {
     maxTier,
     userPlan,
     activeChatChannel,
-    allAgents,
+    allAgents: agents,
     currentMcpInfo,
     currentAgent,
     currentSessionTier,

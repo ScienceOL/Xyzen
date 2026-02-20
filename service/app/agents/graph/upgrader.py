@@ -281,7 +281,7 @@ def _convert_v2_node(
                 "prompt_template": "",
                 "output_key": "response",
                 "tools_enabled": True,
-                "max_iterations": 10,
+                "max_iterations": 200,
             }
         else:
             config = {
