@@ -105,47 +105,85 @@ class ChatShareService:
         if not share.allow_fork:
             raise ErrCode.SHARE_FORK_NOT_ALLOWED.with_messages("This share does not allow forking")
 
-        # Create a new agent from the snapshot
         from app.models.agent import AgentCreate, AgentScope
+        from app.repos.root_agent import RootAgentRepository
 
         agent_snapshot = share.agent_snapshot or {}
-        agent_name = agent_snapshot.get("name", "Chat")
+        original_agent_id = agent_snapshot.get("id")  # UUID string of the source agent
+        original_tags: list[str] = agent_snapshot.get("tags") or []
+        is_root_share = "root_agent" in original_tags
 
-        # Deduplicate name
-        existing_agents = await self.agent_repo.get_agents_by_user(recipient_user_id)
-        existing_names = {a.name for a in existing_agents}
-        final_name = f"{agent_name} (Shared)"
-        counter = 1
-        while final_name in existing_names:
-            counter += 1
-            final_name = f"{agent_name} (Shared {counter})"
+        existing_agent = None
+        created_new_agent = False
 
-        agent_create = AgentCreate(
-            scope=AgentScope.USER,
-            name=final_name,
-            description=agent_snapshot.get("description"),
-            avatar=agent_snapshot.get("avatar"),
-            tags=agent_snapshot.get("tags"),
-            model=agent_snapshot.get("model"),
-            temperature=agent_snapshot.get("temperature"),
-            prompt=agent_snapshot.get("prompt"),
-            graph_config=agent_snapshot.get("graph_config"),
-            provider_id=None,
-            knowledge_set_id=None,
-            mcp_server_ids=[],
-        )
-        new_agent = await self.agent_repo.create_agent(agent_create, recipient_user_id)
+        if is_root_share:
+            # Case 1: Shared from a root agent → use recipient's own root agent
+            root_agent_repo = RootAgentRepository(self.db)
+            existing_agent = await root_agent_repo.get_agent_for_user(recipient_user_id)
 
-        # Create a new session for the recipient
-        session_data = SessionCreate(
-            name=final_name,
-            agent_id=new_agent.id,
-        )
-        new_session = await self.session_repo.create_session(session_data, recipient_user_id)
+        elif original_agent_id:
+            # Case 2: Check if recipient already has an agent forked from the same source
+            all_agents = await self.agent_repo.get_agents_by_user(recipient_user_id)
+            source_uuid = UUID(original_agent_id)
+            for a in all_agents:
+                if a.id == source_uuid or a.original_source_id == source_uuid:
+                    existing_agent = a
+                    break
 
-        # Create topic and copy messages
+        if existing_agent:
+            new_agent = existing_agent
+        else:
+            # Case 3: Create new agent (with original_source_id for future dedup)
+            agent_name = agent_snapshot.get("name", "Chat")
+            existing_agents = await self.agent_repo.get_agents_by_user(recipient_user_id)
+            existing_names = {a.name for a in existing_agents}
+            final_name = f"{agent_name} (Shared)"
+            counter = 1
+            while final_name in existing_names:
+                counter += 1
+                final_name = f"{agent_name} (Shared {counter})"
+
+            agent_create = AgentCreate(
+                scope=AgentScope.USER,
+                name=final_name,
+                description=agent_snapshot.get("description"),
+                avatar=agent_snapshot.get("avatar"),
+                tags=agent_snapshot.get("tags"),
+                model=agent_snapshot.get("model"),
+                temperature=agent_snapshot.get("temperature"),
+                prompt=agent_snapshot.get("prompt"),
+                graph_config=agent_snapshot.get("graph_config"),
+                provider_id=None,
+                knowledge_set_id=None,
+                mcp_server_ids=[],
+            )
+            new_agent = await self.agent_repo.create_agent(agent_create, recipient_user_id)
+
+            # Track the original source for future fork deduplication
+            if original_agent_id:
+                new_agent.original_source_id = UUID(original_agent_id)
+                self.db.add(new_agent)
+
+            created_new_agent = True
+
+        # Find or create session for the agent
+        existing_session = await self.session_repo.get_session_by_user_and_agent(recipient_user_id, new_agent.id)
+        if existing_session:
+            new_session = existing_session
+            created_new_session = False
+        else:
+            session_data = SessionCreate(
+                name=new_agent.name,
+                agent_id=new_agent.id,
+            )
+            new_session = await self.session_repo.create_session(session_data, recipient_user_id)
+            created_new_session = True
+
+        # Create topic and copy messages (always new)
+        topic_name = share.title or "Shared conversation"
+        now = datetime.now(timezone.utc).strftime("%m/%d %H:%M")
         topic_data = TopicCreate(
-            name=share.title or "Shared conversation",
+            name=f"{topic_name} · {now}",
             session_id=new_session.id,
         )
         new_topic = await self.topic_repo.create_topic(topic_data)
@@ -165,16 +203,18 @@ class ChatShareService:
         await self.share_repo.increment_use_count(share.id)
         await self.db.commit()
 
-        # FGA tuples for new agent and session
+        # FGA tuples — only for newly created resources
         if self.fga:
-            try:
-                await self.fga.write_tuple(recipient_user_id, "owner", "agent", str(new_agent.id))
-            except Exception:
-                pass
-            try:
-                await self.fga.write_tuple(recipient_user_id, "owner", "session", str(new_session.id))
-            except Exception:
-                pass
+            if created_new_agent:
+                try:
+                    await self.fga.write_tuple(recipient_user_id, "owner", "agent", str(new_agent.id))
+                except Exception:
+                    pass
+            if created_new_session:
+                try:
+                    await self.fga.write_tuple(recipient_user_id, "owner", "session", str(new_session.id))
+                except Exception:
+                    pass
 
         return {"session_id": new_session.id, "topic_id": new_topic.id, "agent_id": new_agent.id}
 

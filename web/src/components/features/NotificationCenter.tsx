@@ -447,10 +447,11 @@ function NotificationList({
 function NotificationUI() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const { activateChannel, setActivePanel } = useXyzen(
+  const { activateChannel, setActivePanel, requestFocusAgent } = useXyzen(
     useShallow((s) => ({
       activateChannel: s.activateChannel,
       setActivePanel: s.setActivePanel,
+      requestFocusAgent: s.requestFocusAgent,
     })),
   );
   const [open, setOpen] = useState(false);
@@ -460,12 +461,17 @@ function NotificationUI() {
   const close = useCallback(() => setOpen(false), []);
 
   const handleNavigate = useCallback(
-    (topicId: string) => {
+    async (topicId: string) => {
       close();
       setActivePanel("chat");
-      activateChannel(topicId);
+      await activateChannel(topicId);
+      // After activation, the channel's agentId is available in the store
+      const channel = useXyzen.getState().channels[topicId];
+      if (channel?.agentId) {
+        requestFocusAgent(channel.agentId);
+      }
     },
-    [close, activateChannel, setActivePanel],
+    [close, activateChannel, setActivePanel, requestFocusAgent],
   );
 
   useEffect(() => {

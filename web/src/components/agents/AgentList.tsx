@@ -321,12 +321,12 @@ export const AgentList: React.FC<AgentListProps> = (props) => {
     );
   };
 
-  // "Done" button for exiting sort mode
+  // "Done" button for exiting sort mode (fixed top-right corner)
   const doneButton = sortMode && (
-    <div className="sticky bottom-0 z-10 flex justify-center py-3 bg-gradient-to-t from-white via-white dark:from-neutral-900 dark:via-neutral-900">
+    <div className="fixed top-3 right-4 z-50">
       <button
         onClick={handleExitSortMode}
-        className="rounded-full bg-neutral-800 px-6 py-2 text-sm font-medium text-white shadow-lg active:scale-95 transition-transform dark:bg-neutral-200 dark:text-neutral-900"
+        className="rounded-full bg-neutral-800 px-5 py-1.5 text-sm font-medium text-white shadow-lg active:scale-95 transition-transform dark:bg-neutral-200 dark:text-neutral-900"
       >
         {t("common.done", { defaultValue: "Done" })}
       </button>

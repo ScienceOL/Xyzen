@@ -10,6 +10,7 @@ import { useRunningAgentIds } from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { ChevronLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { Crown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -53,10 +54,17 @@ export function FocusedView({
     return id ? (s.channels[id]?.knowledge_set_id ?? null) : null;
   });
 
-  // Convert AgentData to Agent type for AgentList component
+  // Separate CEO agent from the rest
+  const ceoAgentData = useMemo(
+    () => agents.find((a) => a.isCeo) ?? null,
+    [agents],
+  );
+  const nonCeoAgents = useMemo(() => agents.filter((a) => !a.isCeo), [agents]);
+
+  // Convert AgentData to Agent type for AgentList component (non-CEO only)
   const agentsForList: Agent[] = useMemo(
     () =>
-      agents.map((a) => ({
+      nonCeoAgents.map((a) => ({
         id: a.id, // Use node ID for switching
         name: a.name,
         description: a.desc,
@@ -65,7 +73,7 @@ export function FocusedView({
         created_at: "",
         updated_at: "",
       })),
-    [agents],
+    [nonCeoAgents],
   );
 
   // Create a map for quick lookup of original AgentData
@@ -332,7 +340,57 @@ export function FocusedView({
                   transition={{ duration: 0.2 }}
                   className="flex flex-col items-center gap-1 p-2"
                 >
-                  {agents.map((a) => {
+                  {/* CEO avatar — golden ring */}
+                  {ceoAgentData &&
+                    (() => {
+                      const isSelected = selectedAgentId === ceoAgentData.id;
+                      const realAgentId = agentDataMap.get(
+                        ceoAgentData.id,
+                      )?.agentId;
+                      const isBusy = realAgentId
+                        ? runningAgentIds.has(realAgentId)
+                        : false;
+                      return (
+                        <button
+                          key={ceoAgentData.id}
+                          data-agent-id={ceoAgentData.id}
+                          onClick={() => onSwitchAgent(ceoAgentData.id)}
+                          title={ceoAgentData.name}
+                          className={`relative rounded-full p-0.5 transition-all duration-200 ${
+                            isSelected
+                              ? "ring-2 ring-amber-500/60 shadow-sm"
+                              : "hover:ring-2 hover:ring-amber-400/30"
+                          }`}
+                        >
+                          <img
+                            src={
+                              ceoAgentData.avatar ||
+                              "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                            }
+                            alt={ceoAgentData.name}
+                            className="w-9 h-9 rounded-full border border-amber-300/40 dark:border-amber-500/30 object-cover"
+                          />
+                          <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 ring-[1px] ring-white/80 dark:ring-neutral-900/80">
+                            <Crown className="h-2 w-2 text-white" />
+                          </div>
+                          {isBusy && (
+                            <div className="absolute -top-0.5 -right-0.5">
+                              <ChatStatusBadge
+                                status="running"
+                                size="xs"
+                                showLabel={false}
+                              />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })()}
+                  {/* Separator */}
+                  {ceoAgentData && nonCeoAgents.length > 0 && (
+                    <div className="w-6 border-t border-amber-300/20 dark:border-amber-500/10 my-0.5" />
+                  )}
+                  {/* Other agents */}
+                  {nonCeoAgents.map((a) => {
                     const isSelected = selectedAgentId === a.id;
                     const realAgentId = agentDataMap.get(a.id)?.agentId;
                     const isBusy = realAgentId
@@ -380,6 +438,81 @@ export function FocusedView({
                   transition={{ duration: 0.2 }}
                   className="p-2"
                 >
+                  {/* CEO agent — pinned at top with golden styling */}
+                  {ceoAgentData &&
+                    (() => {
+                      const isSelected = selectedAgentId === ceoAgentData.id;
+                      const realAgentId = agentDataMap.get(
+                        ceoAgentData.id,
+                      )?.agentId;
+                      const isBusy = realAgentId
+                        ? runningAgentIds.has(realAgentId)
+                        : false;
+                      return (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => onSwitchAgent(ceoAgentData.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              onSwitchAgent(ceoAgentData.id);
+                            }
+                          }}
+                          className={`relative flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200 overflow-hidden ${
+                            isSelected
+                              ? "bg-amber-50/80 dark:bg-amber-900/20 shadow-sm ring-1 ring-amber-300/30 dark:ring-amber-500/20"
+                              : "hover:bg-amber-50/50 dark:hover:bg-amber-900/10"
+                          }`}
+                        >
+                          {/* Thin gold accent line at top */}
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+                          {/* Avatar with crown badge */}
+                          <div className="relative shrink-0">
+                            <img
+                              src={
+                                ceoAgentData.avatar ||
+                                "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                              }
+                              alt={ceoAgentData.name}
+                              className="w-10 h-10 rounded-full border border-amber-300/30 dark:border-amber-500/20 object-cover"
+                            />
+                            <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 ring-[1.5px] ring-white/80 dark:ring-neutral-900/80">
+                              <Crown className="h-2.5 w-2.5 text-white" />
+                            </div>
+                          </div>
+                          {/* Text */}
+                          <div className="min-w-0 flex-1 text-left">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+                                {ceoAgentData.name}
+                              </div>
+                              <span className="shrink-0 rounded-sm bg-amber-500/10 px-1 py-px text-[8px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                                {t("agents.rootAgent.badge")}
+                              </span>
+                              {isBusy && (
+                                <ChatStatusBadge
+                                  status="running"
+                                  size="xs"
+                                  showLabel={false}
+                                  className="shrink-0"
+                                />
+                              )}
+                            </div>
+                            {ceoAgentData.role && (
+                              <div className="truncate text-[10px] text-amber-600/70 dark:text-amber-400/60">
+                                {ceoAgentData.role}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  {/* Separator */}
+                  {ceoAgentData && nonCeoAgents.length > 0 && (
+                    <div className="mx-2 my-1 border-t border-neutral-100 dark:border-neutral-800" />
+                  )}
+                  {/* Other agents */}
                   <AgentList
                     agents={agentsForList}
                     variant="compact"

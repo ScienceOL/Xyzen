@@ -206,8 +206,10 @@ interface CompactVariantProps extends AgentListItemBaseProps {
 export type AgentListItemProps = DetailedVariantProps | CompactVariantProps;
 
 /**
- * Long-press hook for triggering sort mode (touch-only, 550ms).
- * Cancels if pointer moves >10px.
+ * Long-press hook for triggering sort mode (touch-only, 700ms).
+ * Cancels if pointer moves >8px, or if a vertical (downward) gesture is
+ * detected — preventing false triggers when the user pulls down to reveal
+ * the CEO overlay.
  */
 function useLongPress(onLongPress?: () => void, disabled?: boolean) {
   const timerRef = useRef<number | null>(null);
@@ -245,7 +247,7 @@ function useLongPress(onLongPress?: () => void, disabled?: boolean) {
           // ignore
         }
         onLongPress();
-      }, 550);
+      }, 700);
     },
     [disabled, onLongPress, clear],
   );
@@ -255,7 +257,10 @@ function useLongPress(onLongPress?: () => void, disabled?: boolean) {
       if (e.pointerType !== "touch") return;
       const start = startRef.current;
       if (!start) return;
-      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) {
+      const dy = e.clientY - start.y;
+      // Cancel on any movement > 8px, or on downward movement > 4px
+      // (downward gesture likely means pull-to-reveal, not long-press)
+      if (Math.hypot(e.clientX - start.x, dy) > 8 || dy > 4) {
         clear();
       }
     },
@@ -275,6 +280,8 @@ function useLongPress(onLongPress?: () => void, disabled?: boolean) {
     onPointerCancel,
     /** Whether the long-press fired (use to suppress click) */
     didFire: firedRef,
+    /** Whether a touch long-press is currently being tracked (timer active). */
+    isTracking: () => startRef.current !== null,
   };
 }
 
@@ -421,9 +428,15 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
     return () => el.removeEventListener("touchmove", onTouchMove);
   }, []);
 
-  // Desktop right-click handler (suppress in sort mode / after long-press)
+  // Desktop right-click handler (suppress in sort mode / after long-press /
+  // during active touch tracking to prevent the native mobile context menu)
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (sortMode || longPress.didFire.current) {
+    // Always suppress while a touch long-press is tracked or has fired
+    if (longPress.isTracking() || longPress.didFire.current) {
+      e.preventDefault();
+      return;
+    }
+    if (sortMode) {
       e.preventDefault();
       return;
     }
@@ -714,6 +727,11 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
   const longPress = useLongPress(onLongPress, sortMode);
 
   const handleContextMenu = (e: React.MouseEvent) => {
+    // Suppress native context menu during touch long-press tracking
+    if (longPress.isTracking() || longPress.didFire.current) {
+      e.preventDefault();
+      return;
+    }
     if (!onEdit && !onDelete) return;
     e.preventDefault();
     e.stopPropagation();

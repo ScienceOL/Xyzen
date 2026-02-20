@@ -569,6 +569,24 @@ function InnerWorkspace() {
     }, 1000);
   }, [setViewport, getViewport, fitView]);
 
+  // Consume pending focus requests (e.g. from notification clicks)
+  useEffect(() => {
+    let prev: string | null = null;
+    return useXyzen.subscribe((state) => {
+      const agentId = state.pendingFocusAgentId;
+      if (agentId && agentId !== prev) {
+        prev = agentId;
+        // Defer to avoid dispatching inside subscribe listener
+        queueMicrotask(() => {
+          useXyzen.getState().requestFocusAgent(null);
+          handleFocus(agentId);
+        });
+      } else if (!agentId) {
+        prev = null;
+      }
+    });
+  }, [handleFocus]);
+
   // Wrap delete handler to clear focus when deleting the focused agent,
   // so viewport is restored and FitViewButton becomes accessible
   const handleDeleteAgent = useCallback(

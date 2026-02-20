@@ -42,6 +42,8 @@ export interface UiSlice {
   // Mobile navigation
   mobileCeoOverlay: boolean;
   mobilePage: number;
+  // Spatial focus request (from notification clicks etc.)
+  pendingFocusAgentId: string | null;
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -78,6 +80,7 @@ export interface UiSlice {
   setShowOfficialRecommendations: (show: boolean) => void;
   setMobileCeoOverlay: (visible: boolean) => void;
   setMobilePage: (page: number) => void;
+  requestFocusAgent: (agentId: string | null) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -111,6 +114,7 @@ export const createUiSlice: StateCreator<
     localStorage.getItem("officialRecommendationsDismissed") !== "true",
   mobileCeoOverlay: true,
   mobilePage: 0,
+  pendingFocusAgentId: null,
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -180,4 +184,5 @@ export const createUiSlice: StateCreator<
   },
   setMobileCeoOverlay: (visible) => set({ mobileCeoOverlay: visible }),
   setMobilePage: (page) => set({ mobilePage: page }),
+  requestFocusAgent: (agentId) => set({ pendingFocusAgentId: agentId }),
 });
