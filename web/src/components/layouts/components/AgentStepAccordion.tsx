@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import ToolCallPill from "./ToolCallPill";
-import ToolCallDetailsModal from "./ToolCallDetailsModal";
 
 interface AgentStepAccordionProps {
   phase: PhaseExecution;
@@ -26,9 +25,6 @@ export default function AgentStepAccordion({
 }: AgentStepAccordionProps) {
   // Auto-collapse completed, auto-expand running
   const [isExpanded, setIsExpanded] = useState(isActive);
-  const [selectedToolCallId, setSelectedToolCallId] = useState<string | null>(
-    null,
-  );
 
   // Auto-expand when phase becomes active, auto-collapse when completed
   useEffect(() => {
@@ -49,10 +45,6 @@ export default function AgentStepAccordion({
   );
   const canExpand = hasContent && phase.status !== "pending";
 
-  const selectedToolCall = selectedToolCallId
-    ? toolCalls.find((tc) => tc.id === selectedToolCallId) || null
-    : null;
-
   // Get custom renderer based on componentKey, or fall back to DefaultRenderer
   const CustomRenderer = getRenderer(phase.componentKey);
   const ContentRenderer = CustomRenderer || DefaultRenderer;
@@ -64,14 +56,6 @@ export default function AgentStepAccordion({
       transition={{ duration: 0.25 }}
       className={`relative ${className}`}
     >
-      {selectedToolCall && (
-        <ToolCallDetailsModal
-          toolCall={selectedToolCall}
-          open={Boolean(selectedToolCall)}
-          onClose={() => setSelectedToolCallId(null)}
-        />
-      )}
-
       {/* Header - Minimal design */}
       <button
         onClick={() => canExpand && setIsExpanded(!isExpanded)}
@@ -122,11 +106,7 @@ export default function AgentStepAccordion({
               {toolCalls.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2.5">
                   {toolCalls.map((toolCall) => (
-                    <ToolCallPill
-                      key={toolCall.id}
-                      toolCall={toolCall}
-                      onClick={() => setSelectedToolCallId(toolCall.id)}
-                    />
+                    <ToolCallPill key={toolCall.id} toolCall={toolCall} />
                   ))}
                 </div>
               )}

@@ -106,7 +106,7 @@ class ToolCallResponseData(TypedDict):
 
     toolCallId: str
     status: str
-    result: str  # Formatted result for display
+    result: dict[str, Any]  # Structured JSON: {success, data, error?, truncated?}
     raw_result: NotRequired[str | dict | list]  # Raw result for cost calculation
     error: NotRequired[str]
     stream_id: str

@@ -7,7 +7,6 @@ from LangChain agents, including tool calls, model responses, and citations.
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import logging
 import time
@@ -105,7 +104,7 @@ class ToolEventHandler:
             "description": f"Tool: {tool_call.get('name', '')}",
             "arguments": tool_call.get("args", {}),
             "status": ToolCallStatus.EXECUTING,
-            "timestamp": asyncio.get_event_loop().time(),
+            "timestamp": time.time(),
             "stream_id": stream_id,
         }
         return {"type": ChatEventType.TOOL_CALL_REQUEST, "data": data}
@@ -113,7 +112,7 @@ class ToolEventHandler:
     @staticmethod
     def create_tool_response_event(
         tool_call_id: str,
-        result: str,
+        result: dict[str, Any],
         status: str = ToolCallStatus.COMPLETED,
         raw_result: str | dict | list | None = None,
         error: str | None = None,
@@ -124,7 +123,7 @@ class ToolEventHandler:
 
         Args:
             tool_call_id: ID of the tool call
-            result: Formatted result string for display
+            result: Structured result dict {success, data, error?}
             status: Tool call status
             raw_result: Raw result for cost calculation (optional, unformatted)
             error: Optional error message for failed tool calls
@@ -174,7 +173,7 @@ class StreamingEventHandler:
         """Create streaming end event."""
         data: StreamingEndData = {
             "stream_id": stream_id,
-            "created_at": asyncio.get_event_loop().time(),
+            "created_at": time.time(),
         }
         if execution_id:
             data["execution_id"] = execution_id
@@ -432,7 +431,56 @@ class GeneratedFileHandler:
     """Handle generated files (e.g., images) from model responses."""
 
     @staticmethod
-    async def save_generated_image(image_data: str, user_id: str, db: "AsyncSession") -> "File":
+    async def _generate_image_title(user_id: str, db: "AsyncSession", context_text: str) -> str:
+        """Generate a short descriptive title for an image using the topic rename model.
+
+        Returns a filesystem-safe slug, e.g. ``sunset_over_ocean``.
+        Falls back to ``image`` on any error.
+        """
+        import re
+
+        from langchain_core.messages import HumanMessage
+
+        from app.core.providers import get_user_provider_manager
+        from app.schemas.model_tier import get_topic_rename_config
+
+        fallback = "image"
+        if not context_text.strip():
+            return fallback
+
+        try:
+            model_name, provider_id = get_topic_rename_config()
+            provider_manager = await get_user_provider_manager(user_id, db)
+            llm = await provider_manager.create_langchain_model(
+                provider_id=provider_id,
+                model=model_name,
+            )
+            prompt = (
+                "Generate a very short filename (2-4 words, English, lowercase, "
+                "no extension) that describes the following image context.\n"
+                "Rules:\n"
+                "- Use underscores instead of spaces.\n"
+                "- Only use a-z, 0-9, and underscores.\n"
+                "- Return ONLY the filename slug, nothing else.\n\n"
+                f"{context_text[:500]}"
+            )
+            resp = await llm.ainvoke([HumanMessage(content=prompt)])
+            title = resp.content if isinstance(resp.content, str) else fallback
+            # Sanitize: keep only safe chars, strip leading/trailing underscores
+            title = re.sub(r"[^a-z0-9_]", "_", title.lower().strip())
+            title = re.sub(r"_+", "_", title).strip("_")
+            return title[:60] or fallback
+        except Exception as e:
+            logger.warning(f"Image title generation failed, using fallback: {e}")
+            return fallback
+
+    @staticmethod
+    async def save_generated_image(
+        image_data: str,
+        user_id: str,
+        db: "AsyncSession",
+        context_text: str = "",
+    ) -> "File":
         """
         Save a base64-encoded image to storage and create DB record.
 
@@ -466,9 +514,13 @@ class GeneratedFileHandler:
 
         image_bytes = base64.b64decode(base64_data)
 
+        # Generate a descriptive filename via the rename model
+        title = await GeneratedFileHandler._generate_image_title(user_id, db, context_text)
+        timestamp = int(time.time())
+        filename = f"gm_{title}_{timestamp}.{file_ext}"
+
         # Create storage key and upload
         storage_service = get_storage_service()
-        filename = f"generated_image_{int(asyncio.get_event_loop().time())}.{file_ext}"
         storage_key = generate_storage_key(
             user_id,
             filename,
@@ -515,6 +567,12 @@ class GeneratedFileHandler:
         generated_files: list[File] = []
         files_data: list[GeneratedFileInfo] = []
 
+        # Extract text blocks to use as context for image title generation
+        context_text = " ".join(
+            block.get("text", "") if isinstance(block, dict) else (block if isinstance(block, str) else "")
+            for block in content
+        ).strip()
+
         for block in content:
             if not isinstance(block, dict) or not block.get("image_url"):
                 continue
@@ -529,7 +587,12 @@ class GeneratedFileHandler:
                     and image_url.startswith("data:image/")
                     and ";base64," in image_url
                 ):
-                    file_obj = await GeneratedFileHandler.save_generated_image(image_url, user_id, db)
+                    file_obj = await GeneratedFileHandler.save_generated_image(
+                        image_url,
+                        user_id,
+                        db,
+                        context_text=context_text,
+                    )
                     generated_files.append(file_obj)
 
                     file_info: GeneratedFileInfo = {

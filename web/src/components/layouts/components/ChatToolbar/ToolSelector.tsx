@@ -372,7 +372,7 @@ export function ToolSelector({
 
             {/* Knowledge Set Picker Dropdown */}
             {showKnowledgePicker && (
-              <div className="ml-6 space-y-1 border-l-2 border-purple-200 dark:border-purple-800 pl-2">
+              <div className="ml-6 space-y-1 pl-2">
                 {isLoadingKnowledgeSets ? (
                   <div className="px-2 py-2 text-xs text-neutral-400">
                     {t("common.loading", "Loading...")}

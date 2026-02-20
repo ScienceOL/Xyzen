@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 from langgraph.graph.state import CompiledStateGraph
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.tools.mcp import format_tool_result
+from app.tools.mcp import format_tool_result_structured
 from app.core.chat.agent_event_handler import AgentEventContext
 from app.core.chat.history import load_conversation_history
 from app.core.chat.stream_handlers import (
@@ -678,12 +678,12 @@ def _extract_structured_tool_error(raw_content: Any) -> str | None:
     return None
 
 
-def _resolve_tool_response(raw_content: Any, tool_name: str) -> tuple[str, str, str | None]:
+def _resolve_tool_response(raw_content: Any, tool_name: str) -> tuple[str, dict[str, Any], str | None]:
     """
     Resolve tool_call_response status/result/error from ToolMessage raw content.
 
     Returns:
-        (status, result, error) tuple
+        (status, result_dict, error) tuple where result_dict is structured JSON
     """
     if tool_name == "spawn_subagent":
         outcome = parse_subagent_outcome(raw_content)
@@ -695,7 +695,7 @@ def _resolve_tool_response(raw_content: Any, tool_name: str) -> tuple[str, str, 
                 )
                 return (
                     ToolCallStatus.COMPLETED,
-                    outcome.output or "No output from subagent.",
+                    {"success": True, "data": outcome.output or "No output from subagent."},
                     None,
                 )
 
@@ -706,14 +706,14 @@ def _resolve_tool_response(raw_content: Any, tool_name: str) -> tuple[str, str, 
                 outcome.duration_ms,
                 error_message,
             )
-            return (ToolCallStatus.FAILED, error_message, error_message)
+            return (ToolCallStatus.FAILED, {"success": False, "data": None, "error": error_message}, error_message)
 
     structured_error = _extract_structured_tool_error(raw_content)
     if structured_error:
         logger.warning("[ToolEvent] Structured tool error detected for %s: %s", tool_name, structured_error)
-        return (ToolCallStatus.FAILED, structured_error, structured_error)
+        return (ToolCallStatus.FAILED, {"success": False, "data": None, "error": structured_error}, structured_error)
 
-    return (ToolCallStatus.COMPLETED, format_tool_result(raw_content, tool_name), None)
+    return (ToolCallStatus.COMPLETED, format_tool_result_structured(raw_content, tool_name), None)
 
 
 async def _handle_messages_mode(

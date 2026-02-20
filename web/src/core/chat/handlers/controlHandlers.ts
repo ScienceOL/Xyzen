@@ -312,7 +312,7 @@ export function handleToolCallRequest(
       | "executing"
       | "completed"
       | "failed",
-    timestamp: new Date(toolCallData.timestamp).toISOString(),
+    timestamp: new Date(toolCallData.timestamp * 1000).toISOString(),
   };
 
   // Check if there's a running agent execution with a running phase
@@ -384,7 +384,13 @@ export function handleToolCallResponse(
   responseData: {
     toolCallId: string;
     status: string;
-    result?: unknown;
+    result?: {
+      success: boolean;
+      data: unknown;
+      error?: string;
+      truncated?: boolean;
+      original_length?: number;
+    };
     error?: string;
   },
 ): void {
@@ -405,8 +411,8 @@ export function handleToolCallResponse(
               | "executing"
               | "completed"
               | "failed";
-            if (responseData.result) {
-              toolCall.result = JSON.stringify(responseData.result);
+            if (responseData.result != null) {
+              toolCall.result = responseData.result;
             }
             if (responseData.error) {
               toolCall.error = responseData.error;
@@ -428,8 +434,8 @@ export function handleToolCallResponse(
             | "executing"
             | "completed"
             | "failed";
-          if (responseData.result) {
-            toolCall.result = JSON.stringify(responseData.result);
+          if (responseData.result != null) {
+            toolCall.result = responseData.result;
           }
           if (responseData.error) {
             toolCall.error = responseData.error;

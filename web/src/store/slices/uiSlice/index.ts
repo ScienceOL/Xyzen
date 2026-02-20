@@ -44,6 +44,8 @@ export interface UiSlice {
   mobilePage: number;
   // Spatial focus request (from notification clicks etc.)
   pendingFocusAgentId: string | null;
+  // Message highlight (scroll-to + flash)
+  highlightMessageId: string | null;
 
   toggleXyzen: () => void;
   openXyzen: () => void;
@@ -81,6 +83,7 @@ export interface UiSlice {
   setMobileCeoOverlay: (visible: boolean) => void;
   setMobilePage: (page: number) => void;
   requestFocusAgent: (agentId: string | null) => void;
+  highlightMessage: (messageId: string | null) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -115,6 +118,7 @@ export const createUiSlice: StateCreator<
   mobileCeoOverlay: true,
   mobilePage: 0,
   pendingFocusAgentId: null,
+  highlightMessageId: null,
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -185,4 +189,5 @@ export const createUiSlice: StateCreator<
   setMobileCeoOverlay: (visible) => set({ mobileCeoOverlay: visible }),
   setMobilePage: (page) => set({ mobilePage: page }),
   requestFocusAgent: (agentId) => set({ pendingFocusAgentId: agentId }),
+  highlightMessage: (messageId) => set({ highlightMessageId: messageId }),
 });

@@ -466,12 +466,12 @@ describe("handleToolCallResponse", () => {
     handleToolCallResponse(channel, {
       toolCallId: "tc-1",
       status: "completed",
-      result: { answer: "42" },
+      result: { success: true, data: { answer: "42" } },
     });
 
     const tc = channel.messages[0].agentExecution!.phases[0].toolCalls![0];
     expect(tc.status).toBe("completed");
-    expect(tc.result).toBe('{"answer":"42"}');
+    expect(tc.result).toEqual({ success: true, data: { answer: "42" } });
   });
 
   it("updates standalone tool call message", () => {

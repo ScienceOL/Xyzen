@@ -339,6 +339,87 @@ def format_tool_result(tool_result: Any, tool_name: str) -> str:
         return f"Tool '{tool_name}' executed but result formatting failed: {e}"
 
 
+def format_tool_result_structured(tool_result: Any, tool_name: str) -> dict[str, Any]:
+    """
+    Format tool result as a structured JSON dict for frontend display.
+
+    Returns:
+        dict with keys:
+          - success (bool): Whether the tool executed successfully
+          - data (Any): The parsed result data (dict/list/str)
+          - error (str | None): Error message if failed
+    """
+    try:
+        raw_content = _extract_raw_content(tool_result)
+
+        # Try to parse as JSON
+        if isinstance(raw_content, str):
+            try:
+                parsed = json.loads(raw_content)
+                return {"success": True, "data": parsed}
+            except json.JSONDecodeError:
+                # Plain text result — truncate if very long
+                if len(raw_content) > 5000:
+                    return {
+                        "success": True,
+                        "data": raw_content[:4500],
+                        "truncated": True,
+                        "original_length": len(raw_content),
+                    }
+                return {"success": True, "data": raw_content}
+
+        if isinstance(raw_content, (dict, list)):
+            return {"success": True, "data": raw_content}
+
+        return {"success": True, "data": str(raw_content)}
+
+    except Exception as e:
+        logger.error(f"Error formatting structured tool result: {e}")
+        return {"success": False, "data": None, "error": str(e)}
+
+
+def _extract_raw_content(tool_result: Any) -> Any:
+    """
+    Extract the raw content from various tool result wrappers.
+
+    Handles FastMCP content structures, TextContent objects, plain strings,
+    lists of dicts, etc.
+    """
+    # FastMCP structure with 'content' attribute
+    if hasattr(tool_result, "content") and tool_result.content:
+        content = tool_result.content
+        if isinstance(content, list):
+            if not content:
+                return ""
+            first = content[0]
+            if hasattr(first, "text"):
+                return first.text
+            return str(first)
+        return str(content)
+
+    # Direct list of dicts (e.g. [{type: "text", text: "..."}, ...])
+    if isinstance(tool_result, list) and tool_result:
+        first_item = tool_result[0]
+        if isinstance(first_item, dict):
+            # Standard content objects
+            if "type" in first_item or "text" in first_item:
+                text_parts = []
+                for item in tool_result:
+                    if isinstance(item, dict):
+                        text_val = item.get("text", "")
+                        if text_val:
+                            text_parts.append(text_val)
+                if text_parts:
+                    return "\n".join(text_parts)
+            # Return the list itself for JSON display
+            return tool_result
+        # List of strings
+        return tool_result
+
+    # Plain string or dict
+    return tool_result
+
+
 async def execute_tool_calls(db: AsyncSession, tool_calls: list[dict[str, Any]], agent: Any) -> dict[str, Any]:
     results = {}
     for tool_call in tool_calls:

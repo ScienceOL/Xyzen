@@ -220,8 +220,8 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
             "relative rounded-2xl border transition-all duration-200",
             "border-neutral-200/60 bg-white shadow-sm",
             "dark:border-neutral-700/60 dark:bg-neutral-900",
-            "focus-within:border-neutral-300 focus-within:shadow-md focus-within:ring-1 focus-within:ring-neutral-200/50",
-            "dark:focus-within:border-neutral-600 dark:focus-within:shadow-lg dark:focus-within:ring-1 dark:focus-within:ring-neutral-700/50",
+            "focus-within:border-neutral-300/40 focus-within:shadow-[0_0_15px_rgba(0,0,0,0.04),0_0_40px_rgba(0,0,0,0.025)]",
+            "dark:focus-within:border-neutral-500/30 dark:focus-within:shadow-[0_0_15px_rgba(255,255,255,0.035),0_0_40px_rgba(255,255,255,0.02)]",
           )}
         >
           {/* Drag & drop overlay */}

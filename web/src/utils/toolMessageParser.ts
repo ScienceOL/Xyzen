@@ -1,4 +1,4 @@
-import type { ToolCall } from "@/store/types";
+import type { ToolCall, ToolCallResult } from "@/store/types";
 
 /**
  * Parsed tool event from backend message content
@@ -59,7 +59,9 @@ export function toolEventToToolCall(event: ParsedToolEvent): ToolCall | null {
       name: "Tool Response",
       arguments: {},
       status: (event.status as ToolCall["status"]) || "completed",
-      result: event.result ? JSON.stringify(event.result) : undefined,
+      result: event.result
+        ? normalizeToolResultFromEvent(event.result)
+        : undefined,
       error: event.error,
       timestamp: new Date().toISOString(),
     };
@@ -94,21 +96,7 @@ export function groupToolEvents(
         // Update status based on response (completed or failed)
         existing.status = (event.status as ToolCall["status"]) || "completed";
         if (event.result !== undefined) {
-          // Handle both old format (string/raw) and new structured format from backend
-          if (
-            typeof event.result === "object" &&
-            event.result !== null &&
-            "content" in event.result
-          ) {
-            // New structured format: { type: "json", content: {...}, raw: "..." }
-            existing.result = JSON.stringify(event.result.content, null, 2);
-          } else {
-            // Legacy format: string or direct object
-            existing.result =
-              typeof event.result === "string"
-                ? event.result
-                : JSON.stringify(event.result);
-          }
+          existing.result = normalizeToolResultFromEvent(event.result);
         }
         if (event.error) {
           existing.error = event.error;
@@ -125,4 +113,30 @@ export function groupToolEvents(
   }
 
   return toolCallMap;
+}
+
+/**
+ * Normalize a raw tool result value into the ToolCallResult format.
+ * Handles new structured format { success, data }, legacy strings, and objects.
+ */
+function normalizeToolResultFromEvent(raw: unknown): ToolCallResult {
+  if (typeof raw === "object" && raw !== null && "success" in raw) {
+    return raw as ToolCallResult;
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        "success" in parsed
+      ) {
+        return parsed as ToolCallResult;
+      }
+      return { success: true, data: parsed };
+    } catch {
+      return { success: true, data: raw };
+    }
+  }
+  return { success: true, data: raw };
 }

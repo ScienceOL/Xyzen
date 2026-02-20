@@ -108,7 +108,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
     const initHighlighter = async () => {
       if (!highlighterPromise) {
         highlighterPromise = createHighlighter({
-          themes: ["one-dark-pro", "github-light"],
+          themes: ["github-dark", "github-light"],
           langs: [
             "javascript",
             "typescript",
@@ -149,7 +149,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
 
         const html = highlighter.codeToHtml(code, {
           lang,
-          theme: isDark ? "one-dark-pro" : "github-light",
+          theme: isDark ? "github-dark" : "github-light",
         });
 
         if (mounted) setHighlightedHtml(html);
@@ -160,7 +160,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
           const highlighter = await currentPromise;
           const html = highlighter.codeToHtml(code, {
             lang: "text",
-            theme: isDark ? "one-dark-pro" : "github-light",
+            theme: isDark ? "github-dark" : "github-light",
           });
           if (mounted) setHighlightedHtml(html);
         }
@@ -269,7 +269,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
       <div
         className={clsx(
           "group relative my-5 w-full min-w-0 overflow-hidden rounded-sm border shadow",
-          "border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#1a1a1b]",
+          "border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#0d1117]",
           "flex flex-col",
           "not-prose",
         )}

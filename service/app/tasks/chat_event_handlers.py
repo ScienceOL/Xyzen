@@ -853,12 +853,14 @@ async def handle_normal_finalization(
             from app.tasks.notification import send_notification, send_web_push
 
             _title = f"{ctx.agent_name or 'Agent'} replied"
+            _msg_id = str(ctx.ai_message_obj.id)
             _packed = pack_notification_body(
                 ctx.full_content[:200],
                 title=_title,
                 agent_name=ctx.agent_name,
                 agent_avatar=ctx.agent_avatar,
                 topic_id=str(ctx.topic_id),
+                message_id=_msg_id,
                 url=f"/#/chat/{ctx.topic_id}",
             )
             send_notification.delay(
@@ -869,6 +871,7 @@ async def handle_normal_finalization(
                     "title": _title,
                     "body": ctx.full_content[:200],
                     "topic_id": str(ctx.topic_id),
+                    "message_id": _msg_id,
                     "session_id": str(ctx.session_id),
                     "url": f"/#/chat/{ctx.topic_id}",
                 },

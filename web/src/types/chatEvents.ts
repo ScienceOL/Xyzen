@@ -6,7 +6,7 @@
  * in switch/case blocks — eliminating all `as` casts.
  */
 
-import type { Message } from "@/store/types";
+import type { Message, ToolCallResult } from "@/store/types";
 import type {
   AgentStartData,
   AgentEndData,
@@ -98,7 +98,7 @@ export type ChatEvent =
       data: {
         toolCallId: string;
         status: string;
-        result?: unknown;
+        result?: ToolCallResult;
         error?: string;
       };
     }

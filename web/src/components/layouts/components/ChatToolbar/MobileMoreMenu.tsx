@@ -231,7 +231,7 @@ export function MobileMoreMenu({
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="ml-2 mt-1 space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
+                        <div className="ml-2 mt-1 space-y-2 pl-2">
                           {/* Empty State */}
                           {allMcpServers.length === 0 && (
                             <div className="px-2 py-3 text-center">
@@ -347,7 +347,7 @@ export function MobileMoreMenu({
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="ml-2 mt-1 space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
+                        <div className="ml-2 mt-1 space-y-2 pl-2">
                           <div className="px-2 py-0.5">
                             <button
                               type="button"

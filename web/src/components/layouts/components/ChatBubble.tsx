@@ -12,14 +12,12 @@ import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
 import {
-  CheckIcon,
-  ClipboardDocumentIcon,
   PencilIcon,
   TrashIcon,
   ArrowPathIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   useCallback,
   useDeferredValue,
@@ -37,6 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
 import AgentExecutionTimeline from "./AgentExecutionTimeline";
 import ErrorMessageCard from "./ErrorMessageCard";
 import LoadingMessage from "./LoadingMessage";
@@ -44,7 +43,6 @@ import MessageAttachments from "./MessageAttachments";
 import { SearchCitations } from "./SearchCitations";
 import ThinkingBubble from "./ThinkingBubble";
 import ToolCallPill from "./ToolCallPill";
-import ToolCallDetailsModal from "./ToolCallDetailsModal";
 
 interface ChatBubbleProps {
   message: Message;
@@ -52,14 +50,16 @@ interface ChatBubbleProps {
 
 function ChatBubble({ message }: ChatBubbleProps) {
   const { t } = useTranslation();
-  const [isCopied, setIsCopied] = useState(false);
-  const [selectedToolCallId, setSelectedToolCallId] = useState<string | null>(
-    null,
-  );
   // Mobile toolbar visibility state
   const [showMobileToolbar, setShowMobileToolbar] = useState(false);
   const mobileToolbarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+
+  // Notification highlight
+  const msgIdForHighlight = message.dbId || message.id;
+  const isHighlighted = useXyzen(
+    (s) => s.highlightMessageId === msgIdForHighlight,
+  );
 
   // Consolidate action refs into a single subscription (stable references, never trigger re-render)
   const {
@@ -301,10 +301,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
     await deleteMessage(message.id);
   };
 
-  const selectedToolCall = selectedToolCallId
-    ? toolCalls?.find((tc) => tc.id === selectedToolCallId) || null
-    : null;
-
   // Updated time format to include seconds
   const formattedTime = new Date(created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -387,55 +383,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const displayedContent = resolvedContent.text;
   const displayMode = useMemo(() => getMessageDisplayMode(message), [message]);
 
-  const handleCopy = () => {
-    if (!displayedContent) return;
-
-    // Fallback function for older browsers or restricted environments
-    const fallbackCopy = () => {
-      const textArea = document.createElement("textarea");
-      textArea.value = displayedContent;
-      textArea.style.position = "fixed"; // Prevent scrolling to bottom
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      try {
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand("copy");
-        if (successful) {
-          setIsCopied(true);
-          setTimeout(() => setIsCopied(false), 2000);
-        } else {
-          console.error("Fallback: Copying text command was unsuccessful");
-        }
-      } catch (err) {
-        console.error("Fallback: Oops, unable to copy", err);
-      } finally {
-        try {
-          document.body.removeChild(textArea);
-        } catch (err) {
-          console.error("Fallback: Failed to remove textarea from DOM", err);
-        }
-      }
-    };
-
-    // Use modern Clipboard API if available and in a secure context
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(displayedContent).then(
-        () => {
-          setIsCopied(true);
-          setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
-        },
-        (err) => {
-          console.error("Could not copy text using navigator: ", err);
-          fallbackCopy();
-        },
-      );
-    } else {
-      fallbackCopy();
-    }
-  };
-
-  // Tool call messages (from history refresh) render as pills + modal
+  // Tool call messages (from history refresh) render as pills (modal is self-contained in ToolCallPill)
   if (isToolMessage) {
     return (
       <motion.div
@@ -444,28 +392,20 @@ function ChatBubble({ message }: ChatBubbleProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="group relative w-full pl-8"
       >
-        {selectedToolCall && (
-          <ToolCallDetailsModal
-            toolCall={selectedToolCall}
-            open={Boolean(selectedToolCall)}
-            onClose={() => setSelectedToolCallId(null)}
-            onConfirm={(toolCallId) =>
-              activeChatChannel &&
-              confirmToolCall(activeChatChannel, toolCallId)
-            }
-            onCancel={(toolCallId) =>
-              activeChatChannel && cancelToolCall(activeChatChannel, toolCallId)
-            }
-          />
-        )}
-
         {toolCalls && toolCalls.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1.5">
             {toolCalls.map((toolCall) => (
               <ToolCallPill
                 key={toolCall.id}
                 toolCall={toolCall}
-                onClick={() => setSelectedToolCallId(toolCall.id)}
+                onConfirm={(toolCallId) =>
+                  activeChatChannel &&
+                  confirmToolCall(activeChatChannel, toolCallId)
+                }
+                onCancel={(toolCallId) =>
+                  activeChatChannel &&
+                  cancelToolCall(activeChatChannel, toolCallId)
+                }
               />
             ))}
           </div>
@@ -476,12 +416,26 @@ function ChatBubble({ message }: ChatBubbleProps) {
     return (
       <motion.div
         ref={bubbleRef}
+        data-message-id={msgIdForHighlight}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="group relative w-full pl-8 my-6 first:mt-0"
         onClick={handleBubbleClick}
       >
+        {/* Notification highlight overlay */}
+        <AnimatePresence>
+          {isHighlighted && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="absolute -inset-x-12 -inset-y-1 bg-amber-100/50 pointer-events-none dark:bg-amber-500/[0.07]"
+            />
+          )}
+        </AnimatePresence>
+
         {/* Avatar - positioned to the left */}
         <div className="absolute left-0 top-1">{renderAvatar()}</div>
 
@@ -656,17 +610,13 @@ function ChatBubble({ message }: ChatBubbleProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <button
-                onClick={handleCopy}
+              <CopyButton
+                content={displayedContent}
+                variant="ghost"
+                size="xs"
                 className={toolbarButtonStyles}
                 title={t("app.message.copy")}
-              >
-                {isCopied ? (
-                  <CheckIcon className="h-3.5 w-3.5 text-green-400" />
-                ) : (
-                  <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-                )}
-              </button>
+              />
               {canDelete && (
                 <button
                   onClick={handleDeleteClick}
@@ -727,17 +677,13 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 <PencilIcon className="h-3.5 w-3.5" />
               </button>
             )}
-            <button
-              onClick={handleCopy}
+            <CopyButton
+              content={displayedContent}
+              variant="ghost"
+              size="xs"
               className={toolbarButtonStyles}
               title={t("app.message.copy")}
-            >
-              {isCopied ? (
-                <CheckIcon className="h-3.5 w-3.5 text-green-400" />
-              ) : (
-                <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-              )}
-            </button>
+            />
             {canDelete && (
               <button
                 onClick={handleDeleteClick}

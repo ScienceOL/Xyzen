@@ -1,6 +1,6 @@
 import JsonDisplay from "@/components/shared/JsonDisplay";
 import { zIndexClasses } from "@/constants/zIndex";
-import type { ToolCall } from "@/store/types";
+import type { ToolCall, ToolCallResult } from "@/store/types";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import {
   ArrowsPointingOutIcon,
@@ -45,7 +45,30 @@ const getImageFromResult = (result: unknown): string | null => {
   return null;
 };
 
-const parseToolResult = (result: ToolCall["result"]): unknown => {
+/**
+ * Extract the displayable data from a ToolCallResult.
+ *
+ * Backend now sends: { success: boolean, data: any, error?: string }
+ * Legacy format (string) is handled as fallback for cached messages.
+ */
+const extractResultData = (result: ToolCall["result"]): unknown => {
+  if (!result) return undefined;
+
+  // New structured format from backend
+  if (typeof result === "object" && "success" in result) {
+    const structured = result as ToolCallResult;
+    // If data is a string that looks like JSON, parse it
+    if (typeof structured.data === "string") {
+      try {
+        return JSON.parse(structured.data);
+      } catch {
+        return structured.data;
+      }
+    }
+    return structured.data;
+  }
+
+  // Legacy: plain string (from cached/old messages)
   if (typeof result === "string") {
     try {
       return JSON.parse(result);
@@ -54,11 +77,9 @@ const parseToolResult = (result: ToolCall["result"]): unknown => {
     }
   }
 
-  if (typeof result === "object" && result !== null) {
-    if ("content" in result) {
-      return (result as { content: unknown }).content;
-    }
-    return result;
+  // Legacy: { type, content, raw } format
+  if (typeof result === "object" && "content" in result) {
+    return (result as { content: unknown }).content;
   }
 
   return result;
@@ -235,7 +256,7 @@ export default function ToolCallDetails({
 
   const parsedResult = useMemo(() => {
     if (!toolCall.result) return undefined;
-    return parseToolResult(toolCall.result);
+    return extractResultData(toolCall.result);
   }, [toolCall.result]);
 
   const imageUrl = useMemo(() => {
@@ -274,6 +295,7 @@ export default function ToolCallDetails({
             compact
             variant={jsonVariant}
             hideHeader
+            maxHeight="none"
           />
         </div>
       )}
@@ -377,6 +399,7 @@ export default function ToolCallDetails({
                 compact
                 variant={jsonVariant}
                 hideHeader
+                maxHeight="none"
               />
             </div>
           ) : (
@@ -395,6 +418,7 @@ export default function ToolCallDetails({
                 variant={jsonVariant}
                 hideHeader
                 enableCharts={true}
+                maxHeight="none"
               />
             </div>
           )}

@@ -14,6 +14,14 @@ import type {
 } from "./slices";
 
 // 定义应用中的核心类型
+export interface ToolCallResult {
+  success: boolean;
+  data: unknown;
+  error?: string;
+  truncated?: boolean;
+  original_length?: number;
+}
+
 export interface ToolCall {
   id: string;
   name: string;
@@ -25,7 +33,7 @@ export interface ToolCall {
     | "executing"
     | "completed"
     | "failed";
-  result?: string | { type: string; content: unknown; raw: string };
+  result?: ToolCallResult;
   error?: string;
   timestamp: string;
 }

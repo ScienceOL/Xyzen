@@ -4,6 +4,7 @@ import { HoleBackground } from "@/components/animate-ui/components/backgrounds/h
 import {
   DeepSeekIcon,
   GeminiIcon,
+  GrokIcon,
   QwenIcon,
 } from "@/components/icons/LlmIcons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -30,6 +31,7 @@ const ProviderIcon = ({
     anthropic: <SiAnthropic className={className} />,
     openai: <SiOpenai className={className} />,
     google: <GeminiIcon className={className} />,
+    xai: <GrokIcon className={className} />,
     qwen: <QwenIcon className={className} />,
     deepseek: <DeepSeekIcon className={className} />,
     glm: (
@@ -60,13 +62,21 @@ interface TierInfo {
 
 interface ModelInfo {
   name: string;
-  provider: "anthropic" | "openai" | "google" | "qwen" | "deepseek" | "glm";
+  provider:
+    | "anthropic"
+    | "openai"
+    | "google"
+    | "xai"
+    | "qwen"
+    | "deepseek"
+    | "glm";
 }
 
 const PROVIDER_COLORS: Record<string, string> = {
   anthropic: "text-orange-500",
   openai: "text-emerald-500",
   google: "text-blue-500",
+  xai: "text-zinc-800 dark:text-zinc-200",
   qwen: "text-purple-500",
   deepseek: "text-cyan-500",
   glm: "text-indigo-500",
@@ -86,8 +96,8 @@ const TIERS: TierInfo[] = [
     featureKeys: ["quickTranslation", "textSummary", "simpleQA"],
     models: [
       { name: "Gemini 2.5 Flash-Lite", provider: "google" },
-      { name: "Qwen3 30B A3B", provider: "qwen" },
-      { name: "GPT-5 Nano", provider: "openai" },
+      // { name: "Qwen3 30B A3B", provider: "qwen" },
+      { name: "Grok 4.1 Fast", provider: "xai" },
     ],
   },
   {
@@ -103,7 +113,7 @@ const TIERS: TierInfo[] = [
     featureKeys: ["dailyChat", "emailWriting", "knowledgeQA"],
     models: [
       { name: "Claude Haiku 4.5", provider: "anthropic" },
-      { name: "DeepSeek V3.2", provider: "deepseek" },
+      // { name: "DeepSeek V3.2", provider: "deepseek" },
       { name: "Gemini 3 Flash", provider: "google" },
     ],
   },
@@ -122,8 +132,9 @@ const TIERS: TierInfo[] = [
     models: [
       { name: "Claude Sonnet 4.5", provider: "anthropic" },
       { name: "Gemini 3 Pro", provider: "google" },
-      { name: "GPT-5.2", provider: "openai" },
-      { name: "Qwen3 Max", provider: "qwen" },
+      { name: "GPT-5.3", provider: "openai" },
+      { name: "Grok 4.1", provider: "xai" },
+      // { name: "Qwen3 Max", provider: "qwen" },
     ],
   },
   {
@@ -141,8 +152,9 @@ const TIERS: TierInfo[] = [
       "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500",
     featureKeys: ["deepReasoning", "academicAnalysis", "mathSolving"],
     models: [
-      { name: "Claude Opus 4.5", provider: "anthropic" },
+      { name: "Claude Opus 4.6", provider: "anthropic" },
       { name: "GPT-5.2 Pro", provider: "openai" },
+      { name: "Grok 4.1 Thinking", provider: "xai" },
     ],
   },
 ];

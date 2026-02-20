@@ -7,11 +7,12 @@ import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { useAvailableModels } from "@/hooks/queries/useProvidersQuery";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
+import { useXyzen } from "@/store";
 import { resolveContextLimit } from "@/core/chat/tokenUsage";
 import type { Agent } from "@/types/agents";
 import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import ChatBubble from "./components/ChatBubble";
@@ -128,6 +129,36 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
 
   // State for share modal
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // Scroll-to a specific message (triggered by notification clicks)
+  const highlightMessageId = useXyzen((s) => s.highlightMessageId);
+  useEffect(() => {
+    if (!highlightMessageId) return;
+    // Retry until the DOM element exists (React may not have committed yet)
+    let attempts = 0;
+    const tryScroll = () => {
+      const el = document.querySelector(
+        `[data-message-id="${highlightMessageId}"]`,
+      );
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Dismiss highlight on next click (delayed so this interaction doesn't count)
+        setTimeout(() => {
+          document.addEventListener(
+            "pointerdown",
+            () => useXyzen.getState().highlightMessage(null),
+            { once: true },
+          );
+        }, 100);
+      } else if (attempts < 15) {
+        attempts++;
+        setTimeout(tryScroll, 200);
+      } else {
+        useXyzen.getState().highlightMessage(null);
+      }
+    };
+    setTimeout(tryScroll, 300);
+  }, [highlightMessageId]);
 
   // Handler for showing share modal
   const handleShowShareModal = () => {

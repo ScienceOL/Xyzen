@@ -515,7 +515,7 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
 
   return (
     <>
-      <SheetModal isOpen={isOpen} onClose={onClose} size="md">
+      <SheetModal isOpen={isOpen} onClose={onClose} size="lg">
         <div className="flex h-full flex-col overflow-hidden">
           <div className="shrink-0 px-5 pt-5 pb-1 md:pt-2">
             <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">

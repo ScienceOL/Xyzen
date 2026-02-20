@@ -53,6 +53,7 @@ interface ParsedNotification {
   agentName: string;
   agentAvatar: string;
   url: string;
+  messageId: string;
 }
 
 const META_RE = /\n<!-- meta:(.*?) -->$/;
@@ -60,7 +61,14 @@ const META_RE = /\n<!-- meta:(.*?) -->$/;
 function parseNotificationBody(raw: string): ParsedNotification {
   const match = META_RE.exec(raw);
   if (!match)
-    return { body: raw, title: "", agentName: "", agentAvatar: "", url: "" };
+    return {
+      body: raw,
+      title: "",
+      agentName: "",
+      agentAvatar: "",
+      url: "",
+      messageId: "",
+    };
   const body = raw.slice(0, match.index);
   try {
     const meta = JSON.parse(match[1]) as Record<string, string>;
@@ -70,9 +78,17 @@ function parseNotificationBody(raw: string): ParsedNotification {
       agentName: meta.agent_name ?? "",
       agentAvatar: meta.agent_avatar ?? "",
       url: meta.url ?? "",
+      messageId: meta.message_id ?? "",
     };
   } catch {
-    return { body: raw, title: "", agentName: "", agentAvatar: "", url: "" };
+    return {
+      body: raw,
+      title: "",
+      agentName: "",
+      agentAvatar: "",
+      url: "",
+      messageId: "",
+    };
   }
 }
 
@@ -106,7 +122,7 @@ const NotificationItem = React.memo(function NotificationItem({
 }: {
   notification: Notification;
   isArchivedView?: boolean;
-  onNavigate?: (topicId: string) => void;
+  onNavigate?: (topicId: string, messageId?: string) => void;
 }) {
   const timeAgo = useTimeAgo(notification.createdAt);
   const parsed = parseNotificationBody(notification.body ?? "");
@@ -123,12 +139,12 @@ const NotificationItem = React.memo(function NotificationItem({
     const queryMatch = /[?&]topic=([^&]+)/.exec(url);
     const topicId = hashMatch?.[1] ?? queryMatch?.[1];
     if (topicId && onNavigate) {
-      onNavigate(topicId);
+      onNavigate(topicId, parsed.messageId || undefined);
     } else {
       // Fallback: use hash navigation for PWA compatibility
       window.location.hash = `#${url}`;
     }
-  }, [notification, parsed.url, onNavigate]);
+  }, [notification, parsed.url, parsed.messageId, onNavigate]);
 
   const handleToggleRead = useCallback(
     async (e: React.MouseEvent) => {
@@ -292,7 +308,7 @@ function NotificationPanel({
   onNavigate,
 }: {
   filter: Record<string, boolean>;
-  onNavigate?: (topicId: string) => void;
+  onNavigate?: (topicId: string, messageId?: string) => void;
 }) {
   const { t } = useTranslation();
   const {
@@ -393,7 +409,7 @@ const FILTER_MAP: Record<FilterTab, Record<string, boolean>> = {
 function NotificationList({
   onNavigate,
 }: {
-  onNavigate?: (topicId: string) => void;
+  onNavigate?: (topicId: string, messageId?: string) => void;
 }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
@@ -447,11 +463,21 @@ function NotificationList({
 function NotificationUI() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const { activateChannel, setActivePanel, requestFocusAgent } = useXyzen(
+  const {
+    activateChannel,
+    setActivePanel,
+    requestFocusAgent,
+    setMobilePage,
+    setMobileCeoOverlay,
+    highlightMessage,
+  } = useXyzen(
     useShallow((s) => ({
       activateChannel: s.activateChannel,
       setActivePanel: s.setActivePanel,
       requestFocusAgent: s.requestFocusAgent,
+      setMobilePage: s.setMobilePage,
+      setMobileCeoOverlay: s.setMobileCeoOverlay,
+      highlightMessage: s.highlightMessage,
     })),
   );
   const [open, setOpen] = useState(false);
@@ -461,17 +487,34 @@ function NotificationUI() {
   const close = useCallback(() => setOpen(false), []);
 
   const handleNavigate = useCallback(
-    async (topicId: string) => {
+    async (topicId: string, messageId?: string) => {
       close();
       setActivePanel("chat");
+      if (isMobile) {
+        setMobileCeoOverlay(false);
+        setMobilePage(1);
+      }
       await activateChannel(topicId);
-      // After activation, the channel's agentId is available in the store
+      // Desktop spatial: focus the corresponding agent node
       const channel = useXyzen.getState().channels[topicId];
       if (channel?.agentId) {
         requestFocusAgent(channel.agentId);
       }
+      // Scroll to + highlight the specific message
+      if (messageId) {
+        highlightMessage(messageId);
+      }
     },
-    [close, activateChannel, setActivePanel, requestFocusAgent],
+    [
+      close,
+      activateChannel,
+      setActivePanel,
+      requestFocusAgent,
+      isMobile,
+      setMobilePage,
+      setMobileCeoOverlay,
+      highlightMessage,
+    ],
   );
 
   useEffect(() => {

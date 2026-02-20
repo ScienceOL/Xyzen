@@ -10,9 +10,41 @@ import type {
   Message,
   MessageError,
   ToolCall,
+  ToolCallResult,
   AgentMetadata,
 } from "@/store/types";
 import type { AgentExecutionState, PhaseExecution } from "@/types/agentEvents";
+
+/**
+ * Normalize a tool result from backend into the ToolCallResult format.
+ *
+ * Handles:
+ * - New structured format: { success, data, error? } → pass through
+ * - Legacy string format → wrap as { success: true, data: parsed }
+ * - Legacy object format → wrap as { success: true, data: obj }
+ */
+function normalizeToolResult(raw: unknown): ToolCallResult {
+  if (typeof raw === "object" && raw !== null && "success" in raw) {
+    return raw as ToolCallResult;
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      // Could be the new format serialized
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        "success" in parsed
+      ) {
+        return parsed as ToolCallResult;
+      }
+      return { success: true, data: parsed };
+    } catch {
+      return { success: true, data: raw };
+    }
+  }
+  return { success: true, data: raw };
+}
 
 /**
  * Generate a unique client-side message ID
@@ -274,10 +306,7 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
     }
 
     if (parsed.result !== undefined) {
-      toolCall.result =
-        typeof parsed.result === "string"
-          ? parsed.result
-          : JSON.stringify(parsed.result);
+      toolCall.result = normalizeToolResult(parsed.result);
     }
 
     if (parsed.error) {
@@ -491,11 +520,7 @@ export function reconstructAgentExecutionFromMetadata(
         name: tc.name,
         arguments: tc.arguments || {},
         status: (tc.status || "completed") as ToolCall["status"],
-        result: tc.result
-          ? typeof tc.result === "string"
-            ? tc.result
-            : JSON.stringify(tc.result)
-          : undefined,
+        result: tc.result ? normalizeToolResult(tc.result) : undefined,
         error: tc.error,
         timestamp: new Date(tc.timestamp).toISOString(),
       }));
@@ -527,11 +552,7 @@ export function reconstructAgentExecutionFromMetadata(
         name: tc.name,
         arguments: tc.arguments || {},
         status: (tc.status || "completed") as ToolCall["status"],
-        result: tc.result
-          ? typeof tc.result === "string"
-            ? tc.result
-            : JSON.stringify(tc.result)
-          : undefined,
+        result: tc.result ? normalizeToolResult(tc.result) : undefined,
         error: tc.error,
         timestamp: new Date(tc.timestamp).toISOString(),
       }));
