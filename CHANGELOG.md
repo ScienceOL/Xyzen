@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.12](https://github.com/ScienceOL/Xyzen/compare/v1.4.11...v1.4.12) (2026-02-20)
+
+### 🐛 Bug Fixes
+
+* Enhance ToolCall handling and UI components ([4660d24](https://github.com/ScienceOL/Xyzen/commit/4660d2418e3551b7d1f25d887c31e3e8c09b4657))
+
 ## [1.4.11](https://github.com/ScienceOL/Xyzen/compare/v1.4.10...v1.4.11) (2026-02-20)
 
 ### 🐛 Bug Fixes
