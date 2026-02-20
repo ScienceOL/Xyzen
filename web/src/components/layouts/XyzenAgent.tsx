@@ -221,6 +221,7 @@ export default function XyzenAgent({
                 isLoading={loadingAgentId === rootAgent.id}
                 activeTopicCount={activeTopicCountByAgent[rootAgent.id] ?? 0}
                 onClick={handleRootAgentClick}
+                onEdit={handleEditClick}
               />
             </div>
             {/* Opaque base below the card — fills bottom gap without blocking backdrop-blur */}
@@ -251,6 +252,7 @@ export default function XyzenAgent({
             }}
             onGridSizeChange={() => {}}
             onDelete={
+              editingAgent.id === rootAgent?.id ||
               publishedAgentIds.has(editingAgent.id)
                 ? undefined
                 : () => {

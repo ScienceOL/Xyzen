@@ -67,7 +67,7 @@
   "rootAgent": {
     "title": "CEOエージェント",
     "description": "他のエージェントにタスクを調整・委任します",
-    "badge": "ルート"
+    "badge": "CEO"
   },
   "sessionSettings": {
     "title": "{{name}} 設定",

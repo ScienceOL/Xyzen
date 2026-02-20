@@ -58,7 +58,7 @@ const CeoOverlay: React.FC<CeoOverlayProps> = ({
   );
 
   // Typewriter effect
-  const greeting = t("app.loft.greeting");
+  const greeting = t("app.loft.greeting", { name: rootAgent?.name || "Xyzen" });
   const [displayedChars, setDisplayedChars] = useState(0);
   const hasTyped = useRef(false);
 
@@ -114,6 +114,39 @@ const CeoOverlay: React.FC<CeoOverlayProps> = ({
     }
   }, [visible, overlayRef]);
 
+  // Swipe-up on the bottom handle to dismiss
+  const handleStartY = useRef(0);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    handleStartY.current = e.touches[0].clientY;
+  }, []);
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      const el = overlayRef.current;
+      if (!el) return;
+      const dy = e.touches[0].clientY - handleStartY.current;
+      if (dy < 0) {
+        el.style.transition = "none";
+        el.style.transform = `translateY(${dy}px)`;
+      }
+    },
+    [overlayRef],
+  );
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const el = overlayRef.current;
+      if (!el) return;
+      const dy = e.changedTouches[0].clientY - handleStartY.current;
+      if (dy < -60) {
+        el.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)";
+        onDismiss();
+      } else {
+        el.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)";
+        el.style.transform = "translateY(0)";
+      }
+    },
+    [overlayRef, onDismiss],
+  );
+
   const handleSendToCeo = useCallback(
     (text: string) => {
       if (!rootAgent) return false;
@@ -142,14 +175,19 @@ const CeoOverlay: React.FC<CeoOverlayProps> = ({
         pointerEvents: visible ? "auto" : "none",
       }}
     >
-      {/* Pull handle at bottom edge — visible during drag */}
-      <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-2">
+      {/* Pull handle — swipe up to dismiss */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-10 flex justify-center pb-2 pt-4"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="h-1 w-10 rounded-full bg-white/30" />
       </div>
 
       {/* Content — always rendered, clipped by translateY */}
       <div
-        className="relative flex h-full flex-col items-center justify-center px-6"
+        className="relative flex h-full flex-col items-center justify-center px-0"
         onClick={onDismiss}
       >
         <div

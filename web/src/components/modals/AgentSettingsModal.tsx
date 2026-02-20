@@ -168,8 +168,10 @@ function ProfileEditor({
     setIsSaving(true);
     try {
       await updateAgent({
-        ...agent,
-      });
+        id: agent.id,
+        name: agent.name,
+        description: agent.description,
+      } as Agent);
       onClose();
     } catch (error) {
       console.error("Failed to update agent:", error);
@@ -268,8 +270,8 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const backendUrl = useXyzen((state) => state.backendUrl);
-
-  // Desktop: tab selection, Mobile: drill-down navigation
+  const rootAgentId = useXyzen((state) => state.rootAgent?.id);
+  const isRootAgent = !!agent && !!rootAgentId && agent.id === rootAgentId;
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   const [mobileActiveTab, setMobileActiveTab] = useState<TabType | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -527,8 +529,8 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
               <div className="hidden md:block">{desktopContent}</div>
             </div>
 
-            {/* Publish to Marketplace Button - only show if agent exists and is not forked */}
-            {agent && !isForked && (
+            {/* Publish to Marketplace Button - only show if agent exists, is not forked, and is not root agent */}
+            {agent && !isForked && !isRootAgent && (
               <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                 <Button
                   type="button"
@@ -551,8 +553,8 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
         </div>
       </SheetModal>
 
-      {/* Publish to Marketplace Modal - only render for non-forked agents */}
-      {agent && !isForked && (
+      {/* Publish to Marketplace Modal - only render for non-forked, non-root agents */}
+      {agent && !isForked && !isRootAgent && (
         <PublishAgentModal
           open={showPublishModal}
           onOpenChange={setShowPublishModal}

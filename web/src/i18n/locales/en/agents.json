@@ -67,7 +67,7 @@
   "rootAgent": {
     "title": "CEO Agent",
     "description": "Orchestrates and delegates to your other agents",
-    "badge": "Root"
+    "badge": "CEO"
   },
   "sessionSettings": {
     "title": "{{name}} Settings",

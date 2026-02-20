@@ -163,7 +163,7 @@ class SystemAgentManager:
 
         agent_data = AgentCreate(
             scope=AgentScope.USER,
-            name="CEO Agent",
+            name="Xyzen",
             description="Your root agent that can orchestrate other agents",
             graph_config=ceo_config.model_dump() if ceo_config else None,
             config_visibility=ConfigVisibility.HIDDEN,

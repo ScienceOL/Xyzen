@@ -67,7 +67,7 @@
   "rootAgent": {
     "title": "CEO 助手",
     "description": "管理和委派任务给其他助手",
-    "badge": "根助手"
+    "badge": "CEO"
   },
   "sessionSettings": {
     "title": "{{name}} 设置",

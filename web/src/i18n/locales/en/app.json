@@ -479,7 +479,7 @@
     "clickDateHint": "Tap a date to view details"
   },
   "loft": {
-    "greeting": "Hello, I'm **Xyzen**, CEO of your Agents.",
+    "greeting": "Hello, I'm **{{name}}**, CEO of your Agents.",
     "inputPlaceholder": "Ask the CEO anything...",
     "dismissHint": "Tap to see all agents",
     "backToLoft": "Back to CEO"

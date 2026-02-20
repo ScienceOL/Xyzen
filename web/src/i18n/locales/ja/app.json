@@ -478,7 +478,7 @@
     "clickDateHint": "日付をタップして詳細を表示"
   },
   "loft": {
-    "greeting": "こんにちは、**Xyzen**です。エージェントグループのCEOです。",
+    "greeting": "こんにちは、**{{name}}**です。エージェントグループのCEOです。",
     "inputPlaceholder": "CEOに聞く...",
     "dismissHint": "タップしてエージェント一覧を表示",
     "backToLoft": "CEOに戻る"

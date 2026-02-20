@@ -28,6 +28,7 @@ from app.models.agent import AgentCreate, AgentRead, AgentReadWithDetails, Agent
 from app.models.session_stats import AgentStatsAggregated, DailyStatsResponse, YesterdaySummary
 from app.repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
 from app.repos.agent_marketplace import AgentMarketplaceRepository
+from app.repos.root_agent import RootAgentRepository
 from app.repos.session import SessionRepository
 from app.repos.session_stats import SessionStatsRepository
 
@@ -437,6 +438,21 @@ async def update_agent(
         if agent.scope == AgentScope.SYSTEM:
             raise HTTPException(status_code=403, detail="Cannot modify system agents")
 
+        # Root agent: only allow name, description, avatar changes
+        root_agent_repo = RootAgentRepository(db)
+        if await root_agent_repo.is_root_agent(agent_id, user_id):
+            _allowed = {"name", "description", "avatar"}
+            forbidden = {
+                field
+                for field, value in agent_data.model_dump(exclude_unset=True).items()
+                if field not in _allowed and value is not None
+            }
+            if forbidden:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Root agent only allows editing: {', '.join(sorted(_allowed))}",
+                )
+
         # Block config editing for non-editable agents
         if not agent.config_editable and agent_data.graph_config is not None:
             raise HTTPException(
@@ -509,6 +525,10 @@ async def delete_agent(
 
         if agent.scope == AgentScope.SYSTEM:
             raise HTTPException(status_code=403, detail="Cannot delete system agents")
+
+        root_agent_repo = RootAgentRepository(db)
+        if await root_agent_repo.is_root_agent(agent_id, user_id):
+            raise HTTPException(status_code=403, detail="Cannot delete root agent")
 
         # ALLOW deletion of default agents
         # if agent.tags and any(tag.startswith("default_") for tag in agent.tags):
