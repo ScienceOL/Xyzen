@@ -11,8 +11,10 @@ interface OverscrollPullOptions {
   enabled?: boolean;
   /** Called when the pull exceeds the threshold on release. */
   onPull?: () => void;
-  /** Called with 0..1 progress during the pull gesture. */
+  /** Called with 0..1+ progress during the pull gesture (finger tracking). */
   onProgress?: (progress: number) => void;
+  /** Called when the gesture ends. `reached` is true if threshold was met. */
+  onEnd?: (reached: boolean) => void;
 }
 
 /**
@@ -24,7 +26,9 @@ interface OverscrollPullOptions {
  * release.
  *
  * Follows the same architecture as `useMobileSwipe`:
- * - Native touch listeners (passive — does NOT preventDefault)
+ * - Native touch listeners (touchmove is non-passive so we can
+ *   preventDefault during a pull — suppresses tap-highlight and
+ *   native scroll bounce)
  * - Direction-lock to avoid fighting with horizontal page swipe
  * - Callbacks stored in refs so the effect never re-registers
  */
@@ -35,12 +39,15 @@ export function useOverscrollPull({
   enabled = true,
   onPull,
   onProgress,
+  onEnd,
 }: OverscrollPullOptions) {
   // Keep latest callbacks in refs so the effect closure never goes stale.
   const onPullRef = useRef(onPull);
   onPullRef.current = onPull;
   const onProgressRef = useRef(onProgress);
   onProgressRef.current = onProgress;
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
 
@@ -97,6 +104,7 @@ export function useOverscrollPull({
       }
 
       pulling = true;
+      e.preventDefault(); // suppress tap-highlight & native scroll bounce
 
       // Raw progress with rubber-band past threshold
       let effective = dy;
@@ -115,11 +123,12 @@ export function useOverscrollPull({
     };
 
     const onTouchEnd = () => {
-      if (pulling && lastProgress >= 1) {
-        onPullRef.current?.();
-      }
       if (pulling) {
-        onProgressRef.current?.(0);
+        const reached = lastProgress >= 1;
+        if (reached) {
+          onPullRef.current?.();
+        }
+        onEndRef.current?.(reached);
       }
       pulling = false;
       locked = false;
@@ -129,7 +138,7 @@ export function useOverscrollPull({
     };
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd, { passive: true });
     el.addEventListener("touchcancel", onTouchEnd, { passive: true });
     return () => {

@@ -12,7 +12,6 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
-  useState,
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -34,6 +33,9 @@ interface MobileChatViewProps {
  * Uses iOS-style gesture-driven navigation via `useMobileSwipe`.
  * Content follows the finger 1:1 during the drag and snaps with
  * velocity-based momentum on release.
+ *
+ * Navigation state (overlay visibility + page index) is persisted
+ * in Zustand so it survives component unmount/remount.
  */
 const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
   function MobileChatView({ onPageChange }, ref) {
@@ -42,12 +44,20 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
       setActiveChatChannel,
       rootAgent,
       activateChannelForAgent,
+      mobileCeoOverlay: showCeoOverlay,
+      setMobileCeoOverlay: setShowCeoOverlay,
+      mobilePage: persistedPage,
+      setMobilePage,
     } = useXyzen(
       useShallow((s) => ({
         activeChatChannel: s.activeChatChannel,
         setActiveChatChannel: s.setActiveChatChannel,
         rootAgent: s.rootAgent,
         activateChannelForAgent: s.activateChannelForAgent,
+        mobileCeoOverlay: s.mobileCeoOverlay,
+        setMobileCeoOverlay: s.setMobileCeoOverlay,
+        mobilePage: s.mobilePage,
+        setMobilePage: s.setMobilePage,
       })),
     );
     const { knowledge_set_id } = useActiveChannelStatus();
@@ -59,35 +69,40 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
     // Prevent clearing activeChatChannel when the snap to page 0
     // was triggered by *us* due to an external channel-clear.
     const externalClear = useRef(false);
-    // Track whether we were previously in chat — initialised to false so that
-    // mounting with an already-active channel (deep-link / notification) is
-    // detected as a false→true transition and auto-navigates to page 1.
-    const prevHasChannel = useRef(false);
+    // Initialise to current hasChannel so that a remount with an
+    // already-active channel does NOT trigger false auto-navigation.
+    const prevHasChannel = useRef(hasChannel);
 
     // ---- CEO overlay ----
-    const [showCeoOverlay, setShowCeoOverlay] = useState(true);
-    const dismissOverlay = useCallback(() => setShowCeoOverlay(false), []);
+    const dismissOverlay = useCallback(
+      () => setShowCeoOverlay(false),
+      [setShowCeoOverlay],
+    );
 
-    // Pre-activate CEO channel when overlay is visible so that
-    // useMobileSwipe has a page 1 (chat) to swipe to.
+    // Pre-activate CEO channel so useMobileSwipe has a page 1 (chat) to
+    // swipe to.  The skipAutoNav flag prevents the channel-change effect
+    // below from auto-navigating to page 1 — preemptive activation should
+    // only make the page *available*, not navigate to it.
+    const skipAutoNav = useRef(false);
     useEffect(() => {
       if (showCeoOverlay && rootAgent && !activeChatChannel) {
+        skipAutoNav.current = true;
         activateChannelForAgent(rootAgent.id);
       }
     }, [showCeoOverlay, rootAgent, activeChatChannel, activateChannelForAgent]);
 
-    // Ref to the overlay backdrop element — direct DOM manipulation during
+    // Ref to the overlay container — direct DOM manipulation during
     // pull gesture (no React re-renders → no flicker, same as useMobileSwipe).
-    const backdropRef = useRef<HTMLDivElement>(null);
+    const overlayRef = useRef<HTMLDivElement>(null);
 
     // Pull-down-to-reveal: native touch events on the agent scroll container.
     const agentScrollRef = useRef<HTMLDivElement>(null);
     useOverscrollPull({
       scrollRef: agentScrollRef,
       enabled: !showCeoOverlay,
-      onPull: useCallback(() => setShowCeoOverlay(true), []),
+      onPull: useCallback(() => setShowCeoOverlay(true), [setShowCeoOverlay]),
       onProgress: useCallback((progress: number) => {
-        const el = backdropRef.current;
+        const el = overlayRef.current;
         if (!el) return;
         if (progress > 0) {
           const pct = Math.min(progress, 1) * 100;
@@ -98,11 +113,21 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
           el.style.clipPath = "inset(0% 0% 100% 0%)";
         }
       }, []),
+      onEnd: useCallback((reached: boolean) => {
+        if (!reached) {
+          // Animate shrink-back when pull cancelled
+          const el = overlayRef.current;
+          if (!el) return;
+          el.style.transition = "clip-path 0.3s ease-out";
+          el.style.clipPath = "inset(0% 0% 100% 0%)";
+        }
+      }, []),
     });
 
     // ---- Horizontal page swipe ----
     const handleSnap = useCallback(
       (page: number) => {
+        setMobilePage(page);
         // Don't clear channel when overlay is visible — the CEO channel
         // must stay alive so the user can swipe right to chat again.
         if (
@@ -115,14 +140,13 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
         }
         externalClear.current = false;
       },
-      [hasChannel, setActiveChatChannel, showCeoOverlay],
+      [hasChannel, setActiveChatChannel, showCeoOverlay, setMobilePage],
     );
 
     const { wrapperRef, trackRef, currentPage, goToPage, setPageImmediate } =
       useMobileSwipe({
         pageCount,
         onSnap: handleSnap,
-        bypassEdge: showCeoOverlay,
       });
 
     // Keep goToPage always-current via ref so async callbacks never go stale.
@@ -132,8 +156,9 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
     // Stable callback that XyzenAgent can safely call after an async
     // activateChannelForAgent — always uses the latest goToPage.
     const navigateToChat = useCallback(() => {
+      setMobilePage(1);
       goToPageRef.current(1);
-    }, []);
+    }, [setMobilePage]);
 
     // Expose imperative handle for the parent (e.g. header back button)
     useImperativeHandle(ref, () => ({ goToPage, currentPage }), [
@@ -146,19 +171,38 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
       onPageChange?.(currentPage);
     }, [currentPage, onPageChange]);
 
+    // ---- Restore persisted page on mount ----
+    const didRestore = useRef(false);
+    useEffect(() => {
+      if (didRestore.current) return;
+      didRestore.current = true;
+      // Clamp to valid range in case channel was cleared while unmounted
+      const target = Math.min(persistedPage, pageCount - 1);
+      if (target > 0) {
+        setPageImmediate(target);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageCount]);
+
     // ---- Sync page position when channel changes externally ----
     useEffect(() => {
       if (!hasChannel && prevHasChannel.current) {
         // Channel cleared externally → snap back to agent list
         externalClear.current = true;
         setPageImmediate(0);
+        setMobilePage(0);
       } else if (hasChannel && !prevHasChannel.current) {
-        // Channel activated externally (e.g. push notification deep-link)
-        // → navigate to chat page
-        goToPageRef.current(1);
+        if (skipAutoNav.current) {
+          // Preemptive CEO activation — page available but don't navigate
+          skipAutoNav.current = false;
+        } else {
+          // Channel activated externally (e.g. push notification deep-link)
+          goToPageRef.current(1);
+          setMobilePage(1);
+        }
       }
       prevHasChannel.current = hasChannel;
-    }, [hasChannel, setPageImmediate]);
+    }, [hasChannel, setPageImmediate, setMobilePage]);
 
     return (
       <div ref={wrapperRef} className="h-full overflow-hidden">
@@ -171,7 +215,7 @@ const MobileChatView = forwardRef<MobileChatViewHandle, MobileChatViewProps>(
             />
             <CeoOverlay
               visible={showCeoOverlay}
-              backdropRef={backdropRef}
+              overlayRef={overlayRef}
               onDismiss={dismissOverlay}
               onNavigateToChat={navigateToChat}
             />

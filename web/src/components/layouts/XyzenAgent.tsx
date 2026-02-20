@@ -170,41 +170,60 @@ export default function XyzenAgent({
   return (
     <TooltipProvider>
       <motion.div
-        ref={scrollRefCallback}
-        className="custom-scrollbar overflow-y-auto h-full px-4 pt-4 pb-4"
-        style={{ overscrollBehaviorY: "none" }}
+        className="relative flex h-full flex-col"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        {showCeoCard && rootAgent && (
-          <CeoAgentCard
-            agent={rootAgent}
-            isLoading={loadingAgentId === rootAgent.id}
-            activeTopicCount={activeTopicCountByAgent[rootAgent.id] ?? 0}
-            onClick={handleRootAgentClick}
-          />
-        )}
-        <div className="mt-2 overflow-hidden rounded-xl bg-white dark:bg-neutral-900">
-          <AgentList
-            agents={agents}
-            variant="detailed"
-            sortable={true}
-            publishedAgentIds={publishedAgentIds}
-            lastConversationTimeByAgent={lastConversationTimeByAgent}
-            activeTopicCountByAgent={activeTopicCountByAgent}
-            onAgentClick={handleAgentClick}
-            loadingAgentId={loadingAgentId}
-            onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
-            onReorder={handleReorder}
-          />
-        </div>
-        <button
-          className="mt-3 w-full rounded-xl border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
-          onClick={() => setAddModalOpen(true)}
+        {/* Scrollable agent list — extra bottom padding so last items aren't hidden behind CEO card */}
+        <div
+          ref={scrollRefCallback}
+          className="custom-scrollbar flex-1 overflow-y-auto px-4 pt-4"
+          style={{ overscrollBehaviorY: "none" }}
         >
-          {t("agents.addButton")}
-        </button>
+          <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-900">
+            <AgentList
+              agents={agents}
+              variant="detailed"
+              sortable={true}
+              publishedAgentIds={publishedAgentIds}
+              lastConversationTimeByAgent={lastConversationTimeByAgent}
+              activeTopicCountByAgent={activeTopicCountByAgent}
+              onAgentClick={handleAgentClick}
+              loadingAgentId={loadingAgentId}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
+              onReorder={handleReorder}
+            />
+          </div>
+          <button
+            className="mt-3 mb-4 w-full rounded-xl border-2 border-dashed border-neutral-300 bg-transparent py-3 text-sm font-semibold text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-800/50"
+            onClick={() => setAddModalOpen(true)}
+          >
+            {t("agents.addButton")}
+          </button>
+          {/* Spacer so content can scroll past the floating CEO card */}
+          {showCeoCard && rootAgent && <div className="h-24" />}
+        </div>
+
+        {/* CEO card floating above the list */}
+        {showCeoCard && rootAgent && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+            {/* Upward fade — list content dissolves before reaching the card */}
+            <div className="h-16 bg-gradient-to-t from-neutral-50 dark:from-neutral-950 to-transparent" />
+            {/* Transparent wrapper — no bg so card's backdrop-blur can see through to the list */}
+            <div className="pointer-events-auto px-4">
+              <CeoAgentCard
+                agent={rootAgent}
+                isLoading={loadingAgentId === rootAgent.id}
+                activeTopicCount={activeTopicCountByAgent[rootAgent.id] ?? 0}
+                onClick={handleRootAgentClick}
+              />
+            </div>
+            {/* Opaque base below the card — fills bottom gap without blocking backdrop-blur */}
+            <div className="h-4 bg-neutral-50 dark:bg-neutral-950" />
+          </div>
+        )}
+
         <AddAgentModal
           isOpen={isAddModalOpen}
           onClose={() => setAddModalOpen(false)}
