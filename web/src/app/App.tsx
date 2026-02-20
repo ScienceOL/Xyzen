@@ -15,7 +15,6 @@ import SharedChatPage from "@/app/share/SharedChatPage";
 import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
-import { AdminGate } from "@/components/gates";
 import { resolveEdition } from "@/core/edition/edition";
 import useTheme from "@/hooks/useTheme";
 import { authService } from "@/service/authService";
@@ -461,13 +460,11 @@ export function Xyzen({
     <>{mainLayout}</>
   );
 
-  // Check if we're on the secret code page (EE only)
+  // Check if we're on the secret code page (key-protected)
   if (currentHash === "#secretcode") {
     return (
       <QueryClientProvider client={queryClient}>
-        <AdminGate>
-          <SecretCodePage />
-        </AdminGate>
+        <SecretCodePage />
       </QueryClientProvider>
     );
   }

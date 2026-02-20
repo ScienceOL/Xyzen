@@ -476,6 +476,11 @@ class ResearchSupervisorComponent(ExecutableComponent):
             # Build messages - include system prompt and conversation
             messages = [SystemMessage(content=prompt)] + list(state.messages)
 
+            # Ensure messages don't end with an AIMessage
+            # (some providers don't support assistant message prefill)
+            if messages and isinstance(messages[-1], AIMessage):
+                messages.append(HumanMessage(content="Proceed with the research."))
+
             # Invoke LLM
             response = await llm_with_tools.ainvoke(messages)
 
