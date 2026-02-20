@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.9](https://github.com/ScienceOL/Xyzen/compare/v1.4.8...v1.4.9) (2026-02-20)
+
+### 🐛 Bug Fixes
+
+* ensure messages do not end with AIMessage in ResearchSupervisorComponent and simplify secret code page handling ([7e93e0a](https://github.com/ScienceOL/Xyzen/commit/7e93e0a850a4d9b6a71a01a3b1d548f9ce25cd01))
+
 ## [1.4.8](https://github.com/ScienceOL/Xyzen/compare/v1.4.7...v1.4.8) (2026-02-20)
 
 ### 🐛 Bug Fixes
