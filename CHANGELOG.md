@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.8](https://github.com/ScienceOL/Xyzen/compare/v1.4.7...v1.4.8) (2026-02-20)
+
+### 🐛 Bug Fixes
+
+* enhance push notification logic for chat events and improve long-press gesture handling ([84c7bf6](https://github.com/ScienceOL/Xyzen/commit/84c7bf675e4227f7175b4771a6417ab414e8f14a))
+
 ## [1.4.7](https://github.com/ScienceOL/Xyzen/compare/v1.4.6...v1.4.7) (2026-02-20)
 
 ### 🐛 Bug Fixes
