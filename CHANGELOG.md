@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.10](https://github.com/ScienceOL/Xyzen/compare/v1.4.9...v1.4.10) (2026-02-20)
+
+### 🐛 Bug Fixes
+
+* update avatar source to use agent's avatar or default if not available ([a368a43](https://github.com/ScienceOL/Xyzen/commit/a368a4387831f1ae4ac879a9821d5bba43fbf1f7))
+
 ## [1.4.9](https://github.com/ScienceOL/Xyzen/compare/v1.4.8...v1.4.9) (2026-02-20)
 
 ### 🐛 Bug Fixes
