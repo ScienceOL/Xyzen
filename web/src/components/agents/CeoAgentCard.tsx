@@ -194,7 +194,10 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
           <div className="relative shrink-0">
             <div className="h-11 w-11 overflow-hidden rounded-full ring-1 ring-amber-300/30 dark:ring-amber-500/20">
               <img
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=ceo"
+                src={
+                  agent.avatar ||
+                  "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                }
                 alt={agent.name}
                 className="h-full w-full object-cover"
               />
