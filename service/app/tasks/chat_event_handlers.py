@@ -846,44 +846,38 @@ async def handle_normal_finalization(
     # Send final saved confirmation
     await send_message_saved(ctx)
 
-    # --- Push notification (only when user is NOT connected via WebSocket) ---
+    # --- Push notification: always notify so mobile users get alerts even when backgrounded ---
     try:
         if ctx.ai_message_obj and ctx.full_content:
-            # Check if the user still has an active WebSocket for this topic.
-            # The API pod sets ws:active:{connection_id} on connect and deletes
-            # it on disconnect, with a TTL safety net for crashed pods.
-            ws_key = f"ws:active:{ctx.publisher.connection_id}"
-            is_connected = await ctx.publisher.redis_client.exists(ws_key)
-            if not is_connected:
-                from app.core.notification.events import pack_notification_body
-                from app.tasks.notification import send_notification, send_web_push
+            from app.core.notification.events import pack_notification_body
+            from app.tasks.notification import send_notification, send_web_push
 
-                _title = f"{ctx.agent_name or 'Agent'} replied"
-                _packed = pack_notification_body(
-                    ctx.full_content[:200],
-                    title=_title,
-                    agent_name=ctx.agent_name,
-                    agent_avatar=ctx.agent_avatar,
-                    topic_id=str(ctx.topic_id),
-                    url=f"/#/chat/{ctx.topic_id}",
-                )
-                send_notification.delay(
-                    event_type="agent-reply",
-                    subscriber_id=ctx.user_id,
-                    payload={
-                        "__packed": _packed,
-                        "title": _title,
-                        "body": ctx.full_content[:200],
-                        "topic_id": str(ctx.topic_id),
-                        "session_id": str(ctx.session_id),
-                        "url": f"/#/chat/{ctx.topic_id}",
-                    },
-                )
-                send_web_push.delay(
-                    user_id=ctx.user_id,
-                    title=_title,
-                    body=ctx.full_content[:200],
-                    url=f"/#/chat/{ctx.topic_id}",
-                )
+            _title = f"{ctx.agent_name or 'Agent'} replied"
+            _packed = pack_notification_body(
+                ctx.full_content[:200],
+                title=_title,
+                agent_name=ctx.agent_name,
+                agent_avatar=ctx.agent_avatar,
+                topic_id=str(ctx.topic_id),
+                url=f"/#/chat/{ctx.topic_id}",
+            )
+            send_notification.delay(
+                event_type="agent-reply",
+                subscriber_id=ctx.user_id,
+                payload={
+                    "__packed": _packed,
+                    "title": _title,
+                    "body": ctx.full_content[:200],
+                    "topic_id": str(ctx.topic_id),
+                    "session_id": str(ctx.session_id),
+                    "url": f"/#/chat/{ctx.topic_id}",
+                },
+            )
+            send_web_push.delay(
+                user_id=ctx.user_id,
+                title=_title,
+                body=ctx.full_content[:200],
+                url=f"/#/chat/{ctx.topic_id}",
+            )
     except Exception:
         pass  # Never affect chat flow

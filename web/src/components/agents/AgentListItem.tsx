@@ -229,6 +229,15 @@ function useLongPress(onLongPress?: () => void, disabled?: boolean) {
       startRef.current = { x: e.clientX, y: e.clientY };
       clear();
       timerRef.current = window.setTimeout(() => {
+        // Suppress long-press if an overscroll pull gesture is active
+        // (useOverscrollPull sets data-pull-zone / data-pulling on the container)
+        const container =
+          startRef.current &&
+          document.querySelector("[data-pulling], [data-pull-zone]");
+        if (container) {
+          clear();
+          return;
+        }
         firedRef.current = true;
         try {
           if ("vibrate" in navigator) navigator.vibrate(10);

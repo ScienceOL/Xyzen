@@ -308,7 +308,6 @@ class ResearchBriefComponent(ExecutableComponent):
 
             return {
                 "research_brief": brief,
-                "messages": [AIMessage(content=f"Research brief generated: {brief[:200]}...")],
             }
 
         workflow.add_node("brief", brief_node)

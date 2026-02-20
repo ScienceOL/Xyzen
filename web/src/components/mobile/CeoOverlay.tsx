@@ -160,6 +160,9 @@ const CeoOverlay: React.FC<CeoOverlayProps> = ({
     [overlayRef, onDismiss],
   );
 
+  // Local history sheet state
+  const [showHistory, setShowHistory] = useState(false);
+
   const handleSendToCeo = useCallback(
     (text: string) => {
       if (!rootAgent) return false;
@@ -240,9 +243,9 @@ const CeoOverlay: React.FC<CeoOverlayProps> = ({
               onSendMessage={handleSendToCeo}
               disabled={!rootAgent}
               placeholder={t("app.loft.inputPlaceholder")}
-              onShowHistory={noop}
-              showHistory={false}
-              handleCloseHistory={noop}
+              onShowHistory={() => setShowHistory(true)}
+              showHistory={showHistory}
+              handleCloseHistory={() => setShowHistory(false)}
               handleSelectTopic={noop}
             />
           </div>
