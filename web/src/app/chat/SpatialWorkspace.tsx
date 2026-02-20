@@ -28,6 +28,7 @@ import { useShallow } from "zustand/react/shallow";
 import {
   AddAgentButton,
   AgentNode,
+  RootAgentNode,
   agentToFlowNode,
   DEFAULT_VIEWPORT,
   FitViewButton,
@@ -48,6 +49,7 @@ function InnerWorkspace() {
   const { t } = useTranslation();
   const {
     agents,
+    rootAgentId,
     updateAgentLayout,
     updateAgentAvatar,
     deleteAgent,
@@ -61,6 +63,7 @@ function InnerWorkspace() {
   } = useXyzen(
     useShallow((s) => ({
       agents: s.agents,
+      rootAgentId: s.rootAgentId,
       updateAgentLayout: s.updateAgentLayout,
       updateAgentAvatar: s.updateAgentAvatar,
       deleteAgent: s.deleteAgent,
@@ -215,6 +218,19 @@ function InnerWorkspace() {
 
       // Inject running state
       node.data.isRunning = activeAgentIds.has(agent.id);
+      // Mark CEO node — use separate node type for distinct styling
+      const isCeo = agent.id === rootAgentId;
+      node.data.isCeo = isCeo;
+      if (isCeo) {
+        node.type = "ceo";
+        node.data.subordinateAvatars = agents
+          .filter((a) => a.id !== rootAgentId)
+          .map(
+            (a) =>
+              a.avatar ||
+              "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+          );
+      }
 
       if (overridePosition) {
         node.position = overridePosition;
@@ -230,6 +246,8 @@ function InnerWorkspace() {
       lastConversationTimeByAgent,
       publishedAgentIds,
       activeAgentIds,
+      rootAgentId,
+      agents,
     ],
   );
 
@@ -278,7 +296,7 @@ function InnerWorkspace() {
       return;
     }
 
-    // Case 2: Agents added - position in viewport center
+    // Case 2: Agents added
     if (addedAgentIds.length > 0) {
       const centerPosition = getViewportCenterPosition();
       const newNodes: AgentFlowNode[] = [];
@@ -289,7 +307,6 @@ function InnerWorkspace() {
           const node = buildFlowNode(agent, centerPosition);
           newNodes.push(node);
 
-          // Save position
           scheduleSave(agentId, {
             position: centerPosition,
             size: "medium",
@@ -341,8 +358,10 @@ function InnerWorkspace() {
         const isMarketplacePublished = publishedAgentIds.has(agent.id);
 
         // Only update data, preserve position
+        const isCeo = agent.id === rootAgentId;
         return {
           ...node,
+          type: isCeo ? "ceo" : "agent",
           data: {
             ...node.data,
             agentId: agent.id,
@@ -367,12 +386,23 @@ function InnerWorkspace() {
             lastConversationTime,
             isMarketplacePublished,
             isRunning: activeAgentIds.has(agent.id),
+            isCeo,
+            subordinateAvatars: isCeo
+              ? agents
+                  .filter((a) => a.id !== rootAgentId)
+                  .map(
+                    (a) =>
+                      a.avatar ||
+                      "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+                  )
+              : node.data.subordinateAvatars,
           },
         };
       }),
     );
   }, [
     agents,
+    rootAgentId,
     agentStats,
     sessionIdByAgentId,
     dailyActivity,
@@ -455,7 +485,7 @@ function InnerWorkspace() {
           } catch {
             /* ignore */
           }
-          fitView({ padding: 0.22, duration: 0 });
+          fitView({ padding: 0.22, duration: 0, maxZoom: 1 });
         }
         initStateRef.current = "done";
       }, 100);
@@ -524,7 +554,7 @@ function InnerWorkspace() {
       setViewport(savedPrevViewport, { duration: 900 });
       setPrevViewport(null);
     } else {
-      fitView({ padding: 0.22, duration: 900 });
+      fitView({ padding: 0.22, duration: 900, maxZoom: 1 });
     }
 
     setTimeout(() => {
@@ -565,13 +595,15 @@ function InnerWorkspace() {
 
   const handleDeleteAgentFromFocus = useCallback(
     (agentId: string) => {
+      // Cannot delete root agent
+      if (rootAgentId === agentId) return;
       const agent = agents.find((a) => a.id === agentId);
       if (agent) {
         setAgentToDelete(agent);
         setConfirmModalOpen(true);
       }
     },
-    [agents],
+    [agents, rootAgentId],
   );
 
   // Viewport change handler
@@ -592,7 +624,10 @@ function InnerWorkspace() {
   }, []);
 
   // Node types
-  const nodeTypes = useMemo(() => ({ agent: AgentNode }), []);
+  const nodeTypes = useMemo(
+    () => ({ agent: AgentNode, ceo: RootAgentNode }),
+    [],
+  );
 
   // Nodes with handlers
   const nodesWithHandler = useMemo(() => {
@@ -603,7 +638,7 @@ function InnerWorkspace() {
         onFocus: handleFocus,
         onLayoutChange: handleLayoutChange,
         onAvatarChange: handleAvatarChange,
-        onDelete: handleDeleteAgent,
+        onDelete: n.data.isCeo ? undefined : handleDeleteAgent,
         isFocused: n.id === focusedAgentId,
         isNewlyCreated: n.id === newlyCreatedAgentId,
       },
@@ -669,7 +704,7 @@ function InnerWorkspace() {
         {!focusedAgentId && (
           <FitViewButton
             onClick={() => {
-              fitView({ padding: 0.22, duration: 500 });
+              fitView({ padding: 0.22, duration: 500, maxZoom: 1 });
               setTimeout(() => {
                 try {
                   localStorage.setItem(
@@ -726,6 +761,7 @@ function InnerWorkspace() {
           }}
           onGridSizeChange={() => {}}
           onDelete={
+            editingAgent.id === rootAgentId ||
             publishedAgentIds.has(editingAgent.id)
               ? undefined
               : () => {

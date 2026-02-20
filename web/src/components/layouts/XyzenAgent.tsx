@@ -47,7 +47,7 @@ export default function XyzenAgent({
   const [loadingAgentId, setLoadingAgentId] = useState<string | null>(null);
   const {
     agents,
-    rootAgent,
+    rootAgentId,
 
     deleteAgent,
     updateAgentAvatar,
@@ -57,24 +57,34 @@ export default function XyzenAgent({
     activateChannelForAgent,
 
     fetchMcpServers,
-    fetchRootAgent,
   } = useXyzen(
     useShallow((s) => ({
       agents: s.agents,
-      rootAgent: s.rootAgent,
+      rootAgentId: s.rootAgentId,
       deleteAgent: s.deleteAgent,
       updateAgentAvatar: s.updateAgentAvatar,
       reorderAgents: s.reorderAgents,
       chatHistory: s.chatHistory,
       activateChannelForAgent: s.activateChannelForAgent,
       fetchMcpServers: s.fetchMcpServers,
-      fetchRootAgent: s.fetchRootAgent,
     })),
   );
 
   // Derived state from store (stable across streaming chunks)
   const activeTopicCountByAgent = useActiveTopicCountByAgent();
   const channelAgentIdMap = useChannelAgentIdMap();
+
+  // Derive root agent object from agents[] + rootAgentId
+  const rootAgent = useMemo(
+    () => agents.find((a) => a.id === rootAgentId) ?? null,
+    [agents, rootAgentId],
+  );
+
+  // Non-root agents for the sortable list
+  const nonRootAgents = useMemo(
+    () => agents.filter((a) => a.id !== rootAgentId),
+    [agents, rootAgentId],
+  );
 
   // Fetch marketplace listings to check if deleted agent has a published version
   const { data: myListings } = useMyMarketplaceListings();
@@ -104,18 +114,10 @@ export default function XyzenAgent({
   // Note: fetchAgents is called in App.tsx during initial load
   // No need to fetch again here - agents are already in the store
 
-  // Ensure MCP servers and root agent are loaded
+  // Ensure MCP servers are loaded
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        await Promise.all([fetchMcpServers(), fetchRootAgent()]);
-      } catch (error) {
-        console.error("Failed to load initial data:", error);
-      }
-    };
-
-    loadInitialData();
-  }, [fetchMcpServers, fetchRootAgent]);
+    fetchMcpServers().catch(console.error);
+  }, [fetchMcpServers]);
 
   const handleAgentClick = async (agent: Agent) => {
     const agentId = agent.id;
@@ -185,7 +187,7 @@ export default function XyzenAgent({
         >
           <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-900">
             <AgentList
-              agents={agents}
+              agents={nonRootAgents}
               variant="detailed"
               sortable={true}
               publishedAgentIds={publishedAgentIds}
@@ -252,7 +254,7 @@ export default function XyzenAgent({
             }}
             onGridSizeChange={() => {}}
             onDelete={
-              editingAgent.id === rootAgent?.id ||
+              editingAgent.id === rootAgentId ||
               publishedAgentIds.has(editingAgent.id)
                 ? undefined
                 : () => {

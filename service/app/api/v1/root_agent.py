@@ -43,7 +43,7 @@ async def get_root_agent(
 
     return RootAgentResponse(
         agent=AgentRead.model_validate(agent),
-        root_agent_id=root_record.id,
+        root_agent_id=root_record.agent_id,
     )
 
 

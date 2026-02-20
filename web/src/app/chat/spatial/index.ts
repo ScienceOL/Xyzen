@@ -1,6 +1,7 @@
 // Components
 export { AddAgentButton } from "./AddAgentButton";
 export { AgentNode } from "./AgentNode";
+export { RootAgentNode } from "./RootAgentNode";
 export { FitViewButton } from "./FitViewButton";
 export { FocusedView } from "./FocusedView";
 export { OfficialAgentsOverlay } from "./OfficialAgentsOverlay";

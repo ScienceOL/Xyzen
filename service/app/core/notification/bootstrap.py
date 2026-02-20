@@ -109,19 +109,19 @@ async def _register_or_login(api: str) -> str | None:
 
     async with httpx.AsyncClient(timeout=15) as client:
         # Try login first (fast path — works once admin exists)
-        resp = await client.post(
+        login_resp = await client.post(
             f"{api}/v1/auth/login",
             json={"email": novu.AdminEmail, "password": novu.AdminPassword},
         )
-        if resp.status_code in (200, 201):
-            token = _extract_token(resp.json())
+        if login_resp.status_code in (200, 201):
+            token = _extract_token(login_resp.json())
             if token:
                 logger.debug("Novu admin login OK")
                 return token
 
         # Admin doesn't exist yet — try register (only works on fresh DB
         # or if DISABLE_USER_REGISTRATION is not set)
-        resp = await client.post(
+        reg_resp = await client.post(
             f"{api}/v1/auth/register",
             json={
                 "email": novu.AdminEmail,
@@ -130,13 +130,13 @@ async def _register_or_login(api: str) -> str | None:
                 "organizationName": novu.AdminOrgName,
             },
         )
-        if resp.status_code == 201:
-            token = _extract_token(resp.json())
+        if reg_resp.status_code == 201:
+            token = _extract_token(reg_resp.json())
             if token:
                 logger.info("Novu admin created (%s)", novu.AdminEmail)
                 return token
 
-        logger.warning("Novu auth failed (login=%s, register=%s)", 401, resp.status_code)
+        logger.warning("Novu auth failed (login=%s, register=%s)", login_resp.status_code, reg_resp.status_code)
         return None
 
 

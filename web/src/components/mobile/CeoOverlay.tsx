@@ -48,13 +48,26 @@ const CeoOverlay: React.FC<CeoOverlayProps> = ({
   onNavigateToChat,
 }) => {
   const { t } = useTranslation();
-  const { agents, rootAgent, activateChannelForAgent, sendMessage } = useXyzen(
-    useShallow((s) => ({
-      agents: s.agents,
-      rootAgent: s.rootAgent,
-      activateChannelForAgent: s.activateChannelForAgent,
-      sendMessage: s.sendMessage,
-    })),
+  const { agents, rootAgentId, activateChannelForAgent, sendMessage } =
+    useXyzen(
+      useShallow((s) => ({
+        agents: s.agents,
+        rootAgentId: s.rootAgentId,
+        activateChannelForAgent: s.activateChannelForAgent,
+        sendMessage: s.sendMessage,
+      })),
+    );
+
+  // Non-root agents for the carousel (root agent is shown as the overlay avatar)
+  const subordinateAgents = useMemo(
+    () => agents.filter((a) => a.id !== rootAgentId),
+    [agents, rootAgentId],
+  );
+
+  // Derive root agent object for name/avatar/etc.
+  const rootAgent = useMemo(
+    () => agents.find((a) => a.id === rootAgentId) ?? null,
+    [agents, rootAgentId],
   );
 
   // Typewriter effect
@@ -235,10 +248,10 @@ const CeoOverlay: React.FC<CeoOverlayProps> = ({
           </div>
 
           {/* Agent horizontal scroll strip */}
-          {agents.length > 0 && (
+          {subordinateAgents.length > 0 && (
             <div className="w-full max-w-sm">
               <AgentSlotCarousel
-                agents={agents}
+                agents={subordinateAgents}
                 onAgentClick={handleAgentClick}
               />
             </div>

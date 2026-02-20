@@ -55,13 +55,13 @@ export function useMobileNav() {
     const {
       setMobileCeoOverlay,
       activeChatChannel,
-      rootAgent,
+      rootAgentId,
       activateChannelForAgent,
     } = useXyzen.getState();
     setMobileCeoOverlay(true);
     dismissedRef.current = false;
-    if (!activeChatChannel && rootAgent) {
-      activateChannelForAgent(rootAgent.id);
+    if (!activeChatChannel && rootAgentId) {
+      activateChannelForAgent(rootAgentId);
     }
   }, []);
 

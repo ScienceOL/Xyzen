@@ -270,7 +270,7 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const backendUrl = useXyzen((state) => state.backendUrl);
-  const rootAgentId = useXyzen((state) => state.rootAgent?.id);
+  const rootAgentId = useXyzen((state) => state.rootAgentId);
   const isRootAgent = !!agent && !!rootAgentId && agent.id === rootAgentId;
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   const [mobileActiveTab, setMobileActiveTab] = useState<TabType | null>(null);
@@ -515,7 +515,7 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
 
   return (
     <>
-      <SheetModal isOpen={isOpen} onClose={onClose} size="xl">
+      <SheetModal isOpen={isOpen} onClose={onClose} size="md">
         <div className="flex h-full flex-col overflow-hidden">
           <div className="shrink-0 px-5 pt-5 pb-1 md:pt-2">
             <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">

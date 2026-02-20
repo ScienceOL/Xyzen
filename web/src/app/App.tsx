@@ -73,6 +73,7 @@ export function Xyzen({
     setBackendUrl,
     toggleXyzen,
     fetchAgents,
+    fetchRootAgentId,
     fetchMcpServers,
     fetchChatHistory,
     activateChannel,
@@ -85,6 +86,7 @@ export function Xyzen({
       setBackendUrl: s.setBackendUrl,
       toggleXyzen: s.toggleXyzen,
       fetchAgents: s.fetchAgents,
+      fetchRootAgentId: s.fetchRootAgentId,
       fetchMcpServers: s.fetchMcpServers,
       fetchChatHistory: s.fetchChatHistory,
       activateChannel: s.activateChannel,
@@ -199,6 +201,9 @@ export function Xyzen({
 
       const loadData = async () => {
         try {
+          // 0. Fetch root agent ID first (fetchAgents needs it for default layout)
+          await fetchRootAgentId();
+
           // 1. Fetch all necessary data in parallel
           await Promise.all([
             fetchAgents(),
@@ -271,6 +276,7 @@ export function Xyzen({
     initialLoadComplete,
     backendUrl,
     fetchAgents,
+    fetchRootAgentId,
     fetchMcpServers,
     fetchChatHistory,
     activateChannel,

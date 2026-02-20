@@ -64,6 +64,10 @@ export interface AgentData {
   isMarketplacePublished?: boolean;
   /** Whether the agent currently has running/active topics */
   isRunning?: boolean;
+  /** Whether this is the CEO (root) agent — uses golden styling */
+  isCeo?: boolean;
+  /** Avatars of subordinate agents (CEO only) */
+  subordinateAvatars?: string[];
 }
 
 /** Runtime-only fields injected by the workspace. */
@@ -81,5 +85,5 @@ export type AgentNodeData = AgentData & AgentNodeRuntimeData;
 // XYFlow requires node.data to be a Record
 export type FlowAgentNodeData = AgentNodeData & Record<string, unknown>;
 
-export type AgentFlowNode = Node<FlowAgentNodeData, "agent">;
+export type AgentFlowNode = Node<FlowAgentNodeData, "agent" | "ceo">;
 export type AgentFlowNodeProps = NodeProps<AgentFlowNode>;

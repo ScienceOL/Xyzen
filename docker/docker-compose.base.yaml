@@ -12,14 +12,6 @@ services:
       web:
         condition: service_started
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 128M
     networks:
       - xyzen-network
 
@@ -39,14 +31,6 @@ services:
       retries: 5
     volumes:
       - db-data:/var/lib/postgresql/data
-    deploy:
-      resources:
-        limits:
-          cpus: '8'
-          memory: 32G
-        reservations:
-          cpus: '2'
-          memory: 8G
     networks:
       - xyzen-network
 
@@ -62,14 +46,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 6G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
     networks:
       - xyzen-network
 
@@ -87,13 +63,6 @@ services:
     restart: unless-stopped
     deploy:
       replicas: ${SEARXNG_REPLICAS:-1}
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
     attach: false
     networks:
       - xyzen-network
@@ -110,13 +79,6 @@ services:
     command: celery -A app.worker worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-20}
     deploy:
       replicas: ${CELERY_REPLICAS:-4}
-      resources:
-        limits:
-          cpus: '6'
-          memory: 8G
-        reservations:
-          cpus: '2'
-          memory: 2G
     networks:
       - xyzen-network
 
@@ -143,13 +105,6 @@ services:
       start_period: 10s
     deploy:
       replicas: ${SERVICE_REPLICAS:-5}
-      resources:
-        limits:
-          cpus: '4'
-          memory: 4G
-        reservations:
-          cpus: '1'
-          memory: 1G
     networks:
       - xyzen-network
 
@@ -160,14 +115,6 @@ services:
     depends_on:
       service:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
     networks:
       - xyzen-network
 
