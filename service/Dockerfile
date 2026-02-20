@@ -28,7 +28,10 @@ ENV XYZEN_BUILD_TIME=${XYZEN_BUILD_TIME}
 
 WORKDIR /app
 
-# Copy only venv from builder (no uv binary, no cache)
+# Copy uv for runtime dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copy venv from builder
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 

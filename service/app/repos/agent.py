@@ -12,6 +12,7 @@ from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
 from app.models.knowledge_set import KnowledgeSet
 from app.models.links import AgentMcpServerLink
 from app.models.mcp import McpServer
+from app.models.root_agent import RootAgent
 
 logger = logging.getLogger(__name__)
 
@@ -130,18 +131,26 @@ class AgentRepository:
 
         return await self.db.get(Agent, agent_id)
 
-    async def get_agents_by_user(self, user_id: str) -> Sequence[Agent]:
+    async def get_agents_by_user(self, user_id: str, *, exclude_root: bool = False) -> Sequence[Agent]:
         """
         Fetches all agents for a given user, ordered by sort_order.
 
         Args:
             user_id: The user ID.
+            exclude_root: If True, exclude the user's root (CEO) agent from results.
 
         Returns:
             List of Agent instances.
         """
         logger.debug(f"Fetching agents for user_id: {user_id}")
-        statement = select(Agent).where(Agent.user_id == user_id).order_by(col(Agent.sort_order))
+        statement = select(Agent).where(Agent.user_id == user_id)
+
+        if exclude_root:
+            # Subquery: get the root agent_id for this user
+            root_subq = select(RootAgent.agent_id).where(RootAgent.user_id == user_id)
+            statement = statement.where(col(Agent.id).not_in(root_subq))
+
+        statement = statement.order_by(col(Agent.sort_order))
         result = await self.db.exec(statement)
         agents = result.all()
         for agent in agents:

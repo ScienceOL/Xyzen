@@ -137,7 +137,12 @@ export const createAgentSlice: StateCreator<
         throw new Error("Failed to fetch agents");
       }
 
-      const rawAgents: Agent[] = await response.json();
+      const allAgents: Agent[] = await response.json();
+      // Defensive filter: exclude root agent in case backend didn't filter it
+      const rootAgentId = get().rootAgent?.id;
+      const rawAgents = rootAgentId
+        ? allAgents.filter((a) => a.id !== rootAgentId)
+        : allAgents;
 
       // Fetch sessions for each agent to get spatial_layout and avatar
       // Build session mapping and extract layouts/avatars

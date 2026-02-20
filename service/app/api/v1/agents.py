@@ -114,7 +114,7 @@ async def get_agents(
     """
     # Check if user has any agents
     agent_repo = AgentRepository(db)
-    agents = await agent_repo.get_agents_by_user(user)
+    agents = await agent_repo.get_agents_by_user(user, exclude_root=True)
 
     # Heuristic: If user has 0 agents, check if they are a new user or just deleted everything.
     # We assume "New User" has 0 Agents AND 0 Sessions.
@@ -129,7 +129,7 @@ async def get_agents(
             await system_manager.ensure_user_default_agents(user)
             await db.commit()
             # Refetch agents
-            agents = await agent_repo.get_agents_by_user(user)
+            agents = await agent_repo.get_agents_by_user(user, exclude_root=True)
 
     # Load MCP servers for each agent and create AgentReadWithDetails
     agents_with_details = []
