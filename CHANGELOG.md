@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.11](https://github.com/ScienceOL/Xyzen/compare/v1.4.10...v1.4.11) (2026-02-20)
+
+### 🐛 Bug Fixes
+
+* enhance FocusedView to separate CEO agent with distinct styling and update AgentListItem long-press behavior ([b197d3c](https://github.com/ScienceOL/Xyzen/commit/b197d3c6d55750d058decf803cf964ef7447fe36))
+
 ## [1.4.10](https://github.com/ScienceOL/Xyzen/compare/v1.4.9...v1.4.10) (2026-02-20)
 
 ### 🐛 Bug Fixes
