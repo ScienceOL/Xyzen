@@ -64,6 +64,20 @@
   }
 }
 
+/* Suppress tap / active feedback on children during overscroll-pull.
+   Phase 1: [data-pull-zone] — set on touchstart in the trigger zone.
+   Only suppresses tap-highlight colour; click events still fire for taps.
+   Phase 2: [data-pulling] — set after direction-lock confirms a pull.
+   Full pointer-events block so scroll/swipe can't interact with items. */
+[data-pull-zone] * {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+[data-pulling] * {
+  -webkit-tap-highlight-color: transparent !important;
+  pointer-events: none !important;
+}
+
 @utility text-2xs {
   font-size: 0.7rem /* 0.75rem = 12px */;
   line-height: var(--tw-leading, 1.428 /* calc(1 / 0.75) ≈ 1.333333 */);
@@ -482,6 +496,26 @@
 
 :is(.dark) .typing-dot {
   background: #a5b4fc;
+}
+
+/* Agent list: iOS-style jiggle animation for sort mode */
+@keyframes agent-jiggle {
+  0%,
+  100% {
+    transform: rotate(-0.7deg);
+  }
+  50% {
+    transform: rotate(0.7deg);
+  }
+}
+
+.agent-jiggle {
+  animation: agent-jiggle 0.25s ease-in-out infinite;
+}
+
+/* Stagger odd/even for natural feel */
+.agent-jiggle:nth-child(even) {
+  animation-delay: 0.125s;
 }
 
 /* Agent Node Running Border - Rotating conic gradient */

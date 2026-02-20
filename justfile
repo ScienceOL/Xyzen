@@ -150,6 +150,12 @@ db-query query:
 db-shell:
     docker exec -it sciol-xyzen-postgresql-1 psql -U postgres -d postgres
 
+# Reset Casdoor database and restart (re-imports init_data.json)
+init-casdoor:
+    docker exec sciol-infra-postgresql-1 psql -U postgres -c "DROP DATABASE IF EXISTS casdoor;"
+    docker exec sciol-infra-postgresql-1 psql -U postgres -c "CREATE DATABASE casdoor;"
+    docker restart sciol-casdoor
+
 # =============================================================================
 # Docker
 # =============================================================================

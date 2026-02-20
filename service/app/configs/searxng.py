@@ -6,7 +6,7 @@ class SearXNGConfig(BaseModel):
 
     Enable: bool = Field(default=True, description="Enable SearXNG integration")
     BaseUrl: str = Field(
-        default="http://127.0.0.1:8080",
+        default="http://searxng:8080",
         description="SearXNG instance base URL",
     )
     Timeout: int = Field(default=30, description="API request timeout in seconds")

@@ -21,6 +21,10 @@ export interface AgentSlice {
   rootAgentLoading: boolean;
   fetchRootAgent: () => Promise<void>;
 
+  /** Look up any agent by ID — checks agents[] then rootAgent.
+   *  Single source of truth so callers never need root-agent fallback. */
+  resolveAgent: (agentId: string | null) => AgentWithLayout | null;
+
   // Map from agentId -> sessionId for layout persistence
   // Layout is stored in Session, not Agent
   sessionIdByAgentId: Record<string, string>;
@@ -99,6 +103,15 @@ export const createAgentSlice: StateCreator<
   // Root (CEO) agent
   rootAgent: null,
   rootAgentLoading: false,
+
+  resolveAgent: (agentId) => {
+    if (!agentId) return null;
+    const { agents, rootAgent } = get();
+    return (
+      agents.find((a) => a.id === agentId) ??
+      (rootAgent?.id === agentId ? rootAgent : null)
+    );
+  },
 
   // Map from agentId -> sessionId
   sessionIdByAgentId: {},

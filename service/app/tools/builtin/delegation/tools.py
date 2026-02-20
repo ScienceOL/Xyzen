@@ -28,8 +28,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Timeout for delegated agent execution (5 minutes)
-DELEGATION_TIMEOUT_SECONDS = 300
+# Timeout for delegated agent execution (30 minutes)
+DELEGATION_TIMEOUT_SECONDS = 1800
 
 
 async def create_delegation_tools_for_session(
@@ -307,7 +307,7 @@ async def _run_delegated_agent(
     """Run a delegated agent graph and collect the final text output."""
     state = await graph.ainvoke(
         {"messages": [HumanMessage(content=task)]},
-        config={"recursion_limit": 30},
+        config={"recursion_limit": 200},
     )
 
     messages: list[Any]

@@ -33,8 +33,8 @@ class AgentConfig(TypedDict):
 # System agent configurations
 SYSTEM_AGENTS: dict[str, AgentConfig] = {
     "chat": {
-        "name": "随便聊聊",
-        "description": "与AI助手自由对话，获得各种帮助和支持",
+        "name": "小二",
+        "description": "什么都能做，但什么都不专精",
         "prompt": """你是一个友好、有用的AI助手。你可以回答问题、提供建议、协助完成各种任务。
 
 特点：

@@ -284,7 +284,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
               </div>
             )}
 
-            <div className="px-3 pt-6 min-w-0">
+            <div className="px-3 pt-10 min-w-0">
               {messages.length === 0 ? (
                 <ThemedWelcomeMessage
                   config={config}

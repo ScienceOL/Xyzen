@@ -214,7 +214,7 @@ export function useMobileSwipe({
       }
       if (!g.horizontal) return;
 
-      e.preventDefault(); // suppress vertical scroll
+      if (e.cancelable) e.preventDefault(); // suppress vertical scroll
 
       const w = getWidth();
       const base = -pageRef.current * w;

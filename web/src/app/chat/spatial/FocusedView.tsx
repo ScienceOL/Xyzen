@@ -405,7 +405,7 @@ export function FocusedView({
         animate={{ x: 0, opacity: 1, scale: 1 }}
         exit={{ x: 50, opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-        className="ml-4 spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/60 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10 dark:bg-neutral-900/70"
+        className="ml-4 spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10"
         ref={chatRef}
       >
         {/* XyzenChat Component - No modifications, just wrapped */}

@@ -278,7 +278,7 @@ async def get_system_chat_agent(
     """
     Get the user's default chat agent.
 
-    Returns the user's personal copy of the "随便聊聊" agent with MCP server details.
+    Returns the user's personal copy of the "小二" agent with MCP server details.
     If it doesn't exist, it will be initialized.
 
     Args:

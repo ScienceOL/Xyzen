@@ -26,11 +26,7 @@ export const createChatSlice: StateCreator<
   // Helper function to get agent name by ID
   const getAgentNameById = (agentId?: string): string => {
     if (!agentId) return "通用助理";
-
-    const state = get();
-    const agent = state.agents.find((a) => a.id === agentId);
-
-    return agent?.name || "通用助理";
+    return get().resolveAgent(agentId)?.name || "通用助理";
   };
 
   const waitForChannelConnection = async (

@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 
 class RedisConfig(BaseSettings):
-    HOST: str = "localhost"
+    HOST: str = "redis"
     PORT: int = 6379
     DB: int = 0
     PASSWORD: str | None = None

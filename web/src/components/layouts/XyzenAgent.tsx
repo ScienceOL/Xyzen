@@ -28,12 +28,15 @@ interface XyzenAgentProps {
   showCeoCard?: boolean;
   /** External ref to the scroll container, used by parent for overscroll detection. */
   scrollRef?: React.RefObject<HTMLDivElement | null>;
+  /** Fires when agent list enters/exits drag-sort mode. */
+  onSortModeChange?: (active: boolean) => void;
 }
 
 export default function XyzenAgent({
   onNavigateToChat,
   showCeoCard = true,
   scrollRef: externalScrollRef,
+  onSortModeChange,
 }: XyzenAgentProps = {}) {
   const { t } = useTranslation();
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -193,6 +196,7 @@ export default function XyzenAgent({
               onEdit={handleEditClick}
               onDelete={handleDeleteClick}
               onReorder={handleReorder}
+              onSortModeChange={onSortModeChange}
             />
           </div>
           <button

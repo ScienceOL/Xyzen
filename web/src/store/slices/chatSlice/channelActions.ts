@@ -477,8 +477,7 @@ export function createChannelActions(
         }
 
         // No existing session found, create a new session
-        const state = get();
-        const agent = state.agents.find((a) => a.id === agentId);
+        const agent = get().resolveAgent(agentId ?? null);
 
         const sessionPayload: SessionCreate = {
           name: "New Session",

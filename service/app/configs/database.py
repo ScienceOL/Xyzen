@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class PostgresConfig(BaseModel):
-    Host: str = Field(default="localhost", description="PostgreSQL host")
+    Host: str = Field(default="postgresql", description="PostgreSQL host")
     Port: int = Field(default=5432, description="PostgreSQL port")
     User: str = Field(default="postgres", description="PostgreSQL user")
     Password: str = Field(default="postgres", description="PostgreSQL password")

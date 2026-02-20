@@ -95,9 +95,14 @@ export default function MobileAccountPage() {
         {/* ── Check-in & Credits group ── */}
         <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-900">
           {/* Check-in row */}
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => setShowCheckInModal(true)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-neutral-50 dark:active:bg-neutral-800"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setShowCheckInModal(true);
+            }}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-neutral-50 dark:active:bg-neutral-800 cursor-pointer"
           >
             <CalendarDaysIcon className="h-5 w-5 flex-shrink-0 text-orange-500" />
             <div className="min-w-0 flex-1">
@@ -130,7 +135,7 @@ export default function MobileAccountPage() {
                   ? t("app.account.checkedIn")
                   : t("app.account.checkInAction")}
             </button>
-          </button>
+          </div>
 
           <div className="ml-12 border-t border-neutral-100 dark:border-neutral-800" />
 

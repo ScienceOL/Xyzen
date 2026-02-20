@@ -38,10 +38,10 @@ MAX_SUBAGENT_DEPTH = 3
 MAX_SUBAGENT_CALLS_PER_TURN = 2
 
 # Timeout for subagent execution (seconds)
-SUBAGENT_TIMEOUT_SECONDS = 120
+SUBAGENT_TIMEOUT_SECONDS = 1800
 
 # Recursion limit for subagent graph execution
-SUBAGENT_RECURSION_LIMIT = 20
+SUBAGENT_RECURSION_LIMIT = 200
 
 # Subagent always uses the react builtin
 SUBAGENT_TYPE_KEY = "react"
@@ -189,8 +189,7 @@ async def _spawn_subagent_impl(
     # 1. Depth check
     if current_depth >= MAX_SUBAGENT_DEPTH:
         error_message = (
-            f"Maximum subagent nesting depth ({MAX_SUBAGENT_DEPTH}) reached. "
-            "Cannot spawn further subagents."
+            f"Maximum subagent nesting depth ({MAX_SUBAGENT_DEPTH}) reached. Cannot spawn further subagents."
         )
         logger.warning(
             "Subagent depth guard triggered: attempt=%d depth=%d max_depth=%d",
@@ -208,8 +207,7 @@ async def _spawn_subagent_impl(
     session_factory = get_session_factory()
     if not session_factory:
         error_message = (
-            "No session factory available for subagent. "
-            "Ensure set_session_factory(...) is called in task setup."
+            "No session factory available for subagent. Ensure set_session_factory(...) is called in task setup."
         )
         logger.error(
             "Subagent session factory missing: attempt=%d depth=%d",
