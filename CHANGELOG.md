@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.7](https://github.com/ScienceOL/Xyzen/compare/v1.4.6...v1.4.7) (2026-02-20)
+
+### 🐛 Bug Fixes
+
+* add HA, add global agent, sandbox endpoint ([#259](https://github.com/ScienceOL/Xyzen/issues/259)) ([4034c0f](https://github.com/ScienceOL/Xyzen/commit/4034c0f135968708b4ff070a7e5ad51c1b97cd78)), closes [#258](https://github.com/ScienceOL/Xyzen/issues/258)
+
 ## [1.4.6](https://github.com/ScienceOL/Xyzen/compare/v1.4.5...v1.4.6) (2026-02-19)
 
 ### 🐛 Bug Fixes
