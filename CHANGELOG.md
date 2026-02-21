@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.15](https://github.com/ScienceOL/Xyzen/compare/v1.4.14...v1.4.15) (2026-02-21)
+
+### 🐛 Bug Fixes
+
+* Implement graceful shutdown for Redis client and database engines ([0853536](https://github.com/ScienceOL/Xyzen/commit/0853536cab49aa763b493a664207b61623dbea74))
+
 ## [1.4.14](https://github.com/ScienceOL/Xyzen/compare/v1.4.13...v1.4.14) (2026-02-21)
 
 ### 🐛 Bug Fixes
