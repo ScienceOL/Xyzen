@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.14](https://github.com/ScienceOL/Xyzen/compare/v1.4.13...v1.4.14) (2026-02-21)
+
+### 🐛 Bug Fixes
+
+* Implement consumption tracking for LLM and tool usage ([01b0498](https://github.com/ScienceOL/Xyzen/commit/01b0498d4b861c707fe5a7f53b48a1445d097a42))
+
 ## [1.4.13](https://github.com/ScienceOL/Xyzen/compare/v1.4.12...v1.4.13) (2026-02-21)
 
 ### 🐛 Bug Fixes
