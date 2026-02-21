@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.13](https://github.com/ScienceOL/Xyzen/compare/v1.4.12...v1.4.13) (2026-02-21)
+
+### 🐛 Bug Fixes
+
+* Replace create_task_session_factory with get_task_db_session for improved session management ([8020817](https://github.com/ScienceOL/Xyzen/commit/8020817220ed31ade21f093a34df103254dd3748))
+
 ## [1.4.12](https://github.com/ScienceOL/Xyzen/compare/v1.4.11...v1.4.12) (2026-02-20)
 
 ### 🐛 Bug Fixes
