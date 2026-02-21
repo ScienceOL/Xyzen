@@ -23,6 +23,7 @@ class TrackingContext:
     """
 
     user_id: str
+    auth_provider: str
     session_id: UUID | None
     topic_id: UUID | None
     message_id: UUID | None

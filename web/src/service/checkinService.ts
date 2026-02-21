@@ -53,14 +53,15 @@ export interface ConsumptionRangeResponse {
 
 export interface UserConsumeRecord {
   id: string;
-  biz_no: number | null;
+  record_type: string;
   amount: number;
-  scene: string | null;
   model_tier: string | null;
-  input_tokens: number | null;
-  output_tokens: number | null;
-  total_tokens: number | null;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
   consume_state: string;
+  source: string;
+  tool_name: string | null;
   created_at: string;
 }
 

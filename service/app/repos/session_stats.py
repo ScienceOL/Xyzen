@@ -85,8 +85,8 @@ class SessionStatsRepository:
             agent_id=session.agent_id,
             topic_count=int(topic_count),
             message_count=int(message_count),
-            input_tokens=int(token_row[0]) if token_row else 0,  # type: ignore[arg-type]
-            output_tokens=int(token_row[1]) if token_row else 0,  # type: ignore[arg-type]
+            input_tokens=int(token_row[0]) if token_row else 0,
+            output_tokens=int(token_row[1]) if token_row else 0,
         )
 
     async def get_agent_stats(self, agent_id: UUID, user_id: str) -> AgentStatsAggregated:
@@ -141,8 +141,8 @@ class SessionStatsRepository:
             session_count=int(stats_row[0]) if stats_row else 0,
             topic_count=int(stats_row[1]) if stats_row else 0,
             message_count=int(stats_row[2]) if stats_row else 0,
-            input_tokens=int(token_row[0]) if token_row else 0,  # type: ignore[arg-type]
-            output_tokens=int(token_row[1]) if token_row else 0,  # type: ignore[arg-type]
+            input_tokens=int(token_row[0]) if token_row else 0,
+            output_tokens=int(token_row[1]) if token_row else 0,
         )
 
     async def get_all_agent_stats_for_user(self, user_id: str) -> dict[str, AgentStatsAggregated]:
@@ -205,7 +205,7 @@ class SessionStatsRepository:
         for row in token_rows:
             agent_id = row[0]
             if agent_id:
-                token_by_agent[agent_id] = (int(row[1]), int(row[2]))  # type: ignore[arg-type]
+                token_by_agent[agent_id] = (int(row[1]), int(row[2]))
 
         # Build result dict
         result: dict[str, AgentStatsAggregated] = {}
@@ -355,8 +355,7 @@ class SessionStatsRepository:
             select(
                 case(
                     (func.coalesce(ConsumeRecord.total_tokens, 0) > 0, ConsumeRecord.total_tokens),
-                    else_=func.coalesce(ConsumeRecord.input_tokens, 0)
-                    + func.coalesce(ConsumeRecord.output_tokens, 0),
+                    else_=func.coalesce(ConsumeRecord.input_tokens, 0) + func.coalesce(ConsumeRecord.output_tokens, 0),
                 ).label("total_tokens")
             )
             .where(

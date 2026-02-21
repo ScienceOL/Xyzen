@@ -3,59 +3,98 @@
 from uuid import uuid4
 
 from app.models.consume import (
+    ConsumeRecord,
     ConsumeRecordCreate,
     ConsumeRecordUpdate,
-    DailyConsumeSummary,
-    LLMUsageRecord,
-    ToolCallRecord,
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
 )
 
 
 class TestConsumeRecordCreate:
-    def test_defaults(self) -> None:
+    def test_defaults_llm(self) -> None:
         record = ConsumeRecordCreate(
+            record_type="llm",
             user_id="user-1",
-            amount=100,
             auth_provider="test",
         )
         assert record.consume_state == "pending"
-        assert record.input_tokens is None
-        assert record.output_tokens is None
-        assert record.total_tokens is None
+        assert record.amount == 0
+        assert record.cost_usd == 0.0
+        assert record.input_tokens == 0
+        assert record.output_tokens == 0
+        assert record.total_tokens == 0
         assert record.session_id is None
         assert record.topic_id is None
         assert record.model_tier is None
+        assert record.tool_name is None
 
-    def test_all_fields(self) -> None:
+    def test_defaults_tool_call(self) -> None:
+        record = ConsumeRecordCreate(
+            record_type="tool_call",
+            user_id="user-1",
+            auth_provider="test",
+        )
+        assert record.consume_state == "pending"
+        assert record.amount == 0
+        assert record.cost_usd == 0.0
+        assert record.model_name is None
+        assert record.tool_name is None
+        assert record.status == "success"
+
+    def test_all_fields_llm(self) -> None:
         sid = uuid4()
         tid = uuid4()
         mid = uuid4()
         record = ConsumeRecordCreate(
+            record_type="llm",
             user_id="user-1",
-            amount=500,
             auth_provider="bohr",
-            sku_id=1,
-            scene="chat",
+            amount=500,
+            cost_usd=0.0105,
             session_id=sid,
             topic_id=tid,
             message_id=mid,
             description="test consume",
+            model_name="gpt-4o",
+            model_tier="pro",
+            provider="openai",
             input_tokens=1000,
             output_tokens=500,
             total_tokens=1500,
-            model_tier="pro",
-            tier_rate=3.0,
-            calculation_breakdown='{"base": 1}',
+            cache_creation_input_tokens=10,
+            cache_read_input_tokens=5,
+            source="chat",
             consume_state="success",
-            remote_error=None,
-            remote_response='{"ok": true}',
         )
         assert record.amount == 500
+        assert record.cost_usd == 0.0105
         assert record.session_id == sid
         assert record.model_tier == "pro"
-        assert record.tier_rate == 3.0
+        assert record.provider == "openai"
+        assert record.input_tokens == 1000
+        assert record.source == "chat"
+
+    def test_all_fields_tool_call(self) -> None:
+        sid = uuid4()
+        tid = uuid4()
+        record = ConsumeRecordCreate(
+            record_type="tool_call",
+            user_id="user-1",
+            auth_provider="bohr",
+            amount=10,
+            session_id=sid,
+            topic_id=tid,
+            tool_name="generate_image",
+            tool_call_id="call_abc",
+            status="success",
+            model_tier="ultra",
+            consume_state="pending",
+        )
+        assert record.tool_name == "generate_image"
+        assert record.tool_call_id == "call_abc"
+        assert record.status == "success"
+        assert record.model_tier == "ultra"
 
 
 class TestConsumeRecordUpdate:
@@ -68,6 +107,67 @@ class TestConsumeRecordUpdate:
         update = ConsumeRecordUpdate(amount=999, consume_state="success")
         data = update.model_dump(exclude_unset=True)
         assert data == {"amount": 999, "consume_state": "success"}
+
+    def test_update_message_id(self) -> None:
+        mid = uuid4()
+        update = ConsumeRecordUpdate(message_id=mid)
+        data = update.model_dump(exclude_unset=True)
+        assert data == {"message_id": mid}
+
+    def test_update_description(self) -> None:
+        update = ConsumeRecordUpdate(description="settled")
+        data = update.model_dump(exclude_unset=True)
+        assert data == {"description": "settled"}
+
+
+class TestConsumeRecord:
+    def test_llm_record(self) -> None:
+        record = ConsumeRecord(
+            record_type="llm",
+            user_id="user-1",
+            auth_provider="test",
+            model_name="gpt-4o",
+            model_tier="pro",
+            provider="openai",
+            input_tokens=100,
+            output_tokens=50,
+            total_tokens=150,
+        )
+        assert record.record_type == "llm"
+        assert record.model_name == "gpt-4o"
+        assert record.id is not None
+
+    def test_tool_call_record(self) -> None:
+        record = ConsumeRecord(
+            record_type="tool_call",
+            user_id="user-1",
+            auth_provider="test",
+            tool_name="web_search",
+            tool_call_id="call_123",
+            status="success",
+        )
+        assert record.record_type == "tool_call"
+        assert record.tool_name == "web_search"
+        assert record.id is not None
+
+    def test_defaults(self) -> None:
+        record = ConsumeRecord(
+            record_type="llm",
+            user_id="user-1",
+            auth_provider="test",
+        )
+        assert record.amount == 0
+        assert record.consume_state == "pending"
+        assert record.cost_usd == 0.0
+        assert record.input_tokens == 0
+        assert record.output_tokens == 0
+        assert record.total_tokens == 0
+        assert record.cache_creation_input_tokens == 0
+        assert record.cache_read_input_tokens == 0
+        assert record.source == "chat"
+        assert record.status == "success"
+        assert record.model_name is None
+        assert record.tool_name is None
 
 
 class TestUserConsumeSummaryCreate:
@@ -104,133 +204,3 @@ class TestUserConsumeSummaryUpdate:
         update = UserConsumeSummaryUpdate()
         data = update.model_dump(exclude_unset=True)
         assert data == {}
-
-
-class TestLLMUsageRecord:
-    def test_required_fields(self) -> None:
-        record = LLMUsageRecord(
-            user_id="user-1",
-            model_name="gpt-4o",
-        )
-        assert record.user_id == "user-1"
-        assert record.model_name == "gpt-4o"
-        assert record.id is not None
-
-    def test_defaults(self) -> None:
-        record = LLMUsageRecord(
-            user_id="user-1",
-            model_name="gpt-4o",
-        )
-        assert record.input_tokens == 0
-        assert record.output_tokens == 0
-        assert record.total_tokens == 0
-        assert record.cache_creation_input_tokens == 0
-        assert record.cache_read_input_tokens == 0
-        assert record.source == "chat"
-        assert record.model_tier is None
-        assert record.provider is None
-        assert record.session_id is None
-        assert record.topic_id is None
-        assert record.message_id is None
-
-    def test_all_fields(self) -> None:
-        sid = uuid4()
-        tid = uuid4()
-        mid = uuid4()
-        record = LLMUsageRecord(
-            user_id="user-1",
-            model_name="gpt-4o",
-            model_tier="pro",
-            provider="openai",
-            input_tokens=100,
-            output_tokens=50,
-            total_tokens=150,
-            cache_creation_input_tokens=10,
-            cache_read_input_tokens=5,
-            source="subagent",
-            session_id=sid,
-            topic_id=tid,
-            message_id=mid,
-        )
-        assert record.model_tier == "pro"
-        assert record.provider == "openai"
-        assert record.input_tokens == 100
-        assert record.output_tokens == 50
-        assert record.total_tokens == 150
-        assert record.source == "subagent"
-        assert record.session_id == sid
-
-
-class TestToolCallRecord:
-    def test_required_fields(self) -> None:
-        record = ToolCallRecord(
-            user_id="user-1",
-            tool_name="web_search",
-        )
-        assert record.user_id == "user-1"
-        assert record.tool_name == "web_search"
-        assert record.id is not None
-
-    def test_defaults(self) -> None:
-        record = ToolCallRecord(
-            user_id="user-1",
-            tool_name="web_search",
-        )
-        assert record.status == "success"
-        assert record.tool_call_id is None
-        assert record.model_tier is None
-        assert record.session_id is None
-        assert record.topic_id is None
-        assert record.message_id is None
-
-    def test_all_fields(self) -> None:
-        sid = uuid4()
-        record = ToolCallRecord(
-            user_id="user-1",
-            tool_name="generate_image",
-            tool_call_id="call_abc",
-            status="error",
-            model_tier="ultra",
-            session_id=sid,
-        )
-        assert record.tool_name == "generate_image"
-        assert record.tool_call_id == "call_abc"
-        assert record.status == "error"
-        assert record.model_tier == "ultra"
-
-
-class TestDailyConsumeSummary:
-    def test_required_fields(self) -> None:
-        summary = DailyConsumeSummary(
-            user_id="user-1",
-            date="2025-01-15",
-        )
-        assert summary.user_id == "user-1"
-        assert summary.date == "2025-01-15"
-        assert summary.id is not None
-
-    def test_defaults(self) -> None:
-        summary = DailyConsumeSummary(
-            user_id="user-1",
-            date="2025-01-15",
-        )
-        assert summary.tz == "Asia/Shanghai"
-        assert summary.total_input_tokens == 0
-        assert summary.total_output_tokens == 0
-        assert summary.total_tokens == 0
-        assert summary.total_credits == 0
-        assert summary.llm_call_count == 0
-        assert summary.tool_call_count == 0
-        assert summary.total_cost_cents == 0
-        assert summary.by_tier is None
-        assert summary.by_model is None
-
-    def test_json_fields(self) -> None:
-        summary = DailyConsumeSummary(
-            user_id="user-1",
-            date="2025-01-15",
-            by_tier={"pro": {"tokens": 100, "credits": 10}},
-            by_model={"gpt-4o": {"input_tokens": 50, "output_tokens": 50}},
-        )
-        assert summary.by_tier["pro"]["tokens"] == 100
-        assert summary.by_model["gpt-4o"]["input_tokens"] == 50

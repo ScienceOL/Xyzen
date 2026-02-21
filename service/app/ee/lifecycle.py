@@ -51,7 +51,7 @@ class ChatLifecycle(Protocol):
 
 
 class DefaultChatLifecycle:
-    """Default lifecycle: wraps LimitsEnforcer + create_consume_for_chat.
+    """Default lifecycle: wraps LimitsEnforcer + settle_chat_records.
 
     Behaviour is identical to the pre-EE codebase.  The enforcer (which
     requires a DB session to resolve subscription limits) is created
@@ -110,18 +110,14 @@ class DefaultChatLifecycle:
         message_id: UUID | None,
         description: str | None,
     ) -> float:
-        from app.core.consume import create_consume_for_chat
+        from app.core.consume import settle_chat_records
 
-        await create_consume_for_chat(
+        await settle_chat_records(
             db=db,
             user_id=user_id,
             auth_provider=auth_provider,
-            amount=amount,
-            access_key=access_key,
-            session_id=session_id,
-            topic_id=topic_id,
-            message_id=message_id,
-            description=description,
+            record_ids=[],
+            total_amount=amount,
         )
         return float(amount)
 

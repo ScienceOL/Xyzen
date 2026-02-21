@@ -109,3 +109,24 @@ def get_model_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
         logger.warning("Model %r not in MODEL_COST_RATES, cost will be 0", model_name)
         return 0.0
     return input_tokens * rates.get("input", 0) + output_tokens * rates.get("output", 0)
+
+
+def calculate_llm_credits(input_tokens: int, output_tokens: int, tier_rate: float) -> int:
+    """Calculate credit consumption for one LLM call. LITE (rate=0) returns 0."""
+    if tier_rate <= 0:
+        return 0
+    token_cost = input_tokens * TOKEN_CREDIT_RATES["input"] + output_tokens * TOKEN_CREDIT_RATES["output"]
+    return int(token_cost * tier_rate)
+
+
+def calculate_llm_cost_usd(model_name: str, input_tokens: int, output_tokens: int) -> float:
+    """Calculate real platform cost in USD for one LLM call. Semantic alias for get_model_cost."""
+    return get_model_cost(model_name, input_tokens, output_tokens)
+
+
+def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int:
+    """Calculate settlement total = int(BASE_COST * tier_rate) + sum of record amounts. LITE returns 0."""
+    if tier_rate <= 0:
+        return 0
+    base_cost = int(BASE_COST * tier_rate)
+    return base_cost + record_amounts_sum
