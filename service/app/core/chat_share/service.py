@@ -46,15 +46,18 @@ class ChatShareService:
         if not session or session.user_id != user_id:
             raise ErrCode.SESSION_ACCESS_DENIED.with_messages("Session not found or access denied")
 
-        # Fetch messages
-        if data.message_ids:
+        # Build messages snapshot
+        if data.messages_snapshot:
+            # Frontend sent pre-processed messages (includes toolCalls, etc.)
+            messages_snapshot = data.messages_snapshot
+        elif data.message_ids:
             all_msgs = await self.message_repo.get_messages_by_topic(data.topic_id)
             id_set = set(data.message_ids)
             messages = [m for m in all_msgs if m.id in id_set]
+            messages_snapshot = [MessageRead(**m.model_dump()).model_dump(mode="json") for m in messages]
         else:
             messages = await self.message_repo.get_messages_by_topic(data.topic_id)
-
-        messages_snapshot = [MessageRead(**m.model_dump()).model_dump(mode="json") for m in messages]
+            messages_snapshot = [MessageRead(**m.model_dump()).model_dump(mode="json") for m in messages]
 
         # Snapshot agent config
         agent_snapshot: dict[str, object] | None = None
@@ -191,6 +194,9 @@ class ChatShareService:
         from app.models.message import MessageCreate
 
         for msg_data in share.messages_snapshot:
+            # Skip tool-only assistant messages with no content (e.g. toolCalls-only)
+            if not msg_data.get("content") and msg_data.get("role") != "user":
+                continue
             msg = MessageCreate(
                 role=msg_data["role"],
                 content=msg_data["content"],

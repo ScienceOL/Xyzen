@@ -398,15 +398,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
       <ShareModal
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
-        messages={messages
-          .filter((msg) => msg.role !== "tool")
-          .map((msg) => {
-            const { role, ...rest } = msg;
-            return {
-              ...rest,
-              role: role === "tool" ? "assistant" : role,
-            } as never;
-          })}
+        messages={messages}
         currentAgent={
           currentAgent
             ? { ...currentAgent, avatar: currentAgent.avatar ?? undefined }

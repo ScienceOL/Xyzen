@@ -237,10 +237,34 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setCopied(false);
 
     try {
+      // Serialize selected messages for the snapshot (only fields needed for rendering)
+      const snapshot = selectedMessages.map((msg) => {
+        // Collect toolCalls: prefer message-level, otherwise extract from agentExecution phases
+        let toolCalls = msg.toolCalls;
+        if (
+          (!toolCalls || toolCalls.length === 0) &&
+          msg.agentExecution?.phases
+        ) {
+          const phaseToolCalls = msg.agentExecution.phases.flatMap(
+            (p) => p.toolCalls ?? [],
+          );
+          if (phaseToolCalls.length > 0) toolCalls = phaseToolCalls;
+        }
+
+        return {
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          thinking_content: msg.thinkingContent,
+          toolCalls,
+          timestamp: msg.timestamp,
+        };
+      });
+
       const result = await shareService.createShare({
         session_id: sessionId,
         topic_id: topicId,
-        message_ids: Array.from(selectedIds),
+        messages_snapshot: snapshot as Record<string, unknown>[],
         title: title || currentAgent?.name,
         allow_fork: allowFork,
       });
@@ -253,6 +277,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       setIsCreatingLink(false);
     }
   }, [
+    selectedMessages,
     selectedIds,
     sessionId,
     topicId,

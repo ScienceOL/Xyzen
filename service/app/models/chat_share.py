@@ -47,6 +47,7 @@ class ChatShareCreate(SQLModel):
     session_id: UUID
     topic_id: UUID
     message_ids: list[UUID] | None = None
+    messages_snapshot: list[dict[str, Any]] | None = None
     title: str | None = None
     allow_fork: bool = False
     expires_at: datetime | None = None

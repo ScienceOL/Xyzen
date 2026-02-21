@@ -4,6 +4,7 @@ export interface ChatShareCreate {
   session_id: string;
   topic_id: string;
   message_ids?: string[];
+  messages_snapshot?: Record<string, unknown>[];
   title?: string;
   allow_fork?: boolean;
   expires_at?: string;
