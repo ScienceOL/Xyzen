@@ -100,7 +100,7 @@ export function Modal({
               onPointerDown={(e) => dragControls.start(e)}
               style={{ touchAction: "none" }}
             >
-              <div className="h-1 w-9 rounded-full bg-white/50 dark:bg-white/20" />
+              <div className="h-1 w-9 rounded-full bg-neutral-300 dark:bg-white/20" />
             </div>
           )}
           {title && title.trim() !== "" ? (

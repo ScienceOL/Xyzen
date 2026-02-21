@@ -140,6 +140,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await shutdown_memory_service()
 
+    # Graceful shutdown: close global Redis client and DB engines
+    from app.infra.redis import close_redis_client
+
+    await close_redis_client()
+
+    from app.infra.database.connection import async_engine
+
+    await async_engine.dispose()
+
 
 app = FastAPI(
     title="Xyzen FastAPI Service",

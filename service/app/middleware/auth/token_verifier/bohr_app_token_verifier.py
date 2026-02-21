@@ -44,8 +44,8 @@ class BohrAppTokenVerifier(TokenVerifier):
         super().__init__(base_url=base_url, required_scopes=required_scopes)
         self.api_url = api_url
         self.x_app_key = x_app_key
-        # 使用 dict 而不是 TypedDict，因为 key 是动态的 token 字符串
-        self._cache: dict[str, CachedTokenData] = {}  # 简单缓存
+        self._cache: dict[str, CachedTokenData] = {}
+        self._max_cache_size = 1000
 
     async def verify_token(self, token: str) -> AccessToken | None:
         """
@@ -62,6 +62,7 @@ class BohrAppTokenVerifier(TokenVerifier):
             cached = self._cache[token]
             if cached["expires_at"] > time.time():
                 return cached["access_token"]
+            del self._cache[token]  # 过期，移除
 
         # 2. 调用 BohrApp API
         try:
@@ -106,10 +107,20 @@ class BohrAppTokenVerifier(TokenVerifier):
                     claims=claims_data,
                 )
 
-                # 5. 缓存结果
+                # 5. 缓存结果（带淘汰）
+                now = time.time()
+                if len(self._cache) >= self._max_cache_size:
+                    expired = [k for k, v in self._cache.items() if v["expires_at"] <= now]
+                    for k in expired:
+                        del self._cache[k]
+                    # Still over limit — drop oldest entries
+                    if len(self._cache) >= self._max_cache_size:
+                        oldest = sorted(self._cache, key=lambda k: self._cache[k]["expires_at"])
+                        for k in oldest[: len(self._cache) - self._max_cache_size + 1]:
+                            del self._cache[k]
                 cached_data: CachedTokenData = {
                     "access_token": access_token,
-                    "expires_at": time.time() + 3600,  # 缓存1小时
+                    "expires_at": now + 3600,
                 }
                 self._cache[token] = cached_data
 

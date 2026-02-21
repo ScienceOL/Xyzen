@@ -182,7 +182,7 @@ function ProfileEditor({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 px-4">
       {/* Avatar Section */}
       <AvatarSelector
         currentAvatar={currentAvatar}

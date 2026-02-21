@@ -170,6 +170,15 @@ class RedisSimpleTokenCache(BaseSimpleTokenCache):
             )
         return self._redis
 
+    def close(self) -> None:
+        """Close the synchronous Redis client."""
+        if self._redis is not None:
+            try:
+                self._redis.close()
+            except Exception:
+                pass
+            self._redis = None
+
     def _get_cache_key(self, token: str, provider: str) -> str:
         """Generate cache key using hashed token."""
         token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
