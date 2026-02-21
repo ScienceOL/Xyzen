@@ -156,6 +156,13 @@ async def _generate_image_with_langchain(
         message = HumanMessage(content=f"Generate an image with aspect ratio {aspect_ratio}: {prompt}")
     response = await llm.ainvoke([message])
 
+    # Record LLM token usage for image generation
+    from app.core.consume.tracking import record_response_usage_from_context
+
+    await record_response_usage_from_context(
+        response, source="tool:generate_image", model_name=image_cfg.Model, provider=image_cfg.Provider
+    )
+
     # Extract image from response content blocks
     # LangChain wraps Gemini responses - content may be string or list of blocks
     if isinstance(response.content, list):
@@ -584,6 +591,13 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     )
 
     response = await llm.ainvoke([message])
+
+    # Record LLM token usage for image analysis
+    from app.core.consume.tracking import record_response_usage_from_context
+
+    await record_response_usage_from_context(
+        response, source="tool:read_image", model_name=image_cfg.VisionModel, provider=image_cfg.VisionProvider
+    )
 
     # Extract text from response
     if isinstance(response.content, str):

@@ -371,6 +371,7 @@ async def _run_subagent(
 ) -> str:
     """
     Run a subagent graph and collect the final text output.
+    Also records LLM token usage from the subagent's messages.
     """
     state = await graph.ainvoke(
         {"messages": [HumanMessage(content=task)]},
@@ -384,6 +385,11 @@ async def _run_subagent(
     else:
         raw_messages = getattr(state, "messages", [])
         messages = list(raw_messages) if isinstance(raw_messages, list) else []
+
+    # Extract and record token usage from subagent messages
+    from app.core.consume.tracking import record_messages_usage_from_context
+
+    await record_messages_usage_from_context(messages, source="subagent")
 
     # Walk backwards to find the latest final assistant message.
     for msg in reversed(messages):

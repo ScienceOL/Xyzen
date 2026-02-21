@@ -66,6 +66,19 @@ async def generate_and_update_topic_title(
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             logger.debug(f"LLM response: {response}")
 
+            # Record LLM token usage for topic rename
+            try:
+                from app.core.consume.tracking import record_response_usage_from_context
+
+                await record_response_usage_from_context(
+                    response,
+                    source="topic_rename",
+                    model_name=topic_rename_model,
+                    provider=str(topic_rename_provider.value) if topic_rename_provider else None,
+                )
+            except Exception:
+                logger.debug("Failed to record topic rename LLM usage (non-fatal)", exc_info=True)
+
             updated_topic = None
             new_title = None
 

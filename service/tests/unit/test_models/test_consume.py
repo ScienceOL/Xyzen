@@ -5,6 +5,9 @@ from uuid import uuid4
 from app.models.consume import (
     ConsumeRecordCreate,
     ConsumeRecordUpdate,
+    DailyConsumeSummary,
+    LLMUsageRecord,
+    ToolCallRecord,
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
 )
@@ -101,3 +104,133 @@ class TestUserConsumeSummaryUpdate:
         update = UserConsumeSummaryUpdate()
         data = update.model_dump(exclude_unset=True)
         assert data == {}
+
+
+class TestLLMUsageRecord:
+    def test_required_fields(self) -> None:
+        record = LLMUsageRecord(
+            user_id="user-1",
+            model_name="gpt-4o",
+        )
+        assert record.user_id == "user-1"
+        assert record.model_name == "gpt-4o"
+        assert record.id is not None
+
+    def test_defaults(self) -> None:
+        record = LLMUsageRecord(
+            user_id="user-1",
+            model_name="gpt-4o",
+        )
+        assert record.input_tokens == 0
+        assert record.output_tokens == 0
+        assert record.total_tokens == 0
+        assert record.cache_creation_input_tokens == 0
+        assert record.cache_read_input_tokens == 0
+        assert record.source == "chat"
+        assert record.model_tier is None
+        assert record.provider is None
+        assert record.session_id is None
+        assert record.topic_id is None
+        assert record.message_id is None
+
+    def test_all_fields(self) -> None:
+        sid = uuid4()
+        tid = uuid4()
+        mid = uuid4()
+        record = LLMUsageRecord(
+            user_id="user-1",
+            model_name="gpt-4o",
+            model_tier="pro",
+            provider="openai",
+            input_tokens=100,
+            output_tokens=50,
+            total_tokens=150,
+            cache_creation_input_tokens=10,
+            cache_read_input_tokens=5,
+            source="subagent",
+            session_id=sid,
+            topic_id=tid,
+            message_id=mid,
+        )
+        assert record.model_tier == "pro"
+        assert record.provider == "openai"
+        assert record.input_tokens == 100
+        assert record.output_tokens == 50
+        assert record.total_tokens == 150
+        assert record.source == "subagent"
+        assert record.session_id == sid
+
+
+class TestToolCallRecord:
+    def test_required_fields(self) -> None:
+        record = ToolCallRecord(
+            user_id="user-1",
+            tool_name="web_search",
+        )
+        assert record.user_id == "user-1"
+        assert record.tool_name == "web_search"
+        assert record.id is not None
+
+    def test_defaults(self) -> None:
+        record = ToolCallRecord(
+            user_id="user-1",
+            tool_name="web_search",
+        )
+        assert record.status == "success"
+        assert record.tool_call_id is None
+        assert record.model_tier is None
+        assert record.session_id is None
+        assert record.topic_id is None
+        assert record.message_id is None
+
+    def test_all_fields(self) -> None:
+        sid = uuid4()
+        record = ToolCallRecord(
+            user_id="user-1",
+            tool_name="generate_image",
+            tool_call_id="call_abc",
+            status="error",
+            model_tier="ultra",
+            session_id=sid,
+        )
+        assert record.tool_name == "generate_image"
+        assert record.tool_call_id == "call_abc"
+        assert record.status == "error"
+        assert record.model_tier == "ultra"
+
+
+class TestDailyConsumeSummary:
+    def test_required_fields(self) -> None:
+        summary = DailyConsumeSummary(
+            user_id="user-1",
+            date="2025-01-15",
+        )
+        assert summary.user_id == "user-1"
+        assert summary.date == "2025-01-15"
+        assert summary.id is not None
+
+    def test_defaults(self) -> None:
+        summary = DailyConsumeSummary(
+            user_id="user-1",
+            date="2025-01-15",
+        )
+        assert summary.tz == "Asia/Shanghai"
+        assert summary.total_input_tokens == 0
+        assert summary.total_output_tokens == 0
+        assert summary.total_tokens == 0
+        assert summary.total_credits == 0
+        assert summary.llm_call_count == 0
+        assert summary.tool_call_count == 0
+        assert summary.total_cost_cents == 0
+        assert summary.by_tier is None
+        assert summary.by_model is None
+
+    def test_json_fields(self) -> None:
+        summary = DailyConsumeSummary(
+            user_id="user-1",
+            date="2025-01-15",
+            by_tier={"pro": {"tokens": 100, "credits": 10}},
+            by_model={"gpt-4o": {"input_tokens": 50, "output_tokens": 50}},
+        )
+        assert summary.by_tier["pro"]["tokens"] == 100
+        assert summary.by_model["gpt-4o"]["input_tokens"] == 50

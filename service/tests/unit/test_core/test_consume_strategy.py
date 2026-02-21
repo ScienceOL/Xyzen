@@ -2,12 +2,13 @@
 
 import json
 
-from app.core.consume_calculator import ConsumptionCalculator
-from app.core.consume_strategy import (
+from app.core.consume.calculator import ConsumptionCalculator
+from app.core.consume.strategy import (
     ConsumptionContext,
     TierBasedConsumptionStrategy,
 )
-from app.schemas.model_tier import TIER_MODEL_CONSUMPTION_RATE, ModelTier
+from app.core.consume.pricing import TIER_MODEL_CONSUMPTION_RATE
+from app.schemas.model_tier import ModelTier
 
 
 class TestConsumptionContext:
@@ -233,7 +234,7 @@ class TestConsumptionCalculator:
         """Test that set_strategy delegates to the custom strategy."""
         from unittest.mock import MagicMock
 
-        from app.core.consume_strategy import ConsumptionResult
+        from app.core.consume.strategy import ConsumptionResult
 
         mock_strategy = MagicMock()
         mock_result = ConsumptionResult(amount=999, breakdown={"custom": True})

@@ -18,16 +18,18 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.core.chat.token_usage import normalize_token_usage
 from app.core.consume import create_consume_for_chat
-from app.core.consume_calculator import ConsumptionCalculator
-from app.core.consume_strategy import ConsumptionContext
+from app.core.consume.calculator import ConsumptionCalculator
+from app.core.consume.pricing import get_model_cost
+from app.core.consume.strategy import ConsumptionContext
+from app.core.consume.tracking import ConsumptionTrackingService
 from app.models.agent_run import AgentRunCreate
 from app.models.citation import CitationCreate
+from app.models.consume import ToolCallRecord
 from app.models.message import Message, MessageCreate
 from app.repos import AgentRunRepository, CitationRepository, FileRepository, MessageRepository, TopicRepository
 from app.repos.session import SessionRepository
 from app.schemas.chat_event_payloads import CitationData
 from app.schemas.chat_event_types import ChatEventType
-from app.tools.cost import calculate_tool_cost
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +70,13 @@ class ChatTaskContext:
     agent_name: str = ""
     agent_avatar: str = ""
 
-    # Token/cost tracking
+    # Token tracking
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
-    tool_costs_total: float = 0.0
+
+    # LLM usage tracking
+    llm_usage_recorded: bool = False  # True once LLM usage is written to DB
 
     # Misc
     citations_data: list[CitationData] = field(default_factory=list)
@@ -81,6 +85,12 @@ class ChatTaskContext:
     is_aborted: bool = False
     error_handled: bool = False
     should_break: bool = False
+
+    # Cached session info (loaded once, reused by handle_token_usage & finalize_and_settle)
+    session_info_loaded: bool = False
+    cached_model_tier: Any = None  # ModelTier enum or None
+    cached_model_name: str | None = None
+    cached_provider_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +138,65 @@ async def send_message_saved(ctx: ChatTaskContext) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Helper: _ensure_session_info (cached session query)
+# ---------------------------------------------------------------------------
+
+
+async def _ensure_session_info(ctx: ChatTaskContext) -> None:
+    """Load session info once and cache on *ctx*.
+
+    Both ``handle_token_usage`` and ``finalize_and_settle`` need model_tier,
+    model_name, and provider_id from the session.  This helper ensures the
+    DB query runs at most once per chat task.
+    """
+    if ctx.session_info_loaded:
+        return
+
+    session_repo = SessionRepository(ctx.db)
+    session = await session_repo.get_session_by_id(ctx.session_id)
+    ctx.cached_model_tier = session.model_tier if session else None
+    ctx.cached_model_name = session.model if session else None
+    ctx.cached_provider_id = str(session.provider_id) if session and session.provider_id else None
+    ctx.session_info_loaded = True
+
+
+# ---------------------------------------------------------------------------
+# Helper: _calculate_tool_costs_from_db
+# ---------------------------------------------------------------------------
+
+
+async def _calculate_tool_costs_from_db(
+    db: AsyncSession,
+    message_id: UUID,
+    session_id: UUID,
+    topic_id: UUID,
+) -> int:
+    """Query successful ToolCallRecords for a message and sum their credit costs.
+
+    Uses ``session_id + topic_id`` scope with an OR condition so that records
+    whose ``message_id`` is still NULL (tool response arrived before
+    STREAMING_START created the message object) are not silently skipped.
+    """
+    from sqlalchemy import or_
+    from sqlmodel import col, select
+
+    from app.core.consume.pricing import calculate_tool_cost
+
+    stmt = select(ToolCallRecord).where(
+        ToolCallRecord.session_id == session_id,
+        ToolCallRecord.topic_id == topic_id,
+        ToolCallRecord.status == "success",
+        or_(
+            col(ToolCallRecord.message_id) == message_id,
+            col(ToolCallRecord.message_id).is_(None),
+        ),
+    )
+    result = await db.exec(stmt)
+    records = list(result.all())
+    return sum(calculate_tool_cost(r.tool_name) for r in records)
+
+
+# ---------------------------------------------------------------------------
 # Helper: finalize_and_settle
 # ---------------------------------------------------------------------------
 
@@ -142,16 +211,22 @@ async def finalize_and_settle(
     """Consolidate settlement calculation + create_consume_for_chat logic.
 
     Used by both the abort path and normal finalization path.
+    Queries DB for ToolCallRecords, calculates credits via pricing,
+    creates ConsumeRecord, and upserts DailyConsumeSummary.
     """
     if not ctx.ai_message_obj:
         return
 
     try:
-        session_repo = SessionRepository(ctx.db)
-        session = await session_repo.get_session_by_id(ctx.session_id)
-        model_tier = session.model_tier if session else None
-        model_name = session.model if session else None
+        await _ensure_session_info(ctx)
+        model_tier = ctx.cached_model_tier
+        model_name = ctx.cached_model_name
         tool_call_count = sum(len(calls) for calls in ctx.tool_calls_by_node.values())
+
+        tracking = ConsumptionTrackingService(ctx.db)
+
+        # Calculate tool costs from DB records
+        tool_costs = await _calculate_tool_costs_from_db(ctx.db, ctx.ai_message_obj.id, ctx.session_id, ctx.topic_id)
 
         consume_context = ConsumptionContext(
             model_tier=model_tier,
@@ -159,7 +234,7 @@ async def finalize_and_settle(
             output_tokens=ctx.output_tokens,
             total_tokens=ctx.total_tokens,
             content_length=len(ctx.full_content),
-            tool_costs=int(ctx.tool_costs_total),
+            tool_costs=tool_costs,
         )
         result = ConsumptionCalculator.calculate(consume_context)
         total_cost = result.amount
@@ -186,6 +261,35 @@ async def finalize_and_settle(
                 model_name=model_name,
                 tool_call_count=tool_call_count,
             )
+
+        # Upsert DailyConsumeSummary
+        try:
+            from datetime import datetime, timezone
+            from zoneinfo import ZoneInfo
+
+            tz_name = "Asia/Shanghai"
+            now_local = datetime.now(timezone.utc).astimezone(ZoneInfo(tz_name))
+            date_str = now_local.strftime("%Y-%m-%d")
+
+            cost_cents = int(get_model_cost(model_name or "", ctx.input_tokens, ctx.output_tokens) * 100)
+
+            await tracking.upsert_daily_summary(
+                user_id=ctx.user_id,
+                date_str=date_str,
+                input_tokens=ctx.input_tokens,
+                output_tokens=ctx.output_tokens,
+                total_tokens=ctx.total_tokens,
+                credits=total_cost,
+                llm_calls=1,
+                tool_calls=tool_call_count,
+                cost_cents=cost_cents,
+                model_tier=model_tier.value if model_tier else None,
+                model_name=model_name,
+                tz=tz_name,
+            )
+        except Exception:
+            logger.warning("Failed to upsert daily summary (non-fatal)", exc_info=True)
+
     except Exception as e:
         logger.error(f"Settlement failed ({description_suffix}): {e}")
         raise
@@ -202,6 +306,13 @@ async def handle_streaming_start(ctx: ChatTaskContext, stream_event: dict[str, A
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
         ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+
+        # Update tracking context with the message_id for tool/subagent usage recording
+        from app.core.consume.context import get_tracking_context
+
+        tracking_ctx = get_tracking_context()
+        if tracking_ctx is not None:
+            tracking_ctx.message_id = ctx.ai_message_obj.id
 
     await ctx.publisher.publish(json.dumps(stream_event))
 
@@ -309,6 +420,37 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
     token_data["input_tokens"] = ctx.input_tokens
     token_data["output_tokens"] = ctx.output_tokens
     token_data["total_tokens"] = ctx.total_tokens
+
+    # Persist LLM usage record to DB
+    try:
+        await _ensure_session_info(ctx)
+        model_tier = ctx.cached_model_tier.value if ctx.cached_model_tier else None
+        model_name = ctx.cached_model_name or "unknown"
+        provider_id = ctx.cached_provider_id
+
+        cache_creation = token_data.get("cache_creation_input_tokens", 0)
+        cache_read = token_data.get("cache_read_input_tokens", 0)
+
+        tracking = ConsumptionTrackingService(ctx.db)
+        await tracking.record_llm_usage(
+            user_id=ctx.user_id,
+            model_name=model_name or "unknown",
+            model_tier=model_tier,
+            provider=provider_id,
+            input_tokens=ctx.input_tokens,
+            output_tokens=ctx.output_tokens,
+            total_tokens=ctx.total_tokens,
+            source="chat",
+            session_id=ctx.session_id,
+            topic_id=ctx.topic_id,
+            message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
+            cache_creation_input_tokens=cache_creation,
+            cache_read_input_tokens=cache_read,
+        )
+        ctx.llm_usage_recorded = True
+    except Exception as e:
+        logger.warning(f"Failed to record LLM usage to DB (non-fatal): {e}")
+
     await ctx.publisher.publish(json.dumps(stream_event))
 
 
@@ -350,36 +492,45 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
     resp = stream_event["data"]
     tool_call_id = resp.get("toolCallId")
 
-    # Calculate tool cost using stored data from TOOL_CALL_REQUEST
+    # Record tool call fact to DB (no pricing here — pricing is at settlement)
     if tool_call_id and tool_call_id in ctx.tool_call_data:
         stored = ctx.tool_call_data[tool_call_id]
         tool_name = stored.get("name", "")
-        args = stored.get("args", {})
-        # Use raw_result for cost calculation (unformatted)
+        # Use raw_result to determine success/failure
         result = resp.get("raw_result")
-        # Parse result if it's a JSON string
         if isinstance(result, str):
             try:
                 result = json.loads(result)
             except json.JSONDecodeError:
                 result = None
-        # Only dict results are supported for cost calculation
         if not isinstance(result, dict):
             result = None
 
-        # Only charge for successful tool executions
+        # Determine success/failure
         tool_failed = (
             resp.get("status") == "error"
             or resp.get("error") is not None
             or (isinstance(result, dict) and result.get("success") is False)
         )
+        status = "error" if tool_failed else "success"
+
         if tool_failed:
             logger.info(f"Tool {tool_name} failed, not charging")
-        else:
-            cost = calculate_tool_cost(tool_name, args, result)
-            if cost > 0:
-                ctx.tool_costs_total += cost
-                logger.info(f"Tool {tool_name} cost: {cost} (total: {ctx.tool_costs_total})")
+
+        # Write ToolCallRecord to DB immediately (flush, no commit)
+        try:
+            tracking = ConsumptionTrackingService(ctx.db)
+            await tracking.record_tool_call(
+                user_id=ctx.user_id,
+                tool_name=tool_name,
+                tool_call_id=tool_call_id,
+                status=status,
+                session_id=ctx.session_id,
+                topic_id=ctx.topic_id,
+                message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record tool call to DB (non-fatal): {e}")
 
     # Update tool call record in tool_calls_by_node with result/status
     if tool_call_id:

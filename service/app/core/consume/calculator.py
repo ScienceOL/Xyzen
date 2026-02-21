@@ -4,7 +4,7 @@ This module provides a factory/manager for consumption calculation strategies,
 allowing easy switching between different pricing approaches.
 """
 
-from app.core.consume_strategy import (
+from app.core.consume.strategy import (
     ConsumptionContext,
     ConsumptionResult,
     ConsumptionStrategy,

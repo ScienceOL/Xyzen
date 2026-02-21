@@ -1,0 +1,111 @@
+"""Unified pricing configuration for credits, tool costs, and model costs.
+
+Centralizes all pricing coefficients so changes only require editing this file.
+"""
+
+import logging
+
+from app.schemas.model_tier import ModelTier
+
+logger = logging.getLogger(__name__)
+
+# Base credit cost per API call
+BASE_COST: int = 1
+
+# Tier multiplier → final credit amount
+TIER_MODEL_CONSUMPTION_RATE: dict[ModelTier, float] = {
+    ModelTier.ULTRA: 6.8,
+    ModelTier.PRO: 3.0,
+    ModelTier.STANDARD: 1.0,
+    ModelTier.LITE: 0.0,
+}
+
+# Token -> credit base rates
+TOKEN_CREDIT_RATES: dict[str, float] = {
+    "input": 0.2 / 1000,  # credits per input token
+    "output": 1.0 / 1000,  # credits per output token
+}
+
+# Tool call -> fixed credit cost (by tool name).
+# Unlisted tools default to 0 via calculate_tool_cost().
+TOOL_CREDIT_COSTS: dict[str, int] = {
+    # --- Image ---
+    "generate_image": 10,
+    "read_image": 2,
+    # --- Web / Search ---
+    "web_search": 1,
+    "web_fetch": 1,
+    "literature_search": 1,
+    # --- Knowledge ---
+    "knowledge_write": 5,
+    "knowledge_search": 1,
+    "knowledge_list": 0,
+    "knowledge_read": 0,
+    "knowledge_help": 0,
+    # --- Memory ---
+    "manage_memory": 1,
+    "search_memory": 1,
+    # --- Sandbox ---
+    "sandbox_bash": 1,
+    "sandbox_upload": 1,
+    "sandbox_export": 1,
+    "sandbox_preview": 1,
+    "sandbox_read": 0,
+    "sandbox_write": 0,
+    "sandbox_edit": 0,
+    "sandbox_glob": 0,
+    "sandbox_grep": 0,
+    # --- Delegation / Subagent ---
+    "spawn_subagent": 2,
+    "delegate_to_agent": 2,
+    "list_user_agents": 0,
+    "get_agent_details": 0,
+    # --- Skills ---
+    "activate_skill": 0,
+    "list_skill_resources": 0,
+}
+
+# Model -> real cost rates (USD per token, for platform cost tracking).
+# Keys must match the model names in schemas/model_tier.py candidates.
+MODEL_COST_RATES: dict[str, dict[str, float]] = {
+    # --- Global: ULTRA ---
+    "Vendor2/Claude-4.6-Opus": {"input": 5e-6, "output": 25e-6},
+    # --- Global: PRO ---
+    "gemini-3-pro-preview": {"input": 1.25e-6, "output": 10e-6},
+    "Vendor2/Claude-4.5-Sonnet": {"input": 3e-6, "output": 15e-6},
+    # --- Global: STANDARD ---
+    "gemini-3-flash-preview": {"input": 0.15e-6, "output": 3.5e-6},
+    "qwen3-30b-a3b": {"input": 0.15e-6, "output": 0.8e-6},
+    # --- Global: LITE ---
+    "gemini-2.5-flash-lite": {"input": 0.1e-6, "output": 0.4e-6},
+    "DeepSeek/DeepSeek-V3.1-0821": {"input": 0.15e-6, "output": 0.75e-6},
+    # --- China: ULTRA ---
+    "kimi-k2.5": {"input": 0.6e-6, "output": 2.5e-6},
+    # --- China: PRO ---
+    "glm-4.7": {"input": 0.6e-6, "output": 2.2e-6},
+    # --- China: STANDARD ---
+    "qwen3-max": {"input": 1.2e-6, "output": 6e-6},
+    # --- China: LITE ---
+    "deepseek-v3.2": {"input": 0.15e-6, "output": 0.75e-6},
+    # --- Helper (selector / topic_rename) ---
+    "qwen3-next-80b-a3b-instruct": {"input": 0.15e-6, "output": 0.6e-6},
+    # --- Image generation / vision models ---
+    "gemini-3-pro-image-preview": {"input": 2e-6, "output": 2e-6},
+    "qwen-image-max": {"input": 0, "output": 0},
+    "qwen-image-edit-max": {"input": 0, "output": 0},
+    "qwen-vl-max-latest": {"input": 1.6e-6, "output": 6.4e-6},
+}
+
+
+def calculate_tool_cost(tool_name: str) -> int:
+    """Pure function: look up tool_name in TOOL_CREDIT_COSTS. Called at settlement."""
+    return TOOL_CREDIT_COSTS.get(tool_name, 0)
+
+
+def get_model_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
+    """Calculate real platform cost in USD for a model call."""
+    rates = MODEL_COST_RATES.get(model_name)
+    if not rates:
+        logger.warning("Model %r not in MODEL_COST_RATES, cost will be 0", model_name)
+        return 0.0
+    return input_tokens * rates.get("input", 0) + output_tokens * rates.get("output", 0)

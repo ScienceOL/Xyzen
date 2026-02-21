@@ -8,7 +8,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.schemas.model_tier import TIER_MODEL_CONSUMPTION_RATE, ModelTier
+from app.core.consume.pricing import (
+    BASE_COST,
+    TIER_MODEL_CONSUMPTION_RATE,
+    TOKEN_CREDIT_RATES,
+)
+from app.schemas.model_tier import ModelTier
 
 
 @dataclass
@@ -64,12 +69,8 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
 
     Design decisions:
     - LITE tier (rate 0.0) = completely free
-    - Tier rate multiplies ALL costs (base + tokens + tool costs)
+    - Tier rate multiplies base + token costs; tool costs are added as fixed credits
     """
-
-    BASE_COST = 1
-    INPUT_TOKEN_RATE = 0.2 / 1000  # per token
-    OUTPUT_TOKEN_RATE = 1 / 1000  # per token
 
     def calculate(self, context: ConsumptionContext) -> ConsumptionResult:
         """Calculate consumption with tier-based multiplier.
@@ -97,16 +98,21 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
             )
 
         # Calculate base token cost
-        token_cost = context.input_tokens * self.INPUT_TOKEN_RATE + context.output_tokens * self.OUTPUT_TOKEN_RATE
+        token_cost = (
+            context.input_tokens * TOKEN_CREDIT_RATES["input"] + context.output_tokens * TOKEN_CREDIT_RATES["output"]
+        )
 
-        # Tier rate multiplies ALL costs (including tool costs)
-        base_amount = self.BASE_COST + token_cost
+        # Tier rate multiplies base + token costs only.
+        # Tool costs are added as fixed credits AFTER the multiplier —
+        # they are tier-independent (e.g. generate_image costs 10 credits
+        # regardless of whether the user is on ULTRA or STANDARD).
+        base_amount = BASE_COST + token_cost
         final_amount = int(base_amount * tier_rate) + context.tool_costs
 
         return ConsumptionResult(
             amount=final_amount,
             breakdown={
-                "base_cost": self.BASE_COST,
+                "base_cost": BASE_COST,
                 "token_cost": token_cost,
                 "tool_costs": context.tool_costs,
                 "pre_multiplier_total": base_amount,

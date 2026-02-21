@@ -11,6 +11,9 @@ from app.models.consume import (
     ConsumeRecord,
     ConsumeRecordCreate,
     ConsumeRecordUpdate,
+    DailyConsumeSummary,
+    LLMUsageRecord,
+    ToolCallRecord,
     UserConsumeSummary,
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
@@ -778,3 +781,84 @@ class ConsumeRepository:
         result_list = [daily[d] for d in sorted(daily.keys())]
         logger.debug(f"Found activity stats for {len(result_list)} days")
         return result_list
+
+    # ------------------------------------------------------------------
+    # LLMUsageRecord CRUD
+    # ------------------------------------------------------------------
+
+    async def create_llm_usage_record(self, record: LLMUsageRecord) -> LLMUsageRecord:
+        """Persist an LLMUsageRecord (flush only, no commit)."""
+        self.db.add(record)
+        await self.db.flush()
+        return record
+
+    async def list_llm_usage_by_message(self, message_id: UUID) -> list[LLMUsageRecord]:
+        result = await self.db.exec(select(LLMUsageRecord).where(LLMUsageRecord.message_id == message_id))
+        return list(result.all())
+
+    async def sum_llm_usage_by_message(self, message_id: UUID) -> dict[str, int]:
+        """Return aggregated token sums for a message_id."""
+        stmt = select(
+            func.coalesce(func.sum(LLMUsageRecord.input_tokens), 0).label("input_tokens"),
+            func.coalesce(func.sum(LLMUsageRecord.output_tokens), 0).label("output_tokens"),
+            func.coalesce(func.sum(LLMUsageRecord.total_tokens), 0).label("total_tokens"),
+        ).where(LLMUsageRecord.message_id == message_id)
+        result = await self.db.exec(stmt)
+        row = result.one()
+        return {
+            "input_tokens": int(row.input_tokens),
+            "output_tokens": int(row.output_tokens),
+            "total_tokens": int(row.total_tokens),
+        }
+
+    # ------------------------------------------------------------------
+    # ToolCallRecord CRUD
+    # ------------------------------------------------------------------
+
+    async def create_tool_call_record(self, record: ToolCallRecord) -> ToolCallRecord:
+        """Persist a ToolCallRecord (flush only, no commit)."""
+        self.db.add(record)
+        await self.db.flush()
+        return record
+
+    async def create_tool_call_records_batch(self, records: list[ToolCallRecord]) -> None:
+        """Batch-persist tool call records (flush only, no commit)."""
+        for r in records:
+            self.db.add(r)
+        if records:
+            await self.db.flush()
+
+    async def list_tool_calls_by_message(self, message_id: UUID) -> list[ToolCallRecord]:
+        result = await self.db.exec(select(ToolCallRecord).where(ToolCallRecord.message_id == message_id))
+        return list(result.all())
+
+    # ------------------------------------------------------------------
+    # DailyConsumeSummary CRUD
+    # ------------------------------------------------------------------
+
+    async def get_daily_summary(self, user_id: str, date_str: str) -> DailyConsumeSummary | None:
+        result = await self.db.exec(
+            select(DailyConsumeSummary).where(
+                DailyConsumeSummary.user_id == user_id,
+                DailyConsumeSummary.date == date_str,
+            )
+        )
+        return result.one_or_none()
+
+    async def list_daily_summaries(
+        self,
+        user_id: str,
+        start_date: str,
+        end_date: str,
+    ) -> list[DailyConsumeSummary]:
+        """List daily summaries for a user in a date range (inclusive)."""
+        result = await self.db.exec(
+            select(DailyConsumeSummary)
+            .where(
+                DailyConsumeSummary.user_id == user_id,
+                DailyConsumeSummary.date >= start_date,
+                DailyConsumeSummary.date <= end_date,
+            )
+            .order_by(DailyConsumeSummary.date.asc())
+        )
+        return list(result.all())

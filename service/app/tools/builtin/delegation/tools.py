@@ -304,7 +304,8 @@ async def _run_delegated_agent(
     graph: Any,
     task: str,
 ) -> str:
-    """Run a delegated agent graph and collect the final text output."""
+    """Run a delegated agent graph and collect the final text output.
+    Also records LLM token usage from the delegated agent's messages."""
     state = await graph.ainvoke(
         {"messages": [HumanMessage(content=task)]},
         config={"recursion_limit": 200},
@@ -317,6 +318,11 @@ async def _run_delegated_agent(
     else:
         raw = getattr(state, "messages", [])
         messages = list(raw) if isinstance(raw, list) else []
+
+    # Extract and record token usage
+    from app.core.consume.tracking import record_messages_usage_from_context
+
+    await record_messages_usage_from_context(messages, source="delegation")
 
     for msg in reversed(messages):
         if isinstance(msg, AIMessage) and not getattr(msg, "tool_calls", None):

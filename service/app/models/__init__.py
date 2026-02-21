@@ -14,7 +14,7 @@ from .agent_snapshot import AgentSnapshot, AgentSnapshotCreate, AgentSnapshotRea
 from .chat_share import ChatShare, ChatShareCreate, ChatSharePublicRead, ChatShareRead
 from .checkin import CheckIn, CheckInCreate, CheckInRead
 from .citation import Citation, CitationCreate, CitationRead
-from .consume import ConsumeRecord
+from .consume import ConsumeRecord, DailyConsumeSummary, LLMUsageRecord, ToolCallRecord
 from .file import File, FileCreate, FileRead, FileReadWithUrl, FileUpdate
 from .file_knowledge_set_link import FileKnowledgeSetLink, FileKnowledgeSetLinkCreate, FileKnowledgeSetLinkRead
 from .knowledge_set import (
@@ -75,6 +75,9 @@ __all__ = [
     "CheckInCreate",
     "CheckInRead",
     "ConsumeRecord",
+    "DailyConsumeSummary",
+    "LLMUsageRecord",
+    "ToolCallRecord",
     "File",
     "FileCreate",
     "FileRead",

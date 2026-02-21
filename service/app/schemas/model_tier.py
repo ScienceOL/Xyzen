@@ -241,18 +241,6 @@ def get_topic_rename_config() -> tuple[str, ProviderType]:
 
 
 # ---------------------------------------------------------------------------
-# Consumption rates (same for all regions)
-# ---------------------------------------------------------------------------
-
-TIER_MODEL_CONSUMPTION_RATE: dict[ModelTier, float] = {
-    ModelTier.ULTRA: 6.8,
-    ModelTier.PRO: 3.0,
-    ModelTier.STANDARD: 1.0,
-    ModelTier.LITE: 0.0,
-}
-
-
-# ---------------------------------------------------------------------------
 # Helper functions (region-aware)
 # ---------------------------------------------------------------------------
 
