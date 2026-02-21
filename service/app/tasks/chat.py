@@ -189,7 +189,15 @@ async def _process_chat_message_async(
 
     # Create a fresh engine and session factory for this event loop
     # This avoids the "Future attached to a different loop" error
-    task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
+    task_engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        echo=False,
+        future=True,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+        pool_size=3,
+        max_overflow=5,
+    )
     TaskSessionLocal = async_sessionmaker(
         bind=task_engine,
         class_=AsyncSession,

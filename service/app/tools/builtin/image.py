@@ -106,15 +106,12 @@ async def _generate_image_with_langchain(
     from langchain_core.messages import HumanMessage
 
     from app.core.providers.manager import get_user_provider_manager
-    from app.infra.database import create_task_session_factory
+    from app.infra.database import get_task_db_session
     from app.schemas.provider import ProviderType
 
     image_cfg = get_image_config()
 
-    # Create a fresh session factory for the current event loop (Celery worker)
-    TaskSessionLocal = create_task_session_factory()
-
-    async with TaskSessionLocal() as db:
+    async with get_task_db_session() as db:
         # Get provider manager which loads system providers from DB
         # The "system" user_id is used since we're accessing system providers
         provider_manager = await get_user_provider_manager("system", db)
@@ -346,15 +343,12 @@ async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> lis
     Raises:
         ValueError: If any image_id is invalid, not found, deleted, or inaccessible
     """
-    from app.infra.database import create_task_session_factory
+    from app.infra.database import get_task_db_session
     from app.repos.file import FileRepository
 
     results: list[tuple[bytes, str, str]] = []
 
-    # Create a fresh session factory for the current event loop (Celery worker)
-    TaskSessionLocal = create_task_session_factory()
-
-    async with TaskSessionLocal() as db:
+    async with get_task_db_session() as db:
         file_repo = FileRepository(db)
         storage = get_storage_service()
 
@@ -483,14 +477,11 @@ async def _generate_image(
         url = await storage.generate_download_url(storage_key, expires_in=3600 * 24 * 7)  # 7 days
 
         # Register file in database so it appears in knowledge base
-        from app.infra.database import create_task_session_factory
+        from app.infra.database import get_task_db_session
         from app.models.file import FileCreate
         from app.repos.file import FileRepository
 
-        # Create a fresh session factory for the current event loop (Celery worker)
-        TaskSessionLocal = create_task_session_factory()
-
-        async with TaskSessionLocal() as db:
+        async with get_task_db_session() as db:
             file_repo = FileRepository(db)
             file_data = FileCreate(
                 user_id=user_id,
@@ -561,7 +552,7 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     from langchain_core.messages import HumanMessage
 
     from app.core.providers.manager import get_user_provider_manager
-    from app.infra.database import create_task_session_factory
+    from app.infra.database import get_task_db_session
     from app.schemas.provider import ProviderType
 
     image_cfg = get_image_config()
@@ -569,10 +560,7 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     # Encode image to base64 for the vision model
     b64_data = base64.b64encode(image_bytes).decode("utf-8")
 
-    # Create a fresh session factory for the current event loop (Celery worker)
-    TaskSessionLocal = create_task_session_factory()
-
-    async with TaskSessionLocal() as db:
+    async with get_task_db_session() as db:
         provider_manager = await get_user_provider_manager("system", db)
         llm = await provider_manager.create_langchain_model(
             provider_id=ProviderType(image_cfg.VisionProvider),
@@ -627,7 +615,7 @@ async def _read_image(user_id: str, image_id: str, question: str) -> dict[str, A
     Returns:
         Dictionary with success status, analysis result, and metadata
     """
-    from app.infra.database import create_task_session_factory
+    from app.infra.database import get_task_db_session
     from app.repos.file import FileRepository
 
     try:
@@ -641,11 +629,8 @@ async def _read_image(user_id: str, image_id: str, question: str) -> dict[str, A
                 "image_id": image_id,
             }
 
-        # Create a fresh session factory for the current event loop (Celery worker)
-        TaskSessionLocal = create_task_session_factory()
-
         # Look up file record in database
-        async with TaskSessionLocal() as db:
+        async with get_task_db_session() as db:
             file_repo = FileRepository(db)
             file_record = await file_repo.get_file_by_id(file_uuid)
 

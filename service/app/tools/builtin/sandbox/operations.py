@@ -21,7 +21,7 @@ from app.core.storage import (
     generate_storage_key,
     get_storage_service,
 )
-from app.infra.database import create_task_session_factory
+from app.infra.database import get_task_db_session
 from app.infra.sandbox.manager import SandboxManager
 from app.models.file import FileCreate
 from app.repos.file import FileRepository
@@ -216,7 +216,6 @@ async def _persist_exported_file(
     file_bytes: bytes,
 ) -> dict[str, Any]:
     storage = get_storage_service()
-    task_session_factory = create_task_session_factory()
     content_type = _detect_content_type(filename)
     category = detect_file_category(filename)
     storage_key = generate_storage_key(
@@ -228,7 +227,7 @@ async def _persist_exported_file(
 
     uploaded = False
     try:
-        async with task_session_factory() as db:
+        async with get_task_db_session() as db:
             quota_service = await create_quota_service(db, user_id)
             await quota_service.validate_upload(user_id, len(file_bytes))
 
@@ -363,7 +362,7 @@ async def sandbox_upload(
         from uuid import UUID
 
         from app.core.storage import get_storage_service
-        from app.infra.database import create_task_session_factory
+        from app.infra.database import get_task_db_session
         from app.repos.file import FileRepository
 
         # Validate file_id
@@ -372,8 +371,7 @@ async def sandbox_upload(
         except ValueError:
             return {"success": False, "error": f"Invalid file_id format: {file_id}"}
 
-        TaskSessionLocal = create_task_session_factory()
-        async with TaskSessionLocal() as db:
+        async with get_task_db_session() as db:
             file_repo = FileRepository(db)
             file_record = await file_repo.get_file_by_id(file_uuid)
 

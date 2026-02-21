@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common import ALEMBIC_INI_PATH
@@ -159,7 +159,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-_worker_engines: dict[tuple[int, int], async_sessionmaker[AsyncSession]] = {}
+_worker_engines: dict[tuple[int, int], tuple[AsyncEngine, async_sessionmaker[AsyncSession]]] = {}
 
 
 @asynccontextmanager
@@ -167,25 +167,43 @@ async def get_task_db_session():
     """
     Get a database session suitable for Celery Worker / tool execution contexts.
 
-    Each call creates a new engine bound to the current event loop to avoid cross-loop issues.
+    Caches one engine per (pid, event-loop) pair so that all tool invocations
+    within the same task share the same connection pool instead of creating a
+    new engine every time.
+
+    Old engines (same pid, different loop) are disposed to prevent connection
+    leaks across Celery task boundaries.
     """
     pid = os.getpid()
     loop_id = id(asyncio.get_running_loop())
     cache_key = (pid, loop_id)
 
     if cache_key not in _worker_engines:
-        # Clean up old engines from this process but different loops
+        # Dispose engines from previous event loops in this process
         old_keys = [k for k in _worker_engines if k[0] == pid and k[1] != loop_id]
         for old_key in old_keys:
-            # Optionally dispose old engines (fire and forget)
-            del _worker_engines[old_key]
+            old_engine, _ = _worker_engines.pop(old_key)
+            try:
+                await old_engine.dispose()
+            except Exception:
+                pass
 
-        task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
-        _worker_engines[cache_key] = async_sessionmaker(
+        task_engine = create_async_engine(
+            ASYNC_DATABASE_URL,
+            echo=False,
+            future=True,
+            pool_pre_ping=True,
+            pool_recycle=1800,
+            pool_size=5,
+            max_overflow=5,
+        )
+        factory = async_sessionmaker(
             bind=task_engine,
             class_=AsyncSession,
             expire_on_commit=False,
         )
+        _worker_engines[cache_key] = (task_engine, factory)
 
-    async with _worker_engines[cache_key]() as session:
+    _, session_factory = _worker_engines[cache_key]
+    async with session_factory() as session:
         yield session
