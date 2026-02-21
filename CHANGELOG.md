@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.4.16](https://github.com/ScienceOL/Xyzen/compare/v1.4.15...v1.4.16) (2026-02-21)
+
+### 🐛 Bug Fixes
+
+* Enhance chat sharing functionality with message snapshots and tool call integration ([#260](https://github.com/ScienceOL/Xyzen/issues/260)) ([831ffac](https://github.com/ScienceOL/Xyzen/commit/831ffac3bebec7849a8e0ede3af4bb1dade8d3db))
+
 ## [1.4.15](https://github.com/ScienceOL/Xyzen/compare/v1.4.14...v1.4.15) (2026-02-21)
 
 ### 🐛 Bug Fixes
