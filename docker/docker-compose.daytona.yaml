@@ -117,6 +117,8 @@ services:
       - SSH_GATEWAY_COMMAND=ssh -p 2222 {{TOKEN}}@localhost
       - SSH_GATEWAY_PUBLIC_KEY=
       - SSH_GATEWAY_URL=localhost:2222
+      - ENCRYPTION_KEY=${DAYTONA_ENCRYPTION_KEY:-xyzen-dev-encryption-key-32chars!}
+      - ENCRYPTION_SALT=${DAYTONA_ENCRYPTION_SALT:-xyzen-dev-salt-16ch}
       - SKIP_USER_EMAIL_VERIFICATION=true
       - RUN_MIGRATIONS=true
     restart: always

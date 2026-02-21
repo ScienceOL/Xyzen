@@ -395,7 +395,7 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
 
                 {/* Send / Stop button */}
                 {responding ? (
-                  <Tooltip>
+                  <Tooltip key="stop">
                     <TooltipTrigger asChild>
                       <button
                         onClick={onAbort}
@@ -431,7 +431,7 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                     </TooltipContent>
                   </Tooltip>
                 ) : (
-                  <Tooltip>
+                  <Tooltip key="send">
                     <TooltipTrigger asChild>
                       <button
                         onClick={handleSendMessage}

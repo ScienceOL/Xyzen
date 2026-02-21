@@ -17,6 +17,7 @@ import {
   ArrowPathIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
+import { StopCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   useCallback,
@@ -552,6 +553,16 @@ function ChatBubble({ message }: ChatBubbleProps) {
                     className="ml-1 inline-block h-4 w-0.5 bg-current"
                   />
                 )}
+
+                {/* Stopped indicator for simple messages without agentExecution */}
+                {!isUserMessage &&
+                  status === "cancelled" &&
+                  !agentExecution && (
+                    <div className="mt-2 flex items-center gap-1.5 text-[13px] text-neutral-400 dark:text-neutral-500">
+                      <StopCircle className="h-3.5 w-3.5" />
+                      <span>{t("app.chat.agent.stopped")}</span>
+                    </div>
+                  )}
               </div>
 
               {/* File Attachments - shown after text for assistant messages */}

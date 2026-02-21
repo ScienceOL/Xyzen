@@ -482,10 +482,60 @@ export function createConnectionActions(
         abortTimeoutIds.delete(channelId);
       }
 
-      // Optimistically update UI state
+      // Optimistically update UI state — immediately finalize messages so
+      // the "stopped" indicator appears without waiting for the backend
+      // stream_aborted event.  All mutations here are idempotent; the
+      // subsequent handleStreamAborted call will simply re-set the same values.
       set((state: ChatSlice) => {
-        if (state.channels[channelId]) {
-          state.channels[channelId].aborting = true;
+        const channel = state.channels[channelId];
+        if (!channel) return;
+
+        channel.aborting = true;
+
+        // Finalize streaming message
+        const streamingMsg = channel.messages.find((m) => m.isStreaming);
+        if (streamingMsg) {
+          streamingMsg.isStreaming = false;
+          streamingMsg.status = "cancelled";
+        }
+
+        // Mark running agent execution as cancelled
+        const agentMsg = channel.messages.find(
+          (m) => m.agentExecution?.status === "running",
+        );
+        if (agentMsg?.agentExecution) {
+          agentMsg.agentExecution.status = "cancelled";
+          agentMsg.agentExecution.endedAt = Date.now();
+          for (const phase of agentMsg.agentExecution.phases) {
+            if (phase.status === "running") {
+              phase.status = "cancelled";
+            }
+          }
+          agentMsg.isStreaming = false;
+        }
+
+        // Convert loading message to cancelled placeholder
+        const loadingMsg = channel.messages.find((m) => m.isLoading);
+        if (loadingMsg) {
+          const loadingIndex = channel.messages.indexOf(loadingMsg);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { isLoading: _, ...rest } = channel.messages[loadingIndex];
+          channel.messages[loadingIndex] = {
+            ...rest,
+            id: `aborted-${Date.now()}`,
+            status: "cancelled",
+            agentExecution: {
+              agentId: "",
+              agentName: "",
+              agentType: "react",
+              executionId: `aborted-${Date.now()}`,
+              status: "cancelled",
+              startedAt: Date.now(),
+              endedAt: Date.now(),
+              phases: [],
+              subagents: [],
+            },
+          };
         }
       });
       updateDerivedStatus();
