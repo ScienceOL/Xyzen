@@ -171,8 +171,18 @@ async def record_llm_usage_from_context(
 
     try:
         tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(ModelTier(ctx.model_tier), 1.0) if ctx.model_tier else 1.0
-        amount = calculate_llm_credits(input_tokens, output_tokens, tier_rate)
-        cost_usd_val = calculate_llm_cost_usd(model_name, input_tokens, output_tokens)
+        amount = calculate_llm_credits(
+            input_tokens,
+            output_tokens,
+            tier_rate,
+            cache_read_input_tokens=cache_read_input_tokens,
+        )
+        cost_usd_val = calculate_llm_cost_usd(
+            model_name,
+            input_tokens,
+            output_tokens,
+            cache_read_input_tokens=cache_read_input_tokens,
+        )
 
         async with ctx.db_session_factory() as db:
             service = ConsumptionTrackingService(db)
@@ -209,6 +219,8 @@ async def record_messages_usage_from_context(
     total_input = 0
     total_output = 0
     total_total = 0
+    total_cache_creation = 0
+    total_cache_read = 0
     model_name = "unknown"
 
     for msg in messages:
@@ -217,6 +229,9 @@ async def record_messages_usage_from_context(
             total_input += usage.get("input_tokens", 0)
             total_output += usage.get("output_tokens", 0)
             total_total += usage.get("total_tokens", 0)
+            details = usage.get("input_token_details") or {}
+            total_cache_creation += details.get("cache_creation", 0) or 0
+            total_cache_read += details.get("cache_read", 0) or 0
         resp_meta = getattr(msg, "response_metadata", None)
         if resp_meta and isinstance(resp_meta, dict):
             m = resp_meta.get("model_name") or resp_meta.get("model")
@@ -233,6 +248,8 @@ async def record_messages_usage_from_context(
         output_tokens=total_output,
         total_tokens=total_total if total_total else total_input + total_output,
         source=source,
+        cache_creation_input_tokens=total_cache_creation,
+        cache_read_input_tokens=total_cache_read,
     )
 
 
@@ -251,6 +268,10 @@ async def record_response_usage_from_context(
     output_tokens = usage.get("output_tokens", 0)
     total_tokens = usage.get("total_tokens", 0)
 
+    details = usage.get("input_token_details") or {}
+    cache_creation = details.get("cache_creation", 0) or 0
+    cache_read = details.get("cache_read", 0) or 0
+
     if input_tokens == 0 and output_tokens == 0:
         return None
 
@@ -261,4 +282,6 @@ async def record_response_usage_from_context(
         output_tokens=output_tokens,
         total_tokens=total_tokens if total_tokens else input_tokens + output_tokens,
         source=source,
+        cache_creation_input_tokens=cache_creation,
+        cache_read_input_tokens=cache_read,
     )

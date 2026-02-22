@@ -119,6 +119,8 @@ class TokenUsageData(TypedDict):
     output_tokens: int
     total_tokens: int
     stream_id: str
+    cache_creation_input_tokens: NotRequired[int]
+    cache_read_input_tokens: NotRequired[int]
 
 
 class CitationData(TypedDict):

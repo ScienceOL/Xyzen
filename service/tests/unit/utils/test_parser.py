@@ -42,9 +42,7 @@ class TestParseRequirements:
         ],
         ids=["extras+version", "extras-only", "version-only", "name-only"],
     )
-    def test_extras_version_matrix(
-        self, preserve_extras: bool, keep_version: bool, expected: list[str]
-    ) -> None:
+    def test_extras_version_matrix(self, preserve_extras: bool, keep_version: bool, expected: list[str]) -> None:
         result = parse_requirements(
             "requests[security]>=2.25.0",
             preserve_extras=preserve_extras,

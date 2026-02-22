@@ -1,7 +1,10 @@
 """Unit tests for app.core.consume.pricing module."""
 
+import pytest
+
 from app.core.consume.pricing import (
     BASE_COST,
+    CACHE_READ_DISCOUNT,
     MODEL_COST_RATES,
     TOKEN_CREDIT_RATES,
     calculate_llm_cost_usd,
@@ -55,6 +58,23 @@ class TestGetModelCost:
         expected = 1000 * MODEL_COST_RATES["gemini-3-pro-preview"]["output"]
         assert cost == expected
 
+    def test_cache_read_discount(self) -> None:
+        rates = MODEL_COST_RATES["gemini-3-pro-preview"]
+        # 1000 total input, 400 cache_read → 600 regular
+        cost = get_model_cost("gemini-3-pro-preview", input_tokens=1000, output_tokens=500, cache_read_input_tokens=400)
+        expected = 600 * rates["input"] + 400 * rates["input"] * CACHE_READ_DISCOUNT + 500 * rates["output"]
+        assert cost == pytest.approx(expected)
+
+    def test_cache_read_exceeds_input_clamps_to_zero(self) -> None:
+        """Provider bug: cache_read > input should not produce negative cost."""
+        cost = get_model_cost(
+            "gemini-3-pro-preview",
+            input_tokens=100,
+            output_tokens=500,
+            cache_read_input_tokens=200,
+        )
+        assert cost >= 0
+
 
 class TestCalculateLlmCredits:
     def test_pro_tier(self) -> None:
@@ -83,6 +103,24 @@ class TestCalculateLlmCredits:
         token_cost = 1000 * TOKEN_CREDIT_RATES["input"] + 500 * TOKEN_CREDIT_RATES["output"]
         expected = int(token_cost * 6.8)
         assert calculate_llm_credits(1000, 500, 6.8) == expected
+
+    def test_cache_read_discount(self) -> None:
+        # 1000 input (400 cache_read) + 500 output, tier_rate=3.0
+        # regular_input = 600, cache_read = 400
+        # token_cost = 600*0.0002 + 400*0.0002*0.1 + 500*0.001
+        #            = 0.12 + 0.008 + 0.5 = 0.628
+        # amount = int(0.628 * 3.0) = int(1.884) = 1
+        assert calculate_llm_credits(1000, 500, 3.0, cache_read_input_tokens=400) == 1
+
+    def test_cache_read_reduces_cost(self) -> None:
+        # Verify that cache_read tokens result in lower cost than full price
+        full_price = calculate_llm_credits(1000, 500, 3.0)
+        discounted = calculate_llm_credits(1000, 500, 3.0, cache_read_input_tokens=800)
+        assert discounted < full_price
+
+    def test_cache_read_exceeds_input_clamps_to_zero(self) -> None:
+        """Provider bug: cache_read > input should not produce negative cost."""
+        assert calculate_llm_credits(100, 500, 3.0, cache_read_input_tokens=200) >= 0
 
 
 class TestCalculateLlmCostUsd:

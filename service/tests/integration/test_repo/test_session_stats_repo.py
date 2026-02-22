@@ -101,9 +101,7 @@ class TestSessionStatsRepository:
     # get_session_stats
     # ------------------------------------------------------------------
 
-    async def test_get_session_stats_returns_none_for_missing(
-        self, stats_repo: SessionStatsRepository
-    ) -> None:
+    async def test_get_session_stats_returns_none_for_missing(self, stats_repo: SessionStatsRepository) -> None:
         result = await stats_repo.get_session_stats(uuid4())
         assert result is None
 
@@ -133,16 +131,13 @@ class TestSessionStatsRepository:
         await self._create_message(db_session, topic1.id)
         await self._create_message(db_session, topic2.id)
 
-        await self._create_consume_record(
-            db_session, session.id, "user-stats-data", input_tokens=100, output_tokens=50
-        )
+        await self._create_consume_record(db_session, session.id, "user-stats-data", input_tokens=100, output_tokens=50)
         await self._create_consume_record(
             db_session, session.id, "user-stats-data", input_tokens=200, output_tokens=100
         )
         # Failed record should not be counted in tokens
         await self._create_consume_record(
-            db_session, session.id, "user-stats-data",
-            input_tokens=999, output_tokens=999, consume_state="failed"
+            db_session, session.id, "user-stats-data", input_tokens=999, output_tokens=999, consume_state="failed"
         )
 
         result = await stats_repo.get_session_stats(session.id)
@@ -157,9 +152,7 @@ class TestSessionStatsRepository:
     # get_agent_stats
     # ------------------------------------------------------------------
 
-    async def test_get_agent_stats_empty(
-        self, stats_repo: SessionStatsRepository, db_session: AsyncSession
-    ) -> None:
+    async def test_get_agent_stats_empty(self, stats_repo: SessionStatsRepository, db_session: AsyncSession) -> None:
         agent_id = uuid4()
         result = await stats_repo.get_agent_stats(agent_id, "user-no-agent-stats")
 
@@ -197,9 +190,7 @@ class TestSessionStatsRepository:
     # get_all_agent_stats_for_user
     # ------------------------------------------------------------------
 
-    async def test_get_all_agent_stats_for_user_empty(
-        self, stats_repo: SessionStatsRepository
-    ) -> None:
+    async def test_get_all_agent_stats_for_user_empty(self, stats_repo: SessionStatsRepository) -> None:
         result = await stats_repo.get_all_agent_stats_for_user("user-no-sessions")
         assert result == {}
 

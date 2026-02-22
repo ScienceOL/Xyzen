@@ -28,7 +28,24 @@ def test_normalize_usage_falls_back_to_input_output_sum() -> None:
 
 def test_extract_usage_metadata_returns_normalized_totals() -> None:
     chunk = SimpleNamespace(usage_metadata={"input_tokens": 80, "output_tokens": 20, "total_tokens": 0})
-    assert TokenStreamProcessor.extract_usage_metadata(chunk) == (80, 20, 100)
+    assert TokenStreamProcessor.extract_usage_metadata(chunk) == (80, 20, 100, 0, 0)
+
+
+def test_extract_usage_metadata_extracts_cache_tokens() -> None:
+    chunk = SimpleNamespace(
+        usage_metadata={
+            "input_tokens": 100,
+            "output_tokens": 20,
+            "total_tokens": 120,
+            "input_token_details": {"cache_creation": 30, "cache_read": 50},
+        }
+    )
+    assert TokenStreamProcessor.extract_usage_metadata(chunk) == (100, 20, 120, 30, 50)
+
+
+def test_extract_usage_metadata_handles_missing_cache_details() -> None:
+    chunk = SimpleNamespace(usage_metadata={"input_tokens": 100, "output_tokens": 20, "total_tokens": 120})
+    assert TokenStreamProcessor.extract_usage_metadata(chunk) == (100, 20, 120, 0, 0)
 
 
 @pytest.mark.asyncio

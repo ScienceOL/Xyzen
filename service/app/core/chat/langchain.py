@@ -798,13 +798,15 @@ async def _handle_messages_mode(
     # Note: AIMessageChunk is a subclass of AIMessage, so check the exact type.
     usage = TokenStreamProcessor.extract_usage_metadata(message_chunk)
     if usage:
-        input_tokens, output_tokens, total_tokens = usage
+        input_tokens, output_tokens, total_tokens, cache_creation, cache_read = usage
         # Some providers emit partial/intermediate usage snapshots; keep the
         # largest observed total for stable latest-context semantics.
         if total_tokens >= ctx.total_tokens:
             ctx.total_input_tokens = input_tokens
             ctx.total_output_tokens = output_tokens
             ctx.total_tokens = total_tokens
+            ctx.total_cache_creation_tokens = cache_creation
+            ctx.total_cache_read_tokens = cache_read
 
     if type(message_chunk) is AIMessage:
         content = TokenStreamProcessor.extract_token_text(message_chunk)
@@ -917,7 +919,12 @@ async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> As
                 ctx.total_tokens,
             )
             yield StreamingEventHandler.create_token_usage_event(
-                ctx.total_input_tokens, ctx.total_output_tokens, ctx.total_tokens, ctx.stream_id
+                ctx.total_input_tokens,
+                ctx.total_output_tokens,
+                ctx.total_tokens,
+                ctx.stream_id,
+                cache_creation_input_tokens=ctx.total_cache_creation_tokens,
+                cache_read_input_tokens=ctx.total_cache_read_tokens,
             )
 
 

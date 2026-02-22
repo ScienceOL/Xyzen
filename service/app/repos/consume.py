@@ -305,21 +305,11 @@ class ConsumeRepository:
         self, date_str: str, user_id: str | None = None, tz: str | None = None
     ) -> dict[str, Any]:
         """Get token consumption statistics for a specific day."""
-        from datetime import datetime, timezone
+        tz_name = tz or "UTC"
 
-        zone = ZoneInfo("UTC")
-        if tz:
-            try:
-                zone = ZoneInfo(tz)
-            except ZoneInfoNotFoundError as e:
-                raise ValueError(f"Invalid timezone: {tz}") from e
+        logger.debug(f"Getting daily token stats for date: {date_str}, user_id: {user_id}, tz: {tz_name}")
 
-        start_local = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=zone)
-        end_local = start_local.replace(hour=23, minute=59, second=59, microsecond=999999)
-        start_of_day = start_local.astimezone(timezone.utc)
-        end_of_day = end_local.astimezone(timezone.utc)
-
-        logger.debug(f"Getting daily token stats for {start_of_day} to {end_of_day}, user_id: {user_id}")
+        date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
 
         stmt = select(
             func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),  # type: ignore
@@ -339,10 +329,7 @@ class ConsumeRepository:
                 ),
                 0,
             ).label("tool_call_count"),
-        ).where(
-            ConsumeRecord.created_at >= start_of_day,
-            ConsumeRecord.created_at <= end_of_day,
-        )
+        ).where(date_expr == date_str)
 
         if user_id:
             stmt = stmt.where(ConsumeRecord.user_id == user_id)

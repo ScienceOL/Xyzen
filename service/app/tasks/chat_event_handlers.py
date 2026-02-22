@@ -365,8 +365,12 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
 
         # Calculate amount and cost_usd via pricing functions
         tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
-        amount = calculate_llm_credits(ctx.input_tokens, ctx.output_tokens, tier_rate)
-        cost_usd = calculate_llm_cost_usd(model_name or "unknown", ctx.input_tokens, ctx.output_tokens)
+        amount = calculate_llm_credits(
+            ctx.input_tokens, ctx.output_tokens, tier_rate, cache_read_input_tokens=cache_read
+        )
+        cost_usd = calculate_llm_cost_usd(
+            model_name or "unknown", ctx.input_tokens, ctx.output_tokens, cache_read_input_tokens=cache_read
+        )
 
         tracking = ConsumptionTrackingService(ctx.db)
         await tracking.record_llm_usage(

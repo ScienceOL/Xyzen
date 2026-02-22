@@ -81,6 +81,9 @@ class StreamContext:
     historical_tool_call_ids: set[str] = field(default_factory=set)
     # Set of tool call IDs that we've emitted results for (to skip duplicates)
     emitted_tool_result_ids: set[str] = field(default_factory=set)
+    # Cache token tracking
+    total_cache_creation_tokens: int = 0
+    total_cache_read_tokens: int = 0
 
 
 class ToolEventHandler:
@@ -183,7 +186,12 @@ class StreamingEventHandler:
 
     @staticmethod
     def create_token_usage_event(
-        input_tokens: int, output_tokens: int, total_tokens: int, stream_id: str
+        input_tokens: int,
+        output_tokens: int,
+        total_tokens: int,
+        stream_id: str,
+        cache_creation_input_tokens: int = 0,
+        cache_read_input_tokens: int = 0,
     ) -> StreamingEvent:
         """Create token usage event."""
         data: TokenUsageData = {
@@ -192,6 +200,10 @@ class StreamingEventHandler:
             "total_tokens": total_tokens,
             "stream_id": stream_id,
         }
+        if cache_creation_input_tokens:
+            data["cache_creation_input_tokens"] = cache_creation_input_tokens
+        if cache_read_input_tokens:
+            data["cache_read_input_tokens"] = cache_read_input_tokens
         return {"type": ChatEventType.TOKEN_USAGE, "data": data}
 
     @staticmethod
@@ -677,7 +689,7 @@ class TokenStreamProcessor:
         return None
 
     @staticmethod
-    def extract_usage_metadata(message_chunk: Any) -> tuple[int, int, int] | None:
+    def extract_usage_metadata(message_chunk: Any) -> tuple[int, int, int, int, int] | None:
         """
         Extract token usage from message chunk.
 
@@ -685,7 +697,7 @@ class TokenStreamProcessor:
             message_chunk: Chunk from LLM streaming
 
         Returns:
-            Tuple of (input_tokens, output_tokens, total_tokens) or None
+            Tuple of (input_tokens, output_tokens, total_tokens, cache_creation, cache_read) or None
         """
         if not hasattr(message_chunk, "usage_metadata"):
             return None
@@ -694,11 +706,18 @@ class TokenStreamProcessor:
         if not isinstance(usage_metadata, dict):
             return None
 
-        return TokenStreamProcessor.normalize_usage(
+        base = TokenStreamProcessor.normalize_usage(
             usage_metadata.get("input_tokens", 0),
             usage_metadata.get("output_tokens", 0),
             usage_metadata.get("total_tokens", 0),
         )
+
+        # LangChain >= 0.3: input_token_details.cache_creation / cache_read
+        details = usage_metadata.get("input_token_details") or {}
+        cache_creation = details.get("cache_creation", 0) or 0
+        cache_read = details.get("cache_read", 0) or 0
+
+        return (*base, cache_creation, cache_read)
 
     @staticmethod
     def should_log_batch(token_count: int) -> bool:

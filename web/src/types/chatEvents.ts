@@ -152,6 +152,8 @@ export type ChatEvent =
         output_tokens: number;
         total_tokens: number;
         stream_id: string;
+        cache_creation_input_tokens?: number;
+        cache_read_input_tokens?: number;
       };
     }
   | { type: "agent_start"; data: AgentStartData }
