@@ -151,6 +151,13 @@ async def _ensure_session_info(ctx: ChatTaskContext) -> None:
 
     session_repo = SessionRepository(ctx.db)
     session = await session_repo.get_session_by_id(ctx.session_id)
+
+    if session and not session.model_tier:
+        from app.core.session.service import SessionService
+
+        svc = SessionService(ctx.db)
+        await svc._clamp_session_model_tier(session, ctx.user_id)
+
     ctx.cached_model_tier = session.model_tier if session else None
     ctx.cached_model_name = session.model if session else None
     ctx.cached_provider_id = str(session.provider_id) if session and session.provider_id else None

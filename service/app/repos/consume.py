@@ -326,7 +326,10 @@ class ConsumeRepository:
             func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
             func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
             func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
-            func.count().label("record_count"),
+            func.coalesce(
+                func.sum(case((col(ConsumeRecord.record_type) == "llm", 1), else_=0)),
+                0,
+            ).label("record_count"),
             func.coalesce(
                 func.sum(
                     case(
@@ -463,15 +466,19 @@ class ConsumeRepository:
         )
 
         date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
+        tier_expr = func.coalesce(col(ConsumeRecord.model_tier), "standard")
         day_tier_stmt = (
             sa_select(
                 date_expr.label("date"),
-                cast(Any, col(ConsumeRecord.model_tier).label("tier")),
+                cast(Any, tier_expr.label("tier")),
                 func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
                 func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
                 func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
                 func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
-                func.count().label("record_count"),
+                func.coalesce(
+                    func.sum(case((col(ConsumeRecord.record_type) == "llm", 1), else_=0)),
+                    0,
+                ).label("record_count"),
                 func.coalesce(
                     func.sum(
                         case(
@@ -483,7 +490,7 @@ class ConsumeRepository:
                 ).label("tool_call_count"),
             )
             .where(*base_filter)
-            .group_by(date_expr, col(ConsumeRecord.model_tier))
+            .group_by(date_expr, tier_expr)
         )
         day_tier_rows = (await self.db.exec(cast(Any, day_tier_stmt))).all()
 

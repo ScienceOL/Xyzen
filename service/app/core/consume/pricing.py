@@ -125,8 +125,7 @@ def calculate_llm_cost_usd(model_name: str, input_tokens: int, output_tokens: in
 
 
 def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int:
-    """Calculate settlement total = int(BASE_COST * tier_rate) + sum of record amounts. LITE returns 0."""
+    """Calculate settlement total = BASE_COST + sum of record amounts. LITE returns 0."""
     if tier_rate <= 0:
         return 0
-    base_cost = int(BASE_COST * tier_rate)
-    return base_cost + record_amounts_sum
+    return BASE_COST + record_amounts_sum

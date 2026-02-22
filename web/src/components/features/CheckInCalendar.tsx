@@ -639,7 +639,9 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span>{t("app.consumption.colRequests")}</span>
+                                <span>
+                                  {t("app.consumption.conversations")}
+                                </span>
                                 <span className="font-semibold text-neutral-900 dark:text-white">
                                   {consumption.record_count}
                                 </span>

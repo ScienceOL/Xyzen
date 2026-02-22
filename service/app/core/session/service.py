@@ -93,6 +93,7 @@ class SessionService:
         created_new_session = False
         try:
             session = await self.session_repo.create_session(validated, user_id)
+            await self._clamp_session_model_tier(session, user_id)
             await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
             await self.db.commit()
             created_new_session = True

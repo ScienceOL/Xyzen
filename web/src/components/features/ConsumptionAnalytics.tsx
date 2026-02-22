@@ -193,7 +193,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
   // Consolidated tier metrics calculation
   const tierMetrics = useMemo(() => {
     const knownTierEntries = Object.entries(displayData.byTier).filter(
-      ([k]) => k !== "unknown",
+      ([, v]) => v.record_count > 0,
     );
 
     return {
@@ -281,7 +281,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
       tooltip: {
         formatter: (params: { value: [string, number, number] }) => {
           const [date, tokens, credits] = params.value;
-          return `<strong>${date}</strong><br/>${tokensLabel}: ${tokens.toLocaleString()}<br/>${creditsLabel}: ${credits.toLocaleString()}`;
+          return `<strong>${date}</strong><br/>${tokensLabel}: ${Math.round(tokens / 1000)}K<br/>${creditsLabel}: ${credits.toLocaleString()}`;
         },
       },
       visualMap: {
@@ -721,7 +721,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
               const dayData = data?.daily.find((d) => d.date === selectedDate);
               if (!dayData) return null;
               const tierEntries = Object.entries(dayData.by_tier)
-                .filter(([k, v]) => k !== "unknown" && v.record_count > 0)
+                .filter(([, v]) => v.record_count > 0)
                 .sort((a, b) => b[1].total_amount - a[1].total_amount);
               return (
                 <Card className="backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-3 gap-0">
@@ -880,10 +880,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                           pagedRows.map((d) => {
                             const isExpanded = expandedDate === d.date;
                             const tierEntries = Object.entries(d.by_tier)
-                              .filter(
-                                ([k, v]) =>
-                                  k !== "unknown" && v.record_count > 0,
-                              )
+                              .filter(([, v]) => v.record_count > 0)
                               .sort(
                                 (a, b) => b[1].total_amount - a[1].total_amount,
                               );
