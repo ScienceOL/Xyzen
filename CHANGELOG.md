@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.0](https://github.com/ScienceOL/Xyzen/compare/v1.4.16...v1.5.0) (2026-02-22)
+
+### ✨ Features
+
+* 1.5.0 ([#261](https://github.com/ScienceOL/Xyzen/issues/261)) ([89840f5](https://github.com/ScienceOL/Xyzen/commit/89840f535e127524679bd97a7769b43a6b804e08))
+
 ## [1.4.16](https://github.com/ScienceOL/Xyzen/compare/v1.4.15...v1.4.16) (2026-02-21)
 
 ### 🐛 Bug Fixes
