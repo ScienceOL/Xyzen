@@ -26,14 +26,18 @@ logger = logging.getLogger(__name__)
 class DaytonaBackend(SandboxBackend):
     """Sandbox backend using self-hosted Daytona."""
 
-    def _get_config(self) -> DaytonaConfig:
-        """Build DaytonaConfig from app settings."""
-        cfg = configs.Sandbox
+    def _get_daytona_config(self) -> DaytonaConfig:
+        """Build DaytonaConfig from nested app settings."""
+        dc = configs.Sandbox.Daytona
         return DaytonaConfig(
-            api_url=cfg.DaytonaApiUrl,
-            api_key=cfg.DaytonaApiKey or None,
-            target=cfg.DaytonaTarget,
+            api_url=dc.ApiUrl,
+            api_key=dc.ApiKey or None,
+            target=dc.Target,
         )
+
+    def _client(self) -> AsyncDaytona:
+        """Create a Daytona async context-manager client."""
+        return AsyncDaytona(self._get_daytona_config())
 
     async def create_sandbox(
         self,
@@ -42,9 +46,9 @@ class DaytonaBackend(SandboxBackend):
         env_vars: dict[str, str] | None = None,
     ) -> str:
         cfg = configs.Sandbox
+        dc = cfg.Daytona
         labels = {"xyzen_sandbox": name}
 
-        # Map string to CodeLanguage enum
         lang_map: dict[str, CodeLanguage] = {
             "python": CodeLanguage.PYTHON,
             "javascript": CodeLanguage.JAVASCRIPT,
@@ -52,13 +56,13 @@ class DaytonaBackend(SandboxBackend):
         }
         code_language = lang_map.get(language, CodeLanguage.PYTHON)
 
-        async with AsyncDaytona(self._get_config()) as daytona:
+        async with self._client() as daytona:
             params = CreateSandboxFromImageParams(
-                image="python:3.12-slim",
+                image=dc.Image,
                 language=code_language,
                 env_vars=env_vars,
                 labels=labels,
-                auto_stop_interval=cfg.AutoStopMinutes,
+                auto_stop_interval=dc.AutoStopMinutes,
                 resources=Resources(
                     cpu=cfg.Cpu,
                     memory=cfg.Memory,
@@ -70,7 +74,7 @@ class DaytonaBackend(SandboxBackend):
             return sandbox.id
 
     async def delete_sandbox(self, sandbox_id: str) -> None:
-        async with AsyncDaytona(self._get_config()) as daytona:
+        async with self._client() as daytona:
             sandbox = await daytona.get(sandbox_id)
             await daytona.delete(sandbox)
             logger.info(f"Deleted Daytona sandbox: {sandbox_id}")
@@ -82,19 +86,16 @@ class DaytonaBackend(SandboxBackend):
         cwd: str | None = None,
         timeout: int | None = None,
     ) -> ExecResult:
-        cfg = configs.Sandbox
-        effective_timeout = timeout or cfg.Timeout
+        effective_timeout = timeout or configs.Sandbox.Timeout
 
-        # Wrap command with cd if cwd specified
         full_command = command
         if cwd:
             full_command = f"cd {cwd} && {command}"
 
-        async with AsyncDaytona(self._get_config()) as daytona:
+        async with self._client() as daytona:
             sandbox = await daytona.get(sandbox_id)
             response = await sandbox.process.exec(full_command, timeout=effective_timeout)
 
-            # Daytona SDK: response.exit_code (int) and response.result (str)
             exit_code = int(response.exit_code) if hasattr(response, "exit_code") else 0
             stdout = response.result if hasattr(response, "result") else str(response)
 
@@ -109,21 +110,20 @@ class DaytonaBackend(SandboxBackend):
         return content_bytes.decode("utf-8")
 
     async def read_file_bytes(self, sandbox_id: str, path: str) -> bytes:
-        async with AsyncDaytona(self._get_config()) as daytona:
+        async with self._client() as daytona:
             sandbox = await daytona.get(sandbox_id)
             return await sandbox.fs.download_file(path)
 
     async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
-        async with AsyncDaytona(self._get_config()) as daytona:
+        async with self._client() as daytona:
             sandbox = await daytona.get(sandbox_id)
-            # Ensure parent directory exists
             parent = "/".join(path.rsplit("/", 1)[:-1])
             if parent:
                 await sandbox.process.exec(f"mkdir -p {parent}")
             await sandbox.fs.upload_file(content.encode("utf-8"), path)
 
     async def list_files(self, sandbox_id: str, path: str) -> list[FileInfo]:
-        async with AsyncDaytona(self._get_config()) as daytona:
+        async with self._client() as daytona:
             sandbox = await daytona.get(sandbox_id)
             entries = await sandbox.fs.list_files(path)
             result: list[FileInfo] = []
@@ -140,7 +140,6 @@ class DaytonaBackend(SandboxBackend):
             return result
 
     async def find_files(self, sandbox_id: str, root: str, pattern: str) -> list[str]:
-        # Use exec with find command for complex glob support
         result = await self.exec(
             sandbox_id,
             f'find {root} -name "{pattern}" -type f 2>/dev/null | head -100',
@@ -156,7 +155,6 @@ class DaytonaBackend(SandboxBackend):
         pattern: str,
         include: str | None = None,
     ) -> list[SearchMatch]:
-        # Use grep via exec for reliable file content search
         include_flag = f'--include="{include}"' if include else ""
         result = await self.exec(
             sandbox_id,
@@ -169,7 +167,6 @@ class DaytonaBackend(SandboxBackend):
         for line in result.stdout.strip().split("\n"):
             if not line.strip():
                 continue
-            # Parse grep output: file:line:content
             parts = line.split(":", 2)
             if len(parts) >= 3:
                 try:
@@ -187,30 +184,21 @@ class DaytonaBackend(SandboxBackend):
     async def write_file_bytes(self, sandbox_id: str, path: str, data: bytes) -> None:
         import shlex
 
-        async with AsyncDaytona(self._get_config()) as daytona:
+        async with self._client() as daytona:
             sandbox = await daytona.get(sandbox_id)
-            # Ensure parent directory exists
             parent = "/".join(path.rsplit("/", 1)[:-1])
             if parent:
                 await sandbox.process.exec(f"mkdir -p {shlex.quote(parent)}")
             await sandbox.fs.upload_file(data, path)
 
     async def get_preview_url(self, sandbox_id: str, port: int) -> PreviewUrl:
-        cfg = configs.Sandbox
-        async with AsyncDaytona(self._get_config()) as daytona:
+        dc = configs.Sandbox.Daytona
+        async with self._client() as daytona:
             sandbox = await daytona.get(sandbox_id)
-            # Use signed preview URL — the token is embedded in the subdomain
-            # so the URL is directly clickable in a browser (no auth headers needed).
-            # Standard get_preview_link() returns a token that requires an
-            # x-daytona-preview-token header, which browsers can't send on link clicks.
             signed = await sandbox.create_signed_preview_url(port, expires_in_seconds=3600)
 
         token = signed.token or ""
-
-        # The SDK returns a Docker-internal URL (host.docker.internal:14000).
-        # Rebuild using configured ProxyBaseUrl so it's reachable from the browser.
-        # Signed URL subdomain pattern: {port}-{token}.{proxy_domain}
-        url = f"{cfg.ProxyProtocol}://{port}-{token}.{cfg.ProxyBaseUrl}"
+        url = f"{dc.ProxyProtocol}://{port}-{token}.{dc.ProxyBaseUrl}"
 
         return PreviewUrl(url=url, token=token, port=port)
 

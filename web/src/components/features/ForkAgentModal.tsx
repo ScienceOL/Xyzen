@@ -1,9 +1,10 @@
 "use client";
 
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
+import { FieldGroup } from "@/components/base/FieldGroup";
 import { Input } from "@/components/base/Input";
 import { useForkAgent } from "@/hooks/useMarketplace";
-import { Button, Field, Label } from "@headlessui/react";
+import { Button } from "@headlessui/react";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -99,69 +100,75 @@ export default function ForkAgentModal({
   const canProceed = customName.trim().length > 0;
 
   return (
-    <Modal isOpen={open} onClose={() => onOpenChange(false)}>
-      <div className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 dark:bg-neutral-900">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-            {t("marketplace.fork.title", { name: agentName })}
-          </h2>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            {t("marketplace.fork.description")}
-          </p>
-        </div>
+    <SheetModal isOpen={open} onClose={() => onOpenChange(false)} size="md">
+      {/* Header */}
+      <div className="shrink-0 border-b border-neutral-200/60 px-5 pb-3 pt-5 dark:border-neutral-800/60">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+          {t("marketplace.fork.title", { name: agentName })}
+        </h2>
+        <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+          {t("marketplace.fork.description")}
+        </p>
+      </div>
 
-        <div className="space-y-6 py-4">
+      {/* Scrollable Content */}
+      <div className="custom-scrollbar flex-1 overflow-y-auto">
+        <div className="space-y-6 px-5 py-5">
           {/* Progress Indicator */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-medium ${
                   currentStep === "name"
-                    ? "bg-blue-600 text-white"
-                    : "bg-green-600 text-white"
+                    ? "bg-indigo-500 text-white"
+                    : "bg-green-500 text-white"
                 }`}
               >
                 {currentStep === "name" ? (
                   "1"
                 ) : (
-                  <CheckCircleIcon className="h-5 w-5" />
+                  <CheckCircleIcon className="h-4 w-4" />
                 )}
               </div>
-              <span className="text-sm font-medium">{t("common.name")}</span>
+              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                {t("common.name")}
+              </span>
             </div>
-            <ArrowRightIcon className="h-4 w-4 text-neutral-400" />
+            <ArrowRightIcon className="h-3.5 w-3.5 text-neutral-300 dark:text-neutral-600" />
             <div className="flex items-center gap-2">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-medium ${
                   currentStep === "requirements"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-indigo-500 text-white"
                     : currentStep === "confirm"
-                      ? "bg-green-600 text-white"
-                      : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                      ? "bg-green-500 text-white"
+                      : "bg-neutral-200/70 text-neutral-500 dark:bg-neutral-700/70 dark:text-neutral-400"
                 }`}
               >
                 {currentStep === "confirm" ? (
-                  <CheckCircleIcon className="h-5 w-5" />
+                  <CheckCircleIcon className="h-4 w-4" />
                 ) : (
                   "2"
                 )}
               </div>
-              <span className="text-sm font-medium">
+              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 {t("common.requirements")}
               </span>
             </div>
-            <ArrowRightIcon className="h-4 w-4 text-neutral-400" />
+            <ArrowRightIcon className="h-3.5 w-3.5 text-neutral-300 dark:text-neutral-600" />
             <div className="flex items-center gap-2">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-medium ${
                   currentStep === "confirm"
-                    ? "bg-blue-600 text-white"
-                    : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                    ? "bg-indigo-500 text-white"
+                    : "bg-neutral-200/70 text-neutral-500 dark:bg-neutral-700/70 dark:text-neutral-400"
                 }`}
               >
                 3
               </div>
-              <span className="text-sm font-medium">{t("common.confirm")}</span>
+              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                {t("common.confirm")}
+              </span>
             </div>
           </div>
 
@@ -169,36 +176,35 @@ export default function ForkAgentModal({
           {currentStep === "name" && (
             <div className="space-y-4">
               {forkMode === "locked" ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
-                  <div className="flex gap-3">
-                    <LockClosedIcon className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-                    <div>
-                      <h4 className="font-medium text-amber-800 dark:text-amber-300">
-                        {t("marketplace.fork.lockedAgent")}
-                      </h4>
-                      <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
-                        {t("marketplace.fork.lockedAgentDescription")}
-                      </p>
-                    </div>
+                <div className="flex gap-2.5 rounded-lg bg-amber-50/80 px-4 py-3 dark:bg-amber-950/20">
+                  <LockClosedIcon className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
+                  <div>
+                    <p className="text-[13px] font-medium text-amber-800 dark:text-amber-300">
+                      {t("marketplace.fork.lockedAgent")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                      {t("marketplace.fork.lockedAgentDescription")}
+                    </p>
                   </div>
                 </div>
               ) : (
-                <div className="relative w-full rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                  <div className="flex gap-2">
-                    <InformationCircleIcon className="h-4 w-4 shrink-0" />
-                    <div className="text-sm">
-                      {t("marketplace.fork.editableDescription")}
-                    </div>
-                  </div>
+                <div className="flex gap-2.5 rounded-lg bg-neutral-100/60 px-4 py-3 dark:bg-white/[0.04]">
+                  <InformationCircleIcon className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <p className="text-[13px] text-neutral-600 dark:text-neutral-400">
+                    {t("marketplace.fork.editableDescription")}
+                  </p>
                 </div>
               )}
 
-              <Field className="space-y-2">
-                <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              <FieldGroup
+                label={
                   <Trans i18nKey="marketplace.fork.agentNameRequired">
-                    Agent Name <span className="text-red-500">*</span>
+                    Agent Name
                   </Trans>
-                </Label>
+                }
+                required
+                hint={t("marketplace.fork.agentNameHint")}
+              >
                 <Input
                   id="agent-name"
                   type="text"
@@ -207,17 +213,14 @@ export default function ForkAgentModal({
                   onChange={(e) => setCustomName(e.target.value)}
                   maxLength={100}
                 />
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t("marketplace.fork.agentNameHint")}
-                </p>
-              </Field>
+              </FieldGroup>
 
               {agentDescription && (
                 <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                     {t("marketplace.fork.originalDescription")}
                   </p>
-                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                  <p className="mt-1 text-[13px] text-neutral-700 dark:text-neutral-300">
                     {agentDescription}
                   </p>
                 </div>
@@ -228,22 +231,49 @@ export default function ForkAgentModal({
           {/* Step 2: Requirements */}
           {currentStep === "requirements" && (
             <div className="space-y-4">
-              <div className="relative w-full rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="flex gap-2">
-                  <InformationCircleIcon className="h-4 w-4 shrink-0" />
-                  <div className="text-sm">
-                    {t("marketplace.fork.requirementsInfo")}
-                  </div>
-                </div>
+              <div className="flex gap-2.5 rounded-lg bg-neutral-100/60 px-4 py-3 dark:bg-white/[0.04]">
+                <InformationCircleIcon className="h-4 w-4 shrink-0 text-neutral-400" />
+                <p className="text-[13px] text-neutral-600 dark:text-neutral-400">
+                  {t("marketplace.fork.requirementsInfo")}
+                </p>
               </div>
 
               {/* Provider */}
               {requirements?.provider_needed && (
-                <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
+                <div className="flex items-start gap-3 rounded-lg bg-neutral-100/60 p-4 dark:bg-white/[0.04]">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                    <svg
+                      className="h-4 w-4 text-blue-500 dark:text-blue-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100">
+                      {t("marketplace.fork.providerRequired")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                      {t("marketplace.fork.providerRequiredDescription")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* MCP Servers */}
+              {requirements?.mcp_servers &&
+                requirements.mcp_servers.length > 0 && (
+                  <div className="flex items-start gap-3 rounded-lg bg-neutral-100/60 p-4 dark:bg-white/[0.04]">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/40">
                       <svg
-                        className="h-5 w-5 text-blue-600 dark:text-blue-400"
+                        className="h-4 w-4 text-purple-500 dark:text-purple-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -252,74 +282,41 @@ export default function ForkAgentModal({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
                         />
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-neutral-900 dark:text-neutral-100">
-                        {t("marketplace.fork.providerRequired")}
-                      </h4>
-                      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                        {t("marketplace.fork.providerRequiredDescription")}
+                      <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100">
+                        {t("marketplace.fork.mcpServers", {
+                          count: requirements.mcp_servers.length,
+                        })}
                       </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* MCP Servers */}
-              {requirements?.mcp_servers &&
-                requirements.mcp_servers.length > 0 && (
-                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900">
-                        <svg
-                          className="h-5 w-5 text-purple-600 dark:text-purple-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                          />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-neutral-900 dark:text-neutral-100">
-                          {t("marketplace.fork.mcpServers", {
-                            count: requirements.mcp_servers.length,
-                          })}
-                        </h4>
-                        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                          {t("marketplace.fork.mcpServersDescription")}
-                        </p>
-                        <ul className="mt-3 space-y-2">
-                          {requirements.mcp_servers.map((mcp, index) => (
-                            <li
-                              key={index}
-                              className="flex items-start gap-2 text-sm text-neutral-700 dark:text-neutral-300"
-                            >
-                              <div className="mt-0.5 flex flex-wrap gap-2">
-                                <span className="inline-flex items-center rounded-full border border-transparent bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
-                                  {mcp.name}
-                                </span>
-                                <span className="inline-flex items-center rounded-full border border-transparent bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                  {t("marketplace.fork.autoConfigured")}
-                                </span>
-                              </div>
-                              {mcp.description && (
-                                <span className="text-neutral-600 dark:text-neutral-400">
-                                  {mcp.description}
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                        {t("marketplace.fork.mcpServersDescription")}
+                      </p>
+                      <ul className="mt-2.5 space-y-1.5">
+                        {requirements.mcp_servers.map((mcp, index) => (
+                          <li
+                            key={index}
+                            className="flex items-start gap-2 text-[13px] text-neutral-700 dark:text-neutral-300"
+                          >
+                            <div className="mt-0.5 flex flex-wrap gap-1.5">
+                              <span className="inline-flex items-center rounded-full bg-neutral-200/60 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-700/60 dark:text-neutral-300">
+                                {mcp.name}
+                              </span>
+                              <span className="inline-flex items-center rounded-full bg-green-100/60 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                                {t("marketplace.fork.autoConfigured")}
+                              </span>
+                            </div>
+                            {mcp.description && (
+                              <span className="text-neutral-500 dark:text-neutral-400">
+                                {mcp.description}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 )}
@@ -327,32 +324,29 @@ export default function ForkAgentModal({
               {/* Knowledge Base */}
               {requirements?.knowledge_base &&
                 requirements.knowledge_base.file_count > 0 && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
-                        <InformationCircleIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-neutral-900 dark:text-neutral-100">
-                          {t("marketplace.fork.knowledgeBaseIncluded")}
-                        </h4>
-                        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                          <Trans
-                            i18nKey="marketplace.fork.knowledgeBaseDescription"
-                            values={{
-                              count: requirements.knowledge_base.file_count,
-                            }}
-                          >
-                            The original agent uses a knowledge base with
-                            <strong>{"{{count}}"} files</strong>. These files
-                            will be copied to your personal workspace
-                            automatically.
-                          </Trans>
-                        </p>
-                        <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
-                          {t("marketplace.fork.knowledgeBaseAccess")}
-                        </p>
-                      </div>
+                  <div className="flex items-start gap-3 rounded-lg bg-blue-50/60 p-4 dark:bg-blue-950/15">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                      <InformationCircleIcon className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100">
+                        {t("marketplace.fork.knowledgeBaseIncluded")}
+                      </p>
+                      <p className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-400">
+                        <Trans
+                          i18nKey="marketplace.fork.knowledgeBaseDescription"
+                          values={{
+                            count: requirements.knowledge_base.file_count,
+                          }}
+                        >
+                          The original agent uses a knowledge base with
+                          <strong>{"{{count}}"} files</strong>. These files will
+                          be copied to your personal workspace automatically.
+                        </Trans>
+                      </p>
+                      <p className="mt-1.5 text-xs text-blue-600 dark:text-blue-400">
+                        {t("marketplace.fork.knowledgeBaseAccess")}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -363,13 +357,11 @@ export default function ForkAgentModal({
                   requirements.mcp_servers.length === 0) &&
                 (!requirements?.knowledge_base ||
                   requirements.knowledge_base.file_count === 0) && (
-                  <div className="relative w-full rounded-lg border border-green-500/50 bg-green-50 p-4 text-green-900 dark:bg-green-950/50 dark:text-green-400">
-                    <div className="flex gap-2">
-                      <CheckCircleIcon className="h-4 w-4 shrink-0 text-green-600" />
-                      <div className="text-sm">
-                        {t("marketplace.fork.noRequirements")}
-                      </div>
-                    </div>
+                  <div className="flex gap-2.5 rounded-lg bg-green-50/80 px-4 py-3 dark:bg-green-950/30">
+                    <CheckCircleIcon className="h-4 w-4 shrink-0 text-green-500" />
+                    <p className="text-[13px] text-green-700 dark:text-green-400">
+                      {t("marketplace.fork.noRequirements")}
+                    </p>
                   </div>
                 )}
             </div>
@@ -378,39 +370,37 @@ export default function ForkAgentModal({
           {/* Step 3: Confirm */}
           {currentStep === "confirm" && (
             <div className="space-y-4">
-              <div className="relative w-full rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="flex gap-2">
-                  <InformationCircleIcon className="h-4 w-4 shrink-0" />
-                  <div className="text-sm">
-                    {t("marketplace.fork.confirmInfo")}
-                  </div>
-                </div>
+              <div className="flex gap-2.5 rounded-lg bg-neutral-100/60 px-4 py-3 dark:bg-white/[0.04]">
+                <InformationCircleIcon className="h-4 w-4 shrink-0 text-neutral-400" />
+                <p className="text-[13px] text-neutral-600 dark:text-neutral-400">
+                  {t("marketplace.fork.confirmInfo")}
+                </p>
               </div>
 
-              <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="space-y-3 rounded-lg bg-neutral-100/60 p-4 dark:bg-white/[0.04]">
                 <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                     {t("common.name")}
                   </p>
-                  <p className="text-sm text-neutral-900 dark:text-neutral-100">
+                  <p className="text-[13px] text-neutral-900 dark:text-neutral-100">
                     {customName}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                     {t("marketplace.fork.basedOn")}
                   </p>
-                  <p className="text-sm text-neutral-900 dark:text-neutral-100">
+                  <p className="text-[13px] text-neutral-900 dark:text-neutral-100">
                     {agentName}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                     {t("marketplace.fork.nextSteps")}
                   </p>
-                  <ul className="mt-2 space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
+                  <ul className="mt-1.5 space-y-1 text-[13px] text-neutral-600 dark:text-neutral-400">
                     {requirements?.provider_needed && (
                       <li>• {t("marketplace.fork.nextStepProvider")}</li>
                     )}
@@ -436,26 +426,27 @@ export default function ForkAgentModal({
 
           {/* Error Message */}
           {forkMutation.isError && (
-            <div className="relative w-full rounded-lg border border-red-500/50 bg-red-50 p-4 text-red-900 dark:bg-red-950/50 dark:text-red-400">
-              <div className="flex gap-2">
-                <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
-                <div className="text-sm">
-                  {forkMutation.error instanceof Error
-                    ? forkMutation.error.message
-                    : t("marketplace.fork.error")}
-                </div>
-              </div>
+            <div className="flex gap-2.5 rounded-lg bg-red-50/80 px-4 py-3 dark:bg-red-950/30">
+              <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
+              <p className="text-[13px] text-red-700 dark:text-red-400">
+                {forkMutation.error instanceof Error
+                  ? forkMutation.error.message
+                  : t("marketplace.fork.error")}
+              </p>
             </div>
           )}
         </div>
+      </div>
 
-        <div className="mt-6 flex w-full justify-between">
+      {/* Footer */}
+      <div className="shrink-0 border-t border-neutral-200/60 px-5 py-4 dark:border-neutral-800/60">
+        <div className="flex w-full justify-between">
           <Button
             onClick={
               currentStep === "name" ? () => onOpenChange(false) : handleBack
             }
             disabled={forkMutation.isPending}
-            className="rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="rounded-lg bg-neutral-100/80 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-200/80 disabled:opacity-50 dark:bg-white/[0.06] dark:text-neutral-300 dark:hover:bg-white/[0.1]"
           >
             {currentStep === "name" ? t("common.cancel") : t("common.back")}
           </Button>
@@ -464,7 +455,7 @@ export default function ForkAgentModal({
             disabled={
               (currentStep === "name" && !canProceed) || forkMutation.isPending
             }
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-indigo-600 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400"
           >
             {forkMutation.isPending
               ? t("marketplace.fork.forking")
@@ -474,6 +465,6 @@ export default function ForkAgentModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </SheetModal>
   );
 }

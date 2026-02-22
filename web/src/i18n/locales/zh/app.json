@@ -46,6 +46,7 @@
     "community": "社区",
     "memory": "记忆",
     "more": "更多",
+    "sandbox": "沙盒",
     "account": "我的",
     "comingSoon": "敬请期待"
   },
@@ -359,6 +360,18 @@
     },
     "locked": "需要 {{plan}} 订阅"
   },
+  "sandbox": {
+    "title": "沙盒",
+    "subtitle": "管理活跃的沙盒环境",
+    "loadError": "加载沙盒失败",
+    "deleted": "沙盒已删除",
+    "deleteError": "删除沙盒失败",
+    "empty": "暂无活跃沙盒",
+    "emptyHint": "当 Agent 使用代码执行工具时，沙盒会自动创建。",
+    "explorer": "资源管理器",
+    "emptyWorkspace": "暂无文件",
+    "selectFile": "从左侧资源管理器选择文件查看"
+  },
   "workspace": {
     "recommendations": {
       "title": "发现官方 Agent",
@@ -482,5 +495,18 @@
     "inputPlaceholder": "向 CEO 提问...",
     "dismissHint": "点击空白区域查看全部助手",
     "backToLoft": "回到 CEO"
+  },
+  "loading": {
+    "tips": {
+      "noAds": "我要加广告，老板说不行。",
+      "ceoAgent": "你知道吗？CEO Agent 可以直接控制其他 Agent 为其工作。",
+      "publishEarn": "将助手发布到市场可以赚取积分收益！",
+      "lazyProductivity": "「懒」是第一生产力。",
+      "deadlineProductivity": "「DDL」是第一生产力。",
+      "worthyOpponent": "旗鼓相当的对手。",
+      "knowledgeBase": "连接知识库，让你的助手拥有专业领域知识。",
+      "multiAgent": "使用多个 Agent 并行处理，完成复杂的研究任务。",
+      "dailyCheckIn": "别忘了每日签到领取额外积分！"
+    }
   }
 }

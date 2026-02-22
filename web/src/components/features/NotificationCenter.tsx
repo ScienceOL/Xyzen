@@ -1,3 +1,14 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import { useAuth } from "@/hooks/useAuth";
@@ -322,6 +333,18 @@ function NotificationPanel({
 
   const isArchivedView = !!filter.archived;
 
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+  const deleteAllArchived = useCallback(async () => {
+    if (!notifications || notifications.length === 0 || isDeletingAll) return;
+    setIsDeletingAll(true);
+    try {
+      await Promise.all(notifications.map((n: Notification) => n.delete()));
+    } finally {
+      setIsDeletingAll(false);
+    }
+  }, [notifications, isDeletingAll]);
+
   // Infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -354,6 +377,43 @@ function NotificationPanel({
           >
             <Archive className="h-3.5 w-3.5" />
           </button>
+        </div>
+      )}
+
+      {isArchivedView && notifications && notifications.length > 0 && (
+        <div className="flex items-center justify-end gap-1 border-b border-neutral-100 px-4 py-1.5 dark:border-neutral-800/60">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={isDeletingAll}
+                className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-40 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                title={t("notifications.actions.deleteAll")}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="sm:max-w-sm rounded-sm">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-sm">
+                  {t("notifications.actions.deleteAll")}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs">
+                  {t("notifications.actions.deleteAllConfirm")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="h-8 rounded-sm text-xs">
+                  {t("common.cancel")}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={deleteAllArchived}
+                  className="h-8 rounded-sm bg-red-500 text-xs text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500"
+                >
+                  {t("notifications.actions.confirmDelete")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 

@@ -12,24 +12,28 @@ class ConsumeRecordCreateFactory(ModelFactory[ConsumeRecordCreate]):
 
     __model__ = ConsumeRecordCreate
 
+    record_type = "llm"
     user_id = Use(lambda: "test-user")
-    amount = Use(lambda: 100)
     auth_provider = "test_auth"
+    amount = Use(lambda: 100)
     consume_state = "success"
+    cost_usd = 0.0
     input_tokens = Use(lambda: 1000)
     output_tokens = Use(lambda: 500)
     total_tokens = Use(lambda: 1500)
-    sku_id = None
-    scene = None
     session_id = None
     topic_id = None
     message_id = None
     description = None
+    model_name = None
     model_tier = None
-    tier_rate = None
-    calculation_breakdown = None
-    remote_error = None
-    remote_response = None
+    provider = None
+    cache_creation_input_tokens = 0
+    cache_read_input_tokens = 0
+    source = "chat"
+    tool_name = None
+    tool_call_id = None
+    status = "success"
 
 
 class UserConsumeSummaryCreateFactory(ModelFactory[UserConsumeSummaryCreate]):

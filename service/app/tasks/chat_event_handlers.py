@@ -17,16 +17,20 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.core.chat.token_usage import normalize_token_usage
-from app.core.consume import create_consume_for_chat
-from app.core.consume.calculator import ConsumptionCalculator
-from app.core.consume.pricing import get_model_cost
-from app.core.consume.strategy import ConsumptionContext
+from app.core.consume.pricing import (
+    TIER_MODEL_CONSUMPTION_RATE,
+    calculate_llm_cost_usd,
+    calculate_llm_credits,
+    calculate_settlement_total,
+    calculate_tool_cost,
+)
+from app.core.consume.service import settle_chat_records
 from app.core.consume.tracking import ConsumptionTrackingService
 from app.models.agent_run import AgentRunCreate
 from app.models.citation import CitationCreate
-from app.models.consume import ToolCallRecord
 from app.models.message import Message, MessageCreate
 from app.repos import AgentRunRepository, CitationRepository, FileRepository, MessageRepository, TopicRepository
+from app.repos.consume import ConsumeRepository
 from app.repos.session import SessionRepository
 from app.schemas.chat_event_payloads import CitationData
 from app.schemas.chat_event_types import ChatEventType
@@ -51,6 +55,7 @@ class ChatTaskContext:
     topic_id: UUID
     session_id: UUID
     user_id: str
+    auth_provider: str
     stream_id: str | None
     message_repo: MessageRepository
     topic_repo: TopicRepository
@@ -74,9 +79,6 @@ class ChatTaskContext:
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
-
-    # LLM usage tracking
-    llm_usage_recorded: bool = False  # True once LLM usage is written to DB
 
     # Misc
     citations_data: list[CitationData] = field(default_factory=list)
@@ -143,57 +145,30 @@ async def send_message_saved(ctx: ChatTaskContext) -> None:
 
 
 async def _ensure_session_info(ctx: ChatTaskContext) -> None:
-    """Load session info once and cache on *ctx*.
-
-    Both ``handle_token_usage`` and ``finalize_and_settle`` need model_tier,
-    model_name, and provider_id from the session.  This helper ensures the
-    DB query runs at most once per chat task.
-    """
+    """Load session info once and cache on *ctx*."""
     if ctx.session_info_loaded:
         return
 
     session_repo = SessionRepository(ctx.db)
     session = await session_repo.get_session_by_id(ctx.session_id)
+
+    if session and not session.model_tier:
+        from app.core.session.service import SessionService
+
+        svc = SessionService(ctx.db)
+        await svc._clamp_session_model_tier(session, ctx.user_id)
+
     ctx.cached_model_tier = session.model_tier if session else None
     ctx.cached_model_name = session.model if session else None
     ctx.cached_provider_id = str(session.provider_id) if session and session.provider_id else None
     ctx.session_info_loaded = True
 
+    # Propagate model_tier to TrackingContext for auxiliary recording
+    from app.core.consume.context import get_tracking_context
 
-# ---------------------------------------------------------------------------
-# Helper: _calculate_tool_costs_from_db
-# ---------------------------------------------------------------------------
-
-
-async def _calculate_tool_costs_from_db(
-    db: AsyncSession,
-    message_id: UUID,
-    session_id: UUID,
-    topic_id: UUID,
-) -> int:
-    """Query successful ToolCallRecords for a message and sum their credit costs.
-
-    Uses ``session_id + topic_id`` scope with an OR condition so that records
-    whose ``message_id`` is still NULL (tool response arrived before
-    STREAMING_START created the message object) are not silently skipped.
-    """
-    from sqlalchemy import or_
-    from sqlmodel import col, select
-
-    from app.core.consume.pricing import calculate_tool_cost
-
-    stmt = select(ToolCallRecord).where(
-        ToolCallRecord.session_id == session_id,
-        ToolCallRecord.topic_id == topic_id,
-        ToolCallRecord.status == "success",
-        or_(
-            col(ToolCallRecord.message_id) == message_id,
-            col(ToolCallRecord.message_id).is_(None),
-        ),
-    )
-    result = await db.exec(stmt)
-    records = list(result.all())
-    return sum(calculate_tool_cost(r.tool_name) for r in records)
+    tracking_ctx = get_tracking_context()
+    if tracking_ctx is not None:
+        tracking_ctx.model_tier = ctx.cached_model_tier.value if ctx.cached_model_tier else None
 
 
 # ---------------------------------------------------------------------------
@@ -203,16 +178,12 @@ async def _calculate_tool_costs_from_db(
 
 async def finalize_and_settle(
     ctx: ChatTaskContext,
-    auth_provider: str,
     pre_deducted_amount: float,
     access_token: str | None,
     description_suffix: str = "settlement",
 ) -> None:
-    """Consolidate settlement calculation + create_consume_for_chat logic.
-
-    Used by both the abort path and normal finalization path.
-    Queries DB for ToolCallRecords, calculates credits via pricing,
-    creates ConsumeRecord, and upserts DailyConsumeSummary.
+    """Consolidate settlement: query pending ConsumeRecords, sum amounts + BASE_COST,
+    deduct from wallet via settle_chat_records, and bulk-mark as success.
     """
     if not ctx.ai_message_obj:
         return
@@ -220,75 +191,42 @@ async def finalize_and_settle(
     try:
         await _ensure_session_info(ctx)
         model_tier = ctx.cached_model_tier
-        model_name = ctx.cached_model_name
-        tool_call_count = sum(len(calls) for calls in ctx.tool_calls_by_node.values())
 
-        tracking = ConsumptionTrackingService(ctx.db)
+        # Get tier_rate for BASE_COST calculation
+        tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
 
-        # Calculate tool costs from DB records
-        tool_costs = await _calculate_tool_costs_from_db(ctx.db, ctx.ai_message_obj.id, ctx.session_id, ctx.topic_id)
+        # LITE tier = free
+        if tier_rate == 0.0:
+            # Still mark pending records as success
+            repo = ConsumeRepository(ctx.db)
+            records = await repo.list_records_for_settlement(ctx.session_id, ctx.topic_id, ctx.ai_message_obj.id)
+            if records:
+                await repo.bulk_update_consume_state([r.id for r in records], "success")
+            return
 
-        consume_context = ConsumptionContext(
-            model_tier=model_tier,
-            input_tokens=ctx.input_tokens,
-            output_tokens=ctx.output_tokens,
-            total_tokens=ctx.total_tokens,
-            content_length=len(ctx.full_content),
-            tool_costs=tool_costs,
-        )
-        result = ConsumptionCalculator.calculate(consume_context)
-        total_cost = result.amount
+        # Query all pending records for this message
+        repo = ConsumeRepository(ctx.db)
+        records = await repo.list_records_for_settlement(ctx.session_id, ctx.topic_id, ctx.ai_message_obj.id)
+
+        record_ids = [r.id for r in records]
+        record_amounts_sum = sum(r.amount for r in records)
+
+        # Total = BASE_COST * tier_rate + sum of individual record amounts
+        total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
 
         remaining_amount = total_cost - pre_deducted_amount
 
         if remaining_amount > 0:
-            await create_consume_for_chat(
+            await settle_chat_records(
                 db=ctx.db,
                 user_id=ctx.user_id,
-                auth_provider=auth_provider,
-                amount=int(remaining_amount),
-                access_key=access_token,
-                session_id=ctx.session_id,
-                topic_id=ctx.topic_id,
-                message_id=ctx.ai_message_obj.id,
-                description=f"Chat message consume ({description_suffix}): {remaining_amount} points",
-                input_tokens=ctx.input_tokens if ctx.total_tokens > 0 else None,
-                output_tokens=ctx.output_tokens if ctx.total_tokens > 0 else None,
-                total_tokens=ctx.total_tokens if ctx.total_tokens > 0 else None,
-                model_tier=model_tier.value if model_tier else None,
-                tier_rate=result.breakdown.get("tier_rate"),
-                calculation_breakdown=json.dumps(result.breakdown),
-                model_name=model_name,
-                tool_call_count=tool_call_count,
+                auth_provider=ctx.auth_provider,
+                record_ids=record_ids,
+                total_amount=int(remaining_amount),
             )
-
-        # Upsert DailyConsumeSummary
-        try:
-            from datetime import datetime, timezone
-            from zoneinfo import ZoneInfo
-
-            tz_name = "Asia/Shanghai"
-            now_local = datetime.now(timezone.utc).astimezone(ZoneInfo(tz_name))
-            date_str = now_local.strftime("%Y-%m-%d")
-
-            cost_cents = int(get_model_cost(model_name or "", ctx.input_tokens, ctx.output_tokens) * 100)
-
-            await tracking.upsert_daily_summary(
-                user_id=ctx.user_id,
-                date_str=date_str,
-                input_tokens=ctx.input_tokens,
-                output_tokens=ctx.output_tokens,
-                total_tokens=ctx.total_tokens,
-                credits=total_cost,
-                llm_calls=1,
-                tool_calls=tool_call_count,
-                cost_cents=cost_cents,
-                model_tier=model_tier.value if model_tier else None,
-                model_name=model_name,
-                tz=tz_name,
-            )
-        except Exception:
-            logger.warning("Failed to upsert daily summary (non-fatal)", exc_info=True)
+        elif record_ids:
+            # No billing needed but still mark records as success
+            await repo.bulk_update_consume_state(record_ids, "success")
 
     except Exception as e:
         logger.error(f"Settlement failed ({description_suffix}): {e}")
@@ -421,25 +359,38 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
     token_data["output_tokens"] = ctx.output_tokens
     token_data["total_tokens"] = ctx.total_tokens
 
-    # Persist LLM usage record to DB
+    # Persist LLM usage as ConsumeRecord(record_type="llm")
     try:
         await _ensure_session_info(ctx)
-        model_tier = ctx.cached_model_tier.value if ctx.cached_model_tier else None
+        model_tier = ctx.cached_model_tier
+        model_tier_value = model_tier.value if model_tier else None
         model_name = ctx.cached_model_name or "unknown"
         provider_id = ctx.cached_provider_id
 
         cache_creation = token_data.get("cache_creation_input_tokens", 0)
         cache_read = token_data.get("cache_read_input_tokens", 0)
 
+        # Calculate amount and cost_usd via pricing functions
+        tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
+        amount = calculate_llm_credits(
+            ctx.input_tokens, ctx.output_tokens, tier_rate, cache_read_input_tokens=cache_read
+        )
+        cost_usd = calculate_llm_cost_usd(
+            model_name or "unknown", ctx.input_tokens, ctx.output_tokens, cache_read_input_tokens=cache_read
+        )
+
         tracking = ConsumptionTrackingService(ctx.db)
         await tracking.record_llm_usage(
             user_id=ctx.user_id,
+            auth_provider=ctx.auth_provider,
             model_name=model_name or "unknown",
-            model_tier=model_tier,
+            model_tier=model_tier_value,
             provider=provider_id,
             input_tokens=ctx.input_tokens,
             output_tokens=ctx.output_tokens,
             total_tokens=ctx.total_tokens,
+            amount=amount,
+            cost_usd=cost_usd,
             source="chat",
             session_id=ctx.session_id,
             topic_id=ctx.topic_id,
@@ -447,7 +398,6 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
             cache_creation_input_tokens=cache_creation,
             cache_read_input_tokens=cache_read,
         )
-        ctx.llm_usage_recorded = True
     except Exception as e:
         logger.warning(f"Failed to record LLM usage to DB (non-fatal): {e}")
 
@@ -492,7 +442,7 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
     resp = stream_event["data"]
     tool_call_id = resp.get("toolCallId")
 
-    # Record tool call fact to DB (no pricing here — pricing is at settlement)
+    # Record tool call as ConsumeRecord(record_type="tool_call")
     if tool_call_id and tool_call_id in ctx.tool_call_data:
         stored = ctx.tool_call_data[tool_call_id]
         tool_name = stored.get("name", "")
@@ -517,14 +467,28 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
         if tool_failed:
             logger.info(f"Tool {tool_name} failed, not charging")
 
-        # Write ToolCallRecord to DB immediately (flush, no commit)
+        # Calculate amount for successful tool calls
+        amount = calculate_tool_cost(tool_name) if status == "success" else 0
+
+        # Write ConsumeRecord to DB immediately (flush, no commit)
         try:
+            await _ensure_session_info(ctx)
+            model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
+
+            # LITE tier: all consumption is free
+            tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(ctx.cached_model_tier, 1.0) if ctx.cached_model_tier else 1.0
+            if tier_rate == 0:
+                amount = 0
+
             tracking = ConsumptionTrackingService(ctx.db)
             await tracking.record_tool_call(
                 user_id=ctx.user_id,
+                auth_provider=ctx.auth_provider,
                 tool_name=tool_name,
+                amount=amount,
                 tool_call_id=tool_call_id,
                 status=status,
+                model_tier=model_tier_value,
                 session_id=ctx.session_id,
                 topic_id=ctx.topic_id,
                 message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
@@ -807,7 +771,6 @@ EVENT_HANDLERS: dict[str, Any] = {
 
 async def handle_abort(
     ctx: ChatTaskContext,
-    auth_provider: str,
     pre_deducted_amount: float,
     access_token: str | None,
 ) -> None:
@@ -885,7 +848,7 @@ async def handle_abort(
 
     # Partial settlement - only charge for tokens actually consumed
     try:
-        await finalize_and_settle(ctx, auth_provider, pre_deducted_amount, access_token, "aborted settlement")
+        await finalize_and_settle(ctx, pre_deducted_amount, access_token, "aborted settlement")
     except Exception as e:
         logger.error(f"Partial settlement failed on abort: {e}")
 
@@ -922,7 +885,6 @@ async def handle_abort(
 
 async def handle_normal_finalization(
     ctx: ChatTaskContext,
-    auth_provider: str,
     pre_deducted_amount: float,
     access_token: str | None,
 ) -> None:
@@ -965,7 +927,7 @@ async def handle_normal_finalization(
 
     # Settlement
     try:
-        await finalize_and_settle(ctx, auth_provider, pre_deducted_amount, access_token, "settlement")
+        await finalize_and_settle(ctx, pre_deducted_amount, access_token, "settlement")
     except ErrCodeError as e:
         if e.code == ErrCode.INSUFFICIENT_BALANCE:
             # Persist billing error on the message

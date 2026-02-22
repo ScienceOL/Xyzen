@@ -99,13 +99,125 @@ MODEL_COST_RATES: dict[str, dict[str, float]] = {
 
 def calculate_tool_cost(tool_name: str) -> int:
     """Pure function: look up tool_name in TOOL_CREDIT_COSTS. Called at settlement."""
-    return TOOL_CREDIT_COSTS.get(tool_name, 0)
+    cost = TOOL_CREDIT_COSTS.get(tool_name)
+    if cost is None:
+        logger.warning("Tool %r not in TOOL_CREDIT_COSTS, cost will be 0", tool_name)
+        return 0
+    return cost
 
 
-def get_model_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
+CACHE_READ_DISCOUNT: float = 0.1  # cache_read tokens charged at 10% of input rate
+
+
+def get_model_cost(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_input_tokens: int = 0,
+) -> float:
     """Calculate real platform cost in USD for a model call."""
     rates = MODEL_COST_RATES.get(model_name)
     if not rates:
         logger.warning("Model %r not in MODEL_COST_RATES, cost will be 0", model_name)
         return 0.0
-    return input_tokens * rates.get("input", 0) + output_tokens * rates.get("output", 0)
+    regular_input = max(0, input_tokens - cache_read_input_tokens)
+    return (
+        regular_input * rates.get("input", 0)
+        + cache_read_input_tokens * rates.get("input", 0) * CACHE_READ_DISCOUNT
+        + output_tokens * rates.get("output", 0)
+    )
+
+
+def calculate_llm_credits(
+    input_tokens: int,
+    output_tokens: int,
+    tier_rate: float,
+    cache_read_input_tokens: int = 0,
+) -> int:
+    """Calculate credit consumption for one LLM call. LITE (rate=0) returns 0."""
+    if tier_rate <= 0:
+        return 0
+    regular_input = max(0, input_tokens - cache_read_input_tokens)
+    token_cost = (
+        regular_input * TOKEN_CREDIT_RATES["input"]
+        + cache_read_input_tokens * TOKEN_CREDIT_RATES["input"] * CACHE_READ_DISCOUNT
+        + output_tokens * TOKEN_CREDIT_RATES["output"]
+    )
+    return int(token_cost * tier_rate)
+
+
+def calculate_llm_cost_usd(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_input_tokens: int = 0,
+) -> float:
+    """Calculate real platform cost in USD for one LLM call. Semantic alias for get_model_cost."""
+    return get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens)
+
+
+def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int:
+    """Calculate settlement total = BASE_COST + sum of record amounts. LITE returns 0."""
+    if tier_rate <= 0:
+        return 0
+    return BASE_COST + record_amounts_sum
+
+
+def validate_pricing_coverage() -> None:
+    """Validate that all registered tools and configured models have pricing entries.
+
+    Called at startup after tool registration to surface missing pricing config early.
+    """
+
+    # --- Tool pricing coverage ---
+    from app.tools.registry import BuiltinToolRegistry
+
+    registered_tools = set(BuiltinToolRegistry._metadata.keys())
+    priced_tools = set(TOOL_CREDIT_COSTS.keys())
+
+    for tool_id in sorted(registered_tools - priced_tools):
+        logger.warning("Tool %r registered but missing from TOOL_CREDIT_COSTS (defaults to 0)", tool_id)
+    for tool_id in sorted(priced_tools - registered_tools):
+        logger.debug("Tool %r in TOOL_CREDIT_COSTS but not registered (may be deprecated)", tool_id)
+
+    # --- Model pricing coverage ---
+    all_models: set[str] = set()
+
+    from app.schemas.model_tier import (
+        _CHINA_TIER_MODEL_CANDIDATES,
+        _GLOBAL_TIER_MODEL_CANDIDATES,
+        _REGION_HELPER_MODELS,
+    )
+
+    for candidates_map in (_GLOBAL_TIER_MODEL_CANDIDATES, _CHINA_TIER_MODEL_CANDIDATES):
+        for tier_candidates in candidates_map.values():
+            for c in tier_candidates:
+                all_models.add(c.model)
+
+    for helpers in _REGION_HELPER_MODELS.values():
+        for model_name, _ in helpers.values():
+            all_models.add(model_name)
+
+    from app.configs.image import ImageConfig, _REGION_IMAGE_OVERRIDES
+
+    base = ImageConfig()
+    for attr in ("Model", "EditModel", "VisionModel"):
+        all_models.add(getattr(base, attr))
+    for overrides in _REGION_IMAGE_OVERRIDES.values():
+        for key in ("Model", "EditModel", "VisionModel"):
+            if key in overrides:
+                all_models.add(overrides[key])
+
+    priced_models = set(MODEL_COST_RATES.keys())
+    for m in sorted(all_models - priced_models):
+        logger.warning("Model %r configured but missing from MODEL_COST_RATES (cost_usd=0)", m)
+    for m in sorted(priced_models - all_models):
+        logger.debug("Model %r in MODEL_COST_RATES but not in any config (may be deprecated)", m)
+
+    logger.info(
+        "Pricing coverage: %d tools (%d missing), %d models (%d missing)",
+        len(registered_tools),
+        len(registered_tools - priced_tools),
+        len(all_models),
+        len(all_models - priced_models),
+    )

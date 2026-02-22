@@ -4,6 +4,7 @@ import asyncio
 import logging
 from datetime import datetime
 from uuid import UUID
+from zoneinfo import available_timezones
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -11,6 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCodeError, handle_auth_error
 from app.core.checkin import CheckInService
+from app.core.subscription import SubscriptionService
 from app.infra.database import get_session as get_db_session
 from app.middleware.auth import get_current_user
 from app.repos.consume import ConsumeRepository
@@ -18,6 +20,18 @@ from app.repos.consume import ConsumeRepository
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["check-in"])
+
+_VALID_TIMEZONES = available_timezones()
+
+
+def _validate_timezone(tz: str) -> None:
+    """Validate that tz is a known IANA timezone, raising 400 otherwise."""
+    if tz not in _VALID_TIMEZONES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid timezone: {tz}",
+        )
+
 
 # Generic error messages to prevent internal details leakage
 GENERIC_ERROR_MESSAGES = {
@@ -98,14 +112,15 @@ class UserConsumeRecordItem(BaseModel):
     """Response model for a single consume record item."""
 
     id: UUID
-    biz_no: int | None
+    record_type: str
     amount: int
-    scene: str | None
     model_tier: str | None
-    input_tokens: int | None
-    output_tokens: int | None
-    total_tokens: int | None
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
     consume_state: str
+    source: str
+    tool_name: str | None
     created_at: datetime
 
 
@@ -348,6 +363,7 @@ async def get_monthly_check_ins(
 @router.get("/check-in/consumption/{date}", response_model=DayConsumptionResponse)
 async def get_day_consumption(
     date: str,
+    tz: str = Query(default="Asia/Shanghai", description="Timezone name (IANA)"),
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -377,8 +393,10 @@ async def get_day_consumption(
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
 
+        _validate_timezone(tz)
+
         consume_repo = ConsumeRepository(db)
-        stats = await consume_repo.get_daily_token_stats(date, user_id)
+        stats = await consume_repo.get_daily_token_stats(date, user_id, tz=tz)
 
         # Generate friendly message based on consumption
         message = None
@@ -425,7 +443,7 @@ async def get_consumption_range(
     """
     Get aggregated consumption statistics for the current user over a date range.
 
-    Returns daily breakdown, model tier distribution, and scene distribution.
+    Returns daily breakdown and model tier distribution.
 
     Args:
         start_date: Start date in YYYY-MM-DD format
@@ -450,8 +468,21 @@ async def get_consumption_range(
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
 
+        _validate_timezone(tz)
+
         consume_repo = ConsumeRepository(db)
-        data = await consume_repo.get_user_consumption_range(user_id, start_date, end_date, tz)
+
+        subscription_service = SubscriptionService(db)
+        role = await subscription_service.get_user_role(user_id)
+        user_tier = role.max_model_tier if role else "standard"
+
+        data = await consume_repo.get_user_consumption_range(
+            user_id,
+            start_date,
+            end_date,
+            tz,
+            user_subscription_tier=user_tier,
+        )
 
         daily_responses = [
             DayConsumptionResponse(
@@ -536,6 +567,8 @@ async def get_consumption_records(
                     detail="Invalid end_date format. Use YYYY-MM-DD",
                 )
 
+        _validate_timezone(tz)
+
         consume_repo = ConsumeRepository(db)
 
         # Parallel execution of count and list queries
@@ -554,14 +587,15 @@ async def get_consumption_records(
         record_items = [
             UserConsumeRecordItem(
                 id=r.id,
-                biz_no=r.biz_no,
+                record_type=r.record_type,
                 amount=r.amount,
-                scene=r.scene,
                 model_tier=r.model_tier,
                 input_tokens=r.input_tokens,
                 output_tokens=r.output_tokens,
                 total_tokens=r.total_tokens,
                 consume_state=r.consume_state,
+                source=r.source,
+                tool_name=r.tool_name,
                 created_at=r.created_at,
             )
             for r in user_records

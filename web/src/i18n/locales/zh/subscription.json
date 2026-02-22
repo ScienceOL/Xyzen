@@ -1,0 +1,75 @@
+{
+  "title": "选择订阅方案",
+  "mySubscription": "我的订阅",
+  "plans": "订阅服务",
+  "gotIt": "知道了",
+  "comingSoon": "即将上线",
+  "notInteroperable": "订阅服务不与国际版互通",
+  "betaNotice": "内测期间暂不支持外部充值，欢迎加入内测群了解最新动态",
+  "surveyTitle": "填写内测问卷",
+  "surveySubtitle": "参与内测获取更多额度",
+
+  "plan": {
+    "free": "免费版",
+    "standard": "标准版",
+    "professional": "专业版",
+    "ultra": "超级版",
+    "ultraChina": "深度版",
+    "perMonth": "/月",
+    "dailyCheckIn": "签到获取",
+    "resetsMonthly": "次月清空",
+    "parallel": "{{count}} 并行会话",
+    "sandbox": "{{count}} 沙盒",
+    "firstMonth": "首月 {{price}}"
+  },
+
+  "feature": {
+    "liteStandard": "Lite 和 Standard 模型",
+    "basic": "基础功能",
+    "autonomousExploration": "自主探索",
+    "proUltra": "Pro 和 Ultra 模型",
+    "advancedReasoning": "高级推理模型",
+    "nAutonomous": "{{count}} 个自主探索",
+    "sandboxAccess": "沙盒环境",
+    "allStandard": "全部标准功能",
+    "pro": "Pro 模型",
+    "prioritySupport": "优先技术支持",
+    "ultraModels": "Ultra 模型",
+    "allPro": "全部专业功能",
+    "nAutonomousPlural": "{{count}} 个自主探索",
+    "dedicated": "专属支持"
+  },
+
+  "topUp": {
+    "title": "积分加量包",
+    "subtitle": "随时补充，按需购买",
+    "rateIntl": "500 积分 = $1",
+    "rateChina": "100 积分 = ¥1",
+    "methodsIntl": "PayPal / 信用卡",
+    "methodsChina": "支付宝 / 微信"
+  },
+
+  "sandboxAddon": {
+    "title": "沙盒扩容包",
+    "subtitle": "额外沙盒实例，独立计费",
+    "rateIntl": "+1 沙盒 / 月",
+    "rateChina": "+1 沙盒 / 月",
+    "requirement": "需标准版及以上"
+  },
+
+  "sub": {
+    "creditsBalance": "积分余额",
+    "storage": "存储",
+    "parallelChats": "并行会话",
+    "sandboxes": "沙盒",
+    "redeemTitle": "兑换积分",
+    "redeemHint": "在设置 > 兑换码中输入兑换码即可领取积分或升级订阅",
+    "claiming": "领取中...",
+    "claimCredits": "领取 {{amount}} 积分",
+    "claimed": "已领取 {{amount}} 积分",
+    "filesUsage": "文件用量",
+    "expired": "已过期",
+    "expiresToday": "今日到期",
+    "expiresIn": "{{days}} 天后到期"
+  }
+}

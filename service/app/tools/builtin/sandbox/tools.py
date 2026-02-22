@@ -2,16 +2,23 @@
 Sandbox tool factory functions.
 
 Creates LangChain tools for sandbox code execution operations.
-Follows the dual factory pattern:
-- create_sandbox_tools() -> placeholders for registry
-- create_sandbox_tools_for_session() -> session-bound working tools
+
+Tool metadata (name, description, schema) is defined once in ``_TOOL_DEFS``
+and reused by both factory functions:
+- create_sandbox_tools()            → placeholders for the registry
+- create_sandbox_tools_for_session()→ session-bound working tools
 """
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Coroutine
 
 from langchain_core.tools import BaseTool, StructuredTool
+from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from app.infra.sandbox.manager import SandboxManager
 
 from .operations import (
     sandbox_edit,
@@ -37,6 +44,103 @@ from .schemas import (
 )
 
 
+@dataclass(frozen=True)
+class _ToolDef:
+    """Immutable definition for one sandbox tool."""
+
+    tool_id: str
+    description: str
+    args_schema: type[BaseModel]
+
+
+# Single source of truth for all sandbox tool metadata.
+_TOOL_DEFS: list[_ToolDef] = [
+    _ToolDef(
+        tool_id="sandbox_bash",
+        description=(
+            "Execute shell commands in an isolated sandbox environment. "
+            "State persists across calls — installed packages, files, and environment "
+            "variables are retained. Use for running code, installing dependencies, "
+            "and system operations."
+        ),
+        args_schema=SandboxBashInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_read",
+        description=(
+            "Read the contents of a file in the sandbox. "
+            "Returns the file content as text. Files larger than 100KB are truncated."
+        ),
+        args_schema=SandboxReadInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_write",
+        description=(
+            "Create or overwrite a file in the sandbox. "
+            "Parent directories are created automatically. "
+            "Use for writing scripts, config files, or any text content."
+        ),
+        args_schema=SandboxWriteInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_edit",
+        description=(
+            "Edit a file in the sandbox by replacing text. "
+            "Finds old_text (must be unique in the file) and replaces it with new_text. "
+            "Include enough surrounding context to ensure a unique match."
+        ),
+        args_schema=SandboxEditInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_glob",
+        description=(
+            "Find files by glob pattern in the sandbox. "
+            'Supports patterns like "*.py", "src/**/*.ts". '
+            "Returns up to 100 matching file paths."
+        ),
+        args_schema=SandboxGlobInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_grep",
+        description=(
+            "Search file contents in the sandbox using regex or literal patterns. "
+            'Optionally filter by file type with include (e.g. "*.py"). '
+            "Returns up to 50 matches with file, line number, and content."
+        ),
+        args_schema=SandboxGrepInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_export",
+        description=(
+            "Export a file from the sandbox into your file library. "
+            "The path must be under /workspace. Returns a file_id and download URL."
+        ),
+        args_schema=SandboxExportInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_preview",
+        description=(
+            "Get a browser-accessible URL for a service running in the sandbox. "
+            "Start a web server (e.g. Flask, Express, HTTP server) on a port, "
+            "then call this tool to get a public URL the user can open in their browser."
+        ),
+        args_schema=SandboxPreviewInput,
+    ),
+    _ToolDef(
+        tool_id="sandbox_upload",
+        description=(
+            "Upload a file from the user's file library into the sandbox. "
+            "Provide the file_id and an optional destination directory. "
+            "The original filename is preserved."
+        ),
+        args_schema=SandboxUploadInput,
+    ),
+]
+
+# Type alias for bound coroutines returned by the binder functions.
+type _BoundCoro = Callable[..., Coroutine[Any, Any, dict[str, Any]]]
+
+
 def create_sandbox_tools() -> dict[str, BaseTool]:
     """
     Create sandbox tools with placeholder implementations.
@@ -47,136 +151,23 @@ def create_sandbox_tools() -> dict[str, BaseTool]:
     Returns:
         Dict mapping tool_id to BaseTool placeholder instances.
     """
-    tools: dict[str, BaseTool] = {}
+    _placeholder_error: dict[str, Any] = {
+        "error": "Sandbox tools require session context binding",
+        "success": False,
+    }
 
-    _placeholder_error: dict[str, Any] = {"error": "Sandbox tools require session context binding", "success": False}
-
-    async def bash_placeholder(command: str, cwd: str | None = None, timeout: int | None = None) -> dict[str, Any]:
+    async def _noop(**_: Any) -> dict[str, Any]:
         return _placeholder_error
 
-    tools["sandbox_bash"] = StructuredTool(
-        name="sandbox_bash",
-        description=(
-            "Execute shell commands in an isolated sandbox environment. "
-            "State persists across calls — installed packages, files, and environment "
-            "variables are retained. Use for running code, installing dependencies, "
-            "and system operations."
-        ),
-        args_schema=SandboxBashInput,
-        coroutine=bash_placeholder,
-    )
-
-    async def read_placeholder(path: str) -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_read"] = StructuredTool(
-        name="sandbox_read",
-        description=(
-            "Read the contents of a file in the sandbox. "
-            "Returns the file content as text. Files larger than 100KB are truncated."
-        ),
-        args_schema=SandboxReadInput,
-        coroutine=read_placeholder,
-    )
-
-    async def write_placeholder(path: str, content: str) -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_write"] = StructuredTool(
-        name="sandbox_write",
-        description=(
-            "Create or overwrite a file in the sandbox. "
-            "Parent directories are created automatically. "
-            "Use for writing scripts, config files, or any text content."
-        ),
-        args_schema=SandboxWriteInput,
-        coroutine=write_placeholder,
-    )
-
-    async def edit_placeholder(path: str, old_text: str, new_text: str) -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_edit"] = StructuredTool(
-        name="sandbox_edit",
-        description=(
-            "Edit a file in the sandbox by replacing text. "
-            "Finds old_text (must be unique in the file) and replaces it with new_text. "
-            "Include enough surrounding context to ensure a unique match."
-        ),
-        args_schema=SandboxEditInput,
-        coroutine=edit_placeholder,
-    )
-
-    async def glob_placeholder(pattern: str, path: str = "/workspace") -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_glob"] = StructuredTool(
-        name="sandbox_glob",
-        description=(
-            "Find files by glob pattern in the sandbox. "
-            'Supports patterns like "*.py", "src/**/*.ts". '
-            "Returns up to 100 matching file paths."
-        ),
-        args_schema=SandboxGlobInput,
-        coroutine=glob_placeholder,
-    )
-
-    async def grep_placeholder(pattern: str, path: str = "/workspace", include: str | None = None) -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_grep"] = StructuredTool(
-        name="sandbox_grep",
-        description=(
-            "Search file contents in the sandbox using regex or literal patterns. "
-            'Optionally filter by file type with include (e.g. "*.py"). '
-            "Returns up to 50 matches with file, line number, and content."
-        ),
-        args_schema=SandboxGrepInput,
-        coroutine=grep_placeholder,
-    )
-
-    async def export_placeholder(path: str, filename: str | None = None) -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_export"] = StructuredTool(
-        name="sandbox_export",
-        description=(
-            "Export a file from the sandbox into your file library. "
-            "The path must be under /workspace. Returns a file_id and download URL."
-        ),
-        args_schema=SandboxExportInput,
-        coroutine=export_placeholder,
-    )
-
-    async def preview_placeholder(port: int) -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_preview"] = StructuredTool(
-        name="sandbox_preview",
-        description=(
-            "Get a browser-accessible URL for a service running in the sandbox. "
-            "Start a web server (e.g. Flask, Express, HTTP server) on a port, "
-            "then call this tool to get a public URL the user can open in their browser."
-        ),
-        args_schema=SandboxPreviewInput,
-        coroutine=preview_placeholder,
-    )
-
-    async def upload_placeholder(file_id: str, path: str = "/workspace") -> dict[str, Any]:
-        return _placeholder_error
-
-    tools["sandbox_upload"] = StructuredTool(
-        name="sandbox_upload",
-        description=(
-            "Upload a file from the user's file library into the sandbox. "
-            "Provide the file_id and an optional destination directory. "
-            "The original filename is preserved."
-        ),
-        args_schema=SandboxUploadInput,
-        coroutine=upload_placeholder,
-    )
-
-    return tools
+    return {
+        td.tool_id: StructuredTool(
+            name=td.tool_id,
+            description=td.description,
+            args_schema=td.args_schema,
+            coroutine=_noop,
+        )
+        for td in _TOOL_DEFS
+    }
 
 
 def create_sandbox_tools_for_session(
@@ -186,13 +177,12 @@ def create_sandbox_tools_for_session(
     """
     Create sandbox tools bound to a specific session.
 
-    This creates actual working tools with session_id captured in closures.
     A SandboxManager is created lazily — no sandbox is provisioned until
     the first tool call.
 
     Args:
         session_id: Session UUID string
-        user_id: Current user ID (needed for sandbox_export)
+        user_id: Current user ID (needed for sandbox_export/upload)
 
     Returns:
         List of BaseTool instances with session context bound
@@ -200,167 +190,72 @@ def create_sandbox_tools_for_session(
     from app.infra.sandbox import get_sandbox_manager
 
     manager = get_sandbox_manager(session_id, user_id=user_id)
-    tools: list[BaseTool] = []
 
-    # --- sandbox_bash ---
+    # Map each tool_id to its session-bound coroutine.
+    binders = _build_binders(manager, session_id=session_id, user_id=user_id)
+
+    tools: list[BaseTool] = []
+    for td in _TOOL_DEFS:
+        bound = binders.get(td.tool_id)
+        if bound is None:
+            continue
+        tools.append(
+            StructuredTool(
+                name=td.tool_id,
+                description=td.description,
+                args_schema=td.args_schema,
+                coroutine=bound,
+            )
+        )
+    return tools
+
+
+def _build_binders(
+    manager: "SandboxManager",
+    *,
+    session_id: str,
+    user_id: str | None,
+) -> dict[str, _BoundCoro]:
+    """Return a dict mapping tool_id → session-bound async callable."""
+
     async def bash_bound(command: str, cwd: str | None = None, timeout: int | None = None) -> dict[str, Any]:
         return await sandbox_exec(manager, command, cwd=cwd, timeout=timeout)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_bash",
-            description=(
-                "Execute shell commands in an isolated sandbox environment. "
-                "State persists across calls — installed packages, files, and environment "
-                "variables are retained. Use for running code, installing dependencies, "
-                "and system operations."
-            ),
-            args_schema=SandboxBashInput,
-            coroutine=bash_bound,
-        )
-    )
-
-    # --- sandbox_read ---
     async def read_bound(path: str) -> dict[str, Any]:
         return await sandbox_read(manager, path)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_read",
-            description=(
-                "Read the contents of a file in the sandbox. "
-                "Returns the file content as text. Files larger than 100KB are truncated."
-            ),
-            args_schema=SandboxReadInput,
-            coroutine=read_bound,
-        )
-    )
-
-    # --- sandbox_write ---
     async def write_bound(path: str, content: str) -> dict[str, Any]:
         return await sandbox_write(manager, path, content)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_write",
-            description=(
-                "Create or overwrite a file in the sandbox. "
-                "Parent directories are created automatically. "
-                "Use for writing scripts, config files, or any text content."
-            ),
-            args_schema=SandboxWriteInput,
-            coroutine=write_bound,
-        )
-    )
-
-    # --- sandbox_edit ---
     async def edit_bound(path: str, old_text: str, new_text: str) -> dict[str, Any]:
         return await sandbox_edit(manager, path, old_text, new_text)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_edit",
-            description=(
-                "Edit a file in the sandbox by replacing text. "
-                "Finds old_text (must be unique in the file) and replaces it with new_text. "
-                "Include enough surrounding context to ensure a unique match."
-            ),
-            args_schema=SandboxEditInput,
-            coroutine=edit_bound,
-        )
-    )
-
-    # --- sandbox_glob ---
     async def glob_bound(pattern: str, path: str = "/workspace") -> dict[str, Any]:
         return await sandbox_glob(manager, pattern, path=path)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_glob",
-            description=(
-                "Find files by glob pattern in the sandbox. "
-                'Supports patterns like "*.py", "src/**/*.ts". '
-                "Returns up to 100 matching file paths."
-            ),
-            args_schema=SandboxGlobInput,
-            coroutine=glob_bound,
-        )
-    )
-
-    # --- sandbox_grep ---
     async def grep_bound(pattern: str, path: str = "/workspace", include: str | None = None) -> dict[str, Any]:
         return await sandbox_grep(manager, pattern, path=path, include=include)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_grep",
-            description=(
-                "Search file contents in the sandbox using regex or literal patterns. "
-                'Optionally filter by file type with include (e.g. "*.py"). '
-                "Returns up to 50 matches with file, line number, and content."
-            ),
-            args_schema=SandboxGrepInput,
-            coroutine=grep_bound,
-        )
-    )
-
-    # --- sandbox_export ---
     async def export_bound(path: str, filename: str | None = None) -> dict[str, Any]:
-        return await sandbox_export(
-            manager,
-            user_id=user_id,
-            session_id=session_id,
-            path=path,
-            filename=filename,
-        )
+        return await sandbox_export(manager, user_id=user_id, session_id=session_id, path=path, filename=filename)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_export",
-            description=(
-                "Export a file from the sandbox into your file library. "
-                "The path must be under /workspace. Returns a file_id and download URL."
-            ),
-            args_schema=SandboxExportInput,
-            coroutine=export_bound,
-        )
-    )
-
-    # --- sandbox_preview ---
     async def preview_bound(port: int) -> dict[str, Any]:
         return await sandbox_preview(manager, port=port)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_preview",
-            description=(
-                "Get a browser-accessible URL for a service running in the sandbox. "
-                "Start a web server (e.g. Flask, Express, HTTP server) on a port, "
-                "then call this tool to get a public URL the user can open in their browser."
-            ),
-            args_schema=SandboxPreviewInput,
-            coroutine=preview_bound,
-        )
-    )
-
-    # --- sandbox_upload ---
     async def upload_bound(file_id: str, path: str = "/workspace") -> dict[str, Any]:
         return await sandbox_upload(manager, user_id=user_id, file_id=file_id, path=path)
 
-    tools.append(
-        StructuredTool(
-            name="sandbox_upload",
-            description=(
-                "Upload a file from the user's file library into the sandbox. "
-                "Provide the file_id and an optional destination directory. "
-                "The original filename is preserved."
-            ),
-            args_schema=SandboxUploadInput,
-            coroutine=upload_bound,
-        )
-    )
-
-    return tools
+    return {
+        "sandbox_bash": bash_bound,
+        "sandbox_read": read_bound,
+        "sandbox_write": write_bound,
+        "sandbox_edit": edit_bound,
+        "sandbox_glob": glob_bound,
+        "sandbox_grep": grep_bound,
+        "sandbox_export": export_bound,
+        "sandbox_preview": preview_bound,
+        "sandbox_upload": upload_bound,
+    }
 
 
 __all__ = [

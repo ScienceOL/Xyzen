@@ -43,7 +43,7 @@ class ImageConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 _REGION_IMAGE_OVERRIDES: dict[str, dict[str, str]] = {
-    "china": {
+    "zh-cn": {
         "Provider": "qwen",
         "Model": "qwen-image-max",
         "EditModel": "qwen-image-edit-max",

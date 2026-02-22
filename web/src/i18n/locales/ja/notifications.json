@@ -18,7 +18,10 @@
   },
   "actions": {
     "readAll": "すべて既読にする",
-    "archiveRead": "既読をアーカイブ"
+    "archiveRead": "既読をアーカイブ",
+    "deleteAll": "すべて削除",
+    "deleteAllConfirm": "アーカイブ済みの通知をすべて完全に削除します。",
+    "confirmDelete": "削除"
   },
   "empty": "通知はまだありません"
 }

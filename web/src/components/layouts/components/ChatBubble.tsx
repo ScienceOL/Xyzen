@@ -312,7 +312,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
   // Unified neutral/transparent styling for all messages
   const messageStyles = "rounded-sm bg-neutral-50/50 dark:bg-neutral-800/30";
   // Base toolbar styles (opacity controlled separately for mobile/desktop)
-  const toolbarBaseStyles = `absolute -bottom-6 left-12 ${zIndexClasses.base} flex items-center gap-2 py-0.5 transition-all duration-200`;
+  const toolbarBaseStyles = `absolute -bottom-7 left-12 ${zIndexClasses.base} flex items-center gap-2 py-0.5 transition-all duration-200`;
   // Toolbar visibility: desktop uses group-hover, mobile uses showMobileToolbar state
   const toolbarVisibilityStyles = showMobileToolbar
     ? "opacity-100 translate-y-0"

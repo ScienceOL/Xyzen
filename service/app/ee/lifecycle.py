@@ -51,7 +51,7 @@ class ChatLifecycle(Protocol):
 
 
 class DefaultChatLifecycle:
-    """Default lifecycle: wraps LimitsEnforcer + create_consume_for_chat.
+    """Default lifecycle: wraps LimitsEnforcer + settle_chat_records.
 
     Behaviour is identical to the pre-EE codebase.  The enforcer (which
     requires a DB session to resolve subscription limits) is created
@@ -110,20 +110,17 @@ class DefaultChatLifecycle:
         message_id: UUID | None,
         description: str | None,
     ) -> float:
-        from app.core.consume import create_consume_for_chat
+        from app.repos.redemption import RedemptionRepository
 
-        await create_consume_for_chat(
-            db=db,
-            user_id=user_id,
-            auth_provider=auth_provider,
-            amount=amount,
-            access_key=access_key,
-            session_id=session_id,
-            topic_id=topic_id,
-            message_id=message_id,
-            description=description,
-        )
-        return float(amount)
+        redemption_repo = RedemptionRepository(db)
+        wallet = await redemption_repo.get_or_create_user_wallet(user_id)
+
+        if wallet.virtual_balance <= 0:
+            from app.common.code.error_code import ErrCode
+
+            raise ErrCode.INSUFFICIENT_BALANCE.with_messages(f"积分余额不足，当前余额: {wallet.virtual_balance}")
+
+        return 0.0  # No pre-deduction; settlement handles billing
 
     async def on_disconnect(self, connection_id: str) -> None:
         if self._enforcer:

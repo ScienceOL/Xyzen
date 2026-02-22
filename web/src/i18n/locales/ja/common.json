@@ -10,5 +10,7 @@
   "next": "次へ",
   "name": "名前",
   "confirm": "確認",
+  "refresh": "更新",
+  "retry": "再試行",
   "requirements": "要件"
 }

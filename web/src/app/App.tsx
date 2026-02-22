@@ -1,10 +1,7 @@
-import { Progress } from "@/components/animate-ui/components/radix/progress";
 import { autoLogin, handleRelinkCallback } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -16,12 +13,14 @@ import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
 import { resolveEdition } from "@/core/edition/edition";
+import { resolveRegion } from "@/core/region/region";
 import useTheme from "@/hooks/useTheme";
 import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { buildAuthorizeUrl } from "@/utils/authFlow";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
+import { AuthLoadingScreen } from "./AuthLoadingScreen";
 import { MobileApp } from "./MobileApp";
 import { LandingPage } from "./landing/LandingPage";
 
@@ -209,6 +208,7 @@ export function Xyzen({
             fetchMcpServers(),
             fetchChatHistory(),
             resolveEdition(),
+            resolveRegion(),
           ]);
 
           // 2. Check for pending channel activation (from shared chat "continue conversation")
@@ -473,96 +473,5 @@ export function Xyzen({
     <QueryClientProvider client={queryClient}>
       {gatedContent}
     </QueryClientProvider>
-  );
-}
-
-const LOADING_MESSAGES = [
-  "我要加广告，老板说不行",
-  "「懒」是第一生产力",
-  "「DDL」是第一生产力",
-  "懒：%¥&&@#¥!$&%&%$^#$%",
-  "旗鼓相当的对手",
-];
-
-function FlipText() {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <div className="relative flex h-8 w-full items-center justify-center overflow-hidden">
-      <AnimatePresence mode="popLayout">
-        <motion.div
-          key={index}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: { staggerChildren: 0.05 },
-            },
-            exit: {
-              opacity: 0,
-              transition: { staggerChildren: 0.02, staggerDirection: -1 },
-            },
-          }}
-          className="absolute flex w-full justify-center"
-        >
-          {LOADING_MESSAGES[index].split("").map((char, i) => (
-            <motion.span
-              key={i}
-              variants={{
-                hidden: {
-                  y: 20,
-                  opacity: 0,
-                  rotateX: -90,
-                  filter: "blur(10px)",
-                },
-                visible: {
-                  y: 0,
-                  opacity: 1,
-                  rotateX: 0,
-                  filter: "blur(0px)",
-                  transition: {
-                    type: "spring",
-                    damping: 12,
-                    stiffness: 200,
-                  },
-                },
-                exit: {
-                  y: -20,
-                  opacity: 0,
-                  rotateX: 90,
-                  filter: "blur(10px)",
-                },
-              }}
-              className={cn(
-                "inline-block text-sm font-medium text-muted-foreground",
-                index === 3 && i > 1 && "font-mono text-red-500/80", // Glitch effect style
-              )}
-              style={{ perspective: "1000px" }}
-            >
-              {char === " " ? "\u00A0" : char}
-            </motion.span>
-          ))}
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function AuthLoadingScreen({ progress }: { progress: number }) {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6 text-center">
-      <FlipText />
-      <Progress value={progress} className="w-56" />
-    </div>
   );
 }

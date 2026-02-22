@@ -1,0 +1,75 @@
+{
+  "title": "Subscription Plans",
+  "mySubscription": "My Subscription",
+  "plans": "Subscription",
+  "gotIt": "Got it",
+  "comingSoon": "Coming Soon",
+  "notInteroperable": "Subscription not interoperable with international version",
+  "betaNotice": "Recharging is not available during beta. Join the beta group for updates.",
+  "surveyTitle": "Fill out beta survey",
+  "surveySubtitle": "Join the beta for extra credits",
+
+  "plan": {
+    "free": "Free",
+    "standard": "Standard",
+    "professional": "Professional",
+    "ultra": "Ultra",
+    "ultraChina": "Deep",
+    "perMonth": "/mo",
+    "dailyCheckIn": "Daily check-in",
+    "resetsMonthly": "Resets monthly",
+    "parallel": "{{count}} parallel",
+    "sandbox": "{{count}} sandbox",
+    "firstMonth": "First month {{price}}"
+  },
+
+  "feature": {
+    "liteStandard": "Lite & Standard models",
+    "basic": "Basic features",
+    "autonomousExploration": "Autonomous exploration",
+    "proUltra": "Pro & Ultra models",
+    "advancedReasoning": "Advanced reasoning models",
+    "nAutonomous": "{{count}} autonomous exploration",
+    "sandboxAccess": "Sandbox access",
+    "allStandard": "All Standard features",
+    "pro": "Pro models",
+    "prioritySupport": "Priority support",
+    "ultraModels": "Ultra models",
+    "allPro": "All Pro features",
+    "nAutonomousPlural": "{{count}} autonomous explorations",
+    "dedicated": "Dedicated support"
+  },
+
+  "topUp": {
+    "title": "Credit Top-up",
+    "subtitle": "Pay as you go",
+    "rateIntl": "500 credits = $1",
+    "rateChina": "100 credits = ¥1",
+    "methodsIntl": "PayPal / Credit Cards",
+    "methodsChina": "Alipay / WeChat"
+  },
+
+  "sandboxAddon": {
+    "title": "Sandbox Add-on",
+    "subtitle": "Extra sandbox instances",
+    "rateIntl": "+1 sandbox / mo",
+    "rateChina": "+1 sandbox / mo",
+    "requirement": "Standard plan or above"
+  },
+
+  "sub": {
+    "creditsBalance": "Credits Balance",
+    "storage": "Storage",
+    "parallelChats": "Parallel Chats",
+    "sandboxes": "Sandboxes",
+    "redeemTitle": "Redeem Credits",
+    "redeemHint": "Enter a redemption code in Settings > Redemption to claim credits or upgrade",
+    "claiming": "Claiming...",
+    "claimCredits": "Claim {{amount}} credits",
+    "claimed": "Claimed {{amount}} credits",
+    "filesUsage": "File Usage",
+    "expired": "Expired",
+    "expiresToday": "Expires today",
+    "expiresIn": "Expires in {{days}} days"
+  }
+}

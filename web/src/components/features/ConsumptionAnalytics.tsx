@@ -22,7 +22,14 @@ import {
 } from "@heroicons/react/24/outline";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react/lib/core";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 10;
@@ -34,7 +41,6 @@ const tierColors: Record<string, string> = {
   pro: "#3b82f6",
   standard: "#22c55e",
   lite: "#f97316",
-  unknown: "#9ca3af",
 };
 
 const tierLabels: Record<string, string> = {
@@ -45,6 +51,18 @@ const tierLabels: Record<string, string> = {
 };
 
 const tierLegendOrder = ["lite", "standard", "pro", "ultra"];
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Stable opts objects — avoid re-creating on every render
+const ECHARTS_SVG_OPTS = { renderer: "svg" } as const;
+const HEATMAP_CANVAS_OPTS = { renderer: "canvas" } as const;
 
 function makeTierDonut(
   entries: [string, number][],
@@ -85,6 +103,235 @@ function makeTierDonut(
     ],
   };
 }
+
+// --- Extracted sub-components ---
+
+interface DonutChartsPanelProps {
+  isLoading: boolean;
+  isMobile: boolean;
+  displayData: {
+    totalTokens: number;
+    totalAmount: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCount: number;
+    totalToolCallCount: number;
+  };
+  donutOptions: {
+    tokens: ReturnType<typeof makeTierDonut>;
+    amount: ReturnType<typeof makeTierDonut>;
+    inputTokens: ReturnType<typeof makeTierDonut>;
+    outputTokens: ReturnType<typeof makeTierDonut>;
+    count: ReturnType<typeof makeTierDonut>;
+    toolCalls: ReturnType<typeof makeTierDonut>;
+  };
+  labels: {
+    totalToken: string;
+    totalCredits: string;
+    inputToken: string;
+    outputToken: string;
+    conversations: string;
+    toolCalls: string;
+  };
+}
+
+const DonutChartsPanel = React.memo(function DonutChartsPanel({
+  isLoading,
+  isMobile,
+  displayData,
+  donutOptions,
+  labels,
+}: DonutChartsPanelProps) {
+  const donutChartStyle = useMemo(
+    () => ({ height: isMobile ? "64px" : "80px" }),
+    [isMobile],
+  );
+
+  const cards = [
+    {
+      key: "tokens",
+      label: labels.totalToken,
+      value: displayData.totalTokens,
+      option: donutOptions.tokens,
+      order: "order-1 lg:order-0",
+    },
+    {
+      key: "amount",
+      label: labels.totalCredits,
+      value: displayData.totalAmount,
+      option: donutOptions.amount,
+      order: "order-4 lg:order-0",
+    },
+    {
+      key: "input",
+      label: labels.inputToken,
+      value: displayData.totalInputTokens,
+      option: donutOptions.inputTokens,
+      order: "order-2 lg:order-0",
+    },
+    {
+      key: "conversations",
+      label: labels.conversations,
+      value: displayData.totalCount,
+      option: donutOptions.count,
+      order: "order-5 lg:order-0",
+    },
+    {
+      key: "output",
+      label: labels.outputToken,
+      value: displayData.totalOutputTokens,
+      option: donutOptions.outputTokens,
+      order: "order-3 lg:order-0",
+    },
+    {
+      key: "toolCalls",
+      label: labels.toolCalls,
+      value: displayData.totalToolCallCount,
+      option: donutOptions.toolCalls,
+      order: "order-6 lg:order-0",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 lg:grid-cols-2 gap-1.5 sm:gap-3">
+      {cards.map((card) => (
+        <Card
+          key={card.key}
+          className={`col-span-1 ${card.order} backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-1 gap-0 sm:py-6 sm:gap-6`}
+        >
+          <CardContent className="py-0.5 px-2 sm:p-3">
+            <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 text-center">
+              {card.label}
+            </div>
+            <div className="mt-0.5 sm:mt-1 text-lg sm:text-xl font-bold text-neutral-900 dark:text-white text-center">
+              {isLoading ? (
+                <div className="h-7 w-14 mx-auto animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
+              ) : (
+                card.value.toLocaleString()
+              )}
+            </div>
+            {isLoading ? (
+              <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+            ) : (
+              <ReactECharts
+                echarts={echarts}
+                option={card.option}
+                lazyUpdate={true}
+                style={donutChartStyle}
+                opts={ECHARTS_SVG_OPTS}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+});
+
+interface HeatmapSectionProps {
+  isLoading: boolean;
+  isMobile: boolean;
+  heatmapOption: Record<string, unknown>;
+  heatmapEvents: {
+    click: (params: {
+      componentType: string;
+      value: [string, number, number];
+    }) => void;
+  };
+  selectedDate: string | null;
+  selectedDateLabel: string;
+  yearToShow: number;
+  monthToShow: number;
+  onMonthPrev: () => void;
+  onMonthNext: () => void;
+  onClearDate: () => void;
+  labels: {
+    heatmapTitle: string;
+    clearDate: string;
+  };
+}
+
+const HeatmapSection = React.memo(function HeatmapSection({
+  isLoading,
+  isMobile,
+  heatmapOption,
+  heatmapEvents,
+  selectedDate,
+  selectedDateLabel,
+  yearToShow,
+  monthToShow,
+  onMonthPrev,
+  onMonthNext,
+  onClearDate,
+  labels,
+}: HeatmapSectionProps) {
+  const heatmapChartStyle = useMemo(
+    () => ({ height: isMobile ? "155px" : "140px" }),
+    [isMobile],
+  );
+
+  return (
+    <Card className="backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg">
+      <CardContent className="h-full px-8 py-0">
+        <div className="mb-0.5 flex items-center gap-3">
+          <div className="flex items-center gap-1 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+            {labels.heatmapTitle}
+            {isMobile && (
+              <div className="flex items-center gap-0.5 ml-1">
+                <button
+                  onClick={onMonthPrev}
+                  disabled={monthToShow <= 0}
+                  className="p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-30"
+                >
+                  <ChevronLeftIcon className="h-3.5 w-3.5" />
+                </button>
+                <span className="min-w-16 text-center text-xs font-medium">
+                  {new Date(yearToShow, monthToShow).toLocaleDateString(
+                    undefined,
+                    { month: "long" },
+                  )}
+                </span>
+                <button
+                  onClick={onMonthNext}
+                  disabled={monthToShow >= 11}
+                  className="p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-30"
+                >
+                  <ChevronRightIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+          {selectedDate && (
+            <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
+              <span>{selectedDateLabel}</span>
+              <button
+                onClick={onClearDate}
+                className="rounded-full px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 dark:hover:bg-indigo-800/60 transition-colors leading-none"
+                aria-label={labels.clearDate}
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+        {isLoading ? (
+          <div className="h-35 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+        ) : (
+          <ReactECharts
+            echarts={echarts}
+            option={heatmapOption}
+            lazyUpdate={true}
+            style={heatmapChartStyle}
+            opts={HEATMAP_CANVAS_OPTS}
+            onEvents={heatmapEvents}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+});
+
+// --- Main component ---
 
 interface ConsumptionAnalyticsProps {
   onClose?: () => void;
@@ -127,6 +374,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     queryKey: ["consumption", "range", yearToShow],
     queryFn: () =>
       checkInService.getConsumptionRange(startDate, endDate, DEFAULT_TIMEZONE),
+    staleTime: 5 * 60 * 1000,
   });
 
   const data = rangeQuery.data as ConsumptionRangeResponse | undefined;
@@ -192,7 +440,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
   // Consolidated tier metrics calculation
   const tierMetrics = useMemo(() => {
     const knownTierEntries = Object.entries(displayData.byTier).filter(
-      ([k]) => k !== "unknown",
+      ([, v]) => v.record_count > 0,
     );
 
     return {
@@ -238,12 +486,37 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     [tierMetrics, isDark, donutEmptyLabel],
   );
 
+  // Stable label objects for sub-components
+  const donutLabels = useMemo(
+    () => ({
+      totalToken: t("app.consumption.totalToken"),
+      totalCredits: t("app.consumption.totalCredits"),
+      inputToken: t("app.consumption.inputToken"),
+      outputToken: t("app.consumption.outputToken"),
+      conversations: t("app.consumption.conversations"),
+      toolCalls: t("app.consumption.toolCalls"),
+    }),
+    [t],
+  );
+
+  const heatmapLabels = useMemo(
+    () => ({
+      heatmapTitle: t("app.consumption.heatmapTitle"),
+      clearDate: t("app.consumption.clearDate"),
+    }),
+    [t],
+  );
+
+  const selectedDateLabel = selectedDate
+    ? t("app.consumption.selectedDate", { date: selectedDate })
+    : "";
+
   // Heatmap chart options
   const heatmapOption = useMemo(() => {
     const heatData =
       data?.daily
-        .filter((d) => d.total_amount > 0)
-        .map((d) => [d.date, d.total_amount]) ?? [];
+        .filter((d) => d.record_count > 0)
+        .map((d) => [d.date, d.total_tokens, d.total_amount]) ?? [];
     const maxVal = Math.max(...(heatData.map((d) => d[1] as number) || [1]), 1);
 
     const levels = isDark
@@ -261,30 +534,26 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
       })),
     ];
 
-    const tooltipLabel = t("app.consumption.heatmapTooltip", {
-      amount: "{{amount}}",
-    });
+    const tokensLabel = t("app.consumption.totalToken");
+    const creditsLabel = t("app.consumption.totalCredits");
 
     // Mobile: monthly range; Desktop: full year
     let calendarRange: string | [string, string] = String(yearToShow);
     if (isMobile) {
-      const mStart = new Date(yearToShow, monthToShow, 1);
       const mEnd = new Date(yearToShow, monthToShow + 1, 0);
       const pad = (n: number) => String(n).padStart(2, "0");
       calendarRange = [
         `${yearToShow}-${pad(monthToShow + 1)}-01`,
         `${yearToShow}-${pad(monthToShow + 1)}-${pad(mEnd.getDate())}`,
       ];
-      // suppress unused var
-      void mStart;
     }
 
     return {
       backgroundColor: "transparent",
       tooltip: {
-        formatter: (params: { value: [string, number] }) => {
-          const [date, amount] = params.value;
-          return `<strong>${date}</strong><br/>${tooltipLabel.replace("{{amount}}", amount.toLocaleString())}`;
+        formatter: (params: { value: [string, number, number] }) => {
+          const [date, tokens, credits] = params.value;
+          return `<strong>${escapeHtml(String(date))}</strong><br/>${escapeHtml(tokensLabel)}: ${Math.round(tokens / 1000)}K<br/>${escapeHtml(creditsLabel)}: ${credits.toLocaleString()}`;
         },
       },
       visualMap: {
@@ -367,9 +636,9 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     (dailyPage + 1) * PAGE_SIZE,
   );
 
-  // Optimization 2: Stable heatmap event handler using ref
+  // Stable heatmap event handler using ref
   const heatmapClickRef = useRef<
-    (params: { componentType: string; value: [string, number] }) => void
+    (params: { componentType: string; value: [string, number, number] }) => void
   >(() => {});
   heatmapClickRef.current = (params) => {
     if (params.componentType === "series") {
@@ -393,11 +662,31 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
 
   const heatmapEvents = useMemo(
     () => ({
-      click: (params: { componentType: string; value: [string, number] }) =>
-        heatmapClickRef.current(params),
+      click: (params: {
+        componentType: string;
+        value: [string, number, number];
+      }) => heatmapClickRef.current(params),
     }),
     [],
   );
+
+  // Stable callbacks for HeatmapSection
+  const handleMonthPrev = useCallback(() => {
+    setMonthToShow((m) => m - 1);
+    setSelectedDate(null);
+    setExpandedDate(null);
+  }, []);
+
+  const handleMonthNext = useCallback(() => {
+    setMonthToShow((m) => m + 1);
+    setSelectedDate(null);
+    setExpandedDate(null);
+  }, []);
+
+  const handleClearDate = useCallback(() => {
+    setSelectedDate(null);
+    setExpandedDate(null);
+  }, []);
 
   return (
     <div className="flex flex-col h-full gap-3">
@@ -474,232 +763,31 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 lg:grid-cols-2 gap-1.5 sm:gap-3">
-            <Card className="col-span-1 order-1 lg:order-0 backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-1 gap-0 sm:py-6 sm:gap-6">
-              <CardContent className="py-0.5 px-2 sm:p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 text-center">
-                  {t("app.consumption.totalToken")}
-                </div>
-                <div className="mt-0.5 sm:mt-1 text-lg sm:text-xl font-bold text-neutral-900 dark:text-white text-center">
-                  {isLoading ? (
-                    <div className="h-7 w-14 mx-auto animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                  ) : (
-                    displayData.totalTokens.toLocaleString()
-                  )}
-                </div>
-                {isLoading ? (
-                  <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                ) : (
-                  <ReactECharts
-                    echarts={echarts}
-                    option={donutOptions.tokens}
-                    style={{ height: isMobile ? "64px" : "80px" }}
-                    opts={{ renderer: "svg" }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-1 order-4 lg:order-0 backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-1 gap-0 sm:py-6 sm:gap-6">
-              <CardContent className="py-0.5 px-2 sm:p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 text-center">
-                  {t("app.consumption.totalCredits")}
-                </div>
-                <div className="mt-0.5 sm:mt-1 text-lg sm:text-xl font-bold text-neutral-900 dark:text-white text-center">
-                  {isLoading ? (
-                    <div className="h-7 w-14 mx-auto animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                  ) : (
-                    displayData.totalAmount.toLocaleString()
-                  )}
-                </div>
-                {isLoading ? (
-                  <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                ) : (
-                  <ReactECharts
-                    echarts={echarts}
-                    option={donutOptions.amount}
-                    style={{ height: isMobile ? "64px" : "80px" }}
-                    opts={{ renderer: "svg" }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-1 order-2 lg:order-0 backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-1 gap-0 sm:py-6 sm:gap-6">
-              <CardContent className="py-0.5 px-2 sm:p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 text-center">
-                  {t("app.consumption.inputToken")}
-                </div>
-                <div className="mt-0.5 sm:mt-1 text-lg sm:text-xl font-bold text-neutral-900 dark:text-white text-center">
-                  {isLoading ? (
-                    <div className="h-7 w-14 mx-auto animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                  ) : (
-                    displayData.totalInputTokens.toLocaleString()
-                  )}
-                </div>
-                {isLoading ? (
-                  <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                ) : (
-                  <ReactECharts
-                    echarts={echarts}
-                    option={donutOptions.inputTokens}
-                    style={{ height: isMobile ? "64px" : "80px" }}
-                    opts={{ renderer: "svg" }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-1 order-5 lg:order-0 backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-1 gap-0 sm:py-6 sm:gap-6">
-              <CardContent className="py-0.5 px-2 sm:p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 text-center">
-                  {t("app.consumption.conversations")}
-                </div>
-                <div className="mt-0.5 sm:mt-1 text-lg sm:text-xl font-bold text-neutral-900 dark:text-white text-center">
-                  {isLoading ? (
-                    <div className="h-7 w-14 mx-auto animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                  ) : (
-                    displayData.totalCount.toLocaleString()
-                  )}
-                </div>
-                {isLoading ? (
-                  <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                ) : (
-                  <ReactECharts
-                    echarts={echarts}
-                    option={donutOptions.count}
-                    style={{ height: isMobile ? "64px" : "80px" }}
-                    opts={{ renderer: "svg" }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-1 order-3 lg:order-0 backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-1 gap-0 sm:py-6 sm:gap-6">
-              <CardContent className="py-0.5 px-2 sm:p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 text-center">
-                  {t("app.consumption.outputToken")}
-                </div>
-                <div className="mt-0.5 sm:mt-1 text-lg sm:text-xl font-bold text-neutral-900 dark:text-white text-center">
-                  {isLoading ? (
-                    <div className="h-7 w-14 mx-auto animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                  ) : (
-                    displayData.totalOutputTokens.toLocaleString()
-                  )}
-                </div>
-                {isLoading ? (
-                  <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                ) : (
-                  <ReactECharts
-                    echarts={echarts}
-                    option={donutOptions.outputTokens}
-                    style={{ height: isMobile ? "64px" : "80px" }}
-                    opts={{ renderer: "svg" }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-1 order-6 lg:order-0 backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-1 gap-0 sm:py-6 sm:gap-6">
-              <CardContent className="py-0.5 px-2 sm:p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 text-center">
-                  {t("app.consumption.toolCalls")}
-                </div>
-                <div className="mt-0.5 sm:mt-1 text-lg sm:text-xl font-bold text-neutral-900 dark:text-white text-center">
-                  {isLoading ? (
-                    <div className="h-7 w-14 mx-auto animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                  ) : (
-                    displayData.totalToolCallCount.toLocaleString()
-                  )}
-                </div>
-                {isLoading ? (
-                  <div className="h-16 sm:h-20 mt-0.5 sm:mt-1 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                ) : (
-                  <ReactECharts
-                    echarts={echarts}
-                    option={donutOptions.toolCalls}
-                    style={{ height: isMobile ? "64px" : "80px" }}
-                    opts={{ renderer: "svg" }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <DonutChartsPanel
+            isLoading={isLoading}
+            isMobile={isMobile}
+            displayData={displayData}
+            donutOptions={donutOptions}
+            labels={donutLabels}
+          />
         </div>
 
         <div className="flex min-h-0 flex-col gap-3">
           {/* Heatmap */}
-          <Card className="backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg">
-            <CardContent className="h-full px-8 py-0">
-              <div className="mb-0.5 flex items-center gap-3">
-                <div className="flex items-center gap-1 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  {t("app.consumption.heatmapTitle")}
-                  {isMobile && (
-                    <div className="flex items-center gap-0.5 ml-1">
-                      <button
-                        onClick={() => {
-                          setMonthToShow((m) => m - 1);
-                          setSelectedDate(null);
-                          setExpandedDate(null);
-                        }}
-                        disabled={monthToShow <= 0}
-                        className="p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-30"
-                      >
-                        <ChevronLeftIcon className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="min-w-16 text-center text-xs font-medium">
-                        {new Date(yearToShow, monthToShow).toLocaleDateString(
-                          undefined,
-                          { month: "long" },
-                        )}
-                      </span>
-                      <button
-                        onClick={() => {
-                          setMonthToShow((m) => m + 1);
-                          setSelectedDate(null);
-                          setExpandedDate(null);
-                        }}
-                        disabled={monthToShow >= 11}
-                        className="p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-30"
-                      >
-                        <ChevronRightIcon className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {selectedDate && (
-                  <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
-                    <span>
-                      {t("app.consumption.selectedDate", {
-                        date: selectedDate,
-                      })}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSelectedDate(null);
-                        setExpandedDate(null);
-                      }}
-                      className="rounded-full px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 dark:hover:bg-indigo-800/60 transition-colors leading-none"
-                      aria-label={t("app.consumption.clearDate")}
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-              </div>
-              {isLoading ? (
-                <div className="h-35 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-              ) : (
-                <ReactECharts
-                  echarts={echarts}
-                  option={heatmapOption}
-                  style={{ height: isMobile ? "155px" : "140px" }}
-                  opts={{ renderer: "svg" }}
-                  onEvents={heatmapEvents}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <HeatmapSection
+            isLoading={isLoading}
+            isMobile={isMobile}
+            heatmapOption={heatmapOption}
+            heatmapEvents={heatmapEvents}
+            selectedDate={selectedDate}
+            selectedDateLabel={selectedDateLabel}
+            yearToShow={yearToShow}
+            monthToShow={monthToShow}
+            onMonthPrev={handleMonthPrev}
+            onMonthNext={handleMonthNext}
+            onClearDate={handleClearDate}
+            labels={heatmapLabels}
+          />
 
           {/* Hint text for mobile when no date selected */}
           {isMobile && !selectedDate && !isLoading && (
@@ -715,7 +803,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
               const dayData = data?.daily.find((d) => d.date === selectedDate);
               if (!dayData) return null;
               const tierEntries = Object.entries(dayData.by_tier)
-                .filter(([k, v]) => k !== "unknown" && v.record_count > 0)
+                .filter(([, v]) => v.record_count > 0)
                 .sort((a, b) => b[1].total_amount - a[1].total_amount);
               return (
                 <Card className="backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-3 gap-0">
@@ -874,10 +962,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                           pagedRows.map((d) => {
                             const isExpanded = expandedDate === d.date;
                             const tierEntries = Object.entries(d.by_tier)
-                              .filter(
-                                ([k, v]) =>
-                                  k !== "unknown" && v.record_count > 0,
-                              )
+                              .filter(([, v]) => v.record_count > 0)
                               .sort(
                                 (a, b) => b[1].total_amount - a[1].total_amount,
                               );

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import {
   Check,
   CreditCard,
+  ExternalLink,
   Globe,
   MessageSquare,
   Sparkles,
@@ -10,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+
+import { getRegion } from "@/core/region/region";
 
 interface FeatureItem {
   icon: React.ReactNode;
@@ -22,7 +25,7 @@ interface RegionCardProps {
   title: string;
   subtitle: string;
   isActive: boolean;
-  isDisabled?: boolean;
+  siteUrl: string;
   features: FeatureItem[];
   paymentMethods: string[];
   gradient: string;
@@ -33,7 +36,7 @@ function RegionCard({
   title,
   subtitle,
   isActive,
-  isDisabled,
+  siteUrl,
   features,
   paymentMethods,
   gradient,
@@ -46,11 +49,7 @@ function RegionCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`relative flex flex-col rounded-2xl p-6 transition-all duration-300 ${
-        isDisabled
-          ? "cursor-not-allowed bg-neutral-50 opacity-60 dark:bg-neutral-900/50"
-          : `bg-neutral-50 dark:bg-neutral-800/50`
-      } ${isActive ? "ring-2 ring-indigo-500 dark:ring-indigo-500" : ""}`}
+      className={`relative flex flex-col rounded-2xl p-6 transition-all duration-300 bg-neutral-50 dark:bg-neutral-800/50 ${isActive ? "ring-2 ring-indigo-500 dark:ring-indigo-500" : ""}`}
     >
       {/* Active Badge */}
       {isActive && (
@@ -62,32 +61,17 @@ function RegionCard({
         </div>
       )}
 
-      {/* Disabled Badge */}
-      {isDisabled && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-400 px-3 py-1 text-xs font-semibold text-white shadow-lg dark:bg-neutral-600">
-            {t("settings.region.comingSoon")}
-          </span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="mb-6 text-center">
         <div
           className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl ${iconBg}`}
         >
-          <Globe
-            className={`h-8 w-8 ${isDisabled ? "text-neutral-400" : "text-white"}`}
-          />
+          <Globe className="h-8 w-8 text-white" />
         </div>
-        <h3
-          className={`text-xl font-bold ${isDisabled ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-900 dark:text-white"}`}
-        >
+        <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
           {title}
         </h3>
-        <p
-          className={`mt-1 text-sm ${isDisabled ? "text-neutral-400 dark:text-neutral-600" : "text-neutral-500 dark:text-neutral-400"}`}
-        >
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
           {subtitle}
         </p>
       </div>
@@ -97,33 +81,23 @@ function RegionCard({
         {features.map((feature, index) => (
           <div
             key={index}
-            className={`flex items-center gap-3 rounded-lg p-2 ${
-              isDisabled
-                ? "bg-neutral-100 dark:bg-neutral-800/50"
-                : "bg-neutral-50 dark:bg-neutral-800/80"
-            }`}
+            className="flex items-center gap-3 rounded-lg bg-neutral-50 p-2 dark:bg-neutral-800/80"
           >
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                isDisabled
-                  ? "bg-neutral-200 dark:bg-neutral-700"
-                  : feature.synced
-                    ? "bg-emerald-100 dark:bg-emerald-900/50"
-                    : "bg-amber-100 dark:bg-amber-900/50"
+                feature.synced
+                  ? "bg-emerald-100 dark:bg-emerald-900/50"
+                  : "bg-amber-100 dark:bg-amber-900/50"
               }`}
             >
               {feature.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <div
-                className={`text-sm font-medium ${isDisabled ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-200"}`}
-              >
+              <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
                 {feature.label}
               </div>
               {feature.note && (
-                <div
-                  className={`text-xs ${isDisabled ? "text-neutral-400 dark:text-neutral-600" : "text-neutral-500 dark:text-neutral-400"}`}
-                >
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
                   {feature.note}
                 </div>
               )}
@@ -147,20 +121,14 @@ function RegionCard({
 
       {/* Payment Methods */}
       <div className="mt-6 border-t border-neutral-200 pt-4 dark:border-neutral-700">
-        <div
-          className={`mb-2 text-xs font-semibold uppercase tracking-wide ${isDisabled ? "text-neutral-400" : "text-neutral-500 dark:text-neutral-400"}`}
-        >
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
           {t("settings.region.paymentMethods")}
         </div>
         <div className="flex flex-wrap gap-2">
           {paymentMethods.map((method, index) => (
             <span
               key={index}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
-                isDisabled
-                  ? "bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
-                  : `${gradient} text-white shadow-sm`
-              }`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${gradient} text-white shadow-sm`}
             >
               <Wallet className="h-3 w-3" />
               {method}
@@ -168,12 +136,26 @@ function RegionCard({
           ))}
         </div>
       </div>
+
+      {/* Visit link for non-active region */}
+      {!isActive && (
+        <a
+          href={siteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 flex items-center justify-center gap-1.5 rounded-lg bg-neutral-200/80 px-4 py-2 text-[13px] font-semibold text-neutral-700 transition-colors hover:bg-neutral-300/80 dark:bg-white/[0.06] dark:text-neutral-300 dark:hover:bg-white/[0.1]"
+        >
+          {t("settings.region.visitSite")}
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      )}
     </motion.div>
   );
 }
 
 export function RegionSettings() {
   const { t } = useTranslation();
+  const isChina = getRegion().toLowerCase() === "zh-cn";
 
   const internationalFeatures: FeatureItem[] = [
     {
@@ -184,11 +166,9 @@ export function RegionSettings() {
       synced: true,
     },
     {
-      icon: (
-        <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-      ),
+      icon: <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />,
       label: t("settings.region.features.community"),
-      synced: true,
+      synced: false,
     },
     {
       icon: <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />,
@@ -215,29 +195,35 @@ export function RegionSettings() {
 
   const chinaFeatures: FeatureItem[] = [
     {
-      icon: <Users className="h-4 w-4 text-neutral-400" />,
+      icon: (
+        <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+      ),
       label: t("settings.region.features.account"),
       synced: true,
     },
     {
-      icon: <Users className="h-4 w-4 text-neutral-400" />,
+      icon: <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />,
       label: t("settings.region.features.community"),
-      synced: true,
+      synced: false,
     },
     {
-      icon: <Sparkles className="h-4 w-4 text-neutral-400" />,
+      icon: <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />,
       label: t("settings.region.features.models"),
       synced: false,
       note: t("settings.region.features.chinaModelsNote"),
     },
     {
-      icon: <CreditCard className="h-4 w-4 text-neutral-400" />,
+      icon: (
+        <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+      ),
       label: t("settings.region.features.subscription"),
       synced: false,
       note: t("settings.region.features.chinaSubscriptionNote"),
     },
     {
-      icon: <MessageSquare className="h-4 w-4 text-neutral-400" />,
+      icon: (
+        <MessageSquare className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+      ),
       label: t("settings.region.features.chatData"),
       synced: false,
     },
@@ -261,7 +247,8 @@ export function RegionSettings() {
         <RegionCard
           title={t("settings.region.international.title")}
           subtitle={t("settings.region.international.subtitle")}
-          isActive={true}
+          isActive={!isChina}
+          siteUrl="https://xyzen.ai"
           features={internationalFeatures}
           paymentMethods={["PayPal", t("settings.region.internationalCard")]}
           gradient="bg-gradient-to-r from-indigo-500 to-purple-500"
@@ -272,8 +259,8 @@ export function RegionSettings() {
         <RegionCard
           title={t("settings.region.china.title")}
           subtitle={t("settings.region.china.subtitle")}
-          isActive={false}
-          isDisabled={true}
+          isActive={isChina}
+          siteUrl="https://xyzen.ac.cn"
           features={chinaFeatures}
           paymentMethods={[
             t("settings.region.wechatPay"),

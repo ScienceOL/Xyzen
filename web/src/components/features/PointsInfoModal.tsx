@@ -6,6 +6,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
+import { getRegion } from "@/core/region/region";
 import { useSubscriptionInfo, useBilling } from "@/hooks/ee";
 import { cn } from "@/lib/utils";
 import { subscriptionService } from "@/service/subscriptionService";
@@ -25,7 +26,10 @@ import {
 import { motion } from "framer-motion";
 import { Crown, Gem, Gift, Shield } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
+
+import { type TFunction } from "i18next";
 
 interface PointsInfoModalProps {
   isOpen: boolean;
@@ -55,135 +59,157 @@ interface SubscriptionPlan {
   features: PlanFeature[];
 }
 
-const internationalPlans: SubscriptionPlan[] = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "",
-    credits: "Daily check-in",
-    creditsNote: "Resets monthly",
-    storage: "100 MB",
-    parallelChats: "1 parallel",
-    isFree: true,
-    features: [
-      { text: "Lite & Standard models", included: true },
-      { text: "Basic features", included: true },
-      { text: "Autonomous exploration", included: false },
-      { text: "Pro & Ultra models", included: false },
-    ],
-  },
-  {
-    name: "Standard",
-    price: "$9.9",
-    period: "/mo",
-    credits: "5,000",
-    storage: "1 GB",
-    parallelChats: "3 parallel",
-    sandboxes: "1 sandbox",
-    features: [
-      { text: "Lite & Standard models", included: true },
-      { text: "1 autonomous exploration", included: true },
-      { text: "Sandbox access", included: true },
-      { text: "Pro & Ultra models", included: false },
-    ],
-  },
-  {
-    name: "Professional",
-    price: "$36.9",
-    period: "/mo",
-    credits: "22,000",
-    storage: "10 GB",
-    parallelChats: "5 parallel",
-    sandboxes: "2 sandbox",
-    features: [
-      { text: "All Standard features", included: true },
-      { text: "Pro models", included: true },
-      { text: "Priority support", included: true },
-      { text: "Ultra models", included: false },
-    ],
-  },
-  {
-    name: "Ultra",
-    price: "$99.9",
-    period: "/mo",
-    credits: "60,000",
-    storage: "100 GB",
-    parallelChats: "10 parallel",
-    sandboxes: "3 sandbox",
-    features: [
-      { text: "All Pro features", included: true },
-      { text: "Ultra models", included: true },
-      { text: "3 autonomous explorations", included: true },
-      { text: "Dedicated support", included: true },
-    ],
-  },
-];
+function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
+  return [
+    {
+      name: t("subscription.plan.free"),
+      price: "$0",
+      period: "",
+      credits: t("subscription.plan.dailyCheckIn"),
+      creditsNote: t("subscription.plan.resetsMonthly"),
+      storage: "100 MB",
+      parallelChats: t("subscription.plan.parallel", { count: 1 }),
+      isFree: true,
+      features: [
+        { text: t("subscription.feature.liteStandard"), included: true },
+        { text: t("subscription.feature.basic"), included: true },
+        {
+          text: t("subscription.feature.autonomousExploration"),
+          included: false,
+        },
+        { text: t("subscription.feature.proUltra"), included: false },
+      ],
+    },
+    {
+      name: t("subscription.plan.standard"),
+      price: "$9.9",
+      period: t("subscription.plan.perMonth"),
+      credits: "5,000",
+      storage: "1 GB",
+      parallelChats: t("subscription.plan.parallel", { count: 3 }),
+      sandboxes: t("subscription.plan.sandbox", { count: 1 }),
+      features: [
+        { text: t("subscription.feature.liteStandard"), included: true },
+        {
+          text: t("subscription.feature.nAutonomous", { count: 1 }),
+          included: true,
+        },
+        { text: t("subscription.feature.sandboxAccess"), included: true },
+        { text: t("subscription.feature.proUltra"), included: false },
+      ],
+    },
+    {
+      name: t("subscription.plan.professional"),
+      price: "$36.9",
+      period: t("subscription.plan.perMonth"),
+      credits: "22,000",
+      storage: "10 GB",
+      parallelChats: t("subscription.plan.parallel", { count: 5 }),
+      sandboxes: t("subscription.plan.sandbox", { count: 2 }),
+      features: [
+        { text: t("subscription.feature.allStandard"), included: true },
+        { text: t("subscription.feature.pro"), included: true },
+        { text: t("subscription.feature.prioritySupport"), included: true },
+        { text: t("subscription.feature.ultraModels"), included: false },
+      ],
+    },
+    {
+      name: t("subscription.plan.ultra"),
+      price: "$99.9",
+      period: t("subscription.plan.perMonth"),
+      credits: "60,000",
+      storage: "100 GB",
+      parallelChats: t("subscription.plan.parallel", { count: 10 }),
+      sandboxes: t("subscription.plan.sandbox", { count: 3 }),
+      features: [
+        { text: t("subscription.feature.allPro"), included: true },
+        { text: t("subscription.feature.ultraModels"), included: true },
+        {
+          text: t("subscription.feature.nAutonomousPlural", { count: 3 }),
+          included: true,
+        },
+        { text: t("subscription.feature.dedicated"), included: true },
+      ],
+    },
+  ];
+}
 
-const chinaPlans: SubscriptionPlan[] = [
-  {
-    name: "免费版",
-    price: "¥0",
-    period: "",
-    credits: "签到获取",
-    creditsNote: "次月清空",
-    storage: "100 MB",
-    parallelChats: "1 并行会话",
-    isFree: true,
-    features: [
-      { text: "Lite 和 Standard 模型", included: true },
-      { text: "基础功能", included: true },
-      { text: "自主探索", included: false },
-      { text: "高级推理模型", included: false },
-    ],
-  },
-  {
-    name: "标准版",
-    price: "¥25.9",
-    originalPrice: "首月 ¥19.9",
-    period: "/月",
-    credits: "3,000",
-    storage: "1 GB",
-    parallelChats: "3 并行会话",
-    sandboxes: "1 沙盒",
-    features: [
-      { text: "Lite 和 Standard 模型", included: true },
-      { text: "1 个自主探索", included: true },
-      { text: "沙盒环境", included: true },
-      { text: "Pro 和 Ultra 模型", included: false },
-    ],
-  },
-  {
-    name: "专业版",
-    price: "¥89.9",
-    originalPrice: "首月 ¥79.9",
-    period: "/月",
-    credits: "10,000",
-    storage: "10 GB",
-    parallelChats: "5 并行会话",
-    sandboxes: "2 沙盒",
-    features: [
-      { text: "全部标准功能", included: true },
-      { text: "Pro 模型", included: true },
-      { text: "优先技术支持", included: true },
-      { text: "Ultra 模型", included: false },
-    ],
-  },
-  {
-    name: "深度版",
-    price: "¥268.0",
-    period: "/月",
-    credits: "60,000",
-    storage: "100 GB",
-    parallelChats: "10 并行会话",
-    sandboxes: "3 沙盒",
-    features: [
-      { text: "全部专业功能", included: true },
-      { text: "Ultra 模型", included: true },
-      { text: "3 个自主探索", included: true },
-      { text: "专属支持", included: true },
-    ],
-  },
-];
+function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
+  return [
+    {
+      name: t("subscription.plan.free"),
+      price: "¥0",
+      period: "",
+      credits: t("subscription.plan.dailyCheckIn"),
+      creditsNote: t("subscription.plan.resetsMonthly"),
+      storage: "100 MB",
+      parallelChats: t("subscription.plan.parallel", { count: 1 }),
+      isFree: true,
+      features: [
+        { text: t("subscription.feature.liteStandard"), included: true },
+        { text: t("subscription.feature.basic"), included: true },
+        {
+          text: t("subscription.feature.autonomousExploration"),
+          included: false,
+        },
+        { text: t("subscription.feature.advancedReasoning"), included: false },
+      ],
+    },
+    {
+      name: t("subscription.plan.standard"),
+      price: "¥25.9",
+      originalPrice: t("subscription.plan.firstMonth", { price: "¥19.9" }),
+      period: t("subscription.plan.perMonth"),
+      credits: "3,000",
+      storage: "1 GB",
+      parallelChats: t("subscription.plan.parallel", { count: 3 }),
+      sandboxes: t("subscription.plan.sandbox", { count: 1 }),
+      features: [
+        { text: t("subscription.feature.liteStandard"), included: true },
+        {
+          text: t("subscription.feature.nAutonomous", { count: 1 }),
+          included: true,
+        },
+        { text: t("subscription.feature.sandboxAccess"), included: true },
+        { text: t("subscription.feature.proUltra"), included: false },
+      ],
+    },
+    {
+      name: t("subscription.plan.professional"),
+      price: "¥89.9",
+      originalPrice: t("subscription.plan.firstMonth", { price: "¥79.9" }),
+      period: t("subscription.plan.perMonth"),
+      credits: "10,000",
+      storage: "10 GB",
+      parallelChats: t("subscription.plan.parallel", { count: 5 }),
+      sandboxes: t("subscription.plan.sandbox", { count: 2 }),
+      features: [
+        { text: t("subscription.feature.allStandard"), included: true },
+        { text: t("subscription.feature.pro"), included: true },
+        { text: t("subscription.feature.prioritySupport"), included: true },
+        { text: t("subscription.feature.ultraModels"), included: false },
+      ],
+    },
+    {
+      name: t("subscription.plan.ultraChina"),
+      price: "¥268.0",
+      period: t("subscription.plan.perMonth"),
+      credits: "60,000",
+      storage: "100 GB",
+      parallelChats: t("subscription.plan.parallel", { count: 10 }),
+      sandboxes: t("subscription.plan.sandbox", { count: 3 }),
+      features: [
+        { text: t("subscription.feature.allPro"), included: true },
+        { text: t("subscription.feature.ultraModels"), included: true },
+        {
+          text: t("subscription.feature.nAutonomousPlural", { count: 3 }),
+          included: true,
+        },
+        { text: t("subscription.feature.dedicated"), included: true },
+      ],
+    },
+  ];
+}
 
 // ---------- Tier visual config for MySubscription tab ----------
 
@@ -263,6 +289,7 @@ function UsageBar({
 // ---------- My Subscription Tab ----------
 
 function MySubscriptionTab() {
+  const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
   const billing = useBilling();
   const queryClient = useQueryClient();
@@ -419,10 +446,10 @@ function MySubscriptionTab() {
               >
                 <ClockIcon className="h-3.5 w-3.5" />
                 {isExpired
-                  ? "已过期"
+                  ? t("subscription.sub.expired")
                   : daysLeft === 0
-                    ? "今日到期"
-                    : `${daysLeft} 天后到期`}
+                    ? t("subscription.sub.expiresToday")
+                    : t("subscription.sub.expiresIn", { days: daysLeft })}
               </motion.div>
             )}
 
@@ -470,7 +497,7 @@ function MySubscriptionTab() {
               <SparklesIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </div>
             <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              积分余额
+              {t("subscription.sub.creditsBalance")}
             </span>
           </div>
           <div className="text-xl font-bold tabular-nums text-neutral-900 dark:text-white">
@@ -493,8 +520,10 @@ function MySubscriptionTab() {
             >
               <Gift className="h-3.5 w-3.5" />
               {claiming
-                ? "领取中..."
-                : `领取 ${role.monthly_credits.toLocaleString()} 积分`}
+                ? t("subscription.sub.claiming")
+                : t("subscription.sub.claimCredits", {
+                    amount: role.monthly_credits.toLocaleString(),
+                  })}
             </motion.button>
           )}
           {/* Claim success */}
@@ -505,7 +534,9 @@ function MySubscriptionTab() {
               className="mt-2 flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
             >
               <CheckIcon className="h-3.5 w-3.5" />
-              已领取 {claimResult.amount.toLocaleString()} 积分
+              {t("subscription.sub.claimed", {
+                amount: claimResult.amount.toLocaleString(),
+              })}
             </motion.div>
           )}
         </motion.div>
@@ -522,7 +553,7 @@ function MySubscriptionTab() {
               <FolderIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              存储
+              {t("subscription.sub.storage")}
             </span>
           </div>
           {usage ? (
@@ -555,7 +586,7 @@ function MySubscriptionTab() {
               <ChatBubbleLeftRightIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             </div>
             <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              并行会话
+              {t("subscription.sub.parallelChats")}
             </span>
           </div>
           <div className="text-xl font-bold tabular-nums text-neutral-900 dark:text-white">
@@ -575,7 +606,7 @@ function MySubscriptionTab() {
               <CommandLineIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              沙盒
+              {t("subscription.sub.sandboxes")}
             </span>
           </div>
           <div className="text-xl font-bold tabular-nums text-neutral-900 dark:text-white">
@@ -605,10 +636,10 @@ function MySubscriptionTab() {
         </div>
         <div className="flex-1">
           <div className="text-sm font-semibold text-neutral-900 dark:text-white">
-            兑换积分
+            {t("subscription.sub.redeemTitle")}
           </div>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            在设置 &gt; 兑换码中输入兑换码即可领取积分或升级订阅
+            {t("subscription.sub.redeemHint")}
           </div>
         </div>
       </motion.div>
@@ -623,7 +654,7 @@ function MySubscriptionTab() {
         >
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              文件用量
+              {t("subscription.sub.filesUsage")}
             </span>
             <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
               {usage.files.used} / {usage.files.limit}
@@ -644,6 +675,7 @@ function MySubscriptionTab() {
 // ---------- Plan Card ----------
 
 function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
+  const { t } = useTranslation();
   const isLocked = plan.isLocked;
 
   return (
@@ -790,7 +822,7 @@ function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
             : "bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
         }`}
       >
-        即将上线
+        {t("subscription.comingSoon")}
       </button>
     </motion.div>
   );
@@ -803,6 +835,7 @@ function TopUpCard({
   region: "international" | "china";
   delay: number;
 }) {
+  const { t } = useTranslation();
   const isChina = region === "china";
 
   return (
@@ -818,19 +851,23 @@ function TopUpCard({
         </div>
         <div>
           <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-            {isChina ? "积分加量包" : "Credit Top-up"}
+            {t("subscription.topUp.title")}
           </div>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {isChina ? "随时补充，按需购买" : "Pay as you go"}
+            {t("subscription.topUp.subtitle")}
           </div>
         </div>
       </div>
       <div className="text-right">
         <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-          {isChina ? "100 积分 = ¥1" : "500 credits = $1"}
+          {isChina
+            ? t("subscription.topUp.rateChina")
+            : t("subscription.topUp.rateIntl")}
         </div>
         <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-          {isChina ? "支付宝 / 微信" : "PayPal / Credit Cards"}
+          {isChina
+            ? t("subscription.topUp.methodsChina")
+            : t("subscription.topUp.methodsIntl")}
         </div>
       </div>
     </motion.div>
@@ -844,6 +881,7 @@ function SandboxPackCard({
   region: "international" | "china";
   delay: number;
 }) {
+  const { t } = useTranslation();
   const isChina = region === "china";
 
   return (
@@ -859,19 +897,21 @@ function SandboxPackCard({
         </div>
         <div>
           <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-            {isChina ? "沙盒扩容包" : "Sandbox Add-on"}
+            {t("subscription.sandboxAddon.title")}
           </div>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {isChina ? "额外沙盒实例，独立计费" : "Extra sandbox instances"}
+            {t("subscription.sandboxAddon.subtitle")}
           </div>
         </div>
       </div>
       <div className="text-right">
         <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-          {isChina ? "+1 沙盒 / 月" : "+1 sandbox / mo"}
+          {isChina
+            ? t("subscription.sandboxAddon.rateChina")
+            : t("subscription.sandboxAddon.rateIntl")}
         </div>
         <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-          {isChina ? "需标准版及以上" : "Standard plan or above"}
+          {t("subscription.sandboxAddon.requirement")}
         </div>
       </div>
     </motion.div>
@@ -881,12 +921,18 @@ function SandboxPackCard({
 // ---------- Modal ----------
 
 export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
+  const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
 
   const roleName = subInfo?.roleName;
   const hasPaidSub = !!roleName && roleName !== "free";
 
-  const defaultTab = hasPaidSub ? "subscription" : "international";
+  const isChina = getRegion().toLowerCase() === "zh-cn";
+  const regionTab = isChina ? "china" : "international";
+  const regionPlans = isChina ? buildChinaPlans(t) : buildInternationalPlans(t);
+
+  const defaultTab = hasPaidSub ? "subscription" : regionTab;
+  const showTabsList = hasPaidSub;
 
   return (
     <SheetModal isOpen={isOpen} onClose={onClose}>
@@ -894,44 +940,31 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
         {/* Mobile title */}
         <div className="shrink-0 px-5 pb-1 pt-6 md:px-6 md:pt-4">
           <h2 className="text-xl font-bold text-neutral-900 dark:text-white md:text-lg">
-            选择订阅方案
+            {t("subscription.title")}
           </h2>
         </div>
         {/* Scrollable content */}
         <div className="relative flex-1 overflow-y-auto custom-scrollbar px-4 py-2 sm:px-6">
           <div className="space-y-4">
             <Tabs defaultValue={defaultTab} key={defaultTab}>
-              <TabsList className="mx-auto w-fit">
-                {hasPaidSub && (
+              {showTabsList && (
+                <TabsList className="mx-auto w-fit">
                   <TabsTrigger
                     value="subscription"
                     className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
                   >
                     <SparklesIcon className="h-4 w-4" />
-                    我的订阅
+                    {t("subscription.mySubscription")}
                   </TabsTrigger>
-                )}
-                <TabsTrigger
-                  value="international"
-                  className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
-                >
-                  <GlobeAltIcon className="h-4 w-4" />
-                  International
-                </TabsTrigger>
-                <TabsTrigger
-                  value="china"
-                  className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
-                >
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
+                  <TabsTrigger
+                    value={regionTab}
+                    className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
                   >
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-                  </svg>
-                  中国大陆
-                </TabsTrigger>
-              </TabsList>
+                    <GlobeAltIcon className="h-4 w-4" />
+                    {t("subscription.plans")}
+                  </TabsTrigger>
+                </TabsList>
+              )}
 
               <TabsContents>
                 {hasPaidSub && (
@@ -940,7 +973,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                   </TabsContent>
                 )}
 
-                <TabsContent value="international">
+                <TabsContent value={regionTab}>
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -948,37 +981,28 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                     className="mt-4 space-y-4"
                   >
                     <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-                      {internationalPlans.map((plan, index) => (
+                      {regionPlans.map((plan, index) => (
                         <PlanCard key={plan.name} plan={plan} index={index} />
                       ))}
                     </div>
-                    <TopUpCard region="international" delay={0.3} />
-                    <SandboxPackCard region="international" delay={0.35} />
-                  </motion.div>
-                </TabsContent>
-
-                <TabsContent value="china">
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.25 }}
-                    className="mt-4 space-y-4"
-                  >
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-                      {chinaPlans.map((plan, index) => (
-                        <PlanCard key={plan.name} plan={plan} index={index} />
-                      ))}
-                    </div>
-                    <TopUpCard region="china" delay={0.3} />
-                    <SandboxPackCard region="china" delay={0.35} />
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.35 }}
-                      className="text-center text-xs text-neutral-500 dark:text-neutral-400"
-                    >
-                      订阅服务不与国际版互通
-                    </motion.p>
+                    <TopUpCard
+                      region={isChina ? "china" : "international"}
+                      delay={0.3}
+                    />
+                    <SandboxPackCard
+                      region={isChina ? "china" : "international"}
+                      delay={0.35}
+                    />
+                    {isChina && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.35 }}
+                        className="text-center text-xs text-neutral-500 dark:text-neutral-400"
+                      >
+                        {t("subscription.notInteroperable")}
+                      </motion.p>
+                    )}
                   </motion.div>
                 </TabsContent>
               </TabsContents>
@@ -992,7 +1016,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
               className="rounded-lg border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10"
             >
               <p className="text-center text-xs text-amber-700 dark:text-amber-300">
-                内测期间暂不支持外部充值，欢迎加入内测群了解最新动态
+                {t("subscription.betaNotice")}
               </p>
             </motion.div>
 
@@ -1013,10 +1037,10 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
-                  填写内测问卷
+                  {t("subscription.surveyTitle")}
                 </div>
                 <div className="text-xs text-indigo-600/70 dark:text-indigo-300/70">
-                  参与内测获取更多额度
+                  {t("subscription.surveySubtitle")}
                 </div>
               </div>
               <svg
@@ -1045,7 +1069,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
             onClick={onClose}
             className="rounded-lg bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:hover:bg-indigo-500"
           >
-            知道了
+            {t("subscription.gotIt")}
           </motion.button>
         </div>
       </div>

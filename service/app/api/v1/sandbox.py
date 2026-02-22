@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,6 +17,9 @@ from app.configs import configs
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.repos.session import SessionRepository
+
+if TYPE_CHECKING:
+    from app.infra.sandbox.manager import SandboxManager
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +69,11 @@ async def _validate_session_ownership(
         raise HTTPException(status_code=403, detail="Access denied")
 
 
-async def _get_sandbox_id(session_id: UUID) -> str | None:
-    """Look up sandbox ID from Redis without creating one."""
-    from app.infra.redis import get_redis_client
+def _get_manager(session_id: UUID) -> SandboxManager:
+    """Get a SandboxManager for the given session (read-only, no provisioning)."""
+    from app.infra.sandbox import get_sandbox_manager
 
-    redis_client = await get_redis_client()
-    return await redis_client.get(f"sandbox:session:{session_id}")
+    return get_sandbox_manager(str(session_id))
 
 
 def _validate_sandbox_path(path: str) -> str:
@@ -108,17 +111,15 @@ async def list_sandbox_files(
     """List files in the sandbox for a given session."""
     await _validate_session_ownership(session_id, user, db)
 
-    sandbox_id = await _get_sandbox_id(session_id)
+    manager = _get_manager(session_id)
+    sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         return SandboxFilesResponse(files=[], sandbox_active=False)
 
     validated_path = _validate_sandbox_path(path)
 
-    from app.infra.sandbox.backends import get_backend
-
-    backend = get_backend()
     try:
-        raw_files = await backend.list_files(sandbox_id, validated_path)
+        raw_files = await manager.list_files_readonly(sandbox_id, validated_path)
     except Exception:
         logger.exception("Failed to list sandbox files for session %s", session_id)
         return SandboxFilesResponse(files=[], sandbox_active=True)
@@ -142,17 +143,15 @@ async def get_sandbox_file_content(
     """
     await _validate_session_ownership(session_id, user, db)
 
-    sandbox_id = await _get_sandbox_id(session_id)
+    manager = _get_manager(session_id)
+    sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No sandbox active for this session")
 
     validated_path = _validate_sandbox_path(path)
 
-    from app.infra.sandbox.backends import get_backend
-
-    backend = get_backend()
     try:
-        file_bytes = await backend.read_file_bytes(sandbox_id, validated_path)
+        file_bytes = await manager.read_file_bytes_readonly(sandbox_id, validated_path)
     except Exception:
         logger.exception("Failed to read sandbox file %s for session %s", validated_path, session_id)
         raise HTTPException(status_code=404, detail="File not found or unreadable")
@@ -188,15 +187,13 @@ async def get_sandbox_preview(
     """Get a browser-accessible preview URL for a port in the sandbox."""
     await _validate_session_ownership(session_id, user, db)
 
-    sandbox_id = await _get_sandbox_id(session_id)
+    manager = _get_manager(session_id)
+    sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No sandbox active for this session")
 
-    from app.infra.sandbox.backends import get_backend
-
-    backend = get_backend()
     try:
-        preview = await backend.get_preview_url(sandbox_id, port)
+        preview = await manager.get_preview_url_readonly(sandbox_id, port)
     except Exception:
         logger.exception("Failed to get preview URL for session %s port %d", session_id, port)
         raise HTTPException(status_code=500, detail="Failed to get preview URL")

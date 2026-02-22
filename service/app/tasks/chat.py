@@ -14,6 +14,7 @@ from app.configs import configs
 from app.core.celery_app import celery_app
 from app.core.chat import get_ai_response_stream
 from app.infra.database import ASYNC_DATABASE_URL
+from app.models.message import Message as MessageModel
 from app.repos import AgentRunRepository, MessageRepository, TopicRepository
 from app.schemas.chat_event_types import ChatEventType
 from app.tasks.chat_event_handlers import (
@@ -216,6 +217,7 @@ async def _process_chat_message_async(
     set_tracking_context(
         TrackingContext(
             user_id=user_id,
+            auth_provider=auth_provider,
             session_id=session_id,
             topic_id=topic_id,
             message_id=None,  # Updated after AI message is created
@@ -227,6 +229,12 @@ async def _process_chat_message_async(
     # Agent run tracking - declared outside db context for error handling access
     agent_run_id: UUID | None = None
     agent_run_start_time: float | None = None
+
+    # Message tracking - declared outside db context for error handling access
+    ai_message_id: UUID | None = None
+    ai_message_full_content: str = ""
+    ai_message_thinking_content: str = ""
+    ai_message_active_stream_id: str | None = None
 
     # Record task start time for scoping exception-path settlement queries
     task_start_time = datetime.now(timezone.utc)
@@ -252,6 +260,7 @@ async def _process_chat_message_async(
                 topic_id=topic_id,
                 session_id=session_id,
                 user_id=user_id,
+                auth_provider=auth_provider,
                 stream_id=stream_id,
                 message_repo=message_repo,
                 topic_repo=topic_repo,
@@ -283,17 +292,31 @@ async def _process_chat_message_async(
                 else:
                     await publisher.publish(json.dumps(stream_event))
 
+                # Continuously sync tracking vars for outer exception handler
+                agent_run_id = ctx.agent_run_id
+                agent_run_start_time = ctx.agent_run_start_time
+                if ctx.ai_message_obj:
+                    ai_message_id = ctx.ai_message_obj.id
+                ai_message_full_content = ctx.full_content
+                ai_message_thinking_content = ctx.full_thinking_content
+                ai_message_active_stream_id = ctx.active_stream_id
+
                 # Check if handler requested loop break
                 if ctx.should_break:
                     break
 
-            # Sync tracking vars back for outer exception handler
+            # Sync final state (handles cases where loop ends normally after last event)
             agent_run_id = ctx.agent_run_id
             agent_run_start_time = ctx.agent_run_start_time
+            if ctx.ai_message_obj:
+                ai_message_id = ctx.ai_message_obj.id
+            ai_message_full_content = ctx.full_content
+            ai_message_thinking_content = ctx.full_thinking_content
+            ai_message_active_stream_id = ctx.active_stream_id
 
             # --- Handle Abort ---
             if ctx.is_aborted:
-                await handle_abort(ctx, auth_provider, pre_deducted_amount, access_token)
+                await handle_abort(ctx, pre_deducted_amount, access_token)
                 return
 
             # --- Skip if error was already handled (committed + message_saved sent) ---
@@ -301,7 +324,7 @@ async def _process_chat_message_async(
                 return
 
             # --- Normal Finalization (DB Updates & Settlement) ---
-            await handle_normal_finalization(ctx, auth_provider, pre_deducted_amount, access_token)
+            await handle_normal_finalization(ctx, pre_deducted_amount, access_token)
 
     except Exception as e:
         logger.error(f"Unhandled error in process_chat_message: {e}", exc_info=True)
@@ -342,13 +365,47 @@ async def _process_chat_message_async(
             except Exception as finalize_error:
                 logger.warning(f"Failed to finalize AgentRun on error: {finalize_error}")
 
-        # Exception-path settlement: LLM usage and tool calls were already
-        # persisted to DB. Try to settle credits using a fresh DB session.
+        # Persist accumulated message content so it survives a page refresh.
+        # Use a fresh db session since the original may be in a bad state.
+        if ai_message_id:
+            try:
+                async with TaskSessionLocal() as msg_db:
+                    msg = await msg_db.get(MessageModel, ai_message_id)
+                    if msg:
+                        msg.content = ai_message_full_content or ""
+                        if ai_message_thinking_content:
+                            msg.thinking_content = ai_message_thinking_content
+                        msg.error_code = error_code_val.value
+                        msg.error_category = error_code_val.category
+                        msg_db.add(msg)
+                        await msg_db.commit()
+                        logger.debug(
+                            f"Saved partial message content ({len(ai_message_full_content)} chars) on unhandled error"
+                        )
+
+                    # Send message_saved so frontend can reconcile the stream message with the DB record
+                    if msg and ai_message_active_stream_id:
+                        await publisher.publish(
+                            json.dumps(
+                                {
+                                    "type": ChatEventType.MESSAGE_SAVED,
+                                    "data": {
+                                        "stream_id": ai_message_active_stream_id,
+                                        "db_id": str(ai_message_id),
+                                        "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                                    },
+                                }
+                            )
+                        )
+            except Exception as msg_save_error:
+                logger.warning(f"Failed to save message content on error: {msg_save_error}")
+
+        # Exception-path settlement: individual ConsumeRecords were already
+        # created during streaming. Query pending records and settle.
         try:
-            from app.core.consume.calculator import ConsumptionCalculator
-            from app.core.consume.strategy import ConsumptionContext
-            from app.core.consume import create_consume_for_chat
-            from app.core.consume.pricing import calculate_tool_cost
+            from app.core.consume.pricing import TIER_MODEL_CONSUMPTION_RATE, calculate_settlement_total
+            from app.core.consume.service import settle_chat_records
+            from app.repos.consume import ConsumeRepository
             from app.repos.session import SessionRepository
 
             async with TaskSessionLocal() as settle_db:
@@ -356,72 +413,37 @@ async def _process_chat_message_async(
                 session = await session_repo.get_session_by_id(session_id)
                 model_tier = session.model_tier if session else None
 
-                from sqlmodel import select
-                from app.models.consume import LLMUsageRecord, ToolCallRecord
-
-                # 1. Query LLM usage records
-                llm_stmt = select(LLMUsageRecord).where(
-                    LLMUsageRecord.user_id == user_id,
-                    LLMUsageRecord.session_id == session_id,
-                    LLMUsageRecord.topic_id == topic_id,
-                    LLMUsageRecord.source == "chat",
-                    LLMUsageRecord.created_at >= task_start_time,
+                # Query pending ConsumeRecords for this task
+                repo = ConsumeRepository(settle_db)
+                records = await repo.list_records_for_exception_settlement(
+                    user_id=user_id,
+                    session_id=session_id,
+                    topic_id=topic_id,
+                    since=task_start_time,
                 )
-                llm_result = await settle_db.exec(llm_stmt)
-                llm_records = list(llm_result.all())
 
-                total_in = sum(r.input_tokens for r in llm_records)
-                total_out = sum(r.output_tokens for r in llm_records)
-                total_tok = sum(r.total_tokens for r in llm_records)
+                if records:
+                    record_ids = [r.id for r in records]
+                    record_amounts_sum = sum(r.amount for r in records)
 
-                # 2. Query ToolCallRecords and calculate costs via pricing
-                tool_stmt = select(ToolCallRecord).where(
-                    ToolCallRecord.user_id == user_id,
-                    ToolCallRecord.session_id == session_id,
-                    ToolCallRecord.topic_id == topic_id,
-                    ToolCallRecord.status == "success",
-                    ToolCallRecord.created_at >= task_start_time,
-                )
-                tool_result = await settle_db.exec(tool_stmt)
-                tool_records = list(tool_result.all())
-                tool_costs = sum(calculate_tool_cost(r.tool_name) for r in tool_records)
-
-                # 3. Only settle if there is data
-                if total_in > 0 or total_out > 0 or tool_costs > 0:
-                    consume_context = ConsumptionContext(
-                        model_tier=model_tier,
-                        input_tokens=total_in,
-                        output_tokens=total_out,
-                        total_tokens=total_tok,
-                        tool_costs=tool_costs,
-                    )
-                    calc_result = ConsumptionCalculator.calculate(consume_context)
-                    remaining = calc_result.amount - pre_deducted_amount
-
-                    model_name_for_settle = session.model if session else None
-                    tool_call_count = len(tool_records)
+                    # Total = BASE_COST * tier_rate + sum of record amounts
+                    tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
+                    total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
+                    remaining = total_cost - pre_deducted_amount
 
                     if remaining > 0:
-                        await create_consume_for_chat(
+                        await settle_chat_records(
                             db=settle_db,
                             user_id=user_id,
                             auth_provider=auth_provider,
-                            amount=int(remaining),
-                            access_key=access_token,
-                            session_id=session_id,
-                            topic_id=topic_id,
-                            message_id=None,
-                            description=f"Chat message consume (exception-path): {remaining} points",
-                            input_tokens=total_in,
-                            output_tokens=total_out,
-                            total_tokens=total_tok,
-                            model_tier=model_tier.value if model_tier else None,
-                            tier_rate=calc_result.breakdown.get("tier_rate"),
-                            calculation_breakdown=json.dumps(calc_result.breakdown),
-                            model_name=model_name_for_settle,
-                            tool_call_count=tool_call_count,
+                            record_ids=record_ids,
+                            total_amount=int(remaining),
                         )
-                    logger.info("Exception-path settlement completed: %d credits", calc_result.amount)
+                    elif record_ids:
+                        # No billing but still mark as success
+                        await repo.bulk_update_consume_state(record_ids, "success")
+
+                    logger.info("Exception-path settlement completed: %d credits", total_cost)
                     await settle_db.commit()
         except Exception as settle_error:
             logger.warning(f"Exception-path settlement failed (non-fatal): {settle_error}")

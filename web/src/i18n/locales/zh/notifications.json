@@ -18,7 +18,10 @@
   },
   "actions": {
     "readAll": "全部标记为已读",
-    "archiveRead": "归档已读通知"
+    "archiveRead": "归档已读通知",
+    "deleteAll": "全部删除",
+    "deleteAllConfirm": "将永久删除所有已归档通知。",
+    "confirmDelete": "删除"
   },
   "empty": "暂无通知"
 }

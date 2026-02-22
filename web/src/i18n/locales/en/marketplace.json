@@ -98,10 +98,10 @@
     },
     "actions": {
       "title": "Actions",
-      "fork": "Use This Agent",
+      "fork": "Hire This Agent",
       "liked": "Liked",
       "like": "Like This Agent",
-      "loginToFork": "Login to Use",
+      "loginToFork": "Login to Hire",
       "loginToLike": "Login to Like",
       "manage": "Manage Agent",
       "shareTitle": "Share"
@@ -245,8 +245,8 @@
     "nextStepMcp": "Set up {{count}} MCP server(s)",
     "nextStepKnowledge": "Add documents to knowledge base",
     "nextStepCustomize": "Customize prompts and settings as needed",
-    "forkButton": "Fork Agent",
-    "forking": "Forking...",
+    "forkButton": "Hire Agent",
+    "forking": "Hiring...",
     "error": "Failed to fork agent. Please try again."
   },
   "infinite": {

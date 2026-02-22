@@ -7,7 +7,7 @@ Provides isolated code execution environments via pluggable backends.
 from __future__ import annotations
 
 from .backends import get_backend
-from .manager import SandboxManager
+from .manager import SandboxInfo, SandboxManager, scan_all_sandbox_infos
 
 
 def get_sandbox_manager(session_id: str, user_id: str | None = None) -> SandboxManager:
@@ -25,4 +25,4 @@ def get_sandbox_manager(session_id: str, user_id: str | None = None) -> SandboxM
     return SandboxManager(backend=backend, session_id=session_id, user_id=user_id)
 
 
-__all__ = ["get_sandbox_manager", "SandboxManager"]
+__all__ = ["SandboxInfo", "SandboxManager", "get_sandbox_manager", "scan_all_sandbox_infos"]

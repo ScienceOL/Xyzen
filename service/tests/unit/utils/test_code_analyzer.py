@@ -55,8 +55,7 @@ class TestDiscoverFunctionsFromCode:
 
     def test_duplicate_names_keeps_last(self) -> None:
         code = (
-            'def dup() -> int:\n    """First."""\n    return 1\n\n'
-            'def dup() -> str:\n    """Second."""\n    return "2"'
+            'def dup() -> int:\n    """First."""\n    return 1\n\ndef dup() -> str:\n    """Second."""\n    return "2"'
         )
         funcs = discover_functions_from_code(code)
         assert len(funcs) == 1

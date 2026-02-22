@@ -1,6 +1,8 @@
 "use client";
 
-import { Modal } from "@/components/animate-ui/components/animate/modal";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
+import { FieldGroup } from "@/components/base/FieldGroup";
+import { Textarea } from "@/components/base/Textarea";
 import { usePublishAgent } from "@/hooks/useMarketplace";
 import { Button, Field, Label, Switch } from "@headlessui/react";
 import {
@@ -93,96 +95,87 @@ export default function PublishAgentModal({
   const canPublish = commitMessage.trim().length > 0 && hasValidConfig;
 
   return (
-    <Modal isOpen={open} onClose={() => onOpenChange(false)}>
-      <div className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 dark:bg-neutral-900">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-            {isPublished
-              ? t("marketplace.publish.titleUpdate")
-              : t("marketplace.publish.title")}
-          </h2>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            {isPublished
-              ? t("marketplace.publish.descriptionUpdate")
-              : t("marketplace.publish.description")}
-          </p>
-        </div>
+    <SheetModal isOpen={open} onClose={() => onOpenChange(false)} size="md">
+      {/* Header */}
+      <div className="shrink-0 border-b border-neutral-200/60 px-5 pb-3 pt-5 dark:border-neutral-800/60">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+          {isPublished
+            ? t("marketplace.publish.titleUpdate")
+            : t("marketplace.publish.title")}
+        </h2>
+        <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+          {isPublished
+            ? t("marketplace.publish.descriptionUpdate")
+            : t("marketplace.publish.description")}
+        </p>
+      </div>
 
-        <div className="space-y-6 py-4">
+      {/* Scrollable Content */}
+      <div className="custom-scrollbar flex-1 overflow-y-auto">
+        <div className="space-y-6 px-5 py-5">
           {/* Validation Alert */}
           {!hasValidConfig && (
-            <div className="relative w-full rounded-lg border border-red-500/50 bg-red-50 p-4 text-red-900 dark:bg-red-950/50 dark:text-red-400">
-              <div className="flex gap-2">
-                <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
-                <div className="text-sm">
-                  {t("marketplace.publish.validation.noConfig")}
-                </div>
-              </div>
+            <div className="flex gap-2.5 rounded-lg bg-red-50/80 px-4 py-3 dark:bg-red-950/30">
+              <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
+              <p className="text-[13px] text-red-700 dark:text-red-400">
+                {t("marketplace.publish.validation.noConfig")}
+              </p>
             </div>
           )}
 
           {/* Info Alert */}
-          <div className="relative w-full rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-            <div className="flex gap-2">
-              <InformationCircleIcon className="h-4 w-4 shrink-0" />
-              <div className="text-sm">
-                <strong>{t("marketplace.publish.info.title")}</strong>{" "}
-                {t("marketplace.publish.info.content")}{" "}
-                <strong>{t("marketplace.publish.info.note")}</strong>{" "}
-                {t("marketplace.publish.info.noteContent")}
-              </div>
-            </div>
+          <div className="flex gap-2.5 rounded-lg bg-neutral-100/60 px-4 py-3 dark:bg-white/[0.04]">
+            <InformationCircleIcon className="h-4 w-4 shrink-0 text-neutral-400" />
+            <p className="text-[13px] text-neutral-600 dark:text-neutral-400">
+              <strong>{t("marketplace.publish.info.title")}</strong>{" "}
+              {t("marketplace.publish.info.content")}{" "}
+              <strong>{t("marketplace.publish.info.note")}</strong>{" "}
+              {t("marketplace.publish.info.noteContent")}
+            </p>
           </div>
 
           {/* Commit Message */}
-          <Field className="space-y-2">
-            <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              {t("marketplace.publish.commitMessage.label")}{" "}
-              <span className="text-red-500">*</span>
-            </Label>
-            <textarea
+          <FieldGroup
+            label={t("marketplace.publish.commitMessage.label")}
+            required
+            hint={t("marketplace.publish.commitMessage.charCount", {
+              count: commitMessage.length,
+            })}
+          >
+            <Textarea
               id="commit-message"
               placeholder={t("marketplace.publish.commitMessage.placeholder")}
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("marketplace.publish.commitMessage.charCount", {
-                count: commitMessage.length,
-              })}
-            </p>
-          </Field>
+          </FieldGroup>
 
           {/* README Editor */}
-          <Field className="space-y-2">
-            <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              {t("marketplace.publish.readme.label")}
-            </Label>
-            <textarea
+          <FieldGroup
+            label={t("marketplace.publish.readme.label")}
+            hint={t("marketplace.publish.readme.hint")}
+          >
+            <Textarea
               id="readme-editor"
               placeholder={t("marketplace.publish.readme.placeholder")}
               value={readmeContent}
               onChange={(e) => setReadmeContent(e.target.value)}
               rows={6}
-              className="w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+              className="font-mono"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("marketplace.publish.readme.hint")}
-            </p>
-          </Field>
+          </FieldGroup>
 
           {/* Publish Toggle */}
-          <Field className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="space-y-0.5">
+          <Field className="flex items-center justify-between rounded-lg bg-neutral-100/60 px-4 py-3.5 dark:bg-white/[0.04]">
+            <div className="space-y-0.5 pr-4">
               <Label
                 htmlFor="publish-toggle"
-                className="cursor-pointer text-sm font-medium text-neutral-900 dark:text-neutral-100"
+                className="cursor-pointer text-[13px] font-medium text-neutral-900 dark:text-neutral-100"
               >
                 {t("marketplace.publish.publishImmediately.label")}
               </Label>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 {t("marketplace.publish.publishImmediately.description")}
               </p>
             </div>
@@ -192,44 +185,46 @@ export default function PublishAgentModal({
               onChange={setPublishImmediately}
               className={`${
                 publishImmediately
-                  ? "bg-indigo-600"
-                  : "bg-neutral-200 dark:bg-neutral-700"
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
+                  ? "bg-indigo-500"
+                  : "bg-neutral-300 dark:bg-neutral-600"
+              } relative inline-flex h-[26px] w-[46px] shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2`}
             >
               <span
                 className={`${
-                  publishImmediately ? "translate-x-6" : "translate-x-1"
-                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                  publishImmediately
+                    ? "translate-x-[22px]"
+                    : "translate-x-[3px]"
+                } inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform`}
               />
             </Switch>
           </Field>
 
           {/* Fork Mode Selector */}
-          <Field className="space-y-3">
-            <Label className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              {t("marketplace.publish.forkMode.label")}
-            </Label>
-            <div className="grid grid-cols-2 gap-3">
+          <FieldGroup
+            label={t("marketplace.publish.forkMode.label")}
+            hint={t("marketplace.publish.forkMode.help")}
+          >
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setForkMode("editable")}
-                className={`flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                className={`flex items-center gap-3 rounded-lg p-3 text-left transition-colors ${
                   forkMode === "editable"
-                    ? "border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/20"
-                    : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
+                    ? "bg-green-50/80 ring-1 ring-green-500/30 dark:bg-green-900/15 dark:ring-green-500/20"
+                    : "bg-neutral-100/60 hover:bg-neutral-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
                 }`}
               >
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                     forkMode === "editable"
                       ? "bg-green-500 text-white"
-                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                      : "bg-neutral-200/70 text-neutral-500 dark:bg-neutral-700/70 dark:text-neutral-400"
                   }`}
                 >
                   <LockOpenIcon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                  <div className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100">
                     {t("marketplace.forkMode.editable")}
                   </div>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -240,23 +235,23 @@ export default function PublishAgentModal({
               <button
                 type="button"
                 onClick={() => setForkMode("locked")}
-                className={`flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                className={`flex items-center gap-3 rounded-lg p-3 text-left transition-colors ${
                   forkMode === "locked"
-                    ? "border-amber-500 bg-amber-50 dark:border-amber-600 dark:bg-amber-900/20"
-                    : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
+                    ? "bg-amber-50/80 ring-1 ring-amber-500/30 dark:bg-amber-900/15 dark:ring-amber-500/20"
+                    : "bg-neutral-100/60 hover:bg-neutral-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
                 }`}
               >
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                     forkMode === "locked"
                       ? "bg-amber-500 text-white"
-                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                      : "bg-neutral-200/70 text-neutral-500 dark:bg-neutral-700/70 dark:text-neutral-400"
                   }`}
                 >
                   <LockClosedIcon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                  <div className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100">
                     {t("marketplace.forkMode.locked")}
                   </div>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -265,16 +260,13 @@ export default function PublishAgentModal({
                 </div>
               </button>
             </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("marketplace.publish.forkMode.help")}
-            </p>
-          </Field>
+          </FieldGroup>
 
           {/* Preview Toggle */}
           <button
             type="button"
             onClick={() => setShowPreview(!showPreview)}
-            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            className="text-[13px] font-medium text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
           >
             {showPreview
               ? t("marketplace.publish.preview.hide")
@@ -283,28 +275,28 @@ export default function PublishAgentModal({
 
           {/* Preview Section */}
           {showPreview && (
-            <div className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-              <h4 className="font-semibold text-neutral-900 dark:text-neutral-100">
+            <div className="space-y-3 rounded-lg bg-neutral-100/60 p-4 dark:bg-white/[0.04]">
+              <h4 className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">
                 {t("marketplace.publish.preview.title")}
               </h4>
 
               {/* Agent Info */}
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                     {t("marketplace.publish.preview.name")}
                   </p>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  <p className="text-[13px] text-neutral-700 dark:text-neutral-300">
                     {agentName}
                   </p>
                 </div>
 
                 {agentDescription && (
                   <div>
-                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.publish.preview.description")}
                     </p>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    <p className="text-[13px] text-neutral-700 dark:text-neutral-300">
                       {agentDescription}
                     </p>
                   </div>
@@ -312,10 +304,10 @@ export default function PublishAgentModal({
 
                 {agentPrompt && (
                   <div>
-                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.publish.preview.systemPrompt")}
                     </p>
-                    <p className="max-h-32 overflow-y-auto text-sm text-neutral-600 dark:text-neutral-400">
+                    <p className="custom-scrollbar max-h-32 overflow-y-auto text-[13px] text-neutral-700 dark:text-neutral-300">
                       {agentPrompt.slice(0, 200)}
                       {agentPrompt.length > 200 ? "..." : ""}
                     </p>
@@ -326,7 +318,7 @@ export default function PublishAgentModal({
               {/* MCP Requirements */}
               {mcpServers.length > 0 && (
                 <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                     {t("marketplace.publish.preview.mcpServers", {
                       count: mcpServers.length,
                     })}
@@ -335,7 +327,7 @@ export default function PublishAgentModal({
                     {mcpServers.map((mcp) => (
                       <li
                         key={mcp.id}
-                        className="text-sm text-neutral-600 dark:text-neutral-400"
+                        className="text-[13px] text-neutral-700 dark:text-neutral-300"
                       >
                         • {mcp.name}
                         {mcp.description && ` - ${mcp.description}`}
@@ -351,16 +343,16 @@ export default function PublishAgentModal({
               {/* Knowledge Base Info */}
               {knowledgeSetInfo && knowledgeSetInfo.file_count > 0 && (
                 <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                     {t("marketplace.publish.preview.knowledgeBase")}
                   </p>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  <p className="text-[13px] text-neutral-700 dark:text-neutral-300">
                     {t("marketplace.publish.preview.knowledgeFiles", {
                       name: knowledgeSetInfo.name,
                       count: knowledgeSetInfo.file_count,
                     })}
                   </p>
-                  <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                  <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
                     {t("marketplace.publish.preview.knowledgeInfo")}
                   </p>
                 </div>
@@ -370,34 +362,33 @@ export default function PublishAgentModal({
 
           {/* Success Message */}
           {publishMutation.isSuccess && (
-            <div className="relative w-full rounded-lg border border-green-500/50 bg-green-50 p-4 text-green-900 dark:bg-green-950/50 dark:text-green-400">
-              <div className="flex gap-2">
-                <CheckCircleIcon className="h-4 w-4 shrink-0 text-green-600" />
-                <div className="text-sm">
-                  {isPublished
-                    ? t("marketplace.publish.success.updated")
-                    : t("marketplace.publish.success.published")}
-                </div>
-              </div>
+            <div className="flex gap-2.5 rounded-lg bg-green-50/80 px-4 py-3 dark:bg-green-950/30">
+              <CheckCircleIcon className="h-4 w-4 shrink-0 text-green-500" />
+              <p className="text-[13px] text-green-700 dark:text-green-400">
+                {isPublished
+                  ? t("marketplace.publish.success.updated")
+                  : t("marketplace.publish.success.published")}
+              </p>
             </div>
           )}
 
           {/* Error Message */}
           {publishMutation.isError && (
-            <div className="relative w-full rounded-lg border border-red-500/50 bg-red-50 p-4 text-red-900 dark:bg-red-950/50 dark:text-red-400">
-              <div className="flex gap-2">
-                <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
-                <div className="text-sm">
-                  {publishMutation.error instanceof Error
-                    ? publishMutation.error.message
-                    : t("marketplace.publish.error.default")}
-                </div>
-              </div>
+            <div className="flex gap-2.5 rounded-lg bg-red-50/80 px-4 py-3 dark:bg-red-950/30">
+              <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
+              <p className="text-[13px] text-red-700 dark:text-red-400">
+                {publishMutation.error instanceof Error
+                  ? publishMutation.error.message
+                  : t("marketplace.publish.error.default")}
+              </p>
             </div>
           )}
         </div>
+      </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+      {/* Footer */}
+      <div className="shrink-0 border-t border-neutral-200/60 px-5 py-4 dark:border-neutral-800/60">
+        <div className="flex justify-end gap-2.5">
           <Button
             onClick={() => {
               setCommitMessage("");
@@ -405,14 +396,14 @@ export default function PublishAgentModal({
               onOpenChange(false);
             }}
             disabled={publishMutation.isPending}
-            className="rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="rounded-lg bg-neutral-100/80 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-200/80 disabled:opacity-50 dark:bg-white/[0.06] dark:text-neutral-300 dark:hover:bg-white/[0.1]"
           >
             {t("marketplace.publish.actions.cancel")}
           </Button>
           <Button
             onClick={handlePublish}
             disabled={!canPublish || publishMutation.isPending}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-indigo-600 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400"
           >
             {publishMutation.isPending
               ? t("marketplace.publish.actions.publishing")
@@ -424,6 +415,6 @@ export default function PublishAgentModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </SheetModal>
   );
 }

@@ -85,7 +85,8 @@
       "random": "随机",
       "seedPlaceholder": "自定义种子...",
       "apply": "应用",
-      "loading": "加载中..."
+      "loading": "加载中...",
+      "advanced": "高级"
     },
     "profile": {
       "title": "助手资料",

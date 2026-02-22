@@ -1,5 +1,6 @@
 import {
   ChatBubbleLeftRightIcon,
+  CommandLineIcon,
   FolderIcon,
   LightBulbIcon,
   SparklesIcon,
@@ -17,6 +18,7 @@ export type ActivityPanel =
   | "skills"
   | "marketplace"
   | "memory"
+  | "sandbox"
   | "account";
 
 interface ActivityBarProps {
@@ -101,7 +103,7 @@ const ActivityButton: React.FC<ActivityButtonProps> = ({
 };
 
 // ── Mobile "More" popover items ──────────────────────────────────────
-const MOBILE_MORE: ActivityPanel[] = ["skills", "memory"];
+const MOBILE_MORE: ActivityPanel[] = ["skills", "memory", "sandbox"];
 
 interface MobileMorePanelProps {
   isOpen: boolean;
@@ -214,6 +216,12 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
       panel: "memory" as ActivityPanel,
       icon: LightBulbIcon,
       label: t("app.activityBar.memory"),
+      disabled: false,
+    },
+    {
+      panel: "sandbox" as ActivityPanel,
+      icon: CommandLineIcon,
+      label: t("app.activityBar.sandbox", "Sandbox"),
       disabled: false,
     },
     {

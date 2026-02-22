@@ -17,8 +17,7 @@ class SpawnSubagentInput(BaseModel):
 
     task: str = Field(
         description=(
-            "The task or prompt to give to the subagent. "
-            "Be specific and complete — the subagent has no prior context."
+            "The task or prompt to give to the subagent. Be specific and complete — the subagent has no prior context."
         ),
     )
 
