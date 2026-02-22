@@ -4,6 +4,7 @@ import asyncio
 import logging
 from datetime import datetime
 from uuid import UUID
+from zoneinfo import available_timezones
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -18,6 +19,18 @@ from app.repos.consume import ConsumeRepository
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["check-in"])
+
+_VALID_TIMEZONES = available_timezones()
+
+
+def _validate_timezone(tz: str) -> None:
+    """Validate that tz is a known IANA timezone, raising 400 otherwise."""
+    if tz not in _VALID_TIMEZONES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid timezone: {tz}",
+        )
+
 
 # Generic error messages to prevent internal details leakage
 GENERIC_ERROR_MESSAGES = {
@@ -349,6 +362,7 @@ async def get_monthly_check_ins(
 @router.get("/check-in/consumption/{date}", response_model=DayConsumptionResponse)
 async def get_day_consumption(
     date: str,
+    tz: str = Query(default="Asia/Shanghai", description="Timezone name (IANA)"),
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -378,8 +392,10 @@ async def get_day_consumption(
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
 
+        _validate_timezone(tz)
+
         consume_repo = ConsumeRepository(db)
-        stats = await consume_repo.get_daily_token_stats(date, user_id)
+        stats = await consume_repo.get_daily_token_stats(date, user_id, tz=tz)
 
         # Generate friendly message based on consumption
         message = None
@@ -450,6 +466,8 @@ async def get_consumption_range(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
+
+        _validate_timezone(tz)
 
         consume_repo = ConsumeRepository(db)
         data = await consume_repo.get_user_consumption_range(user_id, start_date, end_date, tz)
@@ -536,6 +554,8 @@ async def get_consumption_records(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid end_date format. Use YYYY-MM-DD",
                 )
+
+        _validate_timezone(tz)
 
         consume_repo = ConsumeRepository(db)
 

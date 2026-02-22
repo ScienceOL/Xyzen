@@ -16,7 +16,7 @@ import {
   TooltipComponent,
   VisualMapPiecewiseComponent,
 } from "echarts/components";
-import { SVGRenderer } from "echarts/renderers";
+import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
 
 echarts.use([
   PieChart,
@@ -25,6 +25,7 @@ echarts.use([
   TooltipComponent,
   VisualMapPiecewiseComponent,
   SVGRenderer,
+  CanvasRenderer,
 ]);
 
 export { echarts };
