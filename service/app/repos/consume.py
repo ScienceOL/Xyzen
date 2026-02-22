@@ -423,6 +423,7 @@ class ConsumeRepository:
         start_date: str,
         end_date: str,
         tz: str = "Asia/Shanghai",
+        user_subscription_tier: str = "standard",
     ) -> dict[str, Any]:
         """Get aggregated consumption statistics for a user over a date range."""
         logger.debug(f"Getting consumption range for user {user_id} from {start_date} to {end_date}, tz: {tz}")
@@ -483,9 +484,12 @@ class ConsumeRepository:
 
         by_tier: dict[str, dict[str, int]] = {}
 
+        KNOWN_TIERS = {"lite", "standard", "pro", "ultra"}
+
         for row in day_tier_rows:
             date_str = str(row.date)
-            tier_key = str(row.tier) if row.tier is not None else "unknown"
+            raw_tier = str(row.tier) if row.tier is not None else user_subscription_tier
+            tier_key = raw_tier if raw_tier in KNOWN_TIERS else user_subscription_tier
 
             day = _ensure_day(date_str)
             day["total_tokens"] += int(row.total_tokens)
@@ -512,14 +516,22 @@ class ConsumeRepository:
             by_tier[tier_key]["record_count"] += int(row.record_count)
             by_tier[tier_key]["tool_call_count"] += int(row.tool_call_count)
 
-            day["by_tier"][tier_key] = {
-                "total_tokens": int(row.total_tokens),
-                "input_tokens": int(row.input_tokens),
-                "output_tokens": int(row.output_tokens),
-                "total_amount": int(row.total_amount),
-                "record_count": int(row.record_count),
-                "tool_call_count": int(row.tool_call_count),
-            }
+            if tier_key not in day["by_tier"]:
+                day["by_tier"][tier_key] = {
+                    "total_tokens": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "total_amount": 0,
+                    "record_count": 0,
+                    "tool_call_count": 0,
+                }
+
+            day["by_tier"][tier_key]["total_tokens"] += int(row.total_tokens)
+            day["by_tier"][tier_key]["input_tokens"] += int(row.input_tokens)
+            day["by_tier"][tier_key]["output_tokens"] += int(row.output_tokens)
+            day["by_tier"][tier_key]["total_amount"] += int(row.total_amount)
+            day["by_tier"][tier_key]["record_count"] += int(row.record_count)
+            day["by_tier"][tier_key]["tool_call_count"] += int(row.tool_call_count)
 
         result_dict: dict[str, Any] = {
             "daily": [daily[d] for d in sorted(daily.keys())],

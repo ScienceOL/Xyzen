@@ -12,6 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCodeError, handle_auth_error
 from app.core.checkin import CheckInService
+from app.core.subscription import SubscriptionService
 from app.infra.database import get_session as get_db_session
 from app.middleware.auth import get_current_user
 from app.repos.consume import ConsumeRepository
@@ -470,7 +471,18 @@ async def get_consumption_range(
         _validate_timezone(tz)
 
         consume_repo = ConsumeRepository(db)
-        data = await consume_repo.get_user_consumption_range(user_id, start_date, end_date, tz)
+
+        subscription_service = SubscriptionService(db)
+        role = await subscription_service.get_user_role(user_id)
+        user_tier = role.max_model_tier if role else "standard"
+
+        data = await consume_repo.get_user_consumption_range(
+            user_id,
+            start_date,
+            end_date,
+            tz,
+            user_subscription_tier=user_tier,
+        )
 
         daily_responses = [
             DayConsumptionResponse(

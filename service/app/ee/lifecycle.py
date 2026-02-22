@@ -110,16 +110,17 @@ class DefaultChatLifecycle:
         message_id: UUID | None,
         description: str | None,
     ) -> float:
-        from app.core.consume import settle_chat_records
+        from app.repos.redemption import RedemptionRepository
 
-        await settle_chat_records(
-            db=db,
-            user_id=user_id,
-            auth_provider=auth_provider,
-            record_ids=[],
-            total_amount=amount,
-        )
-        return float(amount)
+        redemption_repo = RedemptionRepository(db)
+        wallet = await redemption_repo.get_or_create_user_wallet(user_id)
+
+        if wallet.virtual_balance <= 0:
+            from app.common.code.error_code import ErrCode
+
+            raise ErrCode.INSUFFICIENT_BALANCE.with_messages(f"积分余额不足，当前余额: {wallet.virtual_balance}")
+
+        return 0.0  # No pre-deduction; settlement handles billing
 
     async def on_disconnect(self, connection_id: str) -> None:
         if self._enforcer:

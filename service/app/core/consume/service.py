@@ -43,12 +43,12 @@ async def settle_chat_records(
     record_ids: list[UUID],
     total_amount: int,
 ) -> None:
-    """Settle pending ConsumeRecords: deduct from wallet, update UserConsumeSummary,
-    and bulk-mark records as success.
+    """Settle pending ConsumeRecords: deduct from wallet (best-effort), update
+    UserConsumeSummary, and bulk-mark records as success.
 
-    This replaces the old create_consume_for_chat flow. By this point all
-    individual ConsumeRecords have already been created during streaming;
-    this function only handles the billing side.
+    When the wallet balance is insufficient the function deducts as much as
+    possible instead of raising an error — the conversation is never
+    interrupted at settlement time.
 
     Args:
         db: Database session.
@@ -67,32 +67,29 @@ async def settle_chat_records(
     repo = ConsumeRepository(db)
     redemption_repo = RedemptionRepository(db)
 
-    # Check virtual balance
     wallet = await redemption_repo.get_user_wallet(user_id)
     virtual_balance = wallet.virtual_balance if wallet else 0
 
-    logger.info(f"Settlement for user {user_id}: amount={total_amount}, balance={virtual_balance}")
+    # Best-effort: deduct as much as possible
+    actual_amount = min(total_amount, max(0, virtual_balance))
 
     if virtual_balance < total_amount:
-        # Insufficient balance — mark records as failed
-        if record_ids:
-            await repo.bulk_update_consume_state(record_ids, "failed")
-
-        from app.common.code.error_code import ErrCode
-
-        raise ErrCode.INSUFFICIENT_BALANCE.with_messages(
-            f"积分余额不足，当前余额: {virtual_balance}，需要: {total_amount}"
+        logger.warning(
+            "Best-effort settlement for user %s: needed=%d, available=%d, deducting=%d",
+            user_id,
+            total_amount,
+            virtual_balance,
+            actual_amount,
         )
 
-    # Deduct from virtual balance
-    await redemption_repo.deduct_wallet(user_id, total_amount)
-    logger.info(f"Deducted {total_amount} from user {user_id} virtual balance")
+    if actual_amount > 0:
+        await redemption_repo.deduct_wallet(user_id, actual_amount)
 
-    # Update user consumption summary
+    # Update user consumption summary with the actual amount deducted
     await repo.increment_user_consume(
         user_id=user_id,
         auth_provider=auth_provider,
-        amount=total_amount,
+        amount=actual_amount,
         consume_state="success",
     )
 

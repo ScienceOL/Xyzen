@@ -41,7 +41,6 @@ const tierColors: Record<string, string> = {
   pro: "#3b82f6",
   standard: "#22c55e",
   lite: "#f97316",
-  unknown: "#9ca3af",
 };
 
 const tierLabels: Record<string, string> = {

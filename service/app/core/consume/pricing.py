@@ -99,7 +99,11 @@ MODEL_COST_RATES: dict[str, dict[str, float]] = {
 
 def calculate_tool_cost(tool_name: str) -> int:
     """Pure function: look up tool_name in TOOL_CREDIT_COSTS. Called at settlement."""
-    return TOOL_CREDIT_COSTS.get(tool_name, 0)
+    cost = TOOL_CREDIT_COSTS.get(tool_name)
+    if cost is None:
+        logger.warning("Tool %r not in TOOL_CREDIT_COSTS, cost will be 0", tool_name)
+        return 0
+    return cost
 
 
 CACHE_READ_DISCOUNT: float = 0.1  # cache_read tokens charged at 10% of input rate
@@ -157,3 +161,63 @@ def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int
     if tier_rate <= 0:
         return 0
     return BASE_COST + record_amounts_sum
+
+
+def validate_pricing_coverage() -> None:
+    """Validate that all registered tools and configured models have pricing entries.
+
+    Called at startup after tool registration to surface missing pricing config early.
+    """
+
+    # --- Tool pricing coverage ---
+    from app.tools.registry import BuiltinToolRegistry
+
+    registered_tools = set(BuiltinToolRegistry._metadata.keys())
+    priced_tools = set(TOOL_CREDIT_COSTS.keys())
+
+    for tool_id in sorted(registered_tools - priced_tools):
+        logger.warning("Tool %r registered but missing from TOOL_CREDIT_COSTS (defaults to 0)", tool_id)
+    for tool_id in sorted(priced_tools - registered_tools):
+        logger.debug("Tool %r in TOOL_CREDIT_COSTS but not registered (may be deprecated)", tool_id)
+
+    # --- Model pricing coverage ---
+    all_models: set[str] = set()
+
+    from app.schemas.model_tier import (
+        _CHINA_TIER_MODEL_CANDIDATES,
+        _GLOBAL_TIER_MODEL_CANDIDATES,
+        _REGION_HELPER_MODELS,
+    )
+
+    for candidates_map in (_GLOBAL_TIER_MODEL_CANDIDATES, _CHINA_TIER_MODEL_CANDIDATES):
+        for tier_candidates in candidates_map.values():
+            for c in tier_candidates:
+                all_models.add(c.model)
+
+    for helpers in _REGION_HELPER_MODELS.values():
+        for model_name, _ in helpers.values():
+            all_models.add(model_name)
+
+    from app.configs.image import ImageConfig, _REGION_IMAGE_OVERRIDES
+
+    base = ImageConfig()
+    for attr in ("Model", "EditModel", "VisionModel"):
+        all_models.add(getattr(base, attr))
+    for overrides in _REGION_IMAGE_OVERRIDES.values():
+        for key in ("Model", "EditModel", "VisionModel"):
+            if key in overrides:
+                all_models.add(overrides[key])
+
+    priced_models = set(MODEL_COST_RATES.keys())
+    for m in sorted(all_models - priced_models):
+        logger.warning("Model %r configured but missing from MODEL_COST_RATES (cost_usd=0)", m)
+    for m in sorted(priced_models - all_models):
+        logger.debug("Model %r in MODEL_COST_RATES but not in any config (may be deprecated)", m)
+
+    logger.info(
+        "Pricing coverage: %d tools (%d missing), %d models (%d missing)",
+        len(registered_tools),
+        len(registered_tools - priced_tools),
+        len(all_models),
+        len(all_models - priced_models),
+    )

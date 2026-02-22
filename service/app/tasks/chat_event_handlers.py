@@ -163,6 +163,13 @@ async def _ensure_session_info(ctx: ChatTaskContext) -> None:
     ctx.cached_provider_id = str(session.provider_id) if session and session.provider_id else None
     ctx.session_info_loaded = True
 
+    # Propagate model_tier to TrackingContext for auxiliary recording
+    from app.core.consume.context import get_tracking_context
+
+    tracking_ctx = get_tracking_context()
+    if tracking_ctx is not None:
+        tracking_ctx.model_tier = ctx.cached_model_tier.value if ctx.cached_model_tier else None
+
 
 # ---------------------------------------------------------------------------
 # Helper: finalize_and_settle
@@ -467,6 +474,11 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
         try:
             await _ensure_session_info(ctx)
             model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
+
+            # LITE tier: all consumption is free
+            tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(ctx.cached_model_tier, 1.0) if ctx.cached_model_tier else 1.0
+            if tier_rate == 0:
+                amount = 0
 
             tracking = ConsumptionTrackingService(ctx.db)
             await tracking.record_tool_call(
