@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.configs import configs
 from app.core.version import VersionInfo, get_version_info
 from app.ee import edition
 
@@ -21,3 +22,9 @@ async def get_system_version() -> dict[str, str]:
 async def get_system_edition() -> dict[str, str]:
     """Return the current deployment edition (``ce`` or ``ee``)."""
     return {"edition": edition()}
+
+
+@router.get("/region")
+async def get_system_region() -> dict[str, str]:
+    """Return the deployment region."""
+    return {"region": configs.Region}

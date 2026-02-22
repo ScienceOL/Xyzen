@@ -17,6 +17,7 @@
     "subtitle": "选择适合您所在地区的服务版本",
     "currentRegion": "当前版本",
     "comingSoon": "即将推出",
+    "visitSite": "前往",
     "synced": "同步",
     "notSynced": "独立",
     "paymentMethods": "支付方式",
@@ -44,7 +45,7 @@
     },
     "note": {
       "title": "关于数据同步",
-      "description": "账号和社区内容在两个版本之间同步，但聊天数据、订阅和 AI 模型配置是独立的，以确保最佳的本地化体验和数据合规性。"
+      "description": "账号系统在两个版本之间同步，但社区内容、聊天数据、订阅和 AI 模型配置是独立的，以确保最佳的本地化体验和数据合规性。"
     }
   },
   "provider": {

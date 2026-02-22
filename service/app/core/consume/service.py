@@ -67,8 +67,9 @@ async def settle_chat_records(
     repo = ConsumeRepository(db)
     redemption_repo = RedemptionRepository(db)
 
-    wallet = await redemption_repo.get_user_wallet(user_id)
-    virtual_balance = wallet.virtual_balance if wallet else 0
+    # Check virtual balance (get_or_create ensures new users receive welcome bonus)
+    wallet = await redemption_repo.get_or_create_user_wallet(user_id)
+    virtual_balance = wallet.virtual_balance
 
     # Best-effort: deduct as much as possible
     actual_amount = min(total_amount, max(0, virtual_balance))

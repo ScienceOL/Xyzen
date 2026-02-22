@@ -46,6 +46,7 @@
     "community": "Community",
     "memory": "Memory",
     "more": "More",
+    "sandbox": "Sandbox",
     "account": "Account",
     "comingSoon": "Coming Soon"
   },
@@ -360,6 +361,18 @@
     },
     "locked": "Requires {{plan}} plan"
   },
+  "sandbox": {
+    "title": "Sandboxes",
+    "subtitle": "Manage active sandbox environments",
+    "loadError": "Failed to load sandboxes",
+    "deleted": "Sandbox deleted",
+    "deleteError": "Failed to delete sandbox",
+    "empty": "No active sandboxes",
+    "emptyHint": "Sandboxes are created automatically when agents use code execution tools.",
+    "explorer": "Explorer",
+    "emptyWorkspace": "No files",
+    "selectFile": "Select a file from the explorer to view"
+  },
   "workspace": {
     "recommendations": {
       "title": "Discover Official Agents",
@@ -483,5 +496,18 @@
     "inputPlaceholder": "Ask the CEO anything...",
     "dismissHint": "Tap to see all agents",
     "backToLoft": "Back to CEO"
+  },
+  "loading": {
+    "tips": {
+      "noAds": "I wanted to add ads, but the boss said no.",
+      "ceoAgent": "Did you know? The CEO Agent can directly command other Agents to work for it.",
+      "publishEarn": "Publish your assistant to the marketplace and earn credit rewards!",
+      "lazyProductivity": "\"Laziness\" is the #1 driver of productivity.",
+      "deadlineProductivity": "\"Deadlines\" are the #1 driver of productivity.",
+      "worthyOpponent": "A worthy opponent indeed.",
+      "knowledgeBase": "Connect a knowledge base to give your agent domain expertise.",
+      "multiAgent": "Use multiple agents in parallel for complex research tasks.",
+      "dailyCheckIn": "Don't forget to check in daily for bonus credits!"
+    }
   }
 }

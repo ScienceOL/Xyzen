@@ -1,5 +1,7 @@
 """Unit tests for model tier resolution."""
 
+import pytest
+
 from app.schemas.model_tier import (
     ModelTier,
     get_fallback_model_for_tier,
@@ -110,7 +112,7 @@ class TestRegionCandidates:
         """Test that china region has valid candidates for all tiers."""
         from app.configs import configs
 
-        monkeypatch.setattr(configs, "Region", "china")
+        monkeypatch.setattr(configs, "Region", "zh-CN")
         candidates_map = get_tier_candidates()
         for tier in ModelTier:
             assert tier in candidates_map
@@ -120,7 +122,7 @@ class TestRegionCandidates:
         """Test that china region has fallback models for all tiers."""
         from app.configs import configs
 
-        monkeypatch.setattr(configs, "Region", "china")
+        monkeypatch.setattr(configs, "Region", "zh-CN")
         for tier in ModelTier:
             fallback = get_fallback_model_for_tier(tier)
             assert fallback is not None
@@ -141,7 +143,7 @@ class TestRegionCandidates:
         """Test that region matching is case-insensitive."""
         from app.configs import configs
 
-        monkeypatch.setattr(configs, "Region", "ChInA")
+        monkeypatch.setattr(configs, "Region", "Zh-cN")
         candidates_map = get_tier_candidates()
         # Should still return China candidates
         for tier in ModelTier:

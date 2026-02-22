@@ -14,11 +14,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.session_pool import SessionPool
 from app.core.subscription import SubscriptionService, UserLimits
 from app.infra.redis import get_redis_client
+from app.infra.sandbox.manager import REDIS_KEY_PREFIX as _SANDBOX_KEY_PREFIX
 
 logger = logging.getLogger(__name__)
-
-# Redis key prefix for sandbox session mapping (defined in sandbox/manager.py)
-_SANDBOX_KEY_PREFIX = "sandbox:session:"
 
 
 class ParallelChatLimitError(Exception):

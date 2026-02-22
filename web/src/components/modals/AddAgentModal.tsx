@@ -1,4 +1,5 @@
 import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
+import { FieldGroup } from "@/components/base/FieldGroup";
 import { Input } from "@/components/base/Input";
 import {
   AvatarSelector,
@@ -8,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { useShallow } from "zustand/react/shallow";
-import { Field, Button as HeadlessButton, Label } from "@headlessui/react";
+import { Button as HeadlessButton } from "@headlessui/react";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -135,33 +136,25 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
           <div className="border-t border-neutral-200 dark:border-neutral-700" />
 
           {/* Name */}
-          <Field>
-            <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              {t("agents.fields.name.required")}
-            </Label>
+          <FieldGroup label={t("agents.fields.name.required")} required>
             <Input
               name="name"
               value={agent.name}
               onChange={handleChange}
               placeholder={t("agents.fields.name.placeholder")}
-              className="mt-1"
               required
             />
-          </Field>
+          </FieldGroup>
 
           {/* Description */}
-          <Field>
-            <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              {t("agents.fields.description.label")}
-            </Label>
+          <FieldGroup label={t("agents.fields.description.label")}>
             <Input
               name="description"
               value={agent.description}
               onChange={handleChange}
               placeholder={t("agents.fields.description.placeholder")}
-              className="mt-1"
             />
-          </Field>
+          </FieldGroup>
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-700">

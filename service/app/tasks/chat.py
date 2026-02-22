@@ -14,6 +14,7 @@ from app.configs import configs
 from app.core.celery_app import celery_app
 from app.core.chat import get_ai_response_stream
 from app.infra.database import ASYNC_DATABASE_URL
+from app.models.message import Message as MessageModel
 from app.repos import AgentRunRepository, MessageRepository, TopicRepository
 from app.schemas.chat_event_types import ChatEventType
 from app.tasks.chat_event_handlers import (
@@ -229,6 +230,12 @@ async def _process_chat_message_async(
     agent_run_id: UUID | None = None
     agent_run_start_time: float | None = None
 
+    # Message tracking - declared outside db context for error handling access
+    ai_message_id: UUID | None = None
+    ai_message_full_content: str = ""
+    ai_message_thinking_content: str = ""
+    ai_message_active_stream_id: str | None = None
+
     # Record task start time for scoping exception-path settlement queries
     task_start_time = datetime.now(timezone.utc)
 
@@ -285,13 +292,27 @@ async def _process_chat_message_async(
                 else:
                     await publisher.publish(json.dumps(stream_event))
 
+                # Continuously sync tracking vars for outer exception handler
+                agent_run_id = ctx.agent_run_id
+                agent_run_start_time = ctx.agent_run_start_time
+                if ctx.ai_message_obj:
+                    ai_message_id = ctx.ai_message_obj.id
+                ai_message_full_content = ctx.full_content
+                ai_message_thinking_content = ctx.full_thinking_content
+                ai_message_active_stream_id = ctx.active_stream_id
+
                 # Check if handler requested loop break
                 if ctx.should_break:
                     break
 
-            # Sync tracking vars back for outer exception handler
+            # Sync final state (handles cases where loop ends normally after last event)
             agent_run_id = ctx.agent_run_id
             agent_run_start_time = ctx.agent_run_start_time
+            if ctx.ai_message_obj:
+                ai_message_id = ctx.ai_message_obj.id
+            ai_message_full_content = ctx.full_content
+            ai_message_thinking_content = ctx.full_thinking_content
+            ai_message_active_stream_id = ctx.active_stream_id
 
             # --- Handle Abort ---
             if ctx.is_aborted:
@@ -343,6 +364,41 @@ async def _process_chat_message_async(
                     logger.debug(f"Marked AgentRun {agent_run_id} as failed due to unhandled error")
             except Exception as finalize_error:
                 logger.warning(f"Failed to finalize AgentRun on error: {finalize_error}")
+
+        # Persist accumulated message content so it survives a page refresh.
+        # Use a fresh db session since the original may be in a bad state.
+        if ai_message_id:
+            try:
+                async with TaskSessionLocal() as msg_db:
+                    msg = await msg_db.get(MessageModel, ai_message_id)
+                    if msg:
+                        msg.content = ai_message_full_content or ""
+                        if ai_message_thinking_content:
+                            msg.thinking_content = ai_message_thinking_content
+                        msg.error_code = error_code_val.value
+                        msg.error_category = error_code_val.category
+                        msg_db.add(msg)
+                        await msg_db.commit()
+                        logger.debug(
+                            f"Saved partial message content ({len(ai_message_full_content)} chars) on unhandled error"
+                        )
+
+                    # Send message_saved so frontend can reconcile the stream message with the DB record
+                    if msg and ai_message_active_stream_id:
+                        await publisher.publish(
+                            json.dumps(
+                                {
+                                    "type": ChatEventType.MESSAGE_SAVED,
+                                    "data": {
+                                        "stream_id": ai_message_active_stream_id,
+                                        "db_id": str(ai_message_id),
+                                        "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                                    },
+                                }
+                            )
+                        )
+            except Exception as msg_save_error:
+                logger.warning(f"Failed to save message content on error: {msg_save_error}")
 
         # Exception-path settlement: individual ConsumeRecords were already
         # created during streaming. Query pending records and settle.

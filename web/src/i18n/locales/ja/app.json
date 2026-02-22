@@ -46,6 +46,7 @@
     "community": "コミュニティ",
     "memory": "メモリー",
     "more": "その他",
+    "sandbox": "サンドボックス",
     "account": "マイページ",
     "comingSoon": "近日公開予定"
   },
@@ -359,6 +360,18 @@
     },
     "locked": "{{plan}} プランが必要"
   },
+  "sandbox": {
+    "title": "サンドボックス",
+    "subtitle": "アクティブなサンドボックス環境を管理",
+    "loadError": "サンドボックスの読み込みに失敗しました",
+    "deleted": "サンドボックスを削除しました",
+    "deleteError": "サンドボックスの削除に失敗しました",
+    "empty": "アクティブなサンドボックスはありません",
+    "emptyHint": "エージェントがコード実行ツールを使用すると、サンドボックスが自動的に作成されます。",
+    "explorer": "エクスプローラー",
+    "emptyWorkspace": "ファイルがありません",
+    "selectFile": "エクスプローラーからファイルを選択して表示"
+  },
   "workspace": {
     "recommendations": {
       "title": "公式エージェントを探す",
@@ -482,5 +495,18 @@
     "inputPlaceholder": "CEOに聞く...",
     "dismissHint": "タップしてエージェント一覧を表示",
     "backToLoft": "CEOに戻る"
+  },
+  "loading": {
+    "tips": {
+      "noAds": "広告を入れたかったのに、ボスに却下されました。",
+      "ceoAgent": "知ってましたか？CEO Agent は他の Agent に直接指示を出して作業させることができます。",
+      "publishEarn": "アシスタントをマーケットプレイスに公開してクレジット報酬を獲得しよう！",
+      "lazyProductivity": "「怠惰」こそが生産性の原動力。",
+      "deadlineProductivity": "「締め切り」こそが生産性の原動力。",
+      "worthyOpponent": "なかなかの好敵手。",
+      "knowledgeBase": "ナレッジベースを接続して、エージェントに専門知識を持たせよう。",
+      "multiAgent": "複数のエージェントを並行して使い、複雑な調査タスクをこなそう。",
+      "dailyCheckIn": "毎日チェックインしてボーナスクレジットをもらおう！"
+    }
   }
 }

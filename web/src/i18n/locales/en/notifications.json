@@ -18,7 +18,10 @@
   },
   "actions": {
     "readAll": "Mark all as read",
-    "archiveRead": "Archive all read"
+    "archiveRead": "Archive all read",
+    "deleteAll": "Delete all",
+    "deleteAllConfirm": "This will permanently delete all archived notifications.",
+    "confirmDelete": "Delete"
   },
   "empty": "No notifications yet"
 }

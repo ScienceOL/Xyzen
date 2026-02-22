@@ -86,7 +86,6 @@ export function handleError(
   if (targetIndex !== -1) {
     channel.messages[targetIndex] = {
       ...channel.messages[targetIndex],
-      content: "",
       status: "failed",
       isLoading: false,
       isStreaming: false,

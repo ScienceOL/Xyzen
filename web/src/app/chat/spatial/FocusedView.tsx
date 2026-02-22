@@ -325,24 +325,20 @@ export function FocusedView({
             </button>
           </div>
 
-          {/* Content: full list or avatar-only column */}
-          <div
-            ref={listContainerRef}
-            className="overflow-y-auto custom-scrollbar"
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              {collapsed ? (
-                <motion.div
-                  key="collapsed"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex flex-col items-center gap-1 p-2"
-                >
-                  {/* CEO avatar — golden ring */}
-                  {ceoAgentData &&
-                    (() => {
+          {/* CEO agent — pinned at top, outside scroll */}
+          {ceoAgentData && (
+            <div className="shrink-0">
+              <AnimatePresence mode="wait" initial={false}>
+                {collapsed ? (
+                  <motion.div
+                    key="ceo-collapsed"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col items-center px-2 pt-2"
+                  >
+                    {(() => {
                       const isSelected = selectedAgentId === ceoAgentData.id;
                       const realAgentId = agentDataMap.get(
                         ceoAgentData.id,
@@ -352,7 +348,6 @@ export function FocusedView({
                         : false;
                       return (
                         <button
-                          key={ceoAgentData.id}
                           data-agent-id={ceoAgentData.id}
                           onClick={() => onSwitchAgent(ceoAgentData.id)}
                           title={ceoAgentData.name}
@@ -385,62 +380,17 @@ export function FocusedView({
                         </button>
                       );
                     })()}
-                  {/* Separator */}
-                  {ceoAgentData && nonCeoAgents.length > 0 && (
-                    <div className="w-6 border-t border-amber-300/20 dark:border-amber-500/10 my-0.5" />
-                  )}
-                  {/* Other agents */}
-                  {nonCeoAgents.map((a) => {
-                    const isSelected = selectedAgentId === a.id;
-                    const realAgentId = agentDataMap.get(a.id)?.agentId;
-                    const isBusy = realAgentId
-                      ? runningAgentIds.has(realAgentId)
-                      : false;
-                    return (
-                      <button
-                        key={a.id}
-                        data-agent-id={a.id}
-                        onClick={() => onSwitchAgent(a.id)}
-                        title={a.name}
-                        className={`relative rounded-full p-0.5 transition-all duration-200 ${
-                          isSelected
-                            ? "ring-2 ring-blue-500/60 shadow-sm"
-                            : "hover:ring-2 hover:ring-black/10 dark:hover:ring-white/20"
-                        }`}
-                      >
-                        <img
-                          src={
-                            a.avatar ||
-                            "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
-                          }
-                          alt={a.name}
-                          className="w-9 h-9 rounded-full border border-white/50 object-cover"
-                        />
-                        {isBusy && (
-                          <div className="absolute -bottom-0.5 -right-0.5">
-                            <ChatStatusBadge
-                              status="running"
-                              size="xs"
-                              showLabel={false}
-                            />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="expanded"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="p-2"
-                >
-                  {/* CEO agent — pinned at top with golden styling */}
-                  {ceoAgentData &&
-                    (() => {
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="ceo-expanded"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="px-2 pt-2"
+                  >
+                    {(() => {
                       const isSelected = selectedAgentId === ceoAgentData.id;
                       const realAgentId = agentDataMap.get(
                         ceoAgentData.id,
@@ -508,11 +458,84 @@ export function FocusedView({
                         </div>
                       );
                     })()}
-                  {/* Separator */}
-                  {ceoAgentData && nonCeoAgents.length > 0 && (
-                    <div className="mx-2 my-1 border-t border-neutral-100 dark:border-neutral-800" />
-                  )}
-                  {/* Other agents */}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {/* Separator */}
+              {nonCeoAgents.length > 0 &&
+                (collapsed ? (
+                  <div className="flex justify-center py-1">
+                    <div className="w-6 border-t border-amber-300/20 dark:border-amber-500/10" />
+                  </div>
+                ) : (
+                  <div className="mx-4 my-1 border-t border-neutral-100 dark:border-neutral-800" />
+                ))}
+            </div>
+          )}
+
+          {/* Scrollable non-CEO agent list */}
+          <div
+            ref={listContainerRef}
+            className="overflow-y-auto custom-scrollbar min-h-0"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {collapsed ? (
+                <motion.div
+                  key="collapsed"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col items-center gap-1 px-2 pb-2"
+                >
+                  {nonCeoAgents.map((a) => {
+                    const isSelected = selectedAgentId === a.id;
+                    const realAgentId = agentDataMap.get(a.id)?.agentId;
+                    const isBusy = realAgentId
+                      ? runningAgentIds.has(realAgentId)
+                      : false;
+                    return (
+                      <button
+                        key={a.id}
+                        data-agent-id={a.id}
+                        onClick={() => onSwitchAgent(a.id)}
+                        title={a.name}
+                        className={`relative rounded-full p-0.5 transition-all duration-200 ${
+                          isSelected
+                            ? "ring-2 ring-blue-500/60 shadow-sm"
+                            : "hover:ring-2 hover:ring-black/10 dark:hover:ring-white/20"
+                        }`}
+                      >
+                        <img
+                          src={
+                            a.avatar ||
+                            "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                          }
+                          alt={a.name}
+                          className="w-9 h-9 rounded-full border border-white/50 object-cover"
+                        />
+                        {isBusy && (
+                          <div className="absolute -bottom-0.5 -right-0.5">
+                            <ChatStatusBadge
+                              status="running"
+                              size="xs"
+                              showLabel={false}
+                            />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="expanded"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="p-2"
+                >
                   <AgentList
                     agents={agentsForList}
                     variant="compact"

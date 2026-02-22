@@ -17,7 +17,38 @@ export interface SandboxPreviewResponse {
   port: number;
 }
 
+export interface SandboxEntry {
+  sandbox_id: string;
+  session_id: string;
+  session_name: string | null;
+  agent_id: string | null;
+  agent_name: string | null;
+  backend: string;
+  created_at: string;
+  ttl_seconds: number | null;
+}
+
+export interface SandboxListResponse {
+  sandboxes: SandboxEntry[];
+  total: number;
+}
+
+export interface SandboxDeleteResponse {
+  deleted: boolean;
+  sandbox_id: string | null;
+}
+
 class SandboxService {
+  /** List all active sandboxes for the current user. */
+  async listSandboxes(): Promise<SandboxListResponse> {
+    return http.get("/xyzen/api/v1/sandboxes");
+  }
+
+  /** Delete a sandbox by session ID. */
+  async deleteSandbox(sessionId: string): Promise<SandboxDeleteResponse> {
+    return http.delete(`/xyzen/api/v1/sandboxes/${sessionId}`);
+  }
+
   async listFiles(
     sessionId: string,
     path?: string,

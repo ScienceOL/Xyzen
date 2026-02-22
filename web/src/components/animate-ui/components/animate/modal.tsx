@@ -108,7 +108,9 @@ export function Modal({
               {title}
             </DialogTitle>
           ) : null}
-          <div className="flex-1 overflow-visible min-h-0">{children}</div>
+          <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+            {children}
+          </div>
         </DialogPanel>
       </motion.div>
     </Dialog>

@@ -9,6 +9,10 @@ class SystemService {
   async getEdition(): Promise<{ edition: string }> {
     return http.get("/xyzen/api/v1/system/edition", { auth: false });
   }
+
+  async getRegion(): Promise<{ region: string }> {
+    return http.get("/xyzen/api/v1/system/region", { auth: false });
+  }
 }
 
 export const systemService = new SystemService();

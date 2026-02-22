@@ -43,7 +43,7 @@ const CONTAINER =
   "fixed inset-0 flex w-screen items-end justify-center md:items-center md:p-4";
 
 const BASE_PANEL =
-  "relative overflow-hidden flex w-full flex-col rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:rounded-2xl md:border md:border-neutral-200/20 [&>div:last-child]:overflow-hidden [&>div:last-child]:flex [&>div:last-child]:flex-col [&>div:last-child]:min-h-0";
+  "relative overflow-hidden flex w-full flex-col rounded-t-2xl border-t border-neutral-200/30 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-neutral-700/30 dark:bg-neutral-900/95 dark:shadow-black/40 md:rounded-2xl md:border md:border-neutral-200/20";
 
 export function SheetModal({
   isOpen,

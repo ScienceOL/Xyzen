@@ -4,7 +4,7 @@ Users select from 4 tiers instead of specific models. The backend
 uses an LLM to intelligently select the best model for the task
 from available candidates in the tier.
 
-Model candidates are region-aware: set XYZEN_Region=china to use
+Model candidates are region-aware: set XYZEN_Region=zh-CN to use
 China-accessible models, or leave as "global" (default) for
 international models.
 """
@@ -195,7 +195,7 @@ _CHINA_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
 
 _REGION_TIER_CANDIDATES: dict[str, dict[ModelTier, list[TierModelCandidate]]] = {
     "global": _GLOBAL_TIER_MODEL_CANDIDATES,
-    "china": _CHINA_TIER_MODEL_CANDIDATES,
+    "zh-cn": _CHINA_TIER_MODEL_CANDIDATES,
 }
 
 # Region-specific helper model configs (selector LLM, topic rename LLM)
@@ -204,7 +204,7 @@ _REGION_HELPER_MODELS: dict[str, dict[str, tuple[str, ProviderType]]] = {
         "selector": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
         "topic_rename": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
     },
-    "china": {
+    "zh-cn": {
         "selector": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),  # TODO: replace if needed
         "topic_rename": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),  # TODO: replace if needed
     },

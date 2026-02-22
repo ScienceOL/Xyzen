@@ -85,7 +85,8 @@
       "random": "Random",
       "seedPlaceholder": "Custom seed...",
       "apply": "Apply",
-      "loading": "Loading..."
+      "loading": "Loading...",
+      "advanced": "Advanced"
     },
     "profile": {
       "title": "Agent Profile",

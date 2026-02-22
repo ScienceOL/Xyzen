@@ -98,10 +98,10 @@
     },
     "actions": {
       "title": "アクション",
-      "fork": "このエージェントを使用",
+      "fork": "このエージェントを雇用",
       "liked": "いいね済み",
       "like": "このエージェントにいいね",
-      "loginToFork": "ログインして使用",
+      "loginToFork": "ログインして雇用",
       "loginToLike": "ログインしていいね",
       "manage": "エージェントを管理",
       "shareTitle": "共有"
@@ -245,8 +245,8 @@
     "nextStepMcp": "{{count}} 個のMCPサーバーをセットアップ",
     "nextStepKnowledge": "ナレッジベースにドキュメントを追加",
     "nextStepCustomize": "必要に応じてプロンプトと設定をカスタマイズ",
-    "forkButton": "エージェントをフォーク",
-    "forking": "フォーク中...",
+    "forkButton": "エージェントを雇用",
+    "forking": "雇用中...",
     "error": "エージェントのフォークに失敗しました。もう一度お試しください。"
   },
   "infinite": {

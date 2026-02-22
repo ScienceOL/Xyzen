@@ -12,6 +12,7 @@ import enMarketplace from "./locales/en/marketplace.json";
 import enMcp from "./locales/en/mcp.json";
 import enNotifications from "./locales/en/notifications.json";
 import enSettings from "./locales/en/settings.json";
+import enSubscription from "./locales/en/subscription.json";
 
 import jaAgents from "./locales/ja/agents.json";
 import jaApp from "./locales/ja/app.json";
@@ -23,6 +24,7 @@ import jaMarketplace from "./locales/ja/marketplace.json";
 import jaMcp from "./locales/ja/mcp.json";
 import jaNotifications from "./locales/ja/notifications.json";
 import jaSettings from "./locales/ja/settings.json";
+import jaSubscription from "./locales/ja/subscription.json";
 
 import zhAgents from "./locales/zh/agents.json";
 import zhApp from "./locales/zh/app.json";
@@ -34,6 +36,7 @@ import zhMarketplace from "./locales/zh/marketplace.json";
 import zhMcp from "./locales/zh/mcp.json";
 import zhNotifications from "./locales/zh/notifications.json";
 import zhSettings from "./locales/zh/settings.json";
+import zhSubscription from "./locales/zh/subscription.json";
 
 export const SUPPORTED_LANGUAGES = ["en", "zh", "ja"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -66,6 +69,7 @@ export function initI18n() {
             agents: enAgents,
             landing: enLanding,
             notifications: enNotifications,
+            subscription: enSubscription,
           },
         },
         zh: {
@@ -80,6 +84,7 @@ export function initI18n() {
             agents: zhAgents,
             landing: zhLanding,
             notifications: zhNotifications,
+            subscription: zhSubscription,
           },
         },
         ja: {
@@ -94,6 +99,7 @@ export function initI18n() {
             agents: jaAgents,
             landing: jaLanding,
             notifications: jaNotifications,
+            subscription: jaSubscription,
           },
         },
       },

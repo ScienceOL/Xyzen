@@ -17,6 +17,7 @@
     "subtitle": "Choose the service version for your region",
     "currentRegion": "Current",
     "comingSoon": "Coming Soon",
+    "visitSite": "Visit",
     "synced": "Synced",
     "notSynced": "Separate",
     "paymentMethods": "Payment Methods",
@@ -44,7 +45,7 @@
     },
     "note": {
       "title": "About Data Sync",
-      "description": "Account and community content sync between versions, but chat data, subscriptions, and AI model configurations are separate to ensure the best localized experience and data compliance."
+      "description": "Account system syncs between versions, but community content, chat data, subscriptions, and AI model configurations are separate to ensure the best localized experience and data compliance."
     }
   },
   "provider": {

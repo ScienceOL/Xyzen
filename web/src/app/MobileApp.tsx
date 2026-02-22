@@ -3,6 +3,7 @@ import MobileAccountPage from "@/components/features/MobileAccountPage";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import MemoryPanel from "@/components/layouts/MemoryPanel";
+import SandboxPanel from "@/components/layouts/SandboxPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
@@ -55,6 +56,12 @@ export function MobileApp({
             {activePanel === "marketplace" && (
               <div className="h-full bg-white dark:bg-neutral-950">
                 <AgentMarketplace />
+              </div>
+            )}
+
+            {activePanel === "sandbox" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <SandboxPanel />
               </div>
             )}
 

@@ -9,6 +9,7 @@ import {
   CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
+  CommandLineIcon,
   FolderIcon,
   LightBulbIcon,
   SparklesIcon,
@@ -60,6 +61,7 @@ export type ActivityPanel =
   | "skills"
   | "marketplace"
   | "memory"
+  | "sandbox"
   | "account";
 
 interface BottomDockProps {
@@ -781,6 +783,12 @@ export function BottomDock({
       icon: LightBulbIcon,
       label: t("app.activityBar.memory"),
       panel: "memory",
+    },
+    {
+      id: "sandbox",
+      icon: CommandLineIcon,
+      label: t("app.activityBar.sandbox", "Sandbox"),
+      panel: "sandbox",
     },
     {
       id: "marketplace",

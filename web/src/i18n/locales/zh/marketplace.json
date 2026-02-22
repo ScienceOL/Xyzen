@@ -98,10 +98,10 @@
     },
     "actions": {
       "title": "操作",
-      "fork": "使用此助手",
+      "fork": "雇佣此助手",
       "liked": "已点赞",
       "like": "点赞",
-      "loginToFork": "登录以使用",
+      "loginToFork": "登录以雇佣",
       "loginToLike": "登录以点赞",
       "manage": "管理助手",
       "shareTitle": "分享"
@@ -245,8 +245,8 @@
     "nextStepMcp": "设置 {{count}} 个 MCP 服务",
     "nextStepKnowledge": "添加文档到知识库",
     "nextStepCustomize": "按需自定义提示词和设置",
-    "forkButton": "复刻助手",
-    "forking": "复刻中...",
+    "forkButton": "雇佣助手",
+    "forking": "雇佣中...",
     "error": "复刻助手失败，请重试。"
   },
   "infinite": {
