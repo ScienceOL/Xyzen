@@ -1,9 +1,11 @@
 import logging
-from typing import Any
+from datetime import datetime
+from typing import Any, cast
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import func
+from sqlalchemy import case, func, update
+from sqlalchemy import select as sa_select
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -11,9 +13,6 @@ from app.models.consume import (
     ConsumeRecord,
     ConsumeRecordCreate,
     ConsumeRecordUpdate,
-    DailyConsumeSummary,
-    LLMUsageRecord,
-    ToolCallRecord,
     UserConsumeSummary,
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
@@ -34,13 +33,6 @@ class ConsumeRepository:
         Creates a new consume record.
         This function does NOT commit the transaction, but it does flush the session
         to ensure the record object is populated with DB-defaults before being returned.
-
-        Args:
-            record_data: The Pydantic model containing the data for the new record.
-            user_id: The user ID (from authentication).
-
-        Returns:
-            The newly created ConsumeRecord instance.
         """
         logger.debug(f"Creating new consume record for user_id: {user_id}")
 
@@ -57,51 +49,21 @@ class ConsumeRepository:
         return record
 
     async def get_consume_record_by_id(self, record_id: UUID) -> ConsumeRecord | None:
-        """
-        Fetches a consume record by its ID.
-
-        Args:
-            record_id: The UUID of the record to fetch.
-
-        Returns:
-            The ConsumeRecord, or None if not found.
-        """
+        """Fetches a consume record by its ID."""
         logger.debug(f"Fetching consume record with id: {record_id}")
         result = await self.db.exec(select(ConsumeRecord).where(ConsumeRecord.id == record_id))
-        return result.one_or_none()
-
-    async def get_consume_record_by_biz_no(self, biz_no: int) -> ConsumeRecord | None:
-        """
-        Fetches a consume record by business number (for idempotency checks).
-
-        Args:
-            biz_no: The business number to search for.
-
-        Returns:
-            The ConsumeRecord, or None if not found.
-        """
-        logger.debug(f"Fetching consume record with biz_no: {biz_no}")
-        result = await self.db.exec(select(ConsumeRecord).where(ConsumeRecord.biz_no == biz_no))
         return result.one_or_none()
 
     async def update_consume_record(self, record_id: UUID, record_data: ConsumeRecordUpdate) -> ConsumeRecord | None:
         """
         Updates an existing consume record.
         This function does NOT commit the transaction.
-
-        Args:
-            record_id: The UUID of the record to update.
-            record_data: The Pydantic model containing the update data.
-
-        Returns:
-            The updated ConsumeRecord instance, or None if not found.
         """
         logger.debug(f"Updating consume record with id: {record_id}")
         record = await self.db.get(ConsumeRecord, record_id)
         if not record:
             return None
 
-        # Only update fields that are not None to avoid null constraint violations
         update_data = record_data.model_dump(exclude_unset=True, exclude_none=True)
         for key, value in update_data.items():
             if hasattr(record, key):
@@ -117,17 +79,7 @@ class ConsumeRepository:
     async def list_consume_records_by_user(
         self, user_id: str, limit: int = 100, offset: int = 0
     ) -> list[ConsumeRecord]:
-        """
-        Get list of consumption records for a user.
-
-        Args:
-            user_id: The user ID to fetch records for.
-            limit: Maximum number of records to return.
-            offset: Number of records to skip.
-
-        Returns:
-            List of ConsumeRecord instances ordered by creation time (desc).
-        """
+        """Get list of consumption records for a user."""
         logger.debug(f"Fetching consume records for user_id: {user_id}, limit: {limit}, offset: {offset}")
         result = await self.db.exec(
             select(ConsumeRecord)
@@ -141,15 +93,7 @@ class ConsumeRepository:
         return records
 
     async def list_consume_records_by_session(self, session_id: UUID) -> list[ConsumeRecord]:
-        """
-        Get list of consumption records for a session.
-
-        Args:
-            session_id: The session ID to fetch records for.
-
-        Returns:
-            List of ConsumeRecord instances ordered by creation time (desc).
-        """
+        """Get list of consumption records for a session."""
         logger.debug(f"Fetching consume records for session_id: {session_id}")
         result = await self.db.exec(
             select(ConsumeRecord)
@@ -161,15 +105,7 @@ class ConsumeRepository:
         return records
 
     async def list_consume_records_by_topic(self, topic_id: UUID) -> list[ConsumeRecord]:
-        """
-        Get list of consumption records for a topic.
-
-        Args:
-            topic_id: The topic ID to fetch records for.
-
-        Returns:
-            List of ConsumeRecord instances ordered by creation time (desc).
-        """
+        """Get list of consumption records for a topic."""
         logger.debug(f"Fetching consume records for topic_id: {topic_id}")
         result = await self.db.exec(
             select(ConsumeRecord)
@@ -179,6 +115,75 @@ class ConsumeRepository:
         records = list(result.all())
         logger.debug(f"Found {len(records)} consume records for topic {topic_id}")
         return records
+
+    # ------------------------------------------------------------------
+    # Settlement queries
+    # ------------------------------------------------------------------
+
+    async def list_records_for_settlement(
+        self,
+        session_id: UUID,
+        topic_id: UUID,
+        message_id: UUID | None,
+        consume_state: str = "pending",
+    ) -> list[ConsumeRecord]:
+        """Query pending ConsumeRecords for settlement.
+
+        Uses session_id + topic_id scope with an OR on message_id so that
+        records whose message_id is still NULL (tool response arrived before
+        STREAMING_START) are not silently skipped.
+        """
+        from sqlalchemy import or_
+
+        stmt = select(ConsumeRecord).where(
+            ConsumeRecord.session_id == session_id,
+            ConsumeRecord.topic_id == topic_id,
+            ConsumeRecord.consume_state == consume_state,
+        )
+        if message_id:
+            stmt = stmt.where(
+                or_(
+                    col(ConsumeRecord.message_id) == message_id,
+                    col(ConsumeRecord.message_id).is_(None),
+                )
+            )
+        result = await self.db.exec(stmt)
+        return list(result.all())
+
+    async def bulk_update_consume_state(
+        self,
+        record_ids: list[UUID],
+        consume_state: str,
+    ) -> None:
+        """Batch-update consume_state for a list of record IDs."""
+        if not record_ids:
+            return
+        stmt = update(ConsumeRecord).where(col(ConsumeRecord.id).in_(record_ids)).values(consume_state=consume_state)
+        await self.db.exec(stmt)
+        await self.db.flush()
+        logger.info("Bulk-updated %d records to consume_state=%s", len(record_ids), consume_state)
+
+    async def list_records_for_exception_settlement(
+        self,
+        user_id: str,
+        session_id: UUID,
+        topic_id: UUID,
+        since: datetime,
+    ) -> list[ConsumeRecord]:
+        """Query pending ConsumeRecords for the exception-path settlement."""
+        stmt = select(ConsumeRecord).where(
+            ConsumeRecord.user_id == user_id,
+            ConsumeRecord.session_id == session_id,
+            ConsumeRecord.topic_id == topic_id,
+            ConsumeRecord.consume_state == "pending",
+            ConsumeRecord.created_at >= since,
+        )
+        result = await self.db.exec(stmt)
+        return list(result.all())
+
+    # ------------------------------------------------------------------
+    # User consume summary
+    # ------------------------------------------------------------------
 
     async def get_user_consume_summary(self, user_id: str) -> UserConsumeSummary | None:
         """Get user consumption summary"""
@@ -191,18 +196,7 @@ class ConsumeRepository:
     async def create_user_consume_summary(
         self, summary_data: UserConsumeSummaryCreate, user_id: str
     ) -> UserConsumeSummary:
-        """
-        Creates a new user consume summary.
-        This function does NOT commit the transaction, but it does flush the session
-        to ensure the summary object is populated with DB-defaults before being returned.
-
-        Args:
-            summary_data: The Pydantic model containing the data for the new summary.
-            user_id: The user ID (from authentication).
-
-        Returns:
-            The newly created UserConsumeSummary instance.
-        """
+        """Creates a new user consume summary."""
         logger.debug(f"Creating new user consume summary for user_id: {user_id}")
 
         summary_dict = summary_data.model_dump()
@@ -219,24 +213,13 @@ class ConsumeRepository:
     async def update_user_consume_summary(
         self, user_id: str, summary_data: UserConsumeSummaryUpdate
     ) -> UserConsumeSummary | None:
-        """
-        Updates an existing user consume summary.
-        This function does NOT commit the transaction.
-
-        Args:
-            user_id: The user ID to update summary for.
-            summary_data: The Pydantic model containing the update data.
-
-        Returns:
-            The updated UserConsumeSummary instance, or None if not found.
-        """
+        """Updates an existing user consume summary."""
         logger.debug(f"Updating user consume summary for user_id: {user_id}")
 
         summary = await self.get_user_consume_summary(user_id)
         if not summary:
             return None
 
-        # Only update fields that are not None to avoid null constraint violations
         update_data = summary_data.model_dump(exclude_unset=True, exclude_none=True)
         for key, value in update_data.items():
             if hasattr(summary, key):
@@ -256,19 +239,7 @@ class ConsumeRepository:
         amount: int,
         consume_state: str = "pending",
     ) -> UserConsumeSummary:
-        """
-        Increments user consumption statistics.
-        This function does NOT commit the transaction.
-
-        Args:
-            user_id: User ID
-            auth_provider: Authentication provider
-            amount: Consumption amount
-            consume_state: Consumption state
-
-        Returns:
-            Updated user consumption summary
-        """
+        """Increments user consumption statistics."""
         logger.debug(f"Incrementing user consume for user_id: {user_id}, amount: {amount}, state: {consume_state}")
         summary = await self.get_user_consume_summary(user_id)
 
@@ -278,7 +249,6 @@ class ConsumeRepository:
         summary_data: UserConsumeSummaryCreate | UserConsumeSummaryUpdate
 
         if summary is None:
-            # Create new summary using the new pattern
             summary_data = UserConsumeSummaryCreate(
                 user_id=user_id,
                 auth_provider=auth_provider,
@@ -289,7 +259,6 @@ class ConsumeRepository:
             )
             return await self.create_user_consume_summary(summary_data, user_id)
         else:
-            # Update existing summary using the new pattern
             summary_data = UserConsumeSummaryUpdate(
                 total_amount=summary.total_amount + amount,
                 total_count=summary.total_count + 1,
@@ -297,7 +266,6 @@ class ConsumeRepository:
                 failed_count=summary.failed_count + failed,
             )
             updated_summary = await self.update_user_consume_summary(user_id, summary_data)
-            # This should not happen since we know the summary exists
             return updated_summary or summary
 
     async def get_total_consume_by_user(self, user_id: str) -> int:
@@ -336,43 +304,32 @@ class ConsumeRepository:
     async def get_daily_token_stats(
         self, date_str: str, user_id: str | None = None, tz: str | None = None
     ) -> dict[str, Any]:
-        """
-        Get token consumption statistics for a specific day.
+        """Get token consumption statistics for a specific day."""
+        tz_name = tz or "UTC"
 
-        Args:
-            date_str: Date string in YYYY-MM-DD format.
-            user_id: Optional user ID to filter by.
+        logger.debug(f"Getting daily token stats for date: {date_str}, user_id: {user_id}, tz: {tz_name}")
 
-        Returns:
-            Dictionary containing total_tokens, input_tokens, output_tokens, total_amount, record_count.
-        """
-        from datetime import datetime, timezone
+        date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
 
-        zone = ZoneInfo("UTC")
-        if tz:
-            try:
-                zone = ZoneInfo(tz)
-            except ZoneInfoNotFoundError as e:
-                raise ValueError(f"Invalid timezone: {tz}") from e
-
-        start_local = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=zone)
-        end_local = start_local.replace(hour=23, minute=59, second=59, microsecond=999999)
-        start_of_day = start_local.astimezone(timezone.utc)
-        end_of_day = end_local.astimezone(timezone.utc)
-
-        logger.debug(f"Getting daily token stats for {start_of_day} to {end_of_day}, user_id: {user_id}")
-
-        # Query for sum of tokens and amount
         stmt = select(
             func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),  # type: ignore
             func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
             func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
             func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
-            func.count().label("record_count"),  #
-        ).where(
-            ConsumeRecord.created_at >= start_of_day,
-            ConsumeRecord.created_at <= end_of_day,
-        )
+            func.coalesce(
+                func.sum(case((col(ConsumeRecord.record_type) == "llm", 1), else_=0)),
+                0,
+            ).label("record_count"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (col(ConsumeRecord.record_type) == "tool_call", 1),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("tool_call_count"),
+        ).where(date_expr == date_str)
 
         if user_id:
             stmt = stmt.where(ConsumeRecord.user_id == user_id)
@@ -387,21 +344,14 @@ class ConsumeRepository:
             "output_tokens": int(row.output_tokens),
             "total_amount": int(row.total_amount),
             "record_count": int(row.record_count),
+            "tool_call_count": int(row.tool_call_count),
         }
 
         logger.debug(f"Daily token stats: {stats}")
         return stats
 
     async def get_top_users_by_consumption(self, limit: int = 20) -> list[dict[str, Any]]:
-        """
-        Get top users by consumption amount.
-
-        Args:
-            limit: Maximum number of users to return
-
-        Returns:
-            List of dictionaries with user_id, auth_provider, total_amount, total_count, etc.
-        """
+        """Get top users by consumption amount."""
         logger.debug(f"Getting top {limit} users by consumption")
 
         result = await self.db.exec(
@@ -433,18 +383,7 @@ class ConsumeRepository:
         limit: int = 10000,
         offset: int = 0,
     ) -> list[ConsumeRecord]:
-        """
-        Get all consumption records with optional date filtering.
-
-        Args:
-            start_date: Start date in YYYY-MM-DD format (optional)
-            end_date: End date in YYYY-MM-DD format (optional)
-            tz: Timezone name (IANA), used to interpret start_date/end_date (optional, defaults to UTC)
-            limit: Maximum number of records to return (default: 10000)
-
-        Returns:
-            List of ConsumeRecord instances ordered by creation time (asc)
-        """
+        """Get all consumption records with optional date filtering."""
         from datetime import datetime, timezone
 
         logger.debug(f"Fetching consume records from {start_date} to {end_date}, limit: {limit}, offset: {offset}")
@@ -458,7 +397,6 @@ class ConsumeRepository:
             except ZoneInfoNotFoundError as e:
                 raise ValueError(f"Invalid timezone: {tz}") from e
 
-        # Apply date filters if provided
         if start_date:
             start_local = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=zone)
             start_dt = start_local.astimezone(timezone.utc)
@@ -471,7 +409,6 @@ class ConsumeRepository:
             end_dt = end_local.astimezone(timezone.utc)
             query = query.where(ConsumeRecord.created_at <= end_dt)
 
-        # Order by creation time ascending for chronological trend analysis
         query = query.order_by(ConsumeRecord.created_at.asc()).offset(offset).limit(limit)
 
         result = await self.db.exec(query)
@@ -487,25 +424,12 @@ class ConsumeRepository:
         end_date: str,
         tz: str = "Asia/Shanghai",
     ) -> dict[str, Any]:
-        """
-        Get aggregated consumption statistics for a user over a date range.
-
-        Args:
-            user_id: The user ID to fetch data for.
-            start_date: Start date in YYYY-MM-DD format.
-            end_date: End date in YYYY-MM-DD format.
-            tz: Timezone name (IANA), defaults to Asia/Shanghai.
-
-        Returns:
-            Dictionary with keys: daily (list), by_tier (dict), by_scene (dict).
-        """
+        """Get aggregated consumption statistics for a user over a date range."""
         logger.debug(f"Getting consumption range for user {user_id} from {start_date} to {end_date}, tz: {tz}")
 
-        # Parse date range using shared utility
         start_utc, end_utc, _zone = parse_date_range(start_date, end_date, tz)
         tz_name = tz
 
-        # Sparse daily dict — only days with actual records will be populated
         daily: dict[str, dict[str, Any]] = {}
 
         def _ensure_day(d: str) -> dict[str, Any]:
@@ -523,37 +447,46 @@ class ConsumeRepository:
             return daily[d]
 
         base_filter = (
-            ConsumeRecord.user_id == user_id,
-            ConsumeRecord.created_at >= start_utc,
-            ConsumeRecord.created_at <= end_utc,
+            col(ConsumeRecord.user_id) == user_id,
+            col(ConsumeRecord.created_at) >= start_utc,
+            col(ConsumeRecord.created_at) <= end_utc,
         )
 
-        # Single query: aggregate by date AND tier (superset of daily and by_tier)
         date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
+        tier_expr = func.coalesce(col(ConsumeRecord.model_tier), "standard")
         day_tier_stmt = (
-            select(  # type: ignore[call-overload]
+            sa_select(
                 date_expr.label("date"),
-                col(ConsumeRecord.model_tier).label("tier"),
+                cast(Any, tier_expr.label("tier")),
                 func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
                 func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
                 func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
                 func.coalesce(func.sum(ConsumeRecord.amount), 0).label("total_amount"),
-                func.count().label("record_count"),
-                func.coalesce(func.sum(ConsumeRecord.tool_call_count), 0).label("tool_call_count"),
+                func.coalesce(
+                    func.sum(case((col(ConsumeRecord.record_type) == "llm", 1), else_=0)),
+                    0,
+                ).label("record_count"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (col(ConsumeRecord.record_type) == "tool_call", 1),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("tool_call_count"),
             )
             .where(*base_filter)
-            .group_by(date_expr, ConsumeRecord.model_tier)
+            .group_by(date_expr, tier_expr)
         )
-        day_tier_rows = (await self.db.exec(day_tier_stmt)).all()
+        day_tier_rows = (await self.db.exec(cast(Any, day_tier_stmt))).all()
 
-        # Python-level aggregation: derive daily and by_tier from day_tier data
         by_tier: dict[str, dict[str, int]] = {}
 
         for row in day_tier_rows:
             date_str = str(row.date)
             tier_key = str(row.tier) if row.tier is not None else "unknown"
 
-            # Update daily data (accumulate to date dimension)
             day = _ensure_day(date_str)
             day["total_tokens"] += int(row.total_tokens)
             day["input_tokens"] += int(row.input_tokens)
@@ -562,7 +495,6 @@ class ConsumeRepository:
             day["record_count"] += int(row.record_count)
             day["tool_call_count"] += int(row.tool_call_count)
 
-            # Build by_tier data (accumulate to tier dimension)
             if tier_key not in by_tier:
                 by_tier[tier_key] = {
                     "total_tokens": 0,
@@ -580,7 +512,6 @@ class ConsumeRepository:
             by_tier[tier_key]["record_count"] += int(row.record_count)
             by_tier[tier_key]["tool_call_count"] += int(row.tool_call_count)
 
-            # Build nested by_tier data in daily (each day's tier breakdown)
             day["by_tier"][tier_key] = {
                 "total_tokens": int(row.total_tokens),
                 "input_tokens": int(row.input_tokens),
@@ -590,12 +521,12 @@ class ConsumeRepository:
                 "tool_call_count": int(row.tool_call_count),
             }
 
-        result: dict[str, Any] = {
+        result_dict: dict[str, Any] = {
             "daily": [daily[d] for d in sorted(daily.keys())],
             "by_tier": by_tier,
         }
-        logger.debug(f"Consumption range: {len(result['daily'])} days, {len(by_tier)} tiers")
-        return result
+        logger.debug(f"Consumption range: {len(result_dict['daily'])} days, {len(by_tier)} tiers")
+        return result_dict
 
     async def list_consume_records_by_user_range(
         self,
@@ -606,21 +537,7 @@ class ConsumeRepository:
         limit: int = 20,
         offset: int = 0,
     ) -> list[ConsumeRecord]:
-        """
-        Get paginated consume records for a user, optionally filtered by date range.
-
-        Args:
-            user_id: The user ID.
-            start_date: Optional start date in YYYY-MM-DD format.
-            end_date: Optional end date in YYYY-MM-DD format.
-            tz: Timezone name (IANA).
-            limit: Maximum number of records to return.
-            offset: Number of records to skip.
-
-        Returns:
-            List of ConsumeRecord instances ordered by creation time (desc).
-        """
-        # Validate timezone upfront
+        """Get paginated consume records for a user, optionally filtered by date range."""
         try:
             ZoneInfo(tz)
         except ZoneInfoNotFoundError as e:
@@ -651,19 +568,7 @@ class ConsumeRepository:
         end_date: str | None = None,
         tz: str = "Asia/Shanghai",
     ) -> int:
-        """
-        Count consume records for a user, optionally filtered by date range.
-
-        Args:
-            user_id: The user ID.
-            start_date: Optional start date in YYYY-MM-DD format.
-            end_date: Optional end date in YYYY-MM-DD format.
-            tz: Timezone name (IANA).
-
-        Returns:
-            Total count of matching records.
-        """
-        # Validate timezone upfront
+        """Count consume records for a user, optionally filtered by date range."""
         try:
             ZoneInfo(tz)
         except ZoneInfoNotFoundError as e:
@@ -690,17 +595,7 @@ class ConsumeRepository:
         end_date: str | None = None,
         tz: str | None = None,
     ) -> list[dict[str, Any]]:
-        """
-        Get daily user activity statistics (daily active users and new users).
-
-        Args:
-            start_date: Start date in YYYY-MM-DD format (optional)
-            end_date: End date in YYYY-MM-DD format (optional)
-            tz: Timezone name (IANA), used to interpret start_date/end_date (optional, defaults to UTC)
-
-        Returns:
-            List of dictionaries containing date, active_users, new_users for each day.
-        """
+        """Get daily user activity statistics (daily active users and new users)."""
         from datetime import date as date_type
         from datetime import datetime, timedelta, timezone
 
@@ -713,7 +608,6 @@ class ConsumeRepository:
             except ZoneInfoNotFoundError as e:
                 raise ValueError(f"Invalid timezone: {tz}") from e
 
-        # Default to last 30 days if no dates provided
         if not start_date:
             start_local = datetime.now(zone).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30)
         else:
@@ -741,7 +635,6 @@ class ConsumeRepository:
 
         daily: dict[str, dict[str, Any]] = {d: {"date": d, "active_users": 0, "new_users": 0} for d in days}
 
-        # Aggregate daily active users
         active_date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
         active_stmt = (
             select(
@@ -760,7 +653,6 @@ class ConsumeRepository:
             else:
                 daily[date_str] = {"date": date_str, "active_users": int(active_users), "new_users": 0}
 
-        # Aggregate daily new users (wallet created)
         from app.models.redemption import UserWallet
 
         new_date_expr = func.to_char(func.timezone(tz_name, UserWallet.created_at), "YYYY-MM-DD")
@@ -781,84 +673,3 @@ class ConsumeRepository:
         result_list = [daily[d] for d in sorted(daily.keys())]
         logger.debug(f"Found activity stats for {len(result_list)} days")
         return result_list
-
-    # ------------------------------------------------------------------
-    # LLMUsageRecord CRUD
-    # ------------------------------------------------------------------
-
-    async def create_llm_usage_record(self, record: LLMUsageRecord) -> LLMUsageRecord:
-        """Persist an LLMUsageRecord (flush only, no commit)."""
-        self.db.add(record)
-        await self.db.flush()
-        return record
-
-    async def list_llm_usage_by_message(self, message_id: UUID) -> list[LLMUsageRecord]:
-        result = await self.db.exec(select(LLMUsageRecord).where(LLMUsageRecord.message_id == message_id))
-        return list(result.all())
-
-    async def sum_llm_usage_by_message(self, message_id: UUID) -> dict[str, int]:
-        """Return aggregated token sums for a message_id."""
-        stmt = select(
-            func.coalesce(func.sum(LLMUsageRecord.input_tokens), 0).label("input_tokens"),
-            func.coalesce(func.sum(LLMUsageRecord.output_tokens), 0).label("output_tokens"),
-            func.coalesce(func.sum(LLMUsageRecord.total_tokens), 0).label("total_tokens"),
-        ).where(LLMUsageRecord.message_id == message_id)
-        result = await self.db.exec(stmt)
-        row = result.one()
-        return {
-            "input_tokens": int(row.input_tokens),
-            "output_tokens": int(row.output_tokens),
-            "total_tokens": int(row.total_tokens),
-        }
-
-    # ------------------------------------------------------------------
-    # ToolCallRecord CRUD
-    # ------------------------------------------------------------------
-
-    async def create_tool_call_record(self, record: ToolCallRecord) -> ToolCallRecord:
-        """Persist a ToolCallRecord (flush only, no commit)."""
-        self.db.add(record)
-        await self.db.flush()
-        return record
-
-    async def create_tool_call_records_batch(self, records: list[ToolCallRecord]) -> None:
-        """Batch-persist tool call records (flush only, no commit)."""
-        for r in records:
-            self.db.add(r)
-        if records:
-            await self.db.flush()
-
-    async def list_tool_calls_by_message(self, message_id: UUID) -> list[ToolCallRecord]:
-        result = await self.db.exec(select(ToolCallRecord).where(ToolCallRecord.message_id == message_id))
-        return list(result.all())
-
-    # ------------------------------------------------------------------
-    # DailyConsumeSummary CRUD
-    # ------------------------------------------------------------------
-
-    async def get_daily_summary(self, user_id: str, date_str: str) -> DailyConsumeSummary | None:
-        result = await self.db.exec(
-            select(DailyConsumeSummary).where(
-                DailyConsumeSummary.user_id == user_id,
-                DailyConsumeSummary.date == date_str,
-            )
-        )
-        return result.one_or_none()
-
-    async def list_daily_summaries(
-        self,
-        user_id: str,
-        start_date: str,
-        end_date: str,
-    ) -> list[DailyConsumeSummary]:
-        """List daily summaries for a user in a date range (inclusive)."""
-        result = await self.db.exec(
-            select(DailyConsumeSummary)
-            .where(
-                DailyConsumeSummary.user_id == user_id,
-                DailyConsumeSummary.date >= start_date,
-                DailyConsumeSummary.date <= end_date,
-            )
-            .order_by(DailyConsumeSummary.date.asc())
-        )
-        return list(result.all())

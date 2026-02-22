@@ -102,10 +102,58 @@ def calculate_tool_cost(tool_name: str) -> int:
     return TOOL_CREDIT_COSTS.get(tool_name, 0)
 
 
-def get_model_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
+CACHE_READ_DISCOUNT: float = 0.1  # cache_read tokens charged at 10% of input rate
+
+
+def get_model_cost(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_input_tokens: int = 0,
+) -> float:
     """Calculate real platform cost in USD for a model call."""
     rates = MODEL_COST_RATES.get(model_name)
     if not rates:
         logger.warning("Model %r not in MODEL_COST_RATES, cost will be 0", model_name)
         return 0.0
-    return input_tokens * rates.get("input", 0) + output_tokens * rates.get("output", 0)
+    regular_input = max(0, input_tokens - cache_read_input_tokens)
+    return (
+        regular_input * rates.get("input", 0)
+        + cache_read_input_tokens * rates.get("input", 0) * CACHE_READ_DISCOUNT
+        + output_tokens * rates.get("output", 0)
+    )
+
+
+def calculate_llm_credits(
+    input_tokens: int,
+    output_tokens: int,
+    tier_rate: float,
+    cache_read_input_tokens: int = 0,
+) -> int:
+    """Calculate credit consumption for one LLM call. LITE (rate=0) returns 0."""
+    if tier_rate <= 0:
+        return 0
+    regular_input = max(0, input_tokens - cache_read_input_tokens)
+    token_cost = (
+        regular_input * TOKEN_CREDIT_RATES["input"]
+        + cache_read_input_tokens * TOKEN_CREDIT_RATES["input"] * CACHE_READ_DISCOUNT
+        + output_tokens * TOKEN_CREDIT_RATES["output"]
+    )
+    return int(token_cost * tier_rate)
+
+
+def calculate_llm_cost_usd(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_input_tokens: int = 0,
+) -> float:
+    """Calculate real platform cost in USD for one LLM call. Semantic alias for get_model_cost."""
+    return get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens)
+
+
+def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int:
+    """Calculate settlement total = BASE_COST + sum of record amounts. LITE returns 0."""
+    if tier_rate <= 0:
+        return 0
+    return BASE_COST + record_amounts_sum

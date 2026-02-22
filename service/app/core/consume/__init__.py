@@ -1,13 +1,13 @@
 """Consumption tracking and billing package.
 
 Re-exports public interfaces so that existing imports like
-``from app.core.consume import create_consume_for_chat`` continue to work.
+``from app.core.consume import settle_chat_records`` continue to work.
 """
 
-# service.py (was core/consume.py)
-from app.core.consume.service import ConsumeService, create_consume_for_chat
+# service.py
+from app.core.consume.service import ConsumeService, settle_chat_records
 
-# strategy.py (was core/consume_strategy.py)
+# strategy.py
 from app.core.consume.strategy import (
     ConsumptionContext,
     ConsumptionResult,
@@ -15,28 +15,35 @@ from app.core.consume.strategy import (
     TierBasedConsumptionStrategy,
 )
 
-# calculator.py (was core/consume_calculator.py)
+# calculator.py
 from app.core.consume.calculator import ConsumptionCalculator
 
-# New modules
+# tracking.py
 from app.core.consume.tracking import (
     ConsumptionTrackingService,
     record_llm_usage_from_context,
     record_messages_usage_from_context,
     record_response_usage_from_context,
 )
+
+# context.py
 from app.core.consume.context import (
     TrackingContext,
     clear_tracking_context,
     get_tracking_context,
     set_tracking_context,
 )
+
+# pricing.py
 from app.core.consume.pricing import (
     BASE_COST,
     MODEL_COST_RATES,
     TIER_MODEL_CONSUMPTION_RATE,
     TOKEN_CREDIT_RATES,
     TOOL_CREDIT_COSTS,
+    calculate_llm_cost_usd,
+    calculate_llm_credits,
+    calculate_settlement_total,
     calculate_tool_cost,
     get_model_cost,
 )
@@ -44,7 +51,7 @@ from app.core.consume.pricing import (
 __all__ = [
     # service
     "ConsumeService",
-    "create_consume_for_chat",
+    "settle_chat_records",
     # strategy
     "ConsumptionContext",
     "ConsumptionResult",
@@ -68,6 +75,9 @@ __all__ = [
     "TIER_MODEL_CONSUMPTION_RATE",
     "TOKEN_CREDIT_RATES",
     "TOOL_CREDIT_COSTS",
+    "calculate_llm_cost_usd",
+    "calculate_llm_credits",
+    "calculate_settlement_total",
     "calculate_tool_cost",
     "get_model_cost",
 ]

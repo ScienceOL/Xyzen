@@ -127,6 +127,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     queryKey: ["consumption", "range", yearToShow],
     queryFn: () =>
       checkInService.getConsumptionRange(startDate, endDate, DEFAULT_TIMEZONE),
+    staleTime: 5 * 60 * 1000,
   });
 
   const data = rangeQuery.data as ConsumptionRangeResponse | undefined;
@@ -192,7 +193,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
   // Consolidated tier metrics calculation
   const tierMetrics = useMemo(() => {
     const knownTierEntries = Object.entries(displayData.byTier).filter(
-      ([k]) => k !== "unknown",
+      ([, v]) => v.record_count > 0,
     );
 
     return {
@@ -242,8 +243,8 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
   const heatmapOption = useMemo(() => {
     const heatData =
       data?.daily
-        .filter((d) => d.total_amount > 0)
-        .map((d) => [d.date, d.total_amount]) ?? [];
+        .filter((d) => d.record_count > 0)
+        .map((d) => [d.date, d.total_tokens, d.total_amount]) ?? [];
     const maxVal = Math.max(...(heatData.map((d) => d[1] as number) || [1]), 1);
 
     const levels = isDark
@@ -261,30 +262,26 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
       })),
     ];
 
-    const tooltipLabel = t("app.consumption.heatmapTooltip", {
-      amount: "{{amount}}",
-    });
+    const tokensLabel = t("app.consumption.totalToken");
+    const creditsLabel = t("app.consumption.totalCredits");
 
     // Mobile: monthly range; Desktop: full year
     let calendarRange: string | [string, string] = String(yearToShow);
     if (isMobile) {
-      const mStart = new Date(yearToShow, monthToShow, 1);
       const mEnd = new Date(yearToShow, monthToShow + 1, 0);
       const pad = (n: number) => String(n).padStart(2, "0");
       calendarRange = [
         `${yearToShow}-${pad(monthToShow + 1)}-01`,
         `${yearToShow}-${pad(monthToShow + 1)}-${pad(mEnd.getDate())}`,
       ];
-      // suppress unused var
-      void mStart;
     }
 
     return {
       backgroundColor: "transparent",
       tooltip: {
-        formatter: (params: { value: [string, number] }) => {
-          const [date, amount] = params.value;
-          return `<strong>${date}</strong><br/>${tooltipLabel.replace("{{amount}}", amount.toLocaleString())}`;
+        formatter: (params: { value: [string, number, number] }) => {
+          const [date, tokens, credits] = params.value;
+          return `<strong>${date}</strong><br/>${tokensLabel}: ${Math.round(tokens / 1000)}K<br/>${creditsLabel}: ${credits.toLocaleString()}`;
         },
       },
       visualMap: {
@@ -369,7 +366,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
 
   // Optimization 2: Stable heatmap event handler using ref
   const heatmapClickRef = useRef<
-    (params: { componentType: string; value: [string, number] }) => void
+    (params: { componentType: string; value: [string, number, number] }) => void
   >(() => {});
   heatmapClickRef.current = (params) => {
     if (params.componentType === "series") {
@@ -393,8 +390,10 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
 
   const heatmapEvents = useMemo(
     () => ({
-      click: (params: { componentType: string; value: [string, number] }) =>
-        heatmapClickRef.current(params),
+      click: (params: {
+        componentType: string;
+        value: [string, number, number];
+      }) => heatmapClickRef.current(params),
     }),
     [],
   );
@@ -493,6 +492,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <ReactECharts
                     echarts={echarts}
                     option={donutOptions.tokens}
+                    notMerge={true}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
                   />
@@ -518,6 +518,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <ReactECharts
                     echarts={echarts}
                     option={donutOptions.amount}
+                    notMerge={true}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
                   />
@@ -543,6 +544,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <ReactECharts
                     echarts={echarts}
                     option={donutOptions.inputTokens}
+                    notMerge={true}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
                   />
@@ -568,6 +570,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <ReactECharts
                     echarts={echarts}
                     option={donutOptions.count}
+                    notMerge={true}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
                   />
@@ -593,6 +596,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <ReactECharts
                     echarts={echarts}
                     option={donutOptions.outputTokens}
+                    notMerge={true}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
                   />
@@ -618,6 +622,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                   <ReactECharts
                     echarts={echarts}
                     option={donutOptions.toolCalls}
+                    notMerge={true}
                     style={{ height: isMobile ? "64px" : "80px" }}
                     opts={{ renderer: "svg" }}
                   />
@@ -693,6 +698,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                 <ReactECharts
                   echarts={echarts}
                   option={heatmapOption}
+                  notMerge={true}
                   style={{ height: isMobile ? "155px" : "140px" }}
                   opts={{ renderer: "svg" }}
                   onEvents={heatmapEvents}
@@ -715,7 +721,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
               const dayData = data?.daily.find((d) => d.date === selectedDate);
               if (!dayData) return null;
               const tierEntries = Object.entries(dayData.by_tier)
-                .filter(([k, v]) => k !== "unknown" && v.record_count > 0)
+                .filter(([, v]) => v.record_count > 0)
                 .sort((a, b) => b[1].total_amount - a[1].total_amount);
               return (
                 <Card className="backdrop-blur-md bg-white/70 dark:bg-neutral-900/70 border-white/20 dark:border-neutral-700/30 shadow-lg py-3 gap-0">
@@ -874,10 +880,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
                           pagedRows.map((d) => {
                             const isExpanded = expandedDate === d.date;
                             const tierEntries = Object.entries(d.by_tier)
-                              .filter(
-                                ([k, v]) =>
-                                  k !== "unknown" && v.record_count > 0,
-                              )
+                              .filter(([, v]) => v.record_count > 0)
                               .sort(
                                 (a, b) => b[1].total_amount - a[1].total_amount,
                               );

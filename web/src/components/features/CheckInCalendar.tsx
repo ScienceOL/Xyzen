@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -172,18 +172,24 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   });
   const queryClient = useQueryClient();
 
-  const today = new Date();
+  const [today] = useState(() => new Date());
   const displayYear = displayMonth.getFullYear();
   const displayMonthNumber = displayMonth.getMonth() + 1;
 
   // Calculate prev and next month for fetching data
-  const prevMonthDate = new Date(displayYear, displayMonthNumber - 2, 1);
-  const nextMonthDate = new Date(displayYear, displayMonthNumber, 1);
+  const { prevMonthDate, nextMonthDate } = useMemo(
+    () => ({
+      prevMonthDate: new Date(displayYear, displayMonthNumber - 2, 1),
+      nextMonthDate: new Date(displayYear, displayMonthNumber, 1),
+    }),
+    [displayYear, displayMonthNumber],
+  );
 
   // Get check-in status
   const statusQuery = useQuery({
     queryKey: ["check-in", "status"],
     queryFn: () => checkInService.getStatus(),
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
 
@@ -202,11 +208,13 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
             prevMonthDate.getFullYear(),
             prevMonthDate.getMonth() + 1,
           ),
+        staleTime: 5 * 60 * 1000,
       },
       {
         queryKey: ["check-in", "monthly", displayYear, displayMonthNumber],
         queryFn: () =>
           checkInService.getMonthlyCheckIns(displayYear, displayMonthNumber),
+        staleTime: 5 * 60 * 1000,
       },
       {
         queryKey: [
@@ -220,6 +228,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
             nextMonthDate.getFullYear(),
             nextMonthDate.getMonth() + 1,
           ),
+        staleTime: 5 * 60 * 1000,
       },
     ],
   });
@@ -257,6 +266,7 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
       return checkInService.getDayConsumption(selectedDateKey);
     },
     enabled: !!selectedDateKey,
+    staleTime: 60_000,
   });
 
   const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -265,13 +275,23 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
   const currentLocale = i18n.resolvedLanguage ?? i18n.language ?? "zh-CN";
 
   // O(1) lookup helpers using pre-computed Set/Map
-  function isDateCheckedIn(date: Date): boolean {
-    return checkedInDates.has(formatDateInCheckinTZ(date));
-  }
+  const getCheckInForDate = useCallback(
+    (date: Date): CheckInRecordResponse | undefined => {
+      return checkInByDate.get(formatDateInCheckinTZ(date));
+    },
+    [checkInByDate],
+  );
 
-  function getCheckInForDate(date: Date): CheckInRecordResponse | undefined {
-    return checkInByDate.get(formatDateInCheckinTZ(date));
-  }
+  // Stable references for Calendar props to prevent unnecessary re-renders
+  const calendarModifiers = useMemo(
+    () => ({
+      checkedIn: (date: Date) =>
+        checkedInDates.has(formatDateInCheckinTZ(date)),
+    }),
+    [checkedInDates],
+  );
+
+  const calendarDisabled = useCallback((date: Date) => date > today, [today]);
 
   // Handle check-in
   async function handleCheckIn() {
@@ -428,14 +448,12 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                       day_button:
                         "w-full h-auto aspect-square rounded-md transition-[transform,background-color,box-shadow] duration-150 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-neutral-900 dark:text-white hover:bg-neutral-900/5 dark:hover:bg-white/5 hover:shadow-sm data-[selected-single=true]:bg-transparent data-[selected-single=true]:shadow-none data-[selected-single=true]:ring-2 data-[selected-single=true]:ring-white data-[selected-single=true]:shadow-sm",
                     }}
-                    modifiers={{
-                      checkedIn: (date) => isDateCheckedIn(date),
-                    }}
+                    modifiers={calendarModifiers}
                     modifiersClassNames={{
                       checkedIn:
                         "[&>button]:bg-linear-to-br [&>button]:from-indigo-500 [&>button]:to-purple-600 [&>button]:text-white [&>button]:font-semibold [&>button]:shadow-md [&>button]:transition-[transform,filter,box-shadow] [&>button:hover]:-translate-y-px [&>button:hover]:brightness-110 [&>button:hover]:shadow-lg dark:[&>button]:from-indigo-600 dark:[&>button]:to-purple-700 [&>button[data-selected-single=true]]:ring-2 [&>button[data-selected-single=true]]:ring-white/60 [&>button[data-selected-single=true]]:shadow-lg [&:has(>button.day-outside)>button]:opacity-60 [&:has(>button.day-outside)>button]:bg-none [&:has(>button.day-outside)>button]:bg-indigo-500/20 [&:has(>button.day-outside)>button]:text-indigo-700 dark:[&:has(>button.day-outside)>button]:text-indigo-300",
                     }}
-                    disabled={(date) => date > today}
+                    disabled={calendarDisabled}
                   />
                 </motion.div>
               </AnimatePresence>
@@ -621,7 +639,9 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span>{t("app.consumption.colRequests")}</span>
+                                <span>
+                                  {t("app.consumption.conversations")}
+                                </span>
                                 <span className="font-semibold text-neutral-900 dark:text-white">
                                   {consumption.record_count}
                                 </span>

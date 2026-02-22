@@ -22,9 +22,7 @@ class TestErrCode:
         assert len(error.messages) == 2
 
     def test_with_errors_extracts_strings(self) -> None:
-        error = ErrCode.INTERNAL_SERVER_ERROR.with_errors(
-            ValueError("bad value"), RuntimeError("runtime fail")
-        )
+        error = ErrCode.INTERNAL_SERVER_ERROR.with_errors(ValueError("bad value"), RuntimeError("runtime fail"))
         assert "bad value" in error.messages
         assert "runtime fail" in error.messages
 

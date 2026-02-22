@@ -98,14 +98,15 @@ class UserConsumeRecordItem(BaseModel):
     """Response model for a single consume record item."""
 
     id: UUID
-    biz_no: int | None
+    record_type: str
     amount: int
-    scene: str | None
     model_tier: str | None
-    input_tokens: int | None
-    output_tokens: int | None
-    total_tokens: int | None
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
     consume_state: str
+    source: str
+    tool_name: str | None
     created_at: datetime
 
 
@@ -425,7 +426,7 @@ async def get_consumption_range(
     """
     Get aggregated consumption statistics for the current user over a date range.
 
-    Returns daily breakdown, model tier distribution, and scene distribution.
+    Returns daily breakdown and model tier distribution.
 
     Args:
         start_date: Start date in YYYY-MM-DD format
@@ -554,14 +555,15 @@ async def get_consumption_records(
         record_items = [
             UserConsumeRecordItem(
                 id=r.id,
-                biz_no=r.biz_no,
+                record_type=r.record_type,
                 amount=r.amount,
-                scene=r.scene,
                 model_tier=r.model_tier,
                 input_tokens=r.input_tokens,
                 output_tokens=r.output_tokens,
                 total_tokens=r.total_tokens,
                 consume_state=r.consume_state,
+                source=r.source,
+                tool_name=r.tool_name,
                 created_at=r.created_at,
             )
             for r in user_records

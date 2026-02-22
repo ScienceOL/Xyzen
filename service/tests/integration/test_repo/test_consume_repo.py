@@ -40,17 +40,6 @@ class TestConsumeRepository:
         result = await consume_repo.get_consume_record_by_id(uuid4())
         assert result is None
 
-    async def test_get_consume_record_by_biz_no(self, consume_repo: ConsumeRepository) -> None:
-        user_id = "test-user-biz-no"
-        record_data = ConsumeRecordCreateFactory.build(user_id=user_id)
-
-        created = await consume_repo.create_consume_record(record_data, user_id)
-        # biz_no is auto-assigned; just verify lookup works if it has one
-        if created.biz_no is not None:
-            fetched = await consume_repo.get_consume_record_by_biz_no(created.biz_no)
-            assert fetched is not None
-            assert fetched.id == created.id
-
     # ------------------------------------------------------------------
     # Update
     # ------------------------------------------------------------------
@@ -81,12 +70,8 @@ class TestConsumeRepository:
         user_b = "test-user-list-b"
 
         for _ in range(3):
-            await consume_repo.create_consume_record(
-                ConsumeRecordCreateFactory.build(user_id=user_a), user_a
-            )
-        await consume_repo.create_consume_record(
-            ConsumeRecordCreateFactory.build(user_id=user_b), user_b
-        )
+            await consume_repo.create_consume_record(ConsumeRecordCreateFactory.build(user_id=user_a), user_a)
+        await consume_repo.create_consume_record(ConsumeRecordCreateFactory.build(user_id=user_b), user_b)
 
         records = await consume_repo.list_consume_records_by_user(user_a)
         assert len(records) == 3
@@ -97,9 +82,7 @@ class TestConsumeRepository:
         user_id = "test-user-list-paged"
 
         for _ in range(5):
-            await consume_repo.create_consume_record(
-                ConsumeRecordCreateFactory.build(user_id=user_id), user_id
-            )
+            await consume_repo.create_consume_record(ConsumeRecordCreateFactory.build(user_id=user_id), user_id)
 
         page = await consume_repo.list_consume_records_by_user(user_id, limit=2, offset=1)
         assert len(page) == 2
@@ -134,6 +117,57 @@ class TestConsumeRepository:
 
         records = await consume_repo.list_consume_records_by_topic(topic_id)
         assert len(records) == 1
+
+    # ------------------------------------------------------------------
+    # Settlement queries
+    # ------------------------------------------------------------------
+
+    async def test_list_records_for_settlement(self, consume_repo: ConsumeRepository) -> None:
+        session_id = uuid4()
+        topic_id = uuid4()
+        message_id = uuid4()
+        user_id = "test-user-settlement"
+
+        await consume_repo.create_consume_record(
+            ConsumeRecordCreateFactory.build(
+                user_id=user_id,
+                session_id=session_id,
+                topic_id=topic_id,
+                message_id=message_id,
+                consume_state="pending",
+            ),
+            user_id,
+        )
+        # Record with no message_id should also be included
+        await consume_repo.create_consume_record(
+            ConsumeRecordCreateFactory.build(
+                user_id=user_id,
+                session_id=session_id,
+                topic_id=topic_id,
+                message_id=None,
+                consume_state="pending",
+            ),
+            user_id,
+        )
+
+        records = await consume_repo.list_records_for_settlement(session_id, topic_id, message_id)
+        assert len(records) == 2
+
+    async def test_bulk_update_consume_state(self, consume_repo: ConsumeRepository) -> None:
+        user_id = "test-user-bulk-update"
+        ids = []
+        for _ in range(3):
+            r = await consume_repo.create_consume_record(
+                ConsumeRecordCreateFactory.build(user_id=user_id, consume_state="pending"), user_id
+            )
+            ids.append(r.id)
+
+        await consume_repo.bulk_update_consume_state(ids, "success")
+
+        for rid in ids:
+            record = await consume_repo.get_consume_record_by_id(rid)
+            assert record is not None
+            assert record.consume_state == "success"
 
     # ------------------------------------------------------------------
     # User consume summary CRUD
@@ -175,9 +209,7 @@ class TestConsumeRepository:
     async def test_update_user_consume_summary_not_found(self, consume_repo: ConsumeRepository) -> None:
         from app.models.consume import UserConsumeSummaryUpdate
 
-        result = await consume_repo.update_user_consume_summary(
-            "nonexistent", UserConsumeSummaryUpdate(total_amount=1)
-        )
+        result = await consume_repo.update_user_consume_summary("nonexistent", UserConsumeSummaryUpdate(total_amount=1))
         assert result is None
 
     # ------------------------------------------------------------------
@@ -240,9 +272,7 @@ class TestConsumeRepository:
     async def test_get_consume_count_by_user(self, consume_repo: ConsumeRepository) -> None:
         user_id = "test-user-count"
         for _ in range(3):
-            await consume_repo.create_consume_record(
-                ConsumeRecordCreateFactory.build(user_id=user_id), user_id
-            )
+            await consume_repo.create_consume_record(ConsumeRecordCreateFactory.build(user_id=user_id), user_id)
 
         count = await consume_repo.get_consume_count_by_user(user_id)
         assert count == 3
@@ -312,17 +342,13 @@ class TestConsumeRepository:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
 
-        await consume_repo.create_consume_record(
-            ConsumeRecordCreateFactory.build(user_id=user_id), user_id
-        )
+        await consume_repo.create_consume_record(ConsumeRecordCreateFactory.build(user_id=user_id), user_id)
 
         records = await consume_repo.list_all_consume_records(start_date=today, end_date=today)
         assert len(records) >= 1
 
         # Yesterday should not include today's records (unless test runs at midnight)
-        old_records = await consume_repo.list_all_consume_records(
-            start_date=yesterday, end_date=yesterday
-        )
+        old_records = await consume_repo.list_all_consume_records(start_date=yesterday, end_date=yesterday)
         # Just verify it doesn't error; count depends on timing
         assert isinstance(old_records, list)
 
