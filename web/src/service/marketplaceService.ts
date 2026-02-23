@@ -54,7 +54,14 @@ export interface AgentSnapshot {
     description?: string;
     file_count: number;
     file_ids: string[];
+    total_size_bytes?: number;
   } | null;
+  skill_configs: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    scope: string;
+  }>;
   commit_message: string;
   created_at: string;
 }
@@ -80,6 +87,8 @@ export interface PublishRequest {
   is_published?: boolean;
   readme?: string | null;
   fork_mode?: ForkMode;
+  knowledge_set_id?: string | null;
+  skill_ids?: string[];
 }
 
 export interface PublishResponse {
@@ -119,7 +128,13 @@ export interface RequirementsResponse {
   knowledge_base: {
     name: string;
     file_count: number;
+    total_size_bytes: number;
   } | null;
+  skills: Array<{
+    name: string;
+    description?: string;
+    scope: string;
+  }>;
   provider_needed: boolean;
   graph_config?: Record<string, unknown> | null; // For agent type detection
 }

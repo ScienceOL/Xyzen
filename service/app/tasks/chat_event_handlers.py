@@ -94,6 +94,11 @@ class ChatTaskContext:
     cached_model_name: str | None = None
     cached_provider_id: str | None = None
 
+    # Developer reward attribution (resolved from agent.original_source_id at task start)
+    agent_id_for_attribution: UUID | None = None
+    marketplace_id: UUID | None = None
+    developer_user_id: str | None = None
+
 
 # ---------------------------------------------------------------------------
 # Helper: extract_content_text (re-exported so chat.py can still import it)
@@ -182,7 +187,7 @@ async def finalize_and_settle(
     access_token: str | None,
     description_suffix: str = "settlement",
 ) -> None:
-    """Consolidate settlement: query pending ConsumeRecords, sum amounts + BASE_COST,
+    """Consolidate settlement: query pending ConsumeRecords, sum amounts,
     deduct from wallet via settle_chat_records, and bulk-mark as success.
     """
     if not ctx.ai_message_obj:
@@ -192,7 +197,7 @@ async def finalize_and_settle(
         await _ensure_session_info(ctx)
         model_tier = ctx.cached_model_tier
 
-        # Get tier_rate for BASE_COST calculation
+        # Get tier_rate for settlement calculation
         tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
 
         # LITE tier = free
@@ -211,7 +216,7 @@ async def finalize_and_settle(
         record_ids = [r.id for r in records]
         record_amounts_sum = sum(r.amount for r in records)
 
-        # Total = BASE_COST * tier_rate + sum of individual record amounts
+        # Total = sum of individual record amounts
         total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
 
         remaining_amount = total_cost - pre_deducted_amount
@@ -223,6 +228,11 @@ async def finalize_and_settle(
                 auth_provider=ctx.auth_provider,
                 record_ids=record_ids,
                 total_amount=int(remaining_amount),
+                marketplace_id=ctx.marketplace_id,
+                developer_user_id=ctx.developer_user_id,
+                session_id=ctx.session_id,
+                topic_id=ctx.topic_id,
+                message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
             )
         elif record_ids:
             # No billing needed but still mark records as success
@@ -397,6 +407,9 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
             message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
             cache_creation_input_tokens=cache_creation,
             cache_read_input_tokens=cache_read,
+            agent_id=ctx.agent_id_for_attribution,
+            marketplace_id=ctx.marketplace_id,
+            developer_user_id=ctx.developer_user_id,
         )
     except Exception as e:
         logger.warning(f"Failed to record LLM usage to DB (non-fatal): {e}")
@@ -492,6 +505,9 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
                 session_id=ctx.session_id,
                 topic_id=ctx.topic_id,
                 message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
+                agent_id=ctx.agent_id_for_attribution,
+                marketplace_id=ctx.marketplace_id,
+                developer_user_id=ctx.developer_user_id,
             )
         except Exception as e:
             logger.warning(f"Failed to record tool call to DB (non-fatal): {e}")

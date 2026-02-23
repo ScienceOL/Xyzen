@@ -14,6 +14,8 @@ import { Crown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { TopicTabBar } from "./components/TopicTabBar";
+import { useAgentTopics } from "./hooks";
 import { AgentData } from "./types";
 
 interface FocusedViewProps {
@@ -166,12 +168,19 @@ export function FocusedView({
     [agentDataMap],
   );
 
-  // Activate the channel for the selected agent
+  // Topic management for this agent
+  const {
+    openTabs,
+    sessionId,
+    activeTopicId,
+    respondingTopicIds,
+    createTopic,
+    closeTab,
+  } = useAgentTopics(agent.agentId);
+
+  // Activate the channel for the selected agent (initial activation)
   useEffect(() => {
     if (agent.agentId) {
-      // Read action from store directly to avoid unstable function references
-      // in the dependency array, which would re-trigger this effect on every
-      // store update and race with active streaming.
       useXyzen
         .getState()
         .activateChannelForAgent(agent.agentId)
@@ -180,6 +189,16 @@ export function FocusedView({
         });
     }
   }, [agent.agentId]);
+
+  const handleSelectTopic = useCallback(
+    async (topicId: string) => {
+      if (!sessionId) return;
+      await useXyzen
+        .getState()
+        .ensureChannelForTopic(topicId, sessionId, agent.agentId);
+    },
+    [sessionId, agent.agentId],
+  );
 
   useEffect(() => {
     // Check if user is typing in an editable element
@@ -564,8 +583,19 @@ export function FocusedView({
         className="ml-4 spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10"
         ref={chatRef}
       >
-        {/* XyzenChat Component - No modifications, just wrapped */}
-        <XyzenChat />
+        {/* Topic Tab Bar */}
+        <TopicTabBar
+          tabs={openTabs}
+          activeTopicId={activeTopicId}
+          respondingTopicIds={respondingTopicIds}
+          onSelectTopic={handleSelectTopic}
+          onCloseTopic={closeTab}
+          onCreateTopic={createTopic}
+        />
+        {/* XyzenChat — min-h-0 lets it shrink within the flex column */}
+        <div className="flex-1 min-h-0">
+          <XyzenChat />
+        </div>
       </motion.div>
 
       {/* 3. Capsule Panel - Right Side

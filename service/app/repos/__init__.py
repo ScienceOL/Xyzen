@@ -6,6 +6,7 @@ from .agent_snapshot import AgentSnapshotRepository
 from .chat_share import ChatShareRepository
 from .citation import CitationRepository
 from .consume import ConsumeRepository
+from .developer_earning import DeveloperEarningRepository
 from .file import FileRepository
 from .knowledge_set import KnowledgeSetRepository
 from .message import MessageRepository
@@ -28,6 +29,7 @@ __all__ = [
     "ChatShareRepository",
     "CitationRepository",
     "ConsumeRepository",
+    "DeveloperEarningRepository",
     "FileRepository",
     "MessageRepository",
     "PushSubscriptionRepository",

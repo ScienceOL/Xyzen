@@ -133,7 +133,7 @@ class CheckInService:
         check_in = await self.check_in_repo.create_check_in(check_in_data)
 
         # Credit points to user wallet
-        wallet = await self.redemption_service.credit_balance(user_id, points, "每日签到奖励")
+        wallet = await self.redemption_service.credit_balance(user_id, points, "daily_checkin", credit_type="free")
 
         logger.info(
             f"Check-in completed for user {user_id}: "

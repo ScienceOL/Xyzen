@@ -91,7 +91,8 @@
       "autoConfigured": "自动配置",
       "knowledgeBase": {
         "title": "知识库：",
-        "description": "原助手使用了 {{count}} 个文件。复刻此助手时，这些文件将被复制到你的工作区。"
+        "description": "原助手使用了 {{count}} 个文件（{{size}}）。复刻此助手时，这些文件将被复制到你的工作区。",
+        "sizeRequired": "所需空间：{{size}}"
       },
       "none": "无特殊要求！复刻后即可直接使用。",
       "loading": "正在加载运行要求..."
@@ -174,6 +175,24 @@
     "forkMode": {
       "label": "复刻模式",
       "help": "控制用户对其复刻副本配置的访问权限"
+    },
+    "knowledgeBase": {
+      "label": "知识库",
+      "hint": "选择要包含在发布助手中的知识库",
+      "none": "无",
+      "fileCount": "{{count}} 个文件"
+    },
+    "skills": {
+      "label": "技能",
+      "hint": "选择要包含在发布助手中的技能",
+      "empty": "暂无可用技能",
+      "builtin": "内置",
+      "attached": "已关联"
+    },
+    "mcpServers": {
+      "label": "MCP 服务",
+      "hint": "用户在复刻后需要配置自己的 MCP 连接。",
+      "empty": "暂无关联的 MCP 服务"
     }
   },
   "simplePromptEditor": {
@@ -215,7 +234,8 @@
     "editable": "可编辑",
     "locked": "锁定",
     "editableDescription": "用户可以查看和修改配置",
-    "lockedDescription": "配置已隐藏且为只读"
+    "lockedDescription": "配置已隐藏且为只读",
+    "rewardRate": "积分分成：{{rate}}"
   },
   "fork": {
     "title": "复刻 Agent：{{name}}",

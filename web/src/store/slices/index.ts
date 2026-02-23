@@ -9,3 +9,4 @@ export * from "./mcpToolSlice";
 export * from "./notificationSlice";
 export * from "./providerSlice";
 export * from "./uiSlice/";
+export * from "./walletSlice";

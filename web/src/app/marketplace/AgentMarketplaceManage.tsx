@@ -39,6 +39,53 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useListingEarnings } from "@/hooks/useDeveloper";
+import type { ForkMode as ForkModeType } from "@/service/marketplaceService";
+
+function EarningsCard({
+  marketplaceId,
+  forkMode,
+}: {
+  marketplaceId: string;
+  forkMode: ForkModeType;
+}) {
+  const { data: earnings } = useListingEarnings(marketplaceId);
+  const rate = forkMode === "editable" ? "30%" : "3%";
+
+  return (
+    <div className="rounded-sm border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+        Earnings
+      </h3>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50">
+          <span className="text-sm text-neutral-600 dark:text-neutral-400">
+            Reward Rate
+          </span>
+          <span className="font-bold text-indigo-600 dark:text-indigo-400">
+            {rate}
+          </span>
+        </div>
+        <div className="flex items-center justify-between rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50">
+          <span className="text-sm text-neutral-600 dark:text-neutral-400">
+            Total Earned
+          </span>
+          <span className="font-bold text-neutral-900 dark:text-neutral-100">
+            {earnings?.total_earned ?? 0}
+          </span>
+        </div>
+        <div className="flex items-center justify-between rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50">
+          <span className="text-sm text-neutral-600 dark:text-neutral-400">
+            Usage Count
+          </span>
+          <span className="font-bold text-neutral-900 dark:text-neutral-100">
+            {earnings?.earning_count ?? 0}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface AgentMarketplaceManageProps {
   marketplaceId: string;
@@ -819,6 +866,9 @@ export default function AgentMarketplaceManage({
               </div>
             </div>
 
+            {/* Earnings Card */}
+            <EarningsCard marketplaceId={listing.id} forkMode={listing.fork_mode} />
+
             {/* Actions Card */}
             <div className="rounded-sm border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
@@ -886,6 +936,9 @@ export default function AgentMarketplaceManage({
                     <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.forkMode.editableDescription")}
                     </div>
+                    <div className="mt-1 text-xs font-medium text-green-600 dark:text-green-400">
+                      {t("marketplace.forkMode.rewardRate", { rate: "30%" })}
+                    </div>
                   </div>
                   {listing.fork_mode === "editable" && (
                     <CheckCircleIcon className="h-5 w-5 shrink-0 text-green-500" />
@@ -915,6 +968,9 @@ export default function AgentMarketplaceManage({
                     </div>
                     <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {t("marketplace.forkMode.lockedDescription")}
+                    </div>
+                    <div className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      {t("marketplace.forkMode.rewardRate", { rate: "3%" })}
                     </div>
                   </div>
                   {listing.fork_mode === "locked" && (

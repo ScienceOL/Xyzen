@@ -445,6 +445,12 @@
     "region": "Region",
     "about": "About"
   },
+  "wallet": {
+    "freeBalance": "Free",
+    "paidBalance": "Paid",
+    "earnedBalance": "Earned",
+    "totalBalance": "Total"
+  },
   "checkInCalendar": {
     "title": "Check-in Calendar",
     "checkedBadge": "Done",

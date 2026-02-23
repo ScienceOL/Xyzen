@@ -561,13 +561,13 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
           agentId={agent.id}
           agentName={agent.name}
           agentDescription={agent.description}
-          agentPrompt={agent.prompt}
           graphConfig={agent.graph_config}
           mcpServers={agent.mcp_servers?.map((s) => ({
             id: s.id,
             name: s.name,
             description: s.description || undefined,
           }))}
+          knowledgeSetId={agent.knowledge_set_id}
           onPublishSuccess={(marketplaceId) => {
             console.log("Agent published to marketplace:", marketplaceId);
             setShowPublishModal(false);

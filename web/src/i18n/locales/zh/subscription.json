@@ -71,5 +71,47 @@
     "expired": "已过期",
     "expiresToday": "今日到期",
     "expiresIn": "{{days}} 天后到期"
+  },
+
+  "creator": "创作者",
+
+  "creatorTab": {
+    "walletTitle": "开发者钱包",
+    "available": "可提现",
+    "totalEarned": "累计收益",
+    "totalWithdrawn": "已提现",
+    "withdraw": "提现",
+    "withdrawing": "提现中...",
+    "withdrawSuccess": "已提现 {{amount}} 积分",
+    "insufficientBalance": "余额不足",
+    "rewardRates": "收益费率",
+    "editableRate": "可编辑 Fork：{{rate}}%",
+    "lockedRate": "锁定 Fork：{{rate}}%",
+    "earningsTitle": "Agent 收益",
+    "noEarnings": "暂无收益",
+    "noEarningsHint": "发布 Agent 到市场即可开始赚取收益",
+    "earned": "收益",
+    "uses": "使用次数",
+    "lastEarned": "最近收益",
+    "achievementsTitle": "成就",
+    "achievementLocked": "继续努力！",
+    "achievements": {
+      "firstPublish": "初次发布",
+      "firstPublishDesc": "发布你的第一个 Agent",
+      "fiveAgents": "多产创作者",
+      "fiveAgentsDesc": "发布 5 个 Agent",
+      "firstEarning": "首次收益",
+      "firstEarningDesc": "赚取第一个积分",
+      "earning100": "冉冉新星",
+      "earning100Desc": "累计收益 100 积分",
+      "earning1000": "顶级创作者",
+      "earning1000Desc": "累计收益 1,000 积分",
+      "likes10": "人气之选",
+      "likes10Desc": "获得 10 个点赞",
+      "forks10": "广泛使用",
+      "forks10Desc": "获得 10 次 Fork",
+      "views100": "热门创作者",
+      "views100Desc": "获得 100 次浏览"
+    }
   }
 }

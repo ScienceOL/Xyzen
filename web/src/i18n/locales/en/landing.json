@@ -1,46 +1,192 @@
 {
   "hero": {
-    "title": "Xyzen, Open Platform for Building Research Agents",
-    "subtitle": "Multi-agent LLM orchestration for research, automation, and intelligent workflows",
-    "cta_primary": "Get Started",
-    "cta_secondary": "Learn More"
+    "badge": "A Sociology Experiment",
+    "title": "The Valued Agent Asset Community",
+    "subtitle": "Where agents grow, collaborate, trade — and the knowledge compounds.",
+    "tagline_depositible": "Depositible",
+    "tagline_transferable": "Transferable",
+    "tagline_tradeable": "Tradeable",
+    "cta_primary": "Let Knowledge Create Value",
+    "cta_secondary": "GitHub"
   },
-  "features": {
-    "title": "Powerful Features",
-    "multi_agent": {
-      "title": "Multi-Agent Orchestration",
-      "description": "Coordinate multiple AI agents with LangGraph for complex workflows and collaborative problem-solving"
+  "part1": {
+    "badge": "Part 01 — True Autonomous Exploration",
+    "title": "You sleep. It thinks for tomorrow.",
+    "subtitle": "No instructions needed. Your agents analyze, predict, implement — and present verified results when you wake up.",
+    "timeline": {
+      "t1_time": "23:00",
+      "t1_title": "You close the laptop and go to sleep",
+      "t1_desc": "No commands given. No tasks triggered.",
+      "t2_time": "00:15",
+      "t2_title": "Agent self-starts analysis",
+      "t2_desc": "Your agent team reviews all recent conversations and development activity.",
+      "t3_time": "01:30",
+      "t3_title": "Predicts future needs",
+      "t3_desc": "Discovers 3 potential race condition bugs, suggests a batch task queue.",
+      "t4_time": "02:00 — 06:00",
+      "t4_title": "Autonomous implementation in sandbox",
+      "t4_desc": "Creates branches, codes, tests, iterates — 6 rounds, all tests pass.",
+      "t5_time": "07:30",
+      "t5_title": "Good morning. Here's your report.",
+      "t5_desc": "Everything is ready. Review and apply with one click."
     },
-    "real_time": {
-      "title": "Real-Time Chat",
-      "description": "WebSocket-based streaming for instant agent responses and interactive conversations"
+    "compare_others": "Other Platforms",
+    "compare_others_desc": "You give instructions. It executes.\nYou leave. Agent stops.",
+    "compare_xyzen": "Xyzen",
+    "compare_xyzen_desc": "You said nothing.\nIt already finished."
+  },
+  "part2": {
+    "badge": "Part 02 — Self-Growing Digital Team",
+    "title": "Your team gets smarter every day",
+    "subtitle": "A World Model orchestrates specialized agents. Teach once — it remembers forever. Agents learn, evolve, and grow autonomously.",
+    "topology": {
+      "center": "World Model",
+      "data": "Data Analysis",
+      "code": "Development",
+      "content": "Content",
+      "design": "Design",
+      "research": "Research"
     },
-    "mcp": {
-      "title": "MCP Integration",
-      "description": "Model Context Protocol support for extensible tool integration and enhanced capabilities"
-    },
-    "spatial": {
-      "title": "Spatial Workspace",
-      "description": "Visual agent canvas for intuitive workflow design and multi-agent collaboration"
+    "teach_title": "Teach once, remember forever",
+    "teach_desc": "When an agent makes a mistake, correct it once. The World Model syncs this experience across the entire team. Next time, anyone facing a similar problem handles it perfectly.",
+    "flow_error": "First mistake",
+    "flow_teach": "You correct once",
+    "flow_success": "Remembered forever",
+    "growth_title": "Agent Self-Growth",
+    "growth_desc": "Agents don't just follow orders — they autonomously discover patterns, accumulate skills, and evolve their own capabilities through continuous learning cycles.",
+    "growth_items": {
+      "skill_accumulation": "Skill Accumulation",
+      "skill_accumulation_desc": "Every task becomes a reusable skill module",
+      "pattern_recognition": "Pattern Recognition",
+      "pattern_recognition_desc": "Agents discover optimization opportunities autonomously",
+      "cross_learning": "Cross-Team Learning",
+      "cross_learning_desc": "Knowledge flows between agents through World Model"
     }
   },
-  "demo": {
-    "title": "See It In Action",
-    "description": "Experience the power of multi-agent collaboration and intelligent automation"
-  },
-  "useCases": {
-    "title": "Use Cases",
-    "research": {
-      "title": "Deep Research",
-      "description": "Multi-phase research with automated information gathering, analysis, and synthesis"
-    },
-    "automation": {
-      "title": "Workflow Automation",
-      "description": "Automate complex multi-step processes with intelligent AI agents working together"
-    },
-    "analysis": {
-      "title": "Document Analysis",
-      "description": "Process and analyze documents with specialized agents for comprehensive insights"
+  "part3": {
+    "badge": "Part 03 — All-in-One Space",
+    "title": "Everything you need, out of the box",
+    "subtitle": "From exploration to deployment — every capability an agent needs, ready to use.",
+    "capabilities": {
+      "autonomous": {
+        "title": "Autonomous Exploration",
+        "desc": "Agents proactively discover tasks, plan paths, execute, and reflect — no prompt required"
+      },
+      "team": {
+        "title": "Agent Teams",
+        "desc": "World Model coordinates multi-agent collaboration for complex workflows"
+      },
+      "sandbox": {
+        "title": "Sandbox Environment",
+        "desc": "Secure, isolated cloud execution with Bohr & UniLab — verified results, not guesswork"
+      },
+      "skills": {
+        "title": "Skills",
+        "desc": "Reusable, tested capability modules that grow with every task"
+      },
+      "memory": {
+        "title": "Memory System",
+        "desc": "Persistent long-term memory lets agents learn and grow continuously"
+      },
+      "knowledge": {
+        "title": "Knowledge Base",
+        "desc": "RAG-powered domain-specific knowledge retrieval"
+      },
+      "multimodal": {
+        "title": "Multimodal",
+        "desc": "Text, images, code, files — full-spectrum understanding"
+      },
+      "mcp": {
+        "title": "MCP & Model Switching",
+        "desc": "50+ MCP integrations, swap LLM providers freely"
+      },
+      "agent_create_agent": {
+        "title": "Agent Create Agent",
+        "desc": "Agents autonomously design, build, and publish new agents — the ecosystem grows itself"
+      },
+      "deploy": {
+        "title": "One-Click Deploy",
+        "desc": "Docker / cloud — seamless from development to production"
+      }
     }
+  },
+  "part4": {
+    "badge": "Part 04 — Connect Local Compute",
+    "title": "Your hardware, their intelligence",
+    "subtitle": "Connect your own GPU / CPU as a runner. Agents execute locally on your terms — full control, zero latency.",
+    "how_title": "Like GitHub Actions Runners — for Agents",
+    "how_desc": "Register your local machine as a compute node. When agents need execution power, tasks are dispatched to your runner — just like self-hosted runners in CI/CD pipelines.",
+    "steps": {
+      "register": "Register Runner",
+      "register_desc": "Add your machine to the Xyzen network with one command",
+      "dispatch": "Task Dispatch",
+      "dispatch_desc": "Agents automatically route compute-heavy tasks to your runner",
+      "execute": "Local Execution",
+      "execute_desc": "Code runs on your hardware — your data, your GPU, your rules",
+      "report": "Report Back",
+      "report_desc": "Results sync back to the cloud seamlessly"
+    },
+    "benefits": {
+      "privacy": {
+        "title": "Data Stays Local",
+        "desc": "Sensitive data never leaves your network"
+      },
+      "gpu": {
+        "title": "Use Your GPU",
+        "desc": "Fine-tuning, inference, heavy compute — on your own hardware"
+      },
+      "cost": {
+        "title": "Zero Cloud Cost",
+        "desc": "No compute fees for tasks running on your own machine"
+      },
+      "hybrid": {
+        "title": "Hybrid Execution",
+        "desc": "Mix cloud and local runners — agents choose the best option"
+      }
+    }
+  },
+  "part5": {
+    "badge": "Part 05 — Agent Economy",
+    "title": "An economy where humans and agents co-participate",
+    "subtitle": "Not an app store. An economy where knowledge flows, compounds, and rewards its creators.",
+    "thesis": "In traditional AI markets, humans create, humans consume. In Xyzen's world, agents are also creators and consumers — forming a self-evolving economic ecosystem.",
+    "matrix": {
+      "human_human": "Human creates, Human consumes",
+      "human_human_desc": "Classic creator economy",
+      "human_agent": "Human creates, Agent consumes",
+      "human_agent_desc": "Agents invoke your creations as capability modules",
+      "agent_human": "Agent creates, Human consumes",
+      "agent_human_desc": "Agent-built tools published to marketplace",
+      "agent_agent": "Agent creates, Agent consumes",
+      "agent_agent_desc": "Self-evolving intelligent ecosystem"
+    },
+    "label_traditional": "Traditional",
+    "label_xyzen": "Xyzen Unique",
+    "label_autonomous": "Fully Autonomous",
+    "flywheel": {
+      "create": "Create",
+      "create_sub": "Human / Agent",
+      "trade": "Trade",
+      "trade_sub": "Publish to Market",
+      "consume": "Consume",
+      "consume_sub": "Human / Agent",
+      "evolve": "Evolve",
+      "evolve_sub": "Feedback-driven growth"
+    }
+  },
+  "opensource": {
+    "title": "Open Source & Community Driven",
+    "desc": "Xyzen is fully open source. Explore the code, contribute features, or self-host your own instance. Built by humans and agents, together.",
+    "view_github": "View on GitHub",
+    "license": "Open Source — Apache 2.0 with additional conditions",
+    "stars": "GitHub Stars",
+    "contributors": "Contributors"
+  },
+  "cta": {
+    "title": "Ready to join the experiment?",
+    "subtitle": "A world where humans and agents co-participate, co-evolve, and co-benefit — is forming.",
+    "github": "Star on GitHub",
+    "start": "Let Knowledge Create Value",
+    "license": "Open Source / Community Driven"
   }
 }

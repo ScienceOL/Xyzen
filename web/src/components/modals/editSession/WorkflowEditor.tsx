@@ -251,13 +251,13 @@ export default function WorkflowEditor({
           agentId={agentToEdit.id}
           agentName={agentToEdit.name}
           agentDescription={agentToEdit.description}
-          agentPrompt={agentToEdit.prompt}
           graphConfig={agentToEdit.graph_config}
           mcpServers={agentToEdit.mcp_servers?.map((s) => ({
             id: s.id,
             name: s.name,
             description: s.description || undefined,
           }))}
+          knowledgeSetId={agentToEdit.knowledge_set_id}
           onPublishSuccess={(marketplaceId) => {
             console.log("Agent published to marketplace:", marketplaceId);
             setShowPublishModal(false);

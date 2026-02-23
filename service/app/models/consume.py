@@ -28,6 +28,15 @@ class ConsumeRecordBase(SQLModel):
     message_id: UUID | None = Field(default=None, index=True, description="Associated message ID")
     model_tier: str | None = Field(default=None, description="Model tier used (ultra/pro/standard/lite)")
 
+    # Developer reward attribution
+    agent_id: UUID | None = Field(default=None, index=True, description="Agent used for this consumption")
+    marketplace_id: UUID | None = Field(
+        default=None, index=True, description="Marketplace listing ID (from agent.original_source_id)"
+    )
+    developer_user_id: str | None = Field(
+        default=None, index=True, description="Developer user ID who published the marketplace agent"
+    )
+
     # Credits
     amount: int = Field(default=0, description="Credit consumption for this record")
     consume_state: str = Field(default="pending", description="Consumption state: pending/success/failed")

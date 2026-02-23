@@ -168,7 +168,7 @@ class SubscriptionService:
 
         # Credit wallet
         redemption_repo = RedemptionRepository(self.db)
-        await redemption_repo.credit_wallet(user_id, amount)
+        await redemption_repo.credit_wallet_typed(user_id, amount, "paid", "subscription_monthly")
 
         # Update last_credits_claimed_at
         await self.repo.update_last_credits_claimed(user_id)

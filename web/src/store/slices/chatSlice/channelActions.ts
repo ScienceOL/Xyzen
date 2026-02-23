@@ -3,6 +3,7 @@ import { HttpError } from "@/service/http/client";
 import { llmProviderService } from "@/service/llmProviderService";
 import { sessionService, type SessionCreate } from "@/service/sessionService";
 import { topicService } from "@/service/topicService";
+import i18n from "i18next";
 import { providerCore } from "@/core/provider";
 import xyzenService from "@/service/xyzenService";
 import { cleanupTopicResources, pendingChannelOps } from "./helpers";
@@ -326,7 +327,7 @@ export function createChannelActions(
           } else {
             // Session exists but no topics, create a default topic
             const newTopic = await topicService.createTopic({
-              name: "新的聊天",
+              name: i18n.t("app.toolbar.newChat"),
               session_id: session.id,
             });
 
@@ -437,7 +438,7 @@ export function createChannelActions(
           }
 
           const newTopic = await topicService.createTopic({
-            name: "新的聊天",
+            name: i18n.t("app.toolbar.newChat"),
             session_id: existingSession.id,
           });
 
@@ -554,7 +555,7 @@ export function createChannelActions(
         } else {
           // Session created but no default topic - create one manually
           const newTopic = await topicService.createTopic({
-            name: "新的聊天",
+            name: i18n.t("app.toolbar.newChat"),
             session_id: newSession.id,
           });
 
@@ -734,6 +735,48 @@ export function createChannelActions(
           "error",
         );
       }
+    },
+
+    ensureChannelForTopic: async (
+      topicId: string,
+      sessionId: string,
+      agentId: string,
+    ) => {
+      const { channels } = get();
+
+      if (!channels[topicId]) {
+        // Fetch session metadata so the channel has provider/model info
+        let session;
+        try {
+          session = await sessionService.getSessionByAgent(agentId);
+        } catch {
+          // Fallback: create a minimal channel without provider/model
+        }
+
+        const channel: ChatChannel = {
+          id: topicId,
+          sessionId,
+          title: "",
+          messages: [],
+          agentId,
+          provider_id: session?.provider_id,
+          model: session?.model,
+          model_tier: session?.model_tier,
+          knowledge_set_id: session?.knowledge_set_id,
+          connected: false,
+          error: null,
+        };
+
+        set((state) => {
+          const existing = state.channels[topicId];
+          state.channels[topicId] = mergeChannelPreservingRuntime(
+            existing,
+            channel,
+          );
+        });
+      }
+
+      await get().activateChannel(topicId);
     },
 
     updateSessionProviderAndModel: async (

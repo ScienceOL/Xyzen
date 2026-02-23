@@ -11,6 +11,7 @@ import type {
   NotificationSlice,
   ProviderSlice,
   UiSlice,
+  WalletSlice,
 } from "./slices";
 
 // 定义应用中的核心类型
@@ -263,4 +264,5 @@ export type XyzenState = UiSlice &
   LoadingSlice &
   FileUploadSlice &
   KnowledgeSlice &
-  NotificationSlice;
+  NotificationSlice &
+  WalletSlice;

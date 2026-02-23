@@ -444,6 +444,12 @@
     "region": "地区",
     "about": "关于"
   },
+  "wallet": {
+    "freeBalance": "免费",
+    "paidBalance": "付费",
+    "earnedBalance": "赚取",
+    "totalBalance": "总计"
+  },
   "checkInCalendar": {
     "title": "签到日历",
     "checkedBadge": "已签",

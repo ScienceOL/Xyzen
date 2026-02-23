@@ -48,12 +48,16 @@ const reactFlowDarkModeStyles = `
 
 import type { GraphConfig, GraphNodeKind } from "@/types/graphConfig";
 import FloatingConfigPanel from "./FloatingConfigPanel";
+import FloatingEdgePanel from "./FloatingEdgePanel";
 import NodePanel from "./NodePanel";
+import ValidationPanel from "./ValidationPanel";
+import { edgeTypes } from "./edges";
 import { nodeTypes } from "./nodes";
 import {
   END_NODE_ID,
   START_NODE_ID,
   useGraphConfig,
+  type AgentEdge,
   type AgentNode,
 } from "./useGraphConfig";
 
@@ -131,6 +135,7 @@ function AgentGraphEditorInner({
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const viewportInitializedRef = useRef(false);
 
   // Generate a stable graph ID for viewport persistence
@@ -158,6 +163,9 @@ function AgentGraphEditorInner({
     addNode,
     updateNode,
     deleteNode,
+    updateEdge,
+    deleteEdge,
+    validationIssues,
   } = useGraphConfig(value, onChange);
 
   // Get selected node config
@@ -165,7 +173,12 @@ function AgentGraphEditorInner({
     ? nodes.find((n) => n.id === selectedNodeId)
     : null;
 
-  // Handle node selection
+  // Get selected edge config
+  const selectedEdge = selectedEdgeId
+    ? edges.find((e) => e.id === selectedEdgeId)
+    : null;
+
+  // Handle node selection (clears edge selection)
   const onNodeClick = useCallback((_: React.MouseEvent, node: AgentNode) => {
     // Don't select START or END nodes for editing
     if (node.id === START_NODE_ID || node.id === END_NODE_ID) {
@@ -173,11 +186,21 @@ function AgentGraphEditorInner({
       return;
     }
     setSelectedNodeId(node.id);
+    setSelectedEdgeId(null);
   }, []);
 
-  // Handle pane click (deselect)
+  // Handle edge selection (clears node selection)
+  const onEdgeClick = useCallback((_: React.MouseEvent, edge: AgentEdge) => {
+    // Don't select START edges for editing
+    if (edge.source === START_NODE_ID) return;
+    setSelectedEdgeId(edge.id);
+    setSelectedNodeId(null);
+  }, []);
+
+  // Handle pane click (deselect all)
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
+    setSelectedEdgeId(null);
   }, []);
 
   // Handle drag over (for dropping new nodes)
@@ -198,11 +221,10 @@ function AgentGraphEditorInner({
         return;
       }
 
-      // Calculate drop position
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      // screenToFlowPosition takes screen (client) coordinates directly
       const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
+        x: event.clientX,
+        y: event.clientY,
       });
 
       // Create the new node
@@ -261,6 +283,24 @@ function AgentGraphEditorInner({
     }
   }, [selectedNodeId, deleteNode]);
 
+  // Handle edge update from edge panel
+  const handleEdgeUpdate = useCallback(
+    (updates: Parameters<typeof updateEdge>[1]) => {
+      if (selectedEdgeId) {
+        updateEdge(selectedEdgeId, updates);
+      }
+    },
+    [selectedEdgeId, updateEdge],
+  );
+
+  // Handle edge delete
+  const handleEdgeDelete = useCallback(() => {
+    if (selectedEdgeId) {
+      deleteEdge(selectedEdgeId);
+      setSelectedEdgeId(null);
+    }
+  }, [selectedEdgeId, deleteEdge]);
+
   // Determine if using percentage height
   const isPercentHeight = height === "100%" || height.endsWith("%");
 
@@ -294,10 +334,12 @@ function AgentGraphEditorInner({
           onInit={handleInit}
           onMoveEnd={handleMoveEnd}
           onNodeClick={onNodeClick as NodeMouseHandler<Node>}
+          onEdgeClick={!readOnly ? (onEdgeClick as (event: React.MouseEvent, edge: Edge) => void) : undefined}
           onPaneClick={onPaneClick}
           onDragOver={onDragOver}
           onDrop={onDrop}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView={!loadViewport(stableGraphId)}
           fitViewOptions={{ padding: 0.3 }}
           deleteKeyCode={readOnly ? null : "Delete"}
@@ -306,7 +348,6 @@ function AgentGraphEditorInner({
           snapToGrid
           snapGrid={[15, 15]}
           defaultEdgeOptions={{
-            type: "smoothstep",
             style: { strokeWidth: 2 },
           }}
           proOptions={{ hideAttribution: true }}
@@ -341,6 +382,19 @@ function AgentGraphEditorInner({
               onDelete={handleNodeDelete}
             />
           )}
+
+          {/* Floating edge panel */}
+          {!readOnly && selectedEdge && selectedEdge.data && (
+            <FloatingEdgePanel
+              edge={selectedEdge.data.config}
+              onUpdate={handleEdgeUpdate}
+              onClose={() => setSelectedEdgeId(null)}
+              onDelete={handleEdgeDelete}
+            />
+          )}
+
+          {/* Validation panel */}
+          {!readOnly && <ValidationPanel issues={validationIssues} />}
         </ReactFlow>
       </div>
     </div>

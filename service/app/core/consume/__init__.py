@@ -7,6 +7,9 @@ Re-exports public interfaces so that existing imports like
 # service.py
 from app.core.consume.service import ConsumeService, settle_chat_records
 
+# developer_reward.py
+from app.core.consume.developer_reward import DeveloperRewardService, REWARD_RATES
+
 # strategy.py
 from app.core.consume.strategy import (
     ConsumptionContext,
@@ -36,7 +39,6 @@ from app.core.consume.context import (
 
 # pricing.py
 from app.core.consume.pricing import (
-    BASE_COST,
     MODEL_COST_RATES,
     TIER_MODEL_CONSUMPTION_RATE,
     TOKEN_CREDIT_RATES,
@@ -52,6 +54,9 @@ __all__ = [
     # service
     "ConsumeService",
     "settle_chat_records",
+    # developer_reward
+    "DeveloperRewardService",
+    "REWARD_RATES",
     # strategy
     "ConsumptionContext",
     "ConsumptionResult",
@@ -70,7 +75,6 @@ __all__ = [
     "set_tracking_context",
     "clear_tracking_context",
     # pricing
-    "BASE_COST",
     "MODEL_COST_RATES",
     "TIER_MODEL_CONSUMPTION_RATE",
     "TOKEN_CREDIT_RATES",

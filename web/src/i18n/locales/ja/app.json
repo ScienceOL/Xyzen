@@ -444,6 +444,12 @@
     "region": "リージョン",
     "about": "情報"
   },
+  "wallet": {
+    "freeBalance": "無料",
+    "paidBalance": "有料",
+    "earnedBalance": "獲得",
+    "totalBalance": "合計"
+  },
   "checkInCalendar": {
     "title": "チェックインカレンダー",
     "checkedBadge": "済",

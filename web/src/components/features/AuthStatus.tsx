@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
+import { CreatorModal } from "@/components/features/CreatorTab";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { TokenInputModal } from "@/components/features/TokenInputModal";
 import { logout } from "@/core/auth";
@@ -27,6 +28,7 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   SparklesIcon,
+  UserGroupIcon,
   UserIcon,
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
@@ -45,6 +47,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
+  const [showCreator, setShowCreator] = useState(false);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
   const billing = useBilling();
@@ -137,7 +140,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                           {t("app.authStatus.pointsBalance")}
                         </div>
                         <div className="font-bold text-indigo-900 dark:text-indigo-100">
-                          {billing.wallet.isLoading
+                          {billing.isLoading
                             ? "..."
                             : (billing.points ?? "--")}
                         </div>
@@ -236,6 +239,17 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
               <DropdownMenuItem
                 onSelect={() => {
                   setMenuOpen(false);
+                  setShowCreator(true);
+                }}
+                className="flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
+              >
+                <UserGroupIcon className="mr-2 h-4 w-4" />
+                {t("subscription.creator")}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onSelect={() => {
+                  setMenuOpen(false);
                   openSettingsModal();
                 }}
                 className="flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
@@ -266,6 +280,10 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
             onClose={() => setShowPointsInfo(false)}
           />
         )}
+        <CreatorModal
+          isOpen={showCreator}
+          onClose={() => setShowCreator(false)}
+        />
       </>
     );
   }

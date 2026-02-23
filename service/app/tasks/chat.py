@@ -239,6 +239,10 @@ async def _process_chat_message_async(
     # Record task start time for scoping exception-path settlement queries
     task_start_time = datetime.now(timezone.utc)
 
+    # Developer reward attribution — synced from ctx for exception-path settlement
+    ctx_marketplace_id: UUID | None = None
+    ctx_developer_user_id: str | None = None
+
     try:
         async with TaskSessionLocal() as db:
             topic_repo = TopicRepository(db)
@@ -265,6 +269,27 @@ async def _process_chat_message_async(
                 message_repo=message_repo,
                 topic_repo=topic_repo,
             )
+
+            # Resolve developer reward attribution from agent → marketplace listing
+            try:
+                from app.repos.agent import AgentRepository
+                from app.repos.agent_marketplace import AgentMarketplaceRepository
+                from app.repos.session import SessionRepository as _SessionRepo
+
+                _session_repo = _SessionRepo(db)
+                _session = await _session_repo.get_session_by_id(session_id)
+                if _session and _session.agent_id:
+                    _agent_repo = AgentRepository(db)
+                    _agent = await _agent_repo.get_agent_by_id(_session.agent_id)
+                    if _agent and _agent.original_source_id:
+                        ctx.agent_id_for_attribution = _agent.id
+                        ctx.marketplace_id = _agent.original_source_id
+                        _marketplace_repo = AgentMarketplaceRepository(db)
+                        _listing = await _marketplace_repo.get_by_id(_agent.original_source_id)
+                        if _listing and _listing.user_id:
+                            ctx.developer_user_id = _listing.user_id
+            except Exception as attr_err:
+                logger.debug("Failed to resolve developer attribution (non-fatal): %s", attr_err)
 
             # Abort checking configuration - use time-based throttling for efficiency
             ABORT_CHECK_INTERVAL_SEC = 0.5  # Check every N seconds (responsive but not too frequent)
@@ -313,6 +338,8 @@ async def _process_chat_message_async(
             ai_message_full_content = ctx.full_content
             ai_message_thinking_content = ctx.full_thinking_content
             ai_message_active_stream_id = ctx.active_stream_id
+            ctx_marketplace_id = ctx.marketplace_id
+            ctx_developer_user_id = ctx.developer_user_id
 
             # --- Handle Abort ---
             if ctx.is_aborted:
@@ -426,7 +453,7 @@ async def _process_chat_message_async(
                     record_ids = [r.id for r in records]
                     record_amounts_sum = sum(r.amount for r in records)
 
-                    # Total = BASE_COST * tier_rate + sum of record amounts
+                    # Total = sum of record amounts
                     tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
                     total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
                     remaining = total_cost - pre_deducted_amount
@@ -438,6 +465,11 @@ async def _process_chat_message_async(
                             auth_provider=auth_provider,
                             record_ids=record_ids,
                             total_amount=int(remaining),
+                            marketplace_id=ctx_marketplace_id,
+                            developer_user_id=ctx_developer_user_id,
+                            session_id=session_id,
+                            topic_id=topic_id,
+                            message_id=ai_message_id,
                         )
                     elif record_ids:
                         # No billing but still mark as success

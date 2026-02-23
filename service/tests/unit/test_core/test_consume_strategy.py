@@ -78,7 +78,7 @@ class TestTierBasedConsumptionStrategy:
         assert TIER_MODEL_CONSUMPTION_RATE[ModelTier.STANDARD] == 1.0
 
         expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
-        expected = int((1 + expected_token_cost) * 1.0)
+        expected = int(expected_token_cost * 1.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 1.0
 
@@ -98,7 +98,7 @@ class TestTierBasedConsumptionStrategy:
         assert TIER_MODEL_CONSUMPTION_RATE[ModelTier.PRO] == 3.0
 
         expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
-        expected = int((1 + expected_token_cost) * 3.0)
+        expected = int(expected_token_cost * 3.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 3.0
 
@@ -118,7 +118,7 @@ class TestTierBasedConsumptionStrategy:
         assert TIER_MODEL_CONSUMPTION_RATE[ModelTier.ULTRA] == 6.8
 
         expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
-        expected = int((1 + expected_token_cost) * 6.8)
+        expected = int(expected_token_cost * 6.8)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 6.8
 
@@ -135,9 +135,8 @@ class TestTierBasedConsumptionStrategy:
         )
         result = strategy.calculate(context)
 
-        # base_cost(1) + tool_costs(20) = 21
-        expected = int((1 + 20) * 1.0)
-        assert result.amount == expected
+        # token_cost(0) * 1.0 + tool_costs(20) = 20
+        assert result.amount == 20
         assert result.breakdown["tool_costs"] == 20
 
     def test_no_tier_defaults_to_1(self) -> None:
@@ -154,7 +153,7 @@ class TestTierBasedConsumptionStrategy:
 
         # Should use default rate 1.0
         expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
-        expected = int((1 + expected_token_cost) * 1.0)
+        expected = int(expected_token_cost * 1.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 1.0
         assert result.breakdown["tier"] == "default"
@@ -172,7 +171,6 @@ class TestTierBasedConsumptionStrategy:
         )
         result = strategy.calculate(context)
 
-        assert "base_cost" in result.breakdown
         assert "token_cost" in result.breakdown
         assert "tool_costs" in result.breakdown
         assert "tier_rate" in result.breakdown
@@ -207,7 +205,7 @@ class TestConsumptionCalculator:
 
         # PRO rate is 3.0
         expected_token_cost = (1000 * 0.2 / 1000) + (1000 * 1 / 1000)
-        expected = int((1 + expected_token_cost) * 3.0)
+        expected = int(expected_token_cost * 3.0)
         assert result.amount == expected
         assert result.breakdown["tier_rate"] == 3.0
 

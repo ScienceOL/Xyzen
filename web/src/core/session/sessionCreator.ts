@@ -8,6 +8,7 @@
 import { sessionService } from "@/service/sessionService";
 import { topicService } from "@/service/topicService";
 import { providerCore } from "@/core/provider";
+import i18n from "i18next";
 import type {
   SessionResponse,
   TopicResponse,
@@ -120,7 +121,7 @@ export function buildSessionPayload(
  */
 export async function createTopicInSession(
   sessionId: string,
-  name: string = "新的聊天",
+  name: string = i18n.t("app.toolbar.newChat"),
 ): Promise<TopicResponse> {
   return topicService.createTopic({ name, session_id: sessionId });
 }
@@ -165,7 +166,7 @@ export async function findOrCreateSession(
     );
 
     // Create new topic in existing session
-    const newTopic = await createTopicInSession(updatedSession.id, "新的聊天");
+    const newTopic = await createTopicInSession(updatedSession.id);
 
     return {
       channel: createChannelFromSession(updatedSession, newTopic),
@@ -189,7 +190,7 @@ export async function findOrCreateSession(
   if (newSession.topics && newSession.topics.length > 0) {
     topic = newSession.topics[0];
   } else {
-    topic = await createTopicInSession(newSession.id, "新的聊天");
+    topic = await createTopicInSession(newSession.id);
   }
 
   return {

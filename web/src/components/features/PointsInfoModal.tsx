@@ -300,13 +300,12 @@ function MySubscriptionTab() {
 
   const subQuery = subInfo?.subQuery;
   const usageQuery = subInfo?.usageQuery;
-  const walletQuery = billing?.wallet;
 
   const role = subQuery?.data?.role;
   const sub = subQuery?.data?.subscription;
   const canClaim = subQuery?.data?.can_claim_credits ?? false;
   const usage = usageQuery?.data;
-  const wallet = walletQuery?.data;
+  const walletBalance = billing?.balance;
 
   if (!role || !sub) return null;
 
@@ -330,11 +329,8 @@ function MySubscriptionTab() {
     try {
       const result = await subscriptionService.claimCredits();
       setClaimResult({ amount: result.amount_credited });
-      // Invalidate queries to refresh data
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["subscription"] }),
-        queryClient.invalidateQueries({ queryKey: ["userWallet"] }),
-      ]);
+      // Invalidate subscription query + refresh wallet from store
+      await queryClient.invalidateQueries({ queryKey: ["subscription"] });
     } catch {
       // Error is silently handled; button stays enabled for retry
     } finally {
@@ -501,8 +497,24 @@ function MySubscriptionTab() {
             </span>
           </div>
           <div className="text-xl font-bold tabular-nums text-neutral-900 dark:text-white">
-            {wallet?.virtual_balance?.toLocaleString() ?? "—"}
+            {walletBalance?.total?.toLocaleString() ?? "—"}
           </div>
+          {/* Category breakdown */}
+          {walletBalance && (
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+              <span className="text-[11px] tabular-nums text-emerald-600 dark:text-emerald-400">
+                {t("app:wallet.freeBalance", { defaultValue: "Free" })}: {walletBalance.free.toLocaleString()}
+              </span>
+              <span className="text-[11px] tabular-nums text-indigo-600 dark:text-indigo-400">
+                {t("app:wallet.paidBalance", { defaultValue: "Paid" })}: {walletBalance.paid.toLocaleString()}
+              </span>
+              {walletBalance.earned > 0 && (
+                <span className="text-[11px] tabular-nums text-amber-600 dark:text-amber-400">
+                  {t("app:wallet.earnedBalance", { defaultValue: "Earned" })}: {walletBalance.earned.toLocaleString()}
+                </span>
+              )}
+            </div>
+          )}
           {/* Claim button */}
           {canClaim && !claimResult && (
             <motion.button

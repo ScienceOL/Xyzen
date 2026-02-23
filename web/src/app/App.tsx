@@ -15,6 +15,7 @@ import { MOBILE_BREAKPOINT } from "@/configs/common";
 import { resolveEdition } from "@/core/edition/edition";
 import { resolveRegion } from "@/core/region/region";
 import useTheme from "@/hooks/useTheme";
+import { useWalletSync } from "@/hooks/useWalletSync";
 import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { buildAuthorizeUrl } from "@/utils/authFlow";
@@ -96,6 +97,7 @@ export function Xyzen({
 
   // Initialize theme at the top level so it works for both layouts
   useTheme();
+  useWalletSync();
   const [mounted, setMounted] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number>(
     typeof window !== "undefined" ? window.innerWidth : 1920,

@@ -1,5 +1,6 @@
 import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
 import ForkAgentModal from "@/components/features/ForkAgentModal";
+import { formatFileSize } from "@/components/knowledge/SortableTree/utilities";
 import { useAuth } from "@/hooks/useAuth";
 import Markdown from "@/lib/Markdown";
 import {
@@ -614,7 +615,25 @@ export default function SharedAgentDetailPage({
                                   {
                                     count:
                                       requirements.knowledge_base.file_count,
+                                    size: formatFileSize(
+                                      requirements.knowledge_base
+                                        .total_size_bytes ?? 0,
+                                    ),
                                   },
+                                )}
+                                {(requirements.knowledge_base
+                                  .total_size_bytes ?? 0) > 0 && (
+                                  <div className="mt-1 text-xs font-medium">
+                                    {t(
+                                      "marketplace.detail.requirements.knowledgeBase.sizeRequired",
+                                      {
+                                        size: formatFileSize(
+                                          requirements.knowledge_base
+                                            .total_size_bytes,
+                                        ),
+                                      },
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>

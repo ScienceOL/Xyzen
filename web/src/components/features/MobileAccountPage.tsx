@@ -7,11 +7,13 @@ import {
   GlobeAltIcon,
   InformationCircleIcon,
   SparklesIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { CreatorModal } from "@/components/features/CreatorTab";
 import { NotificationCenter } from "@/components/features/NotificationCenter";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
@@ -31,7 +33,6 @@ export default function MobileAccountPage() {
   const subscription = subInfo?.subQuery.data;
   const usage = subInfo?.usageQuery.data;
   const billing = useBilling();
-  const wallet = billing?.wallet.data;
   const checkIn = useCheckIn();
   const checkInStatus = checkIn?.query.data;
 
@@ -40,6 +41,7 @@ export default function MobileAccountPage() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
+  const [showCreator, setShowCreator] = useState(false);
 
   const handleCheckIn = async () => {
     if (checkingIn || checkInStatus?.checked_in_today) return;
@@ -150,11 +152,27 @@ export default function MobileAccountPage() {
                 {t("app.account.credits")}
               </p>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {wallet
+                {billing
                   ? t("app.account.balance", {
-                      amount: wallet.virtual_balance.toLocaleString(),
+                      amount: (billing.points ?? 0).toLocaleString(),
                     })
                   : "—"}
+              </p>
+            </div>
+            <ChevronRightIcon className="h-4 w-4 flex-shrink-0 text-neutral-400 dark:text-neutral-500" />
+          </button>
+
+          <div className="ml-12 border-t border-neutral-100 dark:border-neutral-800" />
+
+          {/* Creator row */}
+          <button
+            onClick={() => setShowCreator(true)}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-neutral-50 dark:active:bg-neutral-800"
+          >
+            <UserGroupIcon className="h-5 w-5 flex-shrink-0 text-purple-500" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-neutral-900 dark:text-neutral-100">
+                {t("subscription.creator")}
               </p>
             </div>
             <ChevronRightIcon className="h-4 w-4 flex-shrink-0 text-neutral-400 dark:text-neutral-500" />
@@ -193,6 +211,18 @@ export default function MobileAccountPage() {
                   : 0
               }
             />
+            {usage.sandboxes.limit > 0 && (
+              <UsageBar
+                label={t("subscription.sub.sandboxes")}
+                used={String(usage.sandboxes.used)}
+                limit={String(usage.sandboxes.limit)}
+                percent={
+                  usage.sandboxes.limit > 0
+                    ? (usage.sandboxes.used / usage.sandboxes.limit) * 100
+                    : 0
+                }
+              />
+            )}
           </div>
         )}
 
@@ -246,6 +276,10 @@ export default function MobileAccountPage() {
       <PointsInfoModal
         isOpen={showPointsInfo}
         onClose={() => setShowPointsInfo(false)}
+      />
+      <CreatorModal
+        isOpen={showCreator}
+        onClose={() => setShowCreator(false)}
       />
     </div>
   );

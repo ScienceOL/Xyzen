@@ -37,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
+import { CreatorModal } from "@/components/features/CreatorTab";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { TokenInputModal } from "@/components/features/TokenInputModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
@@ -45,6 +46,7 @@ import {
   ArrowRightOnRectangleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { NotificationCenter } from "@/components/features/NotificationCenter";
@@ -191,6 +193,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
+  const [showCreator, setShowCreator] = useState(false);
   const openSettingsModal = useXyzen((s) => s.openSettingsModal);
 
   const billing = useBilling();
@@ -277,7 +280,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
                         {t("app.authStatus.pointsBalance")}
                       </div>
                       <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                        {billing.wallet.isLoading
+                        {billing.isLoading
                           ? "..."
                           : (billing.points ?? "--")}
                       </div>
@@ -297,6 +300,17 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
             )}
 
             <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onSelect={() => {
+                setMenuOpen(false);
+                setShowCreator(true);
+              }}
+              className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+            >
+              <UserGroupIcon className="h-4 w-4" />
+              {t("subscription.creator")}
+            </DropdownMenuItem>
 
             <DropdownMenuItem
               onSelect={() => {
@@ -330,6 +344,10 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
             onClose={() => setShowPointsInfo(false)}
           />
         )}
+        <CreatorModal
+          isOpen={showCreator}
+          onClose={() => setShowCreator(false)}
+        />
       </>
     );
   }

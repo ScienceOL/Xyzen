@@ -5,6 +5,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.redemption import (
+    CreditLedger,
     RedemptionCode,
     RedemptionCodeCreate,
     RedemptionCodeUpdate,
@@ -304,10 +305,25 @@ class RedemptionRepository:
             wallet_data = UserWalletCreate(
                 user_id=user_id,
                 virtual_balance=welcome_bonus,
+                free_balance=welcome_bonus,
                 total_credited=welcome_bonus,
                 total_consumed=0,
             )
             wallet = await self.create_user_wallet(wallet_data)
+
+            # Write welcome bonus ledger entry
+            ledger = CreditLedger(
+                user_id=user_id,
+                credit_type="free",
+                direction="credit",
+                amount=welcome_bonus,
+                balance_after=welcome_bonus,
+                total_balance_after=welcome_bonus,
+                source="welcome_bonus",
+            )
+            self.db.add(ledger)
+            await self.db.flush()
+
             logger.info(f"Created new wallet for user {user_id} with {welcome_bonus} welcome credits")
         return wallet
 
@@ -390,3 +406,160 @@ class RedemptionRepository:
 
         logger.info(f"Deducted {amount} from user {user_id}, new balance: {wallet.virtual_balance}")
         return wallet
+
+    async def credit_wallet_typed(
+        self,
+        user_id: str,
+        amount: int,
+        credit_type: str,
+        source: str,
+        reference_id: str | None = None,
+    ) -> UserWallet:
+        """Credits amount to a specific balance category and writes a ledger entry.
+
+        Args:
+            user_id: The user ID to credit.
+            amount: The amount to credit (must be positive).
+            credit_type: One of "free", "paid", "earned".
+            source: Transaction source descriptor.
+            reference_id: Optional reference ID for tracing.
+
+        Returns:
+            The updated UserWallet instance.
+        """
+        logger.debug(f"Crediting {amount} ({credit_type}) to user {user_id}, source={source}")
+        wallet = await self.get_or_create_user_wallet(user_id)
+
+        # Increment the specific balance field + virtual_balance + total_credited
+        if credit_type == "free":
+            wallet.free_balance += amount
+        elif credit_type == "paid":
+            wallet.paid_balance += amount
+        elif credit_type == "earned":
+            wallet.earned_balance += amount
+        else:
+            raise ValueError(f"Invalid credit_type: {credit_type}")
+
+        wallet.virtual_balance += amount
+        wallet.total_credited += amount
+
+        self.db.add(wallet)
+        await self.db.flush()
+        await self.db.refresh(wallet)
+
+        # Write ledger entry
+        balance_after = getattr(wallet, f"{credit_type}_balance")
+        ledger = CreditLedger(
+            user_id=user_id,
+            credit_type=credit_type,
+            direction="credit",
+            amount=amount,
+            balance_after=balance_after,
+            total_balance_after=wallet.virtual_balance,
+            source=source,
+            reference_id=reference_id,
+        )
+        self.db.add(ledger)
+        await self.db.flush()
+
+        logger.info(
+            f"Credited {amount} ({credit_type}) to user {user_id}, "
+            f"new balance: {wallet.virtual_balance} (free={wallet.free_balance}, "
+            f"paid={wallet.paid_balance}, earned={wallet.earned_balance})"
+        )
+        return wallet
+
+    async def deduct_wallet_ordered(
+        self,
+        user_id: str,
+        amount: int,
+        source: str,
+        reference_id: str | None = None,
+    ) -> tuple[UserWallet, int]:
+        """Deducts amount using free → paid → earned order and writes ledger entries.
+
+        Does NOT check if balance is sufficient — caller must verify.
+        Deducts as much as possible from each category in order.
+
+        Args:
+            user_id: The user ID to deduct from.
+            amount: The total amount to deduct (must be positive).
+            source: Transaction source descriptor.
+            reference_id: Optional reference ID for tracing.
+
+        Returns:
+            Tuple of (updated wallet, actual amount deducted).
+        """
+        logger.debug(f"Deducting {amount} (ordered) from user {user_id}, source={source}")
+        wallet = await self.get_or_create_user_wallet(user_id)
+
+        remaining = amount
+        deductions: list[tuple[str, int]] = []
+
+        # Deduct in order: free → paid → earned
+        for credit_type in ("free", "paid", "earned"):
+            if remaining <= 0:
+                break
+            balance = getattr(wallet, f"{credit_type}_balance")
+            deduct_from_this = min(remaining, max(0, balance))
+            if deduct_from_this > 0:
+                setattr(wallet, f"{credit_type}_balance", balance - deduct_from_this)
+                remaining -= deduct_from_this
+                deductions.append((credit_type, deduct_from_this))
+
+        actual_deducted = amount - remaining
+        wallet.virtual_balance -= actual_deducted
+        wallet.total_consumed += actual_deducted
+
+        self.db.add(wallet)
+        await self.db.flush()
+        await self.db.refresh(wallet)
+
+        # Write ledger entries for each category that was deducted
+        for credit_type, deducted_amount in deductions:
+            balance_after = getattr(wallet, f"{credit_type}_balance")
+            ledger = CreditLedger(
+                user_id=user_id,
+                credit_type=credit_type,
+                direction="debit",
+                amount=deducted_amount,
+                balance_after=balance_after,
+                total_balance_after=wallet.virtual_balance,
+                source=source,
+                reference_id=reference_id,
+            )
+            self.db.add(ledger)
+        await self.db.flush()
+
+        logger.info(
+            f"Deducted {actual_deducted} (ordered) from user {user_id}, "
+            f"new balance: {wallet.virtual_balance} (free={wallet.free_balance}, "
+            f"paid={wallet.paid_balance}, earned={wallet.earned_balance})"
+        )
+        return wallet, actual_deducted
+
+    async def get_credit_ledger(
+        self,
+        user_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        credit_type: str | None = None,
+    ) -> list[CreditLedger]:
+        """Query credit ledger history for a user.
+
+        Args:
+            user_id: The user ID.
+            limit: Maximum number of entries to return.
+            offset: Number of entries to skip.
+            credit_type: Optional filter by credit type.
+
+        Returns:
+            List of CreditLedger entries ordered by created_at desc.
+        """
+        query = select(CreditLedger).where(CreditLedger.user_id == user_id)
+        if credit_type is not None:
+            query = query.where(CreditLedger.credit_type == credit_type)
+        query = query.order_by(col(CreditLedger.created_at).desc()).limit(limit).offset(offset)
+
+        result = await self.db.exec(query)
+        return list(result.all())

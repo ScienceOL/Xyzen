@@ -50,6 +50,9 @@ class ConsumptionTrackingService:
         message_id: UUID | None = None,
         cache_creation_input_tokens: int = 0,
         cache_read_input_tokens: int = 0,
+        agent_id: UUID | None = None,
+        marketplace_id: UUID | None = None,
+        developer_user_id: str | None = None,
     ) -> ConsumeRecord:
         """Record one LLM API call as a ConsumeRecord. Writes immediately (flush, no commit)."""
         record = ConsumeRecord(
@@ -71,6 +74,9 @@ class ConsumptionTrackingService:
             cache_creation_input_tokens=cache_creation_input_tokens,
             cache_read_input_tokens=cache_read_input_tokens,
             source=source,
+            agent_id=agent_id,
+            marketplace_id=marketplace_id,
+            developer_user_id=developer_user_id,
         )
         self.db.add(record)
         await self.db.flush()
@@ -103,6 +109,9 @@ class ConsumptionTrackingService:
         session_id: UUID | None = None,
         topic_id: UUID | None = None,
         message_id: UUID | None = None,
+        agent_id: UUID | None = None,
+        marketplace_id: UUID | None = None,
+        developer_user_id: str | None = None,
     ) -> ConsumeRecord:
         """Record one tool invocation as a ConsumeRecord. Writes immediately (flush, no commit)."""
         record = ConsumeRecord(
@@ -119,6 +128,9 @@ class ConsumptionTrackingService:
             tool_call_id=tool_call_id,
             status=status,
             model_tier=model_tier,
+            agent_id=agent_id,
+            marketplace_id=marketplace_id,
+            developer_user_id=developer_user_id,
         )
         self.db.add(record)
         await self.db.flush()

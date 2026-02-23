@@ -8,10 +8,11 @@ Docs: https://e2b.dev/docs
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from app.configs import configs
 
-from .base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SearchMatch
+from .base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SandboxState, SandboxStatus, SearchMatch
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +167,41 @@ class E2BBackend(SandboxBackend):
         sandbox = await AsyncSandbox.connect(sandbox_id, api_key=self._api_key())
         url = sandbox.get_host(port)
         return PreviewUrl(url=f"https://{url}", token="", port=port)
+
+    # --- Lifecycle methods ---
+
+    async def get_status(self, sandbox_id: str) -> SandboxState:
+        from e2b_code_interpreter import AsyncSandbox  # type: ignore[import-not-found]
+
+        try:
+            sandbox = await AsyncSandbox.connect(sandbox_id, api_key=self._api_key())
+            running = sandbox.is_running()
+            return SandboxState(
+                status=SandboxStatus.running if running else SandboxStatus.stopped,
+            )
+        except Exception:
+            return SandboxState(status=SandboxStatus.unknown)
+
+    async def keep_alive(self, sandbox_id: str) -> None:
+        from e2b_code_interpreter import AsyncSandbox  # type: ignore[import-not-found]
+
+        e2b_cfg = configs.Sandbox.E2B
+        sandbox = await AsyncSandbox.connect(sandbox_id, api_key=self._api_key())
+        await sandbox.set_timeout(e2b_cfg.TimeoutSeconds)
+        logger.debug(f"Extended timeout for E2B sandbox {sandbox_id} to {e2b_cfg.TimeoutSeconds}s")
+
+    async def get_info(self, sandbox_id: str) -> dict[str, Any]:
+        from e2b_code_interpreter import AsyncSandbox  # type: ignore[import-not-found]
+
+        try:
+            sandbox = await AsyncSandbox.connect(sandbox_id, api_key=self._api_key())
+            return {
+                "sandbox_id": sandbox.sandbox_id,
+                "is_running": sandbox.is_running(),
+                "template": configs.Sandbox.E2B.Template,
+            }
+        except Exception:
+            return {"sandbox_id": sandbox_id, "is_running": False}
 
 
 __all__ = ["E2BBackend"]

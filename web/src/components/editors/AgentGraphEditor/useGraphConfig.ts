@@ -14,12 +14,14 @@ import type {
   GraphEdgeConfig,
   GraphNodeKind,
   EdgePredicate,
+  ValidationIssue,
 } from "@/types/graphConfig";
 import {
   createDefaultLLMNode,
   createDefaultToolNode,
   createDefaultTransformNode,
   createDefaultComponentNode,
+  validateGraphVisual,
 } from "@/types/graphConfig";
 
 /**
@@ -439,6 +441,8 @@ export function useGraphConfig(
       updates: {
         name?: string;
         description?: string | null;
+        reads?: string[];
+        writes?: string[];
         config?: Record<string, unknown>;
       },
     ) => {
@@ -465,6 +469,14 @@ export function useGraphConfig(
                     updates.description !== undefined
                       ? updates.description
                       : newConfig.description,
+                  reads:
+                    updates.reads !== undefined
+                      ? updates.reads
+                      : newConfig.reads,
+                  writes:
+                    updates.writes !== undefined
+                      ? updates.writes
+                      : newConfig.writes,
                 },
               },
             };
@@ -475,6 +487,70 @@ export function useGraphConfig(
     },
     [setNodes],
   );
+
+  // Update an edge's configuration
+  const updateEdge = useCallback(
+    (
+      edgeId: string,
+      updates: {
+        label?: string | null;
+        priority?: number;
+        when?: GraphEdgeConfig["when"];
+      },
+    ) => {
+      setEdges((eds) =>
+        eds.map((edge) => {
+          if (edge.id === edgeId) {
+            const newEdgeConfig = {
+              ...edge.data!.config,
+              ...(updates.label !== undefined && { label: updates.label }),
+              ...(updates.priority !== undefined && {
+                priority: updates.priority,
+              }),
+              ...(updates.when !== undefined && { when: updates.when }),
+            };
+
+            const hasCondition = !!newEdgeConfig.when;
+
+            // Build condition label for display
+            let conditionLabel: string | undefined;
+            if (newEdgeConfig.when) {
+              if (typeof newEdgeConfig.when === "string") {
+                conditionLabel = newEdgeConfig.when;
+              } else {
+                const pred = newEdgeConfig.when as EdgePredicate;
+                conditionLabel = `${pred.state_path} ${pred.operator}`;
+              }
+            }
+
+            return {
+              ...edge,
+              type: hasCondition ? "conditionalEdge" : "default",
+              animated: hasCondition,
+              label: newEdgeConfig.label || conditionLabel,
+              data: {
+                ...edge.data!,
+                label: newEdgeConfig.label || undefined,
+                hasCondition,
+                config: newEdgeConfig,
+              },
+            };
+          }
+          return edge;
+        }),
+      );
+    },
+    [setEdges],
+  );
+
+  // Delete an edge
+  const deleteEdge = useCallback(
+    (edgeId: string) => {
+      setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    },
+    [setEdges],
+  );
+
 
   // Delete a node
   const deleteNode = useCallback(
@@ -502,6 +578,12 @@ export function useGraphConfig(
     setEdges(flow.edges);
   }, [initialConfig, setNodes, setEdges]);
 
+  // Auto-validate the current graph state
+  const validationIssues: ValidationIssue[] = useMemo(() => {
+    const config = flowToGraphConfig(nodes, edges, initialConfig);
+    return validateGraphVisual(config);
+  }, [nodes, edges, initialConfig]);
+
   return {
     // React Flow state
     nodes,
@@ -514,9 +596,14 @@ export function useGraphConfig(
     addNode,
     updateNode,
     deleteNode,
+    updateEdge,
+    deleteEdge,
     syncToConfig,
     getConfig,
     reset,
+
+    // Validation
+    validationIssues,
 
     // Setters for direct manipulation
     setNodes,

@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.core.consume.pricing import (
-    BASE_COST,
     TIER_MODEL_CONSUMPTION_RATE,
     TOKEN_CREDIT_RATES,
 )
@@ -88,7 +87,6 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
             return ConsumptionResult(
                 amount=0,
                 breakdown={
-                    "base_cost": 0,
                     "token_cost": 0,
                     "tool_costs": 0,
                     "tier_rate": 0.0,
@@ -102,17 +100,16 @@ class TierBasedConsumptionStrategy(ConsumptionStrategy):
             context.input_tokens * TOKEN_CREDIT_RATES["input"] + context.output_tokens * TOKEN_CREDIT_RATES["output"]
         )
 
-        # Tier rate multiplies base + token costs only.
+        # Tier rate multiplies token costs only.
         # Tool costs are added as fixed credits AFTER the multiplier —
         # they are tier-independent (e.g. generate_image costs 10 credits
         # regardless of whether the user is on ULTRA or STANDARD).
-        base_amount = BASE_COST + token_cost
+        base_amount = token_cost
         final_amount = int(base_amount * tier_rate) + context.tool_costs
 
         return ConsumptionResult(
             amount=final_amount,
             breakdown={
-                "base_cost": BASE_COST,
                 "token_cost": token_cost,
                 "tool_costs": context.tool_costs,
                 "pre_multiplier_total": base_amount,

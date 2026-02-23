@@ -7,7 +7,26 @@ Defines the interface that all sandbox backends must implement.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+
+
+class SandboxStatus(str, Enum):
+    """Backend-reported sandbox lifecycle status."""
+
+    running = "running"
+    stopped = "stopped"
+    unknown = "unknown"
+
+
+@dataclass
+class SandboxState:
+    """Snapshot of a sandbox's lifecycle state."""
+
+    status: SandboxStatus = SandboxStatus.unknown
+    remaining_seconds: int | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -143,6 +162,35 @@ class SandboxBackend(ABC):
         """Get a browser-accessible preview URL for a sandbox port."""
         ...
 
+    # --- Lifecycle methods (default implementations — optional for backends) ---
+
+    async def get_status(self, sandbox_id: str) -> SandboxState:
+        """Query the backend for the sandbox's current lifecycle state.
+
+        Default: returns ``unknown`` status. Override to provide real data.
+        """
+        return SandboxState(status=SandboxStatus.unknown)
+
+    async def keep_alive(self, sandbox_id: str) -> None:
+        """Refresh the sandbox's idle timer on the backend.
+
+        Default: no-op. Override to extend timeout.
+        """
+
+    async def start(self, sandbox_id: str) -> None:
+        """Resume a stopped sandbox.
+
+        Default: raises ``NotImplementedError`` (not all backends support resume).
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support starting stopped sandboxes")
+
+    async def get_info(self, sandbox_id: str) -> dict[str, Any]:
+        """Return backend-specific diagnostic information.
+
+        Default: empty dict.
+        """
+        return {}
+
 
 __all__ = [
     "PreviewUrl",
@@ -150,4 +198,6 @@ __all__ = [
     "FileInfo",
     "SearchMatch",
     "SandboxBackend",
+    "SandboxState",
+    "SandboxStatus",
 ]

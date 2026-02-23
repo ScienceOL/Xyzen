@@ -17,6 +17,7 @@ import {
   createNotificationSlice,
   createProviderSlice,
   createUiSlice,
+  createWalletSlice,
 } from "./slices";
 import type { XyzenState } from "./types";
 
@@ -34,6 +35,7 @@ export const useXyzen = create<XyzenState>()(
       ...createFileUploadSlice(...a),
       ...createKnowledgeSlice(...a),
       ...createNotificationSlice(...a),
+      ...createWalletSlice(...a),
     })),
     {
       name: "xyzen-storage",
@@ -52,6 +54,7 @@ export const useXyzen = create<XyzenState>()(
         capsuleActiveTab: state.capsuleActiveTab,
         mobileCeoOverlay: state.mobileCeoOverlay,
         mobilePage: state.mobilePage,
+        openTabsByAgent: state.openTabsByAgent,
       }),
     },
   ),

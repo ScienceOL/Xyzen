@@ -38,6 +38,22 @@ export interface SandboxDeleteResponse {
   sandbox_id: string | null;
 }
 
+export interface SandboxStatusResponse {
+  status: "running" | "stopped" | "unknown";
+  remaining_seconds: number | null;
+  backend_info: Record<string, unknown>;
+}
+
+export interface KeepAliveResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface StartSandboxResponse {
+  success: boolean;
+  message: string;
+}
+
 class SandboxService {
   /** List all active sandboxes for the current user. */
   async listSandboxes(): Promise<SandboxListResponse> {
@@ -47,6 +63,21 @@ class SandboxService {
   /** Delete a sandbox by session ID. */
   async deleteSandbox(sessionId: string): Promise<SandboxDeleteResponse> {
     return http.delete(`/xyzen/api/v1/sandboxes/${sessionId}`);
+  }
+
+  /** Get real-time backend status of a sandbox. */
+  async getSandboxStatus(sessionId: string): Promise<SandboxStatusResponse> {
+    return http.get(`/xyzen/api/v1/sandboxes/${sessionId}/status`);
+  }
+
+  /** Refresh sandbox idle timer to prevent auto-stop. */
+  async keepAlive(sessionId: string): Promise<KeepAliveResponse> {
+    return http.post(`/xyzen/api/v1/sandboxes/${sessionId}/keep-alive`);
+  }
+
+  /** Start a stopped sandbox. */
+  async startSandbox(sessionId: string): Promise<StartSandboxResponse> {
+    return http.post(`/xyzen/api/v1/sandboxes/${sessionId}/start`);
   }
 
   async listFiles(

@@ -49,6 +49,22 @@ class SandboxDeleteResponse(BaseModel):
     sandbox_id: str | None = None
 
 
+class SandboxStatusResponse(BaseModel):
+    status: str = Field(description="running | stopped | unknown")
+    remaining_seconds: int | None = None
+    backend_info: dict[str, object] = Field(default_factory=dict)
+
+
+class KeepAliveResponse(BaseModel):
+    success: bool
+    message: str = ""
+
+
+class StartSandboxResponse(BaseModel):
+    success: bool
+    message: str = ""
+
+
 # --- Endpoints ---
 
 
@@ -184,3 +200,95 @@ async def delete_sandbox(
     logger.info(f"User {user} manually deleted sandbox {sandbox_id} for session {session_id}")
 
     return SandboxDeleteResponse(success=True, sandbox_id=sandbox_id)
+
+
+@router.get("/sandboxes/{session_id}/status", response_model=SandboxStatusResponse)
+async def get_sandbox_status(
+    session_id: UUID,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> SandboxStatusResponse:
+    """Get the real-time status of a sandbox from its backend."""
+    from app.repos.session import SessionRepository
+
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    from app.infra.sandbox import get_sandbox_manager
+
+    manager = get_sandbox_manager(str(session_id), user_id=user)
+    sandbox_id = await manager.get_sandbox_id()
+    if not sandbox_id:
+        raise HTTPException(status_code=404, detail="No active sandbox for this session")
+
+    state = await manager.get_status()
+    backend_info = await manager.get_backend_info()
+
+    return SandboxStatusResponse(
+        status=state.status.value,
+        remaining_seconds=state.remaining_seconds,
+        backend_info=backend_info,
+    )
+
+
+@router.post("/sandboxes/{session_id}/keep-alive", response_model=KeepAliveResponse)
+async def keep_alive_sandbox(
+    session_id: UUID,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> KeepAliveResponse:
+    """Refresh the sandbox idle timer to prevent auto-stop."""
+    from app.repos.session import SessionRepository
+
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    from app.infra.sandbox import get_sandbox_manager
+
+    manager = get_sandbox_manager(str(session_id), user_id=user)
+    sandbox_id = await manager.get_sandbox_id()
+    if not sandbox_id:
+        raise HTTPException(status_code=404, detail="No active sandbox for this session")
+
+    ok = await manager.keep_alive()
+    if ok:
+        return KeepAliveResponse(success=True, message="Sandbox keep-alive refreshed")
+    return KeepAliveResponse(success=False, message="Failed to refresh sandbox keep-alive")
+
+
+@router.post("/sandboxes/{session_id}/start", response_model=StartSandboxResponse)
+async def start_sandbox(
+    session_id: UUID,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> StartSandboxResponse:
+    """Start a stopped sandbox."""
+    from app.repos.session import SessionRepository
+
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != user:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    from app.infra.sandbox import get_sandbox_manager
+
+    manager = get_sandbox_manager(str(session_id), user_id=user)
+    sandbox_id = await manager.get_sandbox_id()
+    if not sandbox_id:
+        raise HTTPException(status_code=404, detail="No active sandbox for this session")
+
+    ok = await manager.start_sandbox()
+    if ok:
+        logger.info(f"User {user} started sandbox {sandbox_id} for session {session_id}")
+        return StartSandboxResponse(success=True, message="Sandbox started")
+    return StartSandboxResponse(success=False, message="Failed to start sandbox")

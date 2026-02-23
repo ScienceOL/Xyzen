@@ -3,6 +3,7 @@
 import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import { FieldGroup } from "@/components/base/FieldGroup";
 import { Input } from "@/components/base/Input";
+import { formatFileSize } from "@/components/knowledge/SortableTree/utilities";
 import { useForkAgent } from "@/hooks/useMarketplace";
 import { Button } from "@headlessui/react";
 import {
@@ -24,7 +25,11 @@ interface ForkAgentModalProps {
   agentDescription?: string;
   requirements?: {
     mcp_servers: Array<{ name: string; description?: string }>;
-    knowledge_base: { name: string; file_count: number } | null;
+    knowledge_base: {
+      name: string;
+      file_count: number;
+      total_size_bytes?: number;
+    } | null;
     provider_needed: boolean;
   };
   forkMode: ForkMode;
@@ -344,6 +349,19 @@ export default function ForkAgentModal({
                           be copied to your personal workspace automatically.
                         </Trans>
                       </p>
+                      {(requirements.knowledge_base.total_size_bytes ?? 0) >
+                        0 && (
+                        <p className="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                          {t(
+                            "marketplace.detail.requirements.knowledgeBase.sizeRequired",
+                            {
+                              size: formatFileSize(
+                                requirements.knowledge_base.total_size_bytes!,
+                              ),
+                            },
+                          )}
+                        </p>
+                      )}
                       <p className="mt-1.5 text-xs text-blue-600 dark:text-blue-400">
                         {t("marketplace.fork.knowledgeBaseAccess")}
                       </p>

@@ -7,6 +7,7 @@ Uses the Daytona Python SDK (AsyncDaytona) to manage sandboxes.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from daytona import (
     AsyncDaytona,
@@ -15,10 +16,11 @@ from daytona import (
     DaytonaConfig,
     Resources,
 )
+from daytona import SandboxState as DaytonaSandboxState
 
 from app.configs import configs
 
-from .base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SearchMatch
+from .base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SandboxState, SandboxStatus, SearchMatch
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +65,7 @@ class DaytonaBackend(SandboxBackend):
                 env_vars=env_vars,
                 labels=labels,
                 auto_stop_interval=dc.AutoStopMinutes,
+                auto_delete_interval=dc.AutoDeleteMinutes,
                 resources=Resources(
                     cpu=cfg.Cpu,
                     memory=cfg.Memory,
@@ -201,6 +204,72 @@ class DaytonaBackend(SandboxBackend):
         url = f"{dc.ProxyProtocol}://{port}-{token}.{dc.ProxyBaseUrl}"
 
         return PreviewUrl(url=url, token=token, port=port)
+
+    # --- Lifecycle methods ---
+
+    _DAYTONA_STATE_MAP: dict[DaytonaSandboxState, SandboxStatus] = {
+        DaytonaSandboxState.STARTED: SandboxStatus.running,
+        DaytonaSandboxState.STARTING: SandboxStatus.running,
+        DaytonaSandboxState.CREATING: SandboxStatus.running,
+        DaytonaSandboxState.RESTORING: SandboxStatus.running,
+        DaytonaSandboxState.STOPPED: SandboxStatus.stopped,
+        DaytonaSandboxState.STOPPING: SandboxStatus.stopped,
+        DaytonaSandboxState.DESTROYED: SandboxStatus.stopped,
+        DaytonaSandboxState.DESTROYING: SandboxStatus.stopped,
+        DaytonaSandboxState.ARCHIVED: SandboxStatus.stopped,
+        DaytonaSandboxState.ERROR: SandboxStatus.stopped,
+    }
+
+    async def get_status(self, sandbox_id: str) -> SandboxState:
+        async with self._client() as daytona:
+            sandbox = await daytona.get(sandbox_id)
+            await sandbox.refresh_data()
+
+            status = self._DAYTONA_STATE_MAP.get(
+                DaytonaSandboxState(sandbox.state) if sandbox.state else DaytonaSandboxState.UNKNOWN,
+                SandboxStatus.unknown,
+            )
+
+            remaining: int | None = None
+            if sandbox.auto_stop_interval and sandbox.updated_at:
+                from datetime import datetime, timezone
+
+                try:
+                    updated = datetime.fromisoformat(sandbox.updated_at)
+                    if updated.tzinfo is None:
+                        updated = updated.replace(tzinfo=timezone.utc)
+                    elapsed = (datetime.now(timezone.utc) - updated).total_seconds()
+                    remaining = max(0, int(sandbox.auto_stop_interval * 60 - elapsed))
+                except (ValueError, TypeError):
+                    pass
+
+            return SandboxState(status=status, remaining_seconds=remaining)
+
+    async def keep_alive(self, sandbox_id: str) -> None:
+        async with self._client() as daytona:
+            sandbox = await daytona.get(sandbox_id)
+            await sandbox.refresh_activity()
+            logger.debug(f"Refreshed activity for Daytona sandbox {sandbox_id}")
+
+    async def start(self, sandbox_id: str) -> None:
+        async with self._client() as daytona:
+            sandbox = await daytona.get(sandbox_id)
+            await sandbox.start(timeout=120)
+            logger.info(f"Started Daytona sandbox {sandbox_id}")
+
+    async def get_info(self, sandbox_id: str) -> dict[str, Any]:
+        async with self._client() as daytona:
+            sandbox = await daytona.get(sandbox_id)
+            await sandbox.refresh_data()
+            return {
+                "cpu": sandbox.cpu,
+                "memory": sandbox.memory,
+                "disk": sandbox.disk,
+                "state": str(sandbox.state),
+                "auto_stop_interval": sandbox.auto_stop_interval,
+                "created_at": sandbox.created_at,
+                "updated_at": sandbox.updated_at,
+            }
 
 
 __all__ = ["DaytonaBackend"]

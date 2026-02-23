@@ -33,6 +33,11 @@ class DaytonaConfig(BaseModel):
         default=30,
         description="Auto-stop sandbox after inactivity (minutes)",
     )
+    AutoDeleteMinutes: int = Field(
+        default=4320,
+        description="Auto-delete sandbox after being continuously stopped (minutes). "
+        "Default 4320 = 3 days. Set -1 to disable.",
+    )
     ProxyBaseUrl: str = Field(
         default="localhost:14000",
         description="Base URL for sandbox preview proxy (reachable from user browser). "

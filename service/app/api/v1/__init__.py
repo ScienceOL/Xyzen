@@ -6,6 +6,7 @@ from .auth import router as auth_router
 from .avatar import router as avatar_router
 from .chat_shares import router as chat_shares_router
 from .checkin import router as checkin_router
+from .developer import router as developer_router
 from .files import router as files_router
 from .folders import router as folders_router
 from .knowledge_sets import router as knowledge_sets_router
@@ -100,6 +101,7 @@ v1_router.include_router(skills_router, prefix="/skills")
 v1_router.include_router(mcps_router, prefix="/mcps")
 v1_router.include_router(redemption_router, prefix="/redemption", tags=["redemption"])
 v1_router.include_router(checkin_router, prefix="/checkin")
+v1_router.include_router(developer_router, prefix="/developer", tags=["developer"])
 v1_router.include_router(files_router, prefix="/files")
 v1_router.include_router(folders_router, prefix="/folders")
 v1_router.include_router(knowledge_sets_router, prefix="/knowledge-sets")

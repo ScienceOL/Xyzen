@@ -21,7 +21,9 @@ import {
 const patternUrl = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M30 0c0 16.569-13.431 30-30 30C16.569 30 30 16.569 30 0z' fill='%23fff' fill-opacity='.04'/%3E%3Cpath d='M60 0c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%23fff' fill-opacity='.04'/%3E%3Cpath d='M30 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%23fff' fill-opacity='.04'/%3E%3Cpath d='M60 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%23fff' fill-opacity='.04'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
-  const node = useAgentNode({ id, data });
+  const hasSubordinates =
+    data.subordinateAvatars && data.subordinateAvatars.length > 0;
+  const node = useAgentNode({ id, data, extraHeight: hasSubordinates ? 24 : 0 });
   const { currentW, currentH, style, setIsSettingsOpen } = node;
 
   return (

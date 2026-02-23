@@ -115,6 +115,9 @@ class UserWalletBase(SQLModel):
 
     user_id: str = Field(unique=True, index=True, description="User ID")
     virtual_balance: int = Field(default=0, sa_type=BigInteger, description="Current virtual balance")
+    free_balance: int = Field(default=0, sa_type=BigInteger, description="Free credits (check-in, welcome bonus, events)")
+    paid_balance: int = Field(default=0, sa_type=BigInteger, description="Paid credits (subscription, top-up, redemption)")
+    earned_balance: int = Field(default=0, sa_type=BigInteger, description="Earned credits (community earnings)")
     total_credited: int = Field(default=0, sa_type=BigInteger, description="Total amount credited (audit trail)")
     total_consumed: int = Field(default=0, sa_type=BigInteger, description="Total amount consumed from virtual balance")  # noqa: E501
 
@@ -138,6 +141,9 @@ class UserWalletCreate(SQLModel):
 
     user_id: str = Field(description="User ID")
     virtual_balance: int = Field(default=0, description="Initial virtual balance")
+    free_balance: int = Field(default=0, description="Initial free balance")
+    paid_balance: int = Field(default=0, description="Initial paid balance")
+    earned_balance: int = Field(default=0, description="Initial earned balance")
     total_credited: int = Field(default=0, description="Initial total credited")
     total_consumed: int = Field(default=0, description="Initial total consumed")
 
@@ -154,5 +160,44 @@ class UserWalletUpdate(SQLModel):
     """Schema for updating a user wallet. All fields are optional."""
 
     virtual_balance: int | None = Field(default=None, description="Current virtual balance")
+    free_balance: int | None = Field(default=None, description="Free balance")
+    paid_balance: int | None = Field(default=None, description="Paid balance")
+    earned_balance: int | None = Field(default=None, description="Earned balance")
     total_credited: int | None = Field(default=None, description="Total amount credited")
     total_consumed: int | None = Field(default=None, description="Total amount consumed")
+
+
+# ==================== CreditLedger Models ====================
+
+
+class CreditLedger(SQLModel, table=True):
+    """Audit ledger for all credit transactions, tracking per-category changes."""
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    user_id: str = Field(index=True, description="User ID")
+    credit_type: str = Field(index=True, description="Credit category: free, paid, or earned")
+    direction: str = Field(description="Transaction direction: credit or debit")
+    amount: int = Field(sa_type=BigInteger, description="Transaction amount (positive)")
+    balance_after: int = Field(sa_type=BigInteger, description="This credit_type balance after transaction")
+    total_balance_after: int = Field(sa_type=BigInteger, description="virtual_balance after transaction")
+    source: str = Field(description="Transaction source: welcome_bonus, daily_checkin, redemption_code, etc.")
+    reference_id: str | None = Field(default=None, description="Optional reference ID for tracing")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+
+
+class CreditLedgerRead(SQLModel):
+    """Schema for reading a credit ledger entry."""
+
+    id: UUID
+    user_id: str
+    credit_type: str
+    direction: str
+    amount: int
+    balance_after: int
+    total_balance_after: int
+    source: str
+    reference_id: str | None
+    created_at: datetime

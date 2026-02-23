@@ -49,6 +49,8 @@ class PublishRequest(BaseModel):
     is_published: bool = True
     readme: str | None = None
     fork_mode: ForkMode = ForkMode.EDITABLE
+    knowledge_set_id: UUID | None = None
+    skill_ids: list[UUID] | None = None
 
 
 class PublishResponse(BaseModel):
@@ -113,6 +115,7 @@ class RequirementsResponse(BaseModel):
 
     mcp_servers: list[dict[str, str]]
     knowledge_base: dict[str, str | int] | None
+    skills: list[dict[str, str]]
     provider_needed: bool
 
 
@@ -170,6 +173,8 @@ async def publish_agent(
             fork_mode=request.fork_mode,
             author_display_name=user_info.display_name,
             author_avatar_url=user_info.avatar_url,
+            knowledge_set_id_override=request.knowledge_set_id,
+            skill_ids_override=request.skill_ids,
         )
         if not listing:
             raise HTTPException(status_code=404, detail="Marketplace listing not found")
@@ -663,7 +668,25 @@ async def get_listing_history(
     return [AgentSnapshotRead(**snapshot.model_dump()) for snapshot in snapshots]
 
 
-@router.post("/{marketplace_id}/publish-version", response_model=AgentMarketplaceRead)
+@router.get("/{marketplace_id}/earnings")
+async def get_listing_earnings(
+    marketplace_id: UUID,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict:
+    """Get earnings stats for a marketplace listing (owner only)."""
+    from app.repos.developer_earning import DeveloperEarningRepository
+
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+    if listing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not the owner of this listing")
+
+    earning_repo = DeveloperEarningRepository(db)
+    stats = await earning_repo.get_listing_earnings_stats(marketplace_id)
+    return stats
 async def publish_version(
     marketplace_id: UUID,
     request: PublishVersionRequest,
