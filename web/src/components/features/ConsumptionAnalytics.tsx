@@ -235,9 +235,11 @@ interface HeatmapSectionProps {
   heatmapEvents: {
     click: (params: {
       componentType: string;
-      value: [string, number, number];
+      value: [string, number];
+      dataIndex: number;
     }) => void;
   };
+  chartRef: React.RefObject<ReactECharts | null>;
   selectedDate: string | null;
   selectedDateLabel: string;
   yearToShow: number;
@@ -256,6 +258,7 @@ const HeatmapSection = React.memo(function HeatmapSection({
   isMobile,
   heatmapOption,
   heatmapEvents,
+  chartRef,
   selectedDate,
   selectedDateLabel,
   yearToShow,
@@ -318,6 +321,7 @@ const HeatmapSection = React.memo(function HeatmapSection({
           <div className="h-35 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
         ) : (
           <ReactECharts
+            ref={chartRef}
             echarts={echarts}
             option={heatmapOption}
             lazyUpdate={true}
@@ -347,6 +351,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
   const [monthToShow, setMonthToShow] = useState(() => new Date().getMonth());
   const isDark = true;
   const tableRef = useRef<HTMLTableElement>(null);
+  const heatmapChartRef = useRef<ReactECharts>(null);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 640px)");
@@ -516,12 +521,15 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     const heatData =
       data?.daily
         .filter((d) => d.record_count > 0)
-        .map((d) => [d.date, d.total_tokens, d.total_amount]) ?? [];
-    const maxVal = Math.max(...(heatData.map((d) => d[1] as number) || [1]), 1);
+        .map((d) => [d.date, d.total_amount]) ?? [];
+    const maxVal = Math.max(
+      ...(data?.daily.map((d) => d.total_amount) ?? [1]),
+      1,
+    );
 
     const levels = isDark
       ? ["#0b2a1f", "#14532d", "#16a34a", "#4ade80"]
-      : ["#ecfdf5", "#bbf7d0", "#4ade80", "#15803d"];
+      : ["#ecfdf5", "#d1fae5", "#4ade80", "#15803d"];
     const emptyColor = isDark ? "#161b22" : "#ebedf0";
     const borderColor = isDark ? "#1b1f23" : "#fff";
     const seg = maxVal / 4;
@@ -534,7 +542,6 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
       })),
     ];
 
-    const tokensLabel = t("app.consumption.totalToken");
     const creditsLabel = t("app.consumption.totalCredits");
 
     // Mobile: monthly range; Desktop: full year
@@ -551,9 +558,9 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     return {
       backgroundColor: "transparent",
       tooltip: {
-        formatter: (params: { value: [string, number, number] }) => {
-          const [date, tokens, credits] = params.value;
-          return `<strong>${escapeHtml(String(date))}</strong><br/>${escapeHtml(tokensLabel)}: ${Math.round(tokens / 1000)}K<br/>${escapeHtml(creditsLabel)}: ${credits.toLocaleString()}`;
+        formatter: (params: { value: [string, number] }) => {
+          const [date, credits] = params.value;
+          return `<strong>${escapeHtml(String(date))}</strong><br/>${escapeHtml(creditsLabel)}: ${credits.toLocaleString()}`;
         },
       },
       visualMap: {
@@ -614,7 +621,32 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
           type: "heatmap",
           coordinateSystem: "calendar",
           data: heatData,
+          selectedMode: isMobile ? false : "single",
           itemStyle: { borderRadius: 2 },
+          emphasis: isMobile
+            ? undefined
+            : {
+                itemStyle: {
+                  borderColor: isDark ? "#38bdf8" : "#0284c7",
+                  borderWidth: 2,
+                  shadowBlur: 10,
+                  shadowColor: isDark
+                    ? "rgba(56,189,248,0.5)"
+                    : "rgba(2,132,199,0.4)",
+                },
+              },
+          select: isMobile
+            ? undefined
+            : {
+                itemStyle: {
+                  borderColor: isDark ? "#38bdf8" : "#0284c7",
+                  borderWidth: 2,
+                  shadowBlur: 12,
+                  shadowColor: isDark
+                    ? "rgba(56,189,248,0.6)"
+                    : "rgba(2,132,199,0.5)",
+                },
+              },
         },
       ],
     };
@@ -638,7 +670,11 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
 
   // Stable heatmap event handler using ref
   const heatmapClickRef = useRef<
-    (params: { componentType: string; value: [string, number, number] }) => void
+    (params: {
+      componentType: string;
+      value: [string, number];
+      dataIndex: number;
+    }) => void
   >(() => {});
   heatmapClickRef.current = (params) => {
     if (params.componentType === "series") {
@@ -646,6 +682,19 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
       const isDeselect = selectedDate === clickedDate;
       setSelectedDate(isDeselect ? null : clickedDate);
       setExpandedDate(isDeselect ? null : clickedDate);
+      if (!isMobile) {
+        const instance = heatmapChartRef.current?.getEchartsInstance();
+        if (instance) {
+          instance.dispatchAction({ type: "unselect", seriesIndex: 0 });
+          if (!isDeselect) {
+            instance.dispatchAction({
+              type: "select",
+              seriesIndex: 0,
+              dataIndex: params.dataIndex,
+            });
+          }
+        }
+      }
       if (!isDeselect) {
         if (isMobile) {
           // Mobile: filtered to single date, always page 0
@@ -664,7 +713,8 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     () => ({
       click: (params: {
         componentType: string;
-        value: [string, number, number];
+        value: [string, number];
+        dataIndex: number;
       }) => heatmapClickRef.current(params),
     }),
     [],
@@ -675,18 +725,46 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     setMonthToShow((m) => m - 1);
     setSelectedDate(null);
     setExpandedDate(null);
+    heatmapChartRef.current
+      ?.getEchartsInstance()
+      ?.dispatchAction({ type: "unselect", seriesIndex: 0 });
   }, []);
 
   const handleMonthNext = useCallback(() => {
     setMonthToShow((m) => m + 1);
     setSelectedDate(null);
     setExpandedDate(null);
+    heatmapChartRef.current
+      ?.getEchartsInstance()
+      ?.dispatchAction({ type: "unselect", seriesIndex: 0 });
   }, []);
 
   const handleClearDate = useCallback(() => {
     setSelectedDate(null);
     setExpandedDate(null);
+    heatmapChartRef.current
+      ?.getEchartsInstance()
+      ?.dispatchAction({ type: "unselect", seriesIndex: 0 });
   }, []);
+
+  // Sync selectedDate (e.g. from table row click) → ECharts select highlight
+  useEffect(() => {
+    if (isMobile || !heatmapChartRef.current) return;
+    const instance = heatmapChartRef.current.getEchartsInstance();
+    if (!instance) return;
+    instance.dispatchAction({ type: "unselect", seriesIndex: 0 });
+    if (selectedDate && data?.daily) {
+      const filtered = data.daily.filter((d) => d.record_count > 0);
+      const idx = filtered.findIndex((d) => d.date === selectedDate);
+      if (idx >= 0) {
+        instance.dispatchAction({
+          type: "select",
+          seriesIndex: 0,
+          dataIndex: idx,
+        });
+      }
+    }
+  }, [selectedDate, isMobile, data]);
 
   return (
     <div className="flex flex-col h-full gap-3">
@@ -779,6 +857,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
             isMobile={isMobile}
             heatmapOption={heatmapOption}
             heatmapEvents={heatmapEvents}
+            chartRef={heatmapChartRef}
             selectedDate={selectedDate}
             selectedDateLabel={selectedDateLabel}
             yearToShow={yearToShow}

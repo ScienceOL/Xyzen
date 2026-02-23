@@ -9,9 +9,6 @@ from app.schemas.model_tier import ModelTier
 
 logger = logging.getLogger(__name__)
 
-# Base credit cost per API call
-BASE_COST: int = 1
-
 # Tier multiplier → final credit amount
 TIER_MODEL_CONSUMPTION_RATE: dict[ModelTier, float] = {
     ModelTier.ULTRA: 6.8,
@@ -157,10 +154,10 @@ def calculate_llm_cost_usd(
 
 
 def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int:
-    """Calculate settlement total = BASE_COST + sum of record amounts. LITE returns 0."""
+    """Calculate settlement total from sum of record amounts. LITE returns 0."""
     if tier_rate <= 0:
         return 0
-    return BASE_COST + record_amounts_sum
+    return record_amounts_sum
 
 
 def validate_pricing_coverage() -> None:

@@ -36,7 +36,6 @@ from app.core.consume.context import (
 
 # pricing.py
 from app.core.consume.pricing import (
-    BASE_COST,
     MODEL_COST_RATES,
     TIER_MODEL_CONSUMPTION_RATE,
     TOKEN_CREDIT_RATES,
@@ -70,7 +69,6 @@ __all__ = [
     "set_tracking_context",
     "clear_tracking_context",
     # pricing
-    "BASE_COST",
     "MODEL_COST_RATES",
     "TIER_MODEL_CONSUMPTION_RATE",
     "TOKEN_CREDIT_RATES",

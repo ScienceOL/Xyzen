@@ -230,19 +230,6 @@ async def _llm_select_model(
     response = await llm.ainvoke([HumanMessage(content=prompt)])
     logger.debug(f"LLM response: {response}")
 
-    # Record LLM token usage for model selection
-    try:
-        from app.core.consume.tracking import record_response_usage_from_context
-
-        await record_response_usage_from_context(
-            response,
-            source="model_selection",
-            model_name=selector_model,
-            provider=str(selector_provider.value) if selector_provider else None,
-        )
-    except Exception:
-        logger.debug("Failed to record model selection LLM usage (non-fatal)", exc_info=True)
-
     # Parse response
     if isinstance(response.content, str):
         selected_model = response.content.strip()

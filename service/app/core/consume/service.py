@@ -55,7 +55,7 @@ async def settle_chat_records(
         user_id: User ID.
         auth_provider: Authentication provider.
         record_ids: IDs of pending ConsumeRecords to settle.
-        total_amount: Total credit amount to deduct (sum of record amounts + BASE_COST).
+        total_amount: Total credit amount to deduct (sum of record amounts).
     """
     if total_amount <= 0:
         # Nothing to bill — still mark records as success

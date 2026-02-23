@@ -426,7 +426,7 @@ async def _process_chat_message_async(
                     record_ids = [r.id for r in records]
                     record_amounts_sum = sum(r.amount for r in records)
 
-                    # Total = BASE_COST * tier_rate + sum of record amounts
+                    # Total = sum of record amounts
                     tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
                     total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
                     remaining = total_cost - pre_deducted_amount

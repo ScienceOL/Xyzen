@@ -182,7 +182,7 @@ async def finalize_and_settle(
     access_token: str | None,
     description_suffix: str = "settlement",
 ) -> None:
-    """Consolidate settlement: query pending ConsumeRecords, sum amounts + BASE_COST,
+    """Consolidate settlement: query pending ConsumeRecords, sum amounts,
     deduct from wallet via settle_chat_records, and bulk-mark as success.
     """
     if not ctx.ai_message_obj:
@@ -192,7 +192,7 @@ async def finalize_and_settle(
         await _ensure_session_info(ctx)
         model_tier = ctx.cached_model_tier
 
-        # Get tier_rate for BASE_COST calculation
+        # Get tier_rate for settlement calculation
         tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
 
         # LITE tier = free
@@ -211,7 +211,7 @@ async def finalize_and_settle(
         record_ids = [r.id for r in records]
         record_amounts_sum = sum(r.amount for r in records)
 
-        # Total = BASE_COST * tier_rate + sum of individual record amounts
+        # Total = sum of individual record amounts
         total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
 
         remaining_amount = total_cost - pre_deducted_amount

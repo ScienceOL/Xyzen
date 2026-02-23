@@ -3,7 +3,6 @@
 import pytest
 
 from app.core.consume.pricing import (
-    BASE_COST,
     CACHE_READ_DISCOUNT,
     MODEL_COST_RATES,
     TOKEN_CREDIT_RATES,
@@ -135,12 +134,12 @@ class TestCalculateLlmCostUsd:
 
 class TestCalculateSettlementTotal:
     def test_pro_tier(self) -> None:
-        # tier_rate=3.0, base_cost = int(1 * 3.0) = 3, records_sum = 14
-        assert calculate_settlement_total(14, 3.0) == 17
+        # tier_rate=3.0, records_sum = 14
+        assert calculate_settlement_total(14, 3.0) == 14
 
     def test_standard_tier(self) -> None:
-        # tier_rate=1.0, base_cost = int(1 * 1.0) = 1, records_sum = 5
-        assert calculate_settlement_total(5, 1.0) == 6
+        # tier_rate=1.0, records_sum = 5
+        assert calculate_settlement_total(5, 1.0) == 5
 
     def test_lite_tier_returns_zero(self) -> None:
         assert calculate_settlement_total(100, 0.0) == 0
@@ -149,9 +148,8 @@ class TestCalculateSettlementTotal:
         assert calculate_settlement_total(100, -1.0) == 0
 
     def test_zero_records(self) -> None:
-        # base_cost = int(1 * 3.0) = 3
-        assert calculate_settlement_total(0, 3.0) == int(BASE_COST * 3.0)
+        assert calculate_settlement_total(0, 3.0) == 0
 
     def test_ultra_tier(self) -> None:
-        # tier_rate=6.8, base_cost = int(1 * 6.8) = 6, records_sum = 10
-        assert calculate_settlement_total(10, 6.8) == 16
+        # tier_rate=6.8, records_sum = 10
+        assert calculate_settlement_total(10, 6.8) == 10
