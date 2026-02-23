@@ -116,6 +116,17 @@ class FileRepository:
         logger.debug(f"Fetching file with id: {file_id}")
         return await self.db.get(File, file_id)
 
+    async def get_total_size_by_ids(self, file_ids: list[UUID]) -> int:
+        """Return the sum of file_size for a list of file IDs."""
+        if not file_ids:
+            return 0
+        from sqlalchemy import func
+
+        result = await self.db.exec(
+            select(func.coalesce(func.sum(File.file_size), 0)).where(col(File.id).in_(file_ids))
+        )
+        return int(result.one())
+
     async def get_file_by_storage_key(self, storage_key: str) -> File | None:
         """
         Fetches a file by its storage key.

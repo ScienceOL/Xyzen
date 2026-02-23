@@ -56,6 +56,13 @@ export interface ChatSlice {
     model: string,
   ) => Promise<void>;
 
+  // Ensure a channel exists for a topic, then activate it
+  ensureChannelForTopic: (
+    topicId: string,
+    sessionId: string,
+    agentId: string,
+  ) => Promise<void>;
+
   // Tool call confirmation methods
   confirmToolCall: (channelId: string, toolCallId: string) => void;
   cancelToolCall: (channelId: string, toolCallId: string) => void;

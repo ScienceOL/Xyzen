@@ -48,6 +48,9 @@ export interface UiSlice {
   // Message highlight (scroll-to + flash)
   highlightMessageId: string | null;
 
+  // Spatial open tabs per agent (agentId → ordered tab list)
+  openTabsByAgent: Record<string, { id: string; name: string }[]>;
+
   toggleXyzen: () => void;
   openXyzen: () => void;
   closeXyzen: () => void;
@@ -85,6 +88,13 @@ export interface UiSlice {
   setMobilePage: (page: number) => void;
   requestFocusAgent: (agentId: string | null) => void;
   highlightMessage: (messageId: string | null) => void;
+  // Spatial open tabs
+  openTab: (agentId: string, tab: { id: string; name: string }) => void;
+  closeTab: (agentId: string, topicId: string) => void;
+  setOpenTabs: (
+    agentId: string,
+    tabs: { id: string; name: string }[],
+  ) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -120,6 +130,7 @@ export const createUiSlice: StateCreator<
   mobilePage: 0,
   pendingFocusAgentId: null,
   highlightMessageId: null,
+  openTabsByAgent: {},
 
   toggleXyzen: () =>
     set((state: { isXyzenOpen: boolean }) => ({
@@ -191,4 +202,22 @@ export const createUiSlice: StateCreator<
   setMobilePage: (page) => set({ mobilePage: page }),
   requestFocusAgent: (agentId) => set({ pendingFocusAgentId: agentId }),
   highlightMessage: (messageId) => set({ highlightMessageId: messageId }),
+  openTab: (agentId, tab) =>
+    set((state) => {
+      const existing = state.openTabsByAgent[agentId] ?? [];
+      if (existing.some((t) => t.id === tab.id)) return;
+      state.openTabsByAgent[agentId] = [...existing, tab];
+    }),
+  closeTab: (agentId, topicId) =>
+    set((state) => {
+      const existing = state.openTabsByAgent[agentId];
+      if (!existing) return;
+      state.openTabsByAgent[agentId] = existing.filter(
+        (t) => t.id !== topicId,
+      );
+    }),
+  setOpenTabs: (agentId, tabs) =>
+    set((state) => {
+      state.openTabsByAgent[agentId] = tabs;
+    }),
 });

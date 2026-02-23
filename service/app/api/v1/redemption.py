@@ -77,6 +77,9 @@ class UserWalletResponse(BaseModel):
 
     user_id: str
     virtual_balance: int
+    free_balance: int
+    paid_balance: int
+    earned_balance: int
     total_credited: int
     total_consumed: int
     created_at: datetime
@@ -405,6 +408,11 @@ async def redeem_code(
 
         await db.commit()
 
+        # Broadcast wallet update via Redis pub/sub
+        from app.core.user_events import broadcast_wallet_update
+
+        await broadcast_wallet_update(wallet)
+
         logger.info(f"User {user_id} successfully redeemed code {request.code}, credited: {history.amount}")
 
         if redemption_code and redemption_code.code_type == "subscription":
@@ -466,6 +474,9 @@ async def get_user_wallet(
         return UserWalletResponse(
             user_id=wallet.user_id,
             virtual_balance=wallet.virtual_balance,
+            free_balance=wallet.free_balance,
+            paid_balance=wallet.paid_balance,
+            earned_balance=wallet.earned_balance,
             total_credited=wallet.total_credited,
             total_consumed=wallet.total_consumed,
             created_at=wallet.created_at,
@@ -521,6 +532,73 @@ async def get_redemption_history(
 
     except Exception as e:
         logger.error(f"Error fetching redemption history for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+# ==================== Credit Ledger Endpoint ====================
+class CreditLedgerResponse(BaseModel):
+    """Response model for credit ledger entry."""
+
+    id: UUID
+    credit_type: str
+    direction: str
+    amount: int
+    balance_after: int
+    total_balance_after: int
+    source: str
+    reference_id: Optional[str]
+    created_at: datetime
+
+
+@router.get("/wallet/ledger", response_model=list[CreditLedgerResponse])
+async def get_credit_ledger(
+    limit: int = 50,
+    offset: int = 0,
+    credit_type: Optional[str] = None,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get current user's credit ledger history.
+
+    Args:
+        limit: Maximum number of records to return
+        offset: Number of records to skip
+        credit_type: Optional filter by credit type (free, paid, earned)
+        current_user: Current authenticated user ID
+        db: Database session
+
+    Returns:
+        List of credit ledger entries
+    """
+    user_id = current_user
+
+    try:
+        from app.repos.redemption import RedemptionRepository
+
+        repo = RedemptionRepository(db)
+        entries = await repo.get_credit_ledger(user_id, limit, offset, credit_type)
+
+        return [
+            CreditLedgerResponse(
+                id=entry.id,
+                credit_type=entry.credit_type,
+                direction=entry.direction,
+                amount=entry.amount,
+                balance_after=entry.balance_after,
+                total_balance_after=entry.total_balance_after,
+                source=entry.source,
+                reference_id=entry.reference_id,
+                created_at=entry.created_at,
+            )
+            for entry in entries
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching credit ledger for user {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),

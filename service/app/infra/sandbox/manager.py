@@ -15,24 +15,60 @@ Redis storage format (hash):
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any
 
 import redis.asyncio as aioredis
 
-from app.infra.sandbox.backends.base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SearchMatch
+from app.infra.sandbox.backends.base import (
+    ExecResult,
+    FileInfo,
+    PreviewUrl,
+    SandboxBackend,
+    SandboxState,
+    SandboxStatus,
+    SearchMatch,
+)
 
 logger = logging.getLogger(__name__)
 
 # Redis key format and TTL
 REDIS_KEY_PREFIX = "sandbox:session:"
-_REDIS_TTL_SECONDS = 3600  # 1 hour
 
 # Hash fields
 _F_SANDBOX_ID = "sandbox_id"
 _F_CREATED_AT = "created_at"
 _F_BACKEND = "backend"
+_F_LAST_KEEP_ALIVE = "last_keep_alive"
+
+# Debounce window for backend keep-alive calls (seconds)
+_KEEP_ALIVE_DEBOUNCE_SECONDS = 300  # 5 minutes
+
+# Extra buffer added to Redis TTL beyond the sandbox's own delete timer
+_REDIS_TTL_BUFFER_SECONDS = 3600  # 1 hour
+
+
+def _compute_redis_ttl() -> int:
+    """Redis TTL must outlive the sandbox on the backend.
+
+    = auto_stop + auto_delete + 1h buffer (so Redis always remembers a
+    mapping while the sandbox still exists on Daytona/E2B).
+
+    Falls back to 7 days if config is unavailable.
+    """
+    try:
+        from app.configs import configs
+
+        sc = configs.Sandbox
+        auto_stop_s = sc.Daytona.AutoStopMinutes * 60
+        auto_delete_minutes = sc.Daytona.AutoDeleteMinutes
+        auto_delete_s = auto_delete_minutes * 60 if auto_delete_minutes > 0 else 86400
+        return auto_stop_s + auto_delete_s + _REDIS_TTL_BUFFER_SECONDS
+    except Exception:
+        return 604800  # 7 days
 
 
 @dataclass(frozen=True)
@@ -109,7 +145,7 @@ class SandboxManager:
         """
         Ensure a sandbox exists for this session.
 
-        Checks Redis cache first, creates if needed.
+        Checks Redis cache first, verifies backend liveness, creates if needed.
         Uses Redis SET NX for race condition protection.
 
         Returns:
@@ -123,9 +159,15 @@ class SandboxManager:
             # Check Redis for existing mapping
             existing_id = await _read_sandbox_id(redis_client, self.redis_key)
             if existing_id:
-                self._sandbox_id = existing_id
-                logger.debug(f"Reusing sandbox {existing_id} for session {self._session_id}")
-                return existing_id
+                # Verify the sandbox is actually alive on the backend
+                if await self._verify_or_recover(redis_client, existing_id):
+                    self._sandbox_id = existing_id
+                    await self._touch_redis_ttl(redis_client)
+                    logger.debug(f"Reusing sandbox {existing_id} for session {self._session_id}")
+                    return existing_id
+                # Recovery failed — fall through to create a new one
+                logger.warning(f"Sandbox {existing_id} is dead, recreating for session {self._session_id}")
+                await redis_client.delete(self.redis_key)
 
             # Create new sandbox — use SET NX to prevent concurrent creation
             lock_key = f"{self.redis_key}:lock"
@@ -171,7 +213,7 @@ class SandboxManager:
                         _F_BACKEND: configs.Sandbox.Backend,
                     },
                 )
-                await redis_client.expire(self.redis_key, _REDIS_TTL_SECONDS)
+                await redis_client.expire(self.redis_key, _compute_redis_ttl())
 
                 self._sandbox_id = sandbox_id
                 logger.info(f"Created sandbox {sandbox_id} for session {self._session_id}")
@@ -197,31 +239,194 @@ class SandboxManager:
         finally:
             await redis_client.aclose()
 
+    # --- Lifecycle helpers (internal) ---
+
+    async def _touch_redis_ttl(self, redis_client: aioredis.Redis | None = None) -> None:
+        """Refresh the Redis key TTL. Cheap — safe to call on every operation."""
+        own_client = redis_client is None
+        if own_client:
+            redis_client = await self._create_redis_client()
+        assert redis_client is not None
+        try:
+            await redis_client.expire(self.redis_key, _compute_redis_ttl())
+        finally:
+            if own_client:
+                await redis_client.aclose()
+
+    async def _maybe_keep_alive_backend(self, redis_client: aioredis.Redis | None = None) -> None:
+        """Debounced backend keep-alive. Only calls backend if >5 min since last call."""
+        own_client = redis_client is None
+        if own_client:
+            redis_client = await self._create_redis_client()
+        assert redis_client is not None
+        try:
+            last_ts: str | None = await redis_client.hget(self.redis_key, _F_LAST_KEEP_ALIVE)  # type: ignore[assignment]
+            now = time.time()
+            if last_ts:
+                try:
+                    if now - float(last_ts) < _KEEP_ALIVE_DEBOUNCE_SECONDS:
+                        return
+                except (ValueError, TypeError):
+                    pass
+            sandbox_id = await _read_sandbox_id(redis_client, self.redis_key)
+            if not sandbox_id:
+                return
+            try:
+                await self._backend.keep_alive(sandbox_id)
+                await redis_client.hset(self.redis_key, _F_LAST_KEEP_ALIVE, str(now))  # type: ignore[misc]
+            except Exception as e:
+                logger.debug(f"Backend keep_alive failed for {sandbox_id}: {e}")
+        finally:
+            if own_client:
+                await redis_client.aclose()
+
+    async def _on_operation(self) -> None:
+        """Called after each delegated operation to refresh TTLs."""
+        redis_client = await self._create_redis_client()
+        try:
+            await self._touch_redis_ttl(redis_client)
+            await self._maybe_keep_alive_backend(redis_client)
+        except Exception as e:
+            logger.debug(f"_on_operation housekeeping failed: {e}")
+        finally:
+            await redis_client.aclose()
+
+    async def _verify_or_recover(self, redis_client: aioredis.Redis, sandbox_id: str) -> bool:
+        """Check if a sandbox is alive; try to restart if stopped.
+
+        Returns True if the sandbox is usable, False if it should be recreated.
+        """
+        try:
+            state = await self._backend.get_status(sandbox_id)
+        except Exception as e:
+            # get_status threw — the sandbox may have been destroyed on the
+            # backend (e.g. Daytona returns 404).  Fall back to get_info as a
+            # second probe; if that also fails the sandbox is truly gone.
+            logger.warning(f"get_status failed for {sandbox_id}: {e}")
+            try:
+                info = await self._backend.get_info(sandbox_id)
+                if info:
+                    logger.debug(f"get_info succeeded for {sandbox_id}, assuming alive")
+                    return True
+            except Exception:
+                pass
+            logger.info(f"Sandbox {sandbox_id} unreachable on backend, will recreate")
+            return False
+
+        if state.status == SandboxStatus.running:
+            return True
+
+        if state.status == SandboxStatus.stopped:
+            try:
+                await self._backend.start(sandbox_id)
+                logger.info(f"Restarted stopped sandbox {sandbox_id}")
+                return True
+            except NotImplementedError:
+                logger.info(f"Backend cannot restart {sandbox_id}, will recreate")
+                return False
+            except Exception as e:
+                logger.warning(f"Failed to restart sandbox {sandbox_id}: {e}")
+                return False
+
+        # unknown — assume alive
+        return True
+
+    # --- Public lifecycle methods ---
+
+    async def get_status(self) -> SandboxState:
+        """Get the backend-reported status of this session's sandbox."""
+        sandbox_id = await self.get_sandbox_id()
+        if not sandbox_id:
+            return SandboxState(status=SandboxStatus.unknown)
+        try:
+            return await self._backend.get_status(sandbox_id)
+        except Exception as e:
+            logger.warning(f"get_status failed for sandbox {sandbox_id}: {e}")
+            return SandboxState(status=SandboxStatus.unknown)
+
+    async def keep_alive(self) -> bool:
+        """Refresh both Redis TTL and backend idle timer.
+
+        Returns True if successful, False otherwise.
+        """
+        sandbox_id = await self.get_sandbox_id()
+        if not sandbox_id:
+            return False
+        try:
+            await self._backend.keep_alive(sandbox_id)
+            redis_client = await self._create_redis_client()
+            try:
+                await self._touch_redis_ttl(redis_client)
+                await redis_client.hset(self.redis_key, _F_LAST_KEEP_ALIVE, str(time.time()))  # type: ignore[misc]
+            finally:
+                await redis_client.aclose()
+            return True
+        except Exception as e:
+            logger.warning(f"keep_alive failed for sandbox {sandbox_id}: {e}")
+            return False
+
+    async def start_sandbox(self) -> bool:
+        """Attempt to start a stopped sandbox.
+
+        Returns True if started successfully, False otherwise.
+        """
+        sandbox_id = await self.get_sandbox_id()
+        if not sandbox_id:
+            return False
+        try:
+            await self._backend.start(sandbox_id)
+            return True
+        except Exception as e:
+            logger.warning(f"start_sandbox failed for {sandbox_id}: {e}")
+            return False
+
+    async def get_backend_info(self) -> dict[str, Any]:
+        """Return backend-specific diagnostic information."""
+        sandbox_id = await self.get_sandbox_id()
+        if not sandbox_id:
+            return {}
+        try:
+            return await self._backend.get_info(sandbox_id)
+        except Exception as e:
+            logger.warning(f"get_info failed for sandbox {sandbox_id}: {e}")
+            return {}
+
     # --- Delegated operations (mutating — auto-provisions) ---
 
     async def exec(self, command: str, cwd: str | None = None, timeout: int | None = None) -> ExecResult:
         sandbox_id = await self.ensure_sandbox()
-        return await self._backend.exec(sandbox_id, command, cwd=cwd, timeout=timeout)
+        result = await self._backend.exec(sandbox_id, command, cwd=cwd, timeout=timeout)
+        await self._on_operation()
+        return result
 
     async def read_file(self, path: str) -> str:
         sandbox_id = await self.ensure_sandbox()
-        return await self._backend.read_file(sandbox_id, path)
+        result = await self._backend.read_file(sandbox_id, path)
+        await self._on_operation()
+        return result
 
     async def read_file_bytes(self, path: str) -> bytes:
         sandbox_id = await self.ensure_sandbox()
-        return await self._backend.read_file_bytes(sandbox_id, path)
+        result = await self._backend.read_file_bytes(sandbox_id, path)
+        await self._on_operation()
+        return result
 
     async def write_file(self, path: str, content: str) -> None:
         sandbox_id = await self.ensure_sandbox()
         await self._backend.write_file(sandbox_id, path, content)
+        await self._on_operation()
 
     async def list_files(self, path: str) -> list[FileInfo]:
         sandbox_id = await self.ensure_sandbox()
-        return await self._backend.list_files(sandbox_id, path)
+        result = await self._backend.list_files(sandbox_id, path)
+        await self._on_operation()
+        return result
 
     async def find_files(self, root: str, pattern: str) -> list[str]:
         sandbox_id = await self.ensure_sandbox()
-        return await self._backend.find_files(sandbox_id, root, pattern)
+        result = await self._backend.find_files(sandbox_id, root, pattern)
+        await self._on_operation()
+        return result
 
     async def search_in_files(
         self,
@@ -230,15 +435,20 @@ class SandboxManager:
         include: str | None = None,
     ) -> list[SearchMatch]:
         sandbox_id = await self.ensure_sandbox()
-        return await self._backend.search_in_files(sandbox_id, root, pattern, include=include)
+        result = await self._backend.search_in_files(sandbox_id, root, pattern, include=include)
+        await self._on_operation()
+        return result
 
     async def write_file_bytes(self, path: str, data: bytes) -> None:
         sandbox_id = await self.ensure_sandbox()
         await self._backend.write_file_bytes(sandbox_id, path, data)
+        await self._on_operation()
 
     async def get_preview_url(self, port: int) -> PreviewUrl:
         sandbox_id = await self.ensure_sandbox()
-        return await self._backend.get_preview_url(sandbox_id, port)
+        result = await self._backend.get_preview_url(sandbox_id, port)
+        await self._on_operation()
+        return result
 
     # --- Read-only operations (for API layer — require existing sandbox) ---
 
@@ -334,4 +544,4 @@ async def scan_all_sandbox_infos(redis_url: str) -> list[SandboxInfo]:
         await redis_client.aclose()
 
 
-__all__ = ["REDIS_KEY_PREFIX", "SandboxInfo", "SandboxManager", "scan_all_sandbox_infos"]
+__all__ = ["REDIS_KEY_PREFIX", "SandboxInfo", "SandboxManager", "SandboxState", "SandboxStatus", "scan_all_sandbox_infos"]

@@ -7,7 +7,7 @@ celery_app = Celery(
     "xyzen_worker",
     broker=configs.Redis.REDIS_URL,
     backend=configs.Redis.REDIS_URL,
-    include=["app.tasks.chat", "app.tasks.notification"],
+    include=["app.tasks.chat", "app.tasks.notification", "app.tasks.sandbox_cleanup"],
 )
 
 celery_app.conf.update(
@@ -16,6 +16,12 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="Asia/Shanghai",
     enable_utc=True,
+    beat_schedule={
+        "sandbox-cleanup-every-10min": {
+            "task": "sandbox_cleanup",
+            "schedule": 600.0,  # every 10 minutes
+        },
+    },
 )
 
 

@@ -4,13 +4,12 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from app.agents.factory import _should_enable_subagent, build_graph_agent, inject_system_prompt
 from langchain_core.messages import AIMessage, HumanMessage
-
-from app.agents.factory import _inject_system_prompt, _should_enable_subagent, build_graph_agent
 
 
 class TestInjectSystemPrompt:
-    """Test _inject_system_prompt function."""
+    """Test inject_system_prompt function."""
 
     def test_inject_into_llm_node(self) -> None:
         """Test system prompt injection into LLM node."""
@@ -29,7 +28,7 @@ class TestInjectSystemPrompt:
             "edges": [],
         }
 
-        result = _inject_system_prompt(config_dict, "Custom system prompt")
+        result = inject_system_prompt(config_dict, "Custom system prompt")
 
         # Original should not be mutated
         assert config_dict["nodes"][0]["llm_config"]["prompt_template"] == "Default prompt"
@@ -56,7 +55,7 @@ class TestInjectSystemPrompt:
             "edges": [],
         }
 
-        result = _inject_system_prompt(config_dict, "Custom system prompt")
+        result = inject_system_prompt(config_dict, "Custom system prompt")
 
         # Original should not be mutated
         assert "config_overrides" not in config_dict["nodes"][0]["component_config"]
@@ -87,7 +86,7 @@ class TestInjectSystemPrompt:
             "edges": [],
         }
 
-        result = _inject_system_prompt(config_dict, "Custom system prompt")
+        result = inject_system_prompt(config_dict, "Custom system prompt")
 
         # Both nodes should be layered (inject into all matching nodes)
         first = result["nodes"][0]["llm_config"]["prompt_template"]
@@ -120,7 +119,7 @@ class TestInjectSystemPrompt:
             "edges": [],
         }
 
-        result = _inject_system_prompt(config_dict, "Custom system prompt")
+        result = inject_system_prompt(config_dict, "Custom system prompt")
 
         # LLM node should be layered (other component is not react)
         layered = result["nodes"][1]["llm_config"]["prompt_template"]
@@ -140,7 +139,7 @@ class TestInjectSystemPrompt:
             "edges": [],
         }
 
-        result = _inject_system_prompt(config_dict, "Custom system prompt")
+        result = inject_system_prompt(config_dict, "Custom system prompt")
 
         # Should return config unchanged
         assert result == config_dict
@@ -163,7 +162,7 @@ class TestInjectSystemPrompt:
             },
         }
 
-        result = _inject_system_prompt(config_dict, "Custom system prompt")
+        result = inject_system_prompt(config_dict, "Custom system prompt")
         nodes = result["graph"]["nodes"]
         layered = nodes[0]["config"]["prompt_template"]
         assert layered.startswith("Custom system prompt")
@@ -187,7 +186,7 @@ class TestInjectSystemPrompt:
             },
         }
 
-        result = _inject_system_prompt(config_dict, "Custom system prompt")
+        result = inject_system_prompt(config_dict, "Custom system prompt")
         nodes = result["graph"]["nodes"]
         assert nodes[0]["config"]["config_overrides"]["system_prompt"] == "Custom system prompt"
 

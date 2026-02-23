@@ -16,6 +16,7 @@ from app.repos import (
     AgentRepository,
     AgentSnapshotRepository,
     KnowledgeSetRepository,
+    SkillRepository,
 )
 from app.repos.file import FileRepository
 from app.repos.mcp import McpRepository
@@ -35,14 +36,23 @@ class AgentMarketplaceService:
         self.knowledge_set_repo = KnowledgeSetRepository(db)
         self.file_repo = FileRepository(db)
         self.mcp_repo = McpRepository(db)
+        self.skill_repo = SkillRepository(db)
 
-    async def create_snapshot_from_agent(self, agent: Agent, commit_message: str) -> AgentSnapshot:
+    async def create_snapshot_from_agent(
+        self,
+        agent: Agent,
+        commit_message: str,
+        knowledge_set_id_override: UUID | None = None,
+        skill_ids_override: list[UUID] | None = None,
+    ) -> AgentSnapshot:
         """
         Creates a snapshot from the current agent configuration.
 
         Args:
             agent: The agent to snapshot.
             commit_message: Description of changes.
+            knowledge_set_id_override: If provided, use this instead of agent.knowledge_set_id.
+            skill_ids_override: If provided, use these skill IDs instead of querying agent links.
 
         Returns:
             The created AgentSnapshot.
@@ -77,17 +87,46 @@ class AgentMarketplaceService:
 
         # Serialize knowledge set metadata (no file content)
         knowledge_set_config: dict[str, Any] | None = None
-        if agent.knowledge_set_id:
-            knowledge_set = await self.knowledge_set_repo.get_knowledge_set_by_id(agent.knowledge_set_id)
+        effective_kb_id = knowledge_set_id_override if knowledge_set_id_override is not None else agent.knowledge_set_id
+        if effective_kb_id:
+            knowledge_set = await self.knowledge_set_repo.get_knowledge_set_by_id(effective_kb_id)
             if knowledge_set and not knowledge_set.is_deleted:
-                file_ids = await self.knowledge_set_repo.get_files_in_knowledge_set(agent.knowledge_set_id)
+                file_ids = await self.knowledge_set_repo.get_files_in_knowledge_set(effective_kb_id)
+                total_size_bytes = await self.file_repo.get_total_size_by_ids(file_ids)
                 knowledge_set_config = {
                     "id": str(knowledge_set.id),
                     "name": knowledge_set.name,
                     "description": knowledge_set.description,
                     "file_count": len(file_ids),
                     "file_ids": [str(fid) for fid in file_ids],
+                    "total_size_bytes": total_size_bytes,
                 }
+
+        # Serialize skill metadata
+        skill_configs: list[dict[str, Any]] = []
+        if skill_ids_override is not None:
+            # Use override list — fetch each skill by ID
+            for sid in skill_ids_override:
+                skill = await self.skill_repo.get_skill_by_id(sid)
+                if skill:
+                    skill_configs.append({
+                        "id": str(skill.id),
+                        "name": skill.name,
+                        "description": skill.description,
+                        "scope": skill.scope,
+                    })
+        else:
+            # Default: query skills attached to the agent
+            skills = await self.skill_repo.get_skills_for_agent(agent.id)
+            skill_configs = [
+                {
+                    "id": str(skill.id),
+                    "name": skill.name,
+                    "description": skill.description,
+                    "scope": skill.scope,
+                }
+                for skill in skills
+            ]
 
         # Create snapshot
         snapshot_data = AgentSnapshotCreate(
@@ -95,6 +134,7 @@ class AgentMarketplaceService:
             configuration=configuration,
             mcp_server_configs=mcp_server_configs,
             knowledge_set_config=knowledge_set_config,
+            skill_configs=skill_configs,
             commit_message=commit_message,
         )
 
@@ -110,6 +150,8 @@ class AgentMarketplaceService:
         fork_mode: ForkMode = ForkMode.EDITABLE,
         author_display_name: str | None = None,
         author_avatar_url: str | None = None,
+        knowledge_set_id_override: UUID | None = None,
+        skill_ids_override: list[UUID] | None = None,
     ) -> AgentMarketplace | None:
         """
         Publishes an agent to the marketplace or updates an existing listing.
@@ -120,6 +162,8 @@ class AgentMarketplaceService:
             is_published: Whether to set the listing as published.
             readme: Optional markdown README content.
             fork_mode: Access mode for forked agents.
+            knowledge_set_id_override: If provided, use instead of agent.knowledge_set_id for snapshot.
+            skill_ids_override: If provided, use instead of querying agent skill links for snapshot.
 
         Returns:
             The marketplace listing.
@@ -127,7 +171,12 @@ class AgentMarketplaceService:
         logger.info(f"Publishing agent {agent.id} to marketplace")
 
         # Create snapshot
-        snapshot = await self.create_snapshot_from_agent(agent, commit_message)
+        snapshot = await self.create_snapshot_from_agent(
+            agent,
+            commit_message,
+            knowledge_set_id_override=knowledge_set_id_override,
+            skill_ids_override=skill_ids_override,
+        )
 
         # Check if listing already exists
         existing_listing = await self.marketplace_repo.get_by_agent_id(agent.id)
@@ -445,6 +494,26 @@ class AgentMarketplaceService:
 
             await self.db.flush()
 
+        # Handle skills: Attach matching skills to forked agent
+        if snapshot.skill_configs:
+            for skill_config in snapshot.skill_configs:
+                skill_name = skill_config.get("name")
+                skill_scope = skill_config.get("scope")
+                if not skill_name:
+                    continue
+
+                try:
+                    if skill_scope == "builtin":
+                        # Find builtin skill by name and attach
+                        skill = await self.skill_repo.get_skill_by_name(skill_name)
+                        if skill:
+                            await self.skill_repo.attach_skill_to_agent(forked_agent.id, skill.id)
+                    # User-scoped skills can't be cloned, skip them
+                except Exception as e:
+                    logger.warning(f"Failed to attach skill '{skill_name}' during fork: {e}")
+
+            await self.db.flush()
+
         # Increment forks count
         await self.marketplace_repo.increment_forks(marketplace_id)
 
@@ -493,6 +562,7 @@ class AgentMarketplaceService:
         requirements: dict[str, Any] = {
             "mcp_servers": [],
             "knowledge_base": None,
+            "skills": [],
             "provider_needed": bool(snapshot.configuration.get("model")),
         }
 
@@ -508,7 +578,15 @@ class AgentMarketplaceService:
             requirements["knowledge_base"] = {
                 "name": kb.get("name"),
                 "file_count": kb.get("file_count", 0),
+                "total_size_bytes": kb.get("total_size_bytes", 0),
             }
+
+        # Skill requirements
+        if snapshot.skill_configs:
+            requirements["skills"] = [
+                {"name": s.get("name"), "description": s.get("description"), "scope": s.get("scope")}
+                for s in snapshot.skill_configs
+            ]
 
         return requirements
 

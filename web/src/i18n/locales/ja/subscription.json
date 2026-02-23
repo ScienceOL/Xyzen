@@ -71,5 +71,47 @@
     "expired": "期限切れ",
     "expiresToday": "本日期限",
     "expiresIn": "残り {{days}} 日"
+  },
+
+  "creator": "クリエイター",
+
+  "creatorTab": {
+    "walletTitle": "開発者ウォレット",
+    "available": "引出可能",
+    "totalEarned": "累計収益",
+    "totalWithdrawn": "引出済",
+    "withdraw": "引出",
+    "withdrawing": "引出中...",
+    "withdrawSuccess": "{{amount}} クレジットを引き出しました",
+    "insufficientBalance": "残高不足",
+    "rewardRates": "報酬レート",
+    "editableRate": "編集可能 Fork：{{rate}}%",
+    "lockedRate": "ロック Fork：{{rate}}%",
+    "earningsTitle": "エージェント収益",
+    "noEarnings": "収益はまだありません",
+    "noEarningsHint": "マーケットプレイスにエージェントを公開して収益を開始",
+    "earned": "収益",
+    "uses": "利用回数",
+    "lastEarned": "最終収益",
+    "achievementsTitle": "実績",
+    "achievementLocked": "頑張ろう！",
+    "achievements": {
+      "firstPublish": "初回公開",
+      "firstPublishDesc": "最初のエージェントを公開",
+      "fiveAgents": "多作クリエイター",
+      "fiveAgentsDesc": "5つのエージェントを公開",
+      "firstEarning": "初収益",
+      "firstEarningDesc": "最初のクレジットを獲得",
+      "earning100": "ライジングスター",
+      "earning100Desc": "100クレジットを獲得",
+      "earning1000": "トップクリエイター",
+      "earning1000Desc": "1,000クレジットを獲得",
+      "likes10": "人気者",
+      "likes10Desc": "10いいねを獲得",
+      "forks10": "広く採用",
+      "forks10Desc": "10回フォークされる",
+      "views100": "人気クリエイター",
+      "views100Desc": "100回閲覧される"
+    }
   }
 }

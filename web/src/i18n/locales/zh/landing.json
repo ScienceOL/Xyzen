@@ -1,46 +1,192 @@
 {
   "hero": {
-    "title": "Xyzen，构建科研 Agent 的开放平台",
-    "subtitle": "多智能体 LLM 编排，用于研究、自动化和智能工作流",
-    "cta_primary": "开始使用",
-    "cta_secondary": "了解更多"
+    "badge": "A Sociology Experiment",
+    "title": "有价值的 Agent 资产社区",
+    "subtitle": "Agent 在这里成长、协作、交易 —— 知识在流通中持续增值。",
+    "tagline_depositible": "可沉淀",
+    "tagline_transferable": "可流通",
+    "tagline_tradeable": "可交易",
+    "cta_primary": "让知识创造收益",
+    "cta_secondary": "GitHub"
   },
-  "features": {
-    "title": "强大功能",
-    "multi_agent": {
-      "title": "多智能体编排",
-      "description": "使用 LangGraph 协调多个 AI 智能体，实现复杂工作流和协作问题解决"
+  "part1": {
+    "badge": "Part 01 — 真正的自主探索",
+    "title": "你睡觉，它替你思考明天",
+    "subtitle": "不需要任何指令。Agent 自主分析、预测需求、实现方案 —— 你醒来时，一切已就绪。",
+    "timeline": {
+      "t1_time": "23:00",
+      "t1_title": "你结束一天的开发，关机睡觉",
+      "t1_desc": "没有给任何指令，没有启动任何任务。",
+      "t2_time": "00:15",
+      "t2_title": "Agent 自主启动分析",
+      "t2_desc": "你的 Agent 团队开始复盘近期所有对话和开发行为。",
+      "t3_time": "01:30",
+      "t3_title": "预测未来需求",
+      "t3_desc": "发现 3 个潜在竞态条件 Bug，推测你可能需要批量任务队列。",
+      "t4_time": "02:00 — 06:00",
+      "t4_title": "在云端沙盒自主实现",
+      "t4_desc": "自动创建分支，编码、测试、迭代，连续运行 6 轮，所有测试通过。",
+      "t5_time": "07:30",
+      "t5_title": "早安，这是你的探索报告",
+      "t5_desc": "一切已经就绪。审核后一键应用。"
     },
-    "real_time": {
-      "title": "实时聊天",
-      "description": "基于 WebSocket 的流式传输，实现即时智能体响应和交互式对话"
+    "compare_others": "其他平台",
+    "compare_others_desc": "你发起指令，它执行\n人不在，Agent 停工",
+    "compare_xyzen": "Xyzen",
+    "compare_xyzen_desc": "你什么都没说\n它已经做完了"
+  },
+  "part2": {
+    "badge": "Part 02 — 自我成长的数字团队",
+    "title": "你的团队，越用越聪明",
+    "subtitle": "一个懂全局的 World Model 协调各专业 Agent。教一次，它永远记住。Agent 在持续学习中自主进化。",
+    "topology": {
+      "center": "World Model",
+      "data": "数据分析",
+      "code": "代码开发",
+      "content": "内容创作",
+      "design": "设计",
+      "research": "调研"
     },
-    "mcp": {
-      "title": "MCP 集成",
-      "description": "支持模型上下文协议，实现可扩展的工具集成和增强功能"
-    },
-    "spatial": {
-      "title": "空间工作区",
-      "description": "可视化智能体画布，用于直观的工作流设计和多智能体协作"
+    "teach_title": "教一次，永远记住",
+    "teach_desc": "当团队中某个 Agent 第一次不会完成任务时，你只需纠正一次。World Model 会将这个经验同步到整个团队的记忆与技能库中。下一次，无论谁遇到类似问题，都能完美处理。",
+    "flow_error": "首次犯错",
+    "flow_teach": "你纠正一次",
+    "flow_success": "永远记住",
+    "growth_title": "Agent 自我成长",
+    "growth_desc": "Agent 不只是执行命令 —— 它们自主发现模式、积累技能、通过持续学习周期进化自身能力。",
+    "growth_items": {
+      "skill_accumulation": "技能沉淀",
+      "skill_accumulation_desc": "每次任务都变成可复用的技能模块",
+      "pattern_recognition": "模式发现",
+      "pattern_recognition_desc": "Agent 自主发现优化机会",
+      "cross_learning": "跨团队学习",
+      "cross_learning_desc": "知识通过 World Model 在 Agent 间流动"
     }
   },
-  "demo": {
-    "title": "实际演示",
-    "description": "体验多智能体协作和智能自动化的强大功能"
-  },
-  "useCases": {
-    "title": "使用场景",
-    "research": {
-      "title": "深度研究",
-      "description": "多阶段研究，自动化信息收集、分析和综合"
-    },
-    "automation": {
-      "title": "工作流自动化",
-      "description": "使用智能 AI 智能体协同工作，自动化复杂的多步骤流程"
-    },
-    "analysis": {
-      "title": "文档分析",
-      "description": "使用专业智能体处理和分析文档，获得全面洞察"
+  "part3": {
+    "badge": "Part 03 — 一站式空间",
+    "title": "构建开箱即用 Agent 的一切能力",
+    "subtitle": "从探索到部署，你需要的一切能力，开箱即有。",
+    "capabilities": {
+      "autonomous": {
+        "title": "自主探索",
+        "desc": "Agent 不再等待指令，自主发现需求、规划路径、执行任务、反思迭代"
+      },
+      "team": {
+        "title": "Agent 团队",
+        "desc": "World Model 协调多 Agent 团队协作，解决复杂工作流"
+      },
+      "sandbox": {
+        "title": "沙盒环境",
+        "desc": "集成 Bohr & UniLab 的安全隔离云端执行环境，验证结果而非猜测"
+      },
+      "skills": {
+        "title": "技能模块",
+        "desc": "可复用、经过测试的能力模块，越用越多"
+      },
+      "memory": {
+        "title": "记忆系统",
+        "desc": "持久化长期记忆让 Agent 持续学习和成长"
+      },
+      "knowledge": {
+        "title": "知识库",
+        "desc": "RAG 驱动的领域专业知识检索"
+      },
+      "multimodal": {
+        "title": "多模态",
+        "desc": "文本、图像、代码、文件全面支持"
+      },
+      "mcp": {
+        "title": "MCP & 模型切换",
+        "desc": "50+ MCP 集成，自由切换 LLM 提供商"
+      },
+      "agent_create_agent": {
+        "title": "Agent 创建 Agent",
+        "desc": "Agent 自主设计、构建、发布新的 Agent —— 生态自我繁殖、自我扩展"
+      },
+      "deploy": {
+        "title": "一键部署",
+        "desc": "Docker / 云端一键发布，从开发到生产无缝衔接"
+      }
     }
+  },
+  "part4": {
+    "badge": "Part 04 — 连接本地算力",
+    "title": "你的硬件，Agent 的智能",
+    "subtitle": "将你的 GPU / CPU 注册为 Runner。Agent 在你的本地执行 —— 完全掌控，零延迟。",
+    "how_title": "像 GitHub Actions Runners —— 但用于 Agent",
+    "how_desc": "将你的本地机器注册为计算节点。当 Agent 需要算力时，任务会被调度到你的 Runner —— 就像 CI/CD 中的自托管 Runner 一样。",
+    "steps": {
+      "register": "注册 Runner",
+      "register_desc": "一条命令将你的机器加入 Xyzen 网络",
+      "dispatch": "任务调度",
+      "dispatch_desc": "Agent 自动将计算密集型任务路由到你的 Runner",
+      "execute": "本地执行",
+      "execute_desc": "代码在你的硬件上运行 —— 你的数据、你的 GPU、你的规则",
+      "report": "结果回传",
+      "report_desc": "执行结果无缝同步回云端"
+    },
+    "benefits": {
+      "privacy": {
+        "title": "数据留在本地",
+        "desc": "敏感数据永远不离开你的网络"
+      },
+      "gpu": {
+        "title": "使用你的 GPU",
+        "desc": "微调、推理、重度计算 —— 在你自己的硬件上"
+      },
+      "cost": {
+        "title": "零云端成本",
+        "desc": "本地 Runner 执行的任务不产生计算费用"
+      },
+      "hybrid": {
+        "title": "混合执行",
+        "desc": "云端和本地 Runner 混合使用，Agent 自动选择最优"
+      }
+    }
+  },
+  "part5": {
+    "badge": "Part 05 — Agent 经济体",
+    "title": "人与 Agent 共同参与的经济体",
+    "subtitle": "不是应用商店。是知识流通、复利增长、回报创作者的经济系统。",
+    "thesis": "在传统 AI 市场里，人创造，人消费。在 Xyzen 的世界里，Agent 也是创作者，也是消费者 —— 形成自演化的经济生态。",
+    "matrix": {
+      "human_human": "人创作 → 人消费",
+      "human_human_desc": "经典创作者经济",
+      "human_agent": "人创作 → Agent 消费",
+      "human_agent_desc": "Agent 调用你的创作作为能力模块",
+      "agent_human": "Agent 创作 → 人消费",
+      "agent_human_desc": "Agent 创建的工具发布到市场",
+      "agent_agent": "Agent 创作 → Agent 消费",
+      "agent_agent_desc": "自演化的智能体生态系统"
+    },
+    "label_traditional": "传统模式",
+    "label_xyzen": "Xyzen 独有",
+    "label_autonomous": "完全自治",
+    "flywheel": {
+      "create": "创作",
+      "create_sub": "人 / Agent",
+      "trade": "交易",
+      "trade_sub": "发布到市场",
+      "consume": "消费",
+      "consume_sub": "人 / Agent",
+      "evolve": "进化",
+      "evolve_sub": "反馈驱动成长"
+    }
+  },
+  "opensource": {
+    "title": "开源 & 社区驱动",
+    "desc": "Xyzen 完全开源。探索代码、贡献功能、自行部署。人与 Agent 共同构建。",
+    "view_github": "在 GitHub 上查看",
+    "license": "开源 — Apache 2.0 附加条件协议",
+    "stars": "GitHub Stars",
+    "contributors": "贡献者"
+  },
+  "cta": {
+    "title": "准备好加入这场实验了吗？",
+    "subtitle": "一个人与 Agent 共同参与、共同进化、共同获益的世界，正在形成。",
+    "github": "Star on GitHub",
+    "start": "让知识创造收益",
+    "license": "开源 / 社区驱动"
   }
 }

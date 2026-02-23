@@ -71,5 +71,47 @@
     "expired": "Expired",
     "expiresToday": "Expires today",
     "expiresIn": "Expires in {{days}} days"
+  },
+
+  "creator": "Creator",
+
+  "creatorTab": {
+    "walletTitle": "Developer Wallet",
+    "available": "Available",
+    "totalEarned": "Total Earned",
+    "totalWithdrawn": "Withdrawn",
+    "withdraw": "Withdraw",
+    "withdrawing": "Withdrawing...",
+    "withdrawSuccess": "Withdrawn {{amount}} credits",
+    "insufficientBalance": "Insufficient balance",
+    "rewardRates": "Reward Rates",
+    "editableRate": "Editable fork: {{rate}}%",
+    "lockedRate": "Locked fork: {{rate}}%",
+    "earningsTitle": "Agent Earnings",
+    "noEarnings": "No earnings yet",
+    "noEarningsHint": "Publish agents to the marketplace to start earning",
+    "earned": "Earned",
+    "uses": "Uses",
+    "lastEarned": "Last earned",
+    "achievementsTitle": "Achievements",
+    "achievementLocked": "Keep going!",
+    "achievements": {
+      "firstPublish": "First Publish",
+      "firstPublishDesc": "Publish your first agent",
+      "fiveAgents": "Prolific Creator",
+      "fiveAgentsDesc": "Publish 5 agents",
+      "firstEarning": "First Earning",
+      "firstEarningDesc": "Earn your first credit",
+      "earning100": "Rising Star",
+      "earning100Desc": "Earn 100 credits",
+      "earning1000": "Top Creator",
+      "earning1000Desc": "Earn 1,000 credits",
+      "likes10": "Crowd Favorite",
+      "likes10Desc": "Get 10 likes",
+      "forks10": "Widely Adopted",
+      "forks10Desc": "Get 10 forks",
+      "views100": "Popular",
+      "views100Desc": "Get 100 views"
+    }
   }
 }

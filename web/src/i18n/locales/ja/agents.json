@@ -111,5 +111,104 @@
       "deleteConfirmTitle": "エージェントを削除しますか？",
       "deleteConfirmMessage": "\"{{name}}\"を削除してもよろしいですか？この操作は元に戻せません。"
     }
+  },
+  "graphEditor": {
+    "nodePanel": {
+      "title": "ノード設定",
+      "id": "ID",
+      "deleteNode": "ノードを削除"
+    },
+    "common": {
+      "name": "名前",
+      "namePlaceholder": "ノード名",
+      "description": "説明",
+      "descriptionPlaceholder": "任意の説明",
+      "reads": "読み取り",
+      "readsPlaceholder": "読み取る状態キー",
+      "readsHint": "このノードが読み取る状態キー",
+      "writes": "書き込み",
+      "writesPlaceholder": "書き込む状態キー",
+      "writesHint": "このノードが書き込む状態キー"
+    },
+    "llm": {
+      "promptOutput": "プロンプトと出力",
+      "promptTemplate": "プロンプトテンプレート",
+      "promptPlaceholder": "{{ state.field }} で変数を参照",
+      "outputKey": "出力キー",
+      "outputKeyPlaceholder": "response",
+      "messageKey": "メッセージキー",
+      "messageKeyPlaceholder": "messages",
+      "modelTools": "モデルとツール",
+      "modelOverride": "モデルオーバーライド",
+      "modelOverridePlaceholder": "空欄でデフォルトモデル",
+      "temperature": "温度",
+      "maxTokens": "最大トークン数",
+      "toolsEnabled": "ツール有効",
+      "toolFilter": "ツールフィルター",
+      "toolFilterPlaceholder": "許可するツール名",
+      "toolFilterHint": "空欄で全ツール許可",
+      "maxIterations": "最大反復回数"
+    },
+    "tool": {
+      "title": "ツール設定",
+      "outputKey": "出力キー",
+      "outputKeyPlaceholder": "tool_results",
+      "executeAll": "すべて実行",
+      "toolFilter": "ツールフィルター",
+      "toolFilterPlaceholder": "許可するツール名",
+      "toolFilterHint": "空欄で全ツール許可",
+      "timeoutSeconds": "タイムアウト（秒）"
+    },
+    "transform": {
+      "title": "変換設定",
+      "template": "テンプレート",
+      "templatePlaceholder": "Jinja2テンプレート式",
+      "outputKey": "出力キー",
+      "outputKeyPlaceholder": "output",
+      "inputKeys": "入力キー",
+      "inputKeysPlaceholder": "入力として使用する状態キー"
+    },
+    "component": {
+      "title": "コンポーネント設定",
+      "componentKey": "コンポーネントキー",
+      "componentKeyPlaceholder": "例：react",
+      "componentVersion": "バージョン",
+      "componentVersionPlaceholder": "*",
+      "configOverridesHint": "config_overridesはJSONエディターで編集してください。"
+    },
+    "edge": {
+      "title": "エッジ設定",
+      "label": "ラベル",
+      "labelPlaceholder": "任意のエッジラベル",
+      "priority": "優先度",
+      "conditionType": "条件",
+      "conditionNone": "なし（常時）",
+      "conditionBuiltin": "組み込み",
+      "conditionCustom": "カスタム述語",
+      "builtinCondition": "組み込み条件",
+      "hasToolCalls": "has_tool_calls",
+      "noToolCalls": "no_tool_calls",
+      "statePath": "状態パス",
+      "statePathPlaceholder": "例：response.has_tool_calls",
+      "operator": "演算子",
+      "value": "値",
+      "valuePlaceholder": "比較値",
+      "deleteEdge": "エッジを削除"
+    },
+    "validation": {
+      "errorCount": "{{count}} 件のエラー",
+      "warningCount": "{{count}} 件の警告",
+      "missingGraph": "グラフ定義がありません",
+      "emptyGraph": "グラフにノードがありません — パレットからドラッグしてください",
+      "noEntrypoint": "エントリーポイントがありません — STARTをノードに接続してください",
+      "entrypointMissing": "エントリーポイント '{{id}}' がノードに存在しません",
+      "edgeSourceMissing": "エッジのソースノード '{{id}}' が見つかりません",
+      "edgeTargetMissing": "エッジのターゲットノード '{{id}}' が見つかりません",
+      "selfLoop": "ノード '{{id}}' に自己ループがあります",
+      "emptyNodeName": "ノード '{{id}}' の名前が空です",
+      "orphanNoIncoming": "'{{name}}' に入力エッジがありません",
+      "orphanNoOutgoing": "'{{name}}' に出力エッジがありません",
+      "noPathToEnd": "ENDに到達するエッジがありません — グラフが終了しない可能性があります"
+    }
   }
 }

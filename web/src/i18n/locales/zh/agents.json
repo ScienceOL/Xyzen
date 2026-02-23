@@ -111,5 +111,104 @@
       "deleteConfirmTitle": "删除助手？",
       "deleteConfirmMessage": "确定要删除 \"{{name}}\" 吗？此操作无法撤销。"
     }
+  },
+  "graphEditor": {
+    "nodePanel": {
+      "title": "节点配置",
+      "id": "ID",
+      "deleteNode": "删除节点"
+    },
+    "common": {
+      "name": "名称",
+      "namePlaceholder": "节点名称",
+      "description": "描述",
+      "descriptionPlaceholder": "可选描述",
+      "reads": "读取",
+      "readsPlaceholder": "要读取的状态键",
+      "readsHint": "此节点读取的状态键",
+      "writes": "写入",
+      "writesPlaceholder": "要写入的状态键",
+      "writesHint": "此节点写入的状态键"
+    },
+    "llm": {
+      "promptOutput": "提示词与输出",
+      "promptTemplate": "提示词模板",
+      "promptPlaceholder": "使用 {{ state.field }} 引用变量",
+      "outputKey": "输出键",
+      "outputKeyPlaceholder": "response",
+      "messageKey": "消息键",
+      "messageKeyPlaceholder": "messages",
+      "modelTools": "模型与工具",
+      "modelOverride": "模型覆盖",
+      "modelOverridePlaceholder": "留空使用默认模型",
+      "temperature": "温度",
+      "maxTokens": "最大 Token 数",
+      "toolsEnabled": "启用工具",
+      "toolFilter": "工具过滤",
+      "toolFilterPlaceholder": "允许的工具名称",
+      "toolFilterHint": "留空允许所有工具",
+      "maxIterations": "最大迭代次数"
+    },
+    "tool": {
+      "title": "工具配置",
+      "outputKey": "输出键",
+      "outputKeyPlaceholder": "tool_results",
+      "executeAll": "全部执行",
+      "toolFilter": "工具过滤",
+      "toolFilterPlaceholder": "允许的工具名称",
+      "toolFilterHint": "留空允许所有工具",
+      "timeoutSeconds": "超时时间（秒）"
+    },
+    "transform": {
+      "title": "转换配置",
+      "template": "模板",
+      "templatePlaceholder": "Jinja2 模板表达式",
+      "outputKey": "输出键",
+      "outputKeyPlaceholder": "output",
+      "inputKeys": "输入键",
+      "inputKeysPlaceholder": "用作输入的状态键"
+    },
+    "component": {
+      "title": "组件配置",
+      "componentKey": "组件键",
+      "componentKeyPlaceholder": "例如：react",
+      "componentVersion": "版本",
+      "componentVersionPlaceholder": "*",
+      "configOverridesHint": "请使用 JSON 编辑器编辑 config_overrides。"
+    },
+    "edge": {
+      "title": "边配置",
+      "label": "标签",
+      "labelPlaceholder": "可选边标签",
+      "priority": "优先级",
+      "conditionType": "条件",
+      "conditionNone": "无（始终执行）",
+      "conditionBuiltin": "内置条件",
+      "conditionCustom": "自定义谓词",
+      "builtinCondition": "内置条件",
+      "hasToolCalls": "has_tool_calls",
+      "noToolCalls": "no_tool_calls",
+      "statePath": "状态路径",
+      "statePathPlaceholder": "例如：response.has_tool_calls",
+      "operator": "运算符",
+      "value": "值",
+      "valuePlaceholder": "比较值",
+      "deleteEdge": "删除边"
+    },
+    "validation": {
+      "errorCount": "{{count}} 个错误",
+      "warningCount": "{{count}} 个警告",
+      "missingGraph": "缺少图定义",
+      "emptyGraph": "图中没有节点 — 从面板拖入节点",
+      "noEntrypoint": "没有入口 — 将 START 连接到一个节点",
+      "entrypointMissing": "入口 '{{id}}' 在节点中不存在",
+      "edgeSourceMissing": "边的源节点 '{{id}}' 未找到",
+      "edgeTargetMissing": "边的目标节点 '{{id}}' 未找到",
+      "selfLoop": "节点 '{{id}}' 存在自环",
+      "emptyNodeName": "节点 '{{id}}' 名称为空",
+      "orphanNoIncoming": "'{{name}}' 没有入边",
+      "orphanNoOutgoing": "'{{name}}' 没有出边",
+      "noPathToEnd": "没有边到达 END — 图可能无法终止"
+    }
   }
 }

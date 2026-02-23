@@ -51,6 +51,11 @@ class SkillRepository:
         """Fetch a skill by its primary key."""
         return await self.db.get(Skill, skill_id)
 
+    async def get_skill_by_name(self, name: str) -> Skill | None:
+        """Fetch a skill by its name (returns first match)."""
+        result = await self.db.exec(select(Skill).where(Skill.name == name).limit(1))
+        return result.first()
+
     async def get_skills_by_user(self, user_id: str) -> Sequence[Skill]:
         """Fetch all skills owned by a user."""
         result = await self.db.exec(

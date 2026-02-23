@@ -14,6 +14,9 @@ export interface RedeemCodeResponse {
 export interface UserWalletResponse {
   user_id: string;
   virtual_balance: number;
+  free_balance: number;
+  paid_balance: number;
+  earned_balance: number;
   total_credited: number;
   total_consumed: number;
   created_at: string;

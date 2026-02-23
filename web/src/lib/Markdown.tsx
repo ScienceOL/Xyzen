@@ -8,7 +8,6 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import ReactECharts from "echarts-for-react";
 import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -27,6 +26,23 @@ const MermaidRenderer = React.lazy(() =>
     default: m.MermaidRenderer,
   })),
 );
+
+// Lazy-loaded ECharts – only fetched when a ```echart code block is previewed
+const LazyReactECharts = React.lazy(async () => {
+  const [{ default: Core }, { echarts }] = await Promise.all([
+    import("echarts-for-react/lib/core"),
+    import("@/lib/echarts"),
+  ]);
+  return {
+    default: function EChartsLazy(props: {
+      option: unknown;
+      theme?: string;
+      style?: React.CSSProperties;
+    }) {
+      return <Core echarts={echarts} {...props} />;
+    },
+  };
+});
 
 import "katex/dist/katex.css";
 
@@ -213,7 +229,17 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
   const isMermaid = language === "mermaid";
   const canPreview = isHtml || isEChart || isMermaid;
 
-  const PreviewContent = ({ fullscreen = false }: { fullscreen?: boolean }) => (
+  const echartOption = React.useMemo(() => {
+    if (!isEChart) return null;
+    try {
+      return new Function("return " + code)();
+    } catch (e) {
+      console.warn("ECharts option parse error:", e);
+      return {};
+    }
+  }, [isEChart, code]);
+
+  const renderPreview = (fullscreen: boolean) => (
     <>
       {isMermaid ? (
         <div
@@ -233,21 +259,22 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
         </div>
       ) : isEChart ? (
         <div
-          className="w-full bg-white p-4"
+          className="w-full bg-white dark:bg-neutral-950 p-4"
           style={{ height: fullscreen ? "calc(100vh - 120px)" : "400px" }}
         >
-          <ReactECharts
-            option={(() => {
-              try {
-                return new Function("return " + code)();
-              } catch (e) {
-                console.warn("ECharts option parse error:", e);
-                return {};
-              }
-            })()}
-            theme={isDark ? "dark" : undefined}
-            style={{ height: "100%", width: "100%" }}
-          />
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-zinc-500">
+                Loading chart...
+              </div>
+            }
+          >
+            <LazyReactECharts
+              option={echartOption}
+              theme={isDark ? "dark" : undefined}
+              style={{ height: "100%", width: "100%" }}
+            />
+          </Suspense>
         </div>
       ) : (
         <div className="w-full bg-white">
@@ -357,7 +384,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
         </div>
         <div className="relative flex-1 min-h-0">
           {mode === "preview" && canPreview ? (
-            <PreviewContent />
+            renderPreview(false)
           ) : (
             <div className="p-5 w-full">
               <div className={clsx(`h-full w-full min-w-0`, isDark && "dark")}>
@@ -423,7 +450,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
 
                   {/* Preview Content */}
                   <div className="flex-1 overflow-hidden">
-                    <PreviewContent fullscreen />
+                    renderPreview(true)
                   </div>
                 </DialogPanel>
               </motion.div>

@@ -23,17 +23,22 @@ const BASE_W = 200;
 const BASE_H = 160;
 const GAP = 16;
 
-export const getSizeStyle = (w?: number, h?: number, sizeStr?: string) => {
+export const getSizeStyle = (
+  w?: number,
+  h?: number,
+  sizeStr?: string,
+  extraHeight = 0,
+) => {
   if (w && h) {
     return {
       width: w * BASE_W + (w - 1) * GAP,
-      height: h * BASE_H + (h - 1) * GAP,
+      height: h * BASE_H + (h - 1) * GAP + extraHeight,
     };
   }
-  if (sizeStr === "large") return { width: 400, height: 320 };
-  if (sizeStr === "medium") return { width: 300, height: 220 };
-  if (sizeStr === "small") return { width: 200, height: 160 };
-  return { width: 200, height: 160 };
+  if (sizeStr === "large") return { width: 400, height: 320 + extraHeight };
+  if (sizeStr === "medium") return { width: 300, height: 220 + extraHeight };
+  if (sizeStr === "small") return { width: 200, height: 160 + extraHeight };
+  return { width: 200, height: 160 + extraHeight };
 };
 
 // ── Format helpers ────────────────────────────────────────────
@@ -336,13 +341,19 @@ export function SettingsGearButton({
 export function useAgentNode({
   id,
   data,
-}: Pick<AgentFlowNodeProps, "id" | "data">) {
+  extraHeight = 0,
+}: Pick<AgentFlowNodeProps, "id" | "data"> & { extraHeight?: number }) {
   const { updateNodeData } = useReactFlow();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const currentW = data.gridSize?.w || (data.size === "large" ? 2 : 1);
   const currentH = data.gridSize?.h || (data.size === "large" ? 2 : 1);
-  const style = getSizeStyle(data.gridSize?.w, data.gridSize?.h, data.size);
+  const style = getSizeStyle(
+    data.gridSize?.w,
+    data.gridSize?.h,
+    data.size,
+    extraHeight,
+  );
 
   const handleResize = (w: number, h: number) => {
     const newSize = w * h > 3 ? "large" : w * h > 1 ? "medium" : "small";

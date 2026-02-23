@@ -437,6 +437,136 @@ export function validateGraphConfig(config: GraphConfig): string[] {
   return errors;
 }
 
+// =============================================================================
+// Visual Editor Validation
+// =============================================================================
+
+export type ValidationLevel = "error" | "warning";
+
+export interface ValidationIssue {
+  level: ValidationLevel;
+  /** i18n key under agents.graphEditor.validation.* */
+  key: string;
+  /** Interpolation params for i18n */
+  params?: Record<string, string | number>;
+}
+
+/**
+ * Run structural validations appropriate for the visual graph editor.
+ * Returns a list of issues (errors first, then warnings).
+ */
+export function validateGraphVisual(config: GraphConfig): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+
+  if (!config.graph) {
+    issues.push({ level: "error", key: "missingGraph" });
+    return issues;
+  }
+
+  const { nodes, edges, entrypoints } = config.graph;
+  const nodeIds = new Set(nodes.map((n) => n.id));
+
+  // ---- errors ----
+
+  // No nodes
+  if (nodes.length === 0) {
+    issues.push({ level: "warning", key: "emptyGraph" });
+    return issues;
+  }
+
+  // No entrypoints
+  if (!entrypoints.length) {
+    issues.push({ level: "error", key: "noEntrypoint" });
+  }
+
+  // Entrypoint references missing node
+  for (const ep of entrypoints) {
+    if (!nodeIds.has(ep)) {
+      issues.push({ level: "error", key: "entrypointMissing", params: { id: ep } });
+    }
+  }
+
+  // Edge references
+  const validTargets = new Set([...nodeIds, "END"]);
+  for (const edge of edges) {
+    if (!nodeIds.has(edge.from_node)) {
+      issues.push({
+        level: "error",
+        key: "edgeSourceMissing",
+        params: { id: edge.from_node },
+      });
+    }
+    if (!validTargets.has(edge.to_node)) {
+      issues.push({
+        level: "error",
+        key: "edgeTargetMissing",
+        params: { id: edge.to_node },
+      });
+    }
+    // Self-loop
+    if (edge.from_node === edge.to_node) {
+      issues.push({
+        level: "warning",
+        key: "selfLoop",
+        params: { id: edge.from_node },
+      });
+    }
+  }
+
+  // Node name empty
+  for (const node of nodes) {
+    if (!node.name.trim()) {
+      issues.push({
+        level: "error",
+        key: "emptyNodeName",
+        params: { id: node.id },
+      });
+    }
+  }
+
+  // ---- warnings ----
+
+  // Build adjacency sets for reachability checks
+  const hasIncoming = new Set<string>();
+  const hasOutgoing = new Set<string>();
+  for (const edge of edges) {
+    hasOutgoing.add(edge.from_node);
+    hasIncoming.add(edge.to_node === "END" ? "__END__" : edge.to_node);
+  }
+  // Entrypoints count as having incoming (from START)
+  for (const ep of entrypoints) {
+    hasIncoming.add(ep);
+  }
+
+  for (const node of nodes) {
+    const isEntry = entrypoints.includes(node.id);
+    // No incoming edge and not an entrypoint
+    if (!isEntry && !hasIncoming.has(node.id)) {
+      issues.push({
+        level: "warning",
+        key: "orphanNoIncoming",
+        params: { name: node.name || node.id },
+      });
+    }
+    // No outgoing edge
+    if (!hasOutgoing.has(node.id)) {
+      issues.push({
+        level: "warning",
+        key: "orphanNoOutgoing",
+        params: { name: node.name || node.id },
+      });
+    }
+  }
+
+  // No path reaches END
+  const reachesEnd = edges.some((e) => e.to_node === "END");
+  if (nodes.length > 0 && !reachesEnd) {
+    issues.push({ level: "warning", key: "noPathToEnd" });
+  }
+
+  return issues;
+}
+
 /**
  * Get node kind display info.
  */

@@ -91,7 +91,8 @@
       "autoConfigured": "自動設定",
       "knowledgeBase": {
         "title": "ナレッジベース：",
-        "description": "元のエージェントは{{count}}個のファイルを使用しています。このエージェントをフォークすると、これらのファイルがあなたのワークスペースにコピーされます。"
+        "description": "元のエージェントは{{count}}個のファイル（{{size}}）を使用しています。このエージェントをフォークすると、これらのファイルがあなたのワークスペースにコピーされます。",
+        "sizeRequired": "必要な容量：{{size}}"
       },
       "none": "特別な要件はありません！フォーク後すぐに使用できます。",
       "loading": "要件を読み込み中..."
@@ -174,6 +175,24 @@
     "forkMode": {
       "label": "フォークモード",
       "help": "ユーザーがフォークしたコピーの設定にアクセスできる範囲を制御します"
+    },
+    "knowledgeBase": {
+      "label": "ナレッジベース",
+      "hint": "公開するエージェントに含めるナレッジベースを選択",
+      "none": "なし",
+      "fileCount": "{{count}} ファイル"
+    },
+    "skills": {
+      "label": "スキル",
+      "hint": "公開するエージェントに含めるスキルを選択",
+      "empty": "利用可能なスキルはありません",
+      "builtin": "組み込み",
+      "attached": "関連付け済み"
+    },
+    "mcpServers": {
+      "label": "MCPサーバー",
+      "hint": "ユーザーはフォーク後に自分のMCP接続を設定する必要があります。",
+      "empty": "MCPサーバーはリンクされていません"
     }
   },
   "simplePromptEditor": {
@@ -215,7 +234,8 @@
     "editable": "編集可能",
     "locked": "ロック",
     "editableDescription": "ユーザーは設定を表示・編集できます",
-    "lockedDescription": "設定は非表示で読み取り専用です"
+    "lockedDescription": "設定は非表示で読み取り専用です",
+    "rewardRate": "クレジット報酬：{{rate}}"
   },
   "fork": {
     "title": "エージェントをフォーク：{{name}}",

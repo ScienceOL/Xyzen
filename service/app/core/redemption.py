@@ -199,7 +199,10 @@ class RedemptionService:
 
             # Auto-claim monthly credits for the new subscription
             if role.monthly_credits > 0:
-                await self.repo.credit_wallet(user_id, role.monthly_credits)
+                await self.repo.credit_wallet_typed(
+                    user_id, role.monthly_credits, "paid", "subscription_monthly",
+                    reference_id=str(redemption_code.id),
+                )
                 await sub_service.repo.update_last_credits_claimed(user_id)
                 logger.info(f"Auto-claimed {role.monthly_credits} credits for user {user_id}")
 
@@ -217,9 +220,11 @@ class RedemptionService:
                 f"for {redemption_code.duration_days} days via code {code}"
             )
         else:
-            # Credits code: existing flow
-            # 1. Credit user wallet
-            wallet = await self.repo.credit_wallet(user_id, redemption_code.amount)
+            # Credits code: credit to paid balance
+            wallet = await self.repo.credit_wallet_typed(
+                user_id, redemption_code.amount, "paid", "redemption_code",
+                reference_id=str(redemption_code.id),
+            )
             logger.info(f"Credited {redemption_code.amount} to user {user_id}, new balance: {wallet.virtual_balance}")
 
             # 2. Create redemption history
@@ -323,14 +328,17 @@ class RedemptionService:
         logger.info(f"Deactivated redemption code: {code_id}")
         return updated_code  # type: ignore
 
-    async def credit_balance(self, user_id: str, amount: int, description: str = "积分充值") -> UserWallet:
+    async def credit_balance(
+        self, user_id: str, amount: int, description: str = "积分充值", credit_type: str = "free"
+    ) -> UserWallet:
         """
         Credit virtual balance directly to a user's wallet (for internal use).
 
         Args:
             user_id: User ID to credit
             amount: Amount to credit (must be positive)
-            description: Description of the credit operation
+            description: Description of the credit operation (used as source)
+            credit_type: Credit category: "free", "paid", or "earned"
 
         Returns:
             Updated user wallet
@@ -341,8 +349,8 @@ class RedemptionService:
         if amount <= 0:
             raise ErrCode.INVALID_PARAMETER.with_messages("Amount must be positive")
 
-        logger.info(f"Crediting {amount} to user {user_id}: {description}")
-        wallet = await self.repo.credit_wallet(user_id, amount)
+        logger.info(f"Crediting {amount} ({credit_type}) to user {user_id}: {description}")
+        wallet = await self.repo.credit_wallet_typed(user_id, amount, credit_type, description)
         logger.info(f"Credited {amount} to user {user_id}, new balance: {wallet.virtual_balance}")
 
         return wallet

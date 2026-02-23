@@ -111,5 +111,104 @@
       "deleteConfirmTitle": "Delete Agent?",
       "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
     }
+  },
+  "graphEditor": {
+    "nodePanel": {
+      "title": "Node Configuration",
+      "id": "ID",
+      "deleteNode": "Delete Node"
+    },
+    "common": {
+      "name": "Name",
+      "namePlaceholder": "Node name",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional description",
+      "reads": "Reads",
+      "readsPlaceholder": "State keys to read",
+      "readsHint": "State keys this node reads from",
+      "writes": "Writes",
+      "writesPlaceholder": "State keys to write",
+      "writesHint": "State keys this node writes to"
+    },
+    "llm": {
+      "promptOutput": "Prompt & Output",
+      "promptTemplate": "Prompt Template",
+      "promptPlaceholder": "Use {{ state.field }} for variables",
+      "outputKey": "Output Key",
+      "outputKeyPlaceholder": "response",
+      "messageKey": "Message Key",
+      "messageKeyPlaceholder": "messages",
+      "modelTools": "Model & Tools",
+      "modelOverride": "Model Override",
+      "modelOverridePlaceholder": "Leave empty for default",
+      "temperature": "Temperature",
+      "maxTokens": "Max Tokens",
+      "toolsEnabled": "Tools Enabled",
+      "toolFilter": "Tool Filter",
+      "toolFilterPlaceholder": "Tool names to allow",
+      "toolFilterHint": "Leave empty to allow all tools",
+      "maxIterations": "Max Iterations"
+    },
+    "tool": {
+      "title": "Tool Config",
+      "outputKey": "Output Key",
+      "outputKeyPlaceholder": "tool_results",
+      "executeAll": "Execute All",
+      "toolFilter": "Tool Filter",
+      "toolFilterPlaceholder": "Tool names to allow",
+      "toolFilterHint": "Leave empty to allow all tools",
+      "timeoutSeconds": "Timeout (seconds)"
+    },
+    "transform": {
+      "title": "Transform Config",
+      "template": "Template",
+      "templatePlaceholder": "Jinja2 template expression",
+      "outputKey": "Output Key",
+      "outputKeyPlaceholder": "output",
+      "inputKeys": "Input Keys",
+      "inputKeysPlaceholder": "State keys to use as input"
+    },
+    "component": {
+      "title": "Component Config",
+      "componentKey": "Component Key",
+      "componentKeyPlaceholder": "e.g., react",
+      "componentVersion": "Version",
+      "componentVersionPlaceholder": "*",
+      "configOverridesHint": "Use the JSON editor for config_overrides."
+    },
+    "edge": {
+      "title": "Edge Configuration",
+      "label": "Label",
+      "labelPlaceholder": "Optional edge label",
+      "priority": "Priority",
+      "conditionType": "Condition",
+      "conditionNone": "None (always)",
+      "conditionBuiltin": "Built-in",
+      "conditionCustom": "Custom Predicate",
+      "builtinCondition": "Built-in Condition",
+      "hasToolCalls": "has_tool_calls",
+      "noToolCalls": "no_tool_calls",
+      "statePath": "State Path",
+      "statePathPlaceholder": "e.g., response.has_tool_calls",
+      "operator": "Operator",
+      "value": "Value",
+      "valuePlaceholder": "Comparison value",
+      "deleteEdge": "Delete Edge"
+    },
+    "validation": {
+      "errorCount": "{{count}} error(s)",
+      "warningCount": "{{count}} warning(s)",
+      "missingGraph": "Graph definition is missing",
+      "emptyGraph": "Graph has no nodes — drag nodes from the palette",
+      "noEntrypoint": "No entrypoint — connect START to a node",
+      "entrypointMissing": "Entrypoint '{{id}}' does not exist in nodes",
+      "edgeSourceMissing": "Edge source node '{{id}}' not found",
+      "edgeTargetMissing": "Edge target node '{{id}}' not found",
+      "selfLoop": "Node '{{id}}' has a self-loop edge",
+      "emptyNodeName": "Node '{{id}}' has an empty name",
+      "orphanNoIncoming": "'{{name}}' has no incoming edges",
+      "orphanNoOutgoing": "'{{name}}' has no outgoing edges",
+      "noPathToEnd": "No edge reaches END — the graph may not terminate"
+    }
   }
 }
