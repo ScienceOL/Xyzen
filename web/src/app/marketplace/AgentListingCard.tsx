@@ -1,4 +1,4 @@
-import { HeartIcon } from "@heroicons/react/24/outline";
+import { HeartIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { useTranslation } from "react-i18next";
 
@@ -79,16 +79,23 @@ function AgentListingCard({
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleLikeClick}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
-            >
-              {listing.has_liked ? (
-                <HeartSolidIcon className="h-4 w-4 text-red-500" />
-              ) : (
-                <HeartIcon className="h-4 w-4 text-neutral-400 transition-colors group-hover:text-red-500" />
+            <div className="flex shrink-0 items-center gap-1">
+              {listing.fork_mode === "locked" && (
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg">
+                  <LockClosedIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
               )}
-            </button>
+              <button
+                onClick={handleLikeClick}
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
+              >
+                {listing.has_liked ? (
+                  <HeartSolidIcon className="h-4 w-4 text-red-500" />
+                ) : (
+                  <HeartIcon className="h-4 w-4 text-neutral-400 transition-colors group-hover:text-red-500" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -201,16 +208,23 @@ function AgentListingCard({
               </p>
             </div>
           </div>
-          <button
-            onClick={handleLikeClick}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
-          >
-            {listing.has_liked ? (
-              <HeartSolidIcon className="h-5 w-5 text-red-500" />
-            ) : (
-              <HeartIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-red-500" />
+          <div className="flex shrink-0 items-center gap-1">
+            {listing.fork_mode === "locked" && (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg">
+                <LockClosedIcon className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
             )}
-          </button>
+            <button
+              onClick={handleLikeClick}
+              className="flex h-9 w-9 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
+            >
+              {listing.has_liked ? (
+                <HeartSolidIcon className="h-5 w-5 text-red-500" />
+              ) : (
+                <HeartIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-red-500" />
+              )}
+            </button>
+          </div>
         </div>
 
         <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
