@@ -26,10 +26,10 @@ import {
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
-import WorkflowEditor from "./editSession/WorkflowEditor";
+const WorkflowEditor = React.lazy(() => import("./editSession/WorkflowEditor"));
 
 // ============ Constants ============
 
@@ -350,7 +350,11 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
         );
       case "workflow":
         if (!agent) return null;
-        return <WorkflowEditor agent={agent} onClose={onClose} />;
+        return (
+          <Suspense>
+            <WorkflowEditor agent={agent} onClose={onClose} />
+          </Suspense>
+        );
       case "danger":
         return (
           <div className="flex flex-col items-center justify-center h-full py-8 space-y-6">

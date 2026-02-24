@@ -1,6 +1,7 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .airwallex import AirwallexConfig
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
@@ -133,6 +134,11 @@ class AppConfig(BaseSettings):
     EE: EEConfig = Field(
         default_factory=lambda: EEConfig(),
         description="Enterprise Edition configuration",
+    )
+
+    Airwallex: AirwallexConfig = Field(
+        default_factory=lambda: AirwallexConfig(),
+        description="Airwallex payment gateway configuration",
     )
 
 

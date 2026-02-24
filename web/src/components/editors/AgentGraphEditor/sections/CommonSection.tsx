@@ -46,9 +46,7 @@ function CommonSection({
       <FieldGroup label={t("agents.graphEditor.common.description")}>
         <Input
           value={config.description || ""}
-          onChange={(e) =>
-            onDescriptionChange(e.target.value || null)
-          }
+          onChange={(e) => onDescriptionChange(e.target.value || null)}
           onBlur={onBlur}
           placeholder={t("agents.graphEditor.common.descriptionPlaceholder")}
         />

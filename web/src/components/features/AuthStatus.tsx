@@ -140,9 +140,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                           {t("app.authStatus.pointsBalance")}
                         </div>
                         <div className="font-bold text-indigo-900 dark:text-indigo-100">
-                          {billing.isLoading
-                            ? "..."
-                            : (billing.points ?? "--")}
+                          {billing.isLoading ? "..." : (billing.points ?? "--")}
                         </div>
                       </div>
                     </div>

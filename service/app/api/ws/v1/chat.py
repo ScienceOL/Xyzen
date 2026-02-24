@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.configs import configs
+from app.core.chat.constants import DEFAULT_TOPIC_TITLES
 from app.core.chat.topic_generator import generate_and_update_topic_title
 from app.ee.lifecycle import get_chat_lifecycle
 from app.infra.database import AsyncSessionLocal
@@ -406,7 +407,7 @@ async def chat_websocket(
 
                 # 8. Topic Renaming - uses Redis pub/sub for cross-pod delivery
                 topic_refreshed = await topic_repo.get_topic_with_details(topic_id)
-                if topic_refreshed and topic_refreshed.name in ["新的聊天", "New Chat", "New Topic"]:
+                if topic_refreshed and topic_refreshed.name in DEFAULT_TOPIC_TITLES:
                     msgs = await message_repo.get_messages_by_topic(topic_id, limit=5)
                     if len(msgs) <= 3:
                         asyncio.create_task(

@@ -370,7 +370,42 @@
     "emptyHint": "エージェントがコード実行ツールを使用すると、サンドボックスが自動的に作成されます。",
     "explorer": "エクスプローラー",
     "emptyWorkspace": "ファイルがありません",
-    "selectFile": "エクスプローラーからファイルを選択して表示"
+    "selectFile": "エクスプローラーからファイルを選択して表示",
+    "start": "サンドボックスを起動",
+    "started": "サンドボックスが起動しました",
+    "startError": "サンドボックスの起動に失敗しました",
+    "keepAliveBtn": "サンドボックスタイマーを更新",
+    "keepAlive": "サンドボックスタイマーを更新しました",
+    "keepAliveError": "サンドボックスタイマーの更新に失敗しました",
+    "stopped": "停止中",
+    "deleteConfirmTitle": "サンドボックスを削除",
+    "deleteConfirmMessage": "サンドボックス「{{name}}」を削除してもよろしいですか？この操作は元に戻せません。",
+    "config": {
+      "title": "サンドボックス設定",
+      "subtitle": "サンドボックスのデフォルトリソースとライフサイクル設定をカスタマイズ",
+      "resources": "リソース",
+      "lifecycle": "ライフサイクル",
+      "runtime": "ランタイム",
+      "cpu": "CPU コア数",
+      "cpuHint": "各サンドボックスに割り当てるCPUコア数",
+      "memory": "メモリ (MB)",
+      "memoryHint": "各サンドボックスに割り当てるメモリ（メガバイト）",
+      "disk": "ディスク (MB)",
+      "diskHint": "各サンドボックスに割り当てるディスク容量（メガバイト）",
+      "autoStop": "自動停止（分）",
+      "autoStopHint": "非アクティブ状態が続いた場合に自動停止するまでの分数",
+      "autoDelete": "自動削除（分）",
+      "autoDeleteHint": "停止後に自動削除されるまでの分数",
+      "timeout": "タイムアウト（秒）",
+      "timeoutHint": "サンドボックス操作の最大実行時間（秒）",
+      "image": "コンテナイメージ",
+      "imageHint": "新しいサンドボックスに使用するカスタムコンテナイメージ",
+      "resetDefaults": "デフォルトに戻す",
+      "saved": "サンドボックス設定を保存しました",
+      "saveError": "サンドボックス設定の保存に失敗しました",
+      "reset": "設定をデフォルトに戻しました",
+      "resetError": "サンドボックス設定のリセットに失敗しました"
+    }
   },
   "workspace": {
     "recommendations": {
@@ -504,15 +539,15 @@
   },
   "loading": {
     "tips": {
-      "noAds": "広告を入れたかったのに、ボスに却下されました。",
-      "ceoAgent": "知ってましたか？CEO Agent は他の Agent に直接指示を出して作業させることができます。",
-      "publishEarn": "アシスタントをマーケットプレイスに公開してクレジット報酬を獲得しよう！",
-      "lazyProductivity": "「怠惰」こそが生産性の原動力。",
-      "deadlineProductivity": "「締め切り」こそが生産性の原動力。",
+      "noAds": "広告なし、ボスの命令です。",
+      "ceoAgent": "CEO Agent は他の Agent に指示できます。",
+      "publishEarn": "エージェント公開でクレジット獲得！",
+      "lazyProductivity": "「怠惰」こそ生産性の源。",
+      "deadlineProductivity": "「締め切り」こそ生産性の源。",
       "worthyOpponent": "なかなかの好敵手。",
-      "knowledgeBase": "ナレッジベースを接続して、エージェントに専門知識を持たせよう。",
-      "multiAgent": "複数のエージェントを並行して使い、複雑な調査タスクをこなそう。",
-      "dailyCheckIn": "毎日チェックインしてボーナスクレジットをもらおう！"
+      "knowledgeBase": "知識ベースで専門力を強化。",
+      "multiAgent": "複数エージェントを並行実行。",
+      "dailyCheckIn": "毎日チェックインでボーナス！"
     }
   }
 }

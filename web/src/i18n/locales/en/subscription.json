@@ -4,6 +4,7 @@
   "plans": "Subscription",
   "gotIt": "Got it",
   "comingSoon": "Coming Soon",
+  "subscribe": "Subscribe",
   "notInteroperable": "Subscription not interoperable with international version",
   "betaNotice": "Recharging is not available during beta. Join the beta group for updates.",
   "surveyTitle": "Fill out beta survey",
@@ -71,6 +72,15 @@
     "expired": "Expired",
     "expiresToday": "Expires today",
     "expiresIn": "Expires in {{days}} days"
+  },
+
+  "payment": {
+    "title": "Complete Payment",
+    "scanQR": "Scan to Pay",
+    "waiting": "Waiting for payment...",
+    "success": "Payment Successful!",
+    "failed": "Payment failed or expired",
+    "close": "Close"
   },
 
   "creator": "Creator",

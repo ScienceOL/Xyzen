@@ -199,7 +199,12 @@ class SandboxManager:
                         logger.warning("LimitsEnforcer not available, skipping sandbox limit check")
 
                 sandbox_name = f"xyzen-{self._session_id[:8]}-{uuid.uuid4().hex[:6]}"
-                sandbox_id = await self._backend.create_sandbox(name=sandbox_name)
+
+                # Resolve per-user sandbox configuration
+                from app.infra.sandbox.config_resolver import SandboxConfigResolver
+
+                resolved_config = await SandboxConfigResolver.resolve_for_user(self._user_id)
+                sandbox_id = await self._backend.create_sandbox(name=sandbox_name, config=resolved_config)
 
                 # Store mapping as hash with metadata
                 from app.configs import configs
@@ -544,4 +549,11 @@ async def scan_all_sandbox_infos(redis_url: str) -> list[SandboxInfo]:
         await redis_client.aclose()
 
 
-__all__ = ["REDIS_KEY_PREFIX", "SandboxInfo", "SandboxManager", "SandboxState", "SandboxStatus", "scan_all_sandbox_infos"]
+__all__ = [
+    "REDIS_KEY_PREFIX",
+    "SandboxInfo",
+    "SandboxManager",
+    "SandboxState",
+    "SandboxStatus",
+    "scan_all_sandbox_infos",
+]

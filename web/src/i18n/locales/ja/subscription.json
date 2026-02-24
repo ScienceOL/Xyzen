@@ -4,6 +4,7 @@
   "plans": "サブスクリプション",
   "gotIt": "了解",
   "comingSoon": "近日公開",
+  "subscribe": "購読する",
   "notInteroperable": "サブスクリプションは国際版と互換性がありません",
   "betaNotice": "ベータ期間中はチャージできません。最新情報はベータグループにご参加ください。",
   "surveyTitle": "ベータアンケートに回答",
@@ -71,6 +72,15 @@
     "expired": "期限切れ",
     "expiresToday": "本日期限",
     "expiresIn": "残り {{days}} 日"
+  },
+
+  "payment": {
+    "title": "お支払い",
+    "scanQR": "QRコードで支払い",
+    "waiting": "お支払いを待っています...",
+    "success": "お支払い完了！",
+    "failed": "お支払いに失敗または期限切れ",
+    "close": "閉じる"
   },
 
   "creator": "クリエイター",

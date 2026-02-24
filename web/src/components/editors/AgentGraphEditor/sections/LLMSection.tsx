@@ -65,7 +65,9 @@ function LLMSection({ config, onChange, onBlur }: LLMSectionProps) {
                     onChange({ message_key: e.target.value || null })
                   }
                   onBlur={onBlur}
-                  placeholder={t("agents.graphEditor.llm.messageKeyPlaceholder")}
+                  placeholder={t(
+                    "agents.graphEditor.llm.messageKeyPlaceholder",
+                  )}
                 />
               </FieldGroup>
             </DisclosurePanel>
@@ -94,7 +96,9 @@ function LLMSection({ config, onChange, onBlur }: LLMSectionProps) {
                     onChange({ model_override: e.target.value || null })
                   }
                   onBlur={onBlur}
-                  placeholder={t("agents.graphEditor.llm.modelOverridePlaceholder")}
+                  placeholder={t(
+                    "agents.graphEditor.llm.modelOverridePlaceholder",
+                  )}
                 />
               </FieldGroup>
 
@@ -160,7 +164,9 @@ function LLMSection({ config, onChange, onBlur }: LLMSectionProps) {
                     onChange={(tags) =>
                       onChange({ tool_filter: tags.length ? tags : null })
                     }
-                    placeholder={t("agents.graphEditor.llm.toolFilterPlaceholder")}
+                    placeholder={t(
+                      "agents.graphEditor.llm.toolFilterPlaceholder",
+                    )}
                   />
                 </FieldGroup>
               )}

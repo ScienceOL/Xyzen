@@ -23,7 +23,11 @@ const patternUrl = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns=
 export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
   const hasSubordinates =
     data.subordinateAvatars && data.subordinateAvatars.length > 0;
-  const node = useAgentNode({ id, data, extraHeight: hasSubordinates ? 24 : 0 });
+  const node = useAgentNode({
+    id,
+    data,
+    extraHeight: hasSubordinates ? 24 : 0,
+  });
   const { currentW, currentH, style, setIsSettingsOpen } = node;
 
   return (

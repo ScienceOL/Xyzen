@@ -1,3 +1,4 @@
+import { DEFAULT_TOPIC_TITLE_KEY } from "@/configs/common";
 import { mergeChannelPreservingRuntime } from "@/core/chat";
 import { HttpError } from "@/service/http/client";
 import { llmProviderService } from "@/service/llmProviderService";
@@ -327,7 +328,7 @@ export function createChannelActions(
           } else {
             // Session exists but no topics, create a default topic
             const newTopic = await topicService.createTopic({
-              name: i18n.t("app.toolbar.newChat"),
+              name: i18n.t(DEFAULT_TOPIC_TITLE_KEY),
               session_id: session.id,
             });
 
@@ -438,7 +439,7 @@ export function createChannelActions(
           }
 
           const newTopic = await topicService.createTopic({
-            name: i18n.t("app.toolbar.newChat"),
+            name: i18n.t(DEFAULT_TOPIC_TITLE_KEY),
             session_id: existingSession.id,
           });
 
@@ -555,7 +556,7 @@ export function createChannelActions(
         } else {
           // Session created but no default topic - create one manually
           const newTopic = await topicService.createTopic({
-            name: i18n.t("app.toolbar.newChat"),
+            name: i18n.t(DEFAULT_TOPIC_TITLE_KEY),
             session_id: newSession.id,
           });
 

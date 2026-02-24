@@ -212,12 +212,23 @@ async def _resolve_provider_and_model(
         if session.provider_id:
             provider_id = str(session.provider_id)
 
-        # If session.model is already set, use it directly (cached selection)
+        # If session.model is already set, validate it against tier candidates
+        # before using. Stale cached models (e.g. removed from tier config or
+        # written by an older default) would bypass provider resolution and get
+        # sent to the wrong provider.
         if session.model:
-            model_name = session.model
-            logger.info(f"Using cached session model: {model_name}")
+            if get_candidate_for_model(session.model):
+                model_name = session.model
+                logger.info(f"Using cached session model: {model_name}")
+            else:
+                logger.warning(
+                    f"Cached session model '{session.model}' not in tier candidates, clearing to trigger re-selection"
+                )
+                session.model = None
+                db.add(session)
+                await db.flush()
         # If model_tier is set but no model, do intelligent selection
-        elif effective_model_tier:
+        if not model_name and effective_model_tier:
             if message_text and user_provider_manager:
                 try:
                     model_name = await select_model_for_tier(

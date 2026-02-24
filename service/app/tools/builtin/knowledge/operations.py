@@ -6,6 +6,7 @@ Core operations for knowledge base file management.
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import logging
@@ -250,7 +251,21 @@ async def read_file(user_id: str, knowledge_set_id: UUID, filename: str) -> dict
             await storage.download_file(target_file.storage_key, buffer)
             file_bytes = buffer.getvalue()
 
-            # Use handler to process content (text mode only for LangChain tools)
+            # For image files, return base64-encoded content for LLM vision
+            image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp")
+            if target_file.original_filename.lower().endswith(image_extensions):
+                content_type, _ = mimetypes.guess_type(target_file.original_filename)
+                if not content_type:
+                    content_type = "image/png"
+                b64_data = base64.b64encode(file_bytes).decode("utf-8")
+                return {
+                    "success": True,
+                    "filename": target_file.original_filename,
+                    "content": f"![{target_file.original_filename}](data:{content_type};base64,{b64_data})",
+                    "size_bytes": target_file.file_size,
+                }
+
+            # Use handler to process content (text mode for non-image files)
             handler = FileHandlerFactory.get_handler(target_file.original_filename)
 
             try:

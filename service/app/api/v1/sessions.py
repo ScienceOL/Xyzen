@@ -52,7 +52,7 @@ async def create_session_with_default_topic(
     Create a new session with a default topic.
 
     Creates a new session for the authenticated user and automatically adds
-    a default topic named "新的聊天" to get the user started. If an agent_id
+    a default topic named "New Chat" to get the user started. If an agent_id
     is provided, the session will be associated with that agent. Builtin agents
     are handled specially and stored with agent_id=None.
 

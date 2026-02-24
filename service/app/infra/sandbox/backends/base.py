@@ -30,6 +30,23 @@ class SandboxState:
 
 
 @dataclass
+class ResolvedSandboxConfig:
+    """Fully resolved sandbox configuration (global defaults + user overrides).
+
+    Produced by ``SandboxConfigResolver`` and consumed by backends at
+    sandbox creation time.
+    """
+
+    cpu: int
+    memory: int  # GiB
+    disk: int  # GiB
+    auto_stop_minutes: int
+    auto_delete_minutes: int
+    timeout: int  # command execution timeout in seconds
+    image: str  # docker image
+
+
+@dataclass
 class PreviewUrl:
     """Preview URL for a sandbox port."""
 
@@ -75,6 +92,7 @@ class SandboxBackend(ABC):
         name: str,
         language: str = "python",
         env_vars: dict[str, str] | None = None,
+        config: ResolvedSandboxConfig | None = None,
     ) -> str:
         """
         Create a new sandbox instance.
@@ -83,6 +101,7 @@ class SandboxBackend(ABC):
             name: Unique sandbox name
             language: Programming language environment
             env_vars: Environment variables to set
+            config: Resolved per-user config (falls back to global if None)
 
         Returns:
             Backend-specific sandbox ID
@@ -196,6 +215,7 @@ __all__ = [
     "PreviewUrl",
     "ExecResult",
     "FileInfo",
+    "ResolvedSandboxConfig",
     "SearchMatch",
     "SandboxBackend",
     "SandboxState",

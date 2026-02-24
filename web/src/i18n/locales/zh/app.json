@@ -370,7 +370,42 @@
     "emptyHint": "当 Agent 使用代码执行工具时，沙盒会自动创建。",
     "explorer": "资源管理器",
     "emptyWorkspace": "暂无文件",
-    "selectFile": "从左侧资源管理器选择文件查看"
+    "selectFile": "从左侧资源管理器选择文件查看",
+    "start": "启动沙盒",
+    "started": "沙盒已启动",
+    "startError": "启动沙盒失败",
+    "keepAliveBtn": "刷新沙盒计时器",
+    "keepAlive": "沙盒计时器已刷新",
+    "keepAliveError": "刷新沙盒计时器失败",
+    "stopped": "已停止",
+    "deleteConfirmTitle": "删除沙盒",
+    "deleteConfirmMessage": "确定要删除沙盒「{{name}}」吗？此操作不可恢复。",
+    "config": {
+      "title": "沙盒配置",
+      "subtitle": "自定义沙盒默认资源和生命周期设置",
+      "resources": "资源",
+      "lifecycle": "生命周期",
+      "runtime": "运行时",
+      "cpu": "CPU 核数",
+      "cpuHint": "分配给每个沙盒的 CPU 核心数",
+      "memory": "内存 (MB)",
+      "memoryHint": "分配给每个沙盒的内存大小（兆字节）",
+      "disk": "磁盘 (MB)",
+      "diskHint": "分配给每个沙盒的磁盘空间（兆字节）",
+      "autoStop": "自动停止（分钟）",
+      "autoStopHint": "不活跃多少分钟后自动停止沙盒",
+      "autoDelete": "自动删除（分钟）",
+      "autoDeleteHint": "停止后多少分钟自动删除沙盒",
+      "timeout": "超时（秒）",
+      "timeoutHint": "沙盒操作的最大执行时间（秒）",
+      "image": "容器镜像",
+      "imageHint": "新沙盒使用的自定义容器镜像",
+      "resetDefaults": "恢复默认",
+      "saved": "沙盒配置已保存",
+      "saveError": "保存沙盒配置失败",
+      "reset": "配置已恢复默认",
+      "resetError": "重置沙盒配置失败"
+    }
   },
   "workspace": {
     "recommendations": {
@@ -505,14 +540,14 @@
   "loading": {
     "tips": {
       "noAds": "我要加广告，老板说不行。",
-      "ceoAgent": "你知道吗？CEO Agent 可以直接控制其他 Agent 为其工作。",
-      "publishEarn": "将助手发布到市场可以赚取积分收益！",
+      "ceoAgent": "CEO Agent 可以指挥其他 Agent 协作。",
+      "publishEarn": "发布助手到市场，赚取积分！",
       "lazyProductivity": "「懒」是第一生产力。",
       "deadlineProductivity": "「DDL」是第一生产力。",
       "worthyOpponent": "旗鼓相当的对手。",
-      "knowledgeBase": "连接知识库，让你的助手拥有专业领域知识。",
-      "multiAgent": "使用多个 Agent 并行处理，完成复杂的研究任务。",
-      "dailyCheckIn": "别忘了每日签到领取额外积分！"
+      "knowledgeBase": "连接知识库，赋予助手专业能力。",
+      "multiAgent": "多个 Agent 并行，高效完成任务。",
+      "dailyCheckIn": "每日签到领取额外积分！"
     }
   }
 }

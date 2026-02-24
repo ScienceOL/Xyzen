@@ -371,7 +371,42 @@
     "emptyHint": "Sandboxes are created automatically when agents use code execution tools.",
     "explorer": "Explorer",
     "emptyWorkspace": "No files",
-    "selectFile": "Select a file from the explorer to view"
+    "selectFile": "Select a file from the explorer to view",
+    "start": "Start sandbox",
+    "started": "Sandbox started",
+    "startError": "Failed to start sandbox",
+    "keepAliveBtn": "Refresh sandbox timer",
+    "keepAlive": "Sandbox timer refreshed",
+    "keepAliveError": "Failed to refresh sandbox timer",
+    "stopped": "Stopped",
+    "deleteConfirmTitle": "Delete Sandbox",
+    "deleteConfirmMessage": "Are you sure you want to delete the sandbox \"{{name}}\"? This action cannot be undone.",
+    "config": {
+      "title": "Sandbox Configuration",
+      "subtitle": "Customize default sandbox resources and lifecycle settings",
+      "resources": "Resources",
+      "lifecycle": "Lifecycle",
+      "runtime": "Runtime",
+      "cpu": "CPU Cores",
+      "cpuHint": "Number of CPU cores allocated to each sandbox",
+      "memory": "Memory (MB)",
+      "memoryHint": "Memory in megabytes allocated to each sandbox",
+      "disk": "Disk (MB)",
+      "diskHint": "Disk space in megabytes allocated to each sandbox",
+      "autoStop": "Auto-stop (minutes)",
+      "autoStopHint": "Minutes of inactivity before the sandbox is automatically stopped",
+      "autoDelete": "Auto-delete (minutes)",
+      "autoDeleteHint": "Minutes after stop before the sandbox is automatically deleted",
+      "timeout": "Timeout (seconds)",
+      "timeoutHint": "Maximum execution time in seconds for sandbox operations",
+      "image": "Container Image",
+      "imageHint": "Custom container image for new sandboxes",
+      "resetDefaults": "Reset to Defaults",
+      "saved": "Sandbox configuration saved",
+      "saveError": "Failed to save sandbox configuration",
+      "reset": "Configuration reset to defaults",
+      "resetError": "Failed to reset sandbox configuration"
+    }
   },
   "workspace": {
     "recommendations": {
@@ -505,15 +540,15 @@
   },
   "loading": {
     "tips": {
-      "noAds": "I wanted to add ads, but the boss said no.",
-      "ceoAgent": "Did you know? The CEO Agent can directly command other Agents to work for it.",
-      "publishEarn": "Publish your assistant to the marketplace and earn credit rewards!",
-      "lazyProductivity": "\"Laziness\" is the #1 driver of productivity.",
-      "deadlineProductivity": "\"Deadlines\" are the #1 driver of productivity.",
+      "noAds": "Ad-free, boss's orders.",
+      "ceoAgent": "CEO Agent can command other agents.",
+      "publishEarn": "Publish agents, earn credits.",
+      "lazyProductivity": "\"Laziness\" drives productivity.",
+      "deadlineProductivity": "\"Deadlines\" drive productivity.",
       "worthyOpponent": "A worthy opponent indeed.",
-      "knowledgeBase": "Connect a knowledge base to give your agent domain expertise.",
-      "multiAgent": "Use multiple agents in parallel for complex research tasks.",
-      "dailyCheckIn": "Don't forget to check in daily for bonus credits!"
+      "knowledgeBase": "Add a knowledge base for expertise.",
+      "multiAgent": "Run multiple agents in parallel.",
+      "dailyCheckIn": "Check in daily for bonus credits!"
     }
   }
 }

@@ -91,10 +91,8 @@ export interface UiSlice {
   // Spatial open tabs
   openTab: (agentId: string, tab: { id: string; name: string }) => void;
   closeTab: (agentId: string, topicId: string) => void;
-  setOpenTabs: (
-    agentId: string,
-    tabs: { id: string; name: string }[],
-  ) => void;
+  setOpenTabs: (agentId: string, tabs: { id: string; name: string }[]) => void;
+  renameTab: (topicId: string, name: string) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -212,12 +210,20 @@ export const createUiSlice: StateCreator<
     set((state) => {
       const existing = state.openTabsByAgent[agentId];
       if (!existing) return;
-      state.openTabsByAgent[agentId] = existing.filter(
-        (t) => t.id !== topicId,
-      );
+      state.openTabsByAgent[agentId] = existing.filter((t) => t.id !== topicId);
     }),
   setOpenTabs: (agentId, tabs) =>
     set((state) => {
       state.openTabsByAgent[agentId] = tabs;
+    }),
+  renameTab: (topicId, name) =>
+    set((state) => {
+      for (const tabs of Object.values(state.openTabsByAgent)) {
+        const tab = tabs.find((t) => t.id === topicId);
+        if (tab) {
+          tab.name = name;
+          break;
+        }
+      }
     }),
 });

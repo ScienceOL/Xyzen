@@ -5675,6 +5675,7 @@ __metadata:
     pdfjs-dist: "npm:^5.4.449"
     platejs: "npm:^52.0.15"
     prettier: "npm:^3.6.2"
+    qrcode.react: "npm:^4.2.0"
     radix-ui: "npm:^1.4.3"
     react: "npm:^19.1.0"
     react-day-picker: "npm:^9.13.0"
@@ -14124,6 +14125,15 @@ __metadata:
   version: 2.0.17
   resolution: "pwacompat@npm:2.0.17"
   checksum: 10c0/9f399f852c5857ae41663244970a8751e0b393a59f9e633f075f43404bafe44d6d26553e2c705db74d18f88a98c77ea2a24a0d1b7bec1eed055311527977d6bc
+  languageName: node
+  linkType: hard
+
+"qrcode.react@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "qrcode.react@npm:4.2.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/68c691d130e5fda2f57cee505ed7aea840e7d02033100687b764601f9595e1116e34c13876628a93e1a5c2b85e4efc27d30b2fda72e2050c02f3e1c4e998d248
   languageName: node
   linkType: hard
 

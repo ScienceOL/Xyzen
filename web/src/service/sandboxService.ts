@@ -54,6 +54,30 @@ export interface StartSandboxResponse {
   message: string;
 }
 
+export interface SandboxProfile {
+  id: string;
+  user_id: string;
+  cpu: number | null;
+  memory: number | null;
+  disk: number | null;
+  auto_stop_minutes: number | null;
+  auto_delete_minutes: number | null;
+  timeout: number | null;
+  image: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SandboxProfileUpdate {
+  cpu?: number | null;
+  memory?: number | null;
+  disk?: number | null;
+  auto_stop_minutes?: number | null;
+  auto_delete_minutes?: number | null;
+  timeout?: number | null;
+  image?: string | null;
+}
+
 class SandboxService {
   /** List all active sandboxes for the current user. */
   async listSandboxes(): Promise<SandboxListResponse> {
@@ -107,6 +131,29 @@ class SandboxService {
       { params: { path } },
     );
     return response.blob();
+  }
+
+  // --- Sandbox Profile (per-user config) ---
+
+  /** Get the current user's sandbox profile. Returns null if using global defaults. */
+  async getSandboxProfile(): Promise<SandboxProfile | null> {
+    try {
+      return await http.get("/xyzen/api/v1/sandbox-profile");
+    } catch {
+      return null; // 404 = no custom profile
+    }
+  }
+
+  /** Create or update the user's sandbox profile. */
+  async updateSandboxProfile(
+    update: SandboxProfileUpdate,
+  ): Promise<SandboxProfile> {
+    return http.put("/xyzen/api/v1/sandbox-profile", update);
+  }
+
+  /** Delete the user's sandbox profile (reset to global defaults). */
+  async resetSandboxProfile(): Promise<{ deleted: boolean }> {
+    return http.delete("/xyzen/api/v1/sandbox-profile");
   }
 }
 

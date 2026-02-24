@@ -4,6 +4,7 @@
   "plans": "订阅服务",
   "gotIt": "知道了",
   "comingSoon": "即将上线",
+  "subscribe": "立即订阅",
   "notInteroperable": "订阅服务不与国际版互通",
   "betaNotice": "内测期间暂不支持外部充值，欢迎加入内测群了解最新动态",
   "surveyTitle": "填写内测问卷",
@@ -71,6 +72,15 @@
     "expired": "已过期",
     "expiresToday": "今日到期",
     "expiresIn": "{{days}} 天后到期"
+  },
+
+  "payment": {
+    "title": "完成支付",
+    "scanQR": "扫码支付",
+    "waiting": "等待支付中...",
+    "success": "支付成功！",
+    "failed": "支付失败或已过期",
+    "close": "关闭"
   },
 
   "creator": "创作者",

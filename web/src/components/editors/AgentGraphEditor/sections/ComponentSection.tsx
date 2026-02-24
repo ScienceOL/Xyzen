@@ -24,7 +24,9 @@ function ComponentSection({ config, onChange, onBlur }: ComponentSectionProps) {
             })
           }
           onBlur={onBlur}
-          placeholder={t("agents.graphEditor.component.componentKeyPlaceholder")}
+          placeholder={t(
+            "agents.graphEditor.component.componentKeyPlaceholder",
+          )}
         />
       </FieldGroup>
 
@@ -40,7 +42,9 @@ function ComponentSection({ config, onChange, onBlur }: ComponentSectionProps) {
             })
           }
           onBlur={onBlur}
-          placeholder={t("agents.graphEditor.component.componentVersionPlaceholder")}
+          placeholder={t(
+            "agents.graphEditor.component.componentVersionPlaceholder",
+          )}
         />
       </FieldGroup>
 

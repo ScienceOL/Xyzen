@@ -14,7 +14,7 @@ import {
   CheckIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useInView } from "react-intersection-observer";
 
@@ -33,8 +33,9 @@ import MyMarketplaceListings from "@/components/features/MyMarketplaceListings";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
 import AgentListingCard from "./AgentListingCard";
 import AgentMarketplaceDetail from "./AgentMarketplaceDetail";
-import AgentMarketplaceManage from "./AgentMarketplaceManage";
 import MarketplaceSections from "./MarketplaceSections";
+
+const AgentMarketplaceManage = lazy(() => import("./AgentMarketplaceManage"));
 
 type AgentMarketplaceTab = "all" | "starred" | "my-listings";
 type ViewMode = "list" | "detail" | "manage";
@@ -155,10 +156,12 @@ export default function AgentMarketplace() {
 
   if (selectedMarketplaceId && viewMode === "manage") {
     return (
-      <AgentMarketplaceManage
-        marketplaceId={selectedMarketplaceId}
-        onBack={handleBackToList}
-      />
+      <Suspense>
+        <AgentMarketplaceManage
+          marketplaceId={selectedMarketplaceId}
+          onBack={handleBackToList}
+        />
+      </Suspense>
     );
   }
 

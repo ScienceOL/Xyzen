@@ -867,7 +867,10 @@ export default function AgentMarketplaceManage({
             </div>
 
             {/* Earnings Card */}
-            <EarningsCard marketplaceId={listing.id} forkMode={listing.fork_mode} />
+            <EarningsCard
+              marketplaceId={listing.id}
+              forkMode={listing.fork_mode}
+            />
 
             {/* Actions Card */}
             <div className="rounded-sm border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">

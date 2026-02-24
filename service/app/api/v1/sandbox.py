@@ -120,8 +120,12 @@ async def list_sandbox_files(
 
     try:
         raw_files = await manager.list_files_readonly(sandbox_id, validated_path)
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to list sandbox files for session %s", session_id)
+        # Detect stopped/unreachable sandbox — tell frontend it's not active
+        exc_msg = str(exc).lower()
+        if "no ip address found" in exc_msg or "is the sandbox started" in exc_msg:
+            return SandboxFilesResponse(files=[], sandbox_active=False)
         return SandboxFilesResponse(files=[], sandbox_active=True)
 
     return SandboxFilesResponse(
@@ -152,8 +156,11 @@ async def get_sandbox_file_content(
 
     try:
         file_bytes = await manager.read_file_bytes_readonly(sandbox_id, validated_path)
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to read sandbox file %s for session %s", validated_path, session_id)
+        exc_msg = str(exc).lower()
+        if "no ip address found" in exc_msg or "is the sandbox started" in exc_msg:
+            raise HTTPException(status_code=409, detail="Sandbox is stopped — start it first")
         raise HTTPException(status_code=404, detail="File not found or unreadable")
 
     if len(file_bytes) > _MAX_SERVE_BYTES:

@@ -12,7 +12,16 @@ from typing import Any
 
 from app.configs import configs
 
-from .base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SandboxState, SandboxStatus, SearchMatch
+from .base import (
+    ExecResult,
+    FileInfo,
+    PreviewUrl,
+    ResolvedSandboxConfig,
+    SandboxBackend,
+    SandboxState,
+    SandboxStatus,
+    SearchMatch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +40,16 @@ class E2BBackend(SandboxBackend):
         name: str,
         language: str = "python",
         env_vars: dict[str, str] | None = None,
+        config: ResolvedSandboxConfig | None = None,
     ) -> str:
         from e2b_code_interpreter import AsyncSandbox  # type: ignore[import-not-found]
 
         e2b_cfg = configs.Sandbox.E2B
+        timeout = config.timeout if config else e2b_cfg.TimeoutSeconds
         sandbox = await AsyncSandbox.create(
             template=e2b_cfg.Template,
             api_key=self._api_key(),
-            timeout=e2b_cfg.TimeoutSeconds,
+            timeout=timeout,
             metadata={"xyzen_sandbox": name},
             envs=env_vars or {},
         )

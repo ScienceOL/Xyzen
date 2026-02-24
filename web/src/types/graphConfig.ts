@@ -482,7 +482,11 @@ export function validateGraphVisual(config: GraphConfig): ValidationIssue[] {
   // Entrypoint references missing node
   for (const ep of entrypoints) {
     if (!nodeIds.has(ep)) {
-      issues.push({ level: "error", key: "entrypointMissing", params: { id: ep } });
+      issues.push({
+        level: "error",
+        key: "entrypointMissing",
+        params: { id: ep },
+      });
     }
   }
 
