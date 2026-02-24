@@ -2,7 +2,7 @@ import { XMarkIcon } from "@heroicons/react/16/solid";
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
+  getBezierPath,
   useReactFlow,
   type EdgeProps,
 } from "@xyflow/react";
@@ -30,7 +30,7 @@ function ConditionalEdge({
   const [hovered, setHovered] = useState(false);
   const { deleteElements } = useReactFlow();
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     targetX,

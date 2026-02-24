@@ -6,9 +6,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
+import { PaymentQRModal } from "@/components/features/PaymentQRModal";
 import { getRegion } from "@/core/region/region";
 import { useSubscriptionInfo, useBilling } from "@/hooks/ee";
 import { cn } from "@/lib/utils";
+import { paymentService } from "@/service/paymentService";
 import { subscriptionService } from "@/service/subscriptionService";
 import {
   ChatBubbleLeftRightIcon,
@@ -25,7 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { Crown, Gem, Gift, Shield } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -43,6 +45,7 @@ interface PlanFeature {
 
 interface SubscriptionPlan {
   name: string;
+  planKey: string;
   price: string;
   originalPrice?: string;
   period: string;
@@ -63,6 +66,7 @@ function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
   return [
     {
       name: t("subscription.plan.free"),
+      planKey: "free",
       price: "$0",
       period: "",
       credits: t("subscription.plan.dailyCheckIn"),
@@ -82,6 +86,7 @@ function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
     },
     {
       name: t("subscription.plan.standard"),
+      planKey: "standard",
       price: "$9.9",
       period: t("subscription.plan.perMonth"),
       credits: "5,000",
@@ -100,6 +105,7 @@ function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
     },
     {
       name: t("subscription.plan.professional"),
+      planKey: "professional",
       price: "$36.9",
       period: t("subscription.plan.perMonth"),
       credits: "22,000",
@@ -115,6 +121,7 @@ function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
     },
     {
       name: t("subscription.plan.ultra"),
+      planKey: "ultra",
       price: "$99.9",
       period: t("subscription.plan.perMonth"),
       credits: "60,000",
@@ -138,6 +145,7 @@ function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
   return [
     {
       name: t("subscription.plan.free"),
+      planKey: "free",
       price: "¥0",
       period: "",
       credits: t("subscription.plan.dailyCheckIn"),
@@ -157,6 +165,7 @@ function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
     },
     {
       name: t("subscription.plan.standard"),
+      planKey: "standard",
       price: "¥25.9",
       originalPrice: t("subscription.plan.firstMonth", { price: "¥19.9" }),
       period: t("subscription.plan.perMonth"),
@@ -176,6 +185,7 @@ function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
     },
     {
       name: t("subscription.plan.professional"),
+      planKey: "professional",
       price: "¥89.9",
       originalPrice: t("subscription.plan.firstMonth", { price: "¥79.9" }),
       period: t("subscription.plan.perMonth"),
@@ -192,6 +202,7 @@ function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
     },
     {
       name: t("subscription.plan.ultraChina"),
+      planKey: "ultra",
       price: "¥268.0",
       period: t("subscription.plan.perMonth"),
       credits: "60,000",
@@ -503,14 +514,17 @@ function MySubscriptionTab() {
           {walletBalance && (
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
               <span className="text-[11px] tabular-nums text-emerald-600 dark:text-emerald-400">
-                {t("app:wallet.freeBalance", { defaultValue: "Free" })}: {walletBalance.free.toLocaleString()}
+                {t("app:wallet.freeBalance", { defaultValue: "Free" })}:{" "}
+                {walletBalance.free.toLocaleString()}
               </span>
               <span className="text-[11px] tabular-nums text-indigo-600 dark:text-indigo-400">
-                {t("app:wallet.paidBalance", { defaultValue: "Paid" })}: {walletBalance.paid.toLocaleString()}
+                {t("app:wallet.paidBalance", { defaultValue: "Paid" })}:{" "}
+                {walletBalance.paid.toLocaleString()}
               </span>
               {walletBalance.earned > 0 && (
                 <span className="text-[11px] tabular-nums text-amber-600 dark:text-amber-400">
-                  {t("app:wallet.earnedBalance", { defaultValue: "Earned" })}: {walletBalance.earned.toLocaleString()}
+                  {t("app:wallet.earnedBalance", { defaultValue: "Earned" })}:{" "}
+                  {walletBalance.earned.toLocaleString()}
                 </span>
               )}
             </div>
@@ -686,9 +700,18 @@ function MySubscriptionTab() {
 
 // ---------- Plan Card ----------
 
-function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
+function PlanCard({
+  plan,
+  index,
+  onSubscribe,
+}: {
+  plan: SubscriptionPlan;
+  index: number;
+  onSubscribe?: (planKey: string) => void;
+}) {
   const { t } = useTranslation();
   const isLocked = plan.isLocked;
+  const isFree = plan.isFree;
 
   return (
     <motion.div
@@ -827,14 +850,20 @@ function PlanCard({ plan, index }: { plan: SubscriptionPlan; index: number }) {
       </div>
 
       <button
-        disabled
-        className={`w-full cursor-not-allowed rounded-lg py-2 text-xs font-semibold ${
-          isLocked
-            ? "bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
-            : "bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
-        }`}
+        disabled={isLocked || isFree}
+        onClick={() => !isFree && !isLocked && onSubscribe?.(plan.planKey)}
+        className={cn(
+          "w-full rounded-lg py-2 text-xs font-semibold transition-colors",
+          isLocked || isFree
+            ? "cursor-not-allowed bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
+            : "bg-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400",
+        )}
       >
-        {t("subscription.comingSoon")}
+        {isFree
+          ? t("subscription.plan.free")
+          : isLocked
+            ? t("subscription.comingSoon")
+            : t("subscription.subscribe")}
       </button>
     </motion.div>
   );
@@ -935,6 +964,7 @@ function SandboxPackCard({
 export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
+  const queryClient = useQueryClient();
 
   const roleName = subInfo?.roleName;
   const hasPaidSub = !!roleName && roleName !== "free";
@@ -946,145 +976,214 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   const defaultTab = hasPaidSub ? "subscription" : regionTab;
   const showTabsList = hasPaidSub;
 
-  return (
-    <SheetModal isOpen={isOpen} onClose={onClose}>
-      <div className="flex h-full flex-col overflow-hidden">
-        {/* Mobile title */}
-        <div className="shrink-0 px-5 pb-1 pt-6 md:px-6 md:pt-4">
-          <h2 className="text-xl font-bold text-neutral-900 dark:text-white md:text-lg">
-            {t("subscription.title")}
-          </h2>
-        </div>
-        {/* Scrollable content */}
-        <div className="relative flex-1 overflow-y-auto custom-scrollbar px-4 py-2 sm:px-6">
-          <div className="space-y-4">
-            <Tabs defaultValue={defaultTab} key={defaultTab}>
-              {showTabsList && (
-                <TabsList className="mx-auto w-fit">
-                  <TabsTrigger
-                    value="subscription"
-                    className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
-                  >
-                    <SparklesIcon className="h-4 w-4" />
-                    {t("subscription.mySubscription")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value={regionTab}
-                    className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
-                  >
-                    <GlobeAltIcon className="h-4 w-4" />
-                    {t("subscription.plans")}
-                  </TabsTrigger>
-                </TabsList>
-              )}
+  // Payment QR modal state
+  const [qrModal, setQrModal] = useState<{
+    open: boolean;
+    orderId: string;
+    qrCodeUrl: string;
+    amount: number;
+    currency: string;
+    planName: string;
+  }>({
+    open: false,
+    orderId: "",
+    qrCodeUrl: "",
+    amount: 0,
+    currency: "",
+    planName: "",
+  });
 
-              <TabsContents>
-                {hasPaidSub && (
-                  <TabsContent value="subscription">
-                    <MySubscriptionTab />
-                  </TabsContent>
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleSubscribe = useCallback(
+    async (planKey: string) => {
+      if (checkoutLoading) return;
+      setCheckoutLoading(true);
+      try {
+        const paymentMethod = isChina ? "alipaycn" : "alipaycn";
+        const result = await paymentService.createCheckout(
+          planKey,
+          paymentMethod,
+        );
+        const plan = regionPlans.find((p) => p.planKey === planKey);
+        setQrModal({
+          open: true,
+          orderId: result.order_id,
+          qrCodeUrl: result.qr_code_url,
+          amount: result.amount,
+          currency: result.currency,
+          planName: plan?.name ?? planKey,
+        });
+      } catch {
+        // TODO: toast error
+      } finally {
+        setCheckoutLoading(false);
+      }
+    },
+    [checkoutLoading, isChina, regionPlans],
+  );
+
+  const handlePaymentSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["subscription"] });
+  }, [queryClient]);
+
+  return (
+    <>
+      <SheetModal isOpen={isOpen} onClose={onClose}>
+        <div className="flex h-full flex-col overflow-hidden">
+          {/* Mobile title */}
+          <div className="shrink-0 px-5 pb-1 pt-6 md:px-6 md:pt-4">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white md:text-lg">
+              {t("subscription.title")}
+            </h2>
+          </div>
+          {/* Scrollable content */}
+          <div className="relative flex-1 overflow-y-auto custom-scrollbar px-4 py-2 sm:px-6">
+            <div className="space-y-4">
+              <Tabs defaultValue={defaultTab} key={defaultTab}>
+                {showTabsList && (
+                  <TabsList className="mx-auto w-fit">
+                    <TabsTrigger
+                      value="subscription"
+                      className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
+                    >
+                      <SparklesIcon className="h-4 w-4" />
+                      {t("subscription.mySubscription")}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value={regionTab}
+                      className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-5 sm:text-sm"
+                    >
+                      <GlobeAltIcon className="h-4 w-4" />
+                      {t("subscription.plans")}
+                    </TabsTrigger>
+                  </TabsList>
                 )}
 
-                <TabsContent value={regionTab}>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.25 }}
-                    className="mt-4 space-y-4"
-                  >
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-                      {regionPlans.map((plan, index) => (
-                        <PlanCard key={plan.name} plan={plan} index={index} />
-                      ))}
-                    </div>
-                    <TopUpCard
-                      region={isChina ? "china" : "international"}
-                      delay={0.3}
-                    />
-                    <SandboxPackCard
-                      region={isChina ? "china" : "international"}
-                      delay={0.35}
-                    />
-                    {isChina && (
-                      <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.35 }}
-                        className="text-center text-xs text-neutral-500 dark:text-neutral-400"
-                      >
-                        {t("subscription.notInteroperable")}
-                      </motion.p>
-                    )}
-                  </motion.div>
-                </TabsContent>
-              </TabsContents>
-            </Tabs>
+                <TabsContents>
+                  {hasPaidSub && (
+                    <TabsContent value="subscription">
+                      <MySubscriptionTab />
+                    </TabsContent>
+                  )}
 
-            {/* Beta notice */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="rounded-lg border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10"
-            >
-              <p className="text-center text-xs text-amber-700 dark:text-amber-300">
-                {t("subscription.betaNotice")}
-              </p>
-            </motion.div>
+                  <TabsContent value={regionTab}>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.25 }}
+                      className="mt-4 space-y-4"
+                    >
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                        {regionPlans.map((plan, index) => (
+                          <PlanCard
+                            key={plan.name}
+                            plan={plan}
+                            index={index}
+                            onSubscribe={handleSubscribe}
+                          />
+                        ))}
+                      </div>
+                      <TopUpCard
+                        region={isChina ? "china" : "international"}
+                        delay={0.3}
+                      />
+                      <SandboxPackCard
+                        region={isChina ? "china" : "international"}
+                        delay={0.35}
+                      />
+                      {isChina && (
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.35 }}
+                          className="text-center text-xs text-neutral-500 dark:text-neutral-400"
+                        >
+                          {t("subscription.notInteroperable")}
+                        </motion.p>
+                      )}
+                    </motion.div>
+                  </TabsContent>
+                </TabsContents>
+              </Tabs>
 
-            {/* Survey link */}
-            <motion.a
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.45 }}
-              whileHover={{ scale: 1.005 }}
-              whileTap={{ scale: 0.995 }}
-              href="https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex items-center gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2.5 transition-all hover:border-indigo-300 hover:shadow-sm sm:gap-3 sm:px-4 sm:py-3 dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-purple-500/10 dark:hover:border-indigo-400/50"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-sm">
-                <DocumentTextIcon className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
-                  {t("subscription.surveyTitle")}
-                </div>
-                <div className="text-xs text-indigo-600/70 dark:text-indigo-300/70">
-                  {t("subscription.surveySubtitle")}
-                </div>
-              </div>
-              <svg
-                className="h-4 w-4 text-indigo-400 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              {/* Beta notice */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="rounded-lg border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M14 5l7 7m0 0l-7 7m7-7H3"
-                />
-              </svg>
-            </motion.a>
+                <p className="text-center text-xs text-amber-700 dark:text-amber-300">
+                  {t("subscription.betaNotice")}
+                </p>
+              </motion.div>
+
+              {/* Survey link */}
+              <motion.a
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.45 }}
+                whileHover={{ scale: 1.005 }}
+                whileTap={{ scale: 0.995 }}
+                href="https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2.5 transition-all hover:border-indigo-300 hover:shadow-sm sm:gap-3 sm:px-4 sm:py-3 dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-purple-500/10 dark:hover:border-indigo-400/50"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-sm">
+                  <DocumentTextIcon className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
+                    {t("subscription.surveyTitle")}
+                  </div>
+                  <div className="text-xs text-indigo-600/70 dark:text-indigo-300/70">
+                    {t("subscription.surveySubtitle")}
+                  </div>
+                </div>
+                <svg
+                  className="h-4 w-4 text-indigo-400 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+              </motion.a>
+            </div>
+          </div>
+
+          {/* Fixed footer */}
+          <div className="shrink-0 flex justify-end border-t border-neutral-100 px-4 pt-3 pb-3 sm:px-6 dark:border-neutral-800">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="button"
+              onClick={onClose}
+              className="rounded-lg bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:hover:bg-indigo-500"
+            >
+              {t("subscription.gotIt")}
+            </motion.button>
           </div>
         </div>
+      </SheetModal>
 
-        {/* Fixed footer */}
-        <div className="shrink-0 flex justify-end border-t border-neutral-100 px-4 pt-3 pb-3 sm:px-6 dark:border-neutral-800">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:hover:bg-indigo-500"
-          >
-            {t("subscription.gotIt")}
-          </motion.button>
-        </div>
-      </div>
-    </SheetModal>
+      <PaymentQRModal
+        isOpen={qrModal.open}
+        onClose={() => setQrModal((prev) => ({ ...prev, open: false }))}
+        orderId={qrModal.orderId}
+        qrCodeUrl={qrModal.qrCodeUrl}
+        amount={qrModal.amount}
+        currency={qrModal.currency}
+        planName={qrModal.planName}
+        onSuccess={handlePaymentSuccess}
+      />
+    </>
   );
 }

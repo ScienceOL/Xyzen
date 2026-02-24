@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
+import { DEFAULT_TOPIC_TITLE_KEY } from "@/configs/common";
 
 // Build chat config with translated strings
 export function getXyzenChatConfig(t: TFunction): XyzenChatConfig {
@@ -9,7 +10,7 @@ export function getXyzenChatConfig(t: TFunction): XyzenChatConfig {
     storageKeys: {
       historyPinned: "chatHistoryPinned",
     },
-    defaultTitle: t("app.chatConfig.defaultTitle"),
+    defaultTitle: t(DEFAULT_TOPIC_TITLE_KEY),
     placeholders: {
       responding: t("app.chatConfig.placeholders.responding"),
       default: t("app.chatConfig.placeholders.default"),

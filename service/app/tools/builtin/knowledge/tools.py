@@ -62,7 +62,7 @@ def create_knowledge_tools() -> dict[str, BaseTool]:
             "Read the content of a file from the agent's knowledge base. "
             "Supports: PDF (text + tables), DOCX (text + tables), XLSX (all sheets), "
             "PPTX (text + speaker notes), HTML (text extraction), JSON/YAML/XML (formatted), "
-            "images (OCR text extraction from PNG/JPG/GIF/WEBP), and plain text files. "
+            "images (visual content from PNG/JPG/GIF/WEBP), and plain text files. "
             "Use knowledge_list first to see available files."
         ),
         args_schema=KnowledgeReadFileInput,
@@ -162,7 +162,7 @@ def create_knowledge_tools_for_agent(user_id: str, knowledge_set_id: UUID) -> li
                 "Read the content of a file from your knowledge base. "
                 "Supports: PDF (text + tables), DOCX (text + tables), XLSX (all sheets), "
                 "PPTX (text + speaker notes), HTML (text extraction), JSON/YAML/XML (formatted), "
-                "images (OCR text extraction from PNG/JPG/GIF/WEBP), and plain text files. "
+                "images (visual content from PNG/JPG/GIF/WEBP), and plain text files. "
                 "Use knowledge_list first to see available files."
             ),
             args_schema=KnowledgeReadFileInput,

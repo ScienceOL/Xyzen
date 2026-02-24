@@ -334,7 +334,11 @@ function AgentGraphEditorInner({
           onInit={handleInit}
           onMoveEnd={handleMoveEnd}
           onNodeClick={onNodeClick as NodeMouseHandler<Node>}
-          onEdgeClick={!readOnly ? (onEdgeClick as (event: React.MouseEvent, edge: Edge) => void) : undefined}
+          onEdgeClick={
+            !readOnly
+              ? (onEdgeClick as (event: React.MouseEvent, edge: Edge) => void)
+              : undefined
+          }
           onPaneClick={onPaneClick}
           onDragOver={onDragOver}
           onDrop={onDrop}

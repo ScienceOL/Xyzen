@@ -347,12 +347,19 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         {/* Topology + Teach flow */}
         <div className="grid gap-12 md:grid-cols-2">
           {/* Topology visualization */}
-          <WatercolorCard tint={WC.lavender} className="flex flex-col items-center justify-center">
+          <WatercolorCard
+            tint={WC.lavender}
+            className="flex flex-col items-center justify-center"
+          >
             <div className="relative flex h-64 w-64 items-center justify-center">
               {/* Center node */}
               <motion.div
                 animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
                 className="z-10 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-rose-400 text-2xl shadow-lg shadow-violet-500/20"
               >
                 <span role="img" aria-label="brain">
@@ -365,11 +372,36 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               {/* Satellite nodes */}
               {(
                 [
-                  { key: "data", angle: -90, emoji: "\u{1F4CA}", color: "from-violet-400/20 to-violet-500/10" },
-                  { key: "code", angle: -18, emoji: "\u{1F4BB}", color: "from-emerald-400/20 to-emerald-500/10" },
-                  { key: "content", angle: 54, emoji: "\u270D\uFE0F", color: "from-amber-400/20 to-amber-500/10" },
-                  { key: "design", angle: 126, emoji: "\u{1F3A8}", color: "from-rose-400/20 to-rose-500/10" },
-                  { key: "research", angle: 198, emoji: "\u{1F50D}", color: "from-sky-400/20 to-sky-500/10" },
+                  {
+                    key: "data",
+                    angle: -90,
+                    emoji: "\u{1F4CA}",
+                    color: "from-violet-400/20 to-violet-500/10",
+                  },
+                  {
+                    key: "code",
+                    angle: -18,
+                    emoji: "\u{1F4BB}",
+                    color: "from-emerald-400/20 to-emerald-500/10",
+                  },
+                  {
+                    key: "content",
+                    angle: 54,
+                    emoji: "\u270D\uFE0F",
+                    color: "from-amber-400/20 to-amber-500/10",
+                  },
+                  {
+                    key: "design",
+                    angle: 126,
+                    emoji: "\u{1F3A8}",
+                    color: "from-rose-400/20 to-rose-500/10",
+                  },
+                  {
+                    key: "research",
+                    angle: 198,
+                    emoji: "\u{1F50D}",
+                    color: "from-sky-400/20 to-sky-500/10",
+                  },
                 ] as const
               ).map(({ key, angle, emoji, color }, i) => {
                 const r = 100;
@@ -496,9 +528,21 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             <div className="space-y-3">
               {(
                 [
-                  { key: "skill_accumulation", tint: WC.gold, emoji: "\u{1F4E6}" },
-                  { key: "pattern_recognition", tint: WC.sky, emoji: "\u{1F50E}" },
-                  { key: "cross_learning", tint: WC.lavender, emoji: "\u{1F504}" },
+                  {
+                    key: "skill_accumulation",
+                    tint: WC.gold,
+                    emoji: "\u{1F4E6}",
+                  },
+                  {
+                    key: "pattern_recognition",
+                    tint: WC.sky,
+                    emoji: "\u{1F50E}",
+                  },
+                  {
+                    key: "cross_learning",
+                    tint: WC.lavender,
+                    emoji: "\u{1F504}",
+                  },
                 ] as const
               ).map(({ key, tint, emoji }, i) => (
                 <motion.div
@@ -516,14 +560,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     </span>
                     <div>
                       <h4 className="text-[13px] font-bold">
-                        {t(
-                          `landing.part2.growth_items.${key}`,
-                        )}
+                        {t(`landing.part2.growth_items.${key}`)}
                       </h4>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {t(
-                          `landing.part2.growth_items.${key}_desc`,
-                        )}
+                        {t(`landing.part2.growth_items.${key}_desc`)}
                       </p>
                     </div>
                   </div>
@@ -552,16 +592,51 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(
             [
-              { key: "autonomous", emoji: "\u{1F52E}", tint: WC.lavender, span: true },
+              {
+                key: "autonomous",
+                emoji: "\u{1F52E}",
+                tint: WC.lavender,
+                span: true,
+              },
               { key: "team", emoji: "\u{1F91D}", tint: WC.sky, span: false },
-              { key: "sandbox", emoji: "\u{1F6E0}\uFE0F", tint: WC.gold, span: false },
+              {
+                key: "sandbox",
+                emoji: "\u{1F6E0}\uFE0F",
+                tint: WC.gold,
+                span: false,
+              },
               { key: "skills", emoji: "\u26A1", tint: WC.peach, span: false },
               { key: "memory", emoji: "\u{1F9E0}", tint: WC.rose, span: false },
-              { key: "knowledge", emoji: "\u{1F4DA}", tint: WC.sky, span: false },
-              { key: "multimodal", emoji: "\u{1F5BC}\uFE0F", tint: WC.gold, span: false },
-              { key: "mcp", emoji: "\u{1F50C}", tint: WC.lavender, span: false },
-              { key: "agent_create_agent", emoji: "\u{1F9EC}", tint: WC.rose, span: true },
-              { key: "deploy", emoji: "\u{1F680}", tint: WC.peach, span: false },
+              {
+                key: "knowledge",
+                emoji: "\u{1F4DA}",
+                tint: WC.sky,
+                span: false,
+              },
+              {
+                key: "multimodal",
+                emoji: "\u{1F5BC}\uFE0F",
+                tint: WC.gold,
+                span: false,
+              },
+              {
+                key: "mcp",
+                emoji: "\u{1F50C}",
+                tint: WC.lavender,
+                span: false,
+              },
+              {
+                key: "agent_create_agent",
+                emoji: "\u{1F9EC}",
+                tint: WC.rose,
+                span: true,
+              },
+              {
+                key: "deploy",
+                emoji: "\u{1F680}",
+                tint: WC.peach,
+                span: false,
+              },
             ] as const
           ).map(({ key, emoji, tint, span }, i) => (
             <WatercolorCard
@@ -600,7 +675,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
         <div className="grid gap-12 md:grid-cols-2">
           {/* Left: Runner pipeline visualization */}
-          <WatercolorCard tint={WC.sky} className="flex flex-col justify-center">
+          <WatercolorCard
+            tint={WC.sky}
+            className="flex flex-col justify-center"
+          >
             <h3 className="mb-3 text-lg font-bold">
               {t("landing.part4.how_title")}
             </h3>

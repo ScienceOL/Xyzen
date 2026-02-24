@@ -551,7 +551,6 @@ export function useGraphConfig(
     [setEdges],
   );
 
-
   // Delete a node
   const deleteNode = useCallback(
     (nodeId: string) => {

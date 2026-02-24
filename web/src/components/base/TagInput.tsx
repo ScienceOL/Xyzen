@@ -27,8 +27,10 @@ const BORDER_IDLE = "ring-1 ring-neutral-200 dark:ring-neutral-700/80";
 const BORDER_FOCUS =
   "ring-[1.5px] ring-indigo-500 dark:ring-indigo-400 shadow-[0_0_0_3px_rgba(99,102,241,0.08)] dark:shadow-[0_0_0_3px_rgba(129,140,248,0.1)]";
 
-export interface TagInputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
+export interface TagInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange"
+> {
   value: string[];
   onChange: (tags: string[]) => void;
   wrapperClassName?: string;
@@ -77,11 +79,7 @@ export function TagInput({
           addTag(inputValue);
           setInputValue("");
         }
-      } else if (
-        e.key === "Backspace" &&
-        !inputValue &&
-        value.length > 0
-      ) {
+      } else if (e.key === "Backspace" && !inputValue && value.length > 0) {
         removeTag(value.length - 1);
       }
     },

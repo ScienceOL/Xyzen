@@ -104,6 +104,23 @@ export default defineConfig(() => {
         banner: '"use client";',
       },
     };
+  } else {
+    // Site build: split heavy vendor chunks for better caching
+    build.rollupOptions = {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes("node_modules/@xyflow/")) return "vendor-xyflow";
+          if (id.includes("node_modules/framer-motion")) return "vendor-framer";
+          if (
+            id.includes("node_modules/echarts") ||
+            id.includes("node_modules/zrender")
+          )
+            return "vendor-echarts";
+          if (id.includes("node_modules/shiki")) return "vendor-shiki";
+          if (id.includes("node_modules/@novu/")) return "vendor-novu";
+        },
+      },
+    };
   }
 
   const config = {

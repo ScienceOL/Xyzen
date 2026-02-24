@@ -1,3 +1,4 @@
+import { DEFAULT_TOPIC_TITLE_KEY } from "@/configs/common";
 import type { OpenTab } from "../hooks/useAgentTopics";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import i18n from "i18next";
@@ -92,7 +93,9 @@ export function TopicTabBar({
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 </span>
               )}
-              <span className="truncate">{tab.name || i18n.t("app.toolbar.newChat")}</span>
+              <span className="truncate">
+                {tab.name || i18n.t(DEFAULT_TOPIC_TITLE_KEY)}
+              </span>
               <button
                 onClick={(e) => handleClose(e, tab.id)}
                 className="shrink-0 ml-0.5 rounded p-0.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-opacity duration-150"

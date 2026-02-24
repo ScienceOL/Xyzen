@@ -113,9 +113,7 @@ export function AppHeader({
                       : `积分 ${(billing.points ?? "--").toString()}`}
                   </span>
                   <span className="hidden text-sm font-bold text-indigo-900 dark:text-indigo-100 sm:inline sm:text-base">
-                    {billing.isLoading
-                      ? "..."
-                      : (billing.points ?? "--")}
+                    {billing.isLoading ? "..." : (billing.points ?? "--")}
                   </span>
                 </div>
                 <button

@@ -167,6 +167,8 @@ export const FileList = React.memo(
       const [hasMoreFiles, setHasMoreFiles] = useState(true);
       const [isLoadingMore, setIsLoadingMore] = useState(false);
       const filesOffsetRef = useRef(0);
+      /** True while a non-append (full reload) fetch is in flight. */
+      const isReloadingRef = useRef(false);
 
       // useInView for infinite scroll trigger
       const { ref: loadMoreRef, inView } = useInView({
@@ -609,6 +611,8 @@ export const FileList = React.memo(
           }
 
           if (append) {
+            // Prevent appending while a full reload is in flight (race condition).
+            if (isReloadingRef.current) return;
             setIsLoadingMore(true);
           } else {
             // Only show full loading spinner on initial load (no existing data).
@@ -618,6 +622,7 @@ export const FileList = React.memo(
             ) {
               setIsLoading(true);
             }
+            isReloadingRef.current = true;
             filesOffsetRef.current = 0;
             setHasMoreFiles(true);
           }
@@ -702,6 +707,7 @@ export const FileList = React.memo(
           } finally {
             setIsLoading(false);
             setIsLoadingMore(false);
+            isReloadingRef.current = false;
           }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps

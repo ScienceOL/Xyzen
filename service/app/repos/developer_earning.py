@@ -70,27 +70,28 @@ class DeveloperEarningRepository:
         """Aggregate earnings grouped by marketplace_id, enriched with agent name/avatar."""
         from app.models.agent_marketplace import AgentMarketplace
 
+        e = DeveloperEarning.__table__
+        m = AgentMarketplace.__table__
+
         stmt = (
             sa_select(
-                DeveloperEarning.marketplace_id,
-                DeveloperEarning.fork_mode,
-                func.sum(DeveloperEarning.amount).label("total_earned"),
-                func.sum(DeveloperEarning.total_consumed).label("total_consumed"),
+                e.c.marketplace_id,
+                e.c.fork_mode,
+                func.sum(e.c.amount).label("total_earned"),
+                func.sum(e.c.total_consumed).label("total_consumed"),
                 func.count().label("earning_count"),
-                func.max(DeveloperEarning.created_at).label("last_earned_at"),
-                AgentMarketplace.name.label("agent_name"),
-                AgentMarketplace.avatar.label("agent_avatar"),
+                func.max(e.c.created_at).label("last_earned_at"),
+                m.c.name.label("agent_name"),
+                m.c.avatar.label("agent_avatar"),
             )
-            .outerjoin(
-                AgentMarketplace,
-                DeveloperEarning.marketplace_id == AgentMarketplace.id,
-            )
-            .where(DeveloperEarning.developer_user_id == developer_user_id)
+            .select_from(e)
+            .outerjoin(m, e.c.marketplace_id == m.c.id)
+            .where(e.c.developer_user_id == developer_user_id)
             .group_by(
-                DeveloperEarning.marketplace_id,
-                DeveloperEarning.fork_mode,
-                AgentMarketplace.name,
-                AgentMarketplace.avatar,
+                e.c.marketplace_id,
+                e.c.fork_mode,
+                m.c.name,
+                m.c.avatar,
             )
         )
         result = (await self.db.exec(stmt)).all()  # type: ignore[arg-type]
@@ -113,11 +114,12 @@ class DeveloperEarningRepository:
         marketplace_id: UUID,
     ) -> dict[str, Any]:
         """Get total earnings stats for a single marketplace listing."""
+        e = DeveloperEarning.__table__
         stmt = sa_select(
-            func.coalesce(func.sum(DeveloperEarning.amount), 0).label("total_earned"),
-            func.coalesce(func.sum(DeveloperEarning.total_consumed), 0).label("total_consumed"),
+            func.coalesce(func.sum(e.c.amount), 0).label("total_earned"),
+            func.coalesce(func.sum(e.c.total_consumed), 0).label("total_consumed"),
             func.count().label("earning_count"),
-        ).where(DeveloperEarning.marketplace_id == marketplace_id)
+        ).where(e.c.marketplace_id == marketplace_id)
         result = (await self.db.exec(stmt)).one()  # type: ignore[arg-type]
         return {
             "total_earned": int(result.total_earned),
@@ -157,7 +159,9 @@ class DeveloperEarningRepository:
         """Withdraw from developer wallet to user wallet."""
         wallet = await self.get_or_create_wallet(developer_user_id)
         if wallet.available_balance < amount:
-            raise ValueError(f"Insufficient developer balance: available={wallet.available_balance}, requested={amount}")
+            raise ValueError(
+                f"Insufficient developer balance: available={wallet.available_balance}, requested={amount}"
+            )
         wallet.available_balance -= amount
         wallet.total_withdrawn += amount
         self.db.add(wallet)

@@ -287,6 +287,11 @@ export function createConnectionActions(
 
         console.groupEnd();
 
+        // Sync tab name when topic is renamed by the backend
+        if (event.type === "topic_updated") {
+          get().renameTab(event.data.id, event.data.name);
+        }
+
         // Chunk events return early above, so all events reaching here are state transitions
         updateDerivedStatus();
         closeIdleNonPrimaryConnection(topicId);

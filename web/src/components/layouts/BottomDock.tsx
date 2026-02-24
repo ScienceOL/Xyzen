@@ -280,9 +280,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
                         {t("app.authStatus.pointsBalance")}
                       </div>
                       <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                        {billing.isLoading
-                          ? "..."
-                          : (billing.points ?? "--")}
+                        {billing.isLoading ? "..." : (billing.points ?? "--")}
                       </div>
                     </div>
                   </div>

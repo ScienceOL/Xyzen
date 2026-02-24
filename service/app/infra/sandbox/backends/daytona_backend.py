@@ -20,7 +20,16 @@ from daytona import SandboxState as DaytonaSandboxState
 
 from app.configs import configs
 
-from .base import ExecResult, FileInfo, PreviewUrl, SandboxBackend, SandboxState, SandboxStatus, SearchMatch
+from .base import (
+    ExecResult,
+    FileInfo,
+    PreviewUrl,
+    ResolvedSandboxConfig,
+    SandboxBackend,
+    SandboxState,
+    SandboxStatus,
+    SearchMatch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +55,26 @@ class DaytonaBackend(SandboxBackend):
         name: str,
         language: str = "python",
         env_vars: dict[str, str] | None = None,
+        config: ResolvedSandboxConfig | None = None,
     ) -> str:
-        cfg = configs.Sandbox
-        dc = cfg.Daytona
+        # Use resolved per-user config when provided, otherwise fall back to globals
+        if config:
+            image = config.image
+            cpu = config.cpu
+            memory = config.memory
+            disk = config.disk
+            auto_stop = config.auto_stop_minutes
+            auto_delete = config.auto_delete_minutes
+        else:
+            cfg = configs.Sandbox
+            dc = cfg.Daytona
+            image = dc.Image
+            cpu = cfg.Cpu
+            memory = cfg.Memory
+            disk = cfg.Disk
+            auto_stop = dc.AutoStopMinutes
+            auto_delete = dc.AutoDeleteMinutes
+
         labels = {"xyzen_sandbox": name}
 
         lang_map: dict[str, CodeLanguage] = {
@@ -60,16 +86,16 @@ class DaytonaBackend(SandboxBackend):
 
         async with self._client() as daytona:
             params = CreateSandboxFromImageParams(
-                image=dc.Image,
+                image=image,
                 language=code_language,
                 env_vars=env_vars,
                 labels=labels,
-                auto_stop_interval=dc.AutoStopMinutes,
-                auto_delete_interval=dc.AutoDeleteMinutes,
+                auto_stop_interval=auto_stop,
+                auto_delete_interval=auto_delete,
                 resources=Resources(
-                    cpu=cfg.Cpu,
-                    memory=cfg.Memory,
-                    disk=cfg.Disk,
+                    cpu=cpu,
+                    memory=memory,
+                    disk=disk,
                 ),
             )
             sandbox = await daytona.create(params, timeout=150)

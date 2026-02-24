@@ -50,8 +50,8 @@ function FloatingConfigPanel({
   const [localDescription, setLocalDescription] = useState(
     node?.description || "",
   );
-  const [localConfig, setLocalConfig] = useState<Record<string, unknown>>(
-    () => (node ? { ...node.config } : {}),
+  const [localConfig, setLocalConfig] = useState<Record<string, unknown>>(() =>
+    node ? { ...node.config } : {},
   );
 
   // Sync local state when selected node changes
@@ -119,8 +119,7 @@ function FloatingConfigPanel({
                 style={{ backgroundColor: typeInfo.color }}
               />
               <span className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-100">
-                {typeInfo.label} —{" "}
-                {t("agents.graphEditor.nodePanel.title")}
+                {typeInfo.label} — {t("agents.graphEditor.nodePanel.title")}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -147,9 +146,7 @@ function FloatingConfigPanel({
               <CommonSection
                 config={node}
                 onNameChange={setLocalName}
-                onDescriptionChange={(desc) =>
-                  setLocalDescription(desc || "")
-                }
+                onDescriptionChange={(desc) => setLocalDescription(desc || "")}
                 onReadsChange={handleReadsChange}
                 onWritesChange={handleWritesChange}
                 onBlur={flushChanges}

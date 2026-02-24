@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
+from app.core.chat.constants import DEFAULT_TOPIC_TITLE
 from app.models.sessions import (
     Session as SessionModel,
     SessionCreate,
@@ -76,7 +77,9 @@ class SessionService:
         if existing_session:
             existing_topics = await self.topic_repo.get_topics_by_session(existing_session.id, order_by_updated=True)
             if not existing_topics:
-                await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing_session.id))
+                await self.topic_repo.create_topic(
+                    TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=existing_session.id)
+                )
                 await self.db.commit()
             return SessionRead(**existing_session.model_dump())
 
@@ -94,7 +97,7 @@ class SessionService:
         try:
             session = await self.session_repo.create_session(validated, user_id)
             await self._clamp_session_model_tier(session, user_id)
-            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
+            await self.topic_repo.create_topic(TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=session.id))
             await self.db.commit()
             created_new_session = True
         except IntegrityError:
@@ -108,7 +111,7 @@ class SessionService:
                 # creation was partially committed or topics were cleared).
                 topics = await self.topic_repo.get_topics_by_session(existing.id)
                 if not topics:
-                    await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing.id))
+                    await self.topic_repo.create_topic(TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=existing.id))
                     await self.db.commit()
                 return SessionRead(**existing.model_dump())
             raise
@@ -189,7 +192,7 @@ class SessionService:
                 await self.message_repo.delete_messages_by_topic(topic.id)
                 await self.topic_repo.delete_topic(topic.id)
 
-            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session_id))
+            await self.topic_repo.create_topic(TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=session_id))
 
         await self.db.commit()
 

@@ -2,7 +2,7 @@ import { XMarkIcon } from "@heroicons/react/16/solid";
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
+  getBezierPath,
   useReactFlow,
   type EdgeProps,
 } from "@xyflow/react";
@@ -27,7 +27,7 @@ function DefaultEdge({
   const [hovered, setHovered] = useState(false);
   const { deleteElements } = useReactFlow();
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     targetX,
@@ -54,9 +54,7 @@ function DefaultEdge({
         style={{
           ...style,
           strokeWidth: hovered ? 3 : 2,
-          stroke: hovered
-            ? "rgb(115, 115, 115)"
-            : "rgb(163, 163, 163)",
+          stroke: hovered ? "rgb(115, 115, 115)" : "rgb(163, 163, 163)",
           transition: "stroke-width 0.15s, stroke 0.15s",
         }}
       />
