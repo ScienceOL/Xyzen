@@ -137,6 +137,8 @@
     "noKnowledge": "なし",
     "image": "画像",
     "imageDesc": "画像を生成・読み取り",
+    "video": "動画",
+    "videoDesc": "動画を生成",
     "literatureSearch": "文献検索",
     "literatureSearchDesc": "学術論文を検索",
     "memory": "メモリ",

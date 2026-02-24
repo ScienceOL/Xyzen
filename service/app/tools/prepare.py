@@ -147,6 +147,16 @@ def _load_all_builtin_tools(
         )
         tools.extend(image_tools)
 
+    # Load video tools if user_id is available
+    if user_id:
+        from app.tools.builtin.video import create_video_tools_for_agent
+
+        video_tools = create_video_tools_for_agent(
+            user_id=user_id,
+            session_id=str(session_id) if session_id else None,
+        )
+        tools.extend(video_tools)
+
     # Load memory tools if user_id is available and memory is enabled
     if user_id:
         from app.configs import configs as app_configs

@@ -137,6 +137,8 @@
     "noKnowledge": "无",
     "image": "图片",
     "imageDesc": "生成和读取图片",
+    "video": "视频",
+    "videoDesc": "生成视频",
     "literatureSearch": "文献搜索",
     "literatureSearchDesc": "搜索学术文献和论文",
     "memory": "记忆",
