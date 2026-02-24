@@ -20,11 +20,11 @@ class VideoConfig(BaseModel):
         description="Provider for video generation (currently only google_vertex)",
     )
     Model: str = Field(
-        default="veo-3.0-generate-preview",
+        default="veo-3.1-generate-preview",
         description="Model for text-to-video / image-to-video generation",
     )
     GCSBucket: str = Field(
-        default="",
+        default="gs://xyzen-veo-staging/",
         description="GCS bucket URI for Vertex AI video output (e.g. gs://bucket-name/path/)",
     )
     PersonGeneration: str = Field(
