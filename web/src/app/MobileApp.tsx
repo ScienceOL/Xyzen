@@ -4,6 +4,7 @@ import { ActivityBar } from "@/components/layouts/ActivityBar";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import MemoryPanel from "@/components/layouts/MemoryPanel";
 import SandboxPanel from "@/components/layouts/SandboxPanel";
+import ScheduledTasksPanel from "@/components/layouts/ScheduledTasksPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
@@ -62,6 +63,12 @@ export function MobileApp({
             {activePanel === "sandbox" && (
               <div className="h-full bg-white dark:bg-neutral-950">
                 <SandboxPanel />
+              </div>
+            )}
+
+            {activePanel === "tasks" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <ScheduledTasksPanel />
               </div>
             )}
 

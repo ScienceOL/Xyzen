@@ -44,15 +44,16 @@ class GenerateVideoInput(BaseModel):
         default="16:9",
         description="Aspect ratio of the generated video. 16:9 for landscape, 9:16 for portrait.",
     )
-    duration_seconds: Literal[4, 6, 8] = Field(
-        default=6,
-        description="Duration of the generated video in seconds.",
+    duration_seconds: Literal["4", "6", "8"] = Field(
+        default="6",
+        description="Duration of the generated video in seconds. Must be 4, 6, or 8.",
     )
-    image_id: str | None = Field(
-        default=None,
+    image_id: str = Field(
+        default="",
         description=(
             "Optional image UUID to use as the first frame for image-to-video generation. "
-            "Use the 'image_id' value returned from generate_image or upload tools."
+            "Use the 'image_id' value returned from generate_image or upload tools. "
+            "Leave empty if not using image-to-video."
         ),
     )
 
@@ -379,8 +380,8 @@ def create_video_tools() -> dict[str, BaseTool]:
     async def generate_video_placeholder(
         prompt: str,
         aspect_ratio: str = "16:9",
-        duration_seconds: int = 6,
-        image_id: str | None = None,
+        duration_seconds: str = "6",
+        image_id: str = "",
     ) -> dict[str, Any]:
         return {"error": "Video tools require agent context binding", "success": False}
 
@@ -418,10 +419,17 @@ def create_video_tools_for_agent(user_id: str, session_id: str | None = None) ->
     async def generate_video_bound(
         prompt: str,
         aspect_ratio: str = "16:9",
-        duration_seconds: int = 6,
-        image_id: str | None = None,
+        duration_seconds: str = "6",
+        image_id: str = "",
     ) -> dict[str, Any]:
-        return await _generate_video(user_id, prompt, aspect_ratio, duration_seconds, image_id, session_id=session_id)
+        return await _generate_video(
+            user_id,
+            prompt,
+            aspect_ratio,
+            int(duration_seconds),
+            image_id or None,
+            session_id=session_id,
+        )
 
     tools.append(
         StructuredTool(

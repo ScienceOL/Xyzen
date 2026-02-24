@@ -17,8 +17,11 @@ import {
   useAgentNode,
 } from "./agentNodeShared";
 
-/** Art Deco fan motif — very low opacity background texture. */
+/** Art Deco fan motif — white for dark mode. */
 const patternUrl = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M30 0c0 16.569-13.431 30-30 30C16.569 30 30 16.569 30 0z' fill='%23fff' fill-opacity='.04'/%3E%3Cpath d='M60 0c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%23fff' fill-opacity='.04'/%3E%3Cpath d='M30 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%23fff' fill-opacity='.04'/%3E%3Cpath d='M60 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%23fff' fill-opacity='.04'/%3E%3C/g%3E%3C/svg%3E")`;
+
+/** Art Deco fan motif — sky blue for light mode. */
+const patternUrlLight = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M30 0c0 16.569-13.431 30-30 30C16.569 30 30 16.569 30 0z' fill='%237dd3fc' fill-opacity='.18'/%3E%3Cpath d='M60 0c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%237dd3fc' fill-opacity='.18'/%3E%3Cpath d='M30 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%237dd3fc' fill-opacity='.18'/%3E%3Cpath d='M60 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%237dd3fc' fill-opacity='.18'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
   const hasSubordinates =
@@ -77,48 +80,69 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
             className="absolute -inset-0.5 -z-15 rounded-[26px] overflow-hidden pointer-events-none"
           >
             <div className="agent-running-border absolute inset-0" />
-            <div className="absolute inset-0.5 rounded-3xl bg-[#fffbf0] dark:bg-neutral-900" />
+            <div className="absolute inset-0.5 rounded-3xl bg-[#f4f8fc] dark:bg-neutral-900" />
           </motion.div>
         )}
 
         {/* ── Static decorations — CEO only ── */}
 
-        {/* Thin gold accent line at top */}
+        {/* Subtle gold outer halo — premium distinction */}
+        {!data.isFocused && !data.isRunning && (
+          <div className="pointer-events-none absolute -inset-1.5 -z-20 rounded-[30px] bg-gradient-to-b from-amber-300/15 via-amber-200/[0.06] to-amber-400/12 blur-md dark:from-amber-500/10 dark:via-transparent dark:to-amber-600/8" />
+        )}
+
+        {/* Thin gold accent lines at top + bottom */}
         {!data.isFocused && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-3xl bg-gradient-to-r from-transparent via-amber-400/60 to-transparent z-10" />
+          <>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-3xl bg-gradient-to-r from-transparent via-amber-300/40 to-transparent dark:via-amber-400/60 z-10" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px rounded-b-3xl bg-gradient-to-r from-transparent via-amber-300/20 to-transparent dark:via-amber-400/30 z-10" />
+          </>
         )}
 
         {/* Card Background — warm tinted with amber border */}
         <div
           className={cn(
             "absolute inset-0 rounded-3xl backdrop-blur-xl transition-all -z-10",
-            "bg-[#fffbf0] dark:bg-neutral-900/80 border border-amber-300/40 dark:border-amber-500/25",
+            "bg-[#f4f8fc] dark:bg-neutral-900/80 border border-amber-200/20 dark:border-amber-500/25 shadow-[0_4px_30px_-8px_rgba(180,140,60,0.08)] dark:shadow-none",
             selected
               ? "ring-2 ring-[#5a6e8c]/20 dark:ring-0 dark:border-indigo-400/50 dark:shadow-[0_0_15px_rgba(99,102,241,0.5),0_0_30px_rgba(168,85,247,0.3)] shadow-2xl"
               : "hover:shadow-2xl",
             data.isRunning &&
               "shadow-[0_0_20px_rgba(99,102,241,0.25),0_0_40px_rgba(168,85,247,0.15)] dark:shadow-[0_0_15px_rgba(99,102,241,0.5),0_0_30px_rgba(168,85,247,0.3)]",
             data.isFocused &&
-              "ring-0 border-white/20! dark:border-white/10! shadow-none! bg-white/90 dark:bg-black/80",
+              "ring-0 border-white/20! dark:border-white/10! shadow-none! bg-white/95 dark:bg-black/80",
           )}
         />
 
         {/* Art Deco pattern overlay */}
-        <div
-          className="pointer-events-none absolute inset-0 rounded-3xl overflow-hidden opacity-30 dark:opacity-100 -z-5"
-          style={{ backgroundImage: patternUrl, backgroundSize: "60px 60px" }}
-        />
+        <div className="pointer-events-none absolute inset-0 rounded-3xl overflow-hidden -z-5">
+          {/* Light: sky-blue Art Deco */}
+          <div
+            className="absolute inset-0 dark:hidden"
+            style={{
+              backgroundImage: patternUrlLight,
+              backgroundSize: "60px 60px",
+            }}
+          />
+          {/* Dark: original white Art Deco */}
+          <div
+            className="absolute inset-0 hidden dark:block"
+            style={{ backgroundImage: patternUrl, backgroundSize: "60px 60px" }}
+          />
+          {/* Gold wash over pattern — light mode only */}
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-100/10 via-transparent to-amber-200/8 dark:from-transparent dark:to-transparent" />
+        </div>
 
         {/* ── Content ── */}
         <div className="relative z-10 w-full h-full p-4 flex flex-col overflow-hidden rounded-3xl">
           {/* Warm diagonal gradient across content */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-100/40 via-transparent to-amber-200/20 dark:from-amber-900/15 dark:via-transparent dark:to-amber-800/10" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-50/25 via-transparent to-amber-100/10 dark:from-amber-900/15 dark:via-transparent dark:to-amber-800/10" />
 
           {/* Sunlight beams — diagonal streaks */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -top-10 -left-10 w-[120%] h-16 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-200/20 to-transparent dark:via-amber-500/[0.07]" />
-            <div className="absolute top-8 -left-10 w-[120%] h-10 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-100/15 to-transparent dark:via-amber-500/[0.04]" />
-            <div className="absolute top-24 -left-10 w-[120%] h-6 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-200/10 to-transparent dark:via-amber-400/[0.03]" />
+            <div className="absolute -top-10 -left-10 w-[120%] h-16 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-100/15 to-transparent dark:via-amber-500/[0.07]" />
+            <div className="absolute top-8 -left-10 w-[120%] h-10 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-50/12 to-transparent dark:via-amber-500/[0.04]" />
+            <div className="absolute top-24 -left-10 w-[120%] h-6 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-100/8 to-transparent dark:via-amber-400/[0.03]" />
           </div>
 
           <SettingsGearButton
@@ -136,7 +160,7 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
                 data.isFocused && "is-focused",
               )}
             >
-              <div className="rounded-full p-[2.5px] bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 dark:from-amber-500 dark:via-yellow-500 dark:to-amber-600 shadow-md shadow-amber-300/30 dark:shadow-amber-600/20">
+              <div className="rounded-full p-[2.5px] bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 dark:from-amber-500 dark:via-yellow-500 dark:to-amber-600 shadow-md shadow-stone-300/30 dark:shadow-amber-600/20">
                 <img
                   src={data.avatar}
                   className="w-12 h-12 rounded-full bg-gray-200 border-[2.5px] border-white dark:border-neutral-900"
@@ -145,7 +169,7 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
                 />
               </div>
               {/* Crown emblem — larger, gradient, with ring */}
-              <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 border-[2.5px] border-white dark:border-neutral-900 shadow-md shadow-amber-400/30">
+              <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 border-[2.5px] border-white dark:border-neutral-900 shadow-md shadow-stone-300/30 dark:shadow-amber-400/30">
                 <Crown className="h-3 w-3 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]" />
               </div>
             </div>
@@ -153,11 +177,11 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
             {/* Name with golden shimmer + CEO shield badge */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-[17px] leading-tight bg-gradient-to-r from-amber-800 via-amber-600 to-amber-800 dark:from-amber-200 dark:via-yellow-300 dark:to-amber-200 bg-clip-text text-transparent truncate">
+                <span className="font-extrabold text-[17px] leading-tight bg-gradient-to-r from-stone-700 via-amber-700/80 to-stone-700 dark:from-amber-200 dark:via-yellow-300 dark:to-amber-200 bg-clip-text text-transparent truncate">
                   {data.name}
                 </span>
                 {/* Shield-style CEO badge */}
-                <span className="shrink-0 flex items-center gap-0.5 rounded-md bg-gradient-to-b from-amber-400 to-amber-500 dark:from-amber-500 dark:to-amber-600 px-1.5 py-0.5 shadow-sm shadow-amber-400/20">
+                <span className="shrink-0 flex items-center gap-0.5 rounded-md bg-gradient-to-b from-amber-300 to-amber-400 dark:from-amber-500 dark:to-amber-600 px-1.5 py-0.5 shadow-sm shadow-stone-300/20">
                   <Crown className="h-2.5 w-2.5 text-white/90" />
                   <span className="text-[8px] font-bold uppercase tracking-widest text-white">
                     CEO
@@ -165,11 +189,11 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-amber-800/60 dark:text-amber-300/50 font-medium truncate">
+                <span className="text-xs text-stone-500 dark:text-amber-300/50 font-medium truncate">
                   {data.role}
                 </span>
                 {data.lastConversationTime && (
-                  <span className="text-[10px] text-amber-700/40 dark:text-amber-400/40 shrink-0">
+                  <span className="text-[10px] text-stone-400 dark:text-amber-400/40 shrink-0">
                     · {formatTime(data.lastConversationTime)}
                   </span>
                 )}
@@ -181,9 +205,9 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
           {data.subordinateAvatars && data.subordinateAvatars.length > 0 && (
             <div className="relative flex items-center gap-1.5 mb-2 px-0.5">
               {/* Connecting line */}
-              <div className="absolute top-1/2 left-3 right-3 h-px bg-gradient-to-r from-amber-300/50 via-amber-200/30 to-amber-300/50 dark:from-amber-600/30 dark:via-amber-500/15 dark:to-amber-600/30" />
+              <div className="absolute top-1/2 left-3 right-3 h-px bg-gradient-to-r from-stone-300/40 via-stone-200/25 to-stone-300/40 dark:from-amber-600/30 dark:via-amber-500/15 dark:to-amber-600/30" />
               {/* "Orchestrates" label */}
-              <span className="relative z-10 shrink-0 text-[9px] font-medium text-amber-600/70 dark:text-amber-400/50 bg-[#fffbf0] dark:bg-neutral-900 px-1.5 rounded">
+              <span className="relative z-10 shrink-0 text-[9px] font-medium text-stone-400 dark:text-amber-400/50 bg-[#f4f8fc] dark:bg-neutral-900 px-1.5 rounded">
                 Agents
               </span>
               {/* Avatar stack */}
@@ -198,8 +222,8 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
                   />
                 ))}
                 {data.subordinateAvatars.length > 6 && (
-                  <div className="w-5 h-5 rounded-full border-[1.5px] border-white dark:border-neutral-800 bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shadow-sm">
-                    <span className="text-[7px] font-bold text-amber-700 dark:text-amber-300">
+                  <div className="w-5 h-5 rounded-full border-[1.5px] border-white dark:border-neutral-800 bg-stone-100 dark:bg-amber-900/40 flex items-center justify-center shadow-sm">
+                    <span className="text-[7px] font-bold text-stone-500 dark:text-amber-300">
                       +{data.subordinateAvatars.length - 6}
                     </span>
                   </div>
@@ -209,19 +233,26 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
           )}
 
           {/* Stats area with pattern + gradient */}
-          <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden transition-colors border border-amber-200/40 dark:border-amber-700/20">
+          <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden transition-colors border border-amber-200/20 dark:border-amber-700/20">
             {/* Stats background gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-50/80 via-amber-100/30 to-orange-50/60 dark:from-amber-950/30 dark:via-neutral-900/50 dark:to-amber-950/20" />
+            <div className="absolute inset-0 bg-gradient-to-br from-sky-50/50 via-slate-50/20 to-amber-50/20 dark:from-amber-950/30 dark:via-neutral-900/50 dark:to-amber-950/20" />
             {/* Repeating pattern inside stats */}
             <div
-              className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-60"
+              className="pointer-events-none absolute inset-0 dark:hidden"
+              style={{
+                backgroundImage: patternUrlLight,
+                backgroundSize: "40px 40px",
+              }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0 hidden dark:block opacity-60"
               style={{
                 backgroundImage: patternUrl,
                 backgroundSize: "40px 40px",
               }}
             />
             {/* Diagonal sunbeam through stats */}
-            <div className="pointer-events-none absolute -top-4 -left-4 w-[120%] h-8 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-200/15 to-transparent dark:via-amber-500/[0.06]" />
+            <div className="pointer-events-none absolute -top-4 -left-4 w-[120%] h-8 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-100/10 to-transparent dark:via-amber-500/[0.06]" />
             <div className="relative">
               <StatsDisplay
                 stats={data.stats}

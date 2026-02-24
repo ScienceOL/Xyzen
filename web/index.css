@@ -27,6 +27,43 @@
   --brand: oklch(0.707 0.165 254.624);
 }
 
+@utility custom-scrollbar-thin {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 1.5px;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.15);
+  }
+
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.35);
+  }
+}
+
+:is(.dark) .custom-scrollbar-thin {
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(115, 115, 115, 0.15);
+  }
+
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(115, 115, 115, 0.35);
+  }
+}
+
 @utility custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.3) transparent;

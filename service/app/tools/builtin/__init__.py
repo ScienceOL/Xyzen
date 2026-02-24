@@ -15,6 +15,7 @@ Tool Categories:
 - literature: Literature search and normalization
 - file_reader: Read chat-attached files by file_id
 - subagent: Subagent delegation (spawn_subagent)
+- scheduled_task: Scheduled task creation and management
 """
 
 from app.tools.builtin.fetch import create_web_fetch_tool
@@ -25,6 +26,7 @@ from app.tools.builtin.literature import create_literature_search_tool
 from app.tools.builtin.memory import create_memory_tools, create_memory_tools_for_agent
 from app.tools.builtin.sandbox import create_sandbox_tools, create_sandbox_tools_for_session
 from app.tools.builtin.search import create_web_search_tool
+from app.tools.builtin.scheduled_task import create_scheduled_task_tools, create_scheduled_task_tools_for_session
 from app.tools.builtin.subagent import create_subagent_tool_for_session
 
 __all__ = [
@@ -51,4 +53,7 @@ __all__ = [
     "create_sandbox_tools_for_session",
     # Subagent
     "create_subagent_tool_for_session",
+    # Scheduled Task
+    "create_scheduled_task_tools",
+    "create_scheduled_task_tools_for_session",
 ]

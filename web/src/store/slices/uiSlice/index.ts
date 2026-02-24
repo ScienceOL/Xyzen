@@ -15,6 +15,7 @@ export type ActivityPanel =
   | "marketplace"
   | "memory"
   | "sandbox"
+  | "tasks"
   | "account";
 
 export interface UiSlice {

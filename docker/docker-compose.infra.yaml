@@ -9,7 +9,7 @@ services:
       # - '${REDIS_PORT:-6379}:6379'
       # - '${ELASTICSEARCH_PORT:-9200}:9200'
       - "${CASDOOR_PORT:-8000}:8000"
-      - "${SEARXNG_PORT:-8080}:8080"
+      - "${SEARXNG_PORT:-8480}:8080"
       # - '${NACOS_PORT:-8848}:8848'
       # - '${NACOS_GRPC_PORT:-9848}:9848'
       # - '${NACOS_WEB_PORT:-7848}:7848'

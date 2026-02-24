@@ -322,6 +322,21 @@ def register_builtin_tools() -> None:
         requires_context=[],
     )
 
+    # Register scheduled task tools
+    from app.tools.builtin.scheduled_task import create_scheduled_task_tools
+
+    sched_tools = create_scheduled_task_tools()
+    for tool_id, tool in sched_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="scheduled_task",
+            display_name=tool.name.replace("_", " ").title(),
+            ui_toggleable=True,
+            default_enabled=False,
+            requires_context=["user_id", "session_id"],
+        )
+
     logger.info(f"Registered {BuiltinToolRegistry.count()} builtin tools")
 
     from app.core.consume.pricing import validate_pricing_coverage

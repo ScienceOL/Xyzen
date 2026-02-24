@@ -76,6 +76,15 @@ export const queryKeys = {
     all: ["system"] as const,
     version: () => [...queryKeys.system.all, "version"] as const,
   },
+
+  /**
+   * Scheduled task query keys
+   */
+  scheduledTasks: {
+    all: ["scheduledTasks"] as const,
+    list: (status?: string) =>
+      [...queryKeys.scheduledTasks.all, "list", status] as const,
+  },
 } as const;
 
 /**

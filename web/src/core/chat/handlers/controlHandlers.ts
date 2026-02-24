@@ -256,7 +256,6 @@ export function handleStreamAborted(
   // Handle loading message - convert to cancelled message
   const loadingIndex = findLoadingMessageIndex(channel);
   if (loadingIndex !== -1) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { isLoading: _, ...messageWithoutLoading } =
       channel.messages[loadingIndex];
     channel.messages[loadingIndex] = {
