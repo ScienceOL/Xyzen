@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
+from .admin_marketplace import router as admin_marketplace_router
 from .agents import router as agents_router
 from .auth import router as auth_router
 from .avatar import router as avatar_router
@@ -118,4 +119,5 @@ v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(root_agent_router, prefix="/root-agent")
 v1_router.include_router(chat_shares_router, prefix="/chat-shares")
 v1_router.include_router(tools_router, prefix="/tools")
+v1_router.include_router(admin_marketplace_router, prefix="/admin/marketplace", tags=["admin-marketplace"])
 v1_router.include_router(system_router, tags=["system"])

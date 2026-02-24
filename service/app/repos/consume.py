@@ -17,6 +17,7 @@ from app.models.consume import (
     UserConsumeSummaryCreate,
     UserConsumeSummaryUpdate,
 )
+from app.models.redemption import UserWallet
 from app.utils.parser import parse_date_end, parse_date_range, parse_date_start
 
 logger = logging.getLogger(__name__)
@@ -454,7 +455,7 @@ class ConsumeRepository:
         )
 
         date_expr = func.to_char(func.timezone(tz_name, ConsumeRecord.created_at), "YYYY-MM-DD")
-        tier_expr = func.coalesce(col(ConsumeRecord.model_tier), "standard")
+        tier_expr = func.coalesce(col(ConsumeRecord.model_tier), user_subscription_tier)
         day_tier_stmt = (
             sa_select(
                 date_expr.label("date"),
@@ -665,8 +666,6 @@ class ConsumeRepository:
             else:
                 daily[date_str] = {"date": date_str, "active_users": int(active_users), "new_users": 0}
 
-        from app.models.redemption import UserWallet
-
         new_date_expr = func.to_char(func.timezone(tz_name, UserWallet.created_at), "YYYY-MM-DD")
         new_stmt = (
             select(new_date_expr.label("date"), func.count().label("new_users"))
@@ -685,3 +684,339 @@ class ConsumeRepository:
         result_list = [daily[d] for d in sorted(daily.keys())]
         logger.debug(f"Found activity stats for {len(result_list)} days")
         return result_list
+
+    # ------------------------------------------------------------------
+    # Admin aggregated heatmap / ranking queries
+    # ------------------------------------------------------------------
+
+    async def get_admin_filter_options(
+        self,
+        year: int,
+        tz: str = "UTC",
+        provider: str | None = None,
+    ) -> dict[str, list[str]]:
+        """Return distinct provider and model_name values for a given year."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+
+        zone = ZoneInfo(tz)
+        start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+        end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        base_filter = (
+            col(ConsumeRecord.created_at) >= start_utc,
+            col(ConsumeRecord.created_at) <= end_utc,
+        )
+
+        # Distinct providers
+        prov_stmt = (
+            sa_select(func.distinct(ConsumeRecord.provider))
+            .where(*base_filter)
+            .where(col(ConsumeRecord.provider).isnot(None))
+            .order_by(ConsumeRecord.provider)
+        )
+        prov_rows = (await self.db.exec(cast(Any, prov_stmt))).all()
+        providers = [str(p) for p in prov_rows if p]
+
+        # Distinct models (optionally filtered by provider)
+        model_stmt = (
+            sa_select(func.distinct(ConsumeRecord.model_name))
+            .where(*base_filter)
+            .where(col(ConsumeRecord.model_name).isnot(None))
+        )
+        if provider:
+            model_stmt = model_stmt.where(col(ConsumeRecord.provider) == provider)
+        model_stmt = model_stmt.order_by(ConsumeRecord.model_name)
+        model_rows = (await self.db.exec(cast(Any, model_stmt))).all()
+        models = [str(m) for m in model_rows if m]
+
+        return {"providers": providers, "models": models}
+
+    async def get_admin_consumption_heatmap(
+        self,
+        year: int,
+        tz: str = "UTC",
+        model_tier: str | None = None,
+        model_name: str | None = None,
+        provider: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Daily aggregated consumption for an entire year (admin heatmap), enriched with by-tier breakdown."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+
+        zone = ZoneInfo(tz)
+        start_local = datetime(year, 1, 1, tzinfo=zone)
+        end_local = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone)
+        start_utc = start_local.astimezone(tz_module.utc)
+        end_utc = end_local.astimezone(tz_module.utc)
+
+        date_expr = func.to_char(func.timezone(tz, ConsumeRecord.created_at), "YYYY-MM-DD")
+        tier_expr = func.coalesce(col(ConsumeRecord.model_tier), "unknown")
+
+        base_filter: list[Any] = [
+            col(ConsumeRecord.created_at) >= start_utc,
+            col(ConsumeRecord.created_at) <= end_utc,
+        ]
+        if model_tier:
+            base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
+        if model_name:
+            base_filter.append(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+        if provider:
+            base_filter.append(col(ConsumeRecord.provider) == provider)
+
+        stmt = (
+            sa_select(
+                date_expr.label("date"),
+                cast(Any, tier_expr.label("tier")),
+                func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.input_tokens), 0).label("input_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.output_tokens), 0).label("output_tokens"),
+                func.coalesce(func.sum(ConsumeRecord.amount), 0).label("credits"),
+                func.coalesce(func.sum(ConsumeRecord.cost_usd), 0).label("cost_usd"),
+                func.count().label("record_count"),
+                func.coalesce(func.sum(case((col(ConsumeRecord.record_type) == "llm", 1), else_=0)), 0).label(
+                    "llm_count"
+                ),
+                func.coalesce(func.sum(case((col(ConsumeRecord.record_type) == "tool_call", 1), else_=0)), 0).label(
+                    "tool_call_count"
+                ),
+                func.coalesce(func.sum(ConsumeRecord.cache_creation_input_tokens), 0).label(
+                    "cache_creation_input_tokens"
+                ),
+                func.coalesce(func.sum(ConsumeRecord.cache_read_input_tokens), 0).label("cache_read_input_tokens"),
+            )
+            .where(*base_filter)
+            .group_by(date_expr, tier_expr)
+            .order_by(date_expr)
+        )
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        daily: dict[str, dict[str, Any]] = {}
+        for r in rows:
+            d = str(r.date)
+            tier_key = str(r.tier) if r.tier else "unknown"
+            if d not in daily:
+                daily[d] = {
+                    "date": d,
+                    "total_tokens": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "credits": 0,
+                    "cost_usd": 0.0,
+                    "record_count": 0,
+                    "llm_count": 0,
+                    "tool_call_count": 0,
+                    "cache_creation_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                    "by_tier": {},
+                }
+            day = daily[d]
+            day["total_tokens"] += int(r.total_tokens)
+            day["input_tokens"] += int(r.input_tokens)
+            day["output_tokens"] += int(r.output_tokens)
+            day["credits"] += int(r.credits)
+            day["cost_usd"] += float(r.cost_usd)
+            day["record_count"] += int(r.record_count)
+            day["llm_count"] += int(r.llm_count)
+            day["tool_call_count"] += int(r.tool_call_count)
+            day["cache_creation_input_tokens"] += int(r.cache_creation_input_tokens)
+            day["cache_read_input_tokens"] += int(r.cache_read_input_tokens)
+
+            day["by_tier"][tier_key] = {
+                "total_tokens": int(r.total_tokens),
+                "input_tokens": int(r.input_tokens),
+                "output_tokens": int(r.output_tokens),
+                "credits": int(r.credits),
+                "cost_usd": float(r.cost_usd),
+                "llm_count": int(r.llm_count),
+                "tool_call_count": int(r.tool_call_count),
+            }
+
+        return [daily[d] for d in sorted(daily.keys())]
+
+    async def get_admin_user_consumption_heatmap(
+        self,
+        year: int,
+        tz: str = "UTC",
+        model_tier: str | None = None,
+        model_name: str | None = None,
+        provider: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Daily user-centric consumption stats (admin heatmap)."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+
+        zone = ZoneInfo(tz)
+        start_local = datetime(year, 1, 1, tzinfo=zone)
+        end_local = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone)
+        start_utc = start_local.astimezone(tz_module.utc)
+        end_utc = end_local.astimezone(tz_module.utc)
+
+        date_expr = func.to_char(func.timezone(tz, ConsumeRecord.created_at), "YYYY-MM-DD")
+
+        stmt = sa_select(
+            date_expr.label("date"),
+            func.count(func.distinct(ConsumeRecord.user_id)).label("active_users"),
+            func.coalesce(func.sum(ConsumeRecord.total_tokens), 0).label("total_tokens"),
+            func.coalesce(func.sum(ConsumeRecord.amount), 0).label("credits"),
+            func.coalesce(func.sum(ConsumeRecord.cost_usd), 0).label("cost_usd"),
+            func.count().label("record_count"),
+        ).where(
+            col(ConsumeRecord.created_at) >= start_utc,
+            col(ConsumeRecord.created_at) <= end_utc,
+        )
+
+        if model_tier:
+            stmt = stmt.where(col(ConsumeRecord.model_tier) == model_tier)
+        if model_name:
+            stmt = stmt.where(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+        if provider:
+            stmt = stmt.where(col(ConsumeRecord.provider) == provider)
+
+        stmt = stmt.group_by(date_expr).order_by(date_expr)
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        return [
+            {
+                "date": str(r.date),
+                "active_users": int(r.active_users),
+                "total_tokens": int(r.total_tokens),
+                "credits": int(r.credits),
+                "cost_usd": float(r.cost_usd),
+                "record_count": int(r.record_count),
+            }
+            for r in rows
+        ]
+
+    async def get_admin_top_users_by_range(
+        self,
+        year: int,
+        tz: str = "UTC",
+        date: str | None = None,
+        model_tier: str | None = None,
+        model_name: str | None = None,
+        limit: int = 20,
+        search: str | None = None,
+        provider: str | None = None,
+        include_tiers: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Per-user aggregated consumption, optionally filtered to a single date."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+
+        zone = ZoneInfo(tz)
+
+        if date:
+            day = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=zone)
+            start_utc = day.astimezone(tz_module.utc)
+            end_utc = day.replace(hour=23, minute=59, second=59, microsecond=999999).astimezone(tz_module.utc)
+        else:
+            start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+            end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        base_filter: list[Any] = [
+            col(ConsumeRecord.created_at) >= start_utc,
+            col(ConsumeRecord.created_at) <= end_utc,
+        ]
+        if model_tier:
+            base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
+        if model_name:
+            base_filter.append(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+        if search:
+            base_filter.append(col(ConsumeRecord.user_id).ilike(f"%{search}%"))
+        if provider:
+            base_filter.append(col(ConsumeRecord.provider) == provider)
+
+        stmt = sa_select(
+            col(ConsumeRecord.user_id),
+            func.coalesce(func.sum(col(ConsumeRecord.total_tokens)), 0).label("total_tokens"),
+            func.coalesce(func.sum(col(ConsumeRecord.input_tokens)), 0).label("input_tokens"),
+            func.coalesce(func.sum(col(ConsumeRecord.output_tokens)), 0).label("output_tokens"),
+            func.coalesce(func.sum(col(ConsumeRecord.amount)), 0).label("credits"),
+            func.coalesce(func.sum(col(ConsumeRecord.cost_usd)), 0).label("cost_usd"),
+            func.count().label("record_count"),
+            func.coalesce(func.sum(case((col(ConsumeRecord.record_type) == "llm", 1), else_=0)), 0).label("llm_count"),
+            func.coalesce(func.sum(case((col(ConsumeRecord.record_type) == "tool_call", 1), else_=0)), 0).label(
+                "tool_call_count"
+            ),
+        ).where(*base_filter)
+
+        stmt = (
+            stmt.group_by(col(ConsumeRecord.user_id)).order_by(func.sum(col(ConsumeRecord.amount)).desc()).limit(limit)
+        )
+
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        results: list[dict[str, Any]] = [
+            {
+                "user_id": str(r.user_id),
+                "total_tokens": int(r.total_tokens),
+                "input_tokens": int(r.input_tokens),
+                "output_tokens": int(r.output_tokens),
+                "credits": int(r.credits),
+                "cost_usd": float(r.cost_usd),
+                "record_count": int(r.record_count),
+                "llm_count": int(r.llm_count),
+                "tool_call_count": int(r.tool_call_count),
+                "by_tier": {},
+            }
+            for r in rows
+        ]
+
+        # Batch-fetch subscription tiers for result users
+        if results:
+            from app.models.subscription import SubscriptionRole, UserSubscription
+
+            user_ids = [str(r["user_id"]) for r in results]
+            sub_stmt = (
+                sa_select(
+                    col(UserSubscription.user_id),
+                    col(SubscriptionRole.name).label("subscription_tier"),
+                )
+                .join(SubscriptionRole, col(UserSubscription.role_id) == col(SubscriptionRole.id), isouter=True)
+                .where(col(UserSubscription.user_id).in_(user_ids))
+            )
+            sub_rows = (await self.db.exec(cast(Any, sub_stmt))).all()
+            tier_map = {str(sr.user_id): str(sr.subscription_tier) for sr in sub_rows if sr.subscription_tier}
+            for r in results:
+                r["subscription_tier"] = tier_map.get(r["user_id"], "free")
+
+        if include_tiers and results:
+            user_ids = [str(r["user_id"]) for r in results]
+            tier_expr = func.coalesce(col(ConsumeRecord.model_tier), "unknown")
+            tier_stmt = (
+                sa_select(
+                    col(ConsumeRecord.user_id),
+                    cast(Any, tier_expr.label("tier")),
+                    func.coalesce(func.sum(col(ConsumeRecord.total_tokens)), 0).label("total_tokens"),
+                    func.coalesce(func.sum(col(ConsumeRecord.input_tokens)), 0).label("input_tokens"),
+                    func.coalesce(func.sum(col(ConsumeRecord.output_tokens)), 0).label("output_tokens"),
+                    func.coalesce(func.sum(col(ConsumeRecord.amount)), 0).label("credits"),
+                    func.coalesce(func.sum(col(ConsumeRecord.cost_usd)), 0).label("cost_usd"),
+                    func.coalesce(func.sum(case((col(ConsumeRecord.record_type) == "llm", 1), else_=0)), 0).label(
+                        "llm_count"
+                    ),
+                    func.coalesce(func.sum(case((col(ConsumeRecord.record_type) == "tool_call", 1), else_=0)), 0).label(
+                        "tool_call_count"
+                    ),
+                )
+                .where(*base_filter)
+                .where(col(ConsumeRecord.user_id).in_(user_ids))
+                .group_by(col(ConsumeRecord.user_id), tier_expr)
+            )
+            tier_rows = (await self.db.exec(cast(Any, tier_stmt))).all()
+            user_map = {r["user_id"]: r for r in results}
+            for tr in tier_rows:
+                uid = str(tr.user_id)
+                if uid in user_map:
+                    user_map[uid]["by_tier"][str(tr.tier)] = {
+                        "total_tokens": int(tr.total_tokens),
+                        "input_tokens": int(tr.input_tokens),
+                        "output_tokens": int(tr.output_tokens),
+                        "credits": int(tr.credits),
+                        "cost_usd": float(tr.cost_usd),
+                        "llm_count": int(tr.llm_count),
+                        "tool_call_count": int(tr.tool_call_count),
+                    }
+
+        return results
