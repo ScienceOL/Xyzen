@@ -495,9 +495,7 @@ export function ToolSelector({
                 </div>
               </div>
             </div>
-            {videoEnabled && (
-              <CheckIcon className="h-4 w-4 text-violet-500" />
-            )}
+            {videoEnabled && <CheckIcon className="h-4 w-4 text-violet-500" />}
           </button>
 
           {/* Literature Search */}
