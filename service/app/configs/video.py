@@ -11,7 +11,7 @@ class VideoConfig(BaseModel):
     """Configuration for video generation tools.
 
     These fields serve as defaults for the "global" region and can be
-    overridden per-region via _REGION_VIDEO_OVERRIDES in this module.
+    overridden per-region via REGION_VIDEO_OVERRIDES in this module.
     They can also be set via env vars (XYZEN_VIDEO_Provider, etc.).
     """
 
@@ -31,6 +31,10 @@ class VideoConfig(BaseModel):
         default="allow_adult",
         description="Person generation policy: dont_allow or allow_adult",
     )
+    Location: str = Field(
+        default="us-central1",
+        description="Vertex AI location for video generation",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +42,7 @@ class VideoConfig(BaseModel):
 # Only keys that differ from the env-var / default config need to be listed.
 # ---------------------------------------------------------------------------
 
-_REGION_VIDEO_OVERRIDES: dict[str, dict[str, str]] = {}
+REGION_VIDEO_OVERRIDES: dict[str, dict[str, str]] = {}
 
 
 def get_video_config() -> VideoConfig:
@@ -50,5 +54,5 @@ def get_video_config() -> VideoConfig:
     from app.configs import configs
 
     region = configs.Region.lower()
-    overrides = _REGION_VIDEO_OVERRIDES.get(region, {})
+    overrides = REGION_VIDEO_OVERRIDES.get(region, {})
     return configs.Video.model_copy(update=overrides)

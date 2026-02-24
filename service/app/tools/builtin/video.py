@@ -98,10 +98,11 @@ def _create_genai_client() -> Any:
     from google import genai
 
     credentials, project = _get_vertex_credentials()
+    video_cfg = get_video_config()
     return genai.Client(
         vertexai=True,
         project=project,
-        location="us-central1",
+        location=video_cfg.Location,
         credentials=credentials,
     )
 
@@ -162,8 +163,7 @@ async def _generate_video_with_vertex(
     video_cfg = get_video_config()
     if not video_cfg.GCSBucket:
         raise ValueError(
-            "Video generation requires a GCS bucket. "
-            "Set XYZEN_VIDEO_GCSBUCKET (e.g. gs://your-bucket/videos/)"
+            "Video generation requires a GCS bucket. Set XYZEN_VIDEO_GCSBUCKET (e.g. gs://your-bucket/videos/)"
         )
 
     client = _create_genai_client()
@@ -186,8 +186,7 @@ async def _generate_video_with_vertex(
     )
 
     logger.info(
-        f"Starting video generation: model={video_cfg.Model}, "
-        f"aspect_ratio={aspect_ratio}, duration={duration_seconds}s"
+        f"Starting video generation: model={video_cfg.Model}, aspect_ratio={aspect_ratio}, duration={duration_seconds}s"
     )
 
     # Submit generation request (runs in executor since genai client is sync)
@@ -207,8 +206,7 @@ async def _generate_video_with_vertex(
     while not operation.done:
         if elapsed >= _MAX_POLL_DURATION_SECONDS:
             raise TimeoutError(
-                f"Video generation timed out after {_MAX_POLL_DURATION_SECONDS}s. "
-                f"Operation: {operation.name}"
+                f"Video generation timed out after {_MAX_POLL_DURATION_SECONDS}s. Operation: {operation.name}"
             )
         await asyncio.sleep(_POLL_INTERVAL_SECONDS)
         elapsed += _POLL_INTERVAL_SECONDS
@@ -228,9 +226,7 @@ async def _generate_video_with_vertex(
     if not result or not result.generated_videos:
         rai_count = getattr(result, "rai_media_filtered_count", 0) if result else 0
         rai_reasons = getattr(result, "rai_media_filtered_reasons", []) if result else []
-        raise RuntimeError(
-            f"No videos generated. RAI filtered: {rai_count}, reasons: {rai_reasons}"
-        )
+        raise RuntimeError(f"No videos generated. RAI filtered: {rai_count}, reasons: {rai_reasons}")
 
     # Get video URI from result
     generated_video = result.generated_videos[0]
@@ -327,8 +323,8 @@ async def _generate_video(
                 original_filename=filename,
                 content_type=mime_type,
                 file_size=len(video_bytes),
-                scope="generated",
-                category="videos",
+                scope=FileScope.GENERATED.value,
+                category=FileCategory.VIDEO.value,
                 status="confirmed",
                 metainfo={
                     "prompt": prompt,
@@ -425,9 +421,7 @@ def create_video_tools_for_agent(user_id: str, session_id: str | None = None) ->
         duration_seconds: int = 6,
         image_id: str | None = None,
     ) -> dict[str, Any]:
-        return await _generate_video(
-            user_id, prompt, aspect_ratio, duration_seconds, image_id, session_id=session_id
-        )
+        return await _generate_video(user_id, prompt, aspect_ratio, duration_seconds, image_id, session_id=session_id)
 
     tools.append(
         StructuredTool(
