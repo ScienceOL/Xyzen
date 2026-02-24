@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.4](https://github.com/ScienceOL/Xyzen/compare/v1.5.3...v1.5.4) (2026-02-24)
+
+### 🐛 Bug Fixes
+
+* video support, tasks, knowledge ([f7f257a](https://github.com/ScienceOL/Xyzen/commit/f7f257a105ab558d2c7831b813d45053e1826290)), closes [#264](https://github.com/ScienceOL/Xyzen/issues/264)
+
 ## [1.5.3](https://github.com/ScienceOL/Xyzen/compare/v1.5.2...v1.5.3) (2026-02-24)
 
 ### 🐛 Bug Fixes
