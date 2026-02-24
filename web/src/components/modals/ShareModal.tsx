@@ -257,6 +257,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           content: msg.content,
           thinking_content: msg.thinkingContent,
           toolCalls,
+          agentExecution: msg.agentExecution,
           timestamp: msg.timestamp,
         };
       });

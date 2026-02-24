@@ -22,6 +22,7 @@ export const BUILTIN_TOOLS = {
   KNOWLEDGE_SEARCH: "knowledge_search",
   GENERATE_IMAGE: "generate_image",
   READ_IMAGE: "read_image",
+  GENERATE_VIDEO: "generate_video",
   MANAGE_MEMORY: "manage_memory",
   SEARCH_MEMORY: "search_memory",
   LITERATURE_SEARCH: "literature_search",
@@ -55,6 +56,9 @@ export const IMAGE_TOOLS = [
   BUILTIN_TOOLS.READ_IMAGE,
 ] as const;
 
+// Video tools as a group
+export const VIDEO_TOOLS = [BUILTIN_TOOLS.GENERATE_VIDEO] as const;
+
 // Memory tools as a group
 export const MEMORY_TOOLS = [
   BUILTIN_TOOLS.MANAGE_MEMORY,
@@ -77,6 +81,7 @@ export const ALL_BUILTIN_TOOL_IDS = [
   ...WEB_SEARCH_TOOLS,
   ...KNOWLEDGE_TOOLS,
   ...IMAGE_TOOLS,
+  ...VIDEO_TOOLS,
   ...MEMORY_TOOLS,
   ...SANDBOX_TOOLS,
   BUILTIN_TOOLS.LITERATURE_SEARCH,
@@ -327,6 +332,50 @@ export function updateImageEnabled(
     } else {
       newFilter = currentFilter.filter(
         (id) => !IMAGE_TOOLS.includes(id as (typeof IMAGE_TOOLS)[number]),
+      );
+    }
+  }
+
+  return withLlmToolFilter(currentConfig, newFilter);
+}
+
+/**
+ * Check if video tools are enabled
+ */
+export function isVideoEnabled(agent: Agent | null): boolean {
+  const filter = getToolFilter(agent);
+  if (filter === null) return true;
+  return VIDEO_TOOLS.some((toolId) => filter.includes(toolId));
+}
+
+/**
+ * Enable/disable all video tools at once
+ */
+export function updateVideoEnabled(
+  agent: Agent,
+  enabled: boolean,
+): Record<string, unknown> {
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const currentFilter = getLlmToolFilter(currentConfig);
+
+  let newFilter: string[] | null;
+
+  if (currentFilter === null || currentFilter === undefined) {
+    if (enabled) {
+      newFilter = null;
+    } else {
+      newFilter = ALL_BUILTIN_TOOL_IDS.filter(
+        (id) => !VIDEO_TOOLS.includes(id as (typeof VIDEO_TOOLS)[number]),
+      );
+    }
+  } else {
+    if (enabled) {
+      const existing = new Set(currentFilter);
+      VIDEO_TOOLS.forEach((toolId) => existing.add(toolId));
+      newFilter = Array.from(existing);
+    } else {
+      newFilter = currentFilter.filter(
+        (id) => !VIDEO_TOOLS.includes(id as (typeof VIDEO_TOOLS)[number]),
       );
     }
   }

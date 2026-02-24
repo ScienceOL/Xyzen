@@ -154,7 +154,7 @@ function SandboxBashResult({ parsed }: { parsed: unknown }) {
       </div>
 
       {/* Output */}
-      <div className="bg-neutral-950 p-3 max-h-100 overflow-auto">
+      <div className="bg-neutral-950 p-3">
         {displayStdout && (
           <pre className="text-xs font-mono text-neutral-200 whitespace-pre-wrap wrap-break-words">
             {displayStdout}

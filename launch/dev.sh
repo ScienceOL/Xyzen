@@ -209,6 +209,24 @@ CMD_ARGS=(
   -f "${PROJECT_DIR}/docker/docker-compose.dev.yaml"
   --env-file "${ENV_FILE}"
 )
+
+# Worktree detection: apply lightweight overlay and unique project name
+WORKTREE_PORT_FILE="${PROJECT_DIR}/.worktree-port"
+if [ -f "$WORKTREE_PORT_FILE" ]; then
+  WT_PORT=$(cat "$WORKTREE_PORT_FILE")
+  WT_BRANCH=$(cd "${PROJECT_DIR}" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+  WT_SLUG=$(echo "$WT_BRANCH" | sed 's|/|-|g; s|[^a-zA-Z0-9._-]|-|g')
+  export NGINX_PORT="$WT_PORT"
+
+  CMD_ARGS=(
+    -p "sciol-xyzen-${WT_SLUG}"
+    -f "${PROJECT_DIR}/docker/docker-compose.base.yaml"
+    -f "${PROJECT_DIR}/docker/docker-compose.dev.yaml"
+    -f "${PROJECT_DIR}/docker/docker-compose.worktree.yaml"
+    --env-file "${ENV_FILE}"
+  )
+  echo -e "${BRIGHT_CYAN}Worktree mode: branch=${WT_BRANCH}, port=${WT_PORT}, project=sciol-xyzen-${WT_SLUG}${RESET}"
+fi
 # 基础设施服务 Docker Compose 参数
 MID_CMD_ARGS=(
   -p "sciol-infra"

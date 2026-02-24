@@ -23,18 +23,40 @@ export function TopicTabBar({
 }: TopicTabBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Convert vertical wheel to horizontal scroll (VS Code-style)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   // Auto-scroll to active tab when it changes
+  // NOTE: Do NOT use scrollIntoView here — it bubbles up and scrolls
+  // ancestor containers (including ReactFlow), shifting the whole canvas.
   useEffect(() => {
     if (!activeTopicId || !scrollRef.current) return;
     const activeEl = scrollRef.current.querySelector(
       `[data-topic-id="${activeTopicId}"]`,
-    );
+    ) as HTMLElement | null;
     if (activeEl) {
-      activeEl.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
+      const container = scrollRef.current;
+      const elLeft = activeEl.offsetLeft - container.offsetLeft;
+      const elRight = elLeft + activeEl.offsetWidth;
+      // Only scroll if the tab is outside the visible area
+      if (elLeft < container.scrollLeft) {
+        container.scrollTo({ left: elLeft, behavior: "smooth" });
+      } else if (elRight > container.scrollLeft + container.clientWidth) {
+        container.scrollTo({
+          left: elRight - container.clientWidth,
+          behavior: "smooth",
+        });
+      }
     }
   }, [activeTopicId]);
 
@@ -62,7 +84,7 @@ export function TopicTabBar({
     <div className="shrink-0 border-b border-black/5 dark:border-white/5">
       <div
         ref={scrollRef}
-        className="flex items-center gap-0.5 overflow-x-auto px-2 py-1 custom-scrollbar"
+        className="flex items-center gap-0.5 overflow-x-auto px-2 py-1 custom-scrollbar-thin"
       >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTopicId;

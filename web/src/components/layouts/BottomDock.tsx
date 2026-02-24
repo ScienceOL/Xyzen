@@ -8,6 +8,7 @@ import { useXyzen } from "@/store";
 import {
   CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
+  ClockIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   FolderIcon,
@@ -64,6 +65,7 @@ export type ActivityPanel =
   | "marketplace"
   | "memory"
   | "sandbox"
+  | "tasks"
   | "account";
 
 interface BottomDockProps {
@@ -805,6 +807,12 @@ export function BottomDock({
       icon: CommandLineIcon,
       label: t("app.activityBar.sandbox", "Sandbox"),
       panel: "sandbox",
+    },
+    {
+      id: "tasks",
+      icon: ClockIcon,
+      label: t("app.activityBar.tasks", "Tasks"),
+      panel: "tasks",
     },
     {
       id: "marketplace",

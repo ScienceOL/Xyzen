@@ -86,6 +86,8 @@ class ErrorData(TypedDict):
     error_category: NotRequired[str]  # Category, e.g. "provider"
     recoverable: NotRequired[bool]  # Whether the user can retry
     detail: NotRequired[str]  # Optional sanitized detail
+    error_ref: NotRequired[str]  # Unique reference ID for log correlation
+    occurred_at: NotRequired[str]  # ISO timestamp of when the error occurred
     stream_id: str
 
 

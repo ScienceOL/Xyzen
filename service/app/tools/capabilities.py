@@ -34,6 +34,7 @@ class ToolCapability(StrEnum):
     # Content generation
     IMAGE_GENERATION = "image_gen"
     IMAGE_ANALYSIS = "image_analysis"
+    VIDEO_GENERATION = "video_gen"
     CODE_EXECUTION = "code_exec"
 
     # File operations
@@ -76,6 +77,8 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     "read_image": [ToolCapability.IMAGE_ANALYSIS],
     "image_generation": [ToolCapability.IMAGE_GENERATION],
     "dalle": [ToolCapability.IMAGE_GENERATION],
+    # Video tools
+    "generate_video": [ToolCapability.VIDEO_GENERATION],
     # Research tools (component-internal)
     "ConductResearch": [ToolCapability.RESEARCH],
     "ResearchComplete": [ToolCapability.RESEARCH],

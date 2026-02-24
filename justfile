@@ -201,6 +201,34 @@ pre-commit-staged:
     pre-commit run
 
 # =============================================================================
+# Worktree (parallel branch development)
+# =============================================================================
+
+# Create a worktree for a branch (auto-allocates dev port)
+wt branch:
+    ./launch/wt.sh create {{ branch }}
+
+# List all active worktrees
+wt-list:
+    ./launch/wt.sh list
+
+# Remove a worktree (stops containers + frees port)
+wt-rm branch:
+    ./launch/wt.sh rm {{ branch }}
+
+# Show allocated port for a worktree
+wt-port branch:
+    ./launch/wt.sh port {{ branch }}
+
+# =============================================================================
+# PR
+# =============================================================================
+
+# Push current branch and auto-create PR (default target: test)
+pr target='test':
+    ./launch/pr.sh {{ target }}
+
+# =============================================================================
 # Build & Release
 # =============================================================================
 

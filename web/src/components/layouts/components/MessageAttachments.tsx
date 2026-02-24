@@ -3,6 +3,7 @@ import { http } from "@/service/http/client";
 import type { MessageAttachment } from "@/store/types";
 import {
   DocumentIcon,
+  FilmIcon,
   MusicalNoteIcon,
   PhotoIcon,
 } from "@heroicons/react/24/outline";
@@ -99,7 +100,9 @@ export default function MessageAttachments({
   useEffect(() => {
     const fileAttachments = attachments.filter(
       (att) =>
-        (att.category === "audio" || att.category === "documents") &&
+        (att.category === "audio" ||
+          att.category === "documents" ||
+          att.category === "videos") &&
         att.download_url,
     );
 
@@ -154,6 +157,7 @@ export default function MessageAttachments({
   }
 
   const images = attachments.filter((att) => att.category === "images");
+  const videos = attachments.filter((att) => att.category === "videos");
   const documents = attachments.filter((att) => att.category === "documents");
   const audio = attachments.filter((att) => att.category === "audio");
   const others = attachments.filter((att) => att.category === "others");
@@ -170,6 +174,8 @@ export default function MessageAttachments({
     switch (category) {
       case "images":
         return <PhotoIcon className="h-5 w-5" />;
+      case "videos":
+        return <FilmIcon className="h-5 w-5" />;
       case "audio":
         return <MusicalNoteIcon className="h-5 w-5" />;
       case "documents":
@@ -242,6 +248,67 @@ export default function MessageAttachments({
                     </span>
                   </div>
                 </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Videos - Video player layout */}
+      {videos.length > 0 && (
+        <div className="space-y-2">
+          {videos.map((vid) => (
+            <div
+              key={vid.id}
+              className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 max-w-md"
+            >
+              {fileLoadingStates[vid.id] ? (
+                <div
+                  className="w-full relative overflow-hidden bg-neutral-200 dark:bg-neutral-800"
+                  style={{ height: "200px" }}
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-linear-to-r from-transparent via-white/50 dark:via-white/10 to-transparent"
+                    animate={{
+                      x: ["-100%", "200%"],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-neutral-400 dark:text-neutral-500 text-xs">
+                      Loading video...
+                    </div>
+                  </div>
+                </div>
+              ) : fileBlobUrls[vid.id] ? (
+                <video
+                  controls
+                  className="w-full rounded-lg"
+                  preload="metadata"
+                >
+                  <source
+                    src={fileBlobUrls[vid.id]}
+                    type={vid.type || "video/mp4"}
+                  />
+                  Your browser does not support the video element.
+                </video>
+              ) : (
+                <div
+                  className="w-full flex items-center justify-center p-4"
+                  style={{ height: "200px" }}
+                >
+                  <div className="text-center">
+                    <FilmIcon className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
+                    <p className="text-xs text-neutral-500">{vid.name}</p>
+                    <p className="text-xs text-neutral-400">
+                      {formatFileSize(vid.size)}
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           ))}

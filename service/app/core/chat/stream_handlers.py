@@ -222,6 +222,8 @@ class StreamingEventHandler:
         error_category: str | None = None,
         recoverable: bool = False,
         detail: str | None = None,
+        error_ref: str | None = None,
+        occurred_at: str | None = None,
         stream_id: str = "",
     ) -> StreamingEvent:
         """Create error event with optional structured fields."""
@@ -232,6 +234,10 @@ class StreamingEventHandler:
             data["recoverable"] = recoverable
         if detail is not None:
             data["detail"] = detail
+        if error_ref is not None:
+            data["error_ref"] = error_ref
+        if occurred_at is not None:
+            data["occurred_at"] = occurred_at
         return {"type": ChatEventType.ERROR, "data": data}
 
 

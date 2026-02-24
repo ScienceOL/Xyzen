@@ -1,5 +1,5 @@
 from celery import Celery
-from celery.signals import worker_process_init
+from celery.signals import worker_process_init, worker_ready
 
 from app.configs import configs
 
@@ -7,7 +7,7 @@ celery_app = Celery(
     "xyzen_worker",
     broker=configs.Redis.REDIS_URL,
     backend=configs.Redis.REDIS_URL,
-    include=["app.tasks.chat", "app.tasks.notification", "app.tasks.sandbox_cleanup"],
+    include=["app.tasks.chat", "app.tasks.notification", "app.tasks.sandbox_cleanup", "app.tasks.scheduled"],
 )
 
 celery_app.conf.update(
@@ -46,3 +46,24 @@ def init_worker_process(**kwargs: object) -> None:
         asyncio.run(ensure_novu_setup())
     except Exception:
         pass  # Logged inside ensure_novu_setup
+
+
+@worker_ready.connect
+def on_worker_ready(**kwargs: object) -> None:
+    """
+    Recover scheduled tasks once when the worker is fully ready.
+
+    Uses worker_ready (fires once per worker instance) instead of
+    worker_process_init (fires per child process) to avoid duplicate recovery.
+    """
+    import asyncio
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    from app.tasks.scheduled import recover_scheduled_tasks
+
+    try:
+        asyncio.run(recover_scheduled_tasks())
+    except Exception:
+        logger.exception("Failed to recover scheduled tasks on worker startup")

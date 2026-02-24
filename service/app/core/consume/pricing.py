@@ -169,7 +169,7 @@ def validate_pricing_coverage() -> None:
     # --- Tool pricing coverage ---
     from app.tools.registry import BuiltinToolRegistry
 
-    registered_tools = set(BuiltinToolRegistry._metadata.keys())
+    registered_tools = {info.id for info in BuiltinToolRegistry.list_all()}
     priced_tools = set(TOOL_CREDIT_COSTS.keys())
 
     for tool_id in sorted(registered_tools - priced_tools):
@@ -181,26 +181,25 @@ def validate_pricing_coverage() -> None:
     all_models: set[str] = set()
 
     from app.schemas.model_tier import (
-        _CHINA_TIER_MODEL_CANDIDATES,
-        _GLOBAL_TIER_MODEL_CANDIDATES,
-        _REGION_HELPER_MODELS,
+        REGION_HELPER_MODELS,
+        REGION_TIER_CANDIDATES,
     )
 
-    for candidates_map in (_GLOBAL_TIER_MODEL_CANDIDATES, _CHINA_TIER_MODEL_CANDIDATES):
+    for candidates_map in REGION_TIER_CANDIDATES.values():
         for tier_candidates in candidates_map.values():
             for c in tier_candidates:
                 all_models.add(c.model)
 
-    for helpers in _REGION_HELPER_MODELS.values():
+    for helpers in REGION_HELPER_MODELS.values():
         for model_name, _ in helpers.values():
             all_models.add(model_name)
 
-    from app.configs.image import ImageConfig, _REGION_IMAGE_OVERRIDES
+    from app.configs.image import REGION_IMAGE_OVERRIDES, ImageConfig
 
     base = ImageConfig()
     for attr in ("Model", "EditModel", "VisionModel"):
         all_models.add(getattr(base, attr))
-    for overrides in _REGION_IMAGE_OVERRIDES.values():
+    for overrides in REGION_IMAGE_OVERRIDES.values():
         for key in ("Model", "EditModel", "VisionModel"):
             if key in overrides:
                 all_models.add(overrides[key])

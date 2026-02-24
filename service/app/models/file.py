@@ -80,6 +80,12 @@ class FileBase(SQLModel):
         nullable=True,
         description="ID of the parent directory (self-referencing)",
     )
+    skill_id: UUID | None = Field(
+        default=None,
+        index=True,
+        nullable=True,
+        description="Associated skill ID (null for knowledge base files)",
+    )
 
 
 class File(FileBase, table=True):

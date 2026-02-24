@@ -10,14 +10,12 @@ import { redemptionService, type AdminCode } from "@/service/redemptionService";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { AdminAuthForm } from "./AdminAuthForm";
-import { CodeGenerationForm } from "./CodeGenerationForm";
-import { CodesList } from "./CodesList";
-import { DailyStatsTab } from "./DailyStatsTab";
-import { SubscriptionsTab } from "./SubscriptionsTab";
-import { TopUsersTab } from "./TopUsersTab";
-import { TrendChartTab } from "./TrendChartTab";
-import { UserActivityTab } from "./UserActivityTab";
-import { UserRankingsTab } from "./UserRankingsTab";
+import { AgentMarketplaceTab } from "./AgentMarketplaceTab";
+import { ConsumptionAnalyticsTab } from "./ConsumptionAnalyticsTab";
+import { RedemptionCodesTab } from "./RedemptionCodesTab";
+import { RevenueAnalyticsTab } from "./RevenueAnalyticsTab";
+import { SubscriptionManagementTab } from "./SubscriptionManagementTab";
+import { UserAnalyticsTab } from "./UserAnalyticsTab";
 
 export function SecretCodePage() {
   const [adminSecret, setAdminSecret] = useState<string | null>(null);
@@ -25,6 +23,7 @@ export function SecretCodePage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [newCode, setNewCode] = useState<AdminCode | undefined>(undefined);
+  const [newCodeKey, setNewCodeKey] = useState(0);
 
   const verifySecretKey = async (secretKey: string) => {
     setIsVerifying(true);
@@ -57,25 +56,18 @@ export function SecretCodePage() {
 
   const handleCodeGenerated = (code: AdminCode) => {
     setNewCode(code);
-    // Reset newCode after a short delay so it can be added to the list
-    setTimeout(() => setNewCode(undefined), 100);
+    setNewCodeKey((k) => k + 1);
   };
 
   if (!isAuthenticated) {
     return (
       <div className="fixed inset-0 bg-neutral-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          {isVerifying && (
-            <div className="mb-4 text-center">
-              <div className="text-white text-sm">Verifying secret key...</div>
-            </div>
-          )}
-          {authError && (
-            <div className="mb-4 rounded-md bg-red-50 dark:bg-red-950/30 p-3 text-sm text-red-600 dark:text-red-400 text-center">
-              {authError}
-            </div>
-          )}
-          <AdminAuthForm onAuthenticated={handleAuthenticated} />
+          <AdminAuthForm
+            onAuthenticated={handleAuthenticated}
+            isVerifying={isVerifying}
+            authError={authError}
+          />
         </div>
       </div>
     );
@@ -106,90 +98,57 @@ export function SecretCodePage() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="daily-stats" className="w-full">
-          <div className="overflow-x-auto scrollbar-hidden pb-2 -mx-2 px-2">
-            <TabsList className="min-w-max">
-              <TabsTrigger value="daily-stats">📊 Daily Stats</TabsTrigger>
-              <TabsTrigger value="user-activity">👤 User Activity</TabsTrigger>
-              <TabsTrigger value="top-users">👥 Top Users</TabsTrigger>
-              <TabsTrigger value="trend">📈 Trend Chart</TabsTrigger>
-              <TabsTrigger value="rankings">🏆 Rankings</TabsTrigger>
-              <TabsTrigger value="subscriptions">📋 Subscriptions</TabsTrigger>
-              <TabsTrigger value="codes">🎟️ Codes</TabsTrigger>
+        <Tabs defaultValue="consumption" className="w-full">
+          <div className="pb-2">
+            <TabsList className="w-full">
+              <TabsTrigger value="consumption">消费分析</TabsTrigger>
+              <TabsTrigger value="users">用户分析</TabsTrigger>
+              <TabsTrigger value="revenue">平台收入</TabsTrigger>
+              <TabsTrigger value="subscriptions">订阅管理</TabsTrigger>
+              <TabsTrigger value="marketplace">Agent市场</TabsTrigger>
+              <TabsTrigger value="codes">兑换码</TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContents>
-            <TabsContent value="daily-stats">
+            <TabsContent value="consumption">
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
-                <DailyStatsTab
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                />
+                <ConsumptionAnalyticsTab adminSecret={adminSecret!} />
               </div>
             </TabsContent>
 
-            <TabsContent value="user-activity">
+            <TabsContent value="users">
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
-                <UserActivityTab
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                />
+                <UserAnalyticsTab adminSecret={adminSecret!} />
               </div>
             </TabsContent>
 
-            <TabsContent value="top-users">
+            <TabsContent value="revenue">
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
-                <TopUsersTab
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="trend">
-              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
-                <TrendChartTab
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="rankings">
-              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
-                <UserRankingsTab
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                />
+                <RevenueAnalyticsTab adminSecret={adminSecret!} />
               </div>
             </TabsContent>
 
             <TabsContent value="subscriptions">
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
-                <SubscriptionsTab
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                />
+                <SubscriptionManagementTab adminSecret={adminSecret!} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="marketplace">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
+                <AgentMarketplaceTab adminSecret={adminSecret!} />
               </div>
             </TabsContent>
 
             <TabsContent value="codes">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 overflow-hidden">
-                {/* Generate Code Form */}
-                <CodeGenerationForm
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                  onCodeGenerated={handleCodeGenerated}
-                />
-
-                {/* Generated Codes List */}
-                <CodesList
-                  adminSecret={adminSecret!}
-                  backendUrl={http.baseUrl}
-                  newCode={newCode}
-                />
-              </div>
+              <RedemptionCodesTab
+                adminSecret={adminSecret!}
+                backendUrl={http.baseUrl}
+                newCode={newCode}
+                newCodeKey={newCodeKey}
+                onCodeGenerated={handleCodeGenerated}
+              />
             </TabsContent>
           </TabsContents>
         </Tabs>

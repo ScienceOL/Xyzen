@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import MemoryPanel from "@/components/layouts/MemoryPanel";
 import SandboxPanel from "@/components/layouts/SandboxPanel";
+import ScheduledTasksPanel from "@/components/layouts/ScheduledTasksPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
@@ -374,6 +375,12 @@ export function AppSide({
             {activePanel === "sandbox" && (
               <div className="h-full bg-white dark:bg-neutral-950">
                 <SandboxPanel />
+              </div>
+            )}
+
+            {activePanel === "tasks" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <ScheduledTasksPanel />
               </div>
             )}
 
