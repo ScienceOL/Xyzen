@@ -5626,6 +5626,7 @@ __metadata:
     "@types/jsdom": "npm:^27"
     "@types/lodash": "npm:^4"
     "@types/node": "npm:^24.10.0"
+    "@types/qrcode.react": "npm:^3.0.0"
     "@types/react": "npm:^19.1.8"
     "@types/react-dom": "npm:^19.1.6"
     "@types/react-syntax-highlighter": "npm:^15.5.13"
@@ -6822,6 +6823,15 @@ __metadata:
   version: 4.0.2
   resolution: "@types/parse-json@npm:4.0.2"
   checksum: 10c0/b1b863ac34a2c2172fbe0807a1ec4d5cb684e48d422d15ec95980b81475fac4fdb3768a8b13eef39130203a7c04340fc167bae057c7ebcafd7dec9fe6c36aeb1
+  languageName: node
+  linkType: hard
+
+"@types/qrcode.react@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@types/qrcode.react@npm:3.0.0"
+  dependencies:
+    qrcode.react: "npm:*"
+  checksum: 10c0/4202e2647429ef521a6dc6dddf3bcaeefba51c2f00cca3d07b381ed0377622347d5b9b8fd8875ada671a2986152f1f7d4c454b02bfe3ed9d65fee105ea6573f1
   languageName: node
   linkType: hard
 
@@ -14128,7 +14138,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qrcode.react@npm:^4.2.0":
+"qrcode.react@npm:*, qrcode.react@npm:^4.2.0":
   version: 4.2.0
   resolution: "qrcode.react@npm:4.2.0"
   peerDependencies:

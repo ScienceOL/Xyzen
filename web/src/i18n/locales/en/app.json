@@ -137,6 +137,8 @@
     "noKnowledge": "None",
     "image": "Image",
     "imageDesc": "Generate and read images",
+    "video": "Video",
+    "videoDesc": "Generate videos",
     "literatureSearch": "Literature",
     "literatureSearchDesc": "Search academic papers",
     "memory": "Memory",
