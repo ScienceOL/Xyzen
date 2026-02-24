@@ -354,17 +354,25 @@ async def _process_chat_message_async(
             await handle_normal_finalization(ctx, pre_deducted_amount, access_token)
 
     except Exception as e:
-        logger.error(f"Unhandled error in process_chat_message: {e}", exc_info=True)
-
         from app.common.code.chat_error_code import classify_exception
 
-        error_code_val, safe_message = classify_exception(e)
+        classified = classify_exception(e)
+        logger.error(
+            f"Unhandled error [{classified.error_ref}] [{classified.code}] in process_chat_message: {e}",
+            exc_info=True,
+        )
+
+        detail = f"Exception: {classified.error_type}" if classified.error_type else None
         error_event_data: dict[str, Any] = {
-            "error": safe_message,
-            "error_code": error_code_val.value,
-            "error_category": error_code_val.category,
-            "recoverable": error_code_val.recoverable,
+            "error": classified.message,
+            "error_code": classified.code.value,
+            "error_category": classified.code.category,
+            "recoverable": classified.code.recoverable,
+            "error_ref": classified.error_ref,
+            "occurred_at": classified.occurred_at,
         }
+        if detail is not None:
+            error_event_data["detail"] = detail
         if stream_id:
             error_event_data["stream_id"] = stream_id
         await publisher.publish(
@@ -402,8 +410,8 @@ async def _process_chat_message_async(
                         msg.content = ai_message_full_content or ""
                         if ai_message_thinking_content:
                             msg.thinking_content = ai_message_thinking_content
-                        msg.error_code = error_code_val.value
-                        msg.error_category = error_code_val.category
+                        msg.error_code = classified.code.value
+                        msg.error_category = classified.code.category
                         msg_db.add(msg)
                         await msg_db.commit()
                         logger.debug(

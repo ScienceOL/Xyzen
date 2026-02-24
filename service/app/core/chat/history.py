@@ -75,40 +75,83 @@ async def load_conversation_history(db: AsyncSession, topic: "TopicModel") -> li
 
 
 async def _build_user_message(db: AsyncSession, message: Any, content: str) -> HumanMessage:
-    """Build a HumanMessage with optional multimodal content."""
-    from app.core.chat.multimodal import process_message_files
+    """Build a HumanMessage with optional multimodal content.
+
+    Documents (PDFs, DOCX, etc.) are summarized with file_id references
+    so the LLM can use file_read tool for on-demand access.
+    Images and audio are still inlined as base64.
+    """
+    from app.core.chat.multimodal import FileProcessor
+    from app.repos.file import FileRepository
 
     try:
-        logger.debug(f"Checking files for message {message.id}")
-        file_contents = await process_message_files(db, message.id)
-        logger.debug(f"Message {message.id} has {len(file_contents) if file_contents else 0} file contents")
+        file_repo = FileRepository(db)
+        files = await file_repo.get_files_by_message(message.id)
 
-        if file_contents:
-            # Multimodal message: combine text and file content
-            multimodal_content: list[dict[str, Any]] = [{"type": "text", "text": content}]
-            multimodal_content.extend(file_contents)
+        if not files:
+            return HumanMessage(content=content)
 
-            for idx, item in enumerate(file_contents):
-                item_type = item.get("type")
-                if item_type == "image_url":
-                    logger.debug(f"File content {idx}: type={item_type}, has image_url={bool(item.get('image_url'))}")
-                elif item_type == "text":
-                    text_preview = item.get("text", "")[:100]
-                    logger.debug(f"File content {idx}: type={item_type}, text_preview='{text_preview}'")
-                else:
-                    logger.debug(f"File content {idx}: type={item_type}")
+        # Separate: images/audio continue inline, documents get summaries
+        inline_files = [f for f in files if f.category in ("images", "audio")]
+        document_files = [f for f in files if f.category not in ("images", "audio")]
 
-            logger.info(f"Loaded multimodal message {message.id} with {len(file_contents)} attachments")
-            return HumanMessage(content=multimodal_content)  # type: ignore
+        multimodal_content: list[dict[str, Any]] = [{"type": "text", "text": content}]
 
-        # Text-only message
-        logger.debug(f"Message {message.id} has no file attachments, loading as text-only")
-        return HumanMessage(content=content)
+        # Document files: generate text summary with file_ids for file_read tool
+        if document_files:
+            summary = _build_document_summary(document_files)
+            multimodal_content.append({"type": "text", "text": summary})
+
+        # Images/audio: keep existing inline logic
+        if inline_files:
+            processor = FileProcessor(db)
+            for f in inline_files:
+                try:
+                    if f.category == "images":
+                        multimodal_content.append(
+                            {
+                                "type": "text",
+                                "text": f"[Image attachment id: {f.id} filename: {f.original_filename}]",
+                            }
+                        )
+                    file_content = await processor.process_file(f.id)
+                    multimodal_content.extend(file_content)
+                except Exception as e:
+                    logger.error(f"Failed to inline file {f.id}: {e}")
+                    multimodal_content.append(
+                        {
+                            "type": "text",
+                            "text": f"[Failed to process: {f.original_filename}]",
+                        }
+                    )
+
+        if len(multimodal_content) == 1:
+            return HumanMessage(content=content)
+        return HumanMessage(content=multimodal_content)  # type: ignore
 
     except Exception as e:
         # If file processing fails, fall back to text-only
         logger.error(f"Failed to process files for message {message.id}: {e}", exc_info=True)
         return HumanMessage(content=content)
+
+
+def _format_file_size(size_bytes: int) -> str:
+    """Format file size in human-readable form."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KB"
+    else:
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+
+def _build_document_summary(files: list[Any]) -> str:
+    """Build a text summary of document attachments for LLM context."""
+    lines = ["[The user attached the following document files. Use file_read tool to read their content:]"]
+    for f in files:
+        size_str = _format_file_size(f.file_size)
+        lines.append(f"- {f.original_filename} (file_id: {f.id}, {f.content_type or 'unknown'}, {size_str})")
+    return "\n".join(lines)
 
 
 async def _build_assistant_message(db: AsyncSession, message: Any, content: str) -> AIMessage:

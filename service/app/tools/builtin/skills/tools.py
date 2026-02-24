@@ -23,17 +23,21 @@ logger = logging.getLogger(__name__)
 class SkillInfo:
     """Lightweight skill metadata for tool closures."""
 
-    __slots__ = ("name", "description", "resource_prefix")
+    __slots__ = ("id", "name", "description", "resource_prefix", "root_folder_id")
 
     def __init__(
         self,
         name: str,
         description: str,
         resource_prefix: str | None = None,
+        id: str | None = None,
+        root_folder_id: str | None = None,
     ):
+        self.id = id
         self.name = name
         self.description = description
         self.resource_prefix = resource_prefix
+        self.root_folder_id = root_folder_id
 
 
 def create_skill_tools() -> dict[str, BaseTool]:
@@ -121,27 +125,47 @@ def create_skill_tools_for_session(
         deployed_path = None
         instructions: str | None = None
 
-        if skill.resource_prefix:
+        if skill.resource_prefix or skill.root_folder_id:
             try:
                 from app.core.skills import load_skill_md
 
-                instructions = await load_skill_md(skill.resource_prefix)
+                if skill.root_folder_id:
+                    from app.infra.database import get_task_db_session
+
+                    async with get_task_db_session() as db:
+                        instructions = await load_skill_md(
+                            skill.resource_prefix,
+                            skill=skill,
+                            db=db,
+                        )
+                else:
+                    instructions = await load_skill_md(skill.resource_prefix)
             except Exception:
-                logger.exception("Failed to load SKILL.md from OSS for skill '%s'", skill_name)
+                logger.exception("Failed to load SKILL.md for skill '%s'", skill_name)
 
         if not instructions:
             return {
                 "success": False,
-                "error": f"Skill '{skill_name}' is missing SKILL.md in OSS storage",
+                "error": f"Skill '{skill_name}' is missing SKILL.md in storage",
             }
 
-        if skill_name not in activated and skill.resource_prefix:
+        if skill_name not in activated and (skill.resource_prefix or skill.root_folder_id):
             try:
                 from app.core.skills import load_skill_resource_files
                 from app.core.skills.sandbox_deployer import deploy_skill_to_sandbox
                 from app.infra.sandbox import get_sandbox_manager
 
-                resource_files = await load_skill_resource_files(skill.resource_prefix)
+                if skill.root_folder_id:
+                    from app.infra.database import get_task_db_session
+
+                    async with get_task_db_session() as db:
+                        resource_files = await load_skill_resource_files(
+                            skill.resource_prefix,
+                            skill=skill,
+                            db=db,
+                        )
+                else:
+                    resource_files = await load_skill_resource_files(skill.resource_prefix)
                 manager = get_sandbox_manager(session_id, user_id=user_id)
                 deployed_path = await deploy_skill_to_sandbox(
                     manager=manager,
@@ -160,7 +184,7 @@ def create_skill_tools_for_session(
             "instructions": instructions,
         }
 
-        if skill.resource_prefix:
+        if skill.resource_prefix or skill.root_folder_id:
             from app.core.skills import list_skill_resource_paths
 
             resource_paths = await list_skill_resource_paths(skill.resource_prefix)

@@ -5,11 +5,12 @@ import {
   Bot,
   ChevronDown,
   CloudOff,
+  Copy,
   CreditCard,
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const categoryIcons: Record<string, typeof AlertTriangle> = {
@@ -32,6 +33,7 @@ export default function ErrorMessageCard({
 }: ErrorMessageCardProps) {
   const { t } = useTranslation();
   const [showDetail, setShowDetail] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const Icon = categoryIcons[error.category] || AlertTriangle;
 
@@ -39,6 +41,19 @@ export default function ErrorMessageCard({
   const i18nKey = `app.chatError.${error.code}`;
   const translatedMessage = t(i18nKey, { defaultValue: "" });
   const displayMessage = translatedMessage || error.message;
+
+  const handleCopyRef = useCallback(() => {
+    if (error.errorRef) {
+      navigator.clipboard.writeText(error.errorRef).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
+    }
+  }, [error.errorRef]);
+
+  const formattedTime = error.occurredAt
+    ? new Date(error.occurredAt).toLocaleString()
+    : undefined;
 
   return (
     <motion.div
@@ -85,6 +100,40 @@ export default function ErrorMessageCard({
                         Category
                       </span>
                       <span>{error.category}</span>
+                      {error.errorRef && (
+                        <>
+                          <span className="text-red-500/60 dark:text-red-400/50">
+                            {t("app.chatError.errorRef", "Ref")}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            {error.errorRef}
+                            <button
+                              type="button"
+                              onClick={handleCopyRef}
+                              title={t(
+                                "app.chatError.copyRef",
+                                "Copy reference ID",
+                              )}
+                              className="inline-flex items-center text-red-500/50 transition-colors hover:text-red-600 dark:text-red-400/40 dark:hover:text-red-300"
+                            >
+                              <Copy className="h-3 w-3" />
+                              {copied && (
+                                <span className="ml-0.5 text-[10px]">
+                                  Copied
+                                </span>
+                              )}
+                            </button>
+                          </span>
+                        </>
+                      )}
+                      {formattedTime && (
+                        <>
+                          <span className="text-red-500/60 dark:text-red-400/50">
+                            {t("app.chatError.occurredAt", "Time")}
+                          </span>
+                          <span>{formattedTime}</span>
+                        </>
+                      )}
                     </div>
                     {error.detail && (
                       <pre className="mt-1 whitespace-pre-wrap break-all border-t border-red-200/40 pt-1 dark:border-red-800/30">

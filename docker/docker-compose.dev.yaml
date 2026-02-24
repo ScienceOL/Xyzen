@@ -70,6 +70,3 @@ services:
   redis:
     deploy:
       resources: {}
-  searxng:
-    deploy:
-      resources: {}

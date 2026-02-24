@@ -463,7 +463,10 @@
     "system.service_unavailable": "The service is temporarily unavailable.",
     "retryAction": "Retry",
     "rechargeAction": "Recharge",
-    "detailToggle": "Details"
+    "detailToggle": "Details",
+    "errorRef": "Ref",
+    "occurredAt": "Time",
+    "copyRef": "Copy reference ID"
   },
   "account": {
     "checkIn": "Daily Check-in",

@@ -13,10 +13,12 @@ Tool Categories:
 - sandbox: Isolated code execution environments
 - research: Deep research workflow tools (component-internal, not exported here)
 - literature: Literature search and normalization
+- file_reader: Read chat-attached files by file_id
 - subagent: Subagent delegation (spawn_subagent)
 """
 
 from app.tools.builtin.fetch import create_web_fetch_tool
+from app.tools.builtin.file_reader import create_file_reader_tools, create_file_reader_tools_for_agent
 from app.tools.builtin.image import create_image_tools, create_image_tools_for_agent
 from app.tools.builtin.knowledge import create_knowledge_tools, create_knowledge_tools_for_agent
 from app.tools.builtin.literature import create_literature_search_tool
@@ -35,6 +37,9 @@ __all__ = [
     # Knowledge
     "create_knowledge_tools",
     "create_knowledge_tools_for_agent",
+    # File Reader
+    "create_file_reader_tools",
+    "create_file_reader_tools_for_agent",
     # Image
     "create_image_tools",
     "create_image_tools_for_agent",

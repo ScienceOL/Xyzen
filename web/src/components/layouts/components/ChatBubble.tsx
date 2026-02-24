@@ -1,14 +1,10 @@
 import ProfileIcon from "@/assets/ProfileIcon";
-import {
-  resolveMessageContent,
-  getMessageDisplayMode,
-} from "@/core/chat/messageContent";
+import { resolveMessageContent } from "@/core/chat/messageContent";
 import { zIndexClasses } from "@/constants/zIndex";
 import {
   useActiveChannelAgentId,
   useActiveChannelResponding,
 } from "@/hooks/useChannelSelectors";
-import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { Message } from "@/store/types";
 import {
@@ -17,17 +13,8 @@ import {
   ArrowPathIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
-import { StopCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  memo,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -37,12 +24,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
-import AgentExecutionTimeline from "./AgentExecutionTimeline";
-import ErrorMessageCard from "./ErrorMessageCard";
-import LoadingMessage from "./LoadingMessage";
 import MessageAttachments from "./MessageAttachments";
+import MessageContent from "./MessageContent";
 import { SearchCitations } from "./SearchCitations";
-import ThinkingBubble from "./ThinkingBubble";
 import ToolCallPill from "./ToolCallPill";
 
 interface ChatBubbleProps {
@@ -103,7 +87,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   const {
     role,
-    content,
     created_at,
     isLoading,
     isStreaming,
@@ -119,13 +102,6 @@ function ChatBubble({ message }: ChatBubbleProps) {
   // Derive active states from both status and legacy boolean flags
   const isMessageLoading = status === "pending" || isLoading;
   const isMessageStreaming = status === "streaming" || isStreaming;
-
-  // Use deferred value and memoization to optimize rendering performance
-  const deferredContent = useDeferredValue(content);
-  const markdownContent = useMemo(
-    () => <Markdown content={deferredContent} />,
-    [deferredContent],
-  );
 
   const isUserMessage = role === "user";
   const isMessageSending = status === "sending";
@@ -376,13 +352,12 @@ function ChatBubble({ message }: ChatBubbleProps) {
 
   // Content resolution using unified utilities
   // resolveMessageContent provides single source of truth for content display and copy/edit
-  // getMessageDisplayMode determines which rendering path to use
+  // Resolve content for copy/edit and rendering
   const resolvedContent = useMemo(
     () => resolveMessageContent(message),
     [message],
   );
   const displayedContent = resolvedContent.text;
-  const displayMode = useMemo(() => getMessageDisplayMode(message), [message]);
 
   // Tool call messages (from history refresh) render as pills (modal is self-contained in ToolCallPill)
   if (isToolMessage) {
@@ -483,87 +458,17 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 </div>
               )}
 
-              <div
-                className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto select-text ${
-                  isUserMessage
-                    ? "text-sm text-neutral-800 dark:text-neutral-200"
-                    : "text-sm text-neutral-700 dark:text-neutral-300"
-                }`}
-              >
-                {/* Thinking content - shown before main response for assistant messages */}
-                {!isUserMessage && thinkingContent && (
-                  <ThinkingBubble
-                    content={thinkingContent}
-                    isThinking={isThinking ?? false}
-                  />
-                )}
-
-                {/* Agent execution timeline - show for all agents with phases or cancelled status */}
-                {!isUserMessage &&
-                  agentExecution &&
-                  (agentExecution.phases.length > 0 ||
-                    agentExecution.status === "cancelled") && (
-                    <AgentExecutionTimeline
-                      execution={agentExecution}
-                      isExecuting={agentExecution.status === "running"}
-                    />
-                  )}
-
-                {/* Error message card - rendered instead of normal content */}
-                {message.error && <ErrorMessageCard error={message.error} />}
-
-                {/* Message content based on display mode */}
-                {!message.error &&
-                  (() => {
-                    switch (displayMode) {
-                      case "loading":
-                      case "waiting":
-                        return (
-                          <span className="inline-flex items-center gap-1">
-                            <LoadingMessage size="small" />
-                          </span>
-                        );
-
-                      case "simple":
-                        return markdownContent;
-
-                      case "timeline_streaming":
-                        // Content is shown in AgentExecutionTimeline phases during streaming
-                        return null;
-
-                      case "timeline_complete":
-                        // Show final content below timeline when completed
-                        // Guard against empty content to avoid rendering empty div with margin
-                        return resolvedContent.text ? (
-                          <div className="mt-4">
-                            <Markdown content={resolvedContent.text} />
-                          </div>
-                        ) : null;
-
-                      default:
-                        // Fallback for any unexpected display mode
-                        return markdownContent;
-                    }
-                  })()}
-
-                {isMessageStreaming && !isMessageLoading && (
-                  <motion.span
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                    className="ml-1 inline-block h-4 w-0.5 bg-current"
-                  />
-                )}
-
-                {/* Stopped indicator for simple messages without agentExecution */}
-                {!isUserMessage &&
-                  status === "cancelled" &&
-                  !agentExecution && (
-                    <div className="mt-2 flex items-center gap-1.5 text-[13px] text-neutral-400 dark:text-neutral-500">
-                      <StopCircle className="h-3.5 w-3.5" />
-                      <span>{t("app.chat.agent.stopped")}</span>
-                    </div>
-                  )}
-              </div>
+              <MessageContent
+                isUser={isUserMessage}
+                content={displayedContent}
+                thinkingContent={thinkingContent}
+                isThinking={isThinking}
+                agentExecution={agentExecution}
+                error={message.error}
+                isStreaming={isMessageStreaming}
+                isLoading={isMessageLoading}
+                isCancelled={status === "cancelled"}
+              />
 
               {/* File Attachments - shown after text for assistant messages */}
               {!isUserMessage && attachments && attachments.length > 0 && (
