@@ -61,7 +61,6 @@ function escapeHtml(str: string): string {
 }
 
 // Stable opts objects — avoid re-creating on every render
-const ECHARTS_SVG_OPTS = { renderer: "svg" } as const;
 const HEATMAP_CANVAS_OPTS = { renderer: "canvas" } as const;
 
 function makeTierDonut(
@@ -218,7 +217,7 @@ const DonutChartsPanel = React.memo(function DonutChartsPanel({
                 option={card.option}
                 lazyUpdate={true}
                 style={donutChartStyle}
-                opts={ECHARTS_SVG_OPTS}
+                opts={HEATMAP_CANVAS_OPTS}
               />
             )}
           </CardContent>
@@ -347,7 +346,11 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
   const [dailyPage, setDailyPage] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 640px)").matches,
+  );
   const [monthToShow, setMonthToShow] = useState(() => new Date().getMonth());
   const isDark = true;
   const tableRef = useRef<HTMLTableElement>(null);
@@ -518,10 +521,21 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
 
   // Heatmap chart options
   const heatmapOption = useMemo(() => {
+    const selectedHighlight = {
+      borderColor: isDark ? "#38bdf8" : "#0284c7",
+      borderWidth: 2,
+      borderRadius: 2,
+      shadowBlur: 12,
+      shadowColor: isDark ? "rgba(56,189,248,0.6)" : "rgba(2,132,199,0.5)",
+    };
     const heatData =
       data?.daily
         .filter((d) => d.record_count > 0)
-        .map((d) => [d.date, d.total_amount]) ?? [];
+        .map((d) =>
+          d.date === selectedDate
+            ? { value: [d.date, d.total_amount], itemStyle: selectedHighlight }
+            : [d.date, d.total_amount],
+        ) ?? [];
     const maxVal = Math.max(
       ...(data?.daily.map((d) => d.total_amount) ?? [1]),
       1,
@@ -558,6 +572,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     return {
       backgroundColor: "transparent",
       tooltip: {
+        triggerOn: isMobile ? "none" : "mousemove|click",
         formatter: (params: { value: [string, number] }) => {
           const [date, credits] = params.value;
           return `<strong>${escapeHtml(String(date))}</strong><br/>${escapeHtml(creditsLabel)}: ${credits.toLocaleString()}`;
@@ -621,7 +636,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
           type: "heatmap",
           coordinateSystem: "calendar",
           data: heatData,
-          selectedMode: isMobile ? false : "single",
+          selectedMode: false,
           itemStyle: { borderRadius: 2 },
           emphasis: isMobile
             ? undefined
@@ -650,7 +665,7 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
         },
       ],
     };
-  }, [data, isDark, yearToShow, monthToShow, t, isMobile]);
+  }, [data, isDark, yearToShow, monthToShow, t, isMobile, selectedDate]);
 
   // Daily table — only days with activity, descending order, client-side paged (desktop only)
   const dailyRows = useMemo(
@@ -682,19 +697,6 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
       const isDeselect = selectedDate === clickedDate;
       setSelectedDate(isDeselect ? null : clickedDate);
       setExpandedDate(isDeselect ? null : clickedDate);
-      if (!isMobile) {
-        const instance = heatmapChartRef.current?.getEchartsInstance();
-        if (instance) {
-          instance.dispatchAction({ type: "unselect", seriesIndex: 0 });
-          if (!isDeselect) {
-            instance.dispatchAction({
-              type: "select",
-              seriesIndex: 0,
-              dataIndex: params.dataIndex,
-            });
-          }
-        }
-      }
       if (!isDeselect) {
         if (isMobile) {
           // Mobile: filtered to single date, always page 0
@@ -725,46 +727,18 @@ export function ConsumptionAnalytics({ onClose }: ConsumptionAnalyticsProps) {
     setMonthToShow((m) => m - 1);
     setSelectedDate(null);
     setExpandedDate(null);
-    heatmapChartRef.current
-      ?.getEchartsInstance()
-      ?.dispatchAction({ type: "unselect", seriesIndex: 0 });
   }, []);
 
   const handleMonthNext = useCallback(() => {
     setMonthToShow((m) => m + 1);
     setSelectedDate(null);
     setExpandedDate(null);
-    heatmapChartRef.current
-      ?.getEchartsInstance()
-      ?.dispatchAction({ type: "unselect", seriesIndex: 0 });
   }, []);
 
   const handleClearDate = useCallback(() => {
     setSelectedDate(null);
     setExpandedDate(null);
-    heatmapChartRef.current
-      ?.getEchartsInstance()
-      ?.dispatchAction({ type: "unselect", seriesIndex: 0 });
   }, []);
-
-  // Sync selectedDate (e.g. from table row click) → ECharts select highlight
-  useEffect(() => {
-    if (isMobile || !heatmapChartRef.current) return;
-    const instance = heatmapChartRef.current.getEchartsInstance();
-    if (!instance) return;
-    instance.dispatchAction({ type: "unselect", seriesIndex: 0 });
-    if (selectedDate && data?.daily) {
-      const filtered = data.daily.filter((d) => d.record_count > 0);
-      const idx = filtered.findIndex((d) => d.date === selectedDate);
-      if (idx >= 0) {
-        instance.dispatchAction({
-          type: "select",
-          seriesIndex: 0,
-          dataIndex: idx,
-        });
-      }
-    }
-  }, [selectedDate, isMobile, data]);
 
   return (
     <div className="flex flex-col h-full gap-3">

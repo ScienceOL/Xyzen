@@ -1,17 +1,36 @@
-import { useState, useEffect, useCallback } from "react";
 import { redemptionService, type AdminCode } from "@/service/redemptionService";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { formatDatetime } from "./shared/constants";
 
 interface CodesListProps {
   adminSecret: string;
   backendUrl: string;
   newCode?: AdminCode;
+  newCodeKey?: number;
 }
 
-export function CodesList({ adminSecret, newCode }: CodesListProps) {
+export function CodesList({
+  adminSecret,
+  newCode,
+  newCodeKey,
+}: CodesListProps) {
   const [codes, setCodes] = useState<AdminCode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
+
+  const showSuccess = (msg: string, duration = 3000) => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    setSuccess(msg);
+    successTimerRef.current = setTimeout(() => setSuccess(null), duration);
+  };
 
   const loadCodes = useCallback(async () => {
     setIsLoading(true);
@@ -34,8 +53,7 @@ export function CodesList({ adminSecret, newCode }: CodesListProps) {
     try {
       await redemptionService.adminDeactivateCode(adminSecret, codeId);
       await loadCodes();
-      setSuccess("Code deactivated successfully");
-      setTimeout(() => setSuccess(null), 3000);
+      showSuccess("Code deactivated successfully");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to deactivate code",
@@ -47,18 +65,7 @@ export function CodesList({ adminSecret, newCode }: CodesListProps) {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    setSuccess(`Copied: ${text}`);
-    setTimeout(() => setSuccess(null), 2000);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    showSuccess(`Copied: ${text}`, 2000);
   };
 
   useEffect(() => {
@@ -69,7 +76,7 @@ export function CodesList({ adminSecret, newCode }: CodesListProps) {
     if (newCode) {
       setCodes((prev) => [newCode, ...prev]);
     }
-  }, [newCode]);
+  }, [newCodeKey]);
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6">
@@ -191,7 +198,7 @@ export function CodesList({ adminSecret, newCode }: CodesListProps) {
                   Created:
                 </span>{" "}
                 <span className="text-neutral-900 dark:text-white">
-                  {formatDate(code.created_at)}
+                  {formatDatetime(code.created_at)}
                 </span>
               </div>
               {code.expires_at && (
@@ -200,7 +207,7 @@ export function CodesList({ adminSecret, newCode }: CodesListProps) {
                     Expires:
                   </span>{" "}
                   <span className="text-neutral-900 dark:text-white">
-                    {formatDate(code.expires_at)}
+                    {formatDatetime(code.expires_at)}
                   </span>
                 </div>
               )}
