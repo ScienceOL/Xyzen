@@ -42,7 +42,7 @@ class ImageConfig(BaseModel):
 # Only keys that differ from the env-var / default config need to be listed.
 # ---------------------------------------------------------------------------
 
-_REGION_IMAGE_OVERRIDES: dict[str, dict[str, str]] = {
+REGION_IMAGE_OVERRIDES: dict[str, dict[str, str]] = {
     "zh-cn": {
         "Provider": "qwen",
         "Model": "qwen-image-max",
@@ -62,5 +62,5 @@ def get_image_config() -> ImageConfig:
     from app.configs import configs
 
     region = configs.Region.lower()
-    overrides = _REGION_IMAGE_OVERRIDES.get(region, {})
+    overrides = REGION_IMAGE_OVERRIDES.get(region, {})
     return configs.Image.model_copy(update=overrides)

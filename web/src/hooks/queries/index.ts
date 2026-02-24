@@ -41,3 +41,9 @@ export {
 
 // System queries
 export { useBackendVersion, useInvalidateVersion } from "./useSystemQuery";
+
+// Scheduled task queries
+export {
+  useCancelScheduledTask,
+  useScheduledTasks,
+} from "./useScheduledTasksQuery";

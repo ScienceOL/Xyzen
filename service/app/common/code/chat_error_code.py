@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import StrEnum
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
@@ -93,13 +96,22 @@ _DEFAULT_MESSAGES: dict[ChatErrorCode, str] = {
 }
 
 
-def classify_exception(e: Exception) -> tuple[ChatErrorCode, str]:
-    """Classify an exception into a ChatErrorCode and user-safe message.
+@dataclass(frozen=True)
+class ClassifiedError:
+    """Rich error classification result with debugging metadata."""
 
-    Replaces the string-matching logic from _handle_streaming_error.
+    code: ChatErrorCode
+    message: str
+    error_type: str | None  # Exception class name (only for non-user-safe errors)
+    error_ref: str  # Unique reference ID, e.g. "ERR-ABCD1234"
+    occurred_at: str  # ISO 8601 timestamp
+
+
+def classify_exception(e: Exception) -> ClassifiedError:
+    """Classify an exception into a ClassifiedError with debugging metadata.
 
     Returns:
-        (error_code, safe_message) tuple
+        ClassifiedError with code, message, error_type, error_ref, and occurred_at.
     """
     error_str = str(e).lower()
 
@@ -120,4 +132,14 @@ def classify_exception(e: Exception) -> tuple[ChatErrorCode, str]:
     else:
         code = ChatErrorCode.SYSTEM_INTERNAL_ERROR
 
-    return code, _DEFAULT_MESSAGES[code]
+    error_ref = f"ERR-{uuid4().hex[:8].upper()}"
+    occurred_at = datetime.now(timezone.utc).isoformat()
+    error_type = type(e).__name__ if not code.user_safe else None
+
+    return ClassifiedError(
+        code=code,
+        message=_DEFAULT_MESSAGES[code],
+        error_type=error_type,
+        error_ref=error_ref,
+        occurred_at=occurred_at,
+    )

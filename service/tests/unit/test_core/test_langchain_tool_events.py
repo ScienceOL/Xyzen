@@ -76,7 +76,7 @@ async def test_subagent_success_outcome_marks_tool_response_completed() -> None:
     event = events[0]
     assert event["type"] == ChatEventType.TOOL_CALL_RESPONSE
     assert event["data"]["status"] == "completed"
-    assert event["data"]["result"] == "delegate result"
+    assert event["data"]["result"] == {"success": True, "data": "delegate result"}
     assert "error" not in event["data"]
 
 

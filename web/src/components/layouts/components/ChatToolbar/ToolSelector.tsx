@@ -17,6 +17,7 @@ import {
   isMemoryEnabled,
   isSandboxEnabled,
   isSubagentEnabled,
+  isVideoEnabled,
   isWebSearchEnabled,
   updateImageEnabled,
   updateKnowledgeEnabled,
@@ -24,6 +25,7 @@ import {
   updateMemoryEnabled,
   updateSandboxEnabled,
   updateSubagentEnabled,
+  updateVideoEnabled,
   updateWebSearchEnabled,
 } from "@/core/agent/toolConfig";
 import { cn } from "@/lib/utils";
@@ -38,6 +40,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CommandLineIcon,
+  FilmIcon,
   GlobeAltIcon,
   LightBulbIcon,
   LockClosedIcon,
@@ -57,6 +60,7 @@ const TOOL_REQUIRED_PLAN: Record<string, PlanName> = {
   webSearch: "free",
   knowledge: "free",
   image: "free",
+  video: "free",
   literatureSearch: "free",
   memory: "free",
   sandbox: "standard",
@@ -116,6 +120,7 @@ export function ToolSelector({
   const memoryEnabled = isMemoryEnabled(agent);
   const sandboxEnabled = isSandboxEnabled(agent);
   const subagentEnabled = isSubagentEnabled(agent);
+  const videoEnabled = isVideoEnabled(agent);
 
   const sandboxLocked = useMemo(
     () => isToolLocked("sandbox", userPlan),
@@ -130,6 +135,7 @@ export function ToolSelector({
     webSearchEnabled,
     effectiveKnowledgeSetId && knowledgeEnabled,
     imageEnabled,
+    videoEnabled,
     literatureSearchEnabled,
     memoryEnabled,
     sandboxEnabled,
@@ -185,6 +191,12 @@ export function ToolSelector({
   const handleToggleImage = async () => {
     if (!agent) return;
     const newGraphConfig = updateImageEnabled(agent, !imageEnabled);
+    await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+  };
+
+  const handleToggleVideo = async () => {
+    if (!agent) return;
+    const newGraphConfig = updateVideoEnabled(agent, !videoEnabled);
     await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
   };
 
@@ -456,6 +468,34 @@ export function ToolSelector({
               </div>
             </div>
             {imageEnabled && <CheckIcon className="h-4 w-4 text-green-500" />}
+          </button>
+
+          {/* Video Generation */}
+          <button
+            onClick={handleToggleVideo}
+            className={cn(
+              "w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors",
+              "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+              videoEnabled && "bg-violet-50 dark:bg-violet-900/20",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <FilmIcon
+                className={cn(
+                  "h-4 w-4",
+                  videoEnabled ? "text-violet-500" : "text-neutral-400",
+                )}
+              />
+              <div className="text-left">
+                <div className="text-sm font-medium">
+                  {t("app.toolbar.video", "Video")}
+                </div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {t("app.toolbar.videoDesc", "Generate videos")}
+                </div>
+              </div>
+            </div>
+            {videoEnabled && <CheckIcon className="h-4 w-4 text-violet-500" />}
           </button>
 
           {/* Literature Search */}

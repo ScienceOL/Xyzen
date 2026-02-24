@@ -7,13 +7,18 @@ import {
   ClipboardIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
+import remarkCjkFriendly from "remark-cjk-friendly";
+import remarkCjkFriendlyGfmStrikethrough from "remark-cjk-friendly-gfm-strikethrough";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
@@ -45,63 +50,6 @@ const LazyReactECharts = React.lazy(async () => {
 });
 
 import "katex/dist/katex.css";
-
-type MdastNode = {
-  type: string;
-  value?: string;
-  children?: MdastNode[];
-};
-
-function remarkStrongQuotedText() {
-  const pattern = /\*\*([“"「『])([\s\S]+?)(["”」』])\*\*/g;
-
-  const transform = (node: MdastNode) => {
-    if (!node || !Array.isArray(node.children)) return;
-
-    const nextChildren: MdastNode[] = [];
-
-    for (const child of node.children) {
-      if (child?.type === "text" && typeof child.value === "string") {
-        const text = child.value;
-        let lastIndex = 0;
-        pattern.lastIndex = 0;
-
-        for (
-          let match = pattern.exec(text);
-          match;
-          match = pattern.exec(text)
-        ) {
-          const start = match.index;
-          const end = start + match[0].length;
-
-          const before = text.slice(lastIndex, start);
-          if (before) nextChildren.push({ type: "text", value: before });
-
-          const quoted = `${match[1]}${match[2]}${match[3]}`;
-          nextChildren.push({
-            type: "strong",
-            children: [{ type: "text", value: quoted }],
-          });
-
-          lastIndex = end;
-        }
-
-        const after = text.slice(lastIndex);
-        if (after) nextChildren.push({ type: "text", value: after });
-        continue;
-      }
-
-      transform(child);
-      nextChildren.push(child);
-    }
-
-    node.children = nextChildren;
-  };
-
-  return (tree: MdastNode) => {
-    transform(tree);
-  };
-}
 
 interface CodeBlockProps {
   language: string;
@@ -748,14 +696,184 @@ function ImageLightboxEscapeCatcher({ onEscape }: { onEscape: () => void }) {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// MarkdownVideo — thumbnail with play overlay, lightbox on click
+// ---------------------------------------------------------------------------
+
+const MarkdownVideoComponent: React.FC<
+  React.VideoHTMLAttributes<HTMLVideoElement>
+> = (props) => {
+  const { src } = props;
+  const [isOpen, setIsOpen] = useState(false);
+  const [thumbReady, setThumbReady] = useState(false);
+  const thumbRef = React.useRef<HTMLVideoElement>(null);
+
+  if (!src) return null;
+
+  return (
+    <>
+      {/* Thumbnail */}
+      <span
+        className="inline-block not-prose cursor-pointer relative group/vid rounded-lg"
+        onClick={() => setIsOpen(true)}
+      >
+        <video
+          ref={thumbRef}
+          src={src}
+          preload="metadata"
+          muted
+          playsInline
+          onLoadedData={() => setThumbReady(true)}
+          className={clsx(
+            "block w-[95%] sm:max-w-80 max-h-80 h-auto rounded-lg transition-all duration-200 group-hover/vid:scale-[1.02] group-hover/vid:shadow-lg",
+            !thumbReady && "invisible",
+          )}
+        />
+        {!thumbReady && (
+          <span
+            className="block relative overflow-hidden rounded-lg bg-neutral-200 dark:bg-neutral-800"
+            style={{ width: "200px", height: "150px" }}
+          >
+            <motion.span
+              className="absolute inset-0 bg-linear-to-r from-transparent via-white/50 dark:via-white/10 to-transparent"
+              animate={{ x: ["-100%", "200%"] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              style={{ backgroundSize: "200% 100%" }}
+            />
+          </span>
+        )}
+        {/* Play button overlay */}
+        {thumbReady && (
+          <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/20 group-hover/vid:bg-black/30 transition-colors pointer-events-none">
+            <span className="flex items-center justify-center w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm text-white">
+              <PlayIcon className="h-6 w-6 ml-0.5" />
+            </span>
+          </span>
+        )}
+      </span>
+
+      {/* Lightbox */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
+                role="dialog"
+                aria-modal="true"
+                onClick={() => setIsOpen(false)}
+              >
+                <ImageLightboxEscapeCatcher onEscape={() => setIsOpen(false)} />
+                {/* Close button */}
+                <div className="absolute top-6 right-6 z-10 flex items-center gap-2">
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const response = await fetch(src);
+                        const blob = await response.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = blobUrl;
+                        link.download = src.split("/").pop() || "video.mp4";
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(blobUrl);
+                      } catch (err) {
+                        console.error("Failed to download video:", err);
+                      }
+                    }}
+                    className="rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
+                    aria-label="Download"
+                  >
+                    <ArrowDownTrayIcon className="h-6 w-6" />
+                  </motion.button>
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20"
+                    aria-label="Close"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </motion.button>
+                </div>
+                <motion.video
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  src={src}
+                  controls
+                  autoPlay
+                  className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+    </>
+  );
+};
+
+const MarkdownVideo = React.memo(
+  MarkdownVideoComponent,
+  (prevProps, nextProps) => prevProps.src === nextProps.src,
+);
+
 // Stable plugin arrays — declared outside so references never change between renders
 const REMARK_PLUGINS = [
   remarkMath,
   remarkGfm,
+  remarkCjkFriendly,
+  remarkCjkFriendlyGfmStrikethrough,
   remarkBreaks,
-  remarkStrongQuotedText,
 ];
-const REHYPE_PLUGINS = [rehypeKatex];
+const SANITIZE_SCHEMA = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), "video", "audio", "source"],
+  attributes: {
+    ...defaultSchema.attributes,
+    // Preserve remark-math marker classes so rehype-katex (which runs after
+    // sanitize) can still find and transform math nodes.
+    code: [
+      ...(defaultSchema.attributes?.code ?? []),
+      ["className", /^language-./, "math-inline", "math-display"],
+    ],
+    video: [
+      "src",
+      "controls",
+      "width",
+      "height",
+      "poster",
+      "preload",
+      "loop",
+      "muted",
+      "className",
+    ],
+    audio: ["src", "controls", "preload", "loop", "muted", "className"],
+    source: ["src", "type"],
+  },
+};
+const REHYPE_PLUGINS = [
+  rehypeRaw,
+  [rehypeSanitize, SANITIZE_SCHEMA],
+  rehypeKatex,
+] as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // Shared dark-mode state via module-level singleton to avoid per-instance MutationObservers
 let _isDarkCached = false;
@@ -873,6 +991,7 @@ const Markdown: React.FC<MarkdownProps> = React.memo(function Markdown(props) {
         );
       },
       img: MarkdownImage,
+      video: MarkdownVideo,
     }),
     [isDark],
   );

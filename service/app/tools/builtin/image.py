@@ -336,7 +336,7 @@ async def _generate_image_with_dashscope(
     return image_bytes, mime_type
 
 
-async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> list[tuple[bytes, str, str]]:
+async def load_images_for_generation(user_id: str, image_ids: list[str]) -> list[tuple[bytes, str, str]]:
     """
     Load multiple images for generation from the database.
 
@@ -440,7 +440,7 @@ async def _generate_image(
         source_image_ids: list[str] = image_ids or []
 
         if source_image_ids:
-            loaded_images = await _load_images_for_generation(user_id, source_image_ids)
+            loaded_images = await load_images_for_generation(user_id, source_image_ids)
             images_for_generation = [(img[0], img[1]) for img in loaded_images]
             source_storage_keys = [img[2] for img in loaded_images]
 
@@ -835,6 +835,7 @@ def create_image_tools_for_agent(user_id: str, session_id: str | None = None) ->
 __all__ = [
     "create_image_tools",
     "create_image_tools_for_agent",
+    "load_images_for_generation",
     "GenerateImageInput",
     "ReadImageInput",
     "MAX_INPUT_IMAGES",

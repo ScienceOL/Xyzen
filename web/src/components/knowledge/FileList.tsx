@@ -66,6 +66,21 @@ interface FileListProps {
   removeTreeItems?: (ids: string[]) => void;
   /** Optimistically rename an item in the tree */
   renameTreeItem?: (id: string, newName: string) => void;
+  /** When true, hide all mutating actions (rename/delete/move/upload) */
+  readonly?: boolean;
+  /** Override callbacks for skill mode — when set, FileList uses these instead of direct service imports */
+  onDeleteItem?: (id: string, isDir: boolean) => Promise<void>;
+  onRenameItem?: (id: string, isDir: boolean, newName: string) => Promise<void>;
+  onMoveItem?: (
+    id: string,
+    isDir: boolean,
+    targetFolderId: string | null,
+  ) => Promise<void>;
+  onDownloadFile?: (fileId: string) => Promise<Response>;
+  onCreateSkillFolder?: (
+    name: string,
+    parentId: string | null,
+  ) => Promise<void>;
 }
 
 export interface FileListHandle {
@@ -132,6 +147,12 @@ export const FileList = React.memo(
         onRefreshTree,
         removeTreeItems,
         renameTreeItem,
+        readonly: readonlyMode,
+        onDeleteItem,
+        onRenameItem,
+        onMoveItem,
+        onDownloadFile,
+        onCreateSkillFolder,
       },
       ref,
     ) => {
@@ -140,11 +161,16 @@ export const FileList = React.memo(
       const [folders, setFolders] = useState<Folder[]>([]);
       const [isLoading, setIsLoading] = useState(false);
 
+      // Helper: is this a tree-based tab?
+      const isTreeTab =
+        filter === "all" ||
+        filter === "knowledge" ||
+        filter === "trash" ||
+        filter === "skill";
+      const isSkillMode = filter === "skill";
+
       // Notify parent when loading state changes
-      const effectiveLoading =
-        filter === "all" || filter === "knowledge" || filter === "trash"
-          ? treeLoading
-          : isLoading;
+      const effectiveLoading = isTreeTab ? treeLoading : isLoading;
       useEffect(() => {
         onLoadingChange?.(effectiveLoading);
       }, [effectiveLoading, onLoadingChange]);
@@ -264,13 +290,17 @@ export const FileList = React.memo(
                   ? typeMap[id] === "folder"
                   : folderIds.has(id);
                 if (isFolder) {
-                  return folderService.updateFolder(id, {
-                    parent_id: targetFolderId,
-                  });
+                  return isSkillMode && onMoveItem
+                    ? onMoveItem(id, true, targetFolderId)
+                    : folderService.updateFolder(id, {
+                        parent_id: targetFolderId,
+                      });
                 }
-                return fileService.updateFile(id, {
-                  parent_id: targetFolderId,
-                });
+                return isSkillMode && onMoveItem
+                  ? onMoveItem(id, false, targetFolderId)
+                  : fileService.updateFile(id, {
+                      parent_id: targetFolderId,
+                    });
               }),
             );
             setSelectedIds(new Set());
@@ -278,6 +308,7 @@ export const FileList = React.memo(
             if (
               (filter === "all" ||
                 filter === "knowledge" ||
+                filter === "skill" ||
                 filter === "trash") &&
               onRefreshTree
             ) {
@@ -289,7 +320,7 @@ export const FileList = React.memo(
             console.error("Drop move failed", e);
           }
         },
-        [folderIds, filter, onRefreshTree],
+        [folderIds, filter, isSkillMode, onMoveItem, onRefreshTree],
       );
 
       // Drag start handler for flat list/grid items
@@ -605,6 +636,7 @@ export const FileList = React.memo(
           if (
             filter === "all" ||
             filter === "knowledge" ||
+            filter === "skill" ||
             filter === "trash"
           ) {
             return;
@@ -721,16 +753,20 @@ export const FileList = React.memo(
       const handleFolderCreated = useCallback(
         async (name: string, parentId: string | null) => {
           try {
-            const folder = await folderService.createFolder({
-              name,
-              parent_id: parentId,
-            });
-            // If in knowledge view, link the new folder to the knowledge set
-            if (filter === "knowledge" && currentKnowledgeSetId) {
-              await knowledgeSetService.linkFileToKnowledgeSet(
-                currentKnowledgeSetId,
-                folder.id,
-              );
+            if (isSkillMode && onCreateSkillFolder) {
+              await onCreateSkillFolder(name, parentId);
+            } else {
+              const folder = await folderService.createFolder({
+                name,
+                parent_id: parentId,
+              });
+              // If in knowledge view, link the new folder to the knowledge set
+              if (filter === "knowledge" && currentKnowledgeSetId) {
+                await knowledgeSetService.linkFileToKnowledgeSet(
+                  currentKnowledgeSetId,
+                  folder.id,
+                );
+              }
             }
             // Refresh the tree via the store
             if (onRefreshTree) {
@@ -740,7 +776,13 @@ export const FileList = React.memo(
             console.error("Failed to create folder", e);
           }
         },
-        [filter, currentKnowledgeSetId, onRefreshTree],
+        [
+          filter,
+          isSkillMode,
+          currentKnowledgeSetId,
+          onRefreshTree,
+          onCreateSkillFolder,
+        ],
       );
 
       // Load more files when scrolling to bottom
@@ -918,22 +960,34 @@ export const FileList = React.memo(
           // Optimistic: rename in tree immediately
           if (
             renameTreeItem &&
-            (filter === "all" || filter === "knowledge" || filter === "trash")
+            (filter === "all" ||
+              filter === "knowledge" ||
+              filter === "skill" ||
+              filter === "trash")
           ) {
             renameTreeItem(item.id, newName);
           }
 
           if (type === "folder") {
-            await folderService.updateFolder(item.id, { name: newName });
+            if (isSkillMode && onRenameItem) {
+              await onRenameItem(item.id, true, newName);
+            } else {
+              await folderService.updateFolder(item.id, { name: newName });
+            }
           } else {
-            await fileService.updateFile(item.id, {
-              original_filename: newName,
-            });
+            if (isSkillMode && onRenameItem) {
+              await onRenameItem(item.id, false, newName);
+            } else {
+              await fileService.updateFile(item.id, {
+                original_filename: newName,
+              });
+            }
           }
           // Refresh: tree tabs via store, others locally
           if (
             (filter === "all" ||
               filter === "knowledge" ||
+              filter === "skill" ||
               filter === "trash") &&
             onRefreshTree
           ) {
@@ -955,18 +1009,27 @@ export const FileList = React.memo(
 
         try {
           if (type === "folder") {
-            await folderService.updateFolder(item.id, {
-              parent_id: targetFolderId,
-            });
+            if (isSkillMode && onMoveItem) {
+              await onMoveItem(item.id, true, targetFolderId);
+            } else {
+              await folderService.updateFolder(item.id, {
+                parent_id: targetFolderId,
+              });
+            }
           } else {
-            await fileService.updateFile(item.id, {
-              parent_id: targetFolderId,
-            });
+            if (isSkillMode && onMoveItem) {
+              await onMoveItem(item.id, false, targetFolderId);
+            } else {
+              await fileService.updateFile(item.id, {
+                parent_id: targetFolderId,
+              });
+            }
           }
           // Refresh: tree tabs via store, others locally
           if (
             (filter === "all" ||
               filter === "knowledge" ||
+              filter === "skill" ||
               filter === "trash") &&
             onRefreshTree
           ) {
@@ -1044,6 +1107,7 @@ export const FileList = React.memo(
                   removeTreeItems &&
                   (filter === "all" ||
                     filter === "knowledge" ||
+                    filter === "skill" ||
                     filter === "trash")
                 ) {
                   // Collect all IDs including descendants of selected folders
@@ -1058,7 +1122,9 @@ export const FileList = React.memo(
                 if (selectedFileIds.length > 0) {
                   await Promise.all(
                     selectedFileIds.map((id) =>
-                      fileService.deleteFile(id, isHardDelete),
+                      isSkillMode && onDeleteItem
+                        ? onDeleteItem(id, false)
+                        : fileService.deleteFile(id, isHardDelete),
                     ),
                   );
                 }
@@ -1066,7 +1132,9 @@ export const FileList = React.memo(
                 if (selectedFolderIds.length > 0) {
                   await Promise.all(
                     selectedFolderIds.map((id) =>
-                      folderService.deleteFolder(id, isHardDelete),
+                      isSkillMode && onDeleteItem
+                        ? onDeleteItem(id, true)
+                        : folderService.deleteFolder(id, isHardDelete),
                     ),
                   );
                 }
@@ -1080,6 +1148,7 @@ export const FileList = React.memo(
                 if (
                   (filter === "all" ||
                     filter === "knowledge" ||
+                    filter === "skill" ||
                     filter === "trash") &&
                   onRefreshTree
                 ) {
@@ -1127,6 +1196,7 @@ export const FileList = React.memo(
                 removeTreeItems &&
                 (filter === "all" ||
                   filter === "knowledge" ||
+                  filter === "skill" ||
                   filter === "trash")
               ) {
                 const descendantIds =
@@ -1137,9 +1207,17 @@ export const FileList = React.memo(
               }
 
               if (type === "folder") {
-                await folderService.deleteFolder(item.id, isHardDelete);
+                if (isSkillMode && onDeleteItem) {
+                  await onDeleteItem(item.id, true);
+                } else {
+                  await folderService.deleteFolder(item.id, isHardDelete);
+                }
               } else {
-                await fileService.deleteFile(item.id, isHardDelete);
+                if (isSkillMode && onDeleteItem) {
+                  await onDeleteItem(item.id, false);
+                } else {
+                  await fileService.deleteFile(item.id, isHardDelete);
+                }
               }
 
               // Optimistic update - only for hard delete (permanent deletion releases space)
@@ -1151,6 +1229,7 @@ export const FileList = React.memo(
               if (
                 (filter === "all" ||
                   filter === "knowledge" ||
+                  filter === "skill" ||
                   filter === "trash") &&
                 onRefreshTree
               ) {
@@ -1191,7 +1270,10 @@ export const FileList = React.memo(
 
       const handleDownload = async (fileId: string, fileName: string) => {
         try {
-          const response = await fileService.downloadRaw(fileId);
+          const response =
+            isSkillMode && onDownloadFile
+              ? await onDownloadFile(fileId)
+              : await fileService.downloadRaw(fileId);
 
           const blob = await response.blob();
           const objectUrl = URL.createObjectURL(blob);
@@ -1302,9 +1384,6 @@ export const FileList = React.memo(
       };
 
       // For tree tabs, use treeItems for empty/loading checks
-      const isTreeTab =
-        filter === "all" || filter === "knowledge" || filter === "trash";
-
       if (isTreeTab) {
         if (treeLoading && treeItems.length === 0) {
           return null;
@@ -1376,7 +1455,10 @@ export const FileList = React.memo(
               }}
             />
           )}
-          {filter === "all" || filter === "knowledge" || filter === "trash" ? (
+          {filter === "all" ||
+          filter === "knowledge" ||
+          filter === "skill" ||
+          filter === "trash" ? (
             <FileTreeView
               ref={treeViewRef}
               treeItems={treeItems}
@@ -1705,10 +1787,12 @@ export const FileList = React.memo(
               item={contextMenu.item}
               position={contextMenu.position}
               onClose={() => setContextMenu(null)}
-              onRename={handleRename}
-              onDelete={handleDeleteItem}
-              onMove={(item, type) =>
-                setMoveModal({ isOpen: true, item, type })
+              onRename={readonlyMode ? undefined : handleRename}
+              onDelete={readonlyMode ? undefined : handleDeleteItem}
+              onMove={
+                readonlyMode
+                  ? undefined
+                  : (item, type) => setMoveModal({ isOpen: true, item, type })
               }
               onDownload={
                 contextMenu.type === "file"
@@ -1729,9 +1813,17 @@ export const FileList = React.memo(
                   ? (item) => handleFolderClick(item.id)
                   : undefined
               }
-              onAddToKnowledgeSet={handleAddToKnowledgeSet}
-              onRemoveFromKnowledgeSet={handleRemoveFromKnowledgeSet}
-              onRestore={(item, type) => handleRestore(item.id, type)}
+              onAddToKnowledgeSet={
+                isSkillMode ? undefined : handleAddToKnowledgeSet
+              }
+              onRemoveFromKnowledgeSet={
+                isSkillMode ? undefined : handleRemoveFromKnowledgeSet
+              }
+              onRestore={
+                isSkillMode
+                  ? undefined
+                  : (item, type) => handleRestore(item.id, type)
+              }
               onBulkDelete={
                 selectedIds.size > 1
                   ? () => handleDeleteItem(contextMenu.item, contextMenu.type)

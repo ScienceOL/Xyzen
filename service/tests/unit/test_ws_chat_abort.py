@@ -109,7 +109,7 @@ def patch_ws_dependencies(monkeypatch: pytest.MonkeyPatch) -> WsDeps:
     async def fake_heartbeat_sender(_websocket: object, _connection_id: str, _presence_redis: object) -> None:
         return
 
-    def fake_get_chat_lifecycle(_user_id: str, _db: object) -> DummyLifecycle:
+    async def fake_get_chat_lifecycle(_user_id: str, _db: object) -> DummyLifecycle:
         return DummyLifecycle()
 
     def fake_redis_from_url(*_args: object, **_kwargs: object) -> FakePresenceRedis:

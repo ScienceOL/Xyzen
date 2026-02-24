@@ -278,6 +278,60 @@ just test                        # Run all tests
 just check                       # Run all checks
 ```
 
+## Parallel Development (Worktrees)
+
+This project supports multiple LLM agents developing on separate feature branches simultaneously using git worktrees. Each worktree gets an isolated Docker stack (own DB, Redis, NGINX port) with reduced resource limits.
+
+### Architecture
+
+- **Shared**: `sciol-infra` (Casdoor, MinIO, SearXNG, infra PostgreSQL/Redis) — started once, never duplicated.
+- **Per-worktree**: `sciol-xyzen-<branch>` — isolated NGINX, service, celery, web, postgresql, redis. All replicas set to 1, memory/CPU capped (~2.3 GB RAM per worktree).
+- **Port allocation**: Main repo uses `:80`. Worktrees auto-allocate ports starting from `:8001`.
+
+### Worktree Commands
+
+```bash
+just wt feat/add-login          # Create worktree at .worktrees/feat-add-login, port 8001
+just wt feat/fix-streaming      # Create another worktree, port 8002
+just wt-list                    # List all active worktrees with ports
+just wt-port feat/add-login     # Show allocated port for a worktree
+just wt-rm feat/add-login       # Stop containers + remove worktree + free port
+```
+
+### Working in a Worktree
+
+```bash
+cd .worktrees/feat-add-login
+just dev                        # Starts isolated Docker stack on allocated port
+```
+
+- `just dev` auto-detects worktree mode via `.worktree-port` file.
+- Docker project name becomes `sciol-xyzen-feat-add-login` (no container conflicts).
+- `docker/.env.dev` is symlinked from main repo (shared API keys).
+- Each worktree has independent database state.
+
+### Submitting PRs
+
+```bash
+just pr                         # Push current branch + create PR to test
+just pr main                    # Push current branch + create PR to main
+```
+
+- If PR already exists for the branch, just pushes latest commits.
+- Auto-generates title from branch name (`feat/add-login` → `feat: add login`).
+- Auto-generates body from commit list.
+- Requires [GitHub CLI](https://cli.github.com) (`gh`).
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `launch/wt.sh` | Worktree create/list/remove, port allocation |
+| `launch/pr.sh` | Auto push + PR creation |
+| `docker/docker-compose.worktree.yaml` | Resource-limited overlay (replicas=1, memory/CPU caps) |
+| `.worktrees/` | Worktree directories (gitignored) |
+| `.worktree-port` | Per-worktree port file, read by `dev.sh` |
+
 ## Database Migrations
 
 Migrations run inside the `sciol-xyzen-service-1` container via `docker exec`:
@@ -373,12 +427,15 @@ Examples:
 
 ## Git Commit Rules
 
-This project has pre-commit hooks (basedpyright, ruff) that can fail on partially-staged files. Follow this workflow for multi-file refactors:
+**NEVER use `--no-verify`.** Pre-commit hooks (basedpyright, ruff) exist to enforce code quality. Bypassing them is not acceptable under any circumstances — not for partial staging, not for "quick fixes", not for any reason. If the hooks fail, fix the code until they pass.
 
-1. **Verify final state first**: Run `just lint-backend`, `just type-backend`, and `just test-backend` on the full working tree before committing.
-2. **Commit without verify**: Use `git commit --no-verify` to bypass pre-commit hooks that would fail on partial staging.
-3. **Logical split**: Group changes into separate logical commits (e.g., schema renames, import updates, test updates).
-4. **Conventional commits**: Use `feat:`, `fix:`, `refactor:`, `chore:` prefixes matching the existing commit history.
+Workflow for committing:
+
+1. **Fix all issues first**: Run `just lint-backend`, `just type-backend`, and `just test-backend` on the full working tree. All must pass before committing.
+2. **Stage and commit normally**: Use `git commit` (without `--no-verify`). Let the pre-commit hooks run and verify your code.
+3. **If hooks fail, fix the code**: Do not bypass. Fix lint errors, type errors, or formatting issues, then re-stage and commit again.
+4. **Logical split**: Group changes into separate logical commits (e.g., schema renames, import updates, test updates).
+5. **Conventional commits**: Use `feat:`, `fix:`, `refactor:`, `chore:` prefixes matching the existing commit history.
 
 ## Frontend Design Language
 

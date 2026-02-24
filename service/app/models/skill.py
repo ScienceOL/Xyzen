@@ -29,6 +29,8 @@ class SkillBase(SQLModel):
     metadata_json: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     # OSS folder prefix for this skill package (one skill = one folder).
     resource_prefix: str | None = Field(default=None, index=True, max_length=512)
+    # Root folder ID in the File table for DB-backed skill resources.
+    root_folder_id: UUID | None = Field(default=None, nullable=True)
 
 
 class Skill(SkillBase, table=True):
@@ -57,6 +59,7 @@ class SkillRead(SkillBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    root_folder_id: UUID | None = None
 
 
 class SkillUpdate(SQLModel):
@@ -66,6 +69,7 @@ class SkillUpdate(SQLModel):
     compatibility: str | None = None
     metadata_json: dict[str, Any] | None = None
     resource_prefix: str | None = None
+    root_folder_id: UUID | None = None
 
 
 class AgentSkillLink(SQLModel, table=True):

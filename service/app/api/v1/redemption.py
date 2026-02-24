@@ -16,6 +16,7 @@ from app.infra.database import get_session as get_db_session
 from app.middleware.auth import get_current_user
 
 from ...repos.consume import ConsumeRepository
+from ...repos.redemption import RedemptionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -769,6 +770,11 @@ class ConsumeRecordResponse(BaseModel):
     output_tokens: Optional[int]
     total_tokens: Optional[int]
     consume_state: str
+    model_tier: Optional[str] = None
+    model_name: Optional[str] = None
+    provider: Optional[str] = None
+    cost_usd: Optional[float] = None
+    record_type: Optional[str] = None
     created_at: datetime
 
 
@@ -844,6 +850,11 @@ async def get_consume_records(
                 output_tokens=record.output_tokens,
                 total_tokens=record.total_tokens,
                 consume_state=record.consume_state,
+                model_tier=record.model_tier,
+                model_name=record.model_name,
+                provider=record.provider,
+                cost_usd=record.cost_usd,
+                record_type=record.record_type,
                 created_at=record.created_at,
             )
             for record in records
@@ -915,3 +926,287 @@ async def get_user_activity_stats(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+# ==================== New Aggregated Admin Stats Endpoints ====================
+
+
+class ConsumptionHeatmapEntry(BaseModel):
+    date: str
+    total_tokens: int
+    input_tokens: int
+    output_tokens: int
+    credits: int
+    cost_usd: float
+    record_count: int
+    llm_count: int = 0
+    tool_call_count: int = 0
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    by_tier: dict[str, dict[str, int | float]] = {}
+
+
+class UserConsumptionHeatmapEntry(BaseModel):
+    date: str
+    active_users: int
+    total_tokens: int
+    credits: int
+    cost_usd: float
+    record_count: int
+
+
+class ConsumptionTopUserEntry(BaseModel):
+    user_id: str
+    total_tokens: int
+    input_tokens: int
+    output_tokens: int
+    credits: int
+    cost_usd: float
+    record_count: int
+    llm_count: int = 0
+    tool_call_count: int = 0
+    subscription_tier: str = "free"
+    by_tier: dict[str, dict[str, int | float]] = {}
+
+
+class RedemptionHeatmapEntry(BaseModel):
+    date: str
+    total_credits: int
+    redemption_count: int
+    unique_users: int
+
+
+class RedemptionRankingEntry(BaseModel):
+    user_id: str
+    total_credits: int
+    redemption_count: int
+
+
+class NewUsersHeatmapEntry(BaseModel):
+    date: str
+    new_users: int
+
+
+class FilterOptionsResponse(BaseModel):
+    providers: list[str]
+    models: list[str]
+
+
+class CreditHeatmapEntry(BaseModel):
+    date: str
+    total_credits: int
+    transaction_count: int
+    unique_users: int
+    welcome_bonus_credits: int = 0
+    redemption_code_credits: int = 0
+    subscription_monthly_credits: int = 0
+    daily_checkin_credits: int = 0
+
+
+class CreditRankingEntry(BaseModel):
+    user_id: str
+    total_credits: int
+    transaction_count: int
+    welcome_bonus_credits: int = 0
+    redemption_code_credits: int = 0
+    subscription_monthly_credits: int = 0
+    daily_checkin_credits: int = 0
+
+
+@router.get("/admin/stats/filter-options", response_model=FilterOptionsResponse)
+async def get_filter_options(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    provider: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get distinct providers and models for filter dropdowns (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        consume_repo = ConsumeRepository(db)
+        data = await consume_repo.get_admin_filter_options(year, tz or "UTC", provider)
+        return FilterOptionsResponse(**data)
+    except Exception as e:
+        logger.error(f"Error fetching filter options: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/consumption-heatmap", response_model=list[ConsumptionHeatmapEntry])
+async def get_consumption_heatmap(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    model_tier: Optional[str] = None,
+    model_name: Optional[str] = None,
+    provider: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get daily consumption heatmap data for an entire year (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        consume_repo = ConsumeRepository(db)
+        data = await consume_repo.get_admin_consumption_heatmap(year, tz or "UTC", model_tier, model_name, provider)
+        return [ConsumptionHeatmapEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching consumption heatmap: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/user-consumption-heatmap", response_model=list[UserConsumptionHeatmapEntry])
+async def get_user_consumption_heatmap(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    model_tier: Optional[str] = None,
+    model_name: Optional[str] = None,
+    provider: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get daily user consumption heatmap (active users per day) (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        consume_repo = ConsumeRepository(db)
+        data = await consume_repo.get_admin_user_consumption_heatmap(
+            year, tz or "UTC", model_tier, model_name, provider
+        )
+        return [UserConsumptionHeatmapEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching user consumption heatmap: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/consumption-top-users", response_model=list[ConsumptionTopUserEntry])
+async def get_consumption_top_users(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    date: Optional[str] = None,
+    model_tier: Optional[str] = None,
+    model_name: Optional[str] = None,
+    limit: int = 20,
+    search: Optional[str] = None,
+    provider: Optional[str] = None,
+    include_tiers: bool = False,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get top users by consumption for a year or specific date (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        consume_repo = ConsumeRepository(db)
+        data = await consume_repo.get_admin_top_users_by_range(
+            year, tz or "UTC", date, model_tier, model_name, limit, search, provider, include_tiers
+        )
+        return [ConsumptionTopUserEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching consumption top users: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/credit-heatmap", response_model=list[CreditHeatmapEntry])
+async def get_credit_heatmap(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    source: Optional[str] = None,
+    tier: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get daily credit heatmap from CreditLedger (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        redemption_repo = RedemptionRepository(db)
+        data = await redemption_repo.get_admin_credit_heatmap(year, tz or "UTC", source, tier)
+        return [CreditHeatmapEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching credit heatmap: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/credit-rankings", response_model=list[CreditRankingEntry])
+async def get_credit_rankings(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    source: Optional[str] = None,
+    tier: Optional[str] = None,
+    date: Optional[str] = None,
+    limit: int = 20,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get per-user credit rankings from CreditLedger (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        redemption_repo = RedemptionRepository(db)
+        data = await redemption_repo.get_admin_credit_rankings(year, tz or "UTC", source, tier, date, limit, search)
+        return [CreditRankingEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching credit rankings: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/redemption-heatmap", response_model=list[RedemptionHeatmapEntry])
+async def get_redemption_heatmap(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get daily redemption heatmap data for an entire year (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        redemption_repo = RedemptionRepository(db)
+        data = await redemption_repo.get_admin_redemption_heatmap(year, tz or "UTC")
+        return [RedemptionHeatmapEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching redemption heatmap: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/redemption-rankings", response_model=list[RedemptionRankingEntry])
+async def get_redemption_rankings(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    date: Optional[str] = None,
+    limit: int = 20,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get per-user redemption rankings for a year or specific date (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        redemption_repo = RedemptionRepository(db)
+        data = await redemption_repo.get_admin_redemption_rankings(year, tz or "UTC", date, limit, search)
+        return [RedemptionRankingEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching redemption rankings: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/new-users-heatmap", response_model=list[NewUsersHeatmapEntry])
+async def get_new_users_heatmap(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get daily new user registrations heatmap for an entire year (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        redemption_repo = RedemptionRepository(db)
+        data = await redemption_repo.get_admin_new_users_heatmap(year, tz or "UTC")
+        return [NewUsersHeatmapEntry(**row) for row in data]
+    except Exception as e:
+        logger.error(f"Error fetching new users heatmap: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

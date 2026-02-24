@@ -50,6 +50,13 @@ class TestAgentAPI:
         assert len(agents) >= 1
         assert any(a["name"] == "小二" for a in agents)
 
+    @pytest.mark.skip(
+        reason=(
+            "Heuristic no longer triggers: ensure_user_default_agents now also creates "
+            "a root (CEO) agent, so after deleting '小二' the agent list is non-empty "
+            "and the 'new user with 0 agents + 0 sessions' restore path is never reached."
+        )
+    )
     async def test_delete_default_agent_heuristic(self, async_client: AsyncClient):
         """
         Test deleting default agent.

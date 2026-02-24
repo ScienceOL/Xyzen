@@ -53,6 +53,7 @@ from .tool import Tool, ToolFunction, ToolVersion
 from .push_subscription import PushSubscription
 from .root_agent import RootAgent, RootAgentRead
 from .sandbox_profile import SandboxProfile, SandboxProfileRead, SandboxProfileUpdate
+from .scheduled_task import ScheduledTask, ScheduledTaskCreate, ScheduledTaskRead, ScheduledTaskUpdate
 from .topic import Topic, TopicRead, TopicReadWithMessages
 
 logger = logging.getLogger(__name__)
@@ -141,6 +142,10 @@ __all__ = [
     "SandboxProfile",
     "SandboxProfileRead",
     "SandboxProfileUpdate",
+    "ScheduledTask",
+    "ScheduledTaskCreate",
+    "ScheduledTaskRead",
+    "ScheduledTaskUpdate",
     "UserWallet",
     "SubscriptionRole",
     "SubscriptionRoleRead",

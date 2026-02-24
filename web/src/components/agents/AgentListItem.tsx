@@ -274,10 +274,13 @@ function useLongPress(onLongPress?: () => void, disabled?: boolean) {
   useEffect(() => () => clear(), [clear]);
 
   return {
-    onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    onPointerCancel,
+    /** Event handlers — safe to spread onto a DOM element. */
+    handlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
+    },
     /** Whether the long-press fired (use to suppress click) */
     didFire: firedRef,
     /** Whether a touch long-press is currently being tracked (timer active). */
@@ -597,7 +600,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
               onContextMenu={handleContextMenu}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
-              {...longPress}
+              {...longPress.handlers}
               {...(sortMode ? wholeDragProps?.attributes : {})}
               {...(sortMode ? wholeDragProps?.listeners : {})}
               style={{ transform: `translateX(${swipeOffset}px)` }}
@@ -664,7 +667,7 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
           onContextMenu={handleContextMenu}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          {...longPress}
+          {...longPress.handlers}
           animate={{ x: swipeOffset }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
           className={`
@@ -762,7 +765,7 @@ const CompactAgentListItem: React.FC<CompactVariantProps> = ({
           }
         }}
         onContextMenu={handleContextMenu}
-        {...longPress}
+        {...longPress.handlers}
         {...(sortMode ? wholeDragProps?.attributes : {})}
         {...(sortMode ? wholeDragProps?.listeners : {})}
         className={`w-full flex items-center gap-3 p-2 rounded-sm transition-all duration-200 group ${

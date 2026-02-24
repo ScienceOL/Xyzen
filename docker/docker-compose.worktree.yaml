@@ -1,0 +1,47 @@
+# Worktree overlay: minimal resources for parallel branch development
+# Used automatically by dev.sh when running inside a git worktree
+services:
+  service:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.50'
+
+  celery:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.50'
+
+  web:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.25'
+
+  nginx:
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.10'
+
+  postgresql:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.10'

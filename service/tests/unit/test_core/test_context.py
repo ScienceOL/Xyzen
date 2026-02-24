@@ -18,6 +18,7 @@ class TestTrackingContext:
     def test_set_and_get(self) -> None:
         ctx = TrackingContext(
             user_id="user-1",
+            auth_provider="default",
             session_id=uuid4(),
             topic_id=uuid4(),
             message_id=uuid4(),
@@ -36,6 +37,7 @@ class TestTrackingContext:
     def test_clear(self) -> None:
         ctx = TrackingContext(
             user_id="user-2",
+            auth_provider="default",
             session_id=None,
             topic_id=None,
             message_id=None,
@@ -50,6 +52,7 @@ class TestTrackingContext:
     def test_overwrite(self) -> None:
         ctx1 = TrackingContext(
             user_id="user-1",
+            auth_provider="default",
             session_id=None,
             topic_id=None,
             message_id=None,
@@ -58,6 +61,7 @@ class TestTrackingContext:
         )
         ctx2 = TrackingContext(
             user_id="user-2",
+            auth_provider="default",
             session_id=None,
             topic_id=None,
             message_id=None,

@@ -2,6 +2,10 @@
 # XYZEN PROJECT GITIGNORE
 # ========================
 
+# ===== Git Worktrees =====
+.worktrees/
+.worktree-port
+
 # ===== 通用忽略 =====
 .DS_Store
 ._*

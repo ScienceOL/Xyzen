@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
+from .admin_marketplace import router as admin_marketplace_router
 from .agents import router as agents_router
 from .auth import router as auth_router
 from .avatar import router as avatar_router
@@ -21,6 +22,7 @@ from .redemption import router as redemption_router
 from .root_agent import router as root_agent_router
 from .sandbox import router as sandbox_router
 from .sandboxes import router as sandboxes_router
+from .scheduled_tasks import router as scheduled_tasks_router
 from .sessions import router as sessions_router
 from .skills import agent_skills_router, router as skills_router
 from .subscription import router as subscription_router
@@ -113,9 +115,11 @@ v1_router.include_router(payment_router, prefix="/payment", tags=["payment"])
 v1_router.include_router(memories_router, prefix="/memories")
 v1_router.include_router(sandbox_router, prefix="/sessions")
 v1_router.include_router(sandboxes_router)
+v1_router.include_router(scheduled_tasks_router, prefix="/scheduled-tasks")
 v1_router.include_router(subscription_router, prefix="/subscription", tags=["subscription"])
 v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(root_agent_router, prefix="/root-agent")
 v1_router.include_router(chat_shares_router, prefix="/chat-shares")
 v1_router.include_router(tools_router, prefix="/tools")
+v1_router.include_router(admin_marketplace_router, prefix="/admin/marketplace", tags=["admin-marketplace"])
 v1_router.include_router(system_router, tags=["system"])

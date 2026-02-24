@@ -3,12 +3,12 @@ import { getXyzenChatConfig } from "@/configs/chatThemes";
 import EditableTitle from "@/components/base/EditableTitle";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { ShareModal } from "@/components/modals/ShareModal";
-import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
+import { resolveContextLimit } from "@/core/chat/tokenUsage";
 import { useAvailableModels } from "@/hooks/queries/useProvidersQuery";
+import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import type { XyzenChatConfig } from "@/hooks/useXyzenChat";
 import { useXyzenChat } from "@/hooks/useXyzenChat";
 import { useXyzen } from "@/store";
-import { resolveContextLimit } from "@/core/chat/tokenUsage";
 import type { Agent } from "@/types/agents";
 import { ArrowPathIcon, ShareIcon } from "@heroicons/react/24/outline";
 
@@ -20,6 +20,14 @@ import ContextUsageRing from "./components/ContextUsageRing";
 import EmptyChat from "./components/EmptyChat";
 import FloatingChatInput from "./components/FloatingChatInput";
 import WelcomeMessage from "./components/WelcomeMessage";
+
+// Stable reference — prevents browser from re-evaluating the scroll-driven
+// animation on every streaming re-render (new object → animation restart → jitter).
+const HEADER_DOCK_STYLE: React.CSSProperties = {
+  animation: "header-dock linear both",
+  animationTimeline: "scroll(nearest)",
+  animationRange: "0px 48px",
+};
 
 interface BaseChatProps {
   config: XyzenChatConfig;
@@ -187,18 +195,16 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         <div className="relative grow overflow-y-auto min-w-0">
           <div
             ref={messagesContainerRef}
-            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-white dark:bg-neutral-950 custom-scrollbar"
+            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-transparent dark:bg-neutral-950/90 custom-scrollbar"
             onScroll={handleScroll}
           >
             {/* Sticky Frosted Header — scroll-driven animation (CSS) */}
             {currentAgent ? (
               <div
-                className="header-dock-anim sticky top-0 z-10 overflow-hidden bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-xl dark:from-neutral-950/90 dark:to-neutral-950/50"
-                style={{
-                  animation: "header-dock linear both",
-                  animationTimeline: "scroll(nearest)",
-                  animationRange: "0px 48px",
-                }}
+                className="header-dock-anim sticky top-0 z-10 overflow-hidden  backdrop-blur-3xl
+                bg-gradient-to-b from-white/90 to-white/50  dark:from-neutral-950/90 dark:to-neutral-950/50
+                "
+                style={HEADER_DOCK_STYLE}
               >
                 <div className="px-4 py-3">
                   <div className="flex items-start gap-3">
@@ -270,11 +276,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
             ) : (
               <div
                 className="header-dock-anim sticky top-0 z-10 overflow-hidden bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-xl dark:from-neutral-950/90 dark:to-neutral-950/50"
-                style={{
-                  animation: "header-dock linear both",
-                  animationTimeline: "scroll(nearest)",
-                  animationRange: "0px 48px",
-                }}
+                style={HEADER_DOCK_STYLE}
               >
                 <div className="px-4 py-3">
                   <EditableTitle

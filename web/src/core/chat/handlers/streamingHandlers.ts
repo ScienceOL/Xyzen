@@ -248,7 +248,7 @@ export function handleThinkingStart(
   const loadingIndex = findLoadingMessageIndex(channel);
   if (loadingIndex !== -1) {
     // Convert loading message to thinking message
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { isLoading: _, ...messageWithoutLoading } =
       channel.messages[loadingIndex];
     channel.messages[loadingIndex] = {

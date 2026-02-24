@@ -19,6 +19,7 @@ from .redemption import AdminConfig
 from .redis import RedisConfig
 from .sandbox import SandboxConfig
 from .searxng import SearXNGConfig
+from .video import VideoConfig
 
 
 class AppConfig(BaseSettings):
@@ -109,6 +110,11 @@ class AppConfig(BaseSettings):
     Image: ImageConfig = Field(
         default_factory=lambda: ImageConfig(),
         description="Image generation configuration",
+    )
+
+    Video: VideoConfig = Field(
+        default_factory=lambda: VideoConfig(),
+        description="Video generation configuration",
     )
 
     Sandbox: SandboxConfig = Field(

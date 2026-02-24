@@ -47,8 +47,8 @@ export function CodeGenerationForm({
             setRoleName(loadedPlans[0].name);
           }
         })
-        .catch(() => {
-          /* ignore fetch errors */
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : "Failed to load plans");
         });
     }
   }, [codeType, plans.length, roleName]);

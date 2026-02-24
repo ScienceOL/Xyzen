@@ -13,6 +13,7 @@ from .message import MessageRepository
 from .push_subscription import PushSubscriptionRepository
 from .provider import ProviderRepository
 from .root_agent import RootAgentRepository
+from .scheduled_task import ScheduledTaskRepository
 from .session import SessionRepository
 from .skill import SkillRepository
 from .smithery_cache import SmitheryCacheRepository
@@ -34,6 +35,7 @@ __all__ = [
     "MessageRepository",
     "PushSubscriptionRepository",
     "RootAgentRepository",
+    "ScheduledTaskRepository",
     "TopicRepository",
     "SessionRepository",
     "SkillRepository",
