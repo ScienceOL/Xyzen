@@ -460,7 +460,10 @@
     "system.service_unavailable": "サービスが一時的に利用できません。",
     "retryAction": "再試行",
     "rechargeAction": "チャージ",
-    "detailToggle": "詳細"
+    "detailToggle": "詳細",
+    "errorRef": "参照ID",
+    "occurredAt": "時刻",
+    "copyRef": "参照IDをコピー"
   },
   "account": {
     "checkIn": "デイリーチェックイン",

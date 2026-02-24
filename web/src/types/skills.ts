@@ -10,6 +10,7 @@ export interface SkillRead {
   compatibility: string | null;
   metadata_json: Record<string, unknown> | null;
   resource_prefix: string | null;
+  root_folder_id: string | null;
   created_at: string;
   updated_at: string;
 }

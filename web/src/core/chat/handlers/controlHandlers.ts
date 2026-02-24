@@ -49,6 +49,8 @@ export function handleError(
     error_category?: string;
     recoverable?: boolean;
     detail?: string;
+    error_ref?: string;
+    occurred_at?: string;
     stream_id: string;
   },
 ): void {
@@ -62,6 +64,8 @@ export function handleError(
         message: eventData.error,
         recoverable: eventData.recoverable ?? false,
         detail: eventData.detail,
+        errorRef: eventData.error_ref,
+        occurredAt: eventData.occurred_at,
       }
     : {
         code: "system.internal_error",

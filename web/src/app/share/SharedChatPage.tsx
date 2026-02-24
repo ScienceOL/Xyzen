@@ -1,10 +1,9 @@
 import { Button } from "@/components/ui/button";
-import ToolCallPill from "@/components/layouts/components/ToolCallPill";
+import MessageContent from "@/components/layouts/components/MessageContent";
 import { useAuth } from "@/hooks/useAuth";
-import Markdown from "@/lib/Markdown";
 import { shareService } from "@/service/shareService";
 import type { ChatSharePublicRead } from "@/service/shareService";
-import type { ToolCall } from "@/store/types";
+import type { AgentExecutionState } from "@/types/agentEvents";
 import { initiateOAuthLogin } from "@/utils/authFlow";
 import {
   ArrowLeftIcon,
@@ -215,12 +214,16 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
         <div className="mx-auto max-w-3xl px-4 py-6 space-y-6 sm:px-6">
           {data.messages_snapshot.map((msg, idx) => {
             const role = msg.role as string;
-            const content = msg.content as string;
-            const toolCalls = msg.toolCalls as ToolCall[] | undefined;
+            const content = (msg.content as string) ?? "";
+            const agentExecution = msg.agentExecution as
+              | AgentExecutionState
+              | undefined;
+            const thinkingContent = (msg.thinkingContent ??
+              msg.thinking_content) as string | undefined;
             const isUser = role === "user";
 
-            // Skip empty messages (no content and no toolCalls)
-            if (!content && !toolCalls?.length) return null;
+            // Skip empty messages (no content and no agentExecution)
+            if (!content && !agentExecution) return null;
 
             return (
               <div key={idx} className="flex gap-3">
@@ -245,18 +248,12 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
                   <div className="mb-1 text-sm font-semibold text-foreground">
                     {isUser ? "User" : agentName}
                   </div>
-                  {toolCalls && toolCalls.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {toolCalls.map((tc) => (
-                        <ToolCallPill key={tc.id} toolCall={tc} />
-                      ))}
-                    </div>
-                  )}
-                  {content && (
-                    <div className="prose prose-sm dark:prose-invert max-w-none break-words">
-                      <Markdown content={content} />
-                    </div>
-                  )}
+                  <MessageContent
+                    isUser={isUser}
+                    content={content}
+                    thinkingContent={thinkingContent}
+                    agentExecution={agentExecution}
+                  />
                 </div>
               </div>
             );

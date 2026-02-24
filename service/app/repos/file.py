@@ -42,6 +42,7 @@ class FileRepository:
         parent_id: UUID | None,
         name: str,
         exclude_id: UUID | None = None,
+        skill_id: UUID | None = None,
     ) -> bool:
         """
         Check if an item with the given name already exists in the parent directory.
@@ -64,6 +65,9 @@ class FileRepository:
             .where(col(File.is_deleted).is_(False))
         )
 
+        if skill_id is not None:
+            statement = statement.where(File.skill_id == skill_id)
+
         if exclude_id is not None:
             statement = statement.where(File.id != exclude_id)
 
@@ -75,6 +79,7 @@ class FileRepository:
         user_id: str,
         parent_id: UUID | None,
         name: str,
+        skill_id: UUID | None = None,
     ) -> str:
         """
         Return a unique name for an item in the given parent directory.
@@ -89,7 +94,7 @@ class FileRepository:
         Returns:
             A name that doesn't conflict with existing items.
         """
-        if not await self.name_exists_in_parent(user_id, parent_id, name):
+        if not await self.name_exists_in_parent(user_id, parent_id, name, skill_id=skill_id):
             return name
 
         dot_idx = name.rfind(".")
@@ -99,7 +104,7 @@ class FileRepository:
         counter = 1
         while True:
             candidate = f"{base} ({counter}){ext}"
-            if not await self.name_exists_in_parent(user_id, parent_id, candidate):
+            if not await self.name_exists_in_parent(user_id, parent_id, candidate, skill_id=skill_id):
                 return candidate
             counter += 1
 
@@ -196,6 +201,9 @@ class FileRepository:
                 FileKnowledgeSetLink,
                 col(FileKnowledgeSetLink.file_id) == col(File.id),
             ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+        else:
+            # Exclude skill files from general file listings
+            statement = statement.where(col(File.skill_id).is_(None))
 
         statement = statement.order_by(col(File.created_at).desc()).limit(limit).offset(offset)
 
@@ -237,6 +245,9 @@ class FileRepository:
                 FileKnowledgeSetLink,
                 col(FileKnowledgeSetLink.file_id) == col(File.id),
             ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+        else:
+            # Exclude skill files from general children listings
+            statement = statement.where(col(File.skill_id).is_(None))
 
         statement = statement.order_by(col(File.original_filename).asc())
 
@@ -249,6 +260,7 @@ class FileRepository:
         include_deleted: bool = False,
         only_deleted: bool = False,
         knowledge_set_id: UUID | None = None,
+        skill_id: UUID | None = None,
     ) -> list[File]:
         """
         Fetch ALL files and folders for a user in a single query.
@@ -260,6 +272,7 @@ class FileRepository:
             include_deleted: Whether to include soft-deleted items.
             only_deleted: If True, return ONLY soft-deleted items (for trash tree).
             knowledge_set_id: Optional knowledge set ID to filter items linked to.
+            skill_id: Optional skill ID to filter items belonging to a skill.
 
         Returns:
             Flat list of all File instances belonging to the user.
@@ -272,11 +285,16 @@ class FileRepository:
         elif not include_deleted:
             statement = statement.where(col(File.is_deleted).is_(False))
 
-        if knowledge_set_id is not None:
+        if skill_id is not None:
+            statement = statement.where(File.skill_id == skill_id)
+        elif knowledge_set_id is not None:
             statement = statement.join(
                 FileKnowledgeSetLink,
                 col(FileKnowledgeSetLink.file_id) == col(File.id),
             ).where(FileKnowledgeSetLink.knowledge_set_id == knowledge_set_id)
+        else:
+            # Exclude skill files from general/knowledge-base queries
+            statement = statement.where(col(File.skill_id).is_(None))
 
         # Folders first, then files; alphabetical within each group
         statement = statement.order_by(
@@ -672,7 +690,12 @@ class FileRepository:
             Total size in bytes.
         """
         logger.debug(f"Calculating total file size for user_id: {user_id}")
-        statement = select(File).where(File.user_id == user_id).where(File.is_dir == False)  # noqa: E712
+        statement = (
+            select(File)
+            .where(File.user_id == user_id)
+            .where(File.is_dir == False)  # noqa: E712
+            .where(col(File.skill_id).is_(None))
+        )
 
         if not include_deleted:
             statement = statement.where(col(File.is_deleted).is_(False))
@@ -693,7 +716,12 @@ class FileRepository:
             Total file count.
         """
         logger.debug(f"Counting files for user_id: {user_id}")
-        statement = select(File).where(File.user_id == user_id).where(File.is_dir == False)  # noqa: E712
+        statement = (
+            select(File)
+            .where(File.user_id == user_id)
+            .where(File.is_dir == False)  # noqa: E712
+            .where(col(File.skill_id).is_(None))
+        )
 
         if not include_deleted:
             statement = statement.where(col(File.is_deleted).is_(False))
@@ -860,3 +888,48 @@ class FileRepository:
             )
 
         return True, None
+
+    async def get_skill_file_count(self, skill_id: UUID) -> int:
+        """Count files (not directories) belonging to a skill."""
+        from sqlalchemy import func
+
+        result = await self.db.exec(
+            select(func.count())
+            .select_from(File)
+            .where(File.skill_id == skill_id)
+            .where(File.is_dir == False)  # noqa: E712
+            .where(col(File.is_deleted).is_(False))
+        )
+        return int(result.one())
+
+    async def get_skill_total_size(self, skill_id: UUID) -> int:
+        """Sum file sizes for all files belonging to a skill."""
+        from sqlalchemy import func
+
+        result = await self.db.exec(
+            select(func.coalesce(func.sum(File.file_size), 0))
+            .where(File.skill_id == skill_id)
+            .where(File.is_dir == False)  # noqa: E712
+            .where(col(File.is_deleted).is_(False))
+        )
+        return int(result.one())
+
+    async def hard_delete_by_skill(self, skill_id: UUID) -> list[str]:
+        """
+        Hard-delete ALL File records for a given skill_id.
+        Returns storage keys so the caller can remove them from OSS.
+        """
+        statement = select(File).where(File.skill_id == skill_id)
+        result = await self.db.exec(statement)
+        items = list(result.all())
+
+        storage_keys: list[str] = []
+        for item in items:
+            if item.storage_key:
+                storage_keys.append(item.storage_key)
+            await self.db.delete(item)
+
+        if items:
+            await self.db.flush()
+
+        return storage_keys

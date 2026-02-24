@@ -64,6 +64,8 @@ export interface MessageError {
   message: string; // User-safe display message
   recoverable: boolean; // Show retry button?
   detail?: string; // Optional sanitized detail
+  errorRef?: string; // Unique reference ID for log correlation
+  occurredAt?: string; // ISO timestamp of when the error occurred
 }
 
 /**
