@@ -59,40 +59,44 @@ class TestSessionRepository:
         assert found.user_id == user_id
         assert found.agent_id is None
 
-    async def test_get_session_by_user_and_agent_prefers_latest_topic_activity(
+    async def test_get_session_by_user_and_agent_returns_correct_session(
         self, session_repo: SessionRepository, db_session: AsyncSession
     ):
-        """When duplicate sessions exist, the most recently active one should be returned."""
-        import asyncio
+        """Each (user_id, agent_id) pair maps to exactly one session; verify correct lookup."""
         from uuid import uuid4
 
         from app.repos.topic import TopicRepository
         from tests.factories.topic import TopicCreateFactory
 
         user_id = "test-user-session-agent-activity"
-        agent_id = uuid4()
+        agent_id_a = uuid4()
+        agent_id_b = uuid4()
         topic_repo = TopicRepository(db_session)
 
-        older_session = await session_repo.create_session(
-            SessionCreateFactory.build(agent_id=agent_id, name="older"),
+        session_a = await session_repo.create_session(
+            SessionCreateFactory.build(agent_id=agent_id_a, name="session-a"),
             user_id,
         )
-        newer_session = await session_repo.create_session(
-            SessionCreateFactory.build(agent_id=agent_id, name="newer"),
+        session_b = await session_repo.create_session(
+            SessionCreateFactory.build(agent_id=agent_id_b, name="session-b"),
             user_id,
         )
 
+        # Add topics so the activity-based ordering path is exercised
         await topic_repo.create_topic(
-            TopicCreateFactory.build(session_id=older_session.id, name="older-topic"),
+            TopicCreateFactory.build(session_id=session_a.id, name="topic-a"),
         )
-        await asyncio.sleep(0.01)
         await topic_repo.create_topic(
-            TopicCreateFactory.build(session_id=newer_session.id, name="newer-topic"),
+            TopicCreateFactory.build(session_id=session_b.id, name="topic-b"),
         )
 
-        found = await session_repo.get_session_by_user_and_agent(user_id, agent_id)
-        assert found is not None
-        assert found.id == newer_session.id
+        found_a = await session_repo.get_session_by_user_and_agent(user_id, agent_id_a)
+        assert found_a is not None
+        assert found_a.id == session_a.id
+
+        found_b = await session_repo.get_session_by_user_and_agent(user_id, agent_id_b)
+        assert found_b is not None
+        assert found_b.id == session_b.id
 
     async def test_update_session(self, session_repo: SessionRepository):
         """Test updating a session."""

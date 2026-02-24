@@ -27,7 +27,7 @@ services:
       retries: 10
       start_period: 30s
     deploy:
-      replicas: 3
+      replicas: ${SERVICE_REPLICAS:-3}
       resources: {}
 
   celery:
@@ -39,7 +39,7 @@ services:
       - /app/.venv
     command: sh -c "uv sync && uv run celery -A app.worker worker --loglevel=info"
     deploy:
-      replicas: 2
+      replicas: ${CELERY_REPLICAS:-2}
       resources: {}
 
   web:

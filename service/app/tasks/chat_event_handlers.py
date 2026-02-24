@@ -161,7 +161,7 @@ async def _ensure_session_info(ctx: ChatTaskContext) -> None:
         from app.core.session.service import SessionService
 
         svc = SessionService(ctx.db)
-        await svc._clamp_session_model_tier(session, ctx.user_id)
+        await svc.clamp_session_model_tier(session, ctx.user_id)
 
     ctx.cached_model_tier = session.model_tier if session else None
     ctx.cached_model_name = session.model if session else None

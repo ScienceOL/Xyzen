@@ -516,7 +516,7 @@ export function handleGeneratedFiles(
       name: string;
       type: string;
       size: number;
-      category: "images" | "documents" | "audio" | "others";
+      category: "images" | "videos" | "documents" | "audio" | "others";
       download_url?: string;
       thumbnail_url?: string;
     }>;

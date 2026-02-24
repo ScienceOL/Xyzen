@@ -1,6 +1,9 @@
 import logging
+from typing import Any, cast
 from uuid import UUID
 
+from sqlalchemy import case, func
+from sqlalchemy import select as sa_select
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -563,3 +566,395 @@ class RedemptionRepository:
 
         result = await self.db.exec(query)
         return list(result.all())
+
+    # ==================== Admin Aggregated Stats ====================
+
+    async def get_admin_redemption_heatmap(
+        self,
+        year: int,
+        tz: str = "UTC",
+    ) -> list[dict[str, Any]]:
+        """Daily aggregated redemption stats for an entire year."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+        from zoneinfo import ZoneInfo
+
+        zone = ZoneInfo(tz)
+        start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+        end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        date_expr = func.to_char(func.timezone(tz, RedemptionHistory.redeemed_at), "YYYY-MM-DD")
+
+        stmt = (
+            sa_select(
+                date_expr.label("date"),
+                func.coalesce(func.sum(RedemptionHistory.amount), 0).label("total_credits"),
+                func.count().label("redemption_count"),
+                func.count(func.distinct(RedemptionHistory.user_id)).label("unique_users"),
+            )
+            .where(
+                col(RedemptionHistory.redeemed_at) >= start_utc,
+                col(RedemptionHistory.redeemed_at) <= end_utc,
+            )
+            .group_by(date_expr)
+            .order_by(date_expr)
+        )
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        return [
+            {
+                "date": str(r.date),
+                "total_credits": int(r.total_credits),
+                "redemption_count": int(r.redemption_count),
+                "unique_users": int(r.unique_users),
+            }
+            for r in rows
+        ]
+
+    async def get_admin_redemption_rankings(
+        self,
+        year: int,
+        tz: str = "UTC",
+        date: str | None = None,
+        limit: int = 20,
+        search: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Per-user aggregated redemption stats."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+        from zoneinfo import ZoneInfo
+
+        zone = ZoneInfo(tz)
+
+        if date:
+            day = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=zone)
+            start_utc = day.astimezone(tz_module.utc)
+            end_utc = day.replace(hour=23, minute=59, second=59, microsecond=999999).astimezone(tz_module.utc)
+        else:
+            start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+            end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        stmt = sa_select(
+            col(RedemptionHistory.user_id),
+            func.coalesce(func.sum(col(RedemptionHistory.amount)), 0).label("total_credits"),
+            func.count().label("redemption_count"),
+        ).where(
+            col(RedemptionHistory.redeemed_at) >= start_utc,
+            col(RedemptionHistory.redeemed_at) <= end_utc,
+        )
+
+        if search:
+            stmt = stmt.where(col(RedemptionHistory.user_id).ilike(f"%{search}%"))
+
+        stmt = (
+            stmt.group_by(col(RedemptionHistory.user_id))
+            .order_by(func.sum(col(RedemptionHistory.amount)).desc())
+            .limit(limit)
+        )
+
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        return [
+            {
+                "user_id": str(r.user_id),
+                "total_credits": int(r.total_credits),
+                "redemption_count": int(r.redemption_count),
+            }
+            for r in rows
+        ]
+
+    async def get_admin_credit_heatmap(
+        self,
+        year: int,
+        tz: str = "UTC",
+        source: str | None = None,
+        tier: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Daily aggregated credit stats from CreditLedger (direction='credit')."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+        from zoneinfo import ZoneInfo
+
+        zone = ZoneInfo(tz)
+        start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+        end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        date_expr = func.to_char(func.timezone(tz, CreditLedger.created_at), "YYYY-MM-DD")
+
+        filters: list[Any] = [
+            col(CreditLedger.created_at) >= start_utc,
+            col(CreditLedger.created_at) <= end_utc,
+            col(CreditLedger.direction) == "credit",
+        ]
+        if source:
+            filters.append(col(CreditLedger.source) == source)
+
+        if tier:
+            from app.models.subscription import SubscriptionRole, UserSubscription
+
+            stmt = (
+                sa_select(
+                    date_expr.label("date"),
+                    func.coalesce(func.sum(CreditLedger.amount), 0).label("total_credits"),
+                    func.count().label("transaction_count"),
+                    func.count(func.distinct(CreditLedger.user_id)).label("unique_users"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "welcome_bonus", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("welcome_bonus_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "redemption_code", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("redemption_code_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (col(CreditLedger.source) == "subscription_monthly", col(CreditLedger.amount)), else_=0
+                            )
+                        ),
+                        0,
+                    ).label("subscription_monthly_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "daily_checkin", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("daily_checkin_credits"),
+                )
+                .select_from(CreditLedger)
+                .join(UserSubscription, col(CreditLedger.user_id) == col(UserSubscription.user_id), isouter=True)
+                .join(SubscriptionRole, col(UserSubscription.role_id) == col(SubscriptionRole.id), isouter=True)
+                .where(*filters)
+                .where(col(SubscriptionRole.name) == tier)
+                .group_by(date_expr)
+                .order_by(date_expr)
+            )
+        else:
+            stmt = (
+                sa_select(
+                    date_expr.label("date"),
+                    func.coalesce(func.sum(CreditLedger.amount), 0).label("total_credits"),
+                    func.count().label("transaction_count"),
+                    func.count(func.distinct(CreditLedger.user_id)).label("unique_users"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "welcome_bonus", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("welcome_bonus_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "redemption_code", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("redemption_code_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (col(CreditLedger.source) == "subscription_monthly", col(CreditLedger.amount)), else_=0
+                            )
+                        ),
+                        0,
+                    ).label("subscription_monthly_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "daily_checkin", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("daily_checkin_credits"),
+                )
+                .where(*filters)
+                .group_by(date_expr)
+                .order_by(date_expr)
+            )
+
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        return [
+            {
+                "date": str(r.date),
+                "total_credits": int(r.total_credits),
+                "transaction_count": int(r.transaction_count),
+                "unique_users": int(r.unique_users),
+                "welcome_bonus_credits": int(r.welcome_bonus_credits),
+                "redemption_code_credits": int(r.redemption_code_credits),
+                "subscription_monthly_credits": int(r.subscription_monthly_credits),
+                "daily_checkin_credits": int(r.daily_checkin_credits),
+            }
+            for r in rows
+        ]
+
+    async def get_admin_credit_rankings(
+        self,
+        year: int,
+        tz: str = "UTC",
+        source: str | None = None,
+        tier: str | None = None,
+        date: str | None = None,
+        limit: int = 20,
+        search: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Per-user aggregated credit stats from CreditLedger (direction='credit')."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+        from zoneinfo import ZoneInfo
+
+        zone = ZoneInfo(tz)
+
+        if date:
+            day = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=zone)
+            start_utc = day.astimezone(tz_module.utc)
+            end_utc = day.replace(hour=23, minute=59, second=59, microsecond=999999).astimezone(tz_module.utc)
+        else:
+            start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+            end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        filters: list[Any] = [
+            col(CreditLedger.created_at) >= start_utc,
+            col(CreditLedger.created_at) <= end_utc,
+            col(CreditLedger.direction) == "credit",
+        ]
+        if source:
+            filters.append(col(CreditLedger.source) == source)
+        if search:
+            filters.append(col(CreditLedger.user_id).ilike(f"%{search}%"))
+
+        if tier:
+            from app.models.subscription import SubscriptionRole, UserSubscription
+
+            stmt = (
+                sa_select(
+                    col(CreditLedger.user_id),
+                    func.coalesce(func.sum(col(CreditLedger.amount)), 0).label("total_credits"),
+                    func.count().label("transaction_count"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "welcome_bonus", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("welcome_bonus_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "redemption_code", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("redemption_code_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (col(CreditLedger.source) == "subscription_monthly", col(CreditLedger.amount)), else_=0
+                            )
+                        ),
+                        0,
+                    ).label("subscription_monthly_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "daily_checkin", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("daily_checkin_credits"),
+                )
+                .select_from(CreditLedger)
+                .join(UserSubscription, col(CreditLedger.user_id) == col(UserSubscription.user_id), isouter=True)
+                .join(SubscriptionRole, col(UserSubscription.role_id) == col(SubscriptionRole.id), isouter=True)
+                .where(*filters)
+                .where(col(SubscriptionRole.name) == tier)
+                .group_by(col(CreditLedger.user_id))
+                .order_by(func.sum(col(CreditLedger.amount)).desc())
+                .limit(limit)
+            )
+        else:
+            stmt = (
+                sa_select(
+                    col(CreditLedger.user_id),
+                    func.coalesce(func.sum(col(CreditLedger.amount)), 0).label("total_credits"),
+                    func.count().label("transaction_count"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "welcome_bonus", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("welcome_bonus_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "redemption_code", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("redemption_code_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (col(CreditLedger.source) == "subscription_monthly", col(CreditLedger.amount)), else_=0
+                            )
+                        ),
+                        0,
+                    ).label("subscription_monthly_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case((col(CreditLedger.source) == "daily_checkin", col(CreditLedger.amount)), else_=0)
+                        ),
+                        0,
+                    ).label("daily_checkin_credits"),
+                )
+                .where(*filters)
+                .group_by(col(CreditLedger.user_id))
+                .order_by(func.sum(col(CreditLedger.amount)).desc())
+                .limit(limit)
+            )
+
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        return [
+            {
+                "user_id": str(r.user_id),
+                "total_credits": int(r.total_credits),
+                "transaction_count": int(r.transaction_count),
+                "welcome_bonus_credits": int(r.welcome_bonus_credits),
+                "redemption_code_credits": int(r.redemption_code_credits),
+                "subscription_monthly_credits": int(r.subscription_monthly_credits),
+                "daily_checkin_credits": int(r.daily_checkin_credits),
+            }
+            for r in rows
+        ]
+
+    async def get_admin_new_users_heatmap(
+        self,
+        year: int,
+        tz: str = "UTC",
+    ) -> list[dict[str, Any]]:
+        """Daily new user registrations from UserWallet.created_at."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+        from zoneinfo import ZoneInfo
+
+        zone = ZoneInfo(tz)
+        start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+        end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        date_expr = func.to_char(func.timezone(tz, UserWallet.created_at), "YYYY-MM-DD")
+
+        stmt = (
+            sa_select(
+                date_expr.label("date"),
+                func.count().label("new_users"),
+            )
+            .where(
+                col(UserWallet.created_at) >= start_utc,
+                col(UserWallet.created_at) <= end_utc,
+            )
+            .group_by(date_expr)
+            .order_by(date_expr)
+        )
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        return [
+            {
+                "date": str(r.date),
+                "new_users": int(r.new_users),
+            }
+            for r in rows
+        ]

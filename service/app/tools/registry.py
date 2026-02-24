@@ -256,6 +256,21 @@ def register_builtin_tools() -> None:
             requires_context=["user_id"],
         )
 
+    # Register video tools
+    from app.tools.builtin.video import create_video_tools
+
+    video_tools = create_video_tools()
+    for tool_id, tool in video_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="video",
+            display_name=tool.name.replace("_", " ").title(),
+            ui_toggleable=True,
+            default_enabled=False,
+            requires_context=["user_id"],
+        )
+
     # Register sandbox tools (guarded by config flag)
     from app.configs import configs as app_configs
 

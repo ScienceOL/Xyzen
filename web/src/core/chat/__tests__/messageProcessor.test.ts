@@ -255,7 +255,10 @@ describe("groupToolMessagesWithAssistant", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].toolCalls![0].status).toBe("completed");
-    expect(result[0].toolCalls![0].result).toBe("Search results here");
+    expect(result[0].toolCalls![0].result).toEqual({
+      success: true,
+      data: "Search results here",
+    });
   });
 
   it("handles tool call errors", () => {

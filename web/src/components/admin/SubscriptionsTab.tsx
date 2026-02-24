@@ -5,38 +5,16 @@ import {
 } from "@/service/subscriptionService";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
+import {
+  formatBytes,
+  formatDate,
+  isExpired,
+  TIER_COLORS,
+} from "./shared/constants";
 
 interface SubscriptionsTabProps {
   adminSecret: string;
   backendUrl: string;
-}
-
-const TIER_COLORS: Record<string, string> = {
-  free: "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300",
-  standard: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200",
-  professional:
-    "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200",
-  ultra: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
-};
-
-function formatBytes(bytes: number): string {
-  if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(0)} GB`;
-  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(0)} MB`;
-  return `${(bytes / 1024).toFixed(0)} KB`;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function isExpired(expiresAt: string | null): boolean {
-  if (!expiresAt) return false;
-  return new Date(expiresAt) < new Date();
 }
 
 export function SubscriptionsTab({ adminSecret }: SubscriptionsTabProps) {

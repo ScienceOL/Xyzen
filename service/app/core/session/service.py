@@ -32,7 +32,7 @@ class SessionService:
         self.topic_repo = TopicRepository(db)
         self.message_repo = MessageRepository(db)
 
-    async def _clamp_session_model_tier(self, session: SessionModel, user_id: str) -> bool:
+    async def clamp_session_model_tier(self, session: SessionModel, user_id: str) -> bool:
         """Clamp session.model_tier to subscription limit. Persists to DB if changed.
 
         If model_tier is NULL, sets it to the user's max allowed tier.
@@ -96,7 +96,7 @@ class SessionService:
         created_new_session = False
         try:
             session = await self.session_repo.create_session(validated, user_id)
-            await self._clamp_session_model_tier(session, user_id)
+            await self.clamp_session_model_tier(session, user_id)
             await self.topic_repo.create_topic(TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=session.id))
             await self.db.commit()
             created_new_session = True
@@ -142,7 +142,7 @@ class SessionService:
             raise ErrCode.SESSION_NOT_FOUND.with_messages("No session found for this user-agent combination")
 
         # Clamp tier if it exceeds subscription limit
-        if await self._clamp_session_model_tier(session, user_id):
+        if await self.clamp_session_model_tier(session, user_id):
             await self.db.commit()
 
         # Fetch topics ordered by updated_at descending (most recent first)
@@ -159,7 +159,7 @@ class SessionService:
         # Clamp all sessions in one pass, commit once if any changed
         any_clamped = False
         for session in sessions:
-            if await self._clamp_session_model_tier(session, user_id):
+            if await self.clamp_session_model_tier(session, user_id):
                 any_clamped = True
         if any_clamped:
             await self.db.commit()
