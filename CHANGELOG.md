@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.3](https://github.com/ScienceOL/Xyzen/compare/v1.5.2...v1.5.3) (2026-02-24)
+
+### 🐛 Bug Fixes
+
+* add SandboxConfigModal for user-specific sandbox settings ([#263](https://github.com/ScienceOL/Xyzen/issues/263)) ([698a9f5](https://github.com/ScienceOL/Xyzen/commit/698a9f509a57ace67e892c9280f2319e7932d911))
+
 ## [1.5.2](https://github.com/ScienceOL/Xyzen/compare/v1.5.1...v1.5.2) (2026-02-23)
 
 ### 🐛 Bug Fixes
