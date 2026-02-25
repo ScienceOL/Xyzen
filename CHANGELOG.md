@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.0](https://github.com/ScienceOL/Xyzen/compare/v1.5.9...v1.6.0) (2026-02-25)
+
+### ✨ Features
+
+* add runner management, skill marketplace, terminal, and CI pipeline ([#274](https://github.com/ScienceOL/Xyzen/issues/274)) ([9812324](https://github.com/ScienceOL/Xyzen/commit/98123245b638b2ca513db627554fc2cdfa7e3167)), closes [#273](https://github.com/ScienceOL/Xyzen/issues/273)
+
 ## [1.5.9](https://github.com/ScienceOL/Xyzen/compare/v1.5.8...v1.5.9) (2026-02-25)
 
 ### 🐛 Bug Fixes
