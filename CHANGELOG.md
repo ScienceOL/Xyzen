@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.9](https://github.com/ScienceOL/Xyzen/compare/v1.5.8...v1.5.9) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* remove unnecessary viewport-fit property and dark theme script from index.html ([2a0b310](https://github.com/ScienceOL/Xyzen/commit/2a0b310bdde080b8c9f9f1b1c0959ed152af35c2))
+
 ## [1.5.8](https://github.com/ScienceOL/Xyzen/compare/v1.5.7...v1.5.8) (2026-02-25)
 
 ### 🐛 Bug Fixes
