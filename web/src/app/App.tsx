@@ -319,6 +319,27 @@ export function Xyzen({
     return () =>
       navigator.serviceWorker?.removeEventListener("message", handler);
   }, [activateChannel, setActivePanel]);
+
+  // Sync active topic to Service Worker so it can suppress push notifications
+  // for the topic the user is already viewing (WeChat-style behaviour).
+  useEffect(() => {
+    const sync = (topicId: string | null) => {
+      navigator.serviceWorker?.ready.then((reg) => {
+        reg.active?.postMessage({ type: "SET_ACTIVE_TOPIC", topicId });
+      });
+    };
+    // Send current value immediately
+    sync(useXyzen.getState().activeChatChannel);
+    // Subscribe to future changes
+    let prev = useXyzen.getState().activeChatChannel;
+    return useXyzen.subscribe((state) => {
+      if (state.activeChatChannel !== prev) {
+        prev = state.activeChatChannel;
+        sync(prev);
+      }
+    });
+  }, []);
+
   // Unified progress bar logic
   useEffect(() => {
     // Target progress based on current state
