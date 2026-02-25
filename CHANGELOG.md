@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.1](https://github.com/ScienceOL/Xyzen/compare/v1.6.0...v1.6.1) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* enhance sortable tree with touch and mouse sensors ([6d86d85](https://github.com/ScienceOL/Xyzen/commit/6d86d8595cfb562f93ed04e13eadf400d6d9978e))
+
 ## [1.6.0](https://github.com/ScienceOL/Xyzen/compare/v1.5.9...v1.6.0) (2026-02-25)
 
 ### ✨ Features
