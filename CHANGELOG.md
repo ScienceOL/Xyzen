@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.8](https://github.com/ScienceOL/Xyzen/compare/v1.5.7...v1.5.8) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* adjust MobileApp height style for better responsiveness ([2915439](https://github.com/ScienceOL/Xyzen/commit/29154396be28144d62b3f352d4872dc109eabce1))
+
 ## [1.5.7](https://github.com/ScienceOL/Xyzen/compare/v1.5.6...v1.5.7) (2026-02-25)
 
 ### 🐛 Bug Fixes
