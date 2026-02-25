@@ -3,14 +3,14 @@ import { Dialog, DialogPanel } from "@headlessui/react";
 import {
   ArrowDownTrayIcon,
   ArrowsPointingOutIcon,
-  CheckIcon,
-  ClipboardIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { PlayIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useEffect, useState } from "react";
+
+import { CopyButton } from "@/components/animate-ui/components/buttons/copy";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -62,7 +62,6 @@ let highlighterPromise: Promise<Highlighter> | null = null;
 
 const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
   const [mode, setMode] = useState<"code" | "preview">("code");
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [highlightedHtml, setHighlightedHtml] = useState<string>("");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 
@@ -162,15 +161,6 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
 `;
     return polyfill + code;
   }, [code]);
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopiedCode(code);
-      setTimeout(() => {
-        setCopiedCode(null);
-      }, 2000);
-    });
-  };
 
   const isHtml = language === "html" || language === "xml";
   const isEChart = language === "echart" || language === "echarts";
@@ -307,27 +297,19 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
                 <ArrowsPointingOutIcon className="h-4 w-4" />
               </button>
             )}
-            <button
-              onClick={copyToClipboard}
+            <CopyButton
+              content={code}
+              variant="ghost"
+              size="sm"
               className={clsx(
-                "inline-flex h-8 w-8 items-center justify-center rounded-md border transition",
-                "text-zinc-500 dark:text-zinc-300",
-                "opacity-0 backdrop-blur-sm",
-                "border-black/5 bg-black/5 dark:border-white/10 dark:bg-white/5",
-                "group-hover:opacity-100 focus-visible:opacity-100",
-                "hover:bg-black/10 hover:border-black/10 dark:hover:bg-white/15 dark:hover:border-white/20 active:scale-95",
-                copiedCode === code &&
-                  "text-emerald-500 bg-emerald-500/10 border-emerald-500/30",
+                "border backdrop-blur-sm",
+                "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                "border-black/5 bg-black/5 text-zinc-500",
+                "hover:bg-black/10 hover:border-black/10 active:scale-95",
+                "dark:border-white/10 dark:bg-white/5 dark:text-zinc-300",
+                "dark:hover:bg-white/15 dark:hover:border-white/20",
               )}
-              aria-label={copiedCode === code ? "Copied" : "Copy"}
-              title={copiedCode === code ? "Copied" : "Copy"}
-            >
-              {copiedCode === code ? (
-                <CheckIcon className="h-4 w-4" />
-              ) : (
-                <ClipboardIcon className="h-4 w-4" />
-              )}
-            </button>
+            />
           </div>
         </div>
         <div className="relative flex-1 min-h-0">

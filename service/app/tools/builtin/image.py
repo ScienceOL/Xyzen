@@ -398,14 +398,15 @@ async def load_images_for_generation(user_id: str, image_ids: list[str]) -> list
 async def _try_mount_in_sandbox(session_id: str, image_bytes: bytes, filename: str) -> str | None:
     """Try to write generated image into the sandbox. Returns sandbox path or None."""
     try:
+        from app.configs.sandbox import get_sandbox_workdir
         from app.infra.sandbox import get_sandbox_manager
 
-        manager = get_sandbox_manager(session_id)
+        manager = await get_sandbox_manager(session_id)
         sandbox_id = await manager.get_sandbox_id()
         if not sandbox_id:
             return None
 
-        sandbox_path = f"/workspace/images/{filename}"
+        sandbox_path = f"{get_sandbox_workdir()}/images/{filename}"
         await manager.write_file_bytes(sandbox_path, image_bytes)
         logger.info(f"Auto-mounted generated image in sandbox: {sandbox_path}")
         return sandbox_path

@@ -21,6 +21,8 @@
     "resetsMonthly": "月次リセット",
     "parallel": "{{count}} 並列",
     "sandbox": "{{count}} サンドボックス",
+    "scheduledTask": "{{count}} タスク",
+    "scheduledTaskNone": "—",
     "firstMonth": "初月 {{price}}"
   },
 
@@ -63,6 +65,7 @@
     "storage": "ストレージ",
     "parallelChats": "並列チャット",
     "sandboxes": "サンドボックス",
+    "scheduledTasks": "スケジュールタスク",
     "redeemTitle": "クレジット引き換え",
     "redeemHint": "設定 > 引き換えコードで引き換えコードを入力してクレジットを取得またはアップグレード",
     "claiming": "受け取り中...",

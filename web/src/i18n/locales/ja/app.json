@@ -47,6 +47,7 @@
     "memory": "メモリー",
     "more": "その他",
     "sandbox": "サンドボックス",
+    "runner": "ローカルターミナル",
     "tasks": "タスク",
     "account": "マイページ",
     "comingSoon": "近日公開予定"
@@ -519,6 +520,7 @@
     "storage": "ストレージ",
     "files": "ファイル",
     "parallelChats": "並行チャット",
+    "scheduledTasks": "スケジュールタスク",
     "settings": "設定",
     "redeem": "コード交換",
     "region": "リージョン",

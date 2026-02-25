@@ -18,6 +18,11 @@ import { easeOut, motion } from "motion/react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import {
+  DOCK_HORIZONTAL_MARGIN,
+  DOCK_SAFE_AREA,
+} from "@/components/layouts/BottomDock";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -384,69 +389,86 @@ export default function ScheduledTasksPanel() {
     }
   }, [deleteTarget, cancelMutation, t]);
 
+  const isDesktop =
+    typeof window !== "undefined" && window.innerWidth >= MOBILE_BREAKPOINT;
+
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="shrink-0 border-b border-foreground/[0.06] px-3 py-3 md:px-4 md:py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-[15px] md:text-base font-semibold text-foreground leading-tight">
-              {t("app.tasksPanel.title")}
-            </h2>
-            <p className="mt-0.5 text-[10px] md:text-xs text-muted-foreground/60 leading-none">
-              {t("app.tasksPanel.subtitle")}
-            </p>
+    <div
+      className="flex h-full flex-col"
+      style={
+        isDesktop
+          ? {
+              paddingTop: 16,
+              paddingBottom: DOCK_SAFE_AREA,
+              paddingLeft: DOCK_HORIZONTAL_MARGIN,
+              paddingRight: DOCK_HORIZONTAL_MARGIN,
+            }
+          : {}
+      }
+    >
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden sm:rounded-2xl sm:border sm:border-neutral-200/40 sm:dark:border-neutral-700/50 bg-neutral-50/50 dark:bg-neutral-900/30">
+        {/* Header */}
+        <div className="shrink-0 border-b border-neutral-200/40 dark:border-neutral-800/40 px-3 py-3 md:px-4 md:py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-[15px] md:text-base font-semibold text-foreground leading-tight">
+                {t("app.tasksPanel.title")}
+              </h2>
+              <p className="mt-0.5 text-[10px] md:text-xs text-muted-foreground/60 leading-none">
+                {t("app.tasksPanel.subtitle")}
+              </p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="rounded-lg p-1.5 text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ArrowPathIcon className="size-3.5 md:size-4" />
+            </button>
           </div>
-          <button
-            onClick={handleRefresh}
-            className="rounded-lg p-1.5 text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <ArrowPathIcon className="size-3.5 md:size-4" />
-          </button>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="custom-scrollbar flex-1 overflow-y-auto p-2 md:p-3">
-        {isLoading && (
-          <div className="flex items-center justify-center py-16">
-            <div className="size-4 animate-spin rounded-full border-[1.5px] border-muted-foreground/20 border-t-primary" />
-          </div>
-        )}
+        {/* Content */}
+        <div className="custom-scrollbar flex-1 overflow-y-auto p-2 md:p-3">
+          {isLoading && (
+            <div className="flex items-center justify-center py-16">
+              <div className="size-4 animate-spin rounded-full border-[1.5px] border-muted-foreground/20 border-t-primary" />
+            </div>
+          )}
 
-        {!isLoading && error && (
-          <div className="rounded-lg bg-red-500/10 px-3 py-3 text-center text-[11px] md:text-xs text-red-400">
-            {t("app.tasksPanel.loadError")}
-          </div>
-        )}
+          {!isLoading && error && (
+            <div className="rounded-lg bg-red-500/10 px-3 py-3 text-center text-[11px] md:text-xs text-red-400">
+              {t("app.tasksPanel.loadError")}
+            </div>
+          )}
 
-        {!isLoading && !error && tasks && tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <CalendarDaysIcon className="size-6 md:size-8 text-muted-foreground/20" />
-            <p className="mt-2 text-[11px] md:text-xs font-medium text-muted-foreground/60">
-              {t("app.tasksPanel.empty")}
-            </p>
-            <p className="mt-0.5 text-[9px] md:text-[10px] text-muted-foreground/40">
-              {t("app.tasksPanel.emptyHint")}
-            </p>
-          </div>
-        )}
+          {!isLoading && !error && tasks && tasks.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <CalendarDaysIcon className="size-6 md:size-8 text-muted-foreground/20" />
+              <p className="mt-2 text-[11px] md:text-xs font-medium text-muted-foreground/60">
+                {t("app.tasksPanel.empty")}
+              </p>
+              <p className="mt-0.5 text-[9px] md:text-[10px] text-muted-foreground/40">
+                {t("app.tasksPanel.emptyHint")}
+              </p>
+            </div>
+          )}
 
-        {!isLoading && !error && tasks && tasks.length > 0 && (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-1.5 md:gap-2">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onDelete={setDeleteTarget}
-                isDeleting={
-                  cancelMutation.isPending &&
-                  cancelMutation.variables === task.id
-                }
-              />
-            ))}
-          </div>
-        )}
+          {!isLoading && !error && tasks && tasks.length > 0 && (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-1.5 md:gap-2">
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onDelete={setDeleteTarget}
+                  isDeleting={
+                    cancelMutation.isPending &&
+                    cancelMutation.variables === task.id
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Confirmation modal */}

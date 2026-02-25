@@ -11,8 +11,11 @@ import enLanding from "./locales/en/landing.json";
 import enMarketplace from "./locales/en/marketplace.json";
 import enMcp from "./locales/en/mcp.json";
 import enNotifications from "./locales/en/notifications.json";
+import enRunner from "./locales/en/runner.json";
 import enSettings from "./locales/en/settings.json";
+import enSkillMarketplace from "./locales/en/skillMarketplace.json";
 import enSubscription from "./locales/en/subscription.json";
+import enTerminal from "./locales/en/terminal.json";
 
 import jaAgents from "./locales/ja/agents.json";
 import jaApp from "./locales/ja/app.json";
@@ -23,8 +26,11 @@ import jaLanding from "./locales/ja/landing.json";
 import jaMarketplace from "./locales/ja/marketplace.json";
 import jaMcp from "./locales/ja/mcp.json";
 import jaNotifications from "./locales/ja/notifications.json";
+import jaRunner from "./locales/ja/runner.json";
 import jaSettings from "./locales/ja/settings.json";
+import jaSkillMarketplace from "./locales/ja/skillMarketplace.json";
 import jaSubscription from "./locales/ja/subscription.json";
+import jaTerminal from "./locales/ja/terminal.json";
 
 import zhAgents from "./locales/zh/agents.json";
 import zhApp from "./locales/zh/app.json";
@@ -35,8 +41,11 @@ import zhLanding from "./locales/zh/landing.json";
 import zhMarketplace from "./locales/zh/marketplace.json";
 import zhMcp from "./locales/zh/mcp.json";
 import zhNotifications from "./locales/zh/notifications.json";
+import zhRunner from "./locales/zh/runner.json";
 import zhSettings from "./locales/zh/settings.json";
+import zhSkillMarketplace from "./locales/zh/skillMarketplace.json";
 import zhSubscription from "./locales/zh/subscription.json";
+import zhTerminal from "./locales/zh/terminal.json";
 
 export const SUPPORTED_LANGUAGES = ["en", "zh", "ja"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -64,12 +73,15 @@ export function initI18n() {
             common: enCommon,
             settings: enSettings,
             marketplace: enMarketplace,
+            skillMarketplace: enSkillMarketplace,
             knowledge: enKnowledge,
             mcp: enMcp,
             agents: enAgents,
             landing: enLanding,
             notifications: enNotifications,
+            runner: enRunner,
             subscription: enSubscription,
+            terminal: enTerminal,
           },
         },
         zh: {
@@ -79,12 +91,15 @@ export function initI18n() {
             common: zhCommon,
             settings: zhSettings,
             marketplace: zhMarketplace,
+            skillMarketplace: zhSkillMarketplace,
             knowledge: zhKnowledge,
             mcp: zhMcp,
             agents: zhAgents,
             landing: zhLanding,
             notifications: zhNotifications,
+            runner: zhRunner,
             subscription: zhSubscription,
+            terminal: zhTerminal,
           },
         },
         ja: {
@@ -94,12 +109,15 @@ export function initI18n() {
             common: jaCommon,
             settings: jaSettings,
             marketplace: jaMarketplace,
+            skillMarketplace: jaSkillMarketplace,
             knowledge: jaKnowledge,
             mcp: jaMcp,
             agents: jaAgents,
             landing: jaLanding,
             notifications: jaNotifications,
+            runner: jaRunner,
             subscription: jaSubscription,
+            terminal: jaTerminal,
           },
         },
       },

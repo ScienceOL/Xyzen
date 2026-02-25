@@ -1,13 +1,15 @@
-import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
+import CommunityHub from "@/app/marketplace/CommunityHub";
 import MobileAccountPage from "@/components/features/MobileAccountPage";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import MemoryPanel from "@/components/layouts/MemoryPanel";
+import RunnerPanel from "@/components/layouts/RunnerPanel";
 import SandboxPanel from "@/components/layouts/SandboxPanel";
 import ScheduledTasksPanel from "@/components/layouts/ScheduledTasksPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
+import { TerminalModal } from "@/components/modals/TerminalModal";
 import { useXyzen } from "@/store";
 import { useShallow } from "zustand/react/shallow";
 import AuthErrorScreen from "./auth/AuthErrorScreen";
@@ -56,13 +58,19 @@ export function MobileApp({
 
             {activePanel === "marketplace" && (
               <div className="h-full bg-white dark:bg-neutral-950">
-                <AgentMarketplace />
+                <CommunityHub />
               </div>
             )}
 
             {activePanel === "sandbox" && (
               <div className="h-full bg-white dark:bg-neutral-950">
                 <SandboxPanel />
+              </div>
+            )}
+
+            {activePanel === "runner" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <RunnerPanel />
               </div>
             )}
 
@@ -95,6 +103,7 @@ export function MobileApp({
       </div>
 
       <SettingsModal />
+      <TerminalModal />
       <PushPermissionPrompt />
     </>
   );

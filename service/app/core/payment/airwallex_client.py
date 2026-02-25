@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import logging
 import time
+from datetime import datetime
 
 import httpx
 
@@ -48,8 +49,13 @@ class AirwallexClient:
         resp.raise_for_status()
         data = resp.json()
         self._token = data["token"]
-        # Airwallex tokens expire in ~30 min; use expires_at if provided
-        self._token_expires_at = data.get("expires_at", time.time() + 1800)
+        # Airwallex returns expires_at as ISO string e.g. "2026-02-25T20:09:31+0000"
+        expires_at_str = data.get("expires_at")
+        if expires_at_str:
+            dt = datetime.fromisoformat(expires_at_str.replace("+0000", "+00:00"))
+            self._token_expires_at = dt.timestamp()
+        else:
+            self._token_expires_at = time.time() + 1800
         logger.info("Airwallex auth token refreshed")
         return self._token
 
@@ -66,6 +72,7 @@ class AirwallexClient:
         currency: str,
         order_id: str,
         metadata: dict | None = None,
+        return_url: str = "",
     ) -> dict:
         """Create a PaymentIntent on Airwallex.
 
@@ -74,6 +81,7 @@ class AirwallexClient:
             currency: ISO currency code (e.g. CNY, USD).
             order_id: Internal order ID for merchant_order_id.
             metadata: Optional key-value metadata.
+            return_url: URL to redirect shopper after payment (required for LPMs).
 
         Returns:
             Airwallex PaymentIntent response dict.
@@ -88,6 +96,8 @@ class AirwallexClient:
             "request_id": order_id,
             "metadata": metadata or {},
         }
+        if return_url:
+            payload["return_url"] = return_url
 
         headers = await self._headers()
         resp = await self._http.post(
@@ -95,6 +105,8 @@ class AirwallexClient:
             headers=headers,
             json=payload,
         )
+        if resp.status_code >= 400:
+            logger.error(f"Create PaymentIntent failed: {resp.status_code} {resp.text}")
         resp.raise_for_status()
         data = resp.json()
         logger.info(f"Created PaymentIntent: {data.get('id')}")
@@ -117,6 +129,7 @@ class AirwallexClient:
             "request_id": f"{intent_id}_confirm",
             "payment_method": {
                 "type": payment_method_type,
+                payment_method_type: {},
             },
             "payment_method_options": {
                 payment_method_type: {
@@ -131,6 +144,8 @@ class AirwallexClient:
             headers=headers,
             json=payload,
         )
+        if resp.status_code >= 400:
+            logger.error(f"Confirm PaymentIntent {intent_id} failed: {resp.status_code} {resp.text}")
         resp.raise_for_status()
         data = resp.json()
         logger.info(f"Confirmed PaymentIntent {intent_id}, status={data.get('status')}")

@@ -21,6 +21,8 @@
     "resetsMonthly": "Resets monthly",
     "parallel": "{{count}} parallel",
     "sandbox": "{{count}} sandbox",
+    "scheduledTask": "{{count}} task",
+    "scheduledTaskNone": "—",
     "firstMonth": "First month {{price}}"
   },
 
@@ -63,6 +65,7 @@
     "storage": "Storage",
     "parallelChats": "Parallel Chats",
     "sandboxes": "Sandboxes",
+    "scheduledTasks": "Scheduled Tasks",
     "redeemTitle": "Redeem Credits",
     "redeemHint": "Enter a redemption code in Settings > Redemption to claim credits or upgrade",
     "claiming": "Claiming...",

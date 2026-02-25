@@ -1,0 +1,32 @@
+{
+  "title": "Runner",
+  "subtitle": "Connect your local machine as a sandbox for AI agents",
+  "empty": "No runners registered. Add one to connect your local environment.",
+  "add": "Add Runner",
+  "delete": "Delete",
+  "deleteConfirm": "Are you sure you want to delete this runner? The token will be permanently revoked.",
+  "online": "Online",
+  "offline": "Offline",
+  "active": "Active",
+  "inactive": "Disabled",
+  "tokenPrefix": "Token",
+  "lastConnected": "Last connected",
+  "never": "Never",
+  "osInfo": "OS",
+  "workDir": "Work Dir",
+  "create": {
+    "title": "Create Runner",
+    "nameLabel": "Runner Name",
+    "namePlaceholder": "e.g. My MacBook",
+    "generate": "Generate Token",
+    "tokenWarning": "This token will only be shown once. Copy it now.",
+    "connectionCommand": "Connection Command",
+    "copied": "Copied!",
+    "copy": "Copy",
+    "done": "Done"
+  },
+  "toggle": {
+    "enable": "Enable",
+    "disable": "Disable"
+  }
+}

@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon,
   CheckIcon,
   ClockIcon,
+  CalendarDaysIcon,
   CommandLineIcon,
   DocumentTextIcon,
   FolderIcon,
@@ -54,6 +55,7 @@ interface SubscriptionPlan {
   storage: string;
   parallelChats: string;
   sandboxes?: string;
+  scheduledTasks?: string;
   highlight?: boolean;
   badge?: string;
   isFree?: boolean;
@@ -93,6 +95,7 @@ function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
       storage: "1 GB",
       parallelChats: t("subscription.plan.parallel", { count: 3 }),
       sandboxes: t("subscription.plan.sandbox", { count: 1 }),
+      scheduledTasks: t("subscription.plan.scheduledTask", { count: 3 }),
       features: [
         { text: t("subscription.feature.liteStandard"), included: true },
         {
@@ -112,6 +115,7 @@ function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
       storage: "10 GB",
       parallelChats: t("subscription.plan.parallel", { count: 5 }),
       sandboxes: t("subscription.plan.sandbox", { count: 2 }),
+      scheduledTasks: t("subscription.plan.scheduledTask", { count: 6 }),
       features: [
         { text: t("subscription.feature.allStandard"), included: true },
         { text: t("subscription.feature.pro"), included: true },
@@ -128,6 +132,7 @@ function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
       storage: "100 GB",
       parallelChats: t("subscription.plan.parallel", { count: 10 }),
       sandboxes: t("subscription.plan.sandbox", { count: 3 }),
+      scheduledTasks: t("subscription.plan.scheduledTask", { count: 10 }),
       features: [
         { text: t("subscription.feature.allPro"), included: true },
         { text: t("subscription.feature.ultraModels"), included: true },
@@ -173,6 +178,7 @@ function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
       storage: "1 GB",
       parallelChats: t("subscription.plan.parallel", { count: 3 }),
       sandboxes: t("subscription.plan.sandbox", { count: 1 }),
+      scheduledTasks: t("subscription.plan.scheduledTask", { count: 3 }),
       features: [
         { text: t("subscription.feature.liteStandard"), included: true },
         {
@@ -193,6 +199,7 @@ function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
       storage: "10 GB",
       parallelChats: t("subscription.plan.parallel", { count: 5 }),
       sandboxes: t("subscription.plan.sandbox", { count: 2 }),
+      scheduledTasks: t("subscription.plan.scheduledTask", { count: 6 }),
       features: [
         { text: t("subscription.feature.allStandard"), included: true },
         { text: t("subscription.feature.pro"), included: true },
@@ -209,6 +216,7 @@ function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
       storage: "100 GB",
       parallelChats: t("subscription.plan.parallel", { count: 10 }),
       sandboxes: t("subscription.plan.sandbox", { count: 3 }),
+      scheduledTasks: t("subscription.plan.scheduledTask", { count: 10 }),
       features: [
         { text: t("subscription.feature.allPro"), included: true },
         { text: t("subscription.feature.ultraModels"), included: true },
@@ -491,7 +499,7 @@ function MySubscriptionTab() {
       </motion.div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[2fr_2fr_1fr_1fr_1fr]">
         {/* Credits + Claim */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -639,13 +647,33 @@ function MySubscriptionTab() {
             {role.max_sandboxes}
           </div>
         </motion.div>
+
+        {/* Scheduled Tasks */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
+              <CalendarDaysIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            </div>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              {t("subscription.sub.scheduledTasks")}
+            </span>
+          </div>
+          <div className="text-xl font-bold tabular-nums text-neutral-900 dark:text-white">
+            {role.max_scheduled_tasks}
+          </div>
+        </motion.div>
       </div>
 
       {/* Redeem prompt */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.55 }}
         className={cn(
           "flex items-center gap-4 rounded-xl border p-4",
           tier.accentBorder,
@@ -691,6 +719,31 @@ function MySubscriptionTab() {
             max={usage.files.limit}
             color={tier.barColor}
             delay={0.6}
+          />
+        </motion.div>
+      )}
+
+      {/* Scheduled tasks usage bar */}
+      {usage?.scheduled_tasks && usage.scheduled_tasks.limit > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              {t("subscription.sub.scheduledTasks")}
+            </span>
+            <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+              {usage.scheduled_tasks.used} / {usage.scheduled_tasks.limit}
+            </span>
+          </div>
+          <UsageBar
+            value={usage.scheduled_tasks.used}
+            max={usage.scheduled_tasks.limit}
+            color="bg-orange-500"
+            delay={0.65}
           />
         </motion.div>
       )}
@@ -820,6 +873,16 @@ function PlanCard({
             className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
           >
             {plan.sandboxes ?? "—"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <CalendarDaysIcon
+            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-orange-500"}`}
+          />
+          <span
+            className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+          >
+            {plan.scheduledTasks ?? t("subscription.plan.scheduledTaskNone")}
           </span>
         </div>
       </div>

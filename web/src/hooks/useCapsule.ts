@@ -2,7 +2,12 @@ import { useXyzen } from "@/store";
 import { useCallback } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-export type CapsuleTab = "knowledge" | "tools" | "sandbox" | "memory";
+export type CapsuleTab =
+  | "knowledge"
+  | "tools"
+  | "sandbox"
+  | "runner"
+  | "memory";
 
 /**
  * Reusable hook for controlling capsule open/close/tab state.

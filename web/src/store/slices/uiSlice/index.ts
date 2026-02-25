@@ -15,6 +15,7 @@ export type ActivityPanel =
   | "marketplace"
   | "memory"
   | "sandbox"
+  | "runner"
   | "tasks"
   | "account";
 
@@ -39,7 +40,7 @@ export interface UiSlice {
   pendingInput: string;
   spatialSidebarCollapsed: boolean;
   capsuleOpen: boolean;
-  capsuleActiveTab: "knowledge" | "tools" | "sandbox" | "memory";
+  capsuleActiveTab: "knowledge" | "tools" | "sandbox" | "runner" | "memory";
   showOfficialRecommendations: boolean;
   // Mobile navigation
   mobileCeoOverlay: boolean;
@@ -82,7 +83,7 @@ export interface UiSlice {
   setSpatialSidebarCollapsed: (collapsed: boolean) => void;
   setCapsuleOpen: (open: boolean) => void;
   setCapsuleActiveTab: (
-    tab: "knowledge" | "tools" | "sandbox" | "memory",
+    tab: "knowledge" | "tools" | "sandbox" | "runner" | "memory",
   ) => void;
   setShowOfficialRecommendations: (show: boolean) => void;
   setMobileCeoOverlay: (visible: boolean) => void;

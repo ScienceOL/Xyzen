@@ -13,7 +13,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.configs import configs
+from app.configs.sandbox import get_sandbox_workdir
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.repos.session import SessionRepository
@@ -27,15 +27,7 @@ router = APIRouter(tags=["sandbox"])
 
 _MAX_SERVE_BYTES = 50 * 1024 * 1024  # 50 MB
 
-
-def _configured_workdir_root() -> str:
-    workdir = (configs.Sandbox.WorkDir or "/workspace").strip()
-    if not workdir.startswith("/"):
-        workdir = f"/{workdir}"
-    return PurePosixPath(workdir).as_posix()
-
-
-_WORKDIR_ROOT = _configured_workdir_root()
+_WORKDIR_ROOT = get_sandbox_workdir()
 
 
 class SandboxFileInfo(BaseModel):
@@ -69,11 +61,11 @@ async def _validate_session_ownership(
         raise HTTPException(status_code=403, detail="Access denied")
 
 
-def _get_manager(session_id: UUID) -> SandboxManager:
+async def _get_manager(session_id: UUID) -> SandboxManager:
     """Get a SandboxManager for the given session (read-only, no provisioning)."""
     from app.infra.sandbox import get_sandbox_manager
 
-    return get_sandbox_manager(str(session_id))
+    return await get_sandbox_manager(str(session_id))
 
 
 def _validate_sandbox_path(path: str) -> str:
@@ -111,7 +103,7 @@ async def list_sandbox_files(
     """List files in the sandbox for a given session."""
     await _validate_session_ownership(session_id, user, db)
 
-    manager = _get_manager(session_id)
+    manager = await _get_manager(session_id)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         return SandboxFilesResponse(files=[], sandbox_active=False)
@@ -147,7 +139,7 @@ async def get_sandbox_file_content(
     """
     await _validate_session_ownership(session_id, user, db)
 
-    manager = _get_manager(session_id)
+    manager = await _get_manager(session_id)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No sandbox active for this session")
@@ -194,7 +186,7 @@ async def get_sandbox_preview(
     """Get a browser-accessible preview URL for a port in the sandbox."""
     await _validate_session_ownership(session_id, user, db)
 
-    manager = _get_manager(session_id)
+    manager = await _get_manager(session_id)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No sandbox active for this session")

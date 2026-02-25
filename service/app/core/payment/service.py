@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.payment.airwallex_client import airwallex_client
 from app.core.subscription import SubscriptionService
 from app.core.user_events import broadcast_wallet_update
+from app.configs import configs
 from app.models.payment import PaymentOrderCreate
 from app.repos.payment import PaymentRepository
 from app.repos.redemption import RedemptionRepository
@@ -92,6 +93,7 @@ class PaymentService:
             currency=currency,
             order_id=str(order.id),
             metadata={"user_id": user_id, "plan_name": plan_name},
+            return_url=configs.Airwallex.ReturnUrl,
         )
         intent_id = intent["id"]
 

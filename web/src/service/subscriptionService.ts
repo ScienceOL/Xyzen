@@ -11,6 +11,7 @@ export interface SubscriptionRoleRead {
   max_file_upload_bytes: number;
   max_parallel_chats: number;
   max_sandboxes: number;
+  max_scheduled_tasks: number;
   monthly_credits: number;
   max_model_tier: string;
   is_default: boolean;
@@ -77,6 +78,7 @@ export interface UsageResponse {
   role_display_name: string;
   chats: UsageBucket;
   sandboxes: UsageBucket;
+  scheduled_tasks: UsageBucket;
   storage: StorageBucket;
   files: UsageBucket;
 }

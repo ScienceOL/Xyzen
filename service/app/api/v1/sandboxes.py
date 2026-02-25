@@ -191,7 +191,7 @@ async def delete_sandbox(
     # Check if sandbox exists
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")
@@ -221,7 +221,7 @@ async def get_sandbox_status(
 
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")
@@ -254,7 +254,7 @@ async def keep_alive_sandbox(
 
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")
@@ -283,7 +283,7 @@ async def start_sandbox(
 
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")

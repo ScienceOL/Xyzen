@@ -47,6 +47,7 @@
     "memory": "记忆",
     "more": "更多",
     "sandbox": "沙盒",
+    "runner": "本地终端",
     "tasks": "任务",
     "account": "我的",
     "comingSoon": "敬请期待"
@@ -519,6 +520,7 @@
     "storage": "存储空间",
     "files": "文件数",
     "parallelChats": "并行对话",
+    "scheduledTasks": "定时任务",
     "settings": "设置",
     "redeem": "兑换码",
     "region": "地区",

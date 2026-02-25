@@ -105,7 +105,7 @@ def create_skill_tools_for_session(
     Returns:
         List of BaseTool instances with session context bound.
     """
-    from app.core.skills.sandbox_deployer import SKILLS_BASE_PATH
+    from app.core.skills.sandbox_deployer import _skills_base_path
 
     # Build lookup by name
     skill_map: dict[str, SkillInfo] = {s.name: s for s in skills}
@@ -166,7 +166,7 @@ def create_skill_tools_for_session(
                         )
                 else:
                     resource_files = await load_skill_resource_files(skill.resource_prefix)
-                manager = get_sandbox_manager(session_id, user_id=user_id)
+                manager = await get_sandbox_manager(session_id, user_id=user_id)
                 deployed_path = await deploy_skill_to_sandbox(
                     manager=manager,
                     skill_name=skill.name,
@@ -189,7 +189,7 @@ def create_skill_tools_for_session(
 
             resource_paths = await list_skill_resource_paths(skill.resource_prefix)
             result["resource_paths"] = resource_paths
-            result["resources_base"] = deployed_path or f"{SKILLS_BASE_PATH}/{skill.name}"
+            result["resources_base"] = deployed_path or f"{_skills_base_path()}/{skill.name}"
 
         return result
 
@@ -231,7 +231,7 @@ def create_skill_tools_for_session(
 
         paths = await list_skill_resource_paths(skill.resource_prefix)
         resource_list = []
-        base = f"{SKILLS_BASE_PATH}/{skill.name}"
+        base = f"{_skills_base_path()}/{skill.name}"
         for path in paths:
             resource_list.append(f"{base}/{path}")
 

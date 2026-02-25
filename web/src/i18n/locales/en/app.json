@@ -47,6 +47,7 @@
     "memory": "Memory",
     "more": "More",
     "sandbox": "Sandbox",
+    "runner": "Local Terminal",
     "tasks": "Tasks",
     "account": "Account",
     "comingSoon": "Coming Soon"
@@ -520,6 +521,7 @@
     "storage": "Storage",
     "files": "Files",
     "parallelChats": "Parallel Chats",
+    "scheduledTasks": "Scheduled Tasks",
     "settings": "Settings",
     "redeem": "Redeem",
     "region": "Region",

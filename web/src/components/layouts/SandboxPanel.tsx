@@ -21,6 +21,11 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import {
+  DOCK_HORIZONTAL_MARGIN,
+  DOCK_SAFE_AREA,
+} from "@/components/layouts/BottomDock";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
 
 const SandboxWorkspace = React.lazy(() => import("./SandboxWorkspace"));
 
@@ -178,89 +183,106 @@ export default function SandboxPanel() {
     );
   }
 
-  return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-neutral-200/60 px-4 py-3 dark:border-neutral-800/60 shrink-0">
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-            {t("app.sandbox.title")}
-          </h2>
-          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-            {t("app.sandbox.subtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setIsConfigOpen(true)}
-            className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-            title={t("app.sandbox.config.title")}
-          >
-            <Cog6ToothIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => void load()}
-            disabled={loading}
-            className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-            title={t("common.refresh")}
-          >
-            <ArrowPathIcon
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
-          </button>
-        </div>
-      </div>
+  const isDesktop =
+    typeof window !== "undefined" && window.innerWidth >= MOBILE_BREAKPOINT;
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
-        {loading && sandboxes.length === 0 && (
-          <div className="flex h-32 items-center justify-center">
-            <p className="text-sm text-neutral-400 dark:text-neutral-500">
-              {t("common.loading")}
+  return (
+    <div
+      className="flex h-full flex-col"
+      style={
+        isDesktop
+          ? {
+              paddingTop: 16,
+              paddingBottom: DOCK_SAFE_AREA,
+              paddingLeft: DOCK_HORIZONTAL_MARGIN,
+              paddingRight: DOCK_HORIZONTAL_MARGIN,
+            }
+          : {}
+      }
+    >
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden sm:rounded-2xl sm:border sm:border-neutral-200/40 sm:dark:border-neutral-700/50 bg-neutral-50/50 dark:bg-neutral-900/30">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-200/40 px-4 py-3 dark:border-neutral-800/40 shrink-0">
+          <div>
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+              {t("app.sandbox.title")}
+            </h2>
+            <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+              {t("app.sandbox.subtitle")}
             </p>
           </div>
-        )}
-
-        {error && (
-          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-            <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setIsConfigOpen(true)}
+              className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+              title={t("app.sandbox.config.title")}
+            >
+              <Cog6ToothIcon className="h-4 w-4" />
+            </button>
             <button
               onClick={() => void load()}
-              className="text-xs text-neutral-500 underline hover:text-neutral-700 dark:hover:text-neutral-300"
+              disabled={loading}
+              className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+              title={t("common.refresh")}
             >
-              {t("common.retry")}
+              <ArrowPathIcon
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
-        )}
+        </div>
 
-        {!loading && !error && sandboxes.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-            <CommandLineIcon className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              {t("app.sandbox.empty")}
-            </p>
-            <p className="text-xs text-neutral-400 dark:text-neutral-500">
-              {t("app.sandbox.emptyHint")}
-            </p>
-          </div>
-        )}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+          {loading && sandboxes.length === 0 && (
+            <div className="flex h-32 items-center justify-center">
+              <p className="text-sm text-neutral-400 dark:text-neutral-500">
+                {t("common.loading")}
+              </p>
+            </div>
+          )}
 
-        <AnimatePresence mode="popLayout">
-          {sandboxes.map((sb) => (
-            <SandboxCard
-              key={sb.session_id}
-              sandbox={sb}
-              status={statusMap[sb.session_id]}
-              isDeleting={deletingId === sb.session_id}
-              isKeepingAlive={keepAliveId === sb.session_id}
-              isStarting={startingId === sb.session_id}
-              onOpen={setSelectedSandbox}
-              onDelete={setDeleteTarget}
-              onKeepAlive={(entry) => void handleKeepAlive(entry)}
-              onStart={(entry) => void handleStart(entry)}
-            />
-          ))}
-        </AnimatePresence>
+          {error && (
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+              <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+              <button
+                onClick={() => void load()}
+                className="text-xs text-neutral-500 underline hover:text-neutral-700 dark:hover:text-neutral-300"
+              >
+                {t("common.retry")}
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && sandboxes.length === 0 && (
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+              <CommandLineIcon className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                {t("app.sandbox.empty")}
+              </p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                {t("app.sandbox.emptyHint")}
+              </p>
+            </div>
+          )}
+
+          <AnimatePresence mode="popLayout">
+            {sandboxes.map((sb) => (
+              <SandboxCard
+                key={sb.session_id}
+                sandbox={sb}
+                status={statusMap[sb.session_id]}
+                isDeleting={deletingId === sb.session_id}
+                isKeepingAlive={keepAliveId === sb.session_id}
+                isStarting={startingId === sb.session_id}
+                onOpen={setSelectedSandbox}
+                onDelete={setDeleteTarget}
+                onKeepAlive={(entry) => void handleKeepAlive(entry)}
+                onStart={(entry) => void handleStart(entry)}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Delete confirmation modal */}
