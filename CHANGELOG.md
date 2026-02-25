@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.6](https://github.com/ScienceOL/Xyzen/compare/v1.5.5...v1.5.6) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* sync active topic with Service Worker to suppress push notifications ([c1a25b8](https://github.com/ScienceOL/Xyzen/commit/c1a25b87245e2487353cfe5eca65bfd49edfd245))
+
 ## [1.5.5](https://github.com/ScienceOL/Xyzen/compare/v1.5.4...v1.5.5) (2026-02-25)
 
 ### 🐛 Bug Fixes
