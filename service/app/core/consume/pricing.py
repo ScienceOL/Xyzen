@@ -26,40 +26,48 @@ TOKEN_CREDIT_RATES: dict[str, float] = {
 # Tool call -> fixed credit cost (by tool name).
 # Unlisted tools default to 0 via calculate_tool_cost().
 TOOL_CREDIT_COSTS: dict[str, int] = {
-    # --- Image ---
-    "generate_image": 10,
-    "read_image": 2,
-    # --- Web / Search ---
-    "web_search": 1,
+    # --- Web Search ---
+    "web_search": 0,
     "web_fetch": 1,
     "literature_search": 1,
     # --- Knowledge ---
-    "knowledge_write": 5,
-    "knowledge_search": 1,
+    "knowledge_write": 1,
+    "knowledge_search": 0,
     "knowledge_list": 0,
     "knowledge_read": 0,
     "knowledge_help": 0,
     # --- Memory ---
     "manage_memory": 1,
     "search_memory": 1,
+    # --- File I/O ---
+    "file_read": 1,
+    # --- Image ---
+    "generate_image": 10,
+    "read_image": 2,
+    # --- Video ---
+    "generate_video": 1000,
     # --- Sandbox ---
-    "sandbox_bash": 1,
-    "sandbox_upload": 1,
-    "sandbox_export": 1,
-    "sandbox_preview": 1,
+    "sandbox_bash": 5,
+    "sandbox_upload": 0,
+    "sandbox_export": 0,
+    "sandbox_preview": 0,
     "sandbox_read": 0,
-    "sandbox_write": 0,
+    "sandbox_write": 1,
     "sandbox_edit": 0,
     "sandbox_glob": 0,
     "sandbox_grep": 0,
-    # --- Delegation / Subagent ---
-    "spawn_subagent": 2,
-    "delegate_to_agent": 2,
-    "list_user_agents": 0,
-    "get_agent_details": 0,
     # --- Skills ---
     "activate_skill": 0,
     "list_skill_resources": 0,
+    # --- Delegation / Subagent ---
+    "spawn_subagent": 1,
+    "delegate_to_agent": 1,
+    "list_user_agents": 0,
+    "get_agent_details": 0,
+    # --- Scheduled Tasks ---
+    "create_scheduled_task": 1,
+    "list_scheduled_tasks": 0,
+    "cancel_scheduled_task": 0,
 }
 
 # Model -> real cost rates (USD per token, for platform cost tracking).

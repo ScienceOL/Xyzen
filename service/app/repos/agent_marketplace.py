@@ -51,6 +51,7 @@ class AgentMarketplaceRepository:
             readme=listing_data.readme,
             scope=listing_data.scope,
             builtin_key=listing_data.builtin_key,
+            fork_mode=listing_data.fork_mode,
         )
 
         self.db.add(listing)
