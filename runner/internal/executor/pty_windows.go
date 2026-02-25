@@ -5,7 +5,7 @@ package executor
 import (
 	"fmt"
 
-	"github.com/scienceol/xyzen/internal/protocol"
+	"github.com/scienceol/xyzen/runner/internal/protocol"
 )
 
 // PTYSession represents a single running PTY session.
@@ -39,3 +39,5 @@ func (m *PTYManager) Close(sessionID string) error {
 }
 
 func (m *PTYManager) CloseAll() {}
+
+func (m *PTYManager) ListSessions() []string { return nil }

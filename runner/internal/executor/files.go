@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/scienceol/xyzen/internal/protocol"
+	"github.com/scienceol/xyzen/runner/internal/protocol"
 )
 
 // ReadFile reads a text file and returns its content.

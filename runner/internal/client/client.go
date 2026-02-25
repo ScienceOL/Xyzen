@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/scienceol/xyzen/internal/config"
-	"github.com/scienceol/xyzen/internal/executor"
-	"github.com/scienceol/xyzen/internal/protocol"
-	"github.com/scienceol/xyzen/internal/ui"
+	"github.com/scienceol/xyzen/runner/internal/config"
+	"github.com/scienceol/xyzen/runner/internal/executor"
+	"github.com/scienceol/xyzen/runner/internal/protocol"
+	"github.com/scienceol/xyzen/runner/internal/ui"
 )
 
 const (

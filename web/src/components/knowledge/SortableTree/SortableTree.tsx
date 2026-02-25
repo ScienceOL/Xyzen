@@ -7,7 +7,8 @@ import {
   DragOverlay,
   type DragStartEvent,
   type DropAnimation,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   type UniqueIdentifier,
   defaultDropAnimation,
   useSensor,
@@ -220,10 +221,15 @@ const SortableTreeComp = React.forwardRef<
     }, [activeId, selectedIds]);
 
     const sensors = useSensors(
-      useSensor(PointerSensor, {
+      useSensor(MouseSensor, {
         activationConstraint: isTrashView
           ? { distance: Infinity }
           : { distance: 8 },
+      }),
+      useSensor(TouchSensor, {
+        activationConstraint: isTrashView
+          ? { delay: Infinity, tolerance: 0 }
+          : { delay: 250, tolerance: 8 },
       }),
     );
 

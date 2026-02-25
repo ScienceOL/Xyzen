@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/scienceol/xyzen/internal/protocol"
+	"github.com/scienceol/xyzen/runner/internal/protocol"
 )
 
 const (

@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/creack/pty"
-	"github.com/scienceol/xyzen/internal/protocol"
+	"github.com/scienceol/xyzen/runner/internal/protocol"
 )
 
 // PTYSession represents a single running PTY session.

@@ -70,7 +70,7 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
         setDropRef(el);
         registerRef?.(item.id, el);
       }}
-      style={{ opacity: isDragging ? 0.4 : 1 }}
+      style={{ opacity: isDragging ? 0.4 : 1, touchAction: "none" }}
       {...(isEditing ? {} : attributes)}
       {...(isEditing ? {} : listeners)}
       onMouseDown={(e) => {

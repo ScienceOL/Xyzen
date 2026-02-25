@@ -1,4 +1,4 @@
-module github.com/scienceol/xyzen
+module github.com/scienceol/xyzen/runner
 
 go 1.22
 

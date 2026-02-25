@@ -6,10 +6,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/scienceol/xyzen/internal/client"
-	"github.com/scienceol/xyzen/internal/config"
-	"github.com/scienceol/xyzen/internal/ui"
-	"github.com/scienceol/xyzen/internal/updater"
+	"github.com/scienceol/xyzen/runner/internal/client"
+	"github.com/scienceol/xyzen/runner/internal/config"
+	"github.com/scienceol/xyzen/runner/internal/ui"
+	"github.com/scienceol/xyzen/runner/internal/updater"
 	"github.com/spf13/cobra"
 )
 

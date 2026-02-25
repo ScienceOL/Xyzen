@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["runners"])
 
 # --- CLI version metadata ---------------------------------------------------
-CLI_LATEST_VERSION = "0.1.0"
-CLI_DOWNLOAD_BASE = "https://xyzen.ai/releases/cli"
+CLI_LATEST_VERSION = "1.6.0"
+CLI_DOWNLOAD_BASE = "https://github.com/ScienceOL/Xyzen/releases"
 
 RUNNER_ONLINE_PREFIX = "runner:online:"
 
@@ -179,10 +179,10 @@ async def get_cli_latest_version() -> CLIVersionResponse:
     download = {}
     for plat, _label in _PLATFORMS.items():
         suffix = ".exe" if plat.startswith("windows") else ""
-        download[plat] = f"{CLI_DOWNLOAD_BASE}/v{CLI_LATEST_VERSION}/xyzen-{plat}{suffix}"
+        download[plat] = f"{CLI_DOWNLOAD_BASE}/download/v{CLI_LATEST_VERSION}/xyzen-{plat}{suffix}"
 
     install_command = (
-        f"curl -fsSL {CLI_DOWNLOAD_BASE}/v{CLI_LATEST_VERSION}/xyzen-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') "
+        f"curl -fsSL {CLI_DOWNLOAD_BASE}/latest/download/xyzen-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') "
         f"-o /usr/local/bin/xyzen && chmod +x /usr/local/bin/xyzen"
     )
 

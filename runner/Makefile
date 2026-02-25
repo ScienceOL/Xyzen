@@ -1,6 +1,6 @@
 BINARY_NAME = xyzen
 VERSION ?= 0.1.0
-LDFLAGS = -ldflags "-s -w -X github.com/scienceol/xyzen/cmd.version=$(VERSION)"
+LDFLAGS = -ldflags "-s -w -X github.com/scienceol/xyzen/runner/cmd.version=$(VERSION)"
 
 .PHONY: build clean test all
 
