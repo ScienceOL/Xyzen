@@ -71,7 +71,7 @@ class HeadlessPublisher:
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(name="execute_scheduled_chat", bind=True, max_retries=2)
+@celery_app.task(name="execute_scheduled_chat", bind=True)
 def execute_scheduled_chat(self: Any, scheduled_task_id: str) -> None:
     """Celery task wrapper to run headless chat for a scheduled task."""
     loop = asyncio.new_event_loop()
@@ -98,6 +98,46 @@ def execute_scheduled_chat(self: Any, scheduled_task_id: str) -> None:
 
 
 async def _execute_scheduled_chat_async(scheduled_task_id: str) -> None:
+    """Acquire a per-task Redis execution lock, then delegate to the inner function.
+
+    The lock prevents duplicate concurrent execution when multiple Celery copies
+    of the same scheduled_task_id exist in the queue (e.g. after worker recovery).
+    If Redis is unavailable, falls back to the DB-level status guard in the inner function.
+    """
+    import redis.asyncio as aioredis
+
+    from app.configs import configs
+
+    redis_client = aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+    lock_acquired = False
+    exec_lock = redis_client.lock(
+        f"xyzen:sched_exec:{scheduled_task_id}",
+        timeout=1800,  # 30 min — covers worst-case AI streaming
+    )
+
+    try:
+        try:
+            lock_acquired = await exec_lock.acquire(blocking=False)
+            if not lock_acquired:
+                # Another worker already holds the lock — skip this duplicate
+                logger.info(f"ScheduledTask {scheduled_task_id} already executing elsewhere, skipping")
+                return
+        except Exception:
+            # Redis unavailable — proceed without lock (graceful degradation).
+            # The inner function still has a DB-level status guard as safety net.
+            logger.warning(f"Redis lock unavailable for {scheduled_task_id}, proceeding without lock")
+
+        await _execute_scheduled_chat_inner(scheduled_task_id)
+    finally:
+        if lock_acquired:
+            try:
+                await exec_lock.release()
+            except Exception:
+                pass  # Lock may have expired; that's fine
+        await redis_client.aclose()
+
+
+async def _execute_scheduled_chat_inner(scheduled_task_id: str) -> None:
     task_engine = create_async_engine(
         ASYNC_DATABASE_URL,
         echo=False,
@@ -286,16 +326,17 @@ async def recover_scheduled_tasks() -> None:
     redis_client = aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
 
     try:
-        # Non-blocking lock to prevent duplicate recovery
-        lock = redis_client.lock("scheduled_task_recovery_lock", timeout=60)
+        # Non-blocking lock — expires naturally after 5 min to cover
+        # the entire k8s rolling-update window. Never released explicitly.
+        lock = redis_client.lock("scheduled_task_recovery_lock", timeout=300)
         if not await lock.acquire(blocking=False):
             logger.info("Another worker is recovering scheduled tasks, skipping")
             return
 
-        try:
-            task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
-            TaskSessionLocal = async_sessionmaker(bind=task_engine, class_=AsyncSession, expire_on_commit=False)
+        task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
+        TaskSessionLocal = async_sessionmaker(bind=task_engine, class_=AsyncSession, expire_on_commit=False)
 
+        try:
             async with TaskSessionLocal() as db:
                 repo = ScheduledTaskRepository(db)
                 tasks = await repo.get_active_pending_tasks()
@@ -303,27 +344,25 @@ async def recover_scheduled_tasks() -> None:
                 recovered = 0
 
                 for task in tasks:
-                    if task.scheduled_at > now:
-                        # Future task — schedule with eta
-                        result = execute_scheduled_chat.apply_async(
-                            args=(str(task.id),),
-                            eta=task.scheduled_at,
-                        )
-                    else:
-                        # Missed task — execute immediately
-                        result = execute_scheduled_chat.delay(str(task.id))
+                    try:
+                        if task.scheduled_at > now:
+                            # Future task — schedule with eta
+                            result = execute_scheduled_chat.apply_async(
+                                args=(str(task.id),),
+                                eta=task.scheduled_at,
+                            )
+                        else:
+                            # Missed task — execute immediately
+                            result = execute_scheduled_chat.delay(str(task.id))
 
-                    await repo.update_celery_task_id(task.id, result.id)
-                    recovered += 1
+                        await repo.update_celery_task_id(task.id, result.id)
+                        recovered += 1
+                    except Exception:
+                        logger.exception(f"Failed to recover task {task.id}")
 
                 await db.commit()
                 logger.info(f"Recovered {recovered} scheduled tasks")
-
-            await task_engine.dispose()
         finally:
-            try:
-                await lock.release()
-            except Exception:
-                pass
+            await task_engine.dispose()
     finally:
         await redis_client.aclose()

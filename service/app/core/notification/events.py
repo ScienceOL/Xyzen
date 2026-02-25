@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, TypedDict
@@ -61,6 +62,34 @@ def pack_notification_body(body: str, **meta: Any) -> str:
     if not meta:
         return body
     return f"{body}{_META_SEP}{json.dumps(meta, ensure_ascii=False)}{_META_END}"
+
+
+# ---------------------------------------------------------------------------
+# Markdown stripping — produce clean plain-text for push notifications
+# ---------------------------------------------------------------------------
+
+_MD_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"^#{1,6}\s+", re.MULTILINE), ""),  # headings
+    (re.compile(r"\*{1,3}(.+?)\*{1,3}"), r"\1"),  # bold / italic
+    (re.compile(r"~~(.+?)~~"), r"\1"),  # strikethrough
+    (re.compile(r"`{1,3}[^`]*`{1,3}"), ""),  # inline / fenced code
+    (re.compile(r"!?\[([^\]]*)\]\([^)]*\)"), r"\1"),  # links / images
+    (re.compile(r"^[-*+]\s+", re.MULTILINE), ""),  # unordered list markers
+    (re.compile(r"^\d+\.\s+", re.MULTILINE), ""),  # ordered list markers
+    (re.compile(r"^>\s?", re.MULTILINE), ""),  # blockquotes
+    (re.compile(r"^---+$", re.MULTILINE), ""),  # horizontal rules
+]
+
+
+def strip_markdown(text: str, max_len: int = 80) -> str:
+    """Strip common Markdown syntax and return a single-line plain-text preview."""
+    for pat, repl in _MD_PATTERNS:
+        text = pat.sub(repl, text)
+    # Collapse whitespace into single spaces and trim
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) > max_len:
+        text = text[:max_len].rstrip() + "…"
+    return text
 
 
 class AgentReplyPayload(TypedDict):

@@ -978,10 +978,11 @@ async def handle_normal_finalization(
     # --- Push notification: always notify so mobile users get alerts even when backgrounded ---
     try:
         if ctx.ai_message_obj and ctx.full_content:
-            from app.core.notification.events import pack_notification_body
+            from app.core.notification.events import pack_notification_body, strip_markdown
             from app.tasks.notification import send_notification, send_web_push
 
             _title = f"{ctx.agent_name or 'Agent'} replied"
+            _push_title = ctx.agent_name or "Agent"
             _msg_id = str(ctx.ai_message_obj.id)
             _packed = pack_notification_body(
                 ctx.full_content[:200],
@@ -1005,10 +1006,20 @@ async def handle_normal_finalization(
                     "url": f"/#/chat/{ctx.topic_id}",
                 },
             )
+
+            # Build a concise push body: "#TopicName: plain text preview"
+            _topic = await ctx.topic_repo.get_topic_by_id(ctx.topic_id)
+            _topic_name = _topic.name if _topic and _topic.name else ""
+            _preview = strip_markdown(ctx.full_content)
+            if _topic_name:
+                _push_body = f"#{_topic_name}: {_preview}" if _preview else f"#{_topic_name}"
+            else:
+                _push_body = _preview or ctx.full_content[:80]
+
             send_web_push.delay(
                 user_id=ctx.user_id,
-                title=_title,
-                body=ctx.full_content[:200],
+                title=_push_title,
+                body=_push_body,
                 url=f"/#/chat/{ctx.topic_id}",
             )
     except Exception:
