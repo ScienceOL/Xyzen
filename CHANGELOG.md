@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.2](https://github.com/ScienceOL/Xyzen/compare/v1.6.1...v1.6.2) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* update curl commands to use sudo for installation on macOS and Linux ([e3374ad](https://github.com/ScienceOL/Xyzen/commit/e3374ad42de3617bd0040e03d8deba7a3ce12987))
+
 ## [1.6.1](https://github.com/ScienceOL/Xyzen/compare/v1.6.0...v1.6.1) (2026-02-25)
 
 ### 🐛 Bug Fixes
