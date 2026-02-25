@@ -98,6 +98,12 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     # Skill tools
     "activate_skill": [ToolCapability.SKILLS],
     "list_skill_resources": [ToolCapability.SKILLS],
+    # Skill management tools
+    "create_skill": [ToolCapability.SKILLS],
+    "update_skill": [ToolCapability.SKILLS],
+    "delete_skill": [ToolCapability.SKILLS],
+    "list_skills": [ToolCapability.SKILLS],
+    "get_skill_detail": [ToolCapability.SKILLS],
     # Subagent tools
     "spawn_subagent": [ToolCapability.SUBAGENT],
 }

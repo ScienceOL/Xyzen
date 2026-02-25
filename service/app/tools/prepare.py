@@ -213,6 +213,15 @@ def _load_all_builtin_tools(
                 )
                 tools.extend(sched_tools)
 
+            # Load skill management tools (reuse _session_factory)
+            from app.tools.builtin.skill_management import create_skill_management_tools_for_session
+
+            skill_mgmt_tools = create_skill_management_tools_for_session(
+                user_id=user_id,
+                session_factory=_session_factory,
+            )
+            tools.extend(skill_mgmt_tools)
+
     return tools
 
 

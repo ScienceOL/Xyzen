@@ -337,6 +337,21 @@ def register_builtin_tools() -> None:
             requires_context=["user_id", "session_id"],
         )
 
+    # Register skill management tools
+    from app.tools.builtin.skill_management import create_skill_management_tools
+
+    skill_mgmt_tools = create_skill_management_tools()
+    for tool_id, tool in skill_mgmt_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="skill_management",
+            display_name=tool.name.replace("_", " ").title(),
+            ui_toggleable=True,
+            default_enabled=False,
+            requires_context=["user_id"],
+        )
+
     logger.info(f"Registered {BuiltinToolRegistry.count()} builtin tools")
 
     from app.core.consume.pricing import validate_pricing_coverage
