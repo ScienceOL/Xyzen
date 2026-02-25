@@ -268,6 +268,24 @@ async def _generate_video(
         Dictionary with success status, video_id, URL, and metadata
     """
     try:
+        # Credit pre-check: video generation costs 1000 credits
+        from app.infra.database import get_task_db_session
+        from app.repos.redemption import RedemptionRepository
+
+        async with get_task_db_session() as db:
+            redemption_repo = RedemptionRepository(db)
+            wallet = await redemption_repo.get_or_create_user_wallet(user_id)
+            if wallet.virtual_balance < 1000:
+                return {
+                    "success": False,
+                    "error": (
+                        f"Insufficient credits. Video generation requires 1000 credits, "
+                        f"but your current balance is {wallet.virtual_balance}. "
+                        f"Please top up your credits before generating videos."
+                    ),
+                    "prompt": prompt,
+                }
+
         # Load optional input image for image-to-video
         image_for_generation: tuple[bytes, str] | None = None
         if image_id:
