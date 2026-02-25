@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.3](https://github.com/ScienceOL/Xyzen/compare/v1.6.2...v1.6.3) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* remove touchAction style from TreeItemRow component ([289c768](https://github.com/ScienceOL/Xyzen/commit/289c7681dd5fa0629dd33be0683071fcec41d7fa))
+
 ## [1.6.2](https://github.com/ScienceOL/Xyzen/compare/v1.6.1...v1.6.2) (2026-02-25)
 
 ### 🐛 Bug Fixes
