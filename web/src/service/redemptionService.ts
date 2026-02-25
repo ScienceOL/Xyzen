@@ -151,6 +151,10 @@ export interface FilterOptionsResponse {
   models: string[];
 }
 
+export interface ModelOptionsResponse {
+  models: string[];
+}
+
 export interface CreditHeatmapEntry {
   date: string;
   total_credits: number;
@@ -447,6 +451,13 @@ class RedemptionService {
       auth: false,
       headers: { "X-Admin-Secret": adminSecret },
       params: { year, tz, provider },
+    });
+  }
+
+  async getModelOptions(adminSecret: string): Promise<ModelOptionsResponse> {
+    return http.get("/xyzen/api/v1/redemption/admin/stats/model-options", {
+      auth: false,
+      headers: { "X-Admin-Secret": adminSecret },
     });
   }
 
