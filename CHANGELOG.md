@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.5](https://github.com/ScienceOL/Xyzen/compare/v1.5.4...v1.5.5) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* add Markdown stripping for clean push notifications and enhance scheduled chat task locking ([#269](https://github.com/ScienceOL/Xyzen/issues/269)) ([8ff11cf](https://github.com/ScienceOL/Xyzen/commit/8ff11cf6cac7555f68936de3337a1d5aa14554fb))
+
 ## [1.5.4](https://github.com/ScienceOL/Xyzen/compare/v1.5.3...v1.5.4) (2026-02-24)
 
 ### 🐛 Bug Fixes
