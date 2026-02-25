@@ -438,16 +438,11 @@ async def _process_chat_message_async(
         # Exception-path settlement: individual ConsumeRecords were already
         # created during streaming. Query pending records and settle.
         try:
-            from app.core.consume.pricing import TIER_MODEL_CONSUMPTION_RATE, calculate_settlement_total
+            from app.core.consume.pricing import calculate_settlement_total
             from app.core.consume.service import settle_chat_records
             from app.repos.consume import ConsumeRepository
-            from app.repos.session import SessionRepository
 
             async with TaskSessionLocal() as settle_db:
-                session_repo = SessionRepository(settle_db)
-                session = await session_repo.get_session_by_id(session_id)
-                model_tier = session.model_tier if session else None
-
                 # Query pending ConsumeRecords for this task
                 repo = ConsumeRepository(settle_db)
                 records = await repo.list_records_for_exception_settlement(
@@ -462,8 +457,7 @@ async def _process_chat_message_async(
                     record_amounts_sum = sum(r.amount for r in records)
 
                     # Total = sum of record amounts
-                    tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
-                    total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
+                    total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
                     remaining = total_cost - pre_deducted_amount
 
                     if remaining > 0:
