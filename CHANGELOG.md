@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.5.7](https://github.com/ScienceOL/Xyzen/compare/v1.5.6...v1.5.7) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* add high availability considerations for backend logic ([007dbea](https://github.com/ScienceOL/Xyzen/commit/007dbea49bbb89490b7ec874abe39b8db7b0ab72))
+
 ## [1.5.6](https://github.com/ScienceOL/Xyzen/compare/v1.5.5...v1.5.6) (2026-02-25)
 
 ### 🐛 Bug Fixes
