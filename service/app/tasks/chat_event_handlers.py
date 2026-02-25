@@ -194,30 +194,17 @@ async def finalize_and_settle(
         return
 
     try:
-        await _ensure_session_info(ctx)
-        model_tier = ctx.cached_model_tier
-
-        # Get tier_rate for settlement calculation
-        tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
-
-        # LITE tier = free
-        if tier_rate == 0.0:
-            # Still mark pending records as success
-            repo = ConsumeRepository(ctx.db)
-            records = await repo.list_records_for_settlement(ctx.session_id, ctx.topic_id, ctx.ai_message_obj.id)
-            if records:
-                await repo.bulk_update_consume_state([r.id for r in records], "success")
-            return
-
         # Query all pending records for this message
         repo = ConsumeRepository(ctx.db)
         records = await repo.list_records_for_settlement(ctx.session_id, ctx.topic_id, ctx.ai_message_obj.id)
+        if not records:
+            return
 
         record_ids = [r.id for r in records]
         record_amounts_sum = sum(r.amount for r in records)
 
         # Total = sum of individual record amounts
-        total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
+        total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
 
         remaining_amount = total_cost - pre_deducted_amount
 
@@ -487,11 +474,6 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
         try:
             await _ensure_session_info(ctx)
             model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
-
-            # LITE tier: all consumption is free
-            tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(ctx.cached_model_tier, 1.0) if ctx.cached_model_tier else 1.0
-            if tier_rate == 0:
-                amount = 0
 
             tracking = ConsumptionTrackingService(ctx.db)
             await tracking.record_tool_call(
