@@ -143,7 +143,7 @@ async def send_runner_request(
     conn = runner_registry.get(user_id)
     if conn:
         # Runner is on this pod — send directly
-        future: asyncio.Future[dict[str, Any]] = asyncio.get_event_loop().create_future()
+        future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
         conn.pending_requests[request_id] = future
         try:
             await conn.websocket.send_json(request_msg)
@@ -162,9 +162,9 @@ async def send_runner_request(
             await r.publish(f"{RUNNER_REQUEST_CHANNEL}{user_id}", json.dumps(request_msg))
 
             # Wait for response
-            deadline = asyncio.get_event_loop().time() + timeout
+            deadline = asyncio.get_running_loop().time() + timeout
             while True:
-                remaining = deadline - asyncio.get_event_loop().time()
+                remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
                     raise TimeoutError(f"Runner request {request_id} timed out")
                 msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=min(remaining, 1.0))

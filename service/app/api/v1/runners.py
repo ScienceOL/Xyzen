@@ -182,8 +182,8 @@ async def get_cli_latest_version() -> CLIVersionResponse:
         download[plat] = f"{CLI_DOWNLOAD_BASE}/download/v{CLI_LATEST_VERSION}/xyzen-{plat}{suffix}"
 
     install_command = (
-        f"curl -fsSL {CLI_DOWNLOAD_BASE}/latest/download/xyzen-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') "
-        f"-o /usr/local/bin/xyzen && chmod +x /usr/local/bin/xyzen"
+        f"sudo curl -fsSL {CLI_DOWNLOAD_BASE}/latest/download/xyzen-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') "
+        f"-o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen"
     )
 
     return CLIVersionResponse(

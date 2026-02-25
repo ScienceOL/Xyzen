@@ -36,25 +36,25 @@ const PLATFORMS: PlatformInfo[] = [
     key: "darwin-arm64",
     label: "macOS Apple Silicon",
     binary: "xyzen-darwin-arm64",
-    curlCmd: `curl -fSL ${RELEASE_BASE}/xyzen-darwin-arm64 -o /usr/local/bin/xyzen && chmod +x /usr/local/bin/xyzen`,
+    curlCmd: `sudo curl -fsSL ${RELEASE_BASE}/xyzen-darwin-arm64 -o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen`,
   },
   {
     key: "darwin-amd64",
     label: "macOS Intel",
     binary: "xyzen-darwin-amd64",
-    curlCmd: `curl -fSL ${RELEASE_BASE}/xyzen-darwin-amd64 -o /usr/local/bin/xyzen && chmod +x /usr/local/bin/xyzen`,
+    curlCmd: `sudo curl -fsSL ${RELEASE_BASE}/xyzen-darwin-amd64 -o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen`,
   },
   {
     key: "linux-amd64",
     label: "Linux x86_64",
     binary: "xyzen-linux-amd64",
-    curlCmd: `curl -fSL ${RELEASE_BASE}/xyzen-linux-amd64 -o /usr/local/bin/xyzen && chmod +x /usr/local/bin/xyzen`,
+    curlCmd: `sudo curl -fsSL ${RELEASE_BASE}/xyzen-linux-amd64 -o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen`,
   },
   {
     key: "linux-arm64",
     label: "Linux ARM64",
     binary: "xyzen-linux-arm64",
-    curlCmd: `curl -fSL ${RELEASE_BASE}/xyzen-linux-arm64 -o /usr/local/bin/xyzen && chmod +x /usr/local/bin/xyzen`,
+    curlCmd: `sudo curl -fsSL ${RELEASE_BASE}/xyzen-linux-arm64 -o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen`,
   },
   {
     key: "windows-amd64",
@@ -477,6 +477,18 @@ function InstallGuide({ onConnect }: { onConnect: () => void }) {
 
         {/* curl command */}
         <CodeBlock lines={curlLines} onCopy={selectedPlatform.curlCmd} />
+
+        {/* macOS Gatekeeper hint */}
+        {selectedPlatform.key.startsWith("darwin-") && (
+          <div className="space-y-1.5 border-l-2 border-[#d29922] bg-[#d29922]/5 px-2.5 py-2">
+            <p className="font-mono text-[11px] font-medium text-[#d29922]">
+              {t("capsule.sandbox.runner.macSecurityTitle")}
+            </p>
+            <p className="font-mono text-[10px] leading-relaxed text-[#8b949e]">
+              {t("capsule.sandbox.runner.macSecurityHint")}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Divider */}

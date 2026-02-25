@@ -39,7 +39,7 @@ The connection automatically reconnects with exponential backoff if interrupted.
 
 		// Check for updates (best-effort)
 		if info := updater.CheckForUpdate(version); info != nil {
-			curl := fmt.Sprintf("curl -fsSL %s -o /usr/local/bin/xyzen && chmod +x /usr/local/bin/xyzen", info.DownloadURL)
+			curl := fmt.Sprintf("sudo curl -fsSL %s -o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen", info.DownloadURL)
 			ui.UpdateNotice(version, info.Latest, curl)
 		}
 

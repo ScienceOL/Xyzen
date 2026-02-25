@@ -100,6 +100,10 @@
         "title": "MCP & Model Switching",
         "desc": "50+ MCP integrations, swap LLM providers freely"
       },
+      "scheduled_tasks": {
+        "title": "Scheduled Tasks",
+        "desc": "Cron-like scheduled execution — agents run tasks on your timetable, fully automated"
+      },
       "agent_create_agent": {
         "title": "Agent Create Agent",
         "desc": "Agents autonomously design, build, and publish new agents — the ecosystem grows itself"

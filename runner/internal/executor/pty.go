@@ -9,9 +9,19 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"time"
 
 	"github.com/creack/pty"
 	"github.com/scienceol/xyzen/runner/internal/protocol"
+)
+
+const (
+	// coalesceInterval is the maximum delay before flushing buffered PTY
+	// output. Balances latency (~1 frame at 60 fps) vs message count.
+	coalesceInterval = 16 * time.Millisecond
+	// coalesceMaxBytes triggers an immediate flush when the buffer reaches
+	// this size, regardless of the timer.
+	coalesceMaxBytes = 16 * 1024
 )
 
 // PTYSession represents a single running PTY session.
@@ -53,7 +63,6 @@ func (m *PTYManager) Create(p protocol.PTYCreatePayload) error {
 
 	command := p.Command
 	if command == "" {
-		// Default to user's shell
 		command = os.Getenv("SHELL")
 		if command == "" {
 			command = "/bin/sh"
@@ -64,7 +73,6 @@ func (m *PTYManager) Create(p protocol.PTYCreatePayload) error {
 	cmd.Dir = m.workDir
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 
-	// Set initial size
 	winSize := &pty.Winsize{
 		Cols: p.Cols,
 		Rows: p.Rows,
@@ -89,10 +97,7 @@ func (m *PTYManager) Create(p protocol.PTYCreatePayload) error {
 	}
 	m.sessions[p.SessionID] = session
 
-	// Read output goroutine
 	go m.readLoop(session)
-
-	// Wait for exit goroutine
 	go m.waitLoop(session)
 
 	log.Printf("PTY session %s started: %s %v", p.SessionID, command, p.Args)
@@ -140,7 +145,6 @@ func (m *PTYManager) Close(sessionID string) error {
 	delete(m.sessions, sessionID)
 	m.mu.Unlock()
 
-	// Kill the process and close the PTY
 	if session.cmd.Process != nil {
 		_ = session.cmd.Process.Kill()
 	}
@@ -180,14 +184,62 @@ func (m *PTYManager) CloseAll() {
 	}
 }
 
+// readLoop reads from the PTY and coalesces output into larger chunks
+// before delivering via OutputFunc. This dramatically reduces WebSocket
+// message count at the cost of up to coalesceInterval (16ms) latency.
 func (m *PTYManager) readLoop(session *PTYSession) {
-	buf := make([]byte, 32*1024) // 32KB read buffer
-	for {
-		n, err := session.ptmx.Read(buf)
-		if n > 0 && m.OutputFunc != nil {
-			m.OutputFunc(session.id, buf[:n])
+	readBuf := make([]byte, 32*1024)
+	coalBuf := make([]byte, 0, coalesceMaxBytes+32*1024)
+	timer := time.NewTimer(coalesceInterval)
+	timer.Stop()
+
+	dataCh := make(chan []byte, 8)
+	errCh := make(chan error, 1)
+
+	// Dedicated read goroutine — ptmx.Read blocks, so we run it separately
+	// and feed chunks into dataCh for the coalescer select loop.
+	go func() {
+		for {
+			n, err := session.ptmx.Read(readBuf)
+			if n > 0 {
+				chunk := make([]byte, n)
+				copy(chunk, readBuf[:n])
+				dataCh <- chunk
+			}
+			if err != nil {
+				errCh <- err
+				return
+			}
 		}
-		if err != nil {
+	}()
+
+	flush := func() {
+		if len(coalBuf) > 0 && m.OutputFunc != nil {
+			out := make([]byte, len(coalBuf))
+			copy(out, coalBuf)
+			m.OutputFunc(session.id, out)
+			coalBuf = coalBuf[:0]
+		}
+		timer.Stop()
+	}
+
+	for {
+		select {
+		case chunk := <-dataCh:
+			coalBuf = append(coalBuf, chunk...)
+			if len(coalBuf) >= coalesceMaxBytes {
+				// Buffer large enough — flush immediately
+				flush()
+			} else if len(coalBuf) == len(chunk) {
+				// First data after idle — start the coalesce timer
+				timer.Reset(coalesceInterval)
+			}
+		case <-timer.C:
+			// Timer fired — flush whatever we have
+			flush()
+		case <-errCh:
+			// PTY read error (EOF / closed) — flush remaining and exit
+			flush()
 			return
 		}
 	}
@@ -206,12 +258,10 @@ func (m *PTYManager) waitLoop(session *PTYSession) {
 		}
 	}
 
-	// Remove from active sessions
 	m.mu.Lock()
 	delete(m.sessions, session.id)
 	m.mu.Unlock()
 
-	// Close the PTY fd
 	_ = session.ptmx.Close()
 
 	if m.ExitFunc != nil {

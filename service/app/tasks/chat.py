@@ -144,7 +144,7 @@ def process_chat_message(
 
             pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
             if pending:
-                done, still_pending = loop.run_until_complete(asyncio.wait(pending, timeout=1.0))
+                done, still_pending = loop.run_until_complete(asyncio.wait(pending, timeout=3.0))
                 # Cancel anything still pending to avoid hanging the worker.
                 for task in still_pending:
                     task.cancel()

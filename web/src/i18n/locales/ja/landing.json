@@ -100,6 +100,10 @@
         "title": "MCP & モデル切替",
         "desc": "50以上のMCP統合、LLMプロバイダーを自由に切替"
       },
+      "scheduled_tasks": {
+        "title": "スケジュールタスク",
+        "desc": "Cronライクな定時実行 — エージェントがスケジュール通りに自動でタスクを実行"
+      },
       "agent_create_agent": {
         "title": "Agent が Agent を創る",
         "desc": "エージェントが自律的に新しいエージェントを設計・構築・公開 — エコシステムが自己増殖"

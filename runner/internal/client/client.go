@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	pingInterval = 20 * time.Second
-	pongTimeout  = 10 * time.Second
-	writeTimeout = 10 * time.Second
+	pingInterval   = 20 * time.Second
+	writeTimeout   = 10 * time.Second
+	writeChanSize  = 256
 )
 
 // Client manages the WebSocket connection to the Xyzen backend.
@@ -28,8 +28,11 @@ type Client struct {
 	cfg    *config.Config
 	exec   *executor.Executor
 	ptyMgr *executor.PTYManager
-	conn   *websocket.Conn
-	connMu sync.Mutex
+
+	mu          sync.Mutex
+	writeCh     chan interface{}
+	reconnector *Reconnector
+
 	stopCh chan struct{}
 	once   sync.Once
 }
@@ -37,13 +40,13 @@ type Client struct {
 // New creates a new Client.
 func New(cfg *config.Config) *Client {
 	c := &Client{
-		cfg:    cfg,
-		exec:   executor.New(cfg.WorkDir),
-		ptyMgr: executor.NewPTYManager(cfg.WorkDir),
-		stopCh: make(chan struct{}),
+		cfg:         cfg,
+		exec:        executor.New(cfg.WorkDir),
+		ptyMgr:      executor.NewPTYManager(cfg.WorkDir),
+		reconnector: NewReconnector(),
+		stopCh:      make(chan struct{}),
 	}
 
-	// Wire PTY output and exit callbacks to send over WebSocket
 	c.ptyMgr.OutputFunc = c.sendPTYOutput
 	c.ptyMgr.ExitFunc = c.sendPTYExit
 
@@ -57,10 +60,43 @@ func (c *Client) Stop() {
 	})
 }
 
+// send enqueues a message for the write goroutine. Non-blocking — drops
+// the message if the buffer is full or no connection is active.
+func (c *Client) send(v interface{}) {
+	c.mu.Lock()
+	ch := c.writeCh
+	c.mu.Unlock()
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- v:
+	default:
+		// Buffer full — drop to avoid blocking PTY/heartbeat goroutines.
+	}
+}
+
+// writeLoop is the single goroutine that writes to the WebSocket.
+func (c *Client) writeLoop(conn *websocket.Conn, ch <-chan interface{}, done <-chan struct{}) {
+	for {
+		select {
+		case <-done:
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			if err := conn.WriteJSON(msg); err != nil {
+				log.Printf("write error: %v", err)
+				return
+			}
+		}
+	}
+}
+
 // Run connects to the server and enters the message loop with automatic reconnection.
 func (c *Client) Run() error {
-	reconnector := NewReconnector()
-
 	for {
 		select {
 		case <-c.stopCh:
@@ -73,7 +109,6 @@ func (c *Client) Run() error {
 			ui.Error("Connection lost: %v", err)
 		}
 
-		// Check if we should stop
 		select {
 		case <-c.stopCh:
 			return nil
@@ -81,8 +116,8 @@ func (c *Client) Run() error {
 		}
 
 		ui.Info("Reconnecting...")
-		if !reconnector.Wait(c.stopCh) {
-			return nil // Stopped
+		if !c.reconnector.Wait(c.stopCh) {
+			return nil
 		}
 	}
 }
@@ -93,7 +128,6 @@ func (c *Client) connectAndServe() error {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// Add token as query parameter
 	q := u.Query()
 	q.Set("token", c.cfg.Token)
 	u.RawQuery = q.Encode()
@@ -102,16 +136,24 @@ func (c *Client) connectAndServe() error {
 	if err != nil {
 		return fmt.Errorf("dial failed: %w", err)
 	}
-	defer func() {
-		conn.Close()
-		c.connMu.Lock()
-		c.conn = nil
-		c.connMu.Unlock()
-	}()
 
-	c.connMu.Lock()
-	c.conn = conn
-	c.connMu.Unlock()
+	// Set up per-connection write channel + writer goroutine
+	writeCh := make(chan interface{}, writeChanSize)
+	writeDone := make(chan struct{})
+
+	c.mu.Lock()
+	c.writeCh = writeCh
+	c.mu.Unlock()
+
+	go c.writeLoop(conn, writeCh, writeDone)
+
+	defer func() {
+		close(writeDone)
+		conn.Close()
+		c.mu.Lock()
+		c.writeCh = nil
+		c.mu.Unlock()
+	}()
 
 	// Read the "connected" message
 	var connMsg struct {
@@ -126,25 +168,25 @@ func (c *Client) connectAndServe() error {
 	}
 	ui.Success("Connected %s", ui.Dim("(runner "+connMsg.RunnerID+")"))
 
+	// Successful handshake — reset backoff for next disconnect
+	c.reconnector.Reset()
+
 	// Send info message with active PTY sessions (survives reconnection)
 	activeSessions := c.ptyMgr.ListSessions()
-	info := protocol.Response{
+	c.send(protocol.Response{
 		Type: "info",
 		Payload: protocol.InfoPayload{
 			OS:          fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 			WorkDir:     c.cfg.WorkDir,
 			PTYSessions: activeSessions,
 		},
-	}
-	if err := c.writeJSON(conn, info); err != nil {
-		return fmt.Errorf("failed to send info: %w", err)
-	}
+	})
 
-	// Start heartbeat goroutine
+	// Start heartbeat
 	pingDone := make(chan struct{})
-	go c.heartbeatLoop(conn, pingDone)
+	go c.heartbeatLoop(pingDone)
 
-	// Message loop
+	// Message loop (single reader — no concurrency issue on reads)
 	for {
 		select {
 		case <-c.stopCh:
@@ -167,17 +209,16 @@ func (c *Client) connectAndServe() error {
 
 		switch req.Type {
 		case "ping":
-			_ = c.writeJSON(conn, map[string]string{"type": "pong"})
+			c.send(map[string]string{"type": "pong"})
 		case "pong":
 			// Heartbeat ack — no action
 		default:
-			// Handle request asynchronously
-			go c.handleRequest(conn, req)
+			go c.handleRequest(req)
 		}
 	}
 }
 
-func (c *Client) handleRequest(conn *websocket.Conn, req protocol.Request) {
+func (c *Client) handleRequest(req protocol.Request) {
 	var resp protocol.Response
 	resp.ID = req.ID
 
@@ -212,9 +253,7 @@ func (c *Client) handleRequest(conn *websocket.Conn, req protocol.Request) {
 		resp.Payload = protocol.ErrorPayload{Error: fmt.Sprintf("unknown request type: %s", req.Type)}
 	}
 
-	if err := c.writeJSON(conn, resp); err != nil {
-		log.Printf("Failed to send response for %s: %v", req.ID, err)
-	}
+	c.send(resp)
 }
 
 func (c *Client) handleExec(req protocol.Request) protocol.Response {
@@ -308,7 +347,7 @@ func (c *Client) handleSearchInFiles(req protocol.Request) protocol.Response {
 	return protocol.Response{ID: req.ID, Type: "search_in_files_result", Success: true, Payload: map[string]interface{}{"matches": matches}}
 }
 
-func (c *Client) heartbeatLoop(conn *websocket.Conn, done <-chan struct{}) {
+func (c *Client) heartbeatLoop(done <-chan struct{}) {
 	ticker := time.NewTicker(pingInterval)
 	defer ticker.Stop()
 
@@ -319,17 +358,9 @@ func (c *Client) heartbeatLoop(conn *websocket.Conn, done <-chan struct{}) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			if err := c.writeJSON(conn, map[string]string{"type": "ping"}); err != nil {
-				log.Printf("Heartbeat failed: %v", err)
-				return
-			}
+			c.send(map[string]string{"type": "ping"})
 		}
 	}
-}
-
-func (c *Client) writeJSON(conn *websocket.Conn, v interface{}) error {
-	_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
-	return conn.WriteJSON(v)
 }
 
 // --- PTY handlers ---
@@ -378,46 +409,22 @@ func (c *Client) handlePTYClose(req protocol.Request) protocol.Response {
 	return protocol.Response{ID: req.ID, Type: "pty_close_result", Success: true, Payload: struct{}{}}
 }
 
-// sendPTYOutput is called by PTYManager when a session produces output.
-// It sends a proactive "pty_output" message to the cloud.
 func (c *Client) sendPTYOutput(sessionID string, data []byte) {
-	c.connMu.Lock()
-	conn := c.conn
-	c.connMu.Unlock()
-	if conn == nil {
-		return
-	}
-
-	msg := map[string]interface{}{
+	c.send(map[string]interface{}{
 		"type": "pty_output",
 		"payload": protocol.PTYOutputPayload{
 			SessionID: sessionID,
 			Data:      base64.StdEncoding.EncodeToString(data),
 		},
-	}
-	if err := c.writeJSON(conn, msg); err != nil {
-		log.Printf("Failed to send PTY output for session %s: %v", sessionID, err)
-	}
+	})
 }
 
-// sendPTYExit is called by PTYManager when a session's process exits.
-// It sends a proactive "pty_exit" message to the cloud.
 func (c *Client) sendPTYExit(sessionID string, exitCode int) {
-	c.connMu.Lock()
-	conn := c.conn
-	c.connMu.Unlock()
-	if conn == nil {
-		return
-	}
-
-	msg := map[string]interface{}{
+	c.send(map[string]interface{}{
 		"type": "pty_exit",
 		"payload": protocol.PTYExitPayload{
 			SessionID: sessionID,
 			ExitCode:  exitCode,
 		},
-	}
-	if err := c.writeJSON(conn, msg); err != nil {
-		log.Printf("Failed to send PTY exit for session %s: %v", sessionID, err)
-	}
+	})
 }

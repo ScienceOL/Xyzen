@@ -52,6 +52,8 @@
       "subtitle": "在本地机器上运行代码",
       "step1": "安装",
       "step1Hint": "下载适配你平台的二进制文件",
+      "macSecurityTitle": "macOS 安全提示",
+      "macSecurityHint": "macOS 可能会在首次运行时阻止该程序。请前往「系统设置 → 隐私与安全性」，点击「仍然允许」。",
       "step2": "连接",
       "step2Hint": "生成 Token 并启动 Runner",
       "detected": "已检测",

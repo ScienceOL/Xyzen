@@ -300,15 +300,26 @@ class SandboxManager:
                 await redis_client.aclose()
 
     async def _on_operation(self) -> None:
-        """Called after each delegated operation to refresh TTLs."""
-        redis_client = await self._create_redis_client()
+        """Called after each delegated operation to refresh TTLs.
+
+        Failures here are non-fatal — housekeeping should never cause
+        the caller's tool invocation to fail.
+        """
+        try:
+            redis_client = await self._create_redis_client()
+        except Exception as e:
+            logger.debug(f"_on_operation: failed to create Redis client: {e}")
+            return
         try:
             await self._touch_redis_ttl(redis_client)
             await self._maybe_keep_alive_backend(redis_client)
         except Exception as e:
             logger.debug(f"_on_operation housekeeping failed: {e}")
         finally:
-            await redis_client.aclose()
+            try:
+                await redis_client.aclose()
+            except Exception:
+                pass
 
     async def _verify_or_recover(self, redis_client: aioredis.Redis, sandbox_id: str) -> bool:
         """Check if a sandbox is alive; try to restart if stopped.

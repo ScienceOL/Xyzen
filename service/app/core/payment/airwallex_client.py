@@ -129,9 +129,6 @@ class AirwallexClient:
             "request_id": f"{intent_id}_confirm",
             "payment_method": {
                 "type": payment_method_type,
-                payment_method_type: {},
-            },
-            "payment_method_options": {
                 payment_method_type: {
                     "flow": flow,
                 },

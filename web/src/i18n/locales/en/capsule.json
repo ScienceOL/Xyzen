@@ -52,6 +52,8 @@
       "subtitle": "Run code on your local machine",
       "step1": "Install",
       "step1Hint": "Download the binary for your platform",
+      "macSecurityTitle": "macOS Security",
+      "macSecurityHint": "macOS may block the binary on first run. Go to System Settings → Privacy & Security, then click \"Allow Anyway\".",
       "step2": "Connect",
       "step2Hint": "Generate a token & start the runner",
       "detected": "Detected",

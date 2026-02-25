@@ -626,6 +626,12 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 span: false,
               },
               {
+                key: "scheduled_tasks",
+                emoji: "\u{23F0}",
+                tint: WC.gold,
+                span: false,
+              },
+              {
                 key: "agent_create_agent",
                 emoji: "\u{1F9EC}",
                 tint: WC.rose,

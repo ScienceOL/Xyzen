@@ -2,8 +2,11 @@ package updater
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -43,7 +46,7 @@ func CheckForUpdate(currentVersion string) *UpdateInfo {
 		return nil
 	}
 
-	if v.Version == currentVersion {
+	if !isNewer(v.Version, currentVersion) {
 		return nil
 	}
 
@@ -54,4 +57,37 @@ func CheckForUpdate(currentVersion string) *UpdateInfo {
 		Latest:      v.Version,
 		DownloadURL: downloadURL,
 	}
+}
+
+// isNewer returns true if remote is strictly newer than local.
+// Versions are expected as "major.minor.patch" (e.g. "1.6.2").
+func isNewer(remote, local string) bool {
+	r, rErr := parseSemver(remote)
+	l, lErr := parseSemver(local)
+	if rErr != nil || lErr != nil {
+		return remote != local // fallback to inequality
+	}
+	for i := 0; i < 3; i++ {
+		if r[i] != l[i] {
+			return r[i] > l[i]
+		}
+	}
+	return false
+}
+
+func parseSemver(s string) ([3]int, error) {
+	s = strings.TrimPrefix(s, "v")
+	parts := strings.SplitN(s, ".", 3)
+	if len(parts) != 3 {
+		return [3]int{}, fmt.Errorf("invalid semver: %s", s)
+	}
+	var v [3]int
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return [3]int{}, err
+		}
+		v[i] = n
+	}
+	return v, nil
 }
