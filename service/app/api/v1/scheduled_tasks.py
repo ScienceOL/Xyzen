@@ -11,6 +11,7 @@ from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.models.scheduled_task import ScheduledTaskCreate, ScheduledTaskRead, ScheduledTaskUpdate
 from app.repos.scheduled_task import ScheduledTaskRepository
+from app.tasks.schedule_utils import validate_min_interval
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,17 @@ async def create_scheduled_task(
     if req.schedule_type == "cron" and not req.cron_expression:
         raise HTTPException(status_code=400, detail="cron_expression required for cron schedule")
 
+    # Validate minimum interval
+    interval_error = validate_min_interval(req.schedule_type, req.cron_expression)
+    if interval_error:
+        raise HTTPException(status_code=400, detail=interval_error)
+
+    # Enforce per-user task count limit
+    from app.core.limits import LimitsEnforcer
+
+    enforcer = await LimitsEnforcer.create(db, user)
+    await enforcer.check_scheduled_task_creation(db)
+
     # Parse scheduled_at
     try:
         tz = ZoneInfo(req.timezone)
@@ -142,6 +154,14 @@ async def update_scheduled_task(
         update_data.timezone = req.timezone
     if req.max_runs is not None:
         update_data.max_runs = req.max_runs
+
+    # Validate minimum interval when schedule changes
+    if req.schedule_type is not None or req.cron_expression is not None:
+        effective_type = req.schedule_type or task.schedule_type
+        effective_cron = req.cron_expression if req.cron_expression is not None else task.cron_expression
+        interval_error = validate_min_interval(effective_type, effective_cron)
+        if interval_error:
+            raise HTTPException(status_code=400, detail=interval_error)
 
     # Handle status changes (pause/resume)
     if req.status is not None:

@@ -90,6 +90,25 @@ def create_scheduled_task_tools_for_session(
         if schedule_type == "cron" and not cron_expr:
             return json.dumps({"error": "cron_expression is required for schedule_type='cron'"})
 
+        # Validate minimum interval
+        from app.tasks.schedule_utils import validate_min_interval
+
+        interval_error = validate_min_interval(schedule_type, cron_expr)
+        if interval_error:
+            return json.dumps({"error": interval_error})
+
+        # Enforce per-user task count limit
+        from fastapi import HTTPException
+
+        from app.core.limits import LimitsEnforcer
+
+        async with session_factory() as limit_db:
+            enforcer = await LimitsEnforcer.create(limit_db, user_id)
+            try:
+                await enforcer.check_scheduled_task_creation(limit_db)
+            except HTTPException as exc:
+                return json.dumps({"error": exc.detail})
+
         # Parse scheduled_at
         try:
             tz = ZoneInfo(timezone)

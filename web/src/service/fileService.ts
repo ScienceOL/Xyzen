@@ -310,6 +310,17 @@ class FileService {
     return http.delete("/xyzen/api/v1/files/bulk", fileIds);
   }
 
+  async updateFileContent(
+    fileId: string,
+    content: string,
+    contentType?: string,
+  ): Promise<FileUploadResponse> {
+    const blob = new Blob([content], { type: contentType || "text/plain" });
+    const formData = new FormData();
+    formData.append("file", blob, "content");
+    return http.put(`/xyzen/api/v1/files/${fileId}/content`, formData);
+  }
+
   /**
    * Download a file through the backend proxy as a raw Response.
    * Returns a Response object — caller can use `.blob()` or `.text()`.

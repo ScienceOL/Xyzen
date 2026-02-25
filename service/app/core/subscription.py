@@ -25,6 +25,7 @@ class UserLimits:
     max_file_upload_bytes: int
     max_parallel_chats: int
     max_sandboxes: int
+    max_scheduled_tasks: int
     max_model_tier: str
     role_name: str
     role_display_name: str
@@ -74,6 +75,7 @@ class SubscriptionService:
             max_file_upload_bytes=role.max_file_upload_bytes,
             max_parallel_chats=role.max_parallel_chats,
             max_sandboxes=role.max_sandboxes,
+            max_scheduled_tasks=role.max_scheduled_tasks,
             max_model_tier=role.max_model_tier,
             role_name=role.name,
             role_display_name=role.display_name,

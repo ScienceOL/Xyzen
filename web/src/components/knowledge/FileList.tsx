@@ -3,6 +3,7 @@ import InputModal from "@/components/modals/InputModal";
 import NotificationModal from "@/components/modals/NotificationModal";
 import { PreviewModal } from "@/components/preview/PreviewModal";
 import type { PreviewFile } from "@/components/preview/types";
+import { isTextFile } from "@/lib/language";
 import { fileService, type FileUploadResponse } from "@/service/fileService";
 import type { FileTreeItem } from "@/service/folderService";
 import { folderService, type Folder } from "@/service/folderService";
@@ -33,6 +34,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useInView } from "react-intersection-observer";
 import { ContextMenu, type ContextMenuType } from "./ContextMenu";
+import { FileEditor } from "./FileEditor";
 import { FileIcon } from "./FileIcon";
 import {
   DRAG_MIME,
@@ -77,6 +79,7 @@ interface FileListProps {
     targetFolderId: string | null,
   ) => Promise<void>;
   onDownloadFile?: (fileId: string) => Promise<Response>;
+  onEditSave?: (fileId: string, content: string) => Promise<void>;
   onCreateSkillFolder?: (
     name: string,
     parentId: string | null,
@@ -152,6 +155,7 @@ export const FileList = React.memo(
         onRenameItem,
         onMoveItem,
         onDownloadFile,
+        onEditSave,
         onCreateSkillFolder,
       },
       ref,
@@ -211,6 +215,14 @@ export const FileList = React.memo(
       // Preview State
       const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
       const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+      // Editor state
+      const [editorFile, setEditorFile] = useState<{
+        id: string;
+        name: string;
+        contentType: string;
+        size: number;
+      } | null>(null);
+      const [isEditorOpen, setIsEditorOpen] = useState(false);
       const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
       // Selection box state for drag select
@@ -1300,6 +1312,25 @@ export const FileList = React.memo(
         setIsPreviewOpen(true);
       };
 
+      const handleEdit = (file: FileUploadResponse) => {
+        setEditorFile({
+          id: file.id,
+          name: file.original_filename,
+          contentType: file.content_type || "",
+          size: file.file_size,
+        });
+        setIsEditorOpen(true);
+      };
+
+      /** Double-click: open text files in editor, others in preview. */
+      const handleFileDoubleClick = (file: FileUploadResponse) => {
+        if (isTextFile(file.original_filename, file.content_type)) {
+          handleEdit(file);
+        } else {
+          handlePreview(file);
+        }
+      };
+
       const handleFolderClick = (folderId: string) => {
         if (onFolderChange) {
           onFolderChange(folderId);
@@ -1465,7 +1496,7 @@ export const FileList = React.memo(
               selectedIds={selectedIds}
               itemRefs={itemRefs}
               onItemClick={handleItemClick}
-              onFileDoubleClick={handlePreview}
+              onFileDoubleClick={handleFileDoubleClick}
               onContextMenu={handleContextMenu}
               onDropOnFolder={handleDropOnFolder}
               onFolderCreated={handleFolderCreated}
@@ -1582,7 +1613,7 @@ export const FileList = React.memo(
                         ).__xyzenDragContext = null;
                       }}
                       onClick={(e) => handleItemClick(e, file.id)}
-                      onDoubleClick={() => handlePreview(file)}
+                      onDoubleClick={() => handleFileDoubleClick(file)}
                       onContextMenu={(e) => handleContextMenu(e, file, "file")}
                       {...createLongPressHandlers(file, "file")}
                       className={`group grid grid-cols-12 gap-4 px-4 py-2 text-sm items-center cursor-default ${
@@ -1734,7 +1765,7 @@ export const FileList = React.memo(
                       ).__xyzenDragContext = null;
                     }}
                     onClick={(e) => handleItemClick(e, file.id)}
-                    onDoubleClick={() => handlePreview(file)}
+                    onDoubleClick={() => handleFileDoubleClick(file)}
                     onContextMenu={(e) => handleContextMenu(e, file, "file")}
                     {...createLongPressHandlers(file, "file")}
                     className={`group flex flex-col items-center gap-2 rounded-md p-3 text-center cursor-default ${
@@ -1806,6 +1837,16 @@ export const FileList = React.memo(
               onPreview={
                 contextMenu.type === "file"
                   ? (item) => handlePreview(item as FileUploadResponse)
+                  : undefined
+              }
+              onEdit={
+                contextMenu.type === "file" &&
+                !readonlyMode &&
+                isTextFile(
+                  (contextMenu.item as FileUploadResponse).original_filename,
+                  (contextMenu.item as FileUploadResponse).content_type,
+                )
+                  ? (item) => handleEdit(item as FileUploadResponse)
                   : undefined
               }
               onOpen={
@@ -1919,6 +1960,30 @@ export const FileList = React.memo(
             onClose={() => setIsPreviewOpen(false)}
             file={previewFile}
           />
+
+          {editorFile && (
+            <FileEditor
+              isOpen={isEditorOpen}
+              onClose={() => {
+                setIsEditorOpen(false);
+                setEditorFile(null);
+              }}
+              file={editorFile}
+              onLoadContent={(fileId) =>
+                isSkillMode && onDownloadFile
+                  ? onDownloadFile(fileId)
+                  : fileService.downloadRaw(fileId)
+              }
+              onSaveContent={async (fileId, content) => {
+                if (isSkillMode && onEditSave) {
+                  await onEditSave(fileId, content);
+                } else {
+                  await fileService.updateFileContent(fileId, content);
+                }
+              }}
+              readonly={readonlyMode}
+            />
+          )}
 
           {/* Knowledge Set Selection Modal */}
           {knowledgeSetModal && (

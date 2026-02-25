@@ -82,6 +82,7 @@
     "open": "開く",
     "preview": "プレビュー",
     "download": "ダウンロード",
+    "edit": "編集",
     "rename": "名前を変更",
     "moveTo": "移動先...",
     "addToKnowledgeSet": "ナレッジセットに追加",
@@ -186,6 +187,17 @@
     "fileCount": "{{count}}個のファイル",
     "updated": "{{date}}に更新",
     "createKnowledgeSet": "新規ナレッジセット"
+  },
+  "fileEditor": {
+    "save": "保存",
+    "saving": "保存中...",
+    "unsavedChanges": "未保存の変更があります。破棄しますか？",
+    "unsavedTitle": "未保存の変更",
+    "discard": "破棄",
+    "keepEditing": "編集を続ける",
+    "saveSuccess": "ファイルを保存しました",
+    "saveError": "保存に失敗しました",
+    "loadError": "ファイルの内容の読み込みに失敗しました"
   },
   "createKnowledgeSetModal": {
     "title": "ナレッジセットを作成",

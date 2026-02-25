@@ -25,6 +25,8 @@ export const zIndex = {
   modal: 1000,
   modalBackdrop: 1000,
   modalContent: 1001,
+  // Dialogs that can appear above modals (e.g. AlertDialog inside SheetModal)
+  dialogOverModal: 1100,
 
   // Popover/Select layers (10000-19999)
   // These should appear above modals when used inside them
@@ -54,6 +56,7 @@ export const zIndexClasses = {
   modal: "z-[1000]",
   modalBackdrop: "z-[1000]",
   modalContent: "z-[1001]",
+  dialogOverModal: "z-[1100]",
   popover: "z-[10000]",
   select: "z-[10000]",
   tooltip: "z-[10001]",

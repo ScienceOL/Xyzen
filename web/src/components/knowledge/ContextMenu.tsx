@@ -4,6 +4,7 @@ import {
   ArrowDownTrayIcon,
   ArrowPathRoundedSquareIcon,
   ArrowsRightLeftIcon,
+  CodeBracketSquareIcon,
   EyeIcon,
   FolderOpenIcon,
   MinusIcon,
@@ -26,6 +27,7 @@ export interface ContextMenuProps {
   onDelete?: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
   onMove?: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
   onDownload?: (item: FileUploadResponse) => void;
+  onEdit?: (item: FileUploadResponse) => void;
   onPreview?: (item: FileUploadResponse) => void;
   onOpen?: (item: Folder) => void;
   onAddToKnowledgeSet?: (item: Folder | FileUploadResponse) => void;
@@ -50,6 +52,7 @@ export const ContextMenu = ({
   onDelete,
   onMove,
   onDownload,
+  onEdit,
   onPreview,
   onOpen,
   onAddToKnowledgeSet,
@@ -250,6 +253,19 @@ export const ContextMenu = ({
           </button>
         )}
 
+        {type === "file" && onEdit && (
+          <button
+            onClick={() => {
+              onEdit(item as FileUploadResponse);
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          >
+            <CodeBracketSquareIcon className="h-4 w-4" />
+            {t("knowledge.contextMenu.edit")}
+          </button>
+        )}
+
         {type === "file" && onDownload && (
           <button
             onClick={() => {
@@ -264,7 +280,7 @@ export const ContextMenu = ({
         )}
 
         {(type === "folder" && onOpen) ||
-        (type === "file" && (onPreview || onDownload)) ? (
+        (type === "file" && (onPreview || onEdit || onDownload)) ? (
           <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
         ) : null}
 

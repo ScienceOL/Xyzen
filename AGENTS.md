@@ -522,3 +522,12 @@ Usage pattern:
 5. **Semi-transparent tinted backgrounds** for status colors (e.g., `bg-red-50/80`, `bg-green-950/30`) — never opaque solid fills.
 6. **Text sizing**: Use `text-[13px]` for body/labels, `text-xs` for hints/captions, `text-lg` for modal titles.
 7. **Active selection** uses a soft `ring-1 ring-{color}-500/30` instead of a thick `border-2`.
+
+## High Availability
+
+后端运行在多 Pod + 多 Worker 环境下，编写后端逻辑时必须考虑高可用：
+
+- **Celery 任务可能被重复投递** — Worker 重启、网络抖动都会导致同一任务被多个 Worker 拿到。对有副作用的任务必须做幂等保护（Redis 分布式锁 / DB 状态守卫）。参考 `tasks/scheduled.py` 的 `exec_lock` 实现。
+- **计数型限额是软限制** — `SELECT count → INSERT` 之间无事务锁，并发请求可能短暂超限。除非业务上不可接受，否则不需要悲观锁。
+- **API 和 Tool 是两个入口** — 同一资源的创建往往同时有 REST API（`api/v1/`）和 LLM tool（`tools/builtin/`）两条路径，限额校验、参数校验必须两边都加，漏掉任一则限制可被绕过。
+- **定时任务链式调度需兜底** — Celery ETA 调度在 Worker 重启后可能丢失或漂移，链式调度（当前任务结束后 schedule 下一次）要加最小间隔钳位，防止连续快速触发。

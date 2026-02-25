@@ -78,6 +78,7 @@ class UsageResponse(BaseModel):
     role_display_name: str
     chats: UsageBucket
     sandboxes: UsageBucket
+    scheduled_tasks: UsageBucket
     storage: StorageBucket
     files: UsageBucket
 

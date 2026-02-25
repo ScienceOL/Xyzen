@@ -32,10 +32,7 @@ export function MobileApp({
 
   return (
     <>
-      <div
-        className="flex flex-col bg-white dark:bg-black select-none"
-        style={{ height: "100dvh" }}
-      >
+      <div className="flex flex-col bg-white dark:bg-black select-none h-full">
         <div className="flex flex-1 overflow-hidden relative">
           <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-neutral-950">
             {activePanel === "chat" && <MobileChatView />}

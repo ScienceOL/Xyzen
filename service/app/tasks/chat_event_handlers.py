@@ -1007,14 +1007,14 @@ async def handle_normal_finalization(
                 },
             )
 
-            # Build a concise push body: "#TopicName: plain text preview"
+            # Build a concise push body: "TopicName｜short preview…"
             _topic = await ctx.topic_repo.get_topic_by_id(ctx.topic_id)
             _topic_name = _topic.name if _topic and _topic.name else ""
-            _preview = strip_markdown(ctx.full_content)
+            _preview = strip_markdown(ctx.full_content, max_len=15)
             if _topic_name:
-                _push_body = f"#{_topic_name}: {_preview}" if _preview else f"#{_topic_name}"
+                _push_body = f"{_topic_name}｜{_preview}" if _preview else _topic_name
             else:
-                _push_body = _preview or ctx.full_content[:80]
+                _push_body = _preview or strip_markdown(ctx.full_content, max_len=30)
 
             send_web_push.delay(
                 user_id=ctx.user_id,

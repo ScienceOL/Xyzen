@@ -97,6 +97,18 @@ class SkillResourceService {
     });
   }
 
+  async updateFileContent(
+    skillId: string,
+    fileId: string,
+    content: string,
+    contentType?: string,
+  ): Promise<Record<string, unknown>> {
+    const blob = new Blob([content], { type: contentType || "text/plain" });
+    const formData = new FormData();
+    formData.append("file", blob, "content");
+    return http.put(`${this.base(skillId)}/files/${fileId}/content`, formData);
+  }
+
   async createFolder(
     skillId: string,
     data: { name: string; parent_id?: string | null },

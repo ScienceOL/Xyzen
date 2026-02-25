@@ -28,7 +28,7 @@ from app.tasks.chat_event_handlers import (
     ChatTaskContext,
     handle_normal_finalization,
 )
-from app.tasks.schedule_utils import calculate_next_run
+from app.tasks.schedule_utils import calculate_next_run, enforce_min_next_at
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +282,7 @@ async def _execute_scheduled_chat_inner(scheduled_task_id: str) -> None:
                     sched_task.timezone,
                 )
                 if next_at:
+                    next_at = enforce_min_next_at(next_at)
                     result = execute_scheduled_chat.apply_async(
                         args=(scheduled_task_id,),
                         eta=next_at,

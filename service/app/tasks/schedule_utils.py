@@ -68,3 +68,53 @@ def calculate_next_run(
 
     logger.warning(f"Unknown schedule_type: {schedule_type}")
     return None
+
+
+def validate_min_interval(
+    schedule_type: str,
+    cron_expression: str | None,
+    min_minutes: int = 15,
+) -> str | None:
+    """Validate that a schedule does not fire more frequently than *min_minutes*.
+
+    Returns ``None`` when valid, or an error message string when invalid.
+    Also validates cron syntax for ``schedule_type="cron"``.
+    """
+    if schedule_type != "cron":
+        # once/daily/weekly always satisfy the minimum interval
+        return None
+
+    if not cron_expression:
+        return "cron_expression is required for schedule_type='cron'"
+
+    try:
+        from croniter import croniter
+
+        now = datetime.now(timezone.utc)
+        cron = croniter(cron_expression, now)
+        first = cron.get_next(datetime)
+        second = cron.get_next(datetime)
+        gap_minutes = (second - first).total_seconds() / 60
+
+        if gap_minutes < min_minutes:
+            return (
+                f"Cron interval too short ({gap_minutes:.0f} min). Minimum allowed interval is {min_minutes} minutes."
+            )
+    except (ValueError, KeyError) as e:
+        return f"Invalid cron expression: {e}"
+
+    return None
+
+
+def enforce_min_next_at(next_at: datetime, min_minutes: int = 5) -> datetime:
+    """Clamp *next_at* to at least *min_minutes* from now (system safety net)."""
+    floor = datetime.now(timezone.utc) + timedelta(minutes=min_minutes)
+    if next_at < floor:
+        logger.warning(
+            "Clamped next_at from %s to %s (min %d min)",
+            next_at.isoformat(),
+            floor.isoformat(),
+            min_minutes,
+        )
+        return floor
+    return next_at

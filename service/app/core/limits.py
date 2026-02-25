@@ -39,6 +39,7 @@ class LimitsEnforcer:
     # Free-tier fallback defaults (used when no subscription role is resolved)
     _FREE_MAX_PARALLEL_CHATS = 1
     _FREE_MAX_SANDBOXES = 0
+    _FREE_MAX_SCHEDULED_TASKS = 0
 
     def __init__(self, limits: UserLimits | None, user_id: str) -> None:
         self._limits = limits
@@ -139,6 +140,49 @@ class LimitsEnforcer:
                 break
         return count
 
+    # --- Scheduled Tasks ---
+
+    async def check_scheduled_task_creation(self, db: AsyncSession) -> None:
+        """Raise HTTPException(429) if user has reached the scheduled task limit."""
+        from fastapi import HTTPException
+
+        if self._limits is not None:
+            max_tasks = self._limits.max_scheduled_tasks
+        else:
+            max_tasks = self._FREE_MAX_SCHEDULED_TASKS
+
+        if max_tasks <= 0:
+            raise HTTPException(
+                status_code=429,
+                detail="Scheduled tasks are not available on your current plan.",
+            )
+
+        current = await self.count_active_scheduled_tasks(db)
+        if current >= max_tasks:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Scheduled task limit reached ({current}/{max_tasks}). "
+                "Your current plan does not allow more scheduled tasks.",
+            )
+
+    async def count_active_scheduled_tasks(self, db: AsyncSession) -> int:
+        """Count active or paused scheduled tasks belonging to this user."""
+        from sqlalchemy import func
+        from sqlmodel import col, select
+
+        from app.models.scheduled_task import ScheduledTask
+
+        stmt = (
+            select(func.count())
+            .select_from(ScheduledTask)
+            .where(
+                ScheduledTask.user_id == self._user_id,
+                col(ScheduledTask.status).in_(["active", "paused"]),
+            )
+        )
+        result = await db.exec(stmt)
+        return result.one()
+
     # --- Summary ---
 
     async def get_usage_summary(self, db: AsyncSession) -> dict[str, Any]:
@@ -147,6 +191,7 @@ class LimitsEnforcer:
 
         responding_count = await self._pool.get_responding_count()
         sandbox_count = await self.count_active_sandboxes(db)
+        scheduled_task_count = await self.count_active_scheduled_tasks(db)
 
         quota_service = await create_quota_service(db, self._user_id)
         quota_info = await quota_service.get_quota_info(self._user_id)
@@ -162,6 +207,10 @@ class LimitsEnforcer:
             "sandboxes": {
                 "used": sandbox_count,
                 "limit": limits.max_sandboxes if limits else self._FREE_MAX_SANDBOXES,
+            },
+            "scheduled_tasks": {
+                "used": scheduled_task_count,
+                "limit": limits.max_scheduled_tasks if limits else self._FREE_MAX_SCHEDULED_TASKS,
             },
             "storage": {
                 "used_bytes": quota_info["storage"]["used_bytes"],

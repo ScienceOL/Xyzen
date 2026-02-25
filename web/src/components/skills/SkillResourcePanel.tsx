@@ -265,6 +265,13 @@ export function SkillResourcePanel({
     [skill.id],
   );
 
+  const handleEditSave = useCallback(
+    async (fileId: string, content: string) => {
+      await skillResourceService.updateFileContent(skill.id, fileId, content);
+    },
+    [skill.id],
+  );
+
   const handleCreateSkillFolder = useCallback(
     async (name: string, parentId: string | null) => {
       await skillResourceService.createFolder(skill.id, {
@@ -487,6 +494,7 @@ export function SkillResourcePanel({
           onRenameItem={handleRenameItem}
           onMoveItem={handleMoveItem}
           onDownloadFile={handleDownloadFile}
+          onEditSave={readonlyMode ? undefined : handleEditSave}
           onCreateSkillFolder={handleCreateSkillFolder}
         />
 

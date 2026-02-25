@@ -874,6 +874,81 @@ async def upload_skill_file(
     }
 
 
+@router.put("/{skill_id}/files/{file_id}/content")
+async def update_skill_file_content(
+    skill_id: UUID,
+    file_id: UUID,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user),
+    storage: StorageServiceProto = Depends(get_storage_service),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Replace the content of a skill resource file."""
+    skill = await _get_skill_for_resources(skill_id, user_id, db, require_writable=True)
+
+    file_repo = FileRepository(db)
+    file_record = await file_repo.get_file_by_id(file_id)
+
+    if not file_record or file_record.skill_id != skill.id:
+        raise HTTPException(status_code=404, detail="File not found")
+    if file_record.is_dir:
+        raise HTTPException(status_code=400, detail="Cannot update content of a directory")
+    if not file_record.storage_key:
+        raise HTTPException(status_code=400, detail="File has no storage key")
+
+    file_data = await file.read()
+    if not file_data:
+        raise HTTPException(status_code=400, detail="File content is empty")
+
+    file_size = len(file_data)
+
+    # Check per-file size limit
+    if file_size > _MAX_SKILL_FILE_BYTES:
+        max_mb = _MAX_SKILL_FILE_BYTES / (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size exceeds {max_mb:.0f} MiB limit",
+        )
+
+    # Check total storage (subtract old size, add new size)
+    current_total = await file_repo.get_skill_total_size(skill.id)
+    new_total = current_total - file_record.file_size + file_size
+    if new_total > _MAX_SKILL_TOTAL_BYTES:
+        max_mb = _MAX_SKILL_TOTAL_BYTES / (1024 * 1024)
+        raise HTTPException(status_code=413, detail=f"Skill total storage limit exceeded ({max_mb:.0f} MiB)")
+
+    file_hash = hashlib.sha256(file_data).hexdigest()
+    content_type = file_record.content_type or "application/octet-stream"
+
+    # Overwrite in object storage using the same storage key
+    await storage.upload_file(
+        file_data=BytesIO(file_data),
+        storage_key=file_record.storage_key,
+        content_type=content_type,
+        metadata={"user_id": user_id, "skill_id": str(skill.id)},
+    )
+
+    # Update DB metadata
+    file_record.file_size = file_size
+    file_record.file_hash = file_hash
+    db.add(file_record)
+    await db.flush()
+
+    await db.commit()
+    await db.refresh(file_record)
+
+    return {
+        "id": str(file_record.id),
+        "name": file_record.original_filename,
+        "file_size": file_record.file_size,
+        "content_type": file_record.content_type,
+        "parent_id": str(file_record.parent_id) if file_record.parent_id else None,
+        "is_dir": False,
+        "created_at": file_record.created_at.isoformat(),
+        "updated_at": file_record.updated_at.isoformat(),
+    }
+
+
 @router.get("/{skill_id}/files/{file_id}/download")
 async def download_skill_file(
     skill_id: UUID,
