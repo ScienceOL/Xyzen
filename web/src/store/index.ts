@@ -16,6 +16,8 @@ import {
   createMcpToolSlice,
   createNotificationSlice,
   createProviderSlice,
+  createRunnerSlice,
+  createTerminalSlice,
   createUiSlice,
   createWalletSlice,
 } from "./slices";
@@ -35,6 +37,8 @@ export const useXyzen = create<XyzenState>()(
       ...createFileUploadSlice(...a),
       ...createKnowledgeSlice(...a),
       ...createNotificationSlice(...a),
+      ...createRunnerSlice(...a),
+      ...createTerminalSlice(...a),
       ...createWalletSlice(...a),
     })),
     {

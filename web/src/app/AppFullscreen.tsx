@@ -7,10 +7,11 @@ import { createPortal } from "react-dom";
 import { useShallow } from "zustand/react/shallow";
 
 import { SpatialWorkspace } from "@/app/chat/SpatialWorkspace";
-import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
+import CommunityHub from "@/app/marketplace/CommunityHub";
 import { BottomDock } from "@/components/layouts/BottomDock";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import MemoryPanel from "@/components/layouts/MemoryPanel";
+import RunnerPanel from "@/components/layouts/RunnerPanel";
 import SandboxPanel from "@/components/layouts/SandboxPanel";
 import ScheduledTasksPanel from "@/components/layouts/ScheduledTasksPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
@@ -18,6 +19,7 @@ import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import { PwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
 import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
+import { TerminalModal } from "@/components/modals/TerminalModal";
 
 import { DEFAULT_BACKEND_URL } from "@/configs";
 
@@ -102,6 +104,12 @@ export function AppFullscreen({
               </div>
             )}
 
+            {activePanel === "runner" && (
+              <div className="h-full w-full bg-white dark:bg-neutral-950">
+                <RunnerPanel />
+              </div>
+            )}
+
             {activePanel === "tasks" && (
               <div className="h-full w-full bg-white dark:bg-neutral-950">
                 <ScheduledTasksPanel />
@@ -110,7 +118,7 @@ export function AppFullscreen({
 
             {activePanel === "marketplace" && (
               <div className="h-full w-full bg-white dark:bg-neutral-950">
-                <AgentMarketplace />
+                <CommunityHub />
               </div>
             )}
           </main>
@@ -124,6 +132,7 @@ export function AppFullscreen({
       </DndContext>
 
       <SettingsModal />
+      <TerminalModal />
       <PwaInstallPrompt />
       <PushPermissionPrompt />
     </>

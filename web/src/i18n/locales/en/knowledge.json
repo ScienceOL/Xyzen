@@ -195,6 +195,7 @@
     "unsavedTitle": "Unsaved Changes",
     "discard": "Discard",
     "keepEditing": "Keep Editing",
+    "autoSaved": "Saved",
     "saveSuccess": "File saved",
     "saveError": "Failed to save",
     "loadError": "Failed to load file content"

@@ -54,8 +54,12 @@ _REDIS_TTL_BUFFER_SECONDS = 3600  # 1 hour
 def _compute_redis_ttl() -> int:
     """Redis TTL must outlive the sandbox on the backend.
 
-    = auto_stop + auto_delete + 1h buffer (so Redis always remembers a
-    mapping while the sandbox still exists on Daytona/E2B).
+    The key must stay in Redis as long as the sandbox could still exist
+    on the provider side so we can map ``session_id → sandbox_id``.
+
+    * **Daytona**: auto_stop + auto_delete + 1 h buffer
+    * **E2B (auto_pause)**: timeout + pause_duration_days + 1 h buffer
+    * **E2B (no auto_pause)**: timeout + 1 h buffer
 
     Falls back to 7 days if config is unavailable.
     """
@@ -63,6 +67,16 @@ def _compute_redis_ttl() -> int:
         from app.configs import configs
 
         sc = configs.Sandbox
+        backend = sc.Backend.lower()
+
+        if backend == "e2b":
+            timeout_s = sc.E2B.TimeoutSeconds
+            if sc.E2B.AutoPause:
+                pause_s = sc.E2B.PauseDurationDays * 86400
+                return timeout_s + pause_s + _REDIS_TTL_BUFFER_SECONDS
+            return timeout_s + _REDIS_TTL_BUFFER_SECONDS
+
+        # Daytona (default)
         auto_stop_s = sc.Daytona.AutoStopMinutes * 60
         auto_delete_minutes = sc.Daytona.AutoDeleteMinutes
         auto_delete_s = auto_delete_minutes * 60 if auto_delete_minutes > 0 else 86400

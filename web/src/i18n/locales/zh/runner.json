@@ -1,0 +1,32 @@
+{
+  "title": "本地连接",
+  "subtitle": "将本地设备连接为 AI Agent 的运行环境",
+  "empty": "尚未注册本地连接。添加一个以连接本地环境。",
+  "add": "添加连接",
+  "delete": "删除",
+  "deleteConfirm": "确定要删除此连接吗？Token 将被永久撤销。",
+  "online": "在线",
+  "offline": "离线",
+  "active": "已启用",
+  "inactive": "已禁用",
+  "tokenPrefix": "Token",
+  "lastConnected": "最后连接",
+  "never": "从未",
+  "osInfo": "操作系统",
+  "workDir": "工作目录",
+  "create": {
+    "title": "创建本地连接",
+    "nameLabel": "连接名称",
+    "namePlaceholder": "例如 我的 MacBook",
+    "generate": "生成 Token",
+    "tokenWarning": "此 Token 仅显示一次，请立即复制。",
+    "connectionCommand": "连接命令",
+    "copied": "已复制！",
+    "copy": "复制",
+    "done": "完成"
+  },
+  "toggle": {
+    "enable": "启用",
+    "disable": "禁用"
+  }
+}

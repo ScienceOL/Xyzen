@@ -14,15 +14,12 @@ import {
   CheckIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useInView } from "react-intersection-observer";
+import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/animate-ui/components/animate/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,12 +47,20 @@ const SORT_OPTIONS: SortOption[] = [
   "oldest",
 ];
 
+interface AgentMarketplaceProps {
+  sectionSwitcher?: ReactNode;
+  headerPortal?: HTMLElement | null;
+}
+
 /**
  * AgentMarketplace Component
  *
  * Main marketplace page for discovering and browsing community agents.
  */
-export default function AgentMarketplace() {
+export default function AgentMarketplace({
+  sectionSwitcher,
+  headerPortal,
+}: AgentMarketplaceProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AgentMarketplaceTab>("all");
   const [selectedMarketplaceId, setSelectedMarketplaceId] = useState<
@@ -174,46 +179,12 @@ export default function AgentMarketplace() {
           : { paddingBottom: DOCK_SAFE_AREA }
       }
     >
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-neutral-50/80 backdrop-blur-xl dark:bg-black/80">
-        <div className="mx-auto max-w-7xl px-4 pt-3 pb-2 md:px-6">
-          {/* Title + Tabs row */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-              {t("marketplace.title")}
-            </h1>
-
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) => setActiveTab(v as AgentMarketplaceTab)}
-            >
-              <TabsList className="h-7">
-                <TabsTrigger value="all" className="text-xs px-2.5 py-0.5">
-                  {t("marketplace.tabs.all")}
-                </TabsTrigger>
-                <TabsTrigger value="starred" className="text-xs px-2.5 py-0.5">
-                  {t("marketplace.tabs.starred")}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="my-listings"
-                  className="text-xs px-2.5 py-0.5"
-                >
-                  {t("marketplace.tabs.my")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </div>
-        <div className="h-px bg-neutral-200/60 dark:bg-neutral-800/60" />
-      </div>
-
-      {/* Main Content */}
-      <div className="custom-scrollbar flex-1 overflow-auto px-4 py-4 md:px-6 md:py-6">
-        <div className="mx-auto max-w-7xl">
-          {/* Search bar — inside content, only for "all" tab */}
-          {activeTab === "all" && (
-            <div className="mb-4">
-              <div className="relative">
+      {/* Header controls: search + sub-tabs */}
+      {(() => {
+        const controls = (
+          <>
+            {activeTab === "all" && (
+              <div className="relative max-w-xs flex-1">
                 <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
                 <input
                   type="text"
@@ -223,9 +194,68 @@ export default function AgentMarketplace() {
                   className="w-full rounded-lg bg-neutral-200/50 py-1.5 pl-8 pr-3 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition-colors focus:bg-white focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-800/60 dark:text-neutral-100 dark:placeholder-neutral-500 dark:focus:bg-neutral-800 dark:focus:ring-neutral-600"
                 />
               </div>
+            )}
+            <div className="flex items-center gap-0.5 rounded-none bg-neutral-100/60 p-0.5 dark:bg-white/[0.04]">
+              {(
+                [
+                  { key: "all", label: t("marketplace.tabs.all") },
+                  { key: "starred", label: t("marketplace.tabs.starred") },
+                  { key: "my-listings", label: t("marketplace.tabs.my") },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className="relative px-3 py-1.5 text-[13px] transition-colors"
+                >
+                  {activeTab === key && (
+                    <motion.div
+                      layoutId="agent-marketplace-sub-tab"
+                      className="absolute inset-0 bg-white shadow-sm dark:bg-white/[0.1]"
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30,
+                      }}
+                    />
+                  )}
+                  <span
+                    className={`relative z-10 ${
+                      activeTab === key
+                        ? "font-medium text-neutral-900 dark:text-neutral-100"
+                        : "text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
+          </>
+        );
 
+        if (headerPortal) return createPortal(controls, headerPortal);
+
+        return (
+          <div className="sticky top-0 z-10 bg-neutral-50/80 backdrop-blur-xl dark:bg-black/80">
+            <div className="mx-auto max-w-7xl px-4 pt-3 pb-2 md:px-6">
+              <div className="flex items-center justify-between gap-3">
+                {sectionSwitcher ?? (
+                  <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                    {t("marketplace.title")}
+                  </h1>
+                )}
+                {controls}
+              </div>
+            </div>
+            <div className="h-px bg-neutral-200/60 dark:bg-neutral-800/60" />
+          </div>
+        );
+      })()}
+
+      {/* Main Content */}
+      <div className="custom-scrollbar flex-1 overflow-auto px-4 py-4 md:px-6 md:py-6">
+        <div className="mx-auto max-w-7xl">
           {/* Active tag filter chip */}
           {selectedTag && activeTab === "all" && (
             <div className="mb-4 flex items-center gap-1.5">

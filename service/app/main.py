@@ -97,6 +97,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await run_once("startup:builtin_listings", _ensure_builtin_listings)
 
+    # Publish builtin skills to skill marketplace
+    from app.core.skill_marketplace import BuiltinSkillPublisher
+
+    async def _ensure_builtin_skill_listings() -> None:
+        async with AsyncSessionLocal() as db:
+            try:
+                publisher = BuiltinSkillPublisher(db)
+                listings = await publisher.ensure_builtin_skill_listings()
+                await db.commit()
+                logger.info(f"Builtin skill marketplace listings ensured: {list(listings.keys())}")
+            except Exception as e:
+                logger.error(f"Failed to publish builtin skills to marketplace: {e}")
+                await db.rollback()
+
+    await run_once("startup:builtin_skill_listings", _ensure_builtin_skill_listings)
+
     # 自动创建和管理所有 MCP 服务器
     from app.mcp import registry
 

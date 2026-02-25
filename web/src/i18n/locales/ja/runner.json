@@ -1,0 +1,32 @@
+{
+  "title": "ランナー",
+  "subtitle": "ローカルマシンをAIエージェントのサンドボックスとして接続",
+  "empty": "ランナーが登録されていません。追加してローカル環境を接続してください。",
+  "add": "ランナーを追加",
+  "delete": "削除",
+  "deleteConfirm": "このランナーを削除しますか？トークンは永久に無効になります。",
+  "online": "オンライン",
+  "offline": "オフライン",
+  "active": "有効",
+  "inactive": "無効",
+  "tokenPrefix": "トークン",
+  "lastConnected": "最終接続",
+  "never": "未接続",
+  "osInfo": "OS",
+  "workDir": "作業ディレクトリ",
+  "create": {
+    "title": "ランナーを作成",
+    "nameLabel": "ランナー名",
+    "namePlaceholder": "例: My MacBook",
+    "generate": "トークンを生成",
+    "tokenWarning": "このトークンは一度だけ表示されます。今すぐコピーしてください。",
+    "connectionCommand": "接続コマンド",
+    "copied": "コピーしました！",
+    "copy": "コピー",
+    "done": "完了"
+  },
+  "toggle": {
+    "enable": "有効にする",
+    "disable": "無効にする"
+  }
+}

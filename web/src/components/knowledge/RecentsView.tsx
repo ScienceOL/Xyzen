@@ -142,7 +142,7 @@ export const RecentsView = ({
               <button
                 key={ks.id}
                 type="button"
-                className="knowledge-card group flex flex-col items-center gap-2 p-4 rounded-xl border border-neutral-200 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-800/80 cursor-pointer text-left transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 w-full"
+                className="knowledge-card group flex flex-col items-center gap-2 p-4 rounded-xl border border-neutral-200 dark:border-neutral-700/50 bg-white/80 dark:bg-neutral-800/80 cursor-pointer text-left transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 w-full h-full"
                 onClick={() => onKnowledgeSetClick(ks.id)}
               >
                 <div className="flex-shrink-0">
@@ -167,7 +167,7 @@ export const RecentsView = ({
             {/* "Create" card as last item */}
             <button
               type="button"
-              className="group flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-600 cursor-pointer text-center transition-all duration-200 hover:border-neutral-400 hover:bg-neutral-100/60 dark:hover:border-neutral-500 dark:hover:bg-neutral-800/40 w-full"
+              className="group flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-600 cursor-pointer text-center transition-all duration-200 hover:border-neutral-400 hover:bg-neutral-100/60 dark:hover:border-neutral-500 dark:hover:bg-neutral-800/40 w-full h-full"
               onClick={onCreateKnowledgeSet}
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400 transition-colors group-hover:bg-neutral-200 group-hover:text-neutral-600 dark:bg-neutral-800 dark:text-neutral-500 dark:group-hover:bg-neutral-700 dark:group-hover:text-neutral-300">

@@ -35,6 +35,15 @@ from .knowledge_set import (
 from .links import AgentMcpServerLink
 from .mcp import McpServer
 from .skill import AgentSkillLink, Skill, SkillCreate, SkillRead, SkillUpdate
+from .skill_like import SkillLike, SkillLikeCreate, SkillLikeRead
+from .skill_marketplace import (
+    SkillMarketplace,
+    SkillMarketplaceCreate,
+    SkillMarketplaceRead,
+    SkillMarketplaceReadWithSnapshot,
+    SkillMarketplaceUpdate,
+)
+from .skill_snapshot import SkillSnapshot, SkillSnapshotCreate, SkillSnapshotRead
 from .message import (
     Message,
     MessageRead,
@@ -52,6 +61,7 @@ from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
 from .push_subscription import PushSubscription
 from .root_agent import RootAgent, RootAgentRead
+from .runner import Runner, RunnerRead, RunnerUpdate
 from .sandbox_profile import SandboxProfile, SandboxProfileRead, SandboxProfileUpdate
 from .scheduled_task import ScheduledTask, ScheduledTaskCreate, ScheduledTaskRead, ScheduledTaskUpdate
 from .topic import Topic, TopicRead, TopicReadWithMessages
@@ -112,6 +122,17 @@ __all__ = [
     "SkillCreate",
     "SkillRead",
     "SkillUpdate",
+    "SkillLike",
+    "SkillLikeCreate",
+    "SkillLikeRead",
+    "SkillMarketplace",
+    "SkillMarketplaceCreate",
+    "SkillMarketplaceRead",
+    "SkillMarketplaceReadWithSnapshot",
+    "SkillMarketplaceUpdate",
+    "SkillSnapshot",
+    "SkillSnapshotCreate",
+    "SkillSnapshotRead",
     "McpServer",
     "Message",
     "MessageRead",
@@ -139,6 +160,9 @@ __all__ = [
     "RedemptionHistory",
     "RootAgent",
     "RootAgentRead",
+    "Runner",
+    "RunnerRead",
+    "RunnerUpdate",
     "SandboxProfile",
     "SandboxProfileRead",
     "SandboxProfileUpdate",
@@ -173,6 +197,8 @@ try:
     AgentReadWithDetails.model_rebuild()
     # AgentMarketplaceReadWithSnapshot depends on AgentSnapshotRead
     AgentMarketplaceReadWithSnapshot.model_rebuild()
+    # SkillMarketplaceReadWithSnapshot depends on SkillSnapshotRead
+    SkillMarketplaceReadWithSnapshot.model_rebuild()
 except (NameError, TypeError, Exception) as e:
     logger.warning(
         f"Could not rebuild Pydantic models with forward references. "

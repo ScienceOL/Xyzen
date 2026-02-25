@@ -223,6 +223,20 @@ export default function MobileAccountPage() {
                 }
               />
             )}
+            {usage.scheduled_tasks && usage.scheduled_tasks.limit > 0 && (
+              <UsageBar
+                label={t("app.account.scheduledTasks")}
+                used={String(usage.scheduled_tasks.used)}
+                limit={String(usage.scheduled_tasks.limit)}
+                percent={
+                  usage.scheduled_tasks.limit > 0
+                    ? (usage.scheduled_tasks.used /
+                        usage.scheduled_tasks.limit) *
+                      100
+                    : 0
+                }
+              />
+            )}
           </div>
         )}
 

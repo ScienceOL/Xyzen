@@ -5,10 +5,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KnowledgeTab } from "./KnowledgeTab";
+import { RunnerConnectionZone } from "./RunnerConnectionZone";
 import { SandboxTab } from "./SandboxTab";
 import { ToolsTab } from "./ToolsTab";
 
-const TABS = ["knowledge", "tools", "sandbox"] as const;
+const TABS = ["knowledge", "tools", "sandbox", "runner"] as const;
 const COLLAPSED_WIDTH = 10;
 const EXPANDED_WIDTH = 384;
 
@@ -66,6 +67,7 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
       {activeTab === "knowledge" && <KnowledgeTab />}
       {activeTab === "tools" && <ToolsTab />}
       {activeTab === "sandbox" && <SandboxTab />}
+      {activeTab === "runner" && <RunnerConnectionZone />}
     </div>
   );
 }

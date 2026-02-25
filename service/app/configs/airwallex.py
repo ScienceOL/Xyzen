@@ -13,3 +13,7 @@ class AirwallexConfig(BaseSettings):
         default="https://api-demo.airwallex.com",
         description="Airwallex API base URL (use https://api.airwallex.com for production)",
     )
+    ReturnUrl: str = Field(
+        default="http://localhost:32233",
+        description="URL to redirect shopper after payment completion",
+    )

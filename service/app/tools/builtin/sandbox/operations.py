@@ -14,6 +14,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from app.configs import configs
+from app.configs.sandbox import get_sandbox_workdir
 from app.core.storage import (
     FileScope,
     create_quota_service,
@@ -117,9 +118,10 @@ async def sandbox_edit(
 async def sandbox_glob(
     manager: SandboxManager,
     pattern: str,
-    path: str = "/workspace",
+    path: str = "",
 ) -> dict[str, Any]:
     """Find files matching a glob pattern in the sandbox."""
+    path = path or get_sandbox_workdir()
     try:
         matches = await manager.find_files(path, pattern)
         return {
@@ -137,10 +139,11 @@ async def sandbox_glob(
 async def sandbox_grep(
     manager: SandboxManager,
     pattern: str,
-    path: str = "/workspace",
+    path: str = "",
     include: str | None = None,
 ) -> dict[str, Any]:
     """Search file contents in the sandbox."""
+    path = path or get_sandbox_workdir()
     try:
         matches = await manager.search_in_files(path, pattern, include=include)
         formatted: list[dict[str, str | int]] = [
@@ -179,9 +182,7 @@ def _normalize_export_path(path: str) -> str:
 
 
 def _validate_export_root(path: str) -> None:
-    workdir_raw = (configs.Sandbox.WorkDir or "/workspace").strip()
-    workdir = workdir_raw if workdir_raw.startswith("/") else f"/{workdir_raw}"
-    root = PurePosixPath(workdir).as_posix()
+    root = get_sandbox_workdir()
 
     if root == "/":
         return
@@ -352,9 +353,10 @@ async def sandbox_upload(
     *,
     user_id: str | None,
     file_id: str,
-    path: str = "/workspace",
+    path: str = "",
 ) -> dict[str, Any]:
     """Upload a file from user's library into the sandbox."""
+    path = path or get_sandbox_workdir()
     if not user_id:
         return {"success": False, "error": "sandbox_upload requires user context"}
 
@@ -387,7 +389,7 @@ async def sandbox_upload(
                 return {"success": False, "error": f"File has no storage key: {file_id}"}
             raw_filename = file_record.original_filename or PurePosixPath(storage_key).name
             try:
-                filename = _resolve_export_filename("/workspace/upload.bin", raw_filename)
+                filename = _resolve_export_filename(f"{get_sandbox_workdir()}/upload.bin", raw_filename)
             except ValueError as e:
                 return {"success": False, "error": f"Invalid filename in file record: {e}"}
 

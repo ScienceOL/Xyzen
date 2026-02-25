@@ -1,0 +1,160 @@
+{
+  "title": "スキルマーケットプレイス",
+  "tabs": {
+    "all": "すべてのスキル",
+    "starred": "お気に入り",
+    "my": "マイスキル"
+  },
+  "search": {
+    "placeholder": "スキルを検索..."
+  },
+  "sort": {
+    "recent": "最新",
+    "likes": "いいね順",
+    "forks": "フォーク順",
+    "views": "閲覧順",
+    "oldest": "古い順"
+  },
+  "filters": {
+    "filteredBy": "フィルター：",
+    "clear": "フィルターをクリア"
+  },
+  "loadError": "読み込みに失敗しました。再試行してください。",
+  "retry": "再試行",
+  "empty": {
+    "starred": {
+      "title": "お気に入りスキルなし",
+      "body": "まだスキルをお気に入りに追加していません。マーケットプレイスを閲覧してハートアイコンをクリックしてください！",
+      "browse": "スキルを見る"
+    },
+    "all": {
+      "title": "スキルなし",
+      "body": "コミュニティで最初にスキルを共有しましょう！"
+    },
+    "search": {
+      "body": "検索に一致するスキルがありません。別のキーワードを試すか、フィルターをクリアしてください。"
+    },
+    "publish": {
+      "title": "スキルの公開方法：",
+      "steps": {
+        "1": "スキルパネルでスキルを作成",
+        "2": "SKILL.mdと関連リソースファイルを追加",
+        "3": "スキルオプションの「マーケットに公開」をクリック",
+        "4": "コミュニティとスキルを共有！"
+      }
+    }
+  },
+  "card": {
+    "by": "作者: {{author}}",
+    "byOfficial": "Xyzen",
+    "noDescription": "説明なし",
+    "tagsMore": "+{{count}} 件"
+  },
+  "badge": {
+    "official": "公式"
+  },
+  "detail": {
+    "loading": "スキル詳細を読み込み中...",
+    "error": "スキル詳細の読み込みに失敗しました。再試行してください。",
+    "back": "マーケットに戻る",
+    "noDescription": "説明なし",
+    "stats": {
+      "likes": "いいね",
+      "forks": "フォーク",
+      "views": "閲覧"
+    },
+    "tabs": {
+      "readme": "README",
+      "skillMd": "SKILL.md",
+      "resources": "リソース"
+    },
+    "readme": {
+      "empty": "READMEが提供されていません。",
+      "manage": "管理してREADMEを追加"
+    },
+    "skillMd": {
+      "empty": "SKILL.mdの内容がありません。"
+    },
+    "resources": {
+      "empty": "リソースファイルなし。",
+      "file": "{{path}}（{{size}}）"
+    },
+    "actions": {
+      "title": "アクション",
+      "fork": "ライブラリに追加",
+      "liked": "いいね済み",
+      "like": "スキルにいいね",
+      "loginToFork": "ログインして追加",
+      "loginToLike": "ログインしていいね",
+      "manage": "スキルを管理",
+      "shareTitle": "共有"
+    },
+    "meta": {
+      "publishedBy": "公開者",
+      "firstPublished": "初回公開：",
+      "lastUpdated": "最終更新："
+    },
+    "aboutForking": {
+      "title": "追加について",
+      "description": "追加すると独立したコピーが作成されます。変更は元のスキルに影響しません。"
+    }
+  },
+  "publish": {
+    "title": "スキルマーケットに公開",
+    "titleUpdate": "スキルリストを更新",
+    "description": "コミュニティとスキルを共有しましょう。いつでも更新・非公開にできます。",
+    "commitMessage": {
+      "label": "コミットメッセージ",
+      "placeholder": "このバージョンの変更内容を記述",
+      "charCount": "{{count}}/500文字"
+    },
+    "readme": {
+      "label": "README.md",
+      "placeholder": "スキルのドキュメントを追加...（Markdown対応）",
+      "hint": "基本的なMarkdown構文がサポートされています。"
+    },
+    "publishImmediately": {
+      "label": "すぐに公開",
+      "description": "マーケットプレイスですぐに表示する"
+    },
+    "success": {
+      "published": "スキルが正常にマーケットに公開されました！",
+      "updated": "スキルリストが正常に更新されました！"
+    },
+    "error": {
+      "default": "スキルの公開に失敗しました。再試行してください。"
+    },
+    "actions": {
+      "cancel": "キャンセル",
+      "publish": "公開",
+      "update": "リストを更新",
+      "publishing": "公開中..."
+    }
+  },
+  "fork": {
+    "title": "スキルを追加：{{name}}",
+    "description": "このスキルのコピーを作成してカスタマイズできます。",
+    "skillName": "スキル名",
+    "skillNamePlaceholder": "my-custom-skill",
+    "skillNameHint": "コピーに固有の名前を付ける",
+    "originalDescription": "元の説明",
+    "forkButton": "ライブラリに追加",
+    "forking": "追加中...",
+    "error": "スキルの追加に失敗しました。再試行してください。"
+  },
+  "infinite": {
+    "loadingMore": "読み込み中...",
+    "scrollHint": "スクロールでさらに読み込む"
+  },
+  "sections": {
+    "trending": "トレンドスキル",
+    "officialPicks": "公式スキル",
+    "recentlyPublished": "最近公開",
+    "allSkills": "すべてのスキル"
+  },
+  "communityHub": {
+    "agents": "エージェント",
+    "skills": "スキル"
+  },
+  "publishAction": "マーケットに公開"
+}

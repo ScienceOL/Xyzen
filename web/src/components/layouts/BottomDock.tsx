@@ -11,6 +11,7 @@ import {
   ClockIcon,
   Cog6ToothIcon,
   CommandLineIcon,
+  ComputerDesktopIcon,
   FolderIcon,
   LightBulbIcon,
   SparklesIcon,
@@ -65,6 +66,7 @@ export type ActivityPanel =
   | "marketplace"
   | "memory"
   | "sandbox"
+  | "runner"
   | "tasks"
   | "account";
 
@@ -635,6 +637,18 @@ function SubscriptionTooltip({
                 </div>
               )}
 
+              {/* Scheduled Tasks (only when limit > 0) */}
+              {usage.scheduled_tasks?.limit > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Tasks
+                  </span>
+                  <span className="font-medium">
+                    {usage.scheduled_tasks.used} / {usage.scheduled_tasks.limit}
+                  </span>
+                </div>
+              )}
+
               {/* Files */}
               <div className="flex justify-between gap-4">
                 <span className="text-neutral-500 dark:text-neutral-400">
@@ -807,6 +821,12 @@ export function BottomDock({
       icon: CommandLineIcon,
       label: t("app.activityBar.sandbox", "Sandbox"),
       panel: "sandbox",
+    },
+    {
+      id: "runner",
+      icon: ComputerDesktopIcon,
+      label: t("app.activityBar.runner"),
+      panel: "runner",
     },
     {
       id: "tasks",

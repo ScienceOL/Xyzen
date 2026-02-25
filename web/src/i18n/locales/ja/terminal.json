@@ -1,0 +1,26 @@
+{
+  "title": "ターミナル",
+  "status": {
+    "connected": "接続中",
+    "connecting": "接続しています...",
+    "disconnected": "切断",
+    "error": "エラー",
+    "reconnecting": "再接続中..."
+  },
+  "reconnecting": {
+    "title": "再接続しています...",
+    "attempt": "試行 {{current}}/{{max}}"
+  },
+  "noRunner": "オンラインのRunnerがありません",
+  "noRunnerHint": "設定からRunnerを接続してターミナルセッションを開始してください",
+  "openTerminal": "ターミナルを開く",
+  "openWithCommand": "コマンドを実行",
+  "commandPlaceholder": "例: claude, bash, python",
+  "launch": "起動",
+  "quickLaunch": {
+    "title": "クイック起動",
+    "shell": "Shell",
+    "claudeCode": "Claude Code",
+    "custom": "カスタムコマンド"
+  }
+}

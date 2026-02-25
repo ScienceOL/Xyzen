@@ -161,10 +161,13 @@ def calculate_llm_cost_usd(
     return get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens)
 
 
-def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int:
-    """Calculate settlement total from sum of record amounts. LITE returns 0."""
-    if tier_rate <= 0:
-        return 0
+def calculate_settlement_total(record_amounts_sum: int, _tier_rate: float) -> int:
+    """Calculate settlement total from sum of record amounts.
+
+    Settlement should use persisted per-record `amount` directly:
+    - LLM records already apply tier multiplier at write time (LITE -> 0)
+    - tool_call records are fixed costs and should not be tier-scaled
+    """
     return record_amounts_sum
 
 

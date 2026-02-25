@@ -195,6 +195,7 @@
     "unsavedTitle": "未保存的更改",
     "discard": "放弃",
     "keepEditing": "继续编辑",
+    "autoSaved": "已保存",
     "saveSuccess": "文件已保存",
     "saveError": "保存失败",
     "loadError": "加载文件内容失败"

@@ -1,5 +1,4 @@
 import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
-import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { getLanguage } from "@/lib/language";
 import * as monaco from "monaco-editor";
 import { useTheme } from "next-themes";
@@ -20,6 +19,10 @@ export interface FileEditorProps {
   readonly?: boolean;
 }
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+const AUTO_SAVE_DELAY = 1500;
+
 export function FileEditor({
   isOpen,
   onClose,
@@ -36,14 +39,25 @@ export function FileEditor({
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   // Track the original content for dirty detection
   const originalContentRef = useRef<string>("");
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedIndicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const language = getLanguage(file.name);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (savedIndicatorTimerRef.current)
+        clearTimeout(savedIndicatorTimerRef.current);
+    };
+  }, []);
 
   // Load file content when opened
   useEffect(() => {
@@ -52,7 +66,7 @@ export function FileEditor({
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
-    setDirty(false);
+    setSaveStatus("idle");
 
     onLoadContent(file.id)
       .then((response) => response.text())
@@ -81,6 +95,41 @@ export function FileEditor({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, file.id]);
+
+  const doSave = useCallback(async () => {
+    if (!editorRef.current || readonly) return;
+    const content = editorRef.current.getValue();
+    if (content === originalContentRef.current) return;
+
+    setSaveStatus("saving");
+    if (savedIndicatorTimerRef.current) {
+      clearTimeout(savedIndicatorTimerRef.current);
+      savedIndicatorTimerRef.current = null;
+    }
+
+    try {
+      await onSaveContent(file.id, content);
+      originalContentRef.current = content;
+      setSaveStatus("saved");
+      savedIndicatorTimerRef.current = setTimeout(
+        () => setSaveStatus("idle"),
+        2000,
+      );
+    } catch {
+      setSaveStatus("error");
+      savedIndicatorTimerRef.current = setTimeout(
+        () => setSaveStatus("idle"),
+        3000,
+      );
+    }
+  }, [file.id, onSaveContent, readonly]);
+
+  const scheduleSave = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      doSave();
+    }, AUTO_SAVE_DELAY);
+  }, [doSave]);
 
   // Initialize Monaco editor
   useEffect(() => {
@@ -111,14 +160,16 @@ export function FileEditor({
     editorRef.current = editor;
 
     editor.onDidChangeModelContent(() => {
-      const current = editor.getValue();
-      setDirty(current !== originalContentRef.current);
+      if (!readonly) {
+        scheduleSave();
+      }
     });
 
-    // Ctrl+S / Cmd+S to save
+    // Ctrl+S / Cmd+S to force-save immediately
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       if (!readonly) {
-        handleSave();
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        doSave();
       }
     });
 
@@ -137,111 +188,109 @@ export function FileEditor({
     }
   }, [resolvedTheme]);
 
-  // Cleanup editor on close
+  // Cleanup editor on close — flush pending save first
   useEffect(() => {
     if (!isOpen && editorRef.current) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+        // Fire a final save synchronously before disposing
+        const content = editorRef.current.getValue();
+        if (content !== originalContentRef.current) {
+          onSaveContent(file.id, content).catch(() => {});
+          originalContentRef.current = content;
+        }
+      }
       editorRef.current.dispose();
       editorRef.current = null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const handleSave = useCallback(async () => {
-    if (!editorRef.current || readonly || saving) return;
-    const content = editorRef.current.getValue();
-
-    setSaving(true);
-    try {
-      await onSaveContent(file.id, content);
-      originalContentRef.current = content;
-      setDirty(false);
-    } catch {
-      // Error is handled by caller — toast or notification
-    } finally {
-      setSaving(false);
-    }
-  }, [file.id, onSaveContent, readonly, saving]);
-
-  const handleClose = useCallback(() => {
-    if (dirty) {
-      setShowUnsavedDialog(true);
-    } else {
-      onClose();
-    }
-  }, [dirty, onClose]);
-
-  const handleDiscardAndClose = useCallback(() => {
-    setShowUnsavedDialog(false);
-    setDirty(false);
-    onClose();
-  }, [onClose]);
-
   return (
-    <>
-      <SheetModal isOpen={isOpen} onClose={handleClose} size="full">
-        {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-neutral-200/60 px-5 pb-3 pt-5 dark:border-neutral-800/60">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <h2 className="truncate text-lg font-semibold text-neutral-900 dark:text-white">
-              {file.name}
-            </h2>
-            <span className="shrink-0 rounded bg-neutral-100/80 px-1.5 py-0.5 text-xs text-neutral-500 dark:bg-white/[0.06] dark:text-neutral-400">
-              {language}
-            </span>
-            {dirty && (
-              <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-            )}
-          </div>
+    <SheetModal isOpen={isOpen} onClose={onClose} size="full">
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between border-b border-neutral-200/60 px-5 pb-3 pt-5 dark:border-neutral-800/60">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <h2 className="truncate text-lg font-semibold text-neutral-900 dark:text-white">
+            {file.name}
+          </h2>
+          <span className="shrink-0 rounded bg-neutral-100/80 px-1.5 py-0.5 text-xs text-neutral-500 dark:bg-white/[0.06] dark:text-neutral-400">
+            {language}
+          </span>
         </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-hidden">
-          {loading && (
-            <div className="flex h-full items-center justify-center text-[13px] text-neutral-400">
-              Loading...
-            </div>
-          )}
-          {loadError && (
-            <div className="flex h-full items-center justify-center text-[13px] text-red-500">
-              {loadError}
-            </div>
-          )}
-          {!loading && !loadError && (
-            <div ref={containerRef} className="h-full w-full" />
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-neutral-200/60 px-5 py-4 dark:border-neutral-800/60">
+        <div className="flex items-center gap-2.5">
+          {/* Auto-save status indicator */}
+          {!readonly && <SaveIndicator status={saveStatus} />}
           <button
-            onClick={handleClose}
+            onClick={onClose}
             className="rounded-lg bg-neutral-100/80 px-4 py-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-200/80 dark:bg-white/[0.06] dark:text-neutral-300 dark:hover:bg-white/[0.1]"
           >
-            {t("common.cancel")}
+            {t("common.close")}
           </button>
-          {!readonly && (
-            <button
-              onClick={handleSave}
-              disabled={saving || !dirty}
-              className="rounded-lg bg-indigo-500 px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-600 disabled:opacity-50 dark:hover:bg-indigo-400"
-            >
-              {saving
-                ? t("knowledge.fileEditor.saving")
-                : t("knowledge.fileEditor.save")}
-            </button>
-          )}
         </div>
-      </SheetModal>
+      </div>
 
-      <ConfirmationModal
-        isOpen={showUnsavedDialog}
-        onClose={() => setShowUnsavedDialog(false)}
-        onConfirm={handleDiscardAndClose}
-        title={t("knowledge.fileEditor.unsavedTitle")}
-        message={t("knowledge.fileEditor.unsavedChanges")}
-        confirmLabel={t("knowledge.fileEditor.discard")}
-        cancelLabel={t("knowledge.fileEditor.keepEditing")}
-        destructive
-      />
-    </>
+      {/* Body */}
+      <div className="flex-1 overflow-hidden">
+        {loading && (
+          <div className="flex h-full items-center justify-center text-[13px] text-neutral-400">
+            Loading...
+          </div>
+        )}
+        {loadError && (
+          <div className="flex h-full items-center justify-center text-[13px] text-red-500">
+            {loadError}
+          </div>
+        )}
+        {!loading && !loadError && (
+          <div ref={containerRef} className="h-full w-full" />
+        )}
+      </div>
+    </SheetModal>
+  );
+}
+
+function SaveIndicator({ status }: { status: SaveStatus }) {
+  const { t } = useTranslation();
+
+  if (status === "idle") return null;
+
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500">
+      {status === "saving" && (
+        <>
+          <svg
+            className="h-3.5 w-3.5 animate-spin"
+            viewBox="0 0 16 16"
+            fill="none"
+          >
+            <circle
+              cx="8"
+              cy="8"
+              r="6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeDasharray="28"
+              strokeDashoffset="8"
+            />
+          </svg>
+          {t("knowledge.fileEditor.saving")}
+        </>
+      )}
+      {status === "saved" && (
+        <>
+          <span className="h-2 w-2 rounded-full bg-green-500" />
+          {t("knowledge.fileEditor.autoSaved")}
+        </>
+      )}
+      {status === "error" && (
+        <>
+          <span className="h-2 w-2 rounded-full bg-red-500" />
+          {t("knowledge.fileEditor.saveError")}
+        </>
+      )}
+    </span>
   );
 }

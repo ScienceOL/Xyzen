@@ -20,3 +20,9 @@ export const DEFAULT_WIDTH = 64 * 10;
  * this constant to stay in sync.
  */
 export const DEFAULT_TOPIC_TITLE_KEY = "app.chatConfig.defaultTitle";
+
+/**
+ * Default working directory inside sandbox environments.
+ * Must stay in sync with the backend `XYZEN_SANDBOX_WorkDir` setting.
+ */
+export const SANDBOX_WORKDIR = "/workspace";

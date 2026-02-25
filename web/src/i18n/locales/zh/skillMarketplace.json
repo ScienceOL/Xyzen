@@ -1,0 +1,160 @@
+{
+  "title": "技能市场",
+  "tabs": {
+    "all": "全部技能",
+    "starred": "已收藏",
+    "my": "我的技能"
+  },
+  "search": {
+    "placeholder": "搜索技能..."
+  },
+  "sort": {
+    "recent": "最新",
+    "likes": "最多点赞",
+    "forks": "最多复制",
+    "views": "最多浏览",
+    "oldest": "最早"
+  },
+  "filters": {
+    "filteredBy": "筛选条件：",
+    "clear": "清除筛选"
+  },
+  "loadError": "加载失败，请重试。",
+  "retry": "重试",
+  "empty": {
+    "starred": {
+      "title": "暂无收藏技能",
+      "body": "还没有收藏任何技能。浏览市场并点击心形图标来收藏！",
+      "browse": "浏览技能"
+    },
+    "all": {
+      "title": "暂无技能",
+      "body": "成为第一个与社区分享技能的人！"
+    },
+    "search": {
+      "body": "没有匹配的技能。请尝试其他关键词或清除筛选。"
+    },
+    "publish": {
+      "title": "如何发布技能：",
+      "steps": {
+        "1": "前往技能面板并创建技能",
+        "2": "添加 SKILL.md 说明文件和相关资源文件",
+        "3": "在技能选项中点击\"发布到市场\"",
+        "4": "与社区分享你的技能！"
+      }
+    }
+  },
+  "card": {
+    "by": "作者：{{author}}",
+    "byOfficial": "Xyzen",
+    "noDescription": "暂无描述",
+    "tagsMore": "+{{count}} 更多"
+  },
+  "badge": {
+    "official": "官方"
+  },
+  "detail": {
+    "loading": "加载技能详情...",
+    "error": "加载技能详情失败，请重试。",
+    "back": "返回市场",
+    "noDescription": "暂无描述",
+    "stats": {
+      "likes": "点赞",
+      "forks": "复制",
+      "views": "浏览"
+    },
+    "tabs": {
+      "readme": "说明文档",
+      "skillMd": "SKILL.md",
+      "resources": "资源文件"
+    },
+    "readme": {
+      "empty": "该技能暂无说明文档。",
+      "manage": "管理并添加说明"
+    },
+    "skillMd": {
+      "empty": "暂无 SKILL.md 内容。"
+    },
+    "resources": {
+      "empty": "暂无资源文件。",
+      "file": "{{path}}（{{size}}）"
+    },
+    "actions": {
+      "title": "操作",
+      "fork": "添加到库",
+      "liked": "已点赞",
+      "like": "点赞此技能",
+      "loginToFork": "登录后添加",
+      "loginToLike": "登录后点赞",
+      "manage": "管理技能",
+      "shareTitle": "分享"
+    },
+    "meta": {
+      "publishedBy": "发布者",
+      "firstPublished": "首次发布：",
+      "lastUpdated": "最后更新："
+    },
+    "aboutForking": {
+      "title": "关于添加",
+      "description": "添加会创建独立副本，修改不会影响原始技能。"
+    }
+  },
+  "publish": {
+    "title": "发布到技能市场",
+    "titleUpdate": "更新技能列表",
+    "description": "与社区分享你的技能。你可以随时更新或取消发布。",
+    "commitMessage": {
+      "label": "提交说明",
+      "placeholder": "描述此版本的变更内容",
+      "charCount": "{{count}}/500 字符"
+    },
+    "readme": {
+      "label": "说明文档",
+      "placeholder": "为你的技能添加文档...（支持 Markdown）",
+      "hint": "支持基本 Markdown 语法。"
+    },
+    "publishImmediately": {
+      "label": "立即发布",
+      "description": "让此列表立即在市场中可见"
+    },
+    "success": {
+      "published": "技能已成功发布到市场！",
+      "updated": "技能列表已成功更新！"
+    },
+    "error": {
+      "default": "发布技能失败，请重试。"
+    },
+    "actions": {
+      "cancel": "取消",
+      "publish": "发布",
+      "update": "更新列表",
+      "publishing": "发布中..."
+    }
+  },
+  "fork": {
+    "title": "添加技能：{{name}}",
+    "description": "创建此技能的副本以自定义和使用。",
+    "skillName": "技能名称",
+    "skillNamePlaceholder": "my-custom-skill",
+    "skillNameHint": "为副本取一个独特的名称",
+    "originalDescription": "原始描述",
+    "forkButton": "添加到库",
+    "forking": "添加中...",
+    "error": "添加技能失败，请重试。"
+  },
+  "infinite": {
+    "loadingMore": "加载更多...",
+    "scrollHint": "滚动加载更多"
+  },
+  "sections": {
+    "trending": "热门技能",
+    "officialPicks": "官方技能",
+    "recentlyPublished": "最近发布",
+    "allSkills": "全部技能"
+  },
+  "communityHub": {
+    "agents": "智能体",
+    "skills": "技能"
+  },
+  "publishAction": "发布到市场"
+}

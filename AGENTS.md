@@ -2,6 +2,8 @@
 
 Xyzen is an AI Laboratory Server for multi-agent LLM orchestration, real-time chat, and document processing. Built with FastAPI + LangGraph (backend) and React + Zustand (frontend).
 
+In the dev environment (`just dev`), the FastAPI service and the web frontend support hot-reload — code changes take effect automatically. The Celery worker does **not** hot-reload; run `just rebuild worker` only when your changes touch files under `tasks/` or other Celery-consumed code paths.
+
 ## Quick Start
 
 ### Backend

@@ -2,7 +2,7 @@
 Sandbox deployer for agent skills.
 
 Deploys SKILL.md and resource files to the sandbox at
-/workspace/.skills/<skill_name>/ on first activation.
+{WorkDir}/.skills/<skill_name>/ on first activation.
 """
 
 from __future__ import annotations
@@ -10,12 +10,16 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from app.configs.sandbox import get_sandbox_workdir
+
 if TYPE_CHECKING:
     from app.infra.sandbox.manager import SandboxManager
 
 logger = logging.getLogger(__name__)
 
-SKILLS_BASE_PATH = "/workspace/.skills"
+
+def _skills_base_path() -> str:
+    return f"{get_sandbox_workdir()}/.skills"
 
 
 async def deploy_skill_to_sandbox(
@@ -43,7 +47,7 @@ async def deploy_skill_to_sandbox(
     from app.core.skills.parser import validate_skill_name
 
     validated_skill_name = validate_skill_name(skill_name)
-    base_path = f"{SKILLS_BASE_PATH}/{validated_skill_name}"
+    base_path = f"{_skills_base_path()}/{validated_skill_name}"
 
     # Write SKILL.md
     await manager.write_file(f"{base_path}/SKILL.md", skill_md)

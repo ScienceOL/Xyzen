@@ -195,6 +195,7 @@
     "unsavedTitle": "未保存の変更",
     "discard": "破棄",
     "keepEditing": "編集を続ける",
+    "autoSaved": "保存済み",
     "saveSuccess": "ファイルを保存しました",
     "saveError": "保存に失敗しました",
     "loadError": "ファイルの内容の読み込みに失敗しました"
