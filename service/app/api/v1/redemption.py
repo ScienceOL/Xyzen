@@ -992,6 +992,23 @@ class FilterOptionsResponse(BaseModel):
     models: list[str]
 
 
+class ModelOptionsResponse(BaseModel):
+    models: list[str]
+
+
+@router.get("/admin/stats/model-options", response_model=ModelOptionsResponse)
+async def get_model_options(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+):
+    """Return all configured model names from pricing config (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+
+    from app.core.consume.pricing import MODEL_COST_RATES
+
+    return ModelOptionsResponse(models=sorted(MODEL_COST_RATES.keys()))
+
+
 class CreditHeatmapEntry(BaseModel):
     date: str
     total_credits: int

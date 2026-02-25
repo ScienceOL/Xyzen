@@ -34,20 +34,6 @@ export const PROVIDER_OPTIONS = [
   "qwen",
 ];
 
-export const MODEL_OPTIONS = [
-  "Vendor2/Claude-4.6-Opus",
-  "gemini-3-pro-preview",
-  "Vendor2/Claude-4.5-Sonnet",
-  "gemini-3-flash-preview",
-  "qwen3-30b-a3b",
-  "gemini-2.5-flash-lite",
-  "DeepSeek/DeepSeek-V3.1-0821",
-  "kimi-k2.5",
-  "glm-4.7",
-  "qwen3-max",
-  "deepseek-v3.2",
-];
-
 export function formatCompact(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;

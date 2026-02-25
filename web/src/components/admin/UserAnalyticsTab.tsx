@@ -9,7 +9,6 @@ import { AdminFilterBar } from "./shared/AdminFilterBar";
 import { AdminHeatmap } from "./shared/AdminHeatmap";
 import {
   formatCompact,
-  MODEL_OPTIONS,
   PROVIDER_OPTIONS,
   TIER_BADGE_COLORS,
   TIER_DISPLAY_NAMES,
@@ -29,6 +28,7 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [heatmapData, setHeatmapData] = useState<UserConsumptionHeatmapEntry[]>(
     [],
   );
@@ -42,6 +42,14 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  // Fetch model options from backend
+  useEffect(() => {
+    redemptionService
+      .getModelOptions(adminSecret)
+      .then((res) => setModelOptions(res.models))
+      .catch(() => {});
+  }, [adminSecret]);
 
   const fetchHeatmap = useCallback(
     async (signal?: AbortSignal) => {
@@ -162,7 +170,7 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
         selectedProvider={selectedProvider}
         onProviderChange={handleProviderChange}
         providerOptions={PROVIDER_OPTIONS}
-        modelOptions={MODEL_OPTIONS}
+        modelOptions={modelOptions}
         showTierFilter
         showModelFilter
         showProviderFilter
