@@ -9,7 +9,6 @@ import { AdminHeatmap } from "./shared/AdminHeatmap";
 import { AdminStatCards } from "./shared/AdminStatCards";
 import {
   formatCompact,
-  MODEL_OPTIONS,
   PROVIDER_OPTIONS,
   TIER_BADGE_COLORS,
   TIER_DISPLAY_NAMES,
@@ -35,10 +34,19 @@ export function ConsumptionAnalyticsTab({
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>("credits");
   const [heatmapData, setHeatmapData] = useState<ConsumptionHeatmapEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch model options from backend
+  useEffect(() => {
+    redemptionService
+      .getModelOptions(adminSecret)
+      .then((res) => setModelOptions(res.models))
+      .catch(() => {});
+  }, [adminSecret]);
 
   const fetchHeatmap = useCallback(
     async (signal?: AbortSignal) => {
@@ -150,7 +158,7 @@ export function ConsumptionAnalyticsTab({
           selectedProvider={selectedProvider}
           onProviderChange={handleProviderChange}
           providerOptions={PROVIDER_OPTIONS}
-          modelOptions={MODEL_OPTIONS}
+          modelOptions={modelOptions}
           showTierFilter
           showModelFilter
           showProviderFilter
