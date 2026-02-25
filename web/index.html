@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="./index.css" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -56,17 +56,6 @@
     />
 
     <title>Xyzen</title>
-    <!-- Apply dark class synchronously before first paint to prevent white flash -->
-    <script>
-      (function () {
-        var t = localStorage.getItem("theme");
-        var d =
-          t === "dark" ||
-          (t !== "light" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
-        if (d) document.documentElement.classList.add("dark");
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>
