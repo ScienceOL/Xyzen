@@ -32,7 +32,7 @@ describe("resolveContextLimit", () => {
     ],
   };
 
-  it("prefers model max_input_tokens when available", () => {
+  it("uses tier limit when tier is known, ignoring model metadata", () => {
     expect(
       resolveContextLimit({
         modelTier: "standard",
@@ -40,13 +40,46 @@ describe("resolveContextLimit", () => {
         model: "model-a",
         availableModels,
       }),
+    ).toBe(1_000_000);
+  });
+
+  it("uses tier limit for pro tier regardless of model metadata", () => {
+    expect(
+      resolveContextLimit({
+        modelTier: "pro",
+        providerId: "provider-1",
+        model: "model-a",
+        availableModels,
+      }),
+    ).toBe(1_000_000);
+  });
+
+  it("uses tier limit for lite tier", () => {
+    expect(
+      resolveContextLimit({
+        modelTier: "lite",
+        providerId: "provider-1",
+        model: "model-a",
+        availableModels,
+      }),
+    ).toBe(256_000);
+  });
+
+  it("falls back to model max_input_tokens when tier is unknown", () => {
+    expect(
+      resolveContextLimit({
+        modelTier: "unknown-tier",
+        providerId: "provider-1",
+        model: "model-a",
+        availableModels,
+      }),
     ).toBe(120_000);
   });
 
-  it("falls back to model max_tokens when max_input_tokens is absent", () => {
+  it("falls back to model max_tokens when tier is unknown and max_input_tokens absent", () => {
     expect(
       resolveContextLimit({
-        modelTier: "standard",
+        modelTier: null,
         providerId: "provider-1",
         model: "model-b",
         availableModels,
@@ -54,14 +87,14 @@ describe("resolveContextLimit", () => {
     ).toBe(64_000);
   });
 
-  it("falls back to tier limit when model metadata is unavailable", () => {
+  it("falls back to standard limit when tier is unknown and no model metadata", () => {
     expect(
       resolveContextLimit({
-        modelTier: "lite",
+        modelTier: null,
         providerId: "provider-1",
         model: "missing-model",
         availableModels,
       }),
-    ).toBe(256_000);
+    ).toBe(1_000_000);
   });
 });

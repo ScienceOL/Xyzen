@@ -33,28 +33,28 @@ export function resolveContextLimit(params: {
   availableModels: Record<string, ModelInfo[]> | undefined;
 }): number {
   const { modelTier, providerId, model, availableModels } = params;
-  const tierLimit = TIER_LIMITS[modelTier ?? ""] ?? TIER_LIMITS.standard;
+  const tierKey = modelTier ?? "";
 
-  if (!providerId || !model || !availableModels) {
-    return tierLimit;
+  // When tier is known, use the platform-defined limit directly.
+  // Model metadata (max_input_tokens) reflects the model's native capacity,
+  // not the context window Xyzen actually provisions for each tier.
+  if (tierKey in TIER_LIMITS) {
+    return TIER_LIMITS[tierKey];
   }
 
-  const modelInfo = (availableModels[providerId] ?? []).find(
-    (candidate) => candidate.key === model || candidate.model_name === model,
-  );
-  if (!modelInfo) {
-    return tierLimit;
+  // Tier unknown — fall back to model metadata, then default.
+  if (providerId && model && availableModels) {
+    const modelInfo = (availableModels[providerId] ?? []).find(
+      (candidate) => candidate.key === model || candidate.model_name === model,
+    );
+    if (modelInfo) {
+      const maxInput = toPositiveInteger(modelInfo.max_input_tokens);
+      if (maxInput) return maxInput;
+
+      const maxTokens = toPositiveInteger(modelInfo.max_tokens);
+      if (maxTokens) return maxTokens;
+    }
   }
 
-  const maxInput = toPositiveInteger(modelInfo.max_input_tokens);
-  if (maxInput) {
-    return maxInput;
-  }
-
-  const maxTokens = toPositiveInteger(modelInfo.max_tokens);
-  if (maxTokens) {
-    return maxTokens;
-  }
-
-  return tierLimit;
+  return TIER_LIMITS.standard;
 }
