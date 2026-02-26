@@ -83,6 +83,66 @@ export interface UsageResponse {
   files: UsageBucket;
 }
 
+// ==================== Plan Catalog Types ====================
+
+export interface PlanFeatureResponse {
+  key: string;
+  included: boolean;
+  params: Record<string, string | number>;
+}
+
+export interface CurrencyPricingResponse {
+  currency: string;
+  amount: number;
+  display_price: string;
+  credits: number;
+  first_month_amount: number | null;
+  first_month_display: string | null;
+}
+
+export interface PlanLimitsResponse {
+  storage: string;
+  max_file_count: number;
+  max_parallel_chats: number;
+  max_sandboxes: number;
+  max_scheduled_tasks: number;
+  monthly_credits: number;
+  max_model_tier: string;
+}
+
+export interface PlanResponse {
+  plan_key: string;
+  display_name_key: string;
+  is_free: boolean;
+  highlight: boolean;
+  badge_key: string | null;
+  pricing: CurrencyPricingResponse[];
+  features: PlanFeatureResponse[];
+  limits: PlanLimitsResponse | null;
+}
+
+export interface TopUpRateResponse {
+  currency: string;
+  credits_per_unit: number;
+  unit_amount: number;
+  display_rate: string;
+  payment_methods: string[];
+}
+
+export interface SandboxAddonRateResponse {
+  currency: string;
+  amount_per_sandbox: number;
+  display_rate: string;
+  min_plan: string;
+}
+
+export interface PlanCatalogResponse {
+  region: string;
+  plans: PlanResponse[];
+  topup_rates: TopUpRateResponse[];
+  sandbox_addon_rates: SandboxAddonRateResponse[];
+}
+
 // ==================== Service ====================
 
 class SubscriptionService {
@@ -92,6 +152,12 @@ class SubscriptionService {
 
   async getPlans(): Promise<PlansResponse> {
     return http.get("/xyzen/api/v1/subscription/plans", { auth: false });
+  }
+
+  async getCatalog(): Promise<PlanCatalogResponse> {
+    return http.get("/xyzen/api/v1/subscription/plans/catalog", {
+      auth: false,
+    });
   }
 
   async getUsage(): Promise<UsageResponse> {

@@ -10,8 +10,18 @@ from app.models.subscription import (
     UserSubscription,
     UserSubscriptionCreate,
 )
+from app.core.plan_catalog import get_catalog_region, get_plan_catalog
 from app.repos.redemption import RedemptionRepository
 from app.repos.subscription import SubscriptionRepository
+from app.schemas.plan_catalog import (
+    CurrencyPricingResponse,
+    PlanCatalogResponse,
+    PlanFeatureResponse,
+    PlanLimitsResponse,
+    PlanResponse,
+    SandboxAddonRateResponse,
+    TopUpRateResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -177,3 +187,86 @@ class SubscriptionService:
         await self.db.commit()
 
         return amount
+
+    async def get_plan_catalog_response(self) -> PlanCatalogResponse:
+        """Build the full plan catalog response, merging static catalog with DB limits."""
+        catalog = get_plan_catalog()
+        region = get_catalog_region()
+
+        # Build role_map from DB
+        roles = await self.list_plans()
+        role_map: dict[str, SubscriptionRole] = {r.name: r for r in roles}
+
+        plan_responses: list[PlanResponse] = []
+        for entry in catalog.plans:
+            # Merge limits from DB role if available
+            role = role_map.get(entry.plan_key)
+            limits: PlanLimitsResponse | None = None
+            if role is not None:
+                limits = PlanLimitsResponse(
+                    storage=_format_bytes(role.storage_limit_bytes),
+                    max_file_count=role.max_file_count,
+                    max_parallel_chats=role.max_parallel_chats,
+                    max_sandboxes=role.max_sandboxes,
+                    max_scheduled_tasks=role.max_scheduled_tasks,
+                    monthly_credits=role.monthly_credits,
+                    max_model_tier=role.max_model_tier,
+                )
+
+            plan_responses.append(
+                PlanResponse(
+                    plan_key=entry.plan_key,
+                    display_name_key=entry.display_name_key,
+                    is_free=entry.is_free,
+                    highlight=entry.highlight,
+                    badge_key=entry.badge_key,
+                    pricing=[
+                        CurrencyPricingResponse(
+                            currency=p.currency,
+                            amount=p.amount,
+                            display_price=p.display_price,
+                            credits=p.credits,
+                            first_month_amount=p.first_month_amount,
+                            first_month_display=p.first_month_display,
+                        )
+                        for p in entry.pricing
+                    ],
+                    features=[
+                        PlanFeatureResponse(key=f.key, included=f.included, params=f.params) for f in entry.features
+                    ],
+                    limits=limits,
+                )
+            )
+
+        return PlanCatalogResponse(
+            region=region,
+            plans=plan_responses,
+            topup_rates=[
+                TopUpRateResponse(
+                    currency=tr.currency,
+                    credits_per_unit=tr.credits_per_unit,
+                    unit_amount=tr.unit_amount,
+                    display_rate=tr.display_rate,
+                    payment_methods=list(tr.payment_methods),
+                )
+                for tr in catalog.topup_rates
+            ],
+            sandbox_addon_rates=[
+                SandboxAddonRateResponse(
+                    currency=sa.currency,
+                    amount_per_sandbox=sa.amount_per_sandbox,
+                    display_rate=sa.display_rate,
+                    min_plan=sa.min_plan,
+                )
+                for sa in catalog.sandbox_addon_rates
+            ],
+        )
+
+
+def _format_bytes(n: int) -> str:
+    """Human-readable byte size string."""
+    if n < 1024 * 1024:
+        return f"{n // 1024} KB"
+    if n < 1024 * 1024 * 1024:
+        return f"{n // (1024 * 1024)} MB"
+    return f"{n / (1024 * 1024 * 1024):.1f} GB"

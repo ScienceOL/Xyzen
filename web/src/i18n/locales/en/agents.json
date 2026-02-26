@@ -149,6 +149,7 @@
       "toolFilterHint": "Leave empty to allow all tools",
       "maxIterations": "Max Iterations"
     },
+    "fullscreenEdit": "Expand Editor",
     "tool": {
       "title": "Tool Config",
       "outputKey": "Output Key",

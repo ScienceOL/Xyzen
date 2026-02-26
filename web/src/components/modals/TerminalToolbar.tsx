@@ -1,5 +1,6 @@
 import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
 import type { Terminal as XTerm } from "@xterm/xterm";
+import { motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface TerminalToolbarProps {
@@ -18,6 +19,8 @@ const ARROW_SEQ: Record<string, string> = {
 
 const ARROW_REPEAT_DELAY = 400;
 const ARROW_REPEAT_INTERVAL = 80;
+
+const btnSpring = { type: "spring" as const, stiffness: 400, damping: 25 };
 
 function haptic() {
   try {
@@ -181,7 +184,7 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
   if (!isTouch) return null;
 
   const btnBase =
-    "select-none rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors active:scale-95 active:bg-white/[0.12]";
+    "select-none rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors";
   const btnNormal = `${btnBase} bg-white/[0.06] text-neutral-300`;
   const btnActive = `${btnBase} bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/30`;
 
@@ -204,63 +207,75 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
   ];
 
   return (
-    <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-white/[0.06] px-2 py-1.5">
+    <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-white/[0.06] bg-white/[0.02] px-2 py-1.5 backdrop-blur-sm">
       {/* ESC / TAB */}
       {charKeys.map((k) => (
-        <button
+        <motion.button
           key={k.label}
           type="button"
           className={btnNormal}
+          whileTap={{ scale: 0.92 }}
+          transition={btnSpring}
           onMouseDown={preventFocus}
           onTouchStart={preventFocus}
           onClick={() => sendKey(k.data)}
         >
           {k.label}
-        </button>
+        </motion.button>
       ))}
 
       {/* CTRL */}
-      <button
+      <motion.button
         type="button"
         className={modifier === "ctrl" ? btnActive : btnNormal}
+        animate={{ scale: modifier === "ctrl" ? 1.03 : 1 }}
+        whileTap={{ scale: 0.92 }}
+        transition={btnSpring}
         onMouseDown={preventFocus}
         onTouchStart={preventFocus}
         onClick={() => toggleModifier("ctrl")}
       >
         CTRL
-      </button>
+      </motion.button>
 
       {/* ALT */}
-      <button
+      <motion.button
         type="button"
         className={modifier === "alt" ? btnActive : btnNormal}
+        animate={{ scale: modifier === "alt" ? 1.03 : 1 }}
+        whileTap={{ scale: 0.92 }}
+        transition={btnSpring}
         onMouseDown={preventFocus}
         onTouchStart={preventFocus}
         onClick={() => toggleModifier("alt")}
       >
         ALT
-      </button>
+      </motion.button>
 
       {/* Symbol keys */}
       {symbolKeys.map((k) => (
-        <button
+        <motion.button
           key={k.label}
           type="button"
           className={btnNormal}
+          whileTap={{ scale: 0.92 }}
+          transition={btnSpring}
           onMouseDown={preventFocus}
           onTouchStart={preventFocus}
           onClick={() => sendKey(k.data)}
         >
           {k.label}
-        </button>
+        </motion.button>
       ))}
 
       {/* Arrow keys with auto-repeat */}
       {arrowKeys.map((k) => (
-        <button
+        <motion.button
           key={k.direction}
           type="button"
           className={btnNormal}
+          whileTap={{ scale: 0.92 }}
+          transition={btnSpring}
           onMouseDown={preventFocus}
           onTouchStart={(e) => {
             e.preventDefault();
@@ -277,7 +292,7 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
           }}
         >
           {k.label}
-        </button>
+        </motion.button>
       ))}
     </div>
   );

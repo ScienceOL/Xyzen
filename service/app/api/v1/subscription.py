@@ -14,6 +14,7 @@ from app.core.subscription import SubscriptionService
 from app.infra.database import get_session as get_db_session
 from app.middleware.auth import get_current_user
 from app.models.subscription import SubscriptionRoleRead, UserSubscriptionRead
+from app.schemas.plan_catalog import PlanCatalogResponse
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +134,19 @@ async def list_plans(
     return PlansResponse(
         plans=[SubscriptionRoleRead.model_validate(r) for r in roles],
     )
+
+
+@router.get(
+    "/plans/catalog",
+    response_model=PlanCatalogResponse,
+    summary="Get full plan catalog with pricing, features, and limits",
+)
+async def get_plan_catalog(
+    db: AsyncSession = Depends(get_db_session),
+) -> PlanCatalogResponse:
+    """Return the full plan catalog for the current region (public endpoint)."""
+    service = SubscriptionService(db)
+    return await service.get_plan_catalog_response()
 
 
 @router.get(
