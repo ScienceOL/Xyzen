@@ -60,29 +60,7 @@ def send_web_push(
     icon: str = "/icon.png",
 ) -> None:
     """Send Web Push to all of a user's subscriptions via pywebpush."""
-    loop = asyncio.new_event_loop()
-    try:
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(_send_web_push_async(user_id, title, body, url, icon))
-    finally:
-        try:
-            loop.run_until_complete(asyncio.sleep(0))
-
-            pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
-            if pending:
-                done, still_pending = loop.run_until_complete(asyncio.wait(pending, timeout=3.0))
-                for task in still_pending:
-                    task.cancel()
-                if still_pending:
-                    loop.run_until_complete(asyncio.gather(*still_pending, return_exceptions=True))
-                if done:
-                    loop.run_until_complete(asyncio.gather(*done, return_exceptions=True))
-
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.run_until_complete(loop.shutdown_default_executor())
-        finally:
-            asyncio.set_event_loop(None)
-            loop.close()
+    asyncio.run(_send_web_push_async(user_id, title, body, url, icon))
 
 
 async def _send_web_push_async(
