@@ -203,6 +203,7 @@ export function RunnerConnectionZone({
     deleteRunner,
     updateRunner,
     openTerminal,
+    connectRunnerEvents,
   } = useXyzen(
     useShallow((s) => ({
       runners: s.runners,
@@ -211,6 +212,7 @@ export function RunnerConnectionZone({
       deleteRunner: s.deleteRunner,
       updateRunner: s.updateRunner,
       openTerminal: s.openTerminal,
+      connectRunnerEvents: s.connectRunnerEvents,
     })),
   );
 
@@ -218,7 +220,9 @@ export function RunnerConnectionZone({
 
   useEffect(() => {
     fetchRunners();
-  }, [fetchRunners]);
+    const cleanup = connectRunnerEvents();
+    return cleanup;
+  }, [fetchRunners, connectRunnerEvents]);
 
   const handleDoneCreate = useCallback(() => {
     setShowCreate(false);

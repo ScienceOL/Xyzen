@@ -9,6 +9,7 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.configs import configs
+from app.core.user_events import broadcast_user_event
 from app.infra.database import AsyncSessionLocal
 from app.repos.runner import RunnerRepository
 
@@ -239,6 +240,14 @@ async def runner_websocket(
     try:
         # Set initial presence
         await _set_presence(r, user_id, runner_id)
+        await broadcast_user_event(
+            user_id,
+            "runner_status",
+            {
+                "runner_id": runner_id,
+                "is_online": True,
+            },
+        )
 
         # Start background tasks
         heartbeat_task = asyncio.create_task(_heartbeat_loop(websocket, r, user_id, runner_id, cancel_event))
@@ -314,6 +323,14 @@ async def runner_websocket(
         cancel_event.set()
         runner_registry.unregister(user_id)
         await _clear_presence(user_id)
+        await broadcast_user_event(
+            user_id,
+            "runner_status",
+            {
+                "runner_id": runner_id,
+                "is_online": False,
+            },
+        )
 
         # Cancel background tasks
         for task in [heartbeat_task, redis_listener_task]:
