@@ -189,11 +189,12 @@ async def record_llm_usage_from_context(
             tier_rate,
             cache_read_input_tokens=cache_read_input_tokens,
         )
-        cost_usd_val = calculate_llm_cost_usd(
+        cost_usd_val = await calculate_llm_cost_usd(
             model_name,
             input_tokens,
             output_tokens,
             cache_read_input_tokens=cache_read_input_tokens,
+            provider=provider,
         )
 
         async with ctx.db_session_factory() as db:
