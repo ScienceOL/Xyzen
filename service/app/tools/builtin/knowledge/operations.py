@@ -282,26 +282,39 @@ async def read_file(
             if is_pdf:
                 import fitz
 
+                MAX_DEFAULT_PAGES = 20
+
                 doc = fitz.open(stream=file_bytes, filetype="pdf")
                 total_pages = len(doc)
                 doc.close()
 
                 page_nums: list[int] | None = None
+                auto_capped = False
                 if pages:
                     try:
                         page_nums = parse_page_range(pages, total_pages)
                     except ValueError as e:
                         return {"error": str(e), "success": False}
+                elif total_pages > MAX_DEFAULT_PAGES:
+                    page_nums = list(range(MAX_DEFAULT_PAGES))
+                    auto_capped = True
 
                 if mode == "image":
                     images = read_pdf_pages_image(file_bytes, page_nums)
-                    return {
+                    img_result: dict[str, Any] = {
                         "success": True,
                         "filename": target_file.original_filename,
                         "total_pages": total_pages,
                         "pages_returned": len(images),
                         "images": images,
                     }
+                    if auto_capped:
+                        img_result["hint"] = (
+                            f"This PDF has {total_pages} pages. "
+                            f"Only the first {MAX_DEFAULT_PAGES} pages were returned to avoid exceeding context limits. "
+                            f"Use the 'pages' parameter (e.g., pages='{MAX_DEFAULT_PAGES + 1}-{min(total_pages, MAX_DEFAULT_PAGES * 2)}') to read additional pages."
+                        )
+                    return img_result
                 else:
                     content = read_pdf_pages_text(file_bytes, page_nums)
                     pages_read = len(page_nums) if page_nums else total_pages
@@ -312,8 +325,14 @@ async def read_file(
                         "total_pages": total_pages,
                         "pages_returned": pages_read,
                     }
+                    if auto_capped:
+                        response["hint"] = (
+                            f"This PDF has {total_pages} pages. "
+                            f"Only the first {MAX_DEFAULT_PAGES} pages were returned to avoid exceeding context limits. "
+                            f"Use the 'pages' parameter (e.g., pages='{MAX_DEFAULT_PAGES + 1}-{min(total_pages, MAX_DEFAULT_PAGES * 2)}') to read additional pages."
+                        )
                     # Hint LLM to try image mode if text extraction looks empty/poor
-                    if pages_read > 0 and len(content.strip()) < pages_read * 50:
+                    elif pages_read > 0 and len(content.strip()) < pages_read * 50:
                         response["hint"] = (
                             "Text extraction returned very little content. "
                             "This may be a scanned/image-based PDF. "
@@ -330,6 +349,18 @@ async def read_file(
             # For image files, return base64-encoded content for LLM vision
             image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp")
             if target_file.original_filename.lower().endswith(image_extensions):
+                MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+                if len(file_bytes) > MAX_IMAGE_SIZE:
+                    return {
+                        "success": True,
+                        "filename": target_file.original_filename,
+                        "size_bytes": len(file_bytes),
+                        "hint": (
+                            f"This image is {len(file_bytes) / (1024 * 1024):.1f} MB, "
+                            f"which exceeds the {MAX_IMAGE_SIZE // (1024 * 1024)} MB limit for inline display. "
+                            "The image content was not returned to avoid exceeding context limits."
+                        ),
+                    }
                 content_type, _ = mimetypes.guess_type(target_file.original_filename)
                 if not content_type:
                     content_type = "image/png"

@@ -12,6 +12,8 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import { AnimatePresence, motion } from "framer-motion";
+import { TerminalToolbar } from "./TerminalToolbar";
 
 type Status =
   | "connecting"
@@ -70,6 +72,53 @@ const LIGHT_THEME = {
 
 function isDarkMode(): boolean {
   return document.documentElement.classList.contains("dark");
+}
+
+// --- StatusDot sub-component ---
+
+const dotSpring = { type: "spring" as const, stiffness: 500, damping: 30 };
+
+const DOT_VARIANTS: Record<
+  Status,
+  { bg: string; shadow?: string; animate?: object }
+> = {
+  connected: {
+    bg: "bg-green-500",
+    shadow: "0 0 6px rgba(34,197,94,0.4)",
+  },
+  connecting: { bg: "bg-amber-500" },
+  reconnecting: { bg: "bg-amber-500" },
+  error: { bg: "bg-red-500" },
+  disconnected: { bg: "bg-neutral-300 dark:bg-neutral-600" },
+};
+
+function StatusDot({ status }: { status: Status }) {
+  const v = DOT_VARIANTS[status];
+  const isPulsing = status === "connecting" || status === "reconnecting";
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={status}
+        className={`h-2 w-2 rounded-full ${v.bg}`}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{
+          scale: isPulsing ? [1, 1.3, 1] : 1,
+          opacity: 1,
+          boxShadow: v.shadow ?? "none",
+        }}
+        exit={{ scale: 0, opacity: 0 }}
+        transition={
+          isPulsing
+            ? {
+                scale: { repeat: Infinity, duration: 1.2 },
+                opacity: { duration: 0.15 },
+              }
+            : { ...dotSpring, opacity: { duration: 0.15 } }
+        }
+      />
+    </AnimatePresence>
+  );
 }
 
 export function TerminalModal() {
@@ -377,75 +426,135 @@ export function TerminalModal() {
               {t("terminal.title")}
             </h2>
             <div className="flex items-center gap-1.5">
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  status === "connected"
-                    ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]"
-                    : status === "connecting" || status === "reconnecting"
-                      ? "animate-pulse bg-amber-500"
-                      : status === "error"
-                        ? "bg-red-500"
-                        : "bg-neutral-300 dark:bg-neutral-600"
-                }`}
-              />
-              <span className={`text-xs ${statusColor}`}>{statusLabel}</span>
+              <StatusDot status={status} />
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={status}
+                  className={`text-xs ${statusColor}`}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 4 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {statusLabel}
+                </motion.span>
+              </AnimatePresence>
             </div>
             {/* Latency badge */}
-            {status === "connected" && latencyMs > 0 && (
-              <span
-                className={`rounded bg-neutral-100/60 px-1.5 py-0.5 text-[11px] font-medium tabular-nums dark:bg-white/[0.04] ${latencyColor}`}
-              >
-                {latencyMs}ms
-              </span>
-            )}
+            <AnimatePresence>
+              {status === "connected" && latencyMs > 0 && (
+                <motion.span
+                  className={`rounded bg-neutral-100/60 px-1.5 py-0.5 text-[11px] font-medium tabular-nums dark:bg-white/[0.04] ${latencyColor}`}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                >
+                  {latencyMs}ms
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
-          {terminalCommand && (
-            <span className="rounded bg-neutral-100/60 px-2 py-0.5 text-xs text-neutral-500 dark:bg-white/[0.04] dark:text-neutral-400">
-              {terminalCommand} {terminalArgs.join(" ")}
-            </span>
-          )}
+          {/* Command badge */}
+          <AnimatePresence>
+            {terminalCommand && (
+              <motion.span
+                className="rounded bg-neutral-100/60 px-2 py-0.5 text-xs text-neutral-500 dark:bg-white/[0.04] dark:text-neutral-400"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.15 }}
+              >
+                {terminalCommand} {terminalArgs.join(" ")}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Terminal area */}
         <div
-          className="relative flex-1 overflow-hidden"
+          className="relative flex flex-1 flex-col overflow-hidden rounded-b-lg"
           style={{ backgroundColor: terminalBg }}
         >
-          {!hasOnlineRunner && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm">
-              <div className="text-center">
-                <p className="text-[13px] text-neutral-300">
-                  {t("terminal.noRunner")}
-                </p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  {t("terminal.noRunnerHint")}
-                </p>
-              </div>
-            </div>
-          )}
-          {errorMsg && status === "error" && (
-            <div className="absolute left-0 right-0 top-0 z-10 bg-red-50/90 px-4 py-2 text-xs text-red-600 dark:bg-red-950/60 dark:text-red-400">
-              {errorMsg}
-            </div>
-          )}
+          {/* No runner overlay */}
+          <AnimatePresence>
+            {!hasOnlineRunner && (
+              <motion.div
+                className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/80 backdrop-blur-md"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <motion.div
+                  className="text-center"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                >
+                  <p className="text-[13px] text-neutral-300">
+                    {t("terminal.noRunner")}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {t("terminal.noRunnerHint")}
+                  </p>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Error banner */}
+          <AnimatePresence>
+            {errorMsg && status === "error" && (
+              <motion.div
+                className="absolute left-0 right-0 top-0 z-10 bg-red-50/90 px-4 py-2 text-xs text-red-600 backdrop-blur-sm dark:bg-red-950/60 dark:text-red-400"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                {errorMsg}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Reconnecting overlay */}
-          {status === "reconnecting" && reconnectInfo && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/60 backdrop-blur-[2px]">
-              <div className="text-center">
-                <div className="mx-auto mb-3 h-5 w-5 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-                <p className="text-[13px] font-medium text-amber-400">
-                  {t("terminal.reconnecting.title")}
-                </p>
-                <p className="mt-1 text-xs text-neutral-400">
-                  {t("terminal.reconnecting.attempt", {
-                    current: reconnectInfo.attempt,
-                    max: reconnectInfo.max,
-                  })}
-                </p>
-              </div>
-            </div>
-          )}
-          <div ref={termRef} className="h-full w-full p-2" />
+          <AnimatePresence>
+            {status === "reconnecting" && reconnectInfo && (
+              <motion.div
+                className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/60 backdrop-blur-[2px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="text-center">
+                  <motion.div
+                    className="mx-auto mb-3 h-5 w-5 rounded-full border-2 border-amber-500 border-t-transparent"
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 0.8,
+                      ease: "linear",
+                    }}
+                  />
+                  <p className="text-[13px] font-medium text-amber-400">
+                    {t("terminal.reconnecting.title")}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-400">
+                    {t("terminal.reconnecting.attempt", {
+                      current: reconnectInfo.attempt,
+                      max: reconnectInfo.max,
+                    })}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div ref={termRef} className="min-h-0 flex-1 p-2" />
+          <TerminalToolbar xtermRef={xtermRef} />
         </div>
       </div>
     </SheetModal>

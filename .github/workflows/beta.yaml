@@ -242,28 +242,19 @@ jobs:
     env:
       BETA_VERSION: ${{ needs.setup.outputs.beta_version }}
     steps:
-      - name: Download Let's Encrypt CA
-        run: curl -o ca.crt https://letsencrypt.org/certs/isrgrootx1.pem
+      - name: Set up kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.SCIENCEOL_ACR_KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" > ~/.kube/config
+          chmod 600 ~/.kube/config
 
       - name: Deploy to Kubernetes
         run: |
-          kubectl \
-            --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
-            --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
-            --certificate-authority=ca.crt \
-            set image deployment/xyzen -n bohrium *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }}
-
-          kubectl \
-            --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
-            --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
-            --certificate-authority=ca.crt \
-            set image deployment/xyzen-web -n bohrium *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.BETA_VERSION }}
-
-          kubectl \
-            --server=${{ secrets.SCIENCEOL_K8S_SERVER_URL }} \
-            --token=${{ secrets.SCIENCEOL_K8S_ADMIN_TOKEN }} \
-            --certificate-authority=ca.crt \
-            set image deployment/xyzen-celery -n bohrium *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }}
+          kubectl -n xyzen-test set image deployment/xyzen *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }}
+          kubectl -n xyzen-test set image deployment/xyzen-celery *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.BETA_VERSION }}
+          kubectl -n xyzen-test set image deployment/xyzen-web *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.BETA_VERSION }}
 
       - name: Deployment Summary
         run: |

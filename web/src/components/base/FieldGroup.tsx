@@ -18,6 +18,8 @@ import type { ReactNode } from "react";
 interface FieldGroupProps {
   /** The label text (rendered inside a styled <label>) */
   label?: ReactNode;
+  /** Extra element rendered to the right of the label (e.g., icon button) */
+  labelExtra?: ReactNode;
   /** Whether the field is required — shows a red asterisk */
   required?: boolean;
   /** Hint / helper text below the input */
@@ -29,6 +31,7 @@ interface FieldGroupProps {
 
 export function FieldGroup({
   label,
+  labelExtra,
   required,
   hint,
   children,
@@ -37,10 +40,13 @@ export function FieldGroup({
   return (
     <Field className={clsx("flex flex-col", className)}>
       {label && (
-        <label className="mb-2 text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-          {label}
-          {required && <span className="ml-0.5 text-red-500">*</span>}
-        </label>
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+            {label}
+            {required && <span className="ml-0.5 text-red-500">*</span>}
+          </label>
+          {labelExtra}
+        </div>
       )}
       {children}
       {hint && (

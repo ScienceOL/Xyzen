@@ -2,7 +2,6 @@ import logging
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
-from pathlib import Path
 from typing import Any, Mapping
 
 import uvicorn
@@ -195,10 +194,11 @@ app.router.routes.extend(mcp_routes)
 
 
 if __name__ == "__main__":
-    BASE_DIR = Path(__file__).resolve().parent.parent
+    # WARNING 3.13 not allow absolute path in glob()
+    # BASE_DIR = Path(__file__).resolve().parent.parent
 
-    MIGRATIONS_DIR = BASE_DIR / "migrations"
-    TESTS_DIR = BASE_DIR / "tests"
+    # MIGRATIONS_DIR = BASE_DIR / ”migrations”
+    # TESTS_DIR = BASE_DIR / “tests”
 
     uvicorn.run(
         "app.main:app",
@@ -206,5 +206,5 @@ if __name__ == "__main__":
         port=configs.Port,
         log_config=LOGGING_CONFIG,
         reload=configs.Debug,
-        reload_excludes=[str(MIGRATIONS_DIR), str(TESTS_DIR)],
+        reload_excludes=["migrations", "tests"],
     )

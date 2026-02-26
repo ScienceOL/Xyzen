@@ -1,4 +1,5 @@
 import { runnerService, type RunnerRead } from "@/service/runnerService";
+import { userEventService } from "@/service/userEventService";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../types";
 
@@ -14,6 +15,7 @@ export interface RunnerSlice {
     id: string,
     data: { name?: string; is_active?: boolean },
   ) => Promise<void>;
+  connectRunnerEvents: () => () => void;
 }
 
 export const createRunnerSlice: StateCreator<
@@ -73,5 +75,25 @@ export const createRunnerSlice: StateCreator<
     } catch {
       // ignore
     }
+  },
+
+  connectRunnerEvents: () => {
+    userEventService.connect();
+    const unsub = userEventService.on("runner_status", (event) => {
+      const { runner_id, is_online } = event.data as {
+        runner_id: string;
+        is_online: boolean;
+      };
+      set((state) => {
+        const runner = state.runners.find((r) => r.id === runner_id);
+        if (runner) {
+          runner.is_online = is_online;
+        }
+      });
+    });
+    return () => {
+      unsub();
+      userEventService.disconnect();
+    };
   },
 });

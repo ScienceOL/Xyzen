@@ -1,6 +1,8 @@
 """Unified pricing configuration for credits, tool costs, and model costs.
 
 Centralizes all pricing coefficients so changes only require editing this file.
+Model cost rates are resolved at runtime from models.dev (via ModelsDevService)
+with MODEL_COST_RATES as a static fallback for models not listed there.
 """
 
 import logging
@@ -71,12 +73,13 @@ TOOL_CREDIT_COSTS: dict[str, int] = {
 }
 
 # Model -> real cost rates (USD per token, for platform cost tracking).
-# Keys must match the model names in schemas/model_tier.py candidates.
+# Static fallback — runtime resolution via models.dev is preferred (see get_model_cost).
 MODEL_COST_RATES: dict[str, dict[str, float]] = {
     # --- Global: ULTRA ---
     "Vendor2/Claude-4.6-Opus": {"input": 5e-6, "output": 25e-6},
     # --- Global: PRO ---
     "gemini-3-pro-preview": {"input": 1.25e-6, "output": 10e-6},
+    "gemini-3.1-pro-preview": {"input": 1.25e-6, "output": 10e-6},
     "Vendor2/Claude-4.5-Sonnet": {"input": 3e-6, "output": 15e-6},
     # --- Global: STANDARD ---
     "gemini-3-flash-preview": {"input": 0.15e-6, "output": 3.5e-6},
@@ -114,23 +117,75 @@ def calculate_tool_cost(tool_name: str) -> int:
 CACHE_READ_DISCOUNT: float = 0.1  # cache_read tokens charged at 10% of input rate
 
 
-def get_model_cost(
+async def _resolve_cost_rates(
     model_name: str,
+    provider: str | None = None,
+) -> dict[str, float] | None:
+    """Try models.dev first, fall back to MODEL_COST_RATES.
+
+    Returns {"input": <per-token>, "output": <per-token>} or None.
+    """
+    try:
+        from app.core.model_registry.service import (
+            GPUGEEK_TO_MODELSDEV,
+            INTERNAL_TO_MODELSDEV,
+            ModelsDevService,
+        )
+
+        # Resolve models.dev (provider_id, model_id) pair
+        modelsdev_provider: str | None = None
+        modelsdev_model_id: str = model_name
+
+        # GPUGeek models need explicit mapping
+        gpugeek_mapping = GPUGEEK_TO_MODELSDEV.get(model_name)
+        if gpugeek_mapping:
+            modelsdev_provider, modelsdev_model_id = gpugeek_mapping
+        elif provider:
+            modelsdev_provider = INTERNAL_TO_MODELSDEV.get(provider)
+
+        info = await ModelsDevService.get_model_info_for_key(modelsdev_model_id, modelsdev_provider)
+        if info and (info.input_cost_per_token > 0 or info.output_cost_per_token > 0):
+            return {"input": info.input_cost_per_token, "output": info.output_cost_per_token}
+    except Exception:
+        logger.debug("models.dev lookup failed for %r, using static fallback", model_name, exc_info=True)
+
+    return MODEL_COST_RATES.get(model_name)
+
+
+def _compute_cost(
+    rates: dict[str, float],
     input_tokens: int,
     output_tokens: int,
     cache_read_input_tokens: int = 0,
 ) -> float:
-    """Calculate real platform cost in USD for a model call."""
-    rates = MODEL_COST_RATES.get(model_name)
-    if not rates:
-        logger.warning("Model %r not in MODEL_COST_RATES, cost will be 0", model_name)
-        return 0.0
+    """Pure arithmetic: apply per-token rates with cache-read discount."""
     regular_input = max(0, input_tokens - cache_read_input_tokens)
     return (
         regular_input * rates.get("input", 0)
         + cache_read_input_tokens * rates.get("input", 0) * CACHE_READ_DISCOUNT
         + output_tokens * rates.get("output", 0)
     )
+
+
+async def get_model_cost(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_input_tokens: int = 0,
+    *,
+    provider: str | None = None,
+) -> float:
+    """Calculate real platform cost in USD for a model call.
+
+    Resolves per-token rates from models.dev at runtime (cached).
+    Falls back to the static MODEL_COST_RATES table when models.dev
+    has no data for the given model.
+    """
+    rates = await _resolve_cost_rates(model_name, provider)
+    if not rates:
+        logger.warning("Model %r not in models.dev or MODEL_COST_RATES, cost will be 0", model_name)
+        return 0.0
+    return _compute_cost(rates, input_tokens, output_tokens, cache_read_input_tokens)
 
 
 def calculate_llm_credits(
@@ -151,14 +206,16 @@ def calculate_llm_credits(
     return int(token_cost * tier_rate)
 
 
-def calculate_llm_cost_usd(
+async def calculate_llm_cost_usd(
     model_name: str,
     input_tokens: int,
     output_tokens: int,
     cache_read_input_tokens: int = 0,
+    *,
+    provider: str | None = None,
 ) -> float:
     """Calculate real platform cost in USD for one LLM call. Semantic alias for get_model_cost."""
-    return get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens)
+    return await get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens, provider=provider)
 
 
 def calculate_settlement_total(record_amounts_sum: int, _tier_rate: float) -> int:

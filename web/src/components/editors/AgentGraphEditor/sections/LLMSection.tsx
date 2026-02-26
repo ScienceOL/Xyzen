@@ -1,5 +1,6 @@
 import { FieldGroup, Input, TagInput, Textarea } from "@/components/base";
 import { Switch } from "@/components/base/Switch";
+import MonacoEditorModal from "@/components/editors/MonacoEditorModal";
 import type { LLMNodeConfig } from "@/types/graphConfig";
 import {
   Disclosure,
@@ -7,8 +8,9 @@ import {
   DisclosurePanel,
 } from "@headlessui/react";
 import { ChevronRightIcon } from "@heroicons/react/16/solid";
+import { ArrowsPointingOutIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface LLMSectionProps {
@@ -19,6 +21,7 @@ interface LLMSectionProps {
 
 function LLMSection({ config, onChange, onBlur }: LLMSectionProps) {
   const { t } = useTranslation();
+  const [promptExpanded, setPromptExpanded] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -36,7 +39,19 @@ function LLMSection({ config, onChange, onBlur }: LLMSectionProps) {
               {t("agents.graphEditor.llm.promptOutput")}
             </DisclosureButton>
             <DisclosurePanel className="space-y-4 px-3 pb-3">
-              <FieldGroup label={t("agents.graphEditor.llm.promptTemplate")}>
+              <FieldGroup
+                label={t("agents.graphEditor.llm.promptTemplate")}
+                labelExtra={
+                  <button
+                    type="button"
+                    onClick={() => setPromptExpanded(true)}
+                    className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-200/60 hover:text-neutral-600 dark:hover:bg-white/[0.08] dark:hover:text-neutral-300"
+                    title={t("agents.graphEditor.fullscreenEdit")}
+                  >
+                    <ArrowsPointingOutIcon className="h-3.5 w-3.5" />
+                  </button>
+                }
+              >
                 <Textarea
                   value={config.prompt_template}
                   onChange={(e) =>
@@ -48,6 +63,18 @@ function LLMSection({ config, onChange, onBlur }: LLMSectionProps) {
                   className="font-mono"
                 />
               </FieldGroup>
+
+              <MonacoEditorModal
+                isOpen={promptExpanded}
+                onClose={() => setPromptExpanded(false)}
+                title={t("agents.graphEditor.llm.promptTemplate")}
+                value={config.prompt_template}
+                onChange={(val) => {
+                  onChange({ prompt_template: val });
+                  onBlur();
+                }}
+                language="markdown"
+              />
 
               <FieldGroup label={t("agents.graphEditor.llm.outputKey")}>
                 <Input

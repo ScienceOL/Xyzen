@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.payment.airwallex_client import airwallex_client
+from app.core.plan_catalog import get_plan_pricing
 from app.core.subscription import SubscriptionService
 from app.core.user_events import broadcast_wallet_update
 from app.configs import configs
@@ -17,25 +18,6 @@ from app.repos.redemption import RedemptionRepository
 from app.repos.subscription import SubscriptionRepository
 
 logger = logging.getLogger(__name__)
-
-# ------------------------------------------------------------------
-# Pricing table (amounts in minor units: cents for USD, fen for CNY)
-# ------------------------------------------------------------------
-
-PLAN_PRICING: dict[str, dict[str, dict[str, int]]] = {
-    "standard": {
-        "CNY": {"amount": 2590, "credits": 3000},
-        "USD": {"amount": 990, "credits": 5000},
-    },
-    "professional": {
-        "CNY": {"amount": 8990, "credits": 10000},
-        "USD": {"amount": 3690, "credits": 22000},
-    },
-    "ultra": {
-        "CNY": {"amount": 26800, "credits": 60000},
-        "USD": {"amount": 9990, "credits": 60000},
-    },
-}
 
 # Map payment methods to their Airwallex type and flow
 PAYMENT_METHOD_CONFIG: dict[str, dict[str, str]] = {
@@ -62,16 +44,15 @@ class PaymentService:
         Returns:
             Dict with order_id, qr_code_url, amount, currency.
         """
-        if plan_name not in PLAN_PRICING:
-            raise HTTPException(status_code=400, detail=f"Unknown plan: {plan_name}")
-
         method_cfg = PAYMENT_METHOD_CONFIG.get(payment_method)
         if method_cfg is None:
             raise HTTPException(status_code=400, detail=f"Unsupported payment method: {payment_method}")
 
         # Determine currency based on payment method
         currency = "CNY" if payment_method in ("alipaycn", "wechatpay") else "USD"
-        pricing = PLAN_PRICING[plan_name][currency]
+        pricing = get_plan_pricing(plan_name, currency)
+        if pricing is None:
+            raise HTTPException(status_code=400, detail=f"Unknown plan: {plan_name}")
 
         # 1. Create local order
         order = await self.repo.create_order(
@@ -79,9 +60,9 @@ class PaymentService:
                 user_id=user_id,
                 order_type="subscription",
                 plan_name=plan_name,
-                amount=pricing["amount"],
+                amount=pricing.amount,
                 currency=currency,
-                credits_amount=pricing["credits"],
+                credits_amount=pricing.credits,
                 duration_days=30,
                 payment_method=payment_method,
             )
@@ -89,7 +70,7 @@ class PaymentService:
 
         # 2. Create PaymentIntent on Airwallex
         intent = await airwallex_client.create_payment_intent(
-            amount=pricing["amount"],
+            amount=pricing.amount,
             currency=currency,
             order_id=str(order.id),
             metadata={"user_id": user_id, "plan_name": plan_name},
@@ -120,7 +101,7 @@ class PaymentService:
         return {
             "order_id": str(order.id),
             "qr_code_url": qr_code_url,
-            "amount": pricing["amount"],
+            "amount": pricing.amount,
             "currency": currency,
         }
 

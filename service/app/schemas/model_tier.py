@@ -77,7 +77,7 @@ _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
     ],
     ModelTier.PRO: [
         TierModelCandidate(
-            model="gemini-3-pro-preview",
+            model="gemini-3.1-pro-preview",
             provider_type=ProviderType.GOOGLE_VERTEX,
             priority=1,
             description="Default choice (99%+). Best choice for most tasks.",
@@ -124,20 +124,20 @@ _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
         ),
     ],
     ModelTier.LITE: [
+        # TierModelCandidate(
+        #     model="gemini-2.5-flash-lite",
+        #     provider_type=ProviderType.GOOGLE_VERTEX,
+        #     priority=1,
+        #     capabilities=["fast", "efficient"],
+        #     description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
+        # ),
         TierModelCandidate(
-            model="gemini-2.5-flash-lite",
-            provider_type=ProviderType.GOOGLE_VERTEX,
-            priority=1,
-            capabilities=["fast", "efficient"],
-            description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
-        ),
-        TierModelCandidate(
-            model="DeepSeek/DeepSeek-V3.1-0821",
-            provider_type=ProviderType.GPUGEEK,
+            model="deepseek-v3.2",
+            provider_type=ProviderType.QWEN,
             is_fallback=True,
             priority=99,
-            capabilities=["coding", "efficient"],
-            description="Choose this for most tasks. Efficient with strong performance in coding and reasoning, comparable to larger models; great for instruction following and agentic tasks.",
+            capabilities=["fast", "efficient"],
+            description="Lightweight model for quick responses.",
         ),
     ],
 }

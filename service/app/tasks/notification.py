@@ -17,11 +17,7 @@ def send_notification(
     actor: dict[str, str] | None = None,
 ) -> None:
     """Send a notification to a single subscriber via Novu (sync wrapper)."""
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(_send_notification_async(event_type, subscriber_id, payload, actor))
-    finally:
-        loop.close()
+    asyncio.run(_send_notification_async(event_type, subscriber_id, payload, actor))
 
 
 async def _send_notification_async(
@@ -42,11 +38,7 @@ def broadcast_notification(
     payload: dict[str, Any],
 ) -> None:
     """Broadcast a notification to all subscribers via Novu (sync wrapper)."""
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(_broadcast_notification_async(event_type, payload))
-    finally:
-        loop.close()
+    asyncio.run(_broadcast_notification_async(event_type, payload))
 
 
 async def _broadcast_notification_async(
@@ -68,11 +60,7 @@ def send_web_push(
     icon: str = "/icon.png",
 ) -> None:
     """Send Web Push to all of a user's subscriptions via pywebpush."""
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(_send_web_push_async(user_id, title, body, url, icon))
-    finally:
-        loop.close()
+    asyncio.run(_send_web_push_async(user_id, title, body, url, icon))
 
 
 async def _send_web_push_async(

@@ -372,8 +372,12 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
         amount = calculate_llm_credits(
             ctx.input_tokens, ctx.output_tokens, tier_rate, cache_read_input_tokens=cache_read
         )
-        cost_usd = calculate_llm_cost_usd(
-            model_name or "unknown", ctx.input_tokens, ctx.output_tokens, cache_read_input_tokens=cache_read
+        cost_usd = await calculate_llm_cost_usd(
+            model_name or "unknown",
+            ctx.input_tokens,
+            ctx.output_tokens,
+            cache_read_input_tokens=cache_read,
+            provider=provider_id,
         )
 
         tracking = ConsumptionTrackingService(ctx.db)
