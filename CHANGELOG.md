@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.4](https://github.com/ScienceOL/Xyzen/compare/v1.6.3...v1.6.4) (2026-02-26)
+
+### 🐛 Bug Fixes
+
+* use gemini-3.1-pro and separate file_read tool ([#276](https://github.com/ScienceOL/Xyzen/issues/276)) ([45a175e](https://github.com/ScienceOL/Xyzen/commit/45a175eb9864adc4b3a2dbe80f6655389de67e6b))
+
 ## [1.6.3](https://github.com/ScienceOL/Xyzen/compare/v1.6.2...v1.6.3) (2026-02-25)
 
 ### 🐛 Bug Fixes
