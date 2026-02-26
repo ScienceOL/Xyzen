@@ -9,13 +9,14 @@ import (
 )
 
 type Config struct {
-	Token   string `yaml:"token"`
-	URL     string `yaml:"url"`
-	WorkDir string `yaml:"work_dir"`
+	Token     string `yaml:"token"`
+	URL       string `yaml:"url"`
+	WorkDir   string `yaml:"work_dir"`
+	KeepAwake bool   `yaml:"keep_awake"`
 }
 
 // Load resolves configuration from flags > env > config file.
-func Load(flagToken, flagURL, flagWorkDir string) (*Config, error) {
+func Load(flagToken, flagURL, flagWorkDir string, flagKeepAwake bool) (*Config, error) {
 	cfg := &Config{}
 
 	// 1. Load config file as base
@@ -36,6 +37,11 @@ func Load(flagToken, flagURL, flagWorkDir string) (*Config, error) {
 		cfg.WorkDir = v
 	}
 
+	// 2b. Environment variable for keep_awake
+	if v := os.Getenv("XYZEN_RUNNER_KEEP_AWAKE"); v == "1" || v == "true" {
+		cfg.KeepAwake = true
+	}
+
 	// 3. CLI flags override everything
 	if flagToken != "" {
 		cfg.Token = flagToken
@@ -45,6 +51,9 @@ func Load(flagToken, flagURL, flagWorkDir string) (*Config, error) {
 	}
 	if flagWorkDir != "" {
 		cfg.WorkDir = flagWorkDir
+	}
+	if flagKeepAwake {
+		cfg.KeepAwake = true
 	}
 
 	// Validate required fields

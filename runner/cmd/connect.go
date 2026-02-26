@@ -4,25 +4,29 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/scienceol/xyzen/runner/internal/client"
 	"github.com/scienceol/xyzen/runner/internal/config"
+	"github.com/scienceol/xyzen/runner/internal/power"
 	"github.com/scienceol/xyzen/runner/internal/ui"
 	"github.com/scienceol/xyzen/runner/internal/updater"
 	"github.com/spf13/cobra"
 )
 
 var (
-	flagToken   string
-	flagURL     string
-	flagWorkDir string
+	flagToken     string
+	flagURL       string
+	flagWorkDir   string
+	flagKeepAwake bool
 )
 
 func init() {
 	connectCmd.Flags().StringVar(&flagToken, "token", "", "Runner authentication token")
 	connectCmd.Flags().StringVar(&flagURL, "url", "", "WebSocket URL (e.g. wss://cloud.example.com/xyzen/ws/v1/runner)")
 	connectCmd.Flags().StringVar(&flagWorkDir, "work-dir", "", "Working directory for file operations (default: current directory)")
+	connectCmd.Flags().BoolVar(&flagKeepAwake, "keep-awake", false, "Prevent system sleep while the runner is connected")
 	rootCmd.AddCommand(connectCmd)
 }
 
@@ -43,7 +47,7 @@ The connection automatically reconnects with exponential backoff if interrupted.
 			ui.UpdateNotice(version, info.Latest, curl)
 		}
 
-		cfg, err := config.Load(flagToken, flagURL, flagWorkDir)
+		cfg, err := config.Load(flagToken, flagURL, flagWorkDir, flagKeepAwake)
 		if err != nil {
 			return fmt.Errorf("configuration error: %w", err)
 		}
@@ -51,7 +55,22 @@ The connection automatically reconnects with exponential backoff if interrupted.
 		fmt.Fprintln(os.Stderr)
 		ui.KeyValue("Endpoint", cfg.URL)
 		ui.KeyValue("Work dir", cfg.WorkDir)
+		ui.KeyValue("Keep awake", fmt.Sprintf("%v", cfg.KeepAwake))
 		ui.Separator()
+
+		// Start sleep inhibitor if requested
+		var inhibitor power.Inhibitor
+		if cfg.KeepAwake {
+			inhibitor = power.New()
+			if err := inhibitor.Start(); err != nil {
+				ui.Warn("Failed to inhibit sleep: %v", err)
+			} else {
+				ui.Info("System sleep inhibited")
+			}
+		} else if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+			ui.Info("Tip: use %s to prevent system sleep", ui.Dim("--keep-awake"))
+		}
+
 		ui.Info("Waiting for connection...")
 
 		c := client.New(cfg)
@@ -64,7 +83,16 @@ The connection automatically reconnects with exponential backoff if interrupted.
 			<-sigCh
 			fmt.Fprintln(os.Stderr)
 			ui.Warn("Shutting down...")
+			if inhibitor != nil {
+				inhibitor.Stop()
+			}
 			c.Stop()
+		}()
+
+		defer func() {
+			if inhibitor != nil {
+				inhibitor.Stop()
+			}
 		}()
 
 		return c.Run()
