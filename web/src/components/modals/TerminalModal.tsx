@@ -12,6 +12,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import { TerminalToolbar } from "./TerminalToolbar";
 
 type Status =
   | "connecting"
@@ -408,7 +409,7 @@ export function TerminalModal() {
 
         {/* Terminal area */}
         <div
-          className="relative flex-1 overflow-hidden"
+          className="relative flex flex-1 flex-col overflow-hidden"
           style={{ backgroundColor: terminalBg }}
         >
           {!hasOnlineRunner && (
@@ -445,7 +446,8 @@ export function TerminalModal() {
               </div>
             </div>
           )}
-          <div ref={termRef} className="h-full w-full p-2" />
+          <div ref={termRef} className="min-h-0 flex-1 p-2" />
+          <TerminalToolbar xtermRef={xtermRef} />
         </div>
       </div>
     </SheetModal>
