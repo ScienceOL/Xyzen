@@ -144,21 +144,27 @@ def _read_pdf(
     """Read PDF file with optional pagination."""
     import fitz
 
+    MAX_DEFAULT_PAGES = 20
+
     doc = fitz.open(stream=file_bytes, filetype="pdf")
     total_pages = len(doc)
     doc.close()
 
     # Parse page range if provided
     page_nums: list[int] | None = None
+    auto_capped = False
     if pages:
         try:
             page_nums = parse_page_range(pages, total_pages)
         except ValueError as e:
             return {"error": str(e), "success": False}
+    elif total_pages > MAX_DEFAULT_PAGES:
+        page_nums = list(range(MAX_DEFAULT_PAGES))
+        auto_capped = True
 
     if mode == "image":
         images = read_pdf_pages_image(file_bytes, page_nums)
-        return {
+        img_result: dict[str, Any] = {
             "success": True,
             "file_id": str(file_record.id),
             "filename": file_record.original_filename,
@@ -166,6 +172,13 @@ def _read_pdf(
             "pages_returned": len(images),
             "images": images,
         }
+        if auto_capped:
+            img_result["hint"] = (
+                f"This PDF has {total_pages} pages. "
+                f"Only the first {MAX_DEFAULT_PAGES} pages were returned to avoid exceeding context limits. "
+                f"Use the 'pages' parameter (e.g., pages='{MAX_DEFAULT_PAGES + 1}-{min(total_pages, MAX_DEFAULT_PAGES * 2)}') to read additional pages."
+            )
+        return img_result
     else:
         # text mode
         content = read_pdf_pages_text(file_bytes, page_nums)
@@ -178,8 +191,14 @@ def _read_pdf(
             "total_pages": total_pages,
             "pages_returned": pages_read,
         }
+        if auto_capped:
+            result["hint"] = (
+                f"This PDF has {total_pages} pages. "
+                f"Only the first {MAX_DEFAULT_PAGES} pages were returned to avoid exceeding context limits. "
+                f"Use the 'pages' parameter (e.g., pages='{MAX_DEFAULT_PAGES + 1}-{min(total_pages, MAX_DEFAULT_PAGES * 2)}') to read additional pages."
+            )
         # Hint LLM to try image mode if text extraction looks empty/poor
-        if pages_read > 0 and len(content.strip()) < pages_read * 50:
+        elif pages_read > 0 and len(content.strip()) < pages_read * 50:
             result["hint"] = (
                 "Text extraction returned very little content. "
                 "This may be a scanned/image-based PDF. "

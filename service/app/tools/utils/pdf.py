@@ -142,7 +142,18 @@ def read_pdf_pages_text(file_bytes: bytes, page_nums: list[int] | None = None) -
             text_parts.append(f"--- Page {page_num + 1} ---\n" + "\n\n".join(page_text_parts))
 
     doc.close()
-    return "\n\n".join(text_parts)
+
+    content = "\n\n".join(text_parts)
+
+    MAX_TEXT_CHARS = 100_000
+    if len(content) > MAX_TEXT_CHARS:
+        content = content[:MAX_TEXT_CHARS] + (
+            f"\n\n--- Content truncated at {MAX_TEXT_CHARS:,} characters ---\n"
+            "The extracted text exceeded the maximum length. "
+            "Use the 'pages' parameter to read specific page ranges for the full content."
+        )
+
+    return content
 
 
 def read_pdf_pages_image(file_bytes: bytes, page_nums: list[int] | None = None) -> list[dict[str, Any]]:
