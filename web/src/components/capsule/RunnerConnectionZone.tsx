@@ -328,14 +328,14 @@ function PanelLayout({
   onOpenTerminal: (command?: string) => void;
 }) {
   return (
-    <div className="flex h-full gap-px bg-[#0d1117]">
-      {/* Left column: Install guide — always visible */}
-      <div className="custom-scrollbar w-1/2 overflow-y-auto border-r border-[#21262d]">
+    <div className="flex flex-col sm:flex-row h-full gap-px bg-[#0d1117]">
+      {/* Left / Top column: Install guide — always visible */}
+      <div className="custom-scrollbar sm:w-1/2 shrink-0 overflow-y-auto border-b sm:border-b-0 sm:border-r border-[#21262d]">
         <InstallGuide onConnect={onShowCreate} />
       </div>
 
-      {/* Right column: Runner management */}
-      <div className="custom-scrollbar w-1/2 overflow-y-auto">
+      {/* Right / Bottom column: Runner management */}
+      <div className="custom-scrollbar sm:w-1/2 flex-1 overflow-y-auto">
         {/* Inline token creation flow */}
         {showCreate && (
           <div className="p-4">
@@ -370,7 +370,7 @@ function PanelLayout({
               No runners connected
             </p>
             <p className="mt-1 font-mono text-xs text-[#484f58]">
-              Follow the steps on the left to get started
+              Follow the steps above to get started
             </p>
           </div>
         )}
