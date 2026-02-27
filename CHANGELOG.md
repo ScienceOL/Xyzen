@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.5](https://github.com/ScienceOL/Xyzen/compare/v1.6.4...v1.6.5) (2026-02-27)
+
+### 🐛 Bug Fixes
+
+* add deployment model and repository for persistent service deployments ([be5a640](https://github.com/ScienceOL/Xyzen/commit/be5a640c9a09a33abf92834830efb941113b808d))
+
 ## [1.6.4](https://github.com/ScienceOL/Xyzen/compare/v1.6.3...v1.6.4) (2026-02-26)
 
 ### 🐛 Bug Fixes
