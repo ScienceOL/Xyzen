@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.6](https://github.com/ScienceOL/Xyzen/compare/v1.6.5...v1.6.6) (2026-02-27)
+
+### 🐛 Bug Fixes
+
+* add TerminalSessionList component for managing terminal sessions ([f21f1d3](https://github.com/ScienceOL/Xyzen/commit/f21f1d3408640dbee51b2fe15fd8d99b14ec67c7))
+
 ## [1.6.5](https://github.com/ScienceOL/Xyzen/compare/v1.6.4...v1.6.5) (2026-02-27)
 
 ### 🐛 Bug Fixes
