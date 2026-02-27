@@ -7,11 +7,12 @@ import {
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
 import { PaymentQRModal } from "@/components/features/PaymentQRModal";
-import { getRegion } from "@/core/region/region";
+import { usePlanCatalog } from "@/hooks/usePlanCatalog";
 import { useSubscriptionInfo, useBilling } from "@/hooks/ee";
 import { cn } from "@/lib/utils";
 import { paymentService } from "@/service/paymentService";
 import { subscriptionService } from "@/service/subscriptionService";
+import type { PlanResponse } from "@/service/subscriptionService";
 import {
   ChatBubbleLeftRightIcon,
   CheckIcon,
@@ -28,7 +29,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { Crown, Gem, Gift, Shield } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -64,170 +65,47 @@ interface SubscriptionPlan {
   features: PlanFeature[];
 }
 
-function buildInternationalPlans(t: TFunction): SubscriptionPlan[] {
-  return [
-    {
-      name: t("subscription.plan.free"),
-      planKey: "free",
-      price: "$0",
-      period: "",
-      credits: t("subscription.plan.dailyCheckIn"),
-      creditsNote: t("subscription.plan.resetsMonthly"),
-      storage: "100 MB",
-      parallelChats: t("subscription.plan.parallel", { count: 1 }),
-      isFree: true,
-      features: [
-        { text: t("subscription.feature.liteStandard"), included: true },
-        { text: t("subscription.feature.basic"), included: true },
-        {
-          text: t("subscription.feature.autonomousExploration"),
-          included: false,
-        },
-        { text: t("subscription.feature.proUltra"), included: false },
-      ],
-    },
-    {
-      name: t("subscription.plan.standard"),
-      planKey: "standard",
-      price: "$9.9",
-      period: t("subscription.plan.perMonth"),
-      credits: "5,000",
-      storage: "1 GB",
-      parallelChats: t("subscription.plan.parallel", { count: 3 }),
-      sandboxes: t("subscription.plan.sandbox", { count: 1 }),
-      scheduledTasks: t("subscription.plan.scheduledTask", { count: 3 }),
-      features: [
-        { text: t("subscription.feature.liteStandard"), included: true },
-        {
-          text: t("subscription.feature.nAutonomous", { count: 1 }),
-          included: true,
-        },
-        { text: t("subscription.feature.sandboxAccess"), included: true },
-        { text: t("subscription.feature.proUltra"), included: false },
-      ],
-    },
-    {
-      name: t("subscription.plan.professional"),
-      planKey: "professional",
-      price: "$36.9",
-      period: t("subscription.plan.perMonth"),
-      credits: "22,000",
-      storage: "10 GB",
-      parallelChats: t("subscription.plan.parallel", { count: 5 }),
-      sandboxes: t("subscription.plan.sandbox", { count: 2 }),
-      scheduledTasks: t("subscription.plan.scheduledTask", { count: 6 }),
-      features: [
-        { text: t("subscription.feature.allStandard"), included: true },
-        { text: t("subscription.feature.pro"), included: true },
-        { text: t("subscription.feature.prioritySupport"), included: true },
-        { text: t("subscription.feature.ultraModels"), included: false },
-      ],
-    },
-    {
-      name: t("subscription.plan.ultra"),
-      planKey: "ultra",
-      price: "$99.9",
-      period: t("subscription.plan.perMonth"),
-      credits: "60,000",
-      storage: "100 GB",
-      parallelChats: t("subscription.plan.parallel", { count: 10 }),
-      sandboxes: t("subscription.plan.sandbox", { count: 3 }),
-      scheduledTasks: t("subscription.plan.scheduledTask", { count: 10 }),
-      features: [
-        { text: t("subscription.feature.allPro"), included: true },
-        { text: t("subscription.feature.ultraModels"), included: true },
-        {
-          text: t("subscription.feature.nAutonomousPlural", { count: 3 }),
-          included: true,
-        },
-        { text: t("subscription.feature.dedicated"), included: true },
-      ],
-    },
-  ];
-}
-
-function buildChinaPlans(t: TFunction): SubscriptionPlan[] {
-  return [
-    {
-      name: t("subscription.plan.free"),
-      planKey: "free",
-      price: "¥0",
-      period: "",
-      credits: t("subscription.plan.dailyCheckIn"),
-      creditsNote: t("subscription.plan.resetsMonthly"),
-      storage: "100 MB",
-      parallelChats: t("subscription.plan.parallel", { count: 1 }),
-      isFree: true,
-      features: [
-        { text: t("subscription.feature.liteStandard"), included: true },
-        { text: t("subscription.feature.basic"), included: true },
-        {
-          text: t("subscription.feature.autonomousExploration"),
-          included: false,
-        },
-        { text: t("subscription.feature.advancedReasoning"), included: false },
-      ],
-    },
-    {
-      name: t("subscription.plan.standard"),
-      planKey: "standard",
-      price: "¥25.9",
-      originalPrice: t("subscription.plan.firstMonth", { price: "¥19.9" }),
-      period: t("subscription.plan.perMonth"),
-      credits: "3,000",
-      storage: "1 GB",
-      parallelChats: t("subscription.plan.parallel", { count: 3 }),
-      sandboxes: t("subscription.plan.sandbox", { count: 1 }),
-      scheduledTasks: t("subscription.plan.scheduledTask", { count: 3 }),
-      features: [
-        { text: t("subscription.feature.liteStandard"), included: true },
-        {
-          text: t("subscription.feature.nAutonomous", { count: 1 }),
-          included: true,
-        },
-        { text: t("subscription.feature.sandboxAccess"), included: true },
-        { text: t("subscription.feature.proUltra"), included: false },
-      ],
-    },
-    {
-      name: t("subscription.plan.professional"),
-      planKey: "professional",
-      price: "¥89.9",
-      originalPrice: t("subscription.plan.firstMonth", { price: "¥79.9" }),
-      period: t("subscription.plan.perMonth"),
-      credits: "10,000",
-      storage: "10 GB",
-      parallelChats: t("subscription.plan.parallel", { count: 5 }),
-      sandboxes: t("subscription.plan.sandbox", { count: 2 }),
-      scheduledTasks: t("subscription.plan.scheduledTask", { count: 6 }),
-      features: [
-        { text: t("subscription.feature.allStandard"), included: true },
-        { text: t("subscription.feature.pro"), included: true },
-        { text: t("subscription.feature.prioritySupport"), included: true },
-        { text: t("subscription.feature.ultraModels"), included: false },
-      ],
-    },
-    {
-      name: t("subscription.plan.ultraChina"),
-      planKey: "ultra",
-      price: "¥268.0",
-      period: t("subscription.plan.perMonth"),
-      credits: "60,000",
-      storage: "100 GB",
-      parallelChats: t("subscription.plan.parallel", { count: 10 }),
-      sandboxes: t("subscription.plan.sandbox", { count: 3 }),
-      scheduledTasks: t("subscription.plan.scheduledTask", { count: 10 }),
-      features: [
-        { text: t("subscription.feature.allPro"), included: true },
-        { text: t("subscription.feature.ultraModels"), included: true },
-        {
-          text: t("subscription.feature.nAutonomousPlural", { count: 3 }),
-          included: true,
-        },
-        { text: t("subscription.feature.dedicated"), included: true },
-      ],
-    },
-  ];
+function toPlanCardData(plan: PlanResponse, t: TFunction): SubscriptionPlan {
+  const pricing = plan.pricing[0];
+  const limits = plan.limits;
+  return {
+    name: t(plan.display_name_key),
+    planKey: plan.plan_key,
+    price: pricing?.display_price ?? "$0",
+    originalPrice: pricing?.first_month_display
+      ? t("subscription.plan.firstMonth", {
+          price: pricing.first_month_display,
+        })
+      : undefined,
+    period: plan.is_free ? "" : t("subscription.plan.perMonth"),
+    credits: plan.is_free
+      ? t("subscription.plan.dailyCheckIn")
+      : (limits?.monthly_credits.toLocaleString() ??
+        pricing?.credits.toLocaleString() ??
+        "0"),
+    creditsNote: plan.is_free
+      ? t("subscription.plan.resetsMonthly")
+      : undefined,
+    storage: limits?.storage ?? "—",
+    parallelChats: t("subscription.plan.parallel", {
+      count: limits?.max_parallel_chats ?? 1,
+    }),
+    sandboxes: limits?.max_sandboxes
+      ? t("subscription.plan.sandbox", { count: limits.max_sandboxes })
+      : undefined,
+    scheduledTasks: limits?.max_scheduled_tasks
+      ? t("subscription.plan.scheduledTask", {
+          count: limits.max_scheduled_tasks,
+        })
+      : undefined,
+    highlight: plan.highlight,
+    badge: plan.badge_key ? t(plan.badge_key) : undefined,
+    isFree: plan.is_free,
+    features: plan.features.map((f) => ({
+      text: t(`subscription.feature.${f.key}`, f.params),
+      included: f.included,
+    })),
+  };
 }
 
 // ---------- Tier visual config for MySubscription tab ----------
@@ -933,14 +811,15 @@ function PlanCard({
 }
 
 function TopUpCard({
-  region,
+  displayRate,
+  isChina,
   delay,
 }: {
-  region: "international" | "china";
+  displayRate: string;
+  isChina: boolean;
   delay: number;
 }) {
   const { t } = useTranslation();
-  const isChina = region === "china";
 
   return (
     <motion.div
@@ -964,9 +843,7 @@ function TopUpCard({
       </div>
       <div className="text-right">
         <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-          {isChina
-            ? t("subscription.topUp.rateChina")
-            : t("subscription.topUp.rateIntl")}
+          {t(displayRate)}
         </div>
         <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
           {isChina
@@ -979,14 +856,13 @@ function TopUpCard({
 }
 
 function SandboxPackCard({
-  region,
+  displayRate,
   delay,
 }: {
-  region: "international" | "china";
+  displayRate: string;
   delay: number;
 }) {
   const { t } = useTranslation();
-  const isChina = region === "china";
 
   return (
     <motion.div
@@ -1010,9 +886,7 @@ function SandboxPackCard({
       </div>
       <div className="text-right">
         <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-          {isChina
-            ? t("subscription.sandboxAddon.rateChina")
-            : t("subscription.sandboxAddon.rateIntl")}
+          {t(displayRate)}
         </div>
         <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
           {t("subscription.sandboxAddon.requirement")}
@@ -1028,13 +902,18 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
   const queryClient = useQueryClient();
+  const { data: catalog, isLoading: catalogLoading } = usePlanCatalog();
 
   const roleName = subInfo?.roleName;
   const hasPaidSub = !!roleName && roleName !== "free";
 
-  const isChina = getRegion().toLowerCase() === "zh-cn";
+  const isChina = catalog?.region === "zh-cn";
   const regionTab = isChina ? "china" : "international";
-  const regionPlans = isChina ? buildChinaPlans(t) : buildInternationalPlans(t);
+
+  const regionPlans = useMemo(() => {
+    if (!catalog) return [];
+    return catalog.plans.map((p) => toPlanCardData(p, t));
+  }, [catalog, t]);
 
   const defaultTab = hasPaidSub ? "subscription" : regionTab;
   const showTabsList = hasPaidSub;
@@ -1137,33 +1016,48 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                       transition={{ duration: 0.25 }}
                       className="mt-4 space-y-4"
                     >
-                      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-                        {regionPlans.map((plan, index) => (
-                          <PlanCard
-                            key={plan.name}
-                            plan={plan}
-                            index={index}
-                            onSubscribe={handleSubscribe}
-                          />
-                        ))}
-                      </div>
-                      <TopUpCard
-                        region={isChina ? "china" : "international"}
-                        delay={0.3}
-                      />
-                      <SandboxPackCard
-                        region={isChina ? "china" : "international"}
-                        delay={0.35}
-                      />
-                      {isChina && (
-                        <motion.p
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.35 }}
-                          className="text-center text-xs text-neutral-500 dark:text-neutral-400"
-                        >
-                          {t("subscription.notInteroperable")}
-                        </motion.p>
+                      {catalogLoading ? (
+                        <div className="flex items-center justify-center py-16">
+                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-500" />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                            {regionPlans.map((plan, index) => (
+                              <PlanCard
+                                key={plan.planKey}
+                                plan={plan}
+                                index={index}
+                                onSubscribe={handleSubscribe}
+                              />
+                            ))}
+                          </div>
+                          {catalog?.topup_rates[0] && (
+                            <TopUpCard
+                              displayRate={catalog.topup_rates[0].display_rate}
+                              isChina={isChina}
+                              delay={0.3}
+                            />
+                          )}
+                          {catalog?.sandbox_addon_rates[0] && (
+                            <SandboxPackCard
+                              displayRate={
+                                catalog.sandbox_addon_rates[0].display_rate
+                              }
+                              delay={0.35}
+                            />
+                          )}
+                          {isChina && (
+                            <motion.p
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.35 }}
+                              className="text-center text-xs text-neutral-500 dark:text-neutral-400"
+                            >
+                              {t("subscription.notInteroperable")}
+                            </motion.p>
+                          )}
+                        </>
                       )}
                     </motion.div>
                   </TabsContent>

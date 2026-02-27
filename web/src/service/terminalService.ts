@@ -148,8 +148,14 @@ export class TerminalConnection {
         return;
       }
 
-      // Unintentional disconnect — try to reconnect if we had a session
-      if (this.sessionId && this.wasConnected) {
+      // Unintentional disconnect — try to reconnect only if we had a session
+      // AND the runner is still online. If the runner went offline, reconnecting
+      // is pointless and would just spin through the retry loop.
+      const hasOnlineRunner = useXyzen
+        .getState()
+        .runners.some((r) => r.is_online && r.is_active);
+
+      if (this.sessionId && this.wasConnected && hasOnlineRunner) {
         this._scheduleReconnect();
       } else {
         this.callbacks.onClose();

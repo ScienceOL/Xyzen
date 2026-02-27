@@ -85,6 +85,14 @@ export const queryKeys = {
     list: (status?: string) =>
       [...queryKeys.scheduledTasks.all, "list", status] as const,
   },
+
+  /**
+   * Subscription query keys
+   */
+  subscription: {
+    all: ["subscription"] as const,
+    catalog: () => [...queryKeys.subscription.all, "catalog"] as const,
+  },
 } as const;
 
 /**

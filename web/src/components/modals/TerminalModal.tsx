@@ -24,8 +24,11 @@ type Status =
 
 // --- Theme definitions ---
 
+// Transparent black background so the frosted glass container shows through
+const TERMINAL_BG = "rgba(0, 0, 0, 0)";
+
 const DARK_THEME = {
-  background: "#1a1a2e",
+  background: TERMINAL_BG,
   foreground: "#e0e0e0",
   cursor: "#e0e0e0",
   selectionBackground: "#44475a",
@@ -48,7 +51,7 @@ const DARK_THEME = {
 };
 
 const LIGHT_THEME = {
-  background: "#fafafa",
+  background: TERMINAL_BG,
   foreground: "#383a42",
   cursor: "#383a42",
   selectionBackground: "#d0d0d0",
@@ -212,17 +215,24 @@ export function TerminalModal() {
       xterm.loadAddon(fitAddon);
       xterm.loadAddon(webLinksAddon);
 
-      // Load WebGL renderer (fallback to canvas on error)
-      void (async () => {
-        try {
-          const { WebglAddon } = await import("@xterm/addon-webgl");
-          const webgl = new WebglAddon();
-          webgl.onContextLoss(() => webgl.dispose());
-          xterm.loadAddon(webgl);
-        } catch {
-          // Fallback to canvas renderer
-        }
-      })();
+      // Load WebGL renderer on non-touch devices only.
+      // On mobile, WebGL can silently fail to paint (context created but
+      // canvas stays blank) after the canvas renderer has already been
+      // disposed — leaving no fallback. The canvas renderer is fine for mobile.
+      const isTouchDevice =
+        "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      if (!isTouchDevice) {
+        void (async () => {
+          try {
+            const { WebglAddon } = await import("@xterm/addon-webgl");
+            const webgl = new WebglAddon();
+            webgl.onContextLoss(() => webgl.dispose());
+            xterm.loadAddon(webgl);
+          } catch {
+            // Fallback to canvas renderer
+          }
+        })();
+      }
 
       // Load Unicode11 addon
       void (async () => {
@@ -413,9 +423,6 @@ export function TerminalModal() {
         ? "text-amber-500"
         : "text-red-500";
 
-  const dark = isDarkMode();
-  const terminalBg = dark ? DARK_THEME.background : LIGHT_THEME.background;
-
   return (
     <SheetModal isOpen={isTerminalOpen} onClose={handleClose} size="xl">
       <div className="flex h-full flex-col overflow-hidden">
@@ -471,11 +478,8 @@ export function TerminalModal() {
           </AnimatePresence>
         </div>
 
-        {/* Terminal area */}
-        <div
-          className="relative flex flex-1 flex-col overflow-hidden rounded-b-lg"
-          style={{ backgroundColor: terminalBg }}
-        >
+        {/* Terminal area — black frosted glass */}
+        <div className="relative min-h-0 flex-1 overflow-hidden bg-black/90 backdrop-blur-md">
           {/* No runner overlay */}
           <AnimatePresence>
             {!hasOnlineRunner && (
@@ -553,9 +557,9 @@ export function TerminalModal() {
             )}
           </AnimatePresence>
 
-          <div ref={termRef} className="min-h-0 flex-1 p-2" />
-          <TerminalToolbar xtermRef={xtermRef} />
+          <div ref={termRef} className="h-full w-full p-2" />
         </div>
+        <TerminalToolbar xtermRef={xtermRef} />
       </div>
     </SheetModal>
   );

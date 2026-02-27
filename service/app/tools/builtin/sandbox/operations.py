@@ -416,6 +416,42 @@ async def sandbox_upload(
         return {"success": False, "error": str(e)}
 
 
+async def sandbox_deploy(
+    manager: SandboxManager,
+    *,
+    user_id: str | None,
+    session_id: str,
+    port: int,
+    start_command: str,
+    source_dir: str,
+) -> dict[str, Any]:
+    """Deploy a service from sandbox to a persistent public URL via Settler."""
+    if not user_id:
+        return {"success": False, "error": "sandbox_deploy requires user context"}
+
+    try:
+        from app.infra.settler import get_settler_service
+
+        settler = get_settler_service()
+        deployment = await settler.deploy(
+            session_id=session_id,
+            user_id=user_id,
+            source_sandbox_manager=manager,
+            port=port,
+            start_command=start_command,
+            source_dir=source_dir,
+        )
+        return {
+            "success": True,
+            "url": deployment.url,
+            "deployment_id": str(deployment.id),
+            "message": f"Service deployed to: {deployment.url}",
+        }
+    except Exception as e:
+        logger.error("sandbox_deploy failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
 __all__ = [
     "sandbox_exec",
     "sandbox_read",
@@ -426,4 +462,5 @@ __all__ = [
     "sandbox_export",
     "sandbox_preview",
     "sandbox_upload",
+    "sandbox_deploy",
 ]

@@ -57,6 +57,7 @@ func New(cfg *config.Config) *Client {
 func (c *Client) Stop() {
 	c.once.Do(func() {
 		close(c.stopCh)
+		c.ptyMgr.CloseAll()
 	})
 }
 
@@ -149,6 +150,12 @@ func (c *Client) connectAndServe() error {
 
 	defer func() {
 		close(writeDone)
+		// Send a graceful WebSocket close frame before closing the connection.
+		_ = conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+			time.Now().Add(3*time.Second),
+		)
 		conn.Close()
 		c.mu.Lock()
 		c.writeCh = nil
@@ -186,18 +193,27 @@ func (c *Client) connectAndServe() error {
 	pingDone := make(chan struct{})
 	go c.heartbeatLoop(pingDone)
 
-	// Message loop (single reader — no concurrency issue on reads)
-	for {
+	// Unblock conn.ReadMessage() immediately when stopCh fires
+	// by setting the read deadline to now.
+	go func() {
 		select {
 		case <-c.stopCh:
-			close(pingDone)
-			return nil
-		default:
+			_ = conn.SetReadDeadline(time.Now())
+		case <-pingDone:
 		}
+	}()
 
+	// Message loop (single reader — no concurrency issue on reads)
+	for {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			close(pingDone)
+			// If stopCh was closed, this is a graceful shutdown — not an error.
+			select {
+			case <-c.stopCh:
+				return nil
+			default:
+			}
 			return fmt.Errorf("read error: %w", err)
 		}
 

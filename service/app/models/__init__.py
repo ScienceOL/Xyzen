@@ -15,6 +15,7 @@ from .chat_share import ChatShare, ChatShareCreate, ChatSharePublicRead, ChatSha
 from .checkin import CheckIn, CheckInCreate, CheckInRead
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
+from .deployment import Deployment, DeploymentCreate, DeploymentRead
 from .developer_earning import (
     DeveloperEarning,
     DeveloperEarningCreate,
@@ -97,6 +98,9 @@ __all__ = [
     "CheckInCreate",
     "CheckInRead",
     "ConsumeRecord",
+    "Deployment",
+    "DeploymentCreate",
+    "DeploymentRead",
     "DeveloperEarning",
     "DeveloperEarningCreate",
     "DeveloperEarningRead",

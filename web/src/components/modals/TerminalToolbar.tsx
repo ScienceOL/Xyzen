@@ -176,8 +176,32 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
     }
   }, []);
 
-  // Prevent focus loss on buttons
-  const preventFocus = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  // Copy selection from xterm to clipboard
+  const handleCopy = useCallback(() => {
+    haptic();
+    const sel = xtermRef.current?.getSelection();
+    if (sel) {
+      void navigator.clipboard.writeText(sel);
+      xtermRef.current?.clearSelection();
+    }
+    focusTerminal();
+  }, [xtermRef, focusTerminal]);
+
+  // Paste from clipboard into xterm
+  const handlePaste = useCallback(() => {
+    haptic();
+    void navigator.clipboard
+      .readText()
+      .then((text) => {
+        if (text) sendInput(text);
+      })
+      .catch(() => {
+        // Clipboard permission denied or unavailable
+      });
+  }, [sendInput]);
+
+  // Prevent focus loss on desktop mouse clicks
+  const preventFocus = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
   }, []);
 
@@ -207,7 +231,7 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
   ];
 
   return (
-    <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-white/[0.06] bg-white/[0.02] px-2 py-1.5 backdrop-blur-sm">
+    <div className="custom-scrollbar flex shrink-0 items-center gap-1 overflow-x-auto border-t border-white/[0.06] bg-white/[0.02] px-2 py-1.5 backdrop-blur-sm">
       {/* ESC / TAB */}
       {charKeys.map((k) => (
         <motion.button
@@ -217,7 +241,10 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
           whileTap={{ scale: 0.92 }}
           transition={btnSpring}
           onMouseDown={preventFocus}
-          onTouchStart={preventFocus}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            sendKey(k.data);
+          }}
           onClick={() => sendKey(k.data)}
         >
           {k.label}
@@ -232,7 +259,10 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
         whileTap={{ scale: 0.92 }}
         transition={btnSpring}
         onMouseDown={preventFocus}
-        onTouchStart={preventFocus}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          toggleModifier("ctrl");
+        }}
         onClick={() => toggleModifier("ctrl")}
       >
         CTRL
@@ -246,7 +276,10 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
         whileTap={{ scale: 0.92 }}
         transition={btnSpring}
         onMouseDown={preventFocus}
-        onTouchStart={preventFocus}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          toggleModifier("alt");
+        }}
         onClick={() => toggleModifier("alt")}
       >
         ALT
@@ -261,12 +294,51 @@ export function TerminalToolbar({ xtermRef }: TerminalToolbarProps) {
           whileTap={{ scale: 0.92 }}
           transition={btnSpring}
           onMouseDown={preventFocus}
-          onTouchStart={preventFocus}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            sendKey(k.data);
+          }}
           onClick={() => sendKey(k.data)}
         >
           {k.label}
         </motion.button>
       ))}
+
+      {/* Separator */}
+      <div className="mx-0.5 h-4 w-px shrink-0 bg-white/[0.08]" />
+
+      {/* Copy / Paste */}
+      <motion.button
+        type="button"
+        className={btnNormal}
+        whileTap={{ scale: 0.92 }}
+        transition={btnSpring}
+        onMouseDown={preventFocus}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          handleCopy();
+        }}
+        onClick={handleCopy}
+      >
+        COPY
+      </motion.button>
+      <motion.button
+        type="button"
+        className={btnNormal}
+        whileTap={{ scale: 0.92 }}
+        transition={btnSpring}
+        onMouseDown={preventFocus}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          handlePaste();
+        }}
+        onClick={handlePaste}
+      >
+        PASTE
+      </motion.button>
+
+      {/* Separator */}
+      <div className="mx-0.5 h-4 w-px shrink-0 bg-white/[0.08]" />
 
       {/* Arrow keys with auto-repeat */}
       {arrowKeys.map((k) => (

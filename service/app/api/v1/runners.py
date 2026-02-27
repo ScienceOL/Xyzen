@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.configs import configs
+from app.core.version import get_version_info
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.models.runner import Runner, RunnerRead, RunnerUpdate
@@ -19,7 +20,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["runners"])
 
 # --- CLI version metadata ---------------------------------------------------
-CLI_LATEST_VERSION = "1.6.0"
 CLI_DOWNLOAD_BASE = "https://github.com/ScienceOL/Xyzen/releases"
 
 RUNNER_ONLINE_PREFIX = "runner:online:"
@@ -47,15 +47,19 @@ async def _enrich_online_status(runners: list[Runner]) -> list[RunnerRead]:
 
     r = aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
     try:
+        # Presence key is per-user and stores the connected runner_id as value.
+        # Use GET (not EXISTS) so we can match against each runner's id.
+        user_ids = {runner.user_id for runner in runners}
         pipe = r.pipeline()
-        for runner in runners:
-            pipe.exists(f"{RUNNER_ONLINE_PREFIX}{runner.user_id}")
-        results = await pipe.execute()
+        for uid in user_ids:
+            pipe.get(f"{RUNNER_ONLINE_PREFIX}{uid}")
+        values = await pipe.execute()
+        online_runner_ids: set[str] = {v for v in values if v is not None}
 
         enriched: list[RunnerRead] = []
-        for runner, is_online in zip(runners, results):
+        for runner in runners:
             read = RunnerRead.model_validate(runner)
-            read.is_online = bool(is_online)
+            read.is_online = str(runner.id) in online_runner_ids
             enriched.append(read)
         return enriched
     finally:
@@ -176,10 +180,11 @@ class CLIVersionResponse(BaseModel):
 @router.get("/cli/latest", response_model=CLIVersionResponse)
 async def get_cli_latest_version() -> CLIVersionResponse:
     """Return the latest CLI version and per-platform download URLs (public, no auth)."""
+    cli_version = get_version_info().version
     download = {}
     for plat, _label in _PLATFORMS.items():
         suffix = ".exe" if plat.startswith("windows") else ""
-        download[plat] = f"{CLI_DOWNLOAD_BASE}/download/v{CLI_LATEST_VERSION}/xyzen-{plat}{suffix}"
+        download[plat] = f"{CLI_DOWNLOAD_BASE}/download/v{cli_version}/xyzen-{plat}{suffix}"
 
     install_command = (
         f"sudo curl -fsSL {CLI_DOWNLOAD_BASE}/latest/download/xyzen-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') "
@@ -187,7 +192,7 @@ async def get_cli_latest_version() -> CLIVersionResponse:
     )
 
     return CLIVersionResponse(
-        version=CLI_LATEST_VERSION,
+        version=cli_version,
         download=download,
         install_command=install_command,
     )

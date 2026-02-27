@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.infra.sandbox.manager import SandboxManager
 
 from .operations import (
+    sandbox_deploy,
     sandbox_edit,
     sandbox_exec,
     sandbox_export,
@@ -33,6 +34,7 @@ from .operations import (
 )
 from .schemas import (
     SandboxBashInput,
+    SandboxDeployInput,
     SandboxEditInput,
     SandboxExportInput,
     SandboxGlobInput,
@@ -138,8 +140,30 @@ _TOOL_DEFS: list[_ToolDef] = [
     ),
 ]
 
+# Deploy tool is defined separately — only included when Settler is enabled.
+_DEPLOY_TOOL_DEF = _ToolDef(
+    tool_id="sandbox_deploy",
+    description=(
+        "Deploy a service from the sandbox to a persistent public URL. "
+        "The service will keep running even after the sandbox stops. "
+        "First ensure your app works via sandbox_preview, then use this to deploy permanently. "
+        "Returns a stable HTTPS URL on app.xyzen.ai."
+    ),
+    args_schema=SandboxDeployInput,
+)
+
 # Type alias for bound coroutines returned by the binder functions.
 type _BoundCoro = Callable[..., Coroutine[Any, Any, dict[str, Any]]]
+
+
+def _get_all_tool_defs() -> list[_ToolDef]:
+    """Return the full tool def list, conditionally including deploy."""
+    from app.configs import configs
+
+    defs = list(_TOOL_DEFS)
+    if configs.Settler.Enable:
+        defs.append(_DEPLOY_TOOL_DEF)
+    return defs
 
 
 def create_sandbox_tools() -> dict[str, BaseTool]:
@@ -167,7 +191,7 @@ def create_sandbox_tools() -> dict[str, BaseTool]:
             args_schema=td.args_schema,
             coroutine=_noop,
         )
-        for td in _TOOL_DEFS
+        for td in _get_all_tool_defs()
     }
 
 
@@ -203,7 +227,7 @@ def create_sandbox_tools_for_session(
     binders = _build_lazy_binders(_get_manager, session_id=session_id, user_id=user_id)
 
     tools: list[BaseTool] = []
-    for td in _TOOL_DEFS:
+    for td in _get_all_tool_defs():
         bound = binders.get(td.tool_id)
         if bound is None:
             continue
@@ -255,6 +279,16 @@ def _build_lazy_binders(
     async def upload_bound(file_id: str, path: str = "") -> dict[str, Any]:
         return await sandbox_upload(await get_manager(), user_id=user_id, file_id=file_id, path=path or _wd())
 
+    async def deploy_bound(port: int, start_command: str, source_dir: str = "") -> dict[str, Any]:
+        return await sandbox_deploy(
+            await get_manager(),
+            user_id=user_id,
+            session_id=session_id,
+            port=port,
+            start_command=start_command,
+            source_dir=source_dir or _wd(),
+        )
+
     return {
         "sandbox_bash": bash_bound,
         "sandbox_read": read_bound,
@@ -265,6 +299,7 @@ def _build_lazy_binders(
         "sandbox_export": export_bound,
         "sandbox_preview": preview_bound,
         "sandbox_upload": upload_bound,
+        "sandbox_deploy": deploy_bound,
     }
 
 

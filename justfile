@@ -17,6 +17,10 @@ dev:
 dev-fg:
     ./launch/dev.sh
 
+# Start all services in background with single replicas (easier debugging)
+dev-solo:
+    SERVICE_REPLICAS=1 CELERY_REPLICAS=1 ./launch/dev.sh
+
 # Stop all containers (without removing)
 stop:
     ./launch/dev.sh -s

@@ -26,7 +26,7 @@ import {
 
 /**
  * Create a stable hash of graph config for comparison.
- * Compares full node configurations to ensure all changes are synced.
+ * Includes ui.positions so that node drags trigger onChange.
  */
 function getConfigHash(config: GraphConfig | null): string {
   if (!config) return "";
@@ -34,6 +34,7 @@ function getConfigHash(config: GraphConfig | null): string {
     nodes: config.graph?.nodes,
     edges: config.graph?.edges,
     entrypoints: config.graph?.entrypoints,
+    positions: config.ui?.positions,
   });
 }
 
@@ -82,7 +83,7 @@ export function graphConfigToFlow(config: GraphConfig | null): {
     {
       id: START_NODE_ID,
       type: "startNode",
-      position: { x: 50, y: 200 },
+      position: positions[START_NODE_ID] || { x: 50, y: 200 },
       data: {
         label: "START",
         nodeType: "llm" as GraphNodeKind, // placeholder
@@ -94,7 +95,7 @@ export function graphConfigToFlow(config: GraphConfig | null): {
     {
       id: END_NODE_ID,
       type: "endNode",
-      position: { x: 600, y: 200 },
+      position: positions[END_NODE_ID] || { x: 600, y: 200 },
       data: {
         label: "END",
         nodeType: "llm" as GraphNodeKind, // placeholder
@@ -191,12 +192,14 @@ export function flowToGraphConfig(
     return existingConfig;
   }
 
-  // Collect positions for ui.positions
+  // Collect positions for ui.positions (including START and END)
   const uiPositions: Record<string, { x: number; y: number }> = {};
+  for (const node of nodes) {
+    uiPositions[node.id] = { x: node.position.x, y: node.position.y };
+  }
 
   // Convert nodes (they're already v3 GraphNodeConfig in the data)
   const graphNodes: GraphNodeConfig[] = userNodes.map((node) => {
-    uiPositions[node.id] = { x: node.position.x, y: node.position.y };
     // Rebuild the node with potentially updated name
     return {
       ...node.data.config,

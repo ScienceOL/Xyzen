@@ -140,6 +140,23 @@ class SandboxUploadInput(BaseModel):
     )
 
 
+class SandboxDeployInput(BaseModel):
+    """Input schema for sandbox_deploy tool."""
+
+    port: int = Field(
+        description="Port the deployed service listens on (e.g. 3000, 5000, 8080).",
+        ge=1,
+        le=65535,
+    )
+    start_command: str = Field(
+        description="Command to start the service (e.g. 'cd /workspace && npm start').",
+    )
+    source_dir: str = Field(
+        default_factory=_wd,
+        description="Directory in the sandbox to deploy from.",
+    )
+
+
 __all__ = [
     "SandboxBashInput",
     "SandboxReadInput",
@@ -150,4 +167,5 @@ __all__ = [
     "SandboxExportInput",
     "SandboxPreviewInput",
     "SandboxUploadInput",
+    "SandboxDeployInput",
 ]

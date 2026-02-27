@@ -7,6 +7,7 @@ from .auth import router as auth_router
 from .avatar import router as avatar_router
 from .chat_shares import router as chat_shares_router
 from .checkin import router as checkin_router
+from .deployments import router as deployments_router
 from .developer import router as developer_router
 from .files import router as files_router
 from .folders import router as folders_router
@@ -124,6 +125,7 @@ v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(root_agent_router, prefix="/root-agent")
 v1_router.include_router(runners_router, prefix="/runners")
 v1_router.include_router(chat_shares_router, prefix="/chat-shares")
+v1_router.include_router(deployments_router, prefix="/deployments")
 v1_router.include_router(tools_router, prefix="/tools")
 v1_router.include_router(admin_marketplace_router, prefix="/admin/marketplace", tags=["admin-marketplace"])
 v1_router.include_router(system_router, tags=["system"])

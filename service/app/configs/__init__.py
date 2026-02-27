@@ -19,6 +19,7 @@ from .redemption import AdminConfig
 from .redis import RedisConfig
 from .sandbox import SandboxConfig
 from .searxng import SearXNGConfig
+from .settler import SettlerConfig
 from .video import VideoConfig
 
 
@@ -120,6 +121,11 @@ class AppConfig(BaseSettings):
     Sandbox: SandboxConfig = Field(
         default_factory=lambda: SandboxConfig(),
         description="Sandbox code execution configuration",
+    )
+
+    Settler: SettlerConfig = Field(
+        default_factory=lambda: SettlerConfig(),
+        description="Settler persistent deployment configuration",
     )
 
     Memory: MemoryConfig = Field(
