@@ -1,10 +1,15 @@
 import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 import { LocalEchoController } from "@/core/terminal/localEcho";
 import {
-  createTerminalConnection,
+  createAndConnect,
+  detachConnection,
+  getConnection,
+  registerConnection,
+  unregisterConnection,
   type TerminalConnection,
 } from "@/service/terminalService";
 import { useXyzen } from "@/store";
+import type { TerminalSessionStatus } from "@/store/slices/terminalSlice";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
@@ -14,13 +19,17 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { AnimatePresence, motion } from "framer-motion";
 import { TerminalToolbar } from "./TerminalToolbar";
+import { TerminalSessionList } from "./TerminalSessionList";
+import { PlusIcon } from "@heroicons/react/24/outline";
 
-type Status =
+type DisplayStatus =
   | "connecting"
   | "connected"
   | "disconnected"
+  | "detached"
   | "error"
-  | "reconnecting";
+  | "reconnecting"
+  | "exited";
 
 // --- Theme definitions ---
 
@@ -81,29 +90,45 @@ function isDarkMode(): boolean {
 
 const dotSpring = { type: "spring" as const, stiffness: 500, damping: 30 };
 
-const DOT_VARIANTS: Record<
-  Status,
-  { bg: string; shadow?: string; animate?: object }
-> = {
-  connected: {
-    bg: "bg-green-500",
-    shadow: "0 0 6px rgba(34,197,94,0.4)",
-  },
-  connecting: { bg: "bg-amber-500" },
-  reconnecting: { bg: "bg-amber-500" },
-  error: { bg: "bg-red-500" },
-  disconnected: { bg: "bg-neutral-300 dark:bg-neutral-600" },
+type DotColor = "green" | "red" | "amber";
+
+function statusToDotColor(
+  status: DisplayStatus | TerminalSessionStatus,
+): DotColor {
+  switch (status) {
+    case "connected":
+      return "green";
+    case "connecting":
+    case "reconnecting":
+    case "detached":
+      return "amber";
+    default: // error, exited, disconnected
+      return "red";
+  }
+}
+
+const DOT_COLORS: Record<DotColor, { bg: string; shadow?: string }> = {
+  green: { bg: "bg-green-500", shadow: "0 0 6px rgba(34,197,94,0.4)" },
+  amber: { bg: "bg-amber-500" },
+  red: { bg: "bg-red-500" },
 };
 
-function StatusDot({ status }: { status: Status }) {
-  const v = DOT_VARIANTS[status];
-  const isPulsing = status === "connecting" || status === "reconnecting";
+function StatusDot({
+  status,
+  className = "h-2 w-2",
+}: {
+  status: DisplayStatus | TerminalSessionStatus;
+  className?: string;
+}) {
+  const color = statusToDotColor(status);
+  const v = DOT_COLORS[color];
+  const isPulsing = color === "amber";
 
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={status}
-        className={`h-2 w-2 rounded-full ${v.bg}`}
+        key={color}
+        className={`rounded-full ${className} ${v.bg}`}
         initial={{ scale: 0, opacity: 0 }}
         animate={{
           scale: isPulsing ? [1, 1.3, 1] : 1,
@@ -124,25 +149,61 @@ function StatusDot({ status }: { status: Status }) {
   );
 }
 
+// --- Session Tab chip ---
+
+function SessionTab({
+  id,
+  label,
+  status,
+  isActive,
+  onClick,
+}: {
+  id: string;
+  label: string;
+  status: TerminalSessionStatus;
+  isActive: boolean;
+  onClick: (id: string) => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+        isActive
+          ? "bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/30 dark:text-indigo-400"
+          : "bg-neutral-100/60 text-neutral-500 hover:bg-neutral-200/60 dark:bg-white/[0.04] dark:text-neutral-400 dark:hover:bg-white/[0.06]"
+      }`}
+      whileTap={{ scale: 0.95 }}
+      onClick={() => onClick(id)}
+    >
+      <StatusDot status={status} className="h-1.5 w-1.5" />
+      <span className="max-w-[80px] truncate">{label}</span>
+    </motion.button>
+  );
+}
+
 export function TerminalModal() {
   const { t } = useTranslation();
   const {
     isTerminalOpen,
-    closeTerminal,
-    terminalCommand,
-    terminalArgs,
+    closeTerminalModal,
+    activeSessionId,
+    terminalSessions,
     runners,
-    setTerminalSessionId,
-    setTerminalLatency,
+    addSession,
+    updateSession,
+    removeSession,
+    setActiveSession,
   } = useXyzen(
     useShallow((s) => ({
       isTerminalOpen: s.isTerminalOpen,
-      closeTerminal: s.closeTerminal,
-      terminalCommand: s.terminalCommand,
-      terminalArgs: s.terminalArgs,
+      closeTerminalModal: s.closeTerminalModal,
+      activeSessionId: s.activeSessionId,
+      terminalSessions: s.terminalSessions,
       runners: s.runners,
-      setTerminalSessionId: s.setTerminalSessionId,
-      setTerminalLatency: s.setTerminalLatency,
+      addSession: s.addSession,
+      updateSession: s.updateSession,
+      removeSession: s.removeSession,
+      setActiveSession: s.setActiveSession,
     })),
   );
 
@@ -151,7 +212,9 @@ export function TerminalModal() {
   const fitAddonRef = useRef<FitAddon | null>(null);
   const connRef = useRef<TerminalConnection | null>(null);
   const localEchoRef = useRef<LocalEchoController | null>(null);
-  const [status, setStatus] = useState<Status>("disconnected");
+  const cleanupObserversRef = useRef<(() => void) | null>(null);
+  const [displayStatus, setDisplayStatus] =
+    useState<DisplayStatus>("disconnected");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState<number>(0);
   const [reconnectInfo, setReconnectInfo] = useState<{
@@ -159,49 +222,29 @@ export function TerminalModal() {
     max: number;
   } | null>(null);
 
+  // Show session list when user clicks "New Session" without a pending command
+  const [showSessionList, setShowSessionList] = useState(false);
+
   // Check if any runner is online
   const hasOnlineRunner = runners.some((r) => r.is_online && r.is_active);
 
-  const cleanup = useCallback(() => {
-    connRef.current?.destroy();
-    connRef.current = null;
+  const sessions = Object.values(terminalSessions);
+
+  // --- xterm helpers ---
+
+  const disposeXterm = useCallback(() => {
+    cleanupObserversRef.current?.();
+    cleanupObserversRef.current = null;
     localEchoRef.current = null;
     xtermRef.current?.dispose();
     xtermRef.current = null;
     fitAddonRef.current = null;
-    setStatus("disconnected");
-    setErrorMsg(null);
-    setLatencyMs(0);
-    setReconnectInfo(null);
   }, []);
 
-  const handleClose = useCallback(() => {
-    // Intentional close — tell server to kill the PTY
-    connRef.current?.close();
-    connRef.current = null;
-    localEchoRef.current = null;
-    xtermRef.current?.dispose();
-    xtermRef.current = null;
-    fitAddonRef.current = null;
-    setStatus("disconnected");
-    setErrorMsg(null);
-    setLatencyMs(0);
-    setReconnectInfo(null);
-    setTerminalSessionId(null);
-    closeTerminal();
-  }, [closeTerminal, setTerminalSessionId]);
-
-  // Initialize xterm and connect when modal opens
-  useEffect(() => {
-    if (!isTerminalOpen || !termRef.current) return;
-
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      if (!termRef.current) return;
-
+  const createXterm = useCallback(
+    (container: HTMLElement): { xterm: XTerm; fitAddon: FitAddon } => {
       const dark = isDarkMode();
 
-      // Create xterm instance
       const xterm = new XTerm({
         cursorBlink: true,
         fontSize: 13,
@@ -215,10 +258,7 @@ export function TerminalModal() {
       xterm.loadAddon(fitAddon);
       xterm.loadAddon(webLinksAddon);
 
-      // Load WebGL renderer on non-touch devices only.
-      // On mobile, WebGL can silently fail to paint (context created but
-      // canvas stays blank) after the canvas renderer has already been
-      // disposed — leaving no fallback. The canvas renderer is fine for mobile.
+      // Load WebGL renderer on non-touch devices only
       const isTouchDevice =
         "ontouchstart" in window || navigator.maxTouchPoints > 0;
       if (!isTouchDevice) {
@@ -246,111 +286,16 @@ export function TerminalModal() {
         }
       })();
 
-      xterm.open(termRef.current);
+      xterm.open(container);
       fitAddon.fit();
 
       xtermRef.current = xterm;
       fitAddonRef.current = fitAddon;
 
-      // Local echo controller
       const localEcho = new LocalEchoController(xterm);
       localEchoRef.current = localEcho;
 
-      // Connect to backend
-      setStatus("connecting");
-      setErrorMsg(null);
-
-      const conn = createTerminalConnection({
-        onOutput: (data: string) => {
-          try {
-            const bin = atob(data);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) {
-              bytes[i] = bin.charCodeAt(i);
-            }
-            // Reconcile local echo predictions
-            const output = localEcho.handleOutput(bytes);
-            if (output.length > 0) {
-              xterm.write(output);
-            }
-          } catch {
-            xterm.write(data);
-          }
-        },
-        onExit: (exitCode: number) => {
-          localEcho.clear();
-          xterm.writeln(
-            `\r\n\x1b[33m[Process exited with code ${exitCode}]\x1b[0m`,
-          );
-          setStatus("disconnected");
-        },
-        onError: (message: string) => {
-          localEcho.clear();
-          xterm.writeln(`\r\n\x1b[31m[Error: ${message}]\x1b[0m`);
-          setErrorMsg(message);
-          setStatus("error");
-        },
-        onOpen: () => {
-          setStatus("connected");
-          setReconnectInfo(null);
-
-          // Create PTY session
-          const cols = xterm.cols;
-          const rows = xterm.rows;
-          conn?.createSession(
-            terminalCommand || "",
-            terminalArgs || [],
-            cols,
-            rows,
-          );
-        },
-        onClose: () => {
-          localEcho.clear();
-          xterm.writeln("\r\n\x1b[33m[Connection closed]\x1b[0m");
-          setStatus("disconnected");
-          setReconnectInfo(null);
-        },
-        onReconnecting: (attempt: number, max: number) => {
-          setStatus("reconnecting");
-          setReconnectInfo({ attempt, max });
-        },
-        onReconnected: () => {
-          setStatus("connected");
-          setReconnectInfo(null);
-        },
-        onLatency: (ms: number) => {
-          setLatencyMs(ms);
-          setTerminalLatency(ms);
-        },
-        onSessionCreated: (sessionId: string) => {
-          setTerminalSessionId(sessionId);
-        },
-      });
-
-      if (!conn) {
-        setErrorMsg("Failed to create connection - check authentication");
-        setStatus("error");
-        return;
-      }
-
-      connRef.current = conn;
-
-      // Forward terminal input to WebSocket with local echo
-      xterm.onData((data: string) => {
-        // Try local echo prediction
-        localEcho.handleInput(data);
-
-        // Encode string -> UTF-8 bytes -> base64 (btoa only handles Latin-1)
-        const encoder = new TextEncoder();
-        const bytes = encoder.encode(data);
-        let bin = "";
-        for (let i = 0; i < bytes.length; i++) {
-          bin += String.fromCharCode(bytes[i]);
-        }
-        conn.sendInput(btoa(bin));
-      });
-
-      // Handle resize
+      // ResizeObserver
       const resizeObserver = new ResizeObserver(() => {
         if (fitAddonRef.current && xtermRef.current) {
           fitAddonRef.current.fit();
@@ -359,61 +304,351 @@ export function TerminalModal() {
           connRef.current?.resize(cols, rows);
         }
       });
+      resizeObserver.observe(container);
 
-      if (termRef.current) {
-        resizeObserver.observe(termRef.current);
-      }
-
-      // Watch for dark/light mode changes
-      const observer = new MutationObserver(() => {
+      // Dark mode observer
+      const mutObserver = new MutationObserver(() => {
         const nowDark = isDarkMode();
         if (xtermRef.current) {
           xtermRef.current.options.theme = nowDark ? DARK_THEME : LIGHT_THEME;
         }
       });
-      observer.observe(document.documentElement, {
+      mutObserver.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ["class"],
       });
 
-      return () => {
+      cleanupObserversRef.current = () => {
         resizeObserver.disconnect();
-        observer.disconnect();
+        mutObserver.disconnect();
       };
+
+      return { xterm, fitAddon };
+    },
+    [],
+  );
+
+  // --- Connection helpers ---
+
+  const makeCallbacks = useCallback(
+    (sessionId?: string) => ({
+      onOutput: (data: string) => {
+        try {
+          const bin = atob(data);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) {
+            bytes[i] = bin.charCodeAt(i);
+          }
+          const output = localEchoRef.current?.handleOutput(bytes) ?? bytes;
+          if (output.length > 0) {
+            xtermRef.current?.write(output);
+          }
+        } catch {
+          xtermRef.current?.write(data);
+        }
+      },
+      onExit: (exitCode: number) => {
+        localEchoRef.current?.clear();
+        xtermRef.current?.writeln(
+          `\r\n\x1b[33m[Process exited with code ${exitCode}]\x1b[0m`,
+        );
+        setDisplayStatus("exited");
+        const sid = sessionId ?? connRef.current?.currentSessionId;
+        if (sid) {
+          updateSession(sid, { status: "exited", exitCode });
+          unregisterConnection(sid);
+        }
+      },
+      onError: (message: string) => {
+        localEchoRef.current?.clear();
+        xtermRef.current?.writeln(`\r\n\x1b[31m[Error: ${message}]\x1b[0m`);
+        setErrorMsg(message);
+        setDisplayStatus("error");
+        const sid = sessionId ?? connRef.current?.currentSessionId;
+        if (sid) {
+          updateSession(sid, { status: "error", errorMsg: message });
+        }
+      },
+      onOpen: () => {
+        // WS connected, no session yet — create new session
+        setDisplayStatus("connected");
+        setReconnectInfo(null);
+
+        const xterm = xtermRef.current;
+        const conn = connRef.current;
+        if (!xterm || !conn) return;
+
+        const state = useXyzen.getState();
+        const cmd = state.pendingCommand || "";
+        const args = state.pendingArgs || [];
+        conn.createSession(cmd, args, xterm.cols, xterm.rows);
+
+        // Clear pending
+        useXyzen.setState({ pendingCommand: "", pendingArgs: [] });
+      },
+      onClose: () => {
+        localEchoRef.current?.clear();
+        xtermRef.current?.writeln("\r\n\x1b[33m[Connection closed]\x1b[0m");
+        setDisplayStatus("disconnected");
+        setReconnectInfo(null);
+      },
+      onReconnecting: (attempt: number, max: number) => {
+        setDisplayStatus("reconnecting");
+        setReconnectInfo({ attempt, max });
+        const sid = sessionId ?? connRef.current?.currentSessionId;
+        if (sid) {
+          updateSession(sid, { status: "reconnecting" });
+        }
+      },
+      onReconnected: () => {
+        setDisplayStatus("connected");
+        setReconnectInfo(null);
+        const sid = sessionId ?? connRef.current?.currentSessionId;
+        if (sid) {
+          updateSession(sid, { status: "connected" });
+        }
+      },
+      onLatency: (ms: number) => {
+        setLatencyMs(ms);
+        const sid = sessionId ?? connRef.current?.currentSessionId;
+        if (sid) {
+          updateSession(sid, { latencyMs: ms });
+        }
+      },
+      onSessionCreated: (newSessionId: string) => {
+        const state = useXyzen.getState();
+        addSession({
+          id: newSessionId,
+          command: state.pendingCommand || "",
+          args: state.pendingArgs || [],
+          status: "connected",
+          createdAt: Date.now(),
+          latencyMs: 0,
+        });
+        registerConnection(newSessionId, connRef.current!);
+        setDisplayStatus("connected");
+      },
+      onAttached: (attachedId: string) => {
+        setDisplayStatus("connected");
+        setReconnectInfo(null);
+        updateSession(attachedId, { status: "connected" });
+        // Force resize → SIGWINCH so the shell redraws its prompt
+        const xterm = xtermRef.current;
+        if (xterm && connRef.current) {
+          connRef.current.resize(xterm.cols, xterm.rows);
+        }
+      },
+      onAttachFailed: (failedId: string) => {
+        xtermRef.current?.writeln(
+          "\r\n\x1b[33m[Session expired — removed]\x1b[0m",
+        );
+        removeSession(failedId);
+        unregisterConnection(failedId);
+        setDisplayStatus("disconnected");
+        // Show session list so user can pick another or create new
+        setShowSessionList(true);
+        setActiveSession(null);
+      },
+    }),
+    [addSession, updateSession, removeSession, setActiveSession],
+  );
+
+  const wireXtermInput = useCallback(
+    (xterm: XTerm, conn: TerminalConnection) => {
+      xterm.onData((data: string) => {
+        localEchoRef.current?.handleInput(data);
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(data);
+        let bin = "";
+        for (let i = 0; i < bytes.length; i++) {
+          bin += String.fromCharCode(bytes[i]);
+        }
+        conn.sendInput(btoa(bin));
+      });
+    },
+    [],
+  );
+
+  // --- Connect to a new session ---
+
+  const connectNewSession = useCallback(() => {
+    if (!termRef.current) return;
+
+    disposeXterm();
+    setDisplayStatus("connecting");
+    setErrorMsg(null);
+    setLatencyMs(0);
+    setReconnectInfo(null);
+    setShowSessionList(false);
+
+    const { xterm } = createXterm(termRef.current);
+
+    const conn = createAndConnect(makeCallbacks());
+    if (!conn) {
+      setErrorMsg("Failed to create connection - check authentication");
+      setDisplayStatus("error");
+      return;
+    }
+
+    connRef.current = conn;
+    wireXtermInput(xterm, conn);
+  }, [createXterm, disposeXterm, makeCallbacks, wireXtermInput]);
+
+  // --- Attach to existing session ---
+
+  const attachToSession = useCallback(
+    (sessionId: string) => {
+      if (!termRef.current) return;
+
+      // Detach current connection if any
+      const currentActive = useXyzen.getState().activeSessionId;
+      if (currentActive && currentActive !== sessionId) {
+        detachConnection(currentActive);
+        updateSession(currentActive, { status: "detached" });
+      }
+
+      disposeXterm();
+      setActiveSession(sessionId);
+      setDisplayStatus("connecting");
+      setErrorMsg(null);
+      setLatencyMs(0);
+      setReconnectInfo(null);
+      setShowSessionList(false);
+
+      const { xterm } = createXterm(termRef.current);
+
+      const conn = createAndConnect(makeCallbacks(sessionId));
+      if (!conn) {
+        setErrorMsg("Failed to create connection - check authentication");
+        setDisplayStatus("error");
+        return;
+      }
+
+      connRef.current = conn;
+      registerConnection(sessionId, conn);
+
+      // Once WS is open, the onOpen callback will fire — but we want attach, not create.
+      // Override: send attach after WS opens
+      const origOnOpen = conn["callbacks"].onOpen;
+      conn["callbacks"].onOpen = () => {
+        // Don't create a new session — attach to existing
+        setDisplayStatus("connected");
+        setReconnectInfo(null);
+        conn.attachSession(sessionId);
+        // Restore original for future reconnects
+        conn["callbacks"].onOpen = origOnOpen;
+      };
+
+      wireXtermInput(xterm, conn);
+    },
+    [
+      createXterm,
+      disposeXterm,
+      makeCallbacks,
+      wireXtermInput,
+      setActiveSession,
+      updateSession,
+    ],
+  );
+
+  // --- Modal open/close lifecycle ---
+
+  useEffect(() => {
+    if (!isTerminalOpen) return;
+
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      if (!termRef.current) return;
+
+      const state = useXyzen.getState();
+
+      if (state.pendingCommand || state.pendingArgs.length > 0) {
+        // Have a pending command → create new session
+        connectNewSession();
+      } else if (
+        state.activeSessionId &&
+        state.terminalSessions[state.activeSessionId]
+      ) {
+        const session = state.terminalSessions[state.activeSessionId];
+        if (
+          session.status === "detached" ||
+          session.status === "connected" ||
+          session.status === "connecting"
+        ) {
+          // Reattach to existing session
+          attachToSession(state.activeSessionId);
+        } else {
+          // Session in terminal state (exited/error) — show list
+          setShowSessionList(true);
+        }
+      } else if (Object.keys(state.terminalSessions).length > 0) {
+        // No active session but have sessions — show list
+        setShowSessionList(true);
+      } else {
+        // No sessions at all — create new default session
+        connectNewSession();
+      }
     }, 100);
 
     return () => {
       clearTimeout(timer);
-      cleanup();
     };
-  }, [
-    isTerminalOpen,
-    terminalCommand,
-    terminalArgs,
-    cleanup,
-    setTerminalLatency,
-    setTerminalSessionId,
-  ]);
+    // Only trigger on modal open — don't re-trigger on session changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTerminalOpen]);
 
-  const statusColor =
-    status === "connected"
-      ? "text-green-500"
-      : status === "connecting" || status === "reconnecting"
-        ? "text-amber-500"
-        : status === "error"
-          ? "text-red-500"
-          : "text-neutral-400";
+  // --- Handle modal close ---
 
-  const statusLabel =
-    status === "connected"
-      ? t("terminal.status.connected")
-      : status === "connecting"
-        ? t("terminal.status.connecting")
-        : status === "reconnecting"
-          ? t("terminal.status.reconnecting")
-          : status === "error"
-            ? t("terminal.status.error")
-            : t("terminal.status.disconnected");
+  const handleClose = useCallback(() => {
+    // Detach current session (don't kill)
+    const state = useXyzen.getState();
+    const currentId = state.activeSessionId;
+    if (currentId && getConnection(currentId)) {
+      detachConnection(currentId);
+      updateSession(currentId, { status: "detached" });
+    } else if (connRef.current) {
+      // Connection exists but not in pool (e.g. session not yet created)
+      connRef.current.destroy();
+      connRef.current = null;
+    }
+
+    disposeXterm();
+    setDisplayStatus("disconnected");
+    setErrorMsg(null);
+    setLatencyMs(0);
+    setReconnectInfo(null);
+    setShowSessionList(false);
+    closeTerminalModal();
+  }, [closeTerminalModal, disposeXterm, updateSession]);
+
+  // --- Session tab switch ---
+
+  const handleTabClick = useCallback(
+    (id: string) => {
+      if (id === activeSessionId) return;
+      attachToSession(id);
+    },
+    [activeSessionId, attachToSession],
+  );
+
+  // --- New session from session list ---
+
+  const handleNewSession = useCallback(() => {
+    // Open without pending command — will launch default shell
+    useXyzen.setState({ pendingCommand: "", pendingArgs: [] });
+    connectNewSession();
+  }, [connectNewSession]);
+
+  // --- Handle attach from session list ---
+
+  const handleAttachFromList = useCallback(
+    (id: string) => {
+      attachToSession(id);
+    },
+    [attachToSession],
+  );
+
+  // --- Derived display values ---
 
   // Latency badge color
   const latencyColor =
@@ -422,6 +657,8 @@ export function TerminalModal() {
       : latencyMs < 300
         ? "text-amber-500"
         : "text-red-500";
+
+  const showXterm = activeSessionId && !showSessionList;
 
   return (
     <SheetModal isOpen={isTerminalOpen} onClose={handleClose} size="xl">
@@ -432,57 +669,65 @@ export function TerminalModal() {
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
               {t("terminal.title")}
             </h2>
-            <div className="flex items-center gap-1.5">
-              <StatusDot status={status} />
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={status}
-                  className={`text-xs ${statusColor}`}
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 4 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  {statusLabel}
-                </motion.span>
-              </AnimatePresence>
-            </div>
-            {/* Latency badge */}
+            {/* Latency badge — visible when active session is connected */}
             <AnimatePresence>
-              {status === "connected" && latencyMs > 0 && (
+              {showXterm && displayStatus === "connected" && latencyMs > 0 && (
                 <motion.span
                   className={`rounded bg-neutral-100/60 px-1.5 py-0.5 text-[11px] font-medium tabular-nums dark:bg-white/[0.04] ${latencyColor}`}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 500,
+                    damping: 30,
+                  }}
                 >
                   {latencyMs}ms
                 </motion.span>
               )}
             </AnimatePresence>
           </div>
-          {/* Command badge */}
-          <AnimatePresence>
-            {terminalCommand && (
-              <motion.span
-                className="rounded bg-neutral-100/60 px-2 py-0.5 text-xs text-neutral-500 dark:bg-white/[0.04] dark:text-neutral-400"
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                transition={{ duration: 0.15 }}
-              >
-                {terminalCommand} {terminalArgs.join(" ")}
-              </motion.span>
-            )}
-          </AnimatePresence>
+
+          {/* Session tabs + new session button */}
+          <div className="flex items-center gap-1.5">
+            {sessions.map((s) => (
+              <SessionTab
+                key={s.id}
+                id={s.id}
+                label={s.command || "Shell"}
+                status={s.status}
+                isActive={s.id === activeSessionId && !showSessionList}
+                onClick={handleTabClick}
+              />
+            ))}
+            <motion.button
+              type="button"
+              className="rounded-lg bg-neutral-100/60 p-1.5 text-neutral-400 transition-colors hover:bg-neutral-200/60 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
+              whileTap={{ scale: 0.92 }}
+              onClick={handleNewSession}
+              title={t("terminal.sessions.new")}
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+            </motion.button>
+          </div>
         </div>
 
-        {/* Terminal area — black frosted glass */}
+        {/* Content area */}
         <div className="relative min-h-0 flex-1 overflow-hidden bg-black/90 backdrop-blur-md">
+          {/* Session list overlay — shown when no active xterm */}
+          {!showXterm && (
+            <div className="absolute inset-0 z-20">
+              <TerminalSessionList
+                onAttach={handleAttachFromList}
+                onNewSession={handleNewSession}
+              />
+            </div>
+          )}
+
           {/* No runner overlay */}
           <AnimatePresence>
-            {!hasOnlineRunner && (
+            {!hasOnlineRunner && showXterm && (
               <motion.div
                 className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/80 backdrop-blur-md"
                 initial={{ opacity: 0 }}
@@ -510,13 +755,17 @@ export function TerminalModal() {
 
           {/* Error banner */}
           <AnimatePresence>
-            {errorMsg && status === "error" && (
+            {errorMsg && displayStatus === "error" && showXterm && (
               <motion.div
                 className="absolute left-0 right-0 top-0 z-10 bg-red-50/90 px-4 py-2 text-xs text-red-600 backdrop-blur-sm dark:bg-red-950/60 dark:text-red-400"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 25,
+                }}
               >
                 {errorMsg}
               </motion.div>
@@ -525,7 +774,7 @@ export function TerminalModal() {
 
           {/* Reconnecting overlay */}
           <AnimatePresence>
-            {status === "reconnecting" && reconnectInfo && (
+            {displayStatus === "reconnecting" && reconnectInfo && showXterm && (
               <motion.div
                 className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/60 backdrop-blur-[2px]"
                 initial={{ opacity: 0 }}
@@ -559,7 +808,7 @@ export function TerminalModal() {
 
           <div ref={termRef} className="h-full w-full p-2" />
         </div>
-        <TerminalToolbar xtermRef={xtermRef} />
+        {showXterm && <TerminalToolbar xtermRef={xtermRef} />}
       </div>
     </SheetModal>
   );

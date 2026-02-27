@@ -202,12 +202,12 @@
     "noDescription": "No description available for this assistant",
     "defaultDescription": "You can ask any question freely. No need to select a specific assistant — the system will provide appropriate responses.",
     "quickActions": {
-      "sayHello": "Say hello",
-      "sayHelloMessage": "Hello! Nice to meet you.",
-      "askQuestion": "Ask a question",
-      "askQuestionMessage": "Can you help me with something?",
-      "startTask": "Start a task",
-      "startTaskMessage": "I'd like to start a new task."
+      "drawImage": "Paint a watercolor scene",
+      "drawImageMessage": "Draw me a seaside sunset in watercolor style, with warm tones. Save it to the knowledge base when you're done, and let me know how I can keep tweaking it — like adding people playing on the beach.",
+      "launchSandbox": "Create a shareable page",
+      "launchSandboxMessage": "Build me a fun interactive web page with some cool animations — keep it simple. Give me a shareable link when it's ready, I want to send it to friends.",
+      "scheduleTask": "Set a daily reminder",
+      "scheduleTaskMessage": "Set up a daily reminder at 9 AM that sends me the weather and my to-do list. Oh, and remind me to turn on notification permissions so I actually get the alerts."
     }
   },
   "chatHeader": {
@@ -315,8 +315,10 @@
       "subtitle": "Flexibly allocate AI computing power based on task difficulty",
       "speed": "Response Speed",
       "reasoning": "Reasoning Depth",
+      "context": "Context Window",
       "availableModels": "Model Reference",
       "imageGen": "Image Generation",
+      "betaSpecial": "Beta Special",
       "disclaimer": "* Models listed are for capability reference only and do not guarantee the actual model used."
     },
     "speedLabels": {
@@ -329,6 +331,12 @@
       "basic": "Basic",
       "standard": "Standard",
       "excellent": "Excellent",
+      "max": "MAX"
+    },
+    "contextLabels": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
       "max": "MAX"
     },
     "features": {

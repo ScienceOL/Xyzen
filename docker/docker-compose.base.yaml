@@ -12,6 +12,7 @@ services:
       web:
         condition: service_started
     restart: unless-stopped
+    attach: false
     networks:
       - xyzen-network
 

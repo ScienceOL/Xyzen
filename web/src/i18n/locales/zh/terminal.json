@@ -4,8 +4,10 @@
     "connected": "已连接",
     "connecting": "连接中...",
     "disconnected": "已断开",
+    "detached": "已分离",
     "error": "错误",
-    "reconnecting": "重新连接中..."
+    "reconnecting": "重新连接中...",
+    "exited": "已退出"
   },
   "reconnecting": {
     "title": "正在重新连接...",
@@ -22,5 +24,15 @@
     "shell": "Shell",
     "claudeCode": "Claude Code",
     "custom": "自定义命令"
+  },
+  "sessions": {
+    "title": "会话",
+    "empty": "没有活跃的会话",
+    "new": "新建会话",
+    "attach": "连接",
+    "kill": "终止",
+    "expired": "会话已过期",
+    "detached": "已分离",
+    "exited": "已退出 ({{code}})"
   }
 }

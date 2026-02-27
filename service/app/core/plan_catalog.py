@@ -9,6 +9,97 @@ Region-aware: uses the same ``configs.Region`` pattern as model_tier.py.
 
 from dataclasses import dataclass, field
 
+_MB = 1024 * 1024
+_GB = 1024 * _MB
+
+
+@dataclass(frozen=True)
+class PlanLimitsDefinition:
+    """Resource limits — synced to DB SubscriptionRole at startup."""
+
+    display_name: str
+    storage_limit_bytes: int
+    max_file_count: int
+    max_file_upload_bytes: int
+    max_parallel_chats: int
+    max_sandboxes: int
+    max_scheduled_tasks: int
+    max_terminals: int
+    max_deployments: int
+    monthly_credits: int
+    max_model_tier: str  # lite / standard / pro / ultra
+    is_default: bool
+    priority: int
+
+
+_PLAN_LIMITS: dict[str, PlanLimitsDefinition] = {
+    "free": PlanLimitsDefinition(
+        display_name="Free",
+        storage_limit_bytes=100 * _MB,
+        max_file_count=200,
+        max_file_upload_bytes=20 * _MB,
+        max_parallel_chats=1,
+        max_sandboxes=1,
+        max_scheduled_tasks=1,
+        max_terminals=1,
+        max_deployments=1,
+        monthly_credits=0,
+        max_model_tier="lite",
+        is_default=True,
+        priority=0,
+    ),
+    "standard": PlanLimitsDefinition(
+        display_name="Standard",
+        storage_limit_bytes=1 * _GB,
+        max_file_count=1000,
+        max_file_upload_bytes=100 * _MB,
+        max_parallel_chats=3,
+        max_sandboxes=3,
+        max_scheduled_tasks=3,
+        max_terminals=3,
+        max_deployments=3,
+        monthly_credits=5000,
+        max_model_tier="standard",
+        is_default=False,
+        priority=1,
+    ),
+    "professional": PlanLimitsDefinition(
+        display_name="Professional",
+        storage_limit_bytes=10 * _GB,
+        max_file_count=5000,
+        max_file_upload_bytes=200 * _MB,
+        max_parallel_chats=6,
+        max_sandboxes=6,
+        max_scheduled_tasks=6,
+        max_terminals=6,
+        max_deployments=6,
+        monthly_credits=22000,
+        max_model_tier="pro",
+        is_default=False,
+        priority=2,
+    ),
+    "ultra": PlanLimitsDefinition(
+        display_name="Ultra",
+        storage_limit_bytes=100 * _GB,
+        max_file_count=50000,
+        max_file_upload_bytes=500 * _MB,
+        max_parallel_chats=10,
+        max_sandboxes=10,
+        max_scheduled_tasks=10,
+        max_terminals=10,
+        max_deployments=10,
+        monthly_credits=60000,
+        max_model_tier="ultra",
+        is_default=False,
+        priority=3,
+    ),
+}
+
+
+def get_plan_limits() -> dict[str, PlanLimitsDefinition]:
+    """Return the plan limits definitions (region-independent)."""
+    return _PLAN_LIMITS
+
 
 @dataclass(frozen=True)
 class PlanFeatureEntry:
@@ -88,10 +179,10 @@ _GLOBAL_CATALOG = RegionCatalog(
                 CurrencyPricing(currency="USD", amount=0, display_price="$0", credits=0),
             ],
             features=[
-                PlanFeatureEntry(key="liteStandard", included=True),
-                PlanFeatureEntry(key="basic", included=True),
-                PlanFeatureEntry(key="autonomousExploration", included=False),
-                PlanFeatureEntry(key="proUltra", included=False),
+                PlanFeatureEntry(key="liteModels", included=True),
+                PlanFeatureEntry(key="basicFeatures", included=True),
+                PlanFeatureEntry(key="moreProductivity", included=False),
+                PlanFeatureEntry(key="advancedModels", included=False),
             ],
         ),
         PlanCatalogEntry(
@@ -101,10 +192,10 @@ _GLOBAL_CATALOG = RegionCatalog(
                 CurrencyPricing(currency="USD", amount=990, display_price="$9.9", credits=5000),
             ],
             features=[
-                PlanFeatureEntry(key="liteStandard", included=True),
-                PlanFeatureEntry(key="nAutonomous", included=True, params={"count": 1}),
-                PlanFeatureEntry(key="sandboxAccess", included=True),
-                PlanFeatureEntry(key="proUltra", included=False),
+                PlanFeatureEntry(key="allBasic", included=True),
+                PlanFeatureEntry(key="standardModels", included=True),
+                PlanFeatureEntry(key="expandedResources", included=True),
+                PlanFeatureEntry(key="proUltraModels", included=False),
             ],
         ),
         PlanCatalogEntry(
@@ -115,7 +206,7 @@ _GLOBAL_CATALOG = RegionCatalog(
             ],
             features=[
                 PlanFeatureEntry(key="allStandard", included=True),
-                PlanFeatureEntry(key="pro", included=True),
+                PlanFeatureEntry(key="proModels", included=True),
                 PlanFeatureEntry(key="prioritySupport", included=True),
                 PlanFeatureEntry(key="ultraModels", included=False),
             ],
@@ -129,7 +220,7 @@ _GLOBAL_CATALOG = RegionCatalog(
             features=[
                 PlanFeatureEntry(key="allPro", included=True),
                 PlanFeatureEntry(key="ultraModels", included=True),
-                PlanFeatureEntry(key="nAutonomousPlural", included=True, params={"count": 3}),
+                PlanFeatureEntry(key="maxResources", included=True),
                 PlanFeatureEntry(key="dedicated", included=True),
             ],
         ),
@@ -167,10 +258,10 @@ _CHINA_CATALOG = RegionCatalog(
                 CurrencyPricing(currency="CNY", amount=0, display_price="¥0", credits=0),
             ],
             features=[
-                PlanFeatureEntry(key="liteStandard", included=True),
-                PlanFeatureEntry(key="basic", included=True),
-                PlanFeatureEntry(key="autonomousExploration", included=False),
-                PlanFeatureEntry(key="advancedReasoning", included=False),
+                PlanFeatureEntry(key="liteModels", included=True),
+                PlanFeatureEntry(key="basicFeatures", included=True),
+                PlanFeatureEntry(key="moreProductivity", included=False),
+                PlanFeatureEntry(key="advancedModels", included=False),
             ],
         ),
         PlanCatalogEntry(
@@ -187,10 +278,10 @@ _CHINA_CATALOG = RegionCatalog(
                 ),
             ],
             features=[
-                PlanFeatureEntry(key="liteStandard", included=True),
-                PlanFeatureEntry(key="nAutonomous", included=True, params={"count": 1}),
-                PlanFeatureEntry(key="sandboxAccess", included=True),
-                PlanFeatureEntry(key="proUltra", included=False),
+                PlanFeatureEntry(key="allBasic", included=True),
+                PlanFeatureEntry(key="standardModels", included=True),
+                PlanFeatureEntry(key="expandedResources", included=True),
+                PlanFeatureEntry(key="proUltraModels", included=False),
             ],
         ),
         PlanCatalogEntry(
@@ -208,7 +299,7 @@ _CHINA_CATALOG = RegionCatalog(
             ],
             features=[
                 PlanFeatureEntry(key="allStandard", included=True),
-                PlanFeatureEntry(key="pro", included=True),
+                PlanFeatureEntry(key="proModels", included=True),
                 PlanFeatureEntry(key="prioritySupport", included=True),
                 PlanFeatureEntry(key="ultraModels", included=False),
             ],
@@ -222,7 +313,7 @@ _CHINA_CATALOG = RegionCatalog(
             features=[
                 PlanFeatureEntry(key="allPro", included=True),
                 PlanFeatureEntry(key="ultraModels", included=True),
-                PlanFeatureEntry(key="nAutonomousPlural", included=True, params={"count": 3}),
+                PlanFeatureEntry(key="maxResources", included=True),
                 PlanFeatureEntry(key="dedicated", included=True),
             ],
         ),

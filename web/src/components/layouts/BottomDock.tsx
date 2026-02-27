@@ -676,6 +676,7 @@ function SubscriptionTooltip({
 }
 
 function SubscriptionBadge() {
+  const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
   const billing = useBilling();
   const respondingCount = useXyzen((s) => s.respondingChannelIds.size);
@@ -688,7 +689,7 @@ function SubscriptionBadge() {
   }
 
   const { subQuery, usageQuery, roleName } = subInfo;
-  const displayName = subQuery.data?.role?.display_name ?? "Free";
+  const displayName = t(`subscription.plan.${roleName}`);
   const expiresAt = subQuery.data?.subscription?.expires_at;
   const canClaimCredits = subQuery.data?.can_claim_credits ?? false;
   const style = TIER_STYLES[roleName] ?? TIER_STYLES.free;

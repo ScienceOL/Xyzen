@@ -10,7 +10,6 @@ from app.core.session import SessionService
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
 from app.models.sessions import SessionCreate, SessionRead, SessionReadWithTopics, SessionUpdate
-from app.schemas.model_tier import ModelTier
 
 # Ensure forward references are resolved after importing both models
 try:
@@ -180,18 +179,15 @@ async def update_session(
     try:
         # Validate model_tier against subscription limit
         if session_data.model_tier is not None:
-            from app.core.subscription import SubscriptionService
+            from app.core.limits import LimitsEnforcer
 
-            sub_service = SubscriptionService(db)
-            role = await sub_service.get_user_role(user)
-            max_tier_str = role.max_model_tier if role else "lite"
-            tier_order = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
-            max_tier_enum = ModelTier(max_tier_str)
-            if tier_order.index(session_data.model_tier) > tier_order.index(max_tier_enum):
+            enforcer = await LimitsEnforcer.create(db, user)
+            effective_tier = await enforcer.check_model_tier(session_data.model_tier)
+            if effective_tier != session_data.model_tier:
                 raise HTTPException(
                     status_code=403,
                     detail=f"Model tier '{session_data.model_tier.value}' requires a higher subscription. "
-                    f"Your current plan allows up to '{max_tier_str}'.",
+                    f"Your current plan allows up to '{effective_tier.value}'.",
                 )
 
         return await SessionService(db).update_session(session_id, session_data, user)

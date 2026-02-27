@@ -201,12 +201,12 @@
     "noDescription": "此助手没有任何描述",
     "defaultDescription": "您现在可以自由提问任何问题。无需选择特定助手，系统将根据您的问题提供合适的回复。",
     "quickActions": {
-      "sayHello": "打个招呼",
-      "sayHelloMessage": "你好！很高兴认识你。",
-      "askQuestion": "提个问题",
-      "askQuestionMessage": "你能帮我一个忙吗？",
-      "startTask": "开始任务",
-      "startTaskMessage": "我想开始一个新任务。"
+      "drawImage": "画一幅水彩风景",
+      "drawImageMessage": "帮我画一幅日落时分的海边风景吧，水彩风格，色调暖一些。画好后存到知识库里，告诉我怎么继续修改它，比如加几个在沙滩上玩耍的人。",
+      "launchSandbox": "生成可分享的网页",
+      "launchSandboxMessage": "帮我做一个好玩的互动网页，带点炫酷的动画效果，简单点就好。做完给我一个链接，我想分享给朋友看看。",
+      "scheduleTask": "设置每日提醒",
+      "scheduleTaskMessage": "帮我设一个每天早上 9 点的提醒，推送今天的天气和待办事项。对了，记得提醒我开启通知权限哦，不然收不到推送。"
     }
   },
   "chatHeader": {
@@ -314,8 +314,10 @@
       "subtitle": "根据任务难度，灵活调配 AI 算力消耗",
       "speed": "响应速度",
       "reasoning": "逻辑深度",
+      "context": "上下文窗口",
       "availableModels": "模型能力参考",
       "imageGen": "图像生成",
+      "betaSpecial": "内测特惠",
       "disclaimer": "* 此列表仅作为模型能力参考，不代表实际调用的具体模型。"
     },
     "speedLabels": {
@@ -328,6 +330,12 @@
       "basic": "基础",
       "standard": "标准",
       "excellent": "优秀",
+      "max": "MAX"
+    },
+    "contextLabels": {
+      "small": "较短",
+      "medium": "适中",
+      "large": "较长",
       "max": "MAX"
     },
     "features": {

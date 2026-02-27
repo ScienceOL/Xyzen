@@ -12,6 +12,7 @@ interface PushSubscriptionPayload {
   endpoint: string;
   keys: Record<string, string>;
   user_agent?: string;
+  old_endpoint?: string;
 }
 
 interface PushSubscriptionResponse {

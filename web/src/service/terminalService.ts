@@ -3,10 +3,11 @@ import { useXyzen } from "@/store";
 /**
  * Terminal WebSocket service.
  *
- * Manages a single WebSocket connection to the backend terminal endpoint,
+ * Manages WebSocket connections to the backend terminal endpoint,
  * which bridges to a Runner's PTY session.
  *
  * Features:
+ * - Connection pool: multiple sessions can coexist
  * - Session persistence: stores sessionId for reconnection
  * - Automatic reconnection with exponential backoff (1s→30s, jitter, max 10 attempts)
  * - Input buffering during disconnection (flushed on reconnect)
@@ -30,6 +31,8 @@ export interface TerminalCallbacks {
   onReconnected?: () => void;
   onLatency?: (ms: number) => void;
   onSessionCreated?: (sessionId: string) => void;
+  onAttached?: (sessionId: string, bufferedCount: number) => void;
+  onAttachFailed?: (sessionId: string) => void;
 }
 
 export class TerminalConnection {
@@ -123,14 +126,28 @@ export class TerminalConnection {
             break;
           case "attached":
             // Successfully reattached to existing session
-            this.callbacks.onReconnected?.();
+            if (this.callbacks.onAttached) {
+              this.callbacks.onAttached(
+                this.sessionId ?? "",
+                msg.payload?.buffered_count ?? 0,
+              );
+            } else {
+              this.callbacks.onReconnected?.();
+            }
             this._flushInputBuffer();
             break;
           case "attach_failed":
-            // Session expired or invalid — fall back to new session via onOpen
-            this.sessionId = null;
-            this.wasConnected = false;
-            this.callbacks.onOpen();
+            // Session expired or invalid
+            if (this.callbacks.onAttachFailed) {
+              const failedId = this.sessionId ?? "";
+              this.sessionId = null;
+              this.wasConnected = false;
+              this.callbacks.onAttachFailed(failedId);
+            } else {
+              this.sessionId = null;
+              this.wasConnected = false;
+              this.callbacks.onOpen();
+            }
             break;
           default:
             break;
@@ -177,6 +194,16 @@ export class TerminalConnection {
       type: "create",
       payload: { command, args, cols, rows },
     });
+  }
+
+  attachSession(sessionId: string): void {
+    this.sessionId = sessionId;
+    this.wasConnected = true;
+    this.send({
+      type: "attach",
+      payload: { session_id: sessionId },
+    });
+    this._startPing();
   }
 
   sendInput(data: string): void {
@@ -311,10 +338,23 @@ export class TerminalConnection {
   }
 }
 
-/**
- * Create a terminal connection using the current store state for backendUrl and token.
- */
-export function createTerminalConnection(
+// --- Connection pool ---
+
+const connections = new Map<string, TerminalConnection>();
+
+export function getConnection(id: string): TerminalConnection | undefined {
+  return connections.get(id);
+}
+
+export function registerConnection(id: string, conn: TerminalConnection): void {
+  connections.set(id, conn);
+}
+
+export function unregisterConnection(id: string): void {
+  connections.delete(id);
+}
+
+export function createAndConnect(
   callbacks: TerminalCallbacks,
 ): TerminalConnection | null {
   const state = useXyzen.getState();
@@ -328,4 +368,29 @@ export function createTerminalConnection(
   const conn = new TerminalConnection(callbacks);
   conn.connect(backendUrl, token);
   return conn;
+}
+
+export function detachConnection(id: string): void {
+  const conn = connections.get(id);
+  if (conn) {
+    conn.destroy(); // WS close without sending "close" → backend auto-detach
+    connections.delete(id);
+  }
+}
+
+export function killConnection(id: string): void {
+  const conn = connections.get(id);
+  if (conn) {
+    conn.close(); // Sends "close" → backend kills PTY
+    connections.delete(id);
+  }
+}
+
+/**
+ * @deprecated Use createAndConnect instead
+ */
+export function createTerminalConnection(
+  callbacks: TerminalCallbacks,
+): TerminalConnection | null {
+  return createAndConnect(callbacks);
 }

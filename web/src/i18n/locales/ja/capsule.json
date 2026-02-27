@@ -67,7 +67,7 @@
       "alreadyInstalled": "インストール済みですか？",
       "generateToken": "トークンを生成",
       "connectRunner": "ランナーを接続",
-      "startHint": "ランナーを起動：",
+      "reconnectHint": "このマシンで xyzen connect を実行して再接続してください。",
       "online": "オンライン",
       "offline": "オフライン",
       "disabled": "無効",
@@ -77,7 +77,6 @@
       "disable": "無効にする",
       "delete": "削除",
       "deleteConfirm": "このランナーを削除しますか？トークンは永久に無効になります。",
-      "tokenPrefix": "トークン",
       "lastConnected": "最終接続",
       "never": "未接続",
       "create": {

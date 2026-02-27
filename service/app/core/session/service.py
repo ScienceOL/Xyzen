@@ -22,8 +22,6 @@ from app.schemas.model_tier import ModelTier
 
 logger = logging.getLogger(__name__)
 
-TIER_ORDER = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
-
 
 class SessionService:
     def __init__(self, db: AsyncSession) -> None:
@@ -39,27 +37,27 @@ class SessionService:
         Returns True if the tier was changed.
         """
         try:
-            from app.core.subscription import SubscriptionService
+            from app.core.limits import LimitsEnforcer
 
-            role = await SubscriptionService(self.db).get_user_role(user_id)
-            max_tier_str = role.max_model_tier if role else "lite"
-            max_tier_enum = ModelTier(max_tier_str)
+            enforcer = await LimitsEnforcer.create(self.db, user_id)
 
             if not session.model_tier:
                 # NULL tier: initialize to the user's max allowed tier
-                logger.info(f"Session {session.id}: setting NULL model_tier to {max_tier_enum.value}")
-                session.model_tier = max_tier_enum
+                max_tier = enforcer.db_clamp_tier(ModelTier.ULTRA)
+                logger.info(f"Session {session.id}: setting NULL model_tier to {max_tier.value}")
+                session.model_tier = max_tier
                 session.model = None
                 self.db.add(session)
                 await self.db.flush()
                 return True
 
-            if TIER_ORDER.index(session.model_tier) > TIER_ORDER.index(max_tier_enum):
+            effective_tier = await enforcer.check_model_tier(session.model_tier)
+            if effective_tier != session.model_tier:
                 logger.info(
                     f"Session {session.id}: clamping model_tier from {session.model_tier.value} "
-                    f"to {max_tier_enum.value} (subscription limit)"
+                    f"to {effective_tier.value} (subscription limit)"
                 )
-                session.model_tier = max_tier_enum
+                session.model_tier = effective_tier
                 # Clear cached model so next message triggers re-selection
                 session.model = None
                 self.db.add(session)

@@ -57,6 +57,7 @@ interface SubscriptionPlan {
   parallelChats: string;
   sandboxes?: string;
   scheduledTasks?: string;
+  terminals?: string;
   highlight?: boolean;
   badge?: string;
   isFree?: boolean;
@@ -97,6 +98,9 @@ function toPlanCardData(plan: PlanResponse, t: TFunction): SubscriptionPlan {
       ? t("subscription.plan.scheduledTask", {
           count: limits.max_scheduled_tasks,
         })
+      : undefined,
+    terminals: limits?.max_terminals
+      ? t("subscription.plan.terminal", { count: limits.max_terminals })
       : undefined,
     highlight: plan.highlight,
     badge: plan.badge_key ? t(plan.badge_key) : undefined,
@@ -377,7 +381,7 @@ function MySubscriptionTab() {
       </motion.div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[2fr_2fr_1fr_1fr_1fr]">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr]">
         {/* Credits + Claim */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -545,6 +549,26 @@ function MySubscriptionTab() {
             {role.max_scheduled_tasks}
           </div>
         </motion.div>
+
+        {/* Terminals */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
+              <GlobeAltIcon className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+            </div>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              {t("subscription.sub.terminals")}
+            </span>
+          </div>
+          <div className="text-xl font-bold tabular-nums text-neutral-900 dark:text-white">
+            {role.max_terminals ?? "—"}
+          </div>
+        </motion.div>
       </div>
 
       {/* Redeem prompt */}
@@ -701,11 +725,11 @@ function PlanCard({
       </div>
 
       <div
-        className={`mb-3 grid grid-cols-2 gap-1.5 rounded-lg px-2 py-2 sm:px-3 ${isLocked ? "bg-neutral-200/50 dark:bg-neutral-700/20" : "bg-neutral-100/80 dark:bg-neutral-700/30"}`}
+        className={`mb-3 grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-lg px-2 py-2 sm:px-3 ${isLocked ? "bg-neutral-200/50 dark:bg-neutral-700/20" : "bg-neutral-100/80 dark:bg-neutral-700/30"}`}
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <SparklesIcon
-            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-amber-500"}`}
+            className={`h-3.5 w-3.5 shrink-0 ${isLocked ? "text-neutral-400" : "text-amber-500"}`}
           />
           <span
             className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
@@ -713,9 +737,9 @@ function PlanCard({
             {plan.credits}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <svg
-            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-blue-500"}`}
+            className={`h-3.5 w-3.5 shrink-0 ${isLocked ? "text-neutral-400" : "text-blue-500"}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -733,9 +757,9 @@ function PlanCard({
             {plan.storage}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <ChatBubbleLeftRightIcon
-            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-indigo-500"}`}
+            className={`h-3.5 w-3.5 shrink-0 ${isLocked ? "text-neutral-400" : "text-indigo-500"}`}
           />
           <span
             className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
@@ -743,9 +767,9 @@ function PlanCard({
             {plan.parallelChats}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <CommandLineIcon
-            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-emerald-500"}`}
+            className={`h-3.5 w-3.5 shrink-0 ${isLocked ? "text-neutral-400" : "text-emerald-500"}`}
           />
           <span
             className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
@@ -753,14 +777,24 @@ function PlanCard({
             {plan.sandboxes ?? "—"}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <CalendarDaysIcon
-            className={`h-3.5 w-3.5 ${isLocked ? "text-neutral-400" : "text-orange-500"}`}
+            className={`h-3.5 w-3.5 shrink-0 ${isLocked ? "text-neutral-400" : "text-orange-500"}`}
           />
           <span
             className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
           >
             {plan.scheduledTasks ?? t("subscription.plan.scheduledTaskNone")}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <GlobeAltIcon
+            className={`h-3.5 w-3.5 shrink-0 ${isLocked ? "text-neutral-400" : "text-cyan-500"}`}
+          />
+          <span
+            className={`text-[11px] font-medium ${isLocked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+          >
+            {plan.terminals ?? "—"}
           </span>
         </div>
       </div>
@@ -971,7 +1005,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
 
   return (
     <>
-      <SheetModal isOpen={isOpen} onClose={onClose}>
+      <SheetModal isOpen={isOpen} onClose={onClose} size="lg">
         <div className="flex h-full flex-col overflow-hidden">
           {/* Mobile title */}
           <div className="shrink-0 px-5 pb-1 pt-6 md:px-6 md:pt-4">

@@ -67,7 +67,7 @@
       "alreadyInstalled": "已安装？",
       "generateToken": "生成 Token",
       "connectRunner": "连接 Runner",
-      "startHint": "启动 Runner：",
+      "reconnectHint": "在该设备上运行 xyzen connect 以重新连接。",
       "online": "在线",
       "offline": "离线",
       "disabled": "已禁用",
@@ -77,7 +77,6 @@
       "disable": "禁用",
       "delete": "删除",
       "deleteConfirm": "确定要删除此 Runner？Token 将被永久撤销。",
-      "tokenPrefix": "Token",
       "lastConnected": "最后连接",
       "never": "从未",
       "create": {

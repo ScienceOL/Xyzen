@@ -4,8 +4,10 @@
     "connected": "接続中",
     "connecting": "接続しています...",
     "disconnected": "切断",
+    "detached": "デタッチ済み",
     "error": "エラー",
-    "reconnecting": "再接続中..."
+    "reconnecting": "再接続中...",
+    "exited": "終了"
   },
   "reconnecting": {
     "title": "再接続しています...",
@@ -22,5 +24,15 @@
     "shell": "Shell",
     "claudeCode": "Claude Code",
     "custom": "カスタムコマンド"
+  },
+  "sessions": {
+    "title": "セッション",
+    "empty": "アクティブなセッションがありません",
+    "new": "新しいセッション",
+    "attach": "接続",
+    "kill": "終了",
+    "expired": "セッションが期限切れです",
+    "detached": "デタッチ済み",
+    "exited": "終了 ({{code}})"
   }
 }

@@ -5,7 +5,7 @@ import time
 from uuid import UUID, uuid4
 
 import redis.asyncio as redis
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.configs import configs
@@ -13,7 +13,7 @@ from app.core.chat.constants import DEFAULT_TOPIC_TITLES
 from app.core.chat.topic_generator import generate_and_update_topic_title
 from app.ee.lifecycle import get_chat_lifecycle
 from app.infra.database import AsyncSessionLocal
-from app.middleware.auth import AuthContext, get_auth_context_websocket
+from app.middleware.auth import ws_authenticate_context
 from app.models.message import MessageCreate
 from app.repos import FileRepository, MessageRepository, SessionRepository, TopicRepository
 from app.schemas.chat_event_types import ChatClientEventType, ChatEventType
@@ -128,8 +128,12 @@ async def chat_websocket(
     websocket: WebSocket,
     session_id: UUID,
     topic_id: UUID,
-    auth_ctx: AuthContext = Depends(get_auth_context_websocket),
+    token: str | None = Query(None, alias="token"),
 ) -> None:
+    auth_ctx = await ws_authenticate_context(websocket, token)
+    if auth_ctx is None:
+        return
+
     connection_id = f"{session_id}:{topic_id}"
     user = auth_ctx.user_id
 

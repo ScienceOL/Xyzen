@@ -48,6 +48,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await run_once("startup:providers", initialize_providers_on_startup)
 
+    # Sync subscription role definitions from plan catalog to DB
+    from app.core.subscription_bootstrap import ensure_subscription_roles
+
+    await run_once("startup:subscription_roles", ensure_subscription_roles)
+
+    # Sync plan→capability FGA tuples (best-effort, skip if FGA unavailable)
+    async def _ensure_fga_capability_tuples() -> None:
+        try:
+            from app.core.fga.subscription_tuples import ensure_capability_tuples
+
+            await ensure_capability_tuples()
+        except Exception as e:
+            logger.warning(f"FGA capability tuple sync skipped: {e}")
+
+    await run_once("startup:fga_capability_tuples", _ensure_fga_capability_tuples)
+
     # Register builtin tools (web_search, knowledge_*, etc.)
     from app.tools.registry import register_builtin_tools
 

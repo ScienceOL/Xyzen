@@ -49,15 +49,12 @@ class SettlerService:
         if not configs.Settler.Enable:
             raise RuntimeError("Settler service is disabled")
 
-        # Check deployment limit
+        # Check deployment limit via subscription
         async with get_task_db_session() as db:
-            repo = DeploymentRepository(db)
-            active_count = await repo.count_active_by_user(user_id)
-            if active_count >= configs.Settler.MaxPerUser:
-                raise ValueError(
-                    f"Maximum concurrent deployments reached ({configs.Settler.MaxPerUser}). "
-                    "Please stop or delete an existing deployment first."
-                )
+            from app.core.limits import LimitsEnforcer
+
+            enforcer = await LimitsEnforcer.create(db, user_id)
+            await enforcer.check_deployment_creation(db)
 
         # Tar source directory in sandbox
         tar_path = "/tmp/settler_deploy.tar.gz"

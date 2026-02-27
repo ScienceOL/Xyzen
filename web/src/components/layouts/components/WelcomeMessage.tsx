@@ -1,6 +1,6 @@
 import { useXyzen } from "@/store";
 import { motion } from "framer-motion";
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface ChatData {
@@ -40,25 +40,25 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
   onQuickAction,
 }) => {
   const { t } = useTranslation();
-  // Get sendMessage from store for quick actions
   const sendMessage = useXyzen((state) => state.sendMessage);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Quick action suggestions
   const quickActions = [
     {
-      emoji: "👋",
-      label: t("app.welcome.quickActions.sayHello"),
-      message: t("app.welcome.quickActions.sayHelloMessage"),
+      emoji: "🎨",
+      label: t("app.welcome.quickActions.drawImage"),
+      message: t("app.welcome.quickActions.drawImageMessage"),
     },
     {
-      emoji: "💡",
-      label: t("app.welcome.quickActions.askQuestion"),
-      message: t("app.welcome.quickActions.askQuestionMessage"),
+      emoji: "🧪",
+      label: t("app.welcome.quickActions.launchSandbox"),
+      message: t("app.welcome.quickActions.launchSandboxMessage"),
     },
     {
-      emoji: "📝",
-      label: t("app.welcome.quickActions.startTask"),
-      message: t("app.welcome.quickActions.startTaskMessage"),
+      emoji: "⏰",
+      label: t("app.welcome.quickActions.scheduleTask"),
+      message: t("app.welcome.quickActions.scheduleTaskMessage"),
     },
   ];
 
@@ -133,21 +133,37 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
         </p>
       </motion.div>
 
-      {/* Quick Action Buttons */}
+      {/* Quick Action List */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.5 }}
-        className="flex flex-wrap justify-center gap-2 pt-2"
+        className="flex w-full max-w-xs flex-col items-center pt-2"
+        onMouseLeave={() => setHoveredIndex(null)}
       >
         {quickActions.map((action, index) => (
           <button
             key={index}
             onClick={() => handleQuickAction(action.message)}
-            className="rounded-full border border-neutral-200 bg-white/80 px-4 py-2 text-sm text-neutral-600 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:border-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400"
+            onMouseMove={() => setHoveredIndex(index)}
+            className="relative flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] text-neutral-400 transition-[color] duration-150 hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200"
           >
-            <span className="mr-1.5">{action.emoji}</span>
-            {action.label}
+            {/* Sliding highlight */}
+            {hoveredIndex === index && (
+              <motion.span
+                layoutId="quickActionHighlight"
+                className="pointer-events-none absolute inset-0 rounded-lg bg-indigo-500/[0.06] dark:bg-indigo-400/[0.08]"
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              >
+                <span className="absolute inset-x-4 top-0 h-px bg-[linear-gradient(to_right,transparent,rgba(99,102,241,0.25)_30%,rgba(99,102,241,0.25)_70%,transparent)]" />
+                <span className="absolute inset-x-4 bottom-0 h-px bg-[linear-gradient(to_right,transparent,rgba(99,102,241,0.25)_30%,rgba(99,102,241,0.25)_70%,transparent)]" />
+              </motion.span>
+            )}
+            {/* Base borders */}
+            <span className="pointer-events-none absolute inset-x-4 top-0 h-px bg-[linear-gradient(to_right,transparent,rgba(163,163,163,0.1)_30%,rgba(163,163,163,0.1)_70%,transparent)] dark:bg-[linear-gradient(to_right,transparent,rgba(163,163,163,0.08)_30%,rgba(163,163,163,0.08)_70%,transparent)]" />
+            <span className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-[linear-gradient(to_right,transparent,rgba(163,163,163,0.1)_30%,rgba(163,163,163,0.1)_70%,transparent)] dark:bg-[linear-gradient(to_right,transparent,rgba(163,163,163,0.08)_30%,rgba(163,163,163,0.08)_70%,transparent)]" />
+            <span className="relative text-sm">{action.emoji}</span>
+            <span className="relative">{action.label}</span>
           </button>
         ))}
       </motion.div>

@@ -67,7 +67,7 @@
       "alreadyInstalled": "Already installed?",
       "generateToken": "Generate Token",
       "connectRunner": "Connect Runner",
-      "startHint": "Start your runner:",
+      "reconnectHint": "Run xyzen connect on this machine to reconnect.",
       "online": "Online",
       "offline": "Offline",
       "disabled": "Disabled",
@@ -77,7 +77,6 @@
       "disable": "Disable",
       "delete": "Delete",
       "deleteConfirm": "Delete this runner? Token will be permanently revoked.",
-      "tokenPrefix": "Token",
       "lastConnected": "Last connected",
       "never": "Never",
       "create": {

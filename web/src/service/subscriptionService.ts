@@ -12,6 +12,7 @@ export interface SubscriptionRoleRead {
   max_parallel_chats: number;
   max_sandboxes: number;
   max_scheduled_tasks: number;
+  max_terminals: number;
   monthly_credits: number;
   max_model_tier: string;
   is_default: boolean;
@@ -79,6 +80,7 @@ export interface UsageResponse {
   chats: UsageBucket;
   sandboxes: UsageBucket;
   scheduled_tasks: UsageBucket;
+  terminals: UsageBucket;
   storage: StorageBucket;
   files: UsageBucket;
 }
@@ -106,6 +108,7 @@ export interface PlanLimitsResponse {
   max_parallel_chats: number;
   max_sandboxes: number;
   max_scheduled_tasks: number;
+  max_terminals: number;
   monthly_credits: number;
   max_model_tier: string;
 }

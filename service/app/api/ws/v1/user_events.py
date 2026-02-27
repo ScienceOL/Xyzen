@@ -9,10 +9,10 @@ import json
 import logging
 
 import redis.asyncio as redis
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.configs import configs
-from app.middleware.auth import get_current_user_websocket
+from app.middleware.auth import ws_authenticate_user
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +22,13 @@ router = APIRouter(tags=["UserEvents"])
 @router.websocket("")
 async def user_events_ws(
     websocket: WebSocket,
-    current_user: str = Depends(get_current_user_websocket),
+    token: str | None = Query(None, alias="token"),
 ):
     """Subscribe to real-time events for the authenticated user."""
+    current_user = await ws_authenticate_user(websocket, token)
+    if current_user is None:
+        return
+
     await websocket.accept()
     channel = f"user:{current_user}:events"
     logger.info(f"User events WS connected: user={current_user}")

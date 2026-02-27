@@ -36,6 +36,8 @@ class UserLimits:
     max_parallel_chats: int
     max_sandboxes: int
     max_scheduled_tasks: int
+    max_terminals: int
+    max_deployments: int
     max_model_tier: str
     role_name: str
     role_display_name: str
@@ -72,6 +74,12 @@ class SubscriptionService:
             )
         )
         await self.db.commit()
+
+        # Sync FGA tuple (best-effort)
+        from app.core.fga.subscription_sync import write_plan_subscription
+
+        await write_plan_subscription(user_id, default_role.name)
+
         return default_role
 
     async def get_user_limits(self, user_id: str) -> UserLimits | None:
@@ -86,6 +94,8 @@ class SubscriptionService:
             max_parallel_chats=role.max_parallel_chats,
             max_sandboxes=role.max_sandboxes,
             max_scheduled_tasks=role.max_scheduled_tasks,
+            max_terminals=role.max_terminals,
+            max_deployments=role.max_deployments,
             max_model_tier=role.max_model_tier,
             role_name=role.name,
             role_display_name=role.display_name,
@@ -122,16 +132,28 @@ class SubscriptionService:
         expires_at: datetime | None = None,
     ) -> UserSubscription | None:
         """Create or update a user's subscription to point to a new role."""
+        # Resolve old role name for FGA sync
+        old_role = await self.repo.get_user_role(user_id)
+        old_plan_key = old_role.name if old_role else None
+
         effective_expires = expires_at if expires_at is not None else self._default_expires_at()
         sub = await self.repo.get_user_subscription(user_id)
         if sub is not None:
-            return await self.repo.update_user_role(user_id, role_id, effective_expires)
+            result = await self.repo.update_user_role(user_id, role_id, effective_expires)
+        else:
+            result = await self.repo.create_user_subscription(
+                UserSubscriptionCreate(user_id=user_id, role_id=role_id, expires_at=effective_expires)
+            )
+            await self.db.commit()
 
-        sub = await self.repo.create_user_subscription(
-            UserSubscriptionCreate(user_id=user_id, role_id=role_id, expires_at=effective_expires)
-        )
-        await self.db.commit()
-        return sub
+        # Sync FGA tuple (best-effort)
+        new_role = await self.repo.get_role_by_id(role_id)
+        if new_role:
+            from app.core.fga.subscription_sync import update_plan_subscription
+
+            await update_plan_subscription(user_id, old_plan_key, new_role.name)
+
+        return result
 
     async def list_plans(self) -> list[SubscriptionRole]:
         """List all available subscription plans."""
@@ -209,6 +231,7 @@ class SubscriptionService:
                     max_parallel_chats=role.max_parallel_chats,
                     max_sandboxes=role.max_sandboxes,
                     max_scheduled_tasks=role.max_scheduled_tasks,
+                    max_terminals=role.max_terminals,
                     monthly_credits=role.monthly_credits,
                     max_model_tier=role.max_model_tier,
                 )

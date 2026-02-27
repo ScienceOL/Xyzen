@@ -4,8 +4,10 @@
     "connected": "Connected",
     "connecting": "Connecting...",
     "disconnected": "Disconnected",
+    "detached": "Detached",
     "error": "Error",
-    "reconnecting": "Reconnecting..."
+    "reconnecting": "Reconnecting...",
+    "exited": "Exited"
   },
   "reconnecting": {
     "title": "Reconnecting...",
@@ -22,5 +24,15 @@
     "shell": "Shell",
     "claudeCode": "Claude Code",
     "custom": "Custom Command"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "empty": "No active sessions",
+    "new": "New Session",
+    "attach": "Attach",
+    "kill": "Terminate",
+    "expired": "Session expired",
+    "detached": "Detached",
+    "exited": "Exited ({{code}})"
   }
 }

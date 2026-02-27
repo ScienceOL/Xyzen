@@ -33,11 +33,11 @@ import logging
 import uuid
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.configs import configs
 from app.core.terminal.session_manager import session_manager
-from app.middleware.auth import get_current_user_websocket
+from app.middleware.auth import ws_authenticate_user
 
 from .runner import (
     TERMINAL_OUTPUT_CHANNEL,
@@ -55,7 +55,7 @@ PTY_REQUEST_TIMEOUT = 30
 @router.websocket("")
 async def terminal_websocket(
     websocket: WebSocket,
-    user_id: str = Depends(get_current_user_websocket),
+    token: str | None = Query(None, alias="token"),
 ) -> None:
     """
     WebSocket endpoint for browser terminal connections.
@@ -65,6 +65,10 @@ async def terminal_websocket(
     Supports session persistence: on disconnect, sessions remain alive
     for a TTL period. On reconnect, the browser can reattach.
     """
+    user_id = await ws_authenticate_user(websocket, token)
+    if user_id is None:
+        return
+
     await websocket.accept()
 
     session_id: str | None = None

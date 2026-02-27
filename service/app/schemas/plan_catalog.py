@@ -26,6 +26,7 @@ class PlanLimitsResponse(BaseModel):
     max_parallel_chats: int
     max_sandboxes: int
     max_scheduled_tasks: int
+    max_terminals: int
     monthly_credits: int
     max_model_tier: str
 

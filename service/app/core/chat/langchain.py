@@ -188,21 +188,18 @@ async def _resolve_provider_and_model(
         effective_model_tier = session.model_tier
         if effective_model_tier:
             try:
-                from app.core.subscription import SubscriptionService
+                from app.core.limits import LimitsEnforcer
 
-                sub_service = SubscriptionService(db)
-                role = await sub_service.get_user_role(session.user_id)
-                max_tier_str = role.max_model_tier if role else "lite"
-                tier_order = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
-                max_tier_enum = ModelTier(max_tier_str)
-                if tier_order.index(effective_model_tier) > tier_order.index(max_tier_enum):
+                enforcer = await LimitsEnforcer.create(db, session.user_id)
+                clamped_tier = await enforcer.check_model_tier(effective_model_tier)
+                if clamped_tier != effective_model_tier:
                     logger.info(
-                        f"Clamped model tier from {effective_model_tier.value} to {max_tier_enum.value} "
+                        f"Clamped model tier from {effective_model_tier.value} to {clamped_tier.value} "
                         f"(subscription limit for user {session.user_id})"
                     )
-                    effective_model_tier = max_tier_enum
+                    effective_model_tier = clamped_tier
                     # Persist the clamped tier so DB, billing, and frontend stay consistent
-                    session.model_tier = max_tier_enum
+                    session.model_tier = clamped_tier
                     session.model = None
                     db.add(session)
                     await db.flush()

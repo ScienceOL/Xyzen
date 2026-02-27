@@ -175,18 +175,6 @@ function CodeBlock({
    Hooks
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function useRunnerWsUrl(): string {
-  const backendUrl = useXyzen((s) => s.backendUrl);
-  try {
-    const url = new URL(backendUrl);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.pathname = "/xyzen/ws/v1/runner";
-    return url.toString();
-  } catch {
-    return "wss://<your-host>/xyzen/ws/v1/runner";
-  }
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    Main Export — capsule (narrow sidebar) variant
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -673,10 +661,8 @@ function RunnerCard({
   onAddAnother: () => void;
 }) {
   const { t } = useTranslation();
-  const wsUrl = useRunnerWsUrl();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [commandCopied, setCommandCopied] = useState(false);
 
   const handleDelete = useCallback(async () => {
     await onDelete(runner.id);
@@ -688,13 +674,6 @@ function RunnerCard({
     await onToggle(runner.id, { is_active: !runner.is_active });
     setMenuOpen(false);
   }, [onToggle, runner.id, runner.is_active]);
-
-  const handleCopyCommand = useCallback(async () => {
-    const cmd = `xyzen connect --token <your-token> --url ${wsUrl}`;
-    await navigator.clipboard.writeText(cmd);
-    setCommandCopied(true);
-    setTimeout(() => setCommandCopied(false), 2000);
-  }, [wsUrl]);
 
   const isOnline = runner.is_online && runner.is_active;
 
@@ -747,9 +726,11 @@ function RunnerCard({
   }
 
   // Offline / Disabled
+  const meta = [runner.os_info, runner.work_dir].filter(Boolean).join(" :: ");
+
   return (
     <div className="border border-[#30363d] bg-[#0d1117]">
-      <div className="space-y-2.5 px-3 py-2.5">
+      <div className="space-y-2 px-3 py-2.5">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 shrink-0 bg-[#484f58]" />
           <div className="min-w-0 flex-1">
@@ -764,10 +745,7 @@ function RunnerCard({
               </span>
             </div>
             <div className="mt-0.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-[#484f58]">
-              <span>
-                {t("capsule.sandbox.runner.tokenPrefix")}: {runner.token_prefix}
-                ...
-              </span>
+              {meta && <span>{meta}</span>}
               <span>
                 {t("capsule.sandbox.runner.lastConnected")}:{" "}
                 {runner.last_connected_at
@@ -790,28 +768,11 @@ function RunnerCard({
           />
         </div>
 
-        {/* Connect command hint */}
+        {/* Reconnect hint */}
         {runner.is_active && (
-          <div>
-            <p className="mb-1.5 font-mono text-[11px] text-[#8b949e]">
-              {t("capsule.sandbox.runner.startHint")}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <code className="custom-scrollbar flex-1 overflow-x-auto whitespace-pre-wrap border border-[#30363d] bg-[#010409] px-2.5 py-1.5 font-mono text-[11px] text-[#3fb950]">
-                {`xyzen connect \\\n  --token <your-token> \\\n  --url ${wsUrl}`}
-              </code>
-              <button
-                onClick={handleCopyCommand}
-                className="shrink-0 self-start border border-[#30363d] bg-[#161b22] p-1.5 text-[#8b949e] transition-colors hover:border-[#8b949e] hover:text-[#e6edf3]"
-              >
-                {commandCopied ? (
-                  <CheckIcon className="h-3.5 w-3.5 text-[#3fb950]" />
-                ) : (
-                  <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-          </div>
+          <p className="font-mono text-[11px] text-[#484f58]">
+            {t("capsule.sandbox.runner.reconnectHint")}
+          </p>
         )}
       </div>
     </div>

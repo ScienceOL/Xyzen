@@ -201,12 +201,12 @@
     "noDescription": "このアシスタントの説明はありません",
     "defaultDescription": "自由に質問できます。特定のアシスタントを選ぶ必要はなく、質問に応じて適切な回答を提供します。",
     "quickActions": {
-      "sayHello": "挨拶する",
-      "sayHelloMessage": "こんにちは！はじめまして。",
-      "askQuestion": "質問する",
-      "askQuestionMessage": "何か手伝ってもらえますか？",
-      "startTask": "タスクを始める",
-      "startTaskMessage": "新しいタスクを始めたいです。"
+      "drawImage": "水彩風景を描く",
+      "drawImageMessage": "夕暮れの海辺の風景を水彩風で描いて、暖かい色合いにしてね。描いたらナレッジベースに保存して、後からどう手を加えられるか教えて。例えば砂浜で遊ぶ人を足すとか。",
+      "launchSandbox": "共有可能なページを作成",
+      "launchSandboxMessage": "かっこいいアニメーション付きの楽しいウェブページを作って、シンプルでいいよ。できたら友達にシェアできるリンクをちょうだい。",
+      "scheduleTask": "毎日のリマインダーを設定",
+      "scheduleTaskMessage": "毎朝9時に天気とやることリストを通知してくれるリマインダーを作って。あと、通知権限をオンにするのも忘れずに教えてね。"
     }
   },
   "chatHeader": {
@@ -314,8 +314,10 @@
       "subtitle": "タスクの難易度に応じてAI計算能力を柔軟に割り当て",
       "speed": "応答速度",
       "reasoning": "推論深度",
+      "context": "コンテキストウィンドウ",
       "availableModels": "能力の参考",
       "imageGen": "画像生成",
+      "betaSpecial": "ベータ特典",
       "disclaimer": "* このリストはモデル能力の参考用であり、実際に使用されるモデルを保証するものではありません。"
     },
     "speedLabels": {
@@ -328,6 +330,12 @@
       "basic": "基本",
       "standard": "標準",
       "excellent": "優秀",
+      "max": "MAX"
+    },
+    "contextLabels": {
+      "small": "短い",
+      "medium": "標準",
+      "large": "長い",
       "max": "MAX"
     },
     "features": {
