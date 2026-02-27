@@ -87,8 +87,8 @@ def patch_ws_dependencies(monkeypatch: pytest.MonkeyPatch) -> WsDeps:
         async def check_before_message(self, _connection_id: str) -> None:
             return
 
-        async def pre_deduct(self, **_kwargs: object) -> float:
-            return 0.0
+        async def check_balance(self, **_kwargs: object) -> None:
+            return
 
         async def on_disconnect(self, _connection_id: str) -> None:
             return

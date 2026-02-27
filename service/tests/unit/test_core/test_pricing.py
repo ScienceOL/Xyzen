@@ -6,12 +6,10 @@ import pytest
 
 from app.core.consume.pricing import (
     CACHE_READ_DISCOUNT,
-    MODEL_COST_RATES,
     TOKEN_CREDIT_RATES,
     _compute_cost,
     calculate_llm_cost_usd,
     calculate_llm_credits,
-    calculate_settlement_total,
     calculate_tool_cost,
     get_model_cost,
 )
@@ -73,13 +71,11 @@ class TestGetModelCost:
         assert cost == pytest.approx(expected)
 
     @pytest.mark.asyncio
-    async def test_falls_back_to_static_rates(self) -> None:
-        """When models.dev returns None, static MODEL_COST_RATES are used."""
-        static_rates = MODEL_COST_RATES["gemini-3-pro-preview"]
-        with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=static_rates):
+    async def test_returns_zero_when_no_rates(self) -> None:
+        """When models.dev returns None, cost is 0."""
+        with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=None):
             cost = await get_model_cost("gemini-3-pro-preview", input_tokens=1000, output_tokens=500)
-        expected = _compute_cost(static_rates, 1000, 500)
-        assert cost == pytest.approx(expected)
+        assert cost == 0.0
 
     @pytest.mark.asyncio
     async def test_unknown_model_returns_zero(self) -> None:
@@ -88,13 +84,13 @@ class TestGetModelCost:
 
     @pytest.mark.asyncio
     async def test_zero_tokens(self) -> None:
-        rates = MODEL_COST_RATES["gemini-3-pro-preview"]
+        rates = {"input": 1.25e-6, "output": 10e-6}
         with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=rates):
             assert await get_model_cost("gemini-3-pro-preview", input_tokens=0, output_tokens=0) == 0.0
 
     @pytest.mark.asyncio
     async def test_cache_read_discount(self) -> None:
-        rates = MODEL_COST_RATES["gemini-3-pro-preview"]
+        rates = {"input": 1.25e-6, "output": 10e-6}
         with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=rates):
             cost = await get_model_cost(
                 "gemini-3-pro-preview",
@@ -164,7 +160,7 @@ class TestCalculateLlmCredits:
 class TestCalculateLlmCostUsd:
     @pytest.mark.asyncio
     async def test_delegates_to_get_model_cost(self) -> None:
-        rates = MODEL_COST_RATES["gemini-3-pro-preview"]
+        rates = {"input": 1.25e-6, "output": 10e-6}
         with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=rates):
             cost = await calculate_llm_cost_usd("gemini-3-pro-preview", 1000, 500)
             expected = await get_model_cost("gemini-3-pro-preview", 1000, 500)
@@ -174,26 +170,3 @@ class TestCalculateLlmCostUsd:
     async def test_unknown_model(self) -> None:
         with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=None):
             assert await calculate_llm_cost_usd("unknown", 1000, 500) == 0.0
-
-
-class TestCalculateSettlementTotal:
-    def test_pro_tier(self) -> None:
-        # tier_rate=3.0, records_sum = 14
-        assert calculate_settlement_total(14, 3.0) == 14
-
-    def test_standard_tier(self) -> None:
-        # tier_rate=1.0, records_sum = 5
-        assert calculate_settlement_total(5, 1.0) == 5
-
-    def test_lite_tier_returns_zero(self) -> None:
-        assert calculate_settlement_total(100, 0.0) == 0
-
-    def test_negative_rate_returns_zero(self) -> None:
-        assert calculate_settlement_total(100, -1.0) == 0
-
-    def test_zero_records(self) -> None:
-        assert calculate_settlement_total(0, 3.0) == 0
-
-    def test_ultra_tier(self) -> None:
-        # tier_rate=6.8, records_sum = 10
-        assert calculate_settlement_total(10, 6.8) == 10

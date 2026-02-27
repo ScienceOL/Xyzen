@@ -239,7 +239,7 @@ async def _spawn_subagent_impl(
 
         # 4. Run subagent with timeout (no db session needed for execution)
         result = await asyncio.wait_for(
-            _run_subagent(compiled_graph, task),
+            _run_subagent(compiled_graph, task, provider_id=provider_id),
             timeout=SUBAGENT_TIMEOUT_SECONDS,
         )
 
@@ -368,6 +368,7 @@ async def _build_subagent_graph(
 async def _run_subagent(
     graph: "CompiledStateGraph[Any, None, Any, Any]",
     task: str,
+    provider_id: str | None = None,
 ) -> str:
     """
     Run a subagent graph and collect the final text output.
@@ -387,9 +388,9 @@ async def _run_subagent(
         messages = list(raw_messages) if isinstance(raw_messages, list) else []
 
     # Extract and record token usage from subagent messages
-    from app.core.consume.tracking import record_messages_usage_from_context
+    from app.core.consume.consume_service import record_messages_usage_from_context
 
-    await record_messages_usage_from_context(messages, source="subagent")
+    await record_messages_usage_from_context(messages, source="subagent", provider=provider_id)
 
     # Walk backwards to find the latest final assistant message.
     for msg in reversed(messages):

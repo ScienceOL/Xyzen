@@ -996,19 +996,6 @@ class ModelOptionsResponse(BaseModel):
     models: list[str]
 
 
-@router.get("/admin/stats/model-options", response_model=ModelOptionsResponse)
-async def get_model_options(
-    admin_secret: str = Header(..., alias="X-Admin-Secret"),
-):
-    """Return all configured model names from pricing config (admin only)."""
-    if admin_secret != configs.Admin.secret:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
-
-    from app.core.consume.pricing import MODEL_COST_RATES
-
-    return ModelOptionsResponse(models=sorted(MODEL_COST_RATES.keys()))
-
-
 class CreditHeatmapEntry(BaseModel):
     date: str
     total_credits: int
@@ -1227,3 +1214,17 @@ async def get_new_users_heatmap(
     except Exception as e:
         logger.error(f"Error fetching new users heatmap: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/model-options", response_model=ModelOptionsResponse)
+async def get_model_options(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Return model names that have consumption data (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+
+    consume_repo = ConsumeRepository(db)
+    data = await consume_repo.get_distinct_model_names()
+    return ModelOptionsResponse(models=data)

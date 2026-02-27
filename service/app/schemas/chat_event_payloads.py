@@ -101,6 +101,7 @@ class ToolCallRequestData(TypedDict):
     status: str
     timestamp: float
     stream_id: str
+    model_tier: NotRequired[str]
 
 
 class ToolCallResponseData(TypedDict):
@@ -112,6 +113,7 @@ class ToolCallResponseData(TypedDict):
     raw_result: NotRequired[str | dict | list]  # Raw result for cost calculation
     error: NotRequired[str]
     stream_id: str
+    model_tier: NotRequired[str]
 
 
 class TokenUsageData(TypedDict):
@@ -123,6 +125,9 @@ class TokenUsageData(TypedDict):
     stream_id: str
     cache_creation_input_tokens: NotRequired[int]
     cache_read_input_tokens: NotRequired[int]
+    model_tier: NotRequired[str]
+    provider_id: NotRequired[str]
+    model_name: NotRequired[str]
 
 
 class CitationData(TypedDict):

@@ -689,6 +689,16 @@ class ConsumeRepository:
     # Admin aggregated heatmap / ranking queries
     # ------------------------------------------------------------------
 
+    async def get_distinct_model_names(self) -> list[str]:
+        """Return all distinct model names from consume records."""
+        stmt = (
+            sa_select(func.distinct(ConsumeRecord.model_name))
+            .where(col(ConsumeRecord.model_name).isnot(None))
+            .order_by(ConsumeRecord.model_name)
+        )
+        rows = (await self.db.exec(cast(Any, stmt))).scalars().all()
+        return [str(m) for m in rows if m]
+
     async def get_admin_filter_options(
         self,
         year: int,
@@ -715,7 +725,7 @@ class ConsumeRepository:
             .where(col(ConsumeRecord.provider).isnot(None))
             .order_by(ConsumeRecord.provider)
         )
-        prov_rows = (await self.db.exec(cast(Any, prov_stmt))).all()
+        prov_rows = (await self.db.exec(cast(Any, prov_stmt))).scalars().all()
         providers = [str(p) for p in prov_rows if p]
 
         # Distinct models (optionally filtered by provider)
@@ -727,7 +737,7 @@ class ConsumeRepository:
         if provider:
             model_stmt = model_stmt.where(col(ConsumeRecord.provider) == provider)
         model_stmt = model_stmt.order_by(ConsumeRecord.model_name)
-        model_rows = (await self.db.exec(cast(Any, model_stmt))).all()
+        model_rows = (await self.db.exec(cast(Any, model_stmt))).scalars().all()
         models = [str(m) for m in model_rows if m]
 
         return {"providers": providers, "models": models}
@@ -760,7 +770,7 @@ class ConsumeRepository:
         if model_tier:
             base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
         if model_name:
-            base_filter.append(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+            base_filter.append(col(ConsumeRecord.model_name) == model_name)
         if provider:
             base_filter.append(col(ConsumeRecord.provider) == provider)
 
@@ -869,7 +879,7 @@ class ConsumeRepository:
         if model_tier:
             stmt = stmt.where(col(ConsumeRecord.model_tier) == model_tier)
         if model_name:
-            stmt = stmt.where(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+            stmt = stmt.where(col(ConsumeRecord.model_name) == model_name)
         if provider:
             stmt = stmt.where(col(ConsumeRecord.provider) == provider)
 
@@ -921,7 +931,7 @@ class ConsumeRepository:
         if model_tier:
             base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
         if model_name:
-            base_filter.append(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+            base_filter.append(col(ConsumeRecord.model_name) == model_name)
         if search:
             base_filter.append(col(ConsumeRecord.user_id).ilike(f"%{search}%"))
         if provider:

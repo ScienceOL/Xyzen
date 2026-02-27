@@ -27,19 +27,16 @@ class ChatLifecycle(Protocol):
         """Return ``None`` to allow the message, or an error payload dict to reject."""
         ...
 
-    async def pre_deduct(
+    async def check_balance(
         self,
         db: AsyncSession,
         user_id: str,
         auth_provider: str,
-        amount: int,
-        access_key: str | None,
         session_id: UUID | None,
         topic_id: UUID | None,
         message_id: UUID | None,
-        description: str | None,
-    ) -> float:
-        """Return the pre-deducted amount (0.0 means no billing)."""
+    ) -> None:
+        """Raise INSUFFICIENT_BALANCE if the user's wallet is empty."""
         ...
 
     async def on_disconnect(self, connection_id: str) -> None: ...
@@ -55,9 +52,9 @@ class DefaultChatLifecycle:
 
     Behaviour is identical to the pre-EE codebase.  The enforcer (which
     requires a DB session to resolve subscription limits) is created
-    eagerly.  If that fails, limits enforcement is skipped but billing
-    (``pre_deduct``) still works because it receives its own ``db`` from
-    the caller.
+    eagerly.  If that fails, limits enforcement is skipped but the
+    balance check (``check_balance``) still works because it receives
+    its own ``db`` from the caller.
     """
 
     def __init__(self, enforcer: Any | None) -> None:
@@ -98,18 +95,15 @@ class DefaultChatLifecycle:
             }
         return None
 
-    async def pre_deduct(
+    async def check_balance(
         self,
         db: AsyncSession,
         user_id: str,
         auth_provider: str,
-        amount: int,
-        access_key: str | None,
         session_id: UUID | None,
         topic_id: UUID | None,
         message_id: UUID | None,
-        description: str | None,
-    ) -> float:
+    ) -> None:
         from app.repos.redemption import RedemptionRepository
 
         redemption_repo = RedemptionRepository(db)
@@ -119,8 +113,6 @@ class DefaultChatLifecycle:
             from app.common.code.error_code import ErrCode
 
             raise ErrCode.INSUFFICIENT_BALANCE.with_messages(f"积分余额不足，当前余额: {wallet.virtual_balance}")
-
-        return 0.0  # No pre-deduction; settlement handles billing
 
     async def on_disconnect(self, connection_id: str) -> None:
         if self._enforcer:
@@ -141,19 +133,16 @@ class NoopChatLifecycle:
     async def check_before_message(self, connection_id: str) -> dict[str, Any] | None:
         return None
 
-    async def pre_deduct(
+    async def check_balance(
         self,
         db: AsyncSession,
         user_id: str,
         auth_provider: str,
-        amount: int,
-        access_key: str | None,
         session_id: UUID | None,
         topic_id: UUID | None,
         message_id: UUID | None,
-        description: str | None,
-    ) -> float:
-        return 0.0
+    ) -> None:
+        pass
 
     async def on_disconnect(self, connection_id: str) -> None:
         pass

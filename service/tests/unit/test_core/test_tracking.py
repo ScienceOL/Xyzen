@@ -1,32 +1,36 @@
 """Unit tests for app.core.consume.tracking.ConsumptionTrackingService."""
 
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 
-from app.core.consume.tracking import ConsumptionTrackingService
+from app.core.consume.consume_service import ConsumptionTrackingService
 from app.models.consume import ConsumeRecord
 
 
 @pytest.mark.asyncio
 class TestConsumptionTrackingServiceLLM:
-    async def test_record_llm_usage(self, db_session) -> None:
+    async def test_record_llm_usage_with_pricing(self, db_session) -> None:
         service = ConsumptionTrackingService(db_session)
-        record = await service.record_llm_usage(
-            user_id="user-1",
-            auth_provider="test_auth",
-            model_name="gpt-4o",
-            model_tier="pro",
-            provider="openai",
-            input_tokens=100,
-            output_tokens=50,
-            total_tokens=150,
-            amount=25,
-            cost_usd=0.005,
-            source="chat",
-            session_id=uuid4(),
-            topic_id=uuid4(),
-        )
+        with patch(
+            "app.core.consume.consume_service.calculate_llm_cost_usd",
+            new_callable=AsyncMock,
+            return_value=0.005,
+        ):
+            record = await service.record_llm_usage_with_pricing(
+                user_id="user-1",
+                auth_provider="test_auth",
+                model_name="gpt-4o",
+                model_tier="pro",
+                provider="openai",
+                input_tokens=10000,
+                output_tokens=5000,
+                total_tokens=15000,
+                source="chat",
+                session_id=uuid4(),
+                topic_id=uuid4(),
+            )
 
         assert isinstance(record, ConsumeRecord)
         assert record.record_type == "llm"
@@ -35,27 +39,32 @@ class TestConsumptionTrackingServiceLLM:
         assert record.model_name == "gpt-4o"
         assert record.model_tier == "pro"
         assert record.provider == "openai"
-        assert record.input_tokens == 100
-        assert record.output_tokens == 50
-        assert record.total_tokens == 150
-        assert record.amount == 25
+        assert record.input_tokens == 10000
+        assert record.output_tokens == 5000
+        assert record.total_tokens == 15000
+        assert record.amount > 0  # calculated from tier rate
         assert record.cost_usd == 0.005
         assert record.source == "chat"
         assert record.consume_state == "pending"
         assert record.id is not None
 
-    async def test_record_llm_usage_defaults(self, db_session) -> None:
+    async def test_record_llm_usage_with_pricing_defaults(self, db_session) -> None:
         service = ConsumptionTrackingService(db_session)
-        record = await service.record_llm_usage(
-            user_id="user-2",
-            auth_provider="test_auth",
-            model_name="gemini-3-pro-preview",
-            model_tier=None,
-            provider=None,
-            input_tokens=0,
-            output_tokens=0,
-            total_tokens=0,
-        )
+        with patch(
+            "app.core.consume.consume_service.calculate_llm_cost_usd",
+            new_callable=AsyncMock,
+            return_value=0.0,
+        ):
+            record = await service.record_llm_usage_with_pricing(
+                user_id="user-2",
+                auth_provider="test_auth",
+                model_name="gemini-3-pro-preview",
+                model_tier=None,
+                provider=None,
+                input_tokens=0,
+                output_tokens=0,
+                total_tokens=0,
+            )
 
         assert record.source == "chat"
         assert record.amount == 0
