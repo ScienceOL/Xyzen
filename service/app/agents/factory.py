@@ -158,6 +158,15 @@ async def create_chat_agent(
         )
         tools.extend(delegation_tools)
 
+        # Agent management tools (create, update, delete, schema)
+        from app.tools.builtin.agent_management import create_agent_management_tools_for_session
+
+        agent_mgmt_tools = await create_agent_management_tools_for_session(
+            user_id=user_id,
+            root_agent_id=agent_config.id,
+        )
+        tools.extend(agent_mgmt_tools)
+
     # Create LLM factory
     async def create_llm(**kwargs: Any) -> "BaseChatModel":
         override_model = kwargs.get("model") or model_name

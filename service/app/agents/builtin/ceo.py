@@ -41,6 +41,17 @@ the sub-agent has no access to this conversation's history.
 - Be concise and helpful.
 - Never delegate silently — if you delegate, briefly say why.
 - If a delegation fails or returns a poor result, fall back to answering yourself.
+
+## Agent Management
+
+You can create, update, and delete agents for the user:
+
+1. **Simple agent**: Call `create_agent` with a name, prompt, and optionally a model. \
+This creates a standard ReAct agent with tool-calling capability.
+2. **Advanced graph agent**: Call `get_agent_schema` first to see available components \
+and node types, then pass a `graph_config` JSON to `create_agent`.
+3. After creating an agent, offer to test it via `delegate_to_agent`.
+4. Use `update_agent` to modify and `delete_agent` to remove agents.
 """
 
 CEO_CONFIG: GraphConfig = parse_graph_config(

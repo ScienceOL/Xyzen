@@ -50,6 +50,9 @@ class ToolCapability(StrEnum):
     # Subagent delegation
     SUBAGENT = "subagent"
 
+    # Agent management (CEO-only CRUD)
+    AGENT_MANAGEMENT = "agent_mgmt"
+
 
 # Tool name -> capabilities mapping
 # This maps known tool names to their capabilities
@@ -106,6 +109,11 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     "get_skill_detail": [ToolCapability.SKILLS],
     # Subagent tools
     "spawn_subagent": [ToolCapability.SUBAGENT],
+    # Agent management tools (CEO-only)
+    "get_agent_schema": [ToolCapability.AGENT_MANAGEMENT],
+    "create_agent": [ToolCapability.AGENT_MANAGEMENT],
+    "update_agent": [ToolCapability.AGENT_MANAGEMENT],
+    "delete_agent": [ToolCapability.AGENT_MANAGEMENT],
 }
 
 # Tools that bypass tool_filter — they're context-gated at load time
