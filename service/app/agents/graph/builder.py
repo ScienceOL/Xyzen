@@ -42,6 +42,7 @@ from app.schemas.graph_config_legacy import (
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
+    from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.store.base import BaseStore
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,7 @@ class GraphBuilder:
     _template_cache: dict[str, Template]
     _tool_node: ToolNode | None
     _store: "BaseStore | None"
+    _checkpointer: "BaseCheckpointSaver | None"
 
     def __init__(
         self,
@@ -138,6 +140,7 @@ class GraphBuilder:
         tool_registry: dict[str, "BaseTool"],
         context: dict[str, Any] | None = None,
         store: "BaseStore | None" = None,
+        checkpointer: "BaseCheckpointSaver | None" = None,
     ) -> None:
         """
         Initialize the GraphBuilder.
@@ -147,12 +150,15 @@ class GraphBuilder:
             llm_factory: Factory function to create LLM instances
             tool_registry: Dictionary mapping tool names to BaseTool instances
             context: Optional runtime context passed to templates
+            store: Optional LangGraph store for cross-thread memory
+            checkpointer: Optional checkpointer for interrupt/resume support
         """
         self.config = config
         self.llm_factory = llm_factory
         self.tool_registry = tool_registry
         self.context = context or {}
         self._store = store
+        self._checkpointer = checkpointer
 
         # Validate configuration
         errors = validate_graph_config(config)
@@ -171,7 +177,9 @@ class GraphBuilder:
             tools = list(tool_registry.values())
             # Apply global tool filter if configured
             if config.tool_config and config.tool_config.tool_filter:
-                tools = [t for t in tools if t.name in config.tool_config.tool_filter]
+                from app.tools.capabilities import TOOL_FILTER_EXEMPT
+
+                tools = [t for t in tools if t.name in config.tool_config.tool_filter or t.name in TOOL_FILTER_EXEMPT]
             if tools:
                 self._tool_node = ToolNode(tools)
 
@@ -198,7 +206,7 @@ class GraphBuilder:
         self._add_edges(graph)
 
         # Compile and return
-        compiled: DynamicCompiledGraph = graph.compile(store=self._store)
+        compiled: DynamicCompiledGraph = graph.compile(store=self._store, checkpointer=self._checkpointer)
         logger.info("Graph v2 compiled successfully")
         return compiled
 

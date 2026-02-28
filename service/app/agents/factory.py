@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 
     from langchain_core.language_models import BaseChatModel
     from langchain_core.tools import BaseTool
+    from langgraph.checkpoint.base import BaseCheckpointSaver
 
     from app.core.providers import ProviderManager
     from app.models.agent import Agent
@@ -60,6 +61,7 @@ async def create_chat_agent(
     model_name: str | None,
     system_prompt: str,
     store: BaseStore | None = None,
+    checkpointer: "BaseCheckpointSaver | None" = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """
     Create the appropriate agent for a chat session.
@@ -181,6 +183,7 @@ async def create_chat_agent(
         tools,
         system_prompt,
         store=store,
+        checkpointer=checkpointer,
     )
 
     # Populate node->component mapping for frontend rendering
@@ -366,6 +369,7 @@ async def build_graph_agent(
     tools: list["BaseTool"],
     system_prompt: str,
     store: BaseStore | None = None,
+    checkpointer: "BaseCheckpointSaver | None" = None,
 ) -> tuple[DynamicCompiledGraph, dict[str, str]]:
     """
     Build a graph agent from a canonical configuration.
@@ -375,6 +379,8 @@ async def build_graph_agent(
         llm_factory: Factory function to create LLM instances
         tools: List of tools available to the agent
         system_prompt: System prompt (already injected into config)
+        store: Optional LangGraph BaseStore for cross-thread memory
+        checkpointer: Optional checkpointer for interrupt/resume support
 
     Returns:
         Tuple of (CompiledStateGraph, node_component_keys)
@@ -398,6 +404,7 @@ async def build_graph_agent(
         llm_factory=llm_factory,
         tool_registry=tool_registry,
         store=store,
+        checkpointer=checkpointer,
     )
     compiled_graph = await compiler.build()
     node_component_keys = compiler.get_node_component_keys()
