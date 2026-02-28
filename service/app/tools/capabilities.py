@@ -110,7 +110,7 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
 
 # Tools that bypass tool_filter — they're context-gated at load time
 # (e.g., skill tools require attached skills + session_id)
-TOOL_FILTER_EXEMPT: set[str] = {"activate_skill", "list_skill_resources"}
+TOOL_FILTER_EXEMPT: set[str] = {"activate_skill", "list_skill_resources", "ask_user_question"}
 
 
 def get_tool_capabilities(tool: "BaseTool") -> list[str]:

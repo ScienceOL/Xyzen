@@ -222,6 +222,11 @@ def _load_all_builtin_tools(
             )
             tools.extend(skill_mgmt_tools)
 
+    # Load ask_user_question tool (always available — uses LangGraph interrupt)
+    from app.tools.builtin.ask_user_question import create_ask_user_question_tool
+
+    tools.append(create_ask_user_question_tool())
+
     return tools
 
 
