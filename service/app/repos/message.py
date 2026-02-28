@@ -555,6 +555,7 @@ class MessageRepository:
                 error_code=message.error_code,
                 error_category=message.error_category,
                 error_detail=message.error_detail,
+                user_question_data=message.user_question_data,
             )
             messages_with_files_and_citations.append(message_with_files_and_citations)
 

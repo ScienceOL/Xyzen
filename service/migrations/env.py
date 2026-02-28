@@ -42,6 +42,10 @@ EXCLUDED_TABLES: set[str] = {
     "store_vectors",
     "store_migrations",
     "vector_migrations",
+    "checkpoints",
+    "checkpoint_blobs",
+    "checkpoint_writes",
+    "checkpoint_migrations",
 }
 
 

@@ -24,6 +24,8 @@ class MessageBase(SQLModel):
     error_code: str | None = Field(default=None, index=True)
     error_category: str | None = Field(default=None)
     error_detail: str | None = Field(default=None)
+    # User question state for ask_user_question interrupt/resume (persisted for reconnect)
+    user_question_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
 
 
 class Message(MessageBase, table=True):
@@ -76,3 +78,4 @@ class MessageUpdate(SQLModel):
     error_code: str | None = None
     error_category: str | None = None
     error_detail: str | None = None
+    user_question_data: dict[str, Any] | None = None
