@@ -15,8 +15,10 @@ from app.core.consume.consume_service import (
     record_messages_usage_from_context,
     record_response_usage_from_context,
     set_tracking_context,
-    settle_chat_records,
 )
+
+# settlement_service.py
+from app.core.consume.settlement_service import settle_chat_records
 
 # developer_reward.py
 from app.core.consume.developer_reward import DeveloperRewardService, REWARD_RATES
@@ -35,6 +37,7 @@ from app.core.consume.pricing import (
 __all__ = [
     # consume_service
     "ConsumeService",
+    # settlement_service
     "settle_chat_records",
     # developer_reward
     "DeveloperRewardService",

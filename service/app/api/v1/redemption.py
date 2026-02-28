@@ -987,9 +987,16 @@ class NewUsersHeatmapEntry(BaseModel):
     new_users: int
 
 
+class ProviderOption(BaseModel):
+    value: str
+    label: str
+
+
 class FilterOptionsResponse(BaseModel):
-    providers: list[str]
+    providers: list[ProviderOption]
     models: list[str]
+    tiers: list[str] = []
+    tools: list[str] = []
 
 
 class ModelOptionsResponse(BaseModel):
@@ -1045,6 +1052,7 @@ async def get_consumption_heatmap(
     model_tier: Optional[str] = None,
     model_name: Optional[str] = None,
     provider: Optional[str] = None,
+    tool_name: Optional[str] = None,
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get daily consumption heatmap data for an entire year (admin only)."""
@@ -1052,7 +1060,9 @@ async def get_consumption_heatmap(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
     try:
         consume_repo = ConsumeRepository(db)
-        data = await consume_repo.get_admin_consumption_heatmap(year, tz or "UTC", model_tier, model_name, provider)
+        data = await consume_repo.get_admin_consumption_heatmap(
+            year, tz or "UTC", model_tier, model_name, provider, tool_name
+        )
         return [ConsumptionHeatmapEntry(**row) for row in data]
     except Exception as e:
         logger.error(f"Error fetching consumption heatmap: {e}")
@@ -1067,6 +1077,7 @@ async def get_user_consumption_heatmap(
     model_tier: Optional[str] = None,
     model_name: Optional[str] = None,
     provider: Optional[str] = None,
+    tool_name: Optional[str] = None,
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get daily user consumption heatmap (active users per day) (admin only)."""
@@ -1075,7 +1086,7 @@ async def get_user_consumption_heatmap(
     try:
         consume_repo = ConsumeRepository(db)
         data = await consume_repo.get_admin_user_consumption_heatmap(
-            year, tz or "UTC", model_tier, model_name, provider
+            year, tz or "UTC", model_tier, model_name, provider, tool_name
         )
         return [UserConsumptionHeatmapEntry(**row) for row in data]
     except Exception as e:
@@ -1095,6 +1106,7 @@ async def get_consumption_top_users(
     search: Optional[str] = None,
     provider: Optional[str] = None,
     include_tiers: bool = False,
+    tool_name: Optional[str] = None,
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get top users by consumption for a year or specific date (admin only)."""
@@ -1103,7 +1115,7 @@ async def get_consumption_top_users(
     try:
         consume_repo = ConsumeRepository(db)
         data = await consume_repo.get_admin_top_users_by_range(
-            year, tz or "UTC", date, model_tier, model_name, limit, search, provider, include_tiers
+            year, tz or "UTC", date, model_tier, model_name, limit, search, provider, include_tiers, tool_name
         )
         return [ConsumptionTopUserEntry(**row) for row in data]
     except Exception as e:

@@ -1,16 +1,10 @@
+import { useMemo } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import type { ProviderOption } from "@/service/redemptionService";
+import { TIER_DISPLAY_NAMES } from "./constants";
 
 const MIN_YEAR = 2026;
 const MAX_YEAR = 2030;
-
-const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
-  openai: "OpenAI",
-  azure_openai: "Azure OpenAI",
-  google: "Google",
-  google_vertex: "Google Vertex",
-  gpugeek: "GPUGeek",
-  qwen: "Qwen",
-};
 
 const TIER_OPTIONS = [
   { value: "", label: "All Tiers" },
@@ -31,9 +25,14 @@ interface AdminFilterBarProps {
   showModelFilter?: boolean;
   selectedProvider?: string;
   onProviderChange?: (provider: string) => void;
-  providerOptions?: string[];
+  providerOptions?: ProviderOption[];
   modelOptions?: string[];
   showProviderFilter?: boolean;
+  selectedTool?: string;
+  onToolChange?: (tool: string) => void;
+  toolOptions?: string[];
+  showToolFilter?: boolean;
+  tierOptions?: string[];
 }
 
 export function AdminFilterBar({
@@ -50,7 +49,38 @@ export function AdminFilterBar({
   providerOptions = [],
   modelOptions = [],
   showProviderFilter = false,
+  selectedTool = "",
+  onToolChange,
+  toolOptions = [],
+  showToolFilter = false,
+  tierOptions,
 }: AdminFilterBarProps) {
+  const mergedProviderOptions = useMemo(() => {
+    const byLabel = new Map<string, string[]>();
+    for (const p of providerOptions) {
+      const existing = byLabel.get(p.label);
+      if (existing) {
+        existing.push(p.value);
+      } else {
+        byLabel.set(p.label, [p.value]);
+      }
+    }
+    return Array.from(byLabel.entries()).map(([label, values]) => ({
+      value: values.join(","),
+      label,
+    }));
+  }, [providerOptions]);
+
+  const effectiveTierOptions = tierOptions
+    ? [
+        { value: "", label: "All Tiers" },
+        ...tierOptions.map((t) => ({
+          value: t,
+          label: TIER_DISPLAY_NAMES[t] ?? t,
+        })),
+      ]
+    : TIER_OPTIONS;
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       {/* Year selector */}
@@ -81,7 +111,7 @@ export function AdminFilterBar({
           onChange={(e) => onTierChange(e.target.value)}
           className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          {TIER_OPTIONS.map((opt) => (
+          {effectiveTierOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
@@ -97,9 +127,9 @@ export function AdminFilterBar({
           className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Providers</option>
-          {providerOptions.map((p) => (
-            <option key={p} value={p}>
-              {PROVIDER_DISPLAY_NAMES[p] ?? p}
+          {mergedProviderOptions.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
             </option>
           ))}
         </select>
@@ -130,6 +160,22 @@ export function AdminFilterBar({
             className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-40"
           />
         ))}
+
+      {/* Tool filter */}
+      {showToolFilter && onToolChange && (
+        <select
+          value={selectedTool}
+          onChange={(e) => onToolChange(e.target.value)}
+          className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">All Tools</option>
+          {toolOptions.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }

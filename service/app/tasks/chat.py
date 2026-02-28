@@ -115,6 +115,10 @@ def process_chat_message(
     context: dict[str, Any] | None,
     access_token: str | None = None,
     stream_id: str | None = None,
+    agent_id_for_attribution: str | None = None,
+    marketplace_id: str | None = None,
+    developer_user_id: str | None = None,
+    developer_fork_mode: str | None = None,
 ) -> None:
     """
     Celery task wrapper to run the async chat processing loop.
@@ -133,6 +137,10 @@ def process_chat_message(
                 context,
                 access_token,
                 stream_id,
+                agent_id_for_attribution,
+                marketplace_id,
+                developer_user_id,
+                developer_fork_mode,
             )
         )
     finally:
@@ -168,6 +176,10 @@ async def _process_chat_message_async(
     context: dict[str, Any] | None,
     access_token: str | None,
     stream_id: str | None = None,
+    agent_id_for_attribution: str | None = None,
+    marketplace_id: str | None = None,
+    developer_user_id: str | None = None,
+    developer_fork_mode: str | None = None,
 ) -> None:
     session_id = UUID(session_id_str)
     topic_id = UUID(topic_id_str)
@@ -240,7 +252,19 @@ async def _process_chat_message_async(
         user_id=user_id,
         auth_provider=auth_provider,
         stream_id=stream_id,
+        agent_id_for_attribution=UUID(agent_id_for_attribution) if agent_id_for_attribution else None,
+        marketplace_id=UUID(marketplace_id) if marketplace_id else None,
+        developer_user_id=developer_user_id,
+        developer_fork_mode=developer_fork_mode,
     )
+
+    # Backfill TrackingContext with developer attribution from WS handler
+    if agent_id_for_attribution or marketplace_id or developer_user_id:
+        tracking_ctx = get_tracking_context()
+        if tracking_ctx is not None:
+            tracking_ctx.agent_id = ctx.agent_id_for_attribution
+            tracking_ctx.marketplace_id = ctx.marketplace_id
+            tracking_ctx.developer_user_id = ctx.developer_user_id
 
     try:
         async with TaskSessionLocal() as db:
@@ -257,38 +281,6 @@ async def _process_chat_message_async(
                     topic_error_data["stream_id"] = stream_id
                 await publisher.publish(json.dumps({"type": ChatEventType.ERROR, "data": topic_error_data}))
                 return
-
-            # Resolve developer reward attribution from agent → marketplace listing
-            try:
-                from app.repos.agent import AgentRepository
-                from app.repos.agent_marketplace import AgentMarketplaceRepository
-                from app.repos.session import SessionRepository as _SessionRepo
-
-                _session_repo = _SessionRepo(db)
-                _session = await _session_repo.get_session_by_id(session_id)
-                if _session and _session.agent_id:
-                    _agent_repo = AgentRepository(db)
-                    _agent = await _agent_repo.get_agent_by_id(_session.agent_id)
-                    if _agent and _agent.original_source_id:
-                        ctx.agent_id_for_attribution = _agent.id
-                        ctx.marketplace_id = _agent.original_source_id
-                        _marketplace_repo = AgentMarketplaceRepository(db)
-                        _listing = await _marketplace_repo.get_by_id(_agent.original_source_id)
-                        if _listing and _listing.user_id:
-                            ctx.developer_user_id = _listing.user_id
-
-                    # Backfill TrackingContext so tool/subagent usage records
-                    # inherit developer attribution via ContextVar
-                    from app.core.consume.consume_service import get_tracking_context
-
-                    tracking_ctx = get_tracking_context()
-                    if tracking_ctx is not None:
-                        tracking_ctx.agent_id = ctx.agent_id_for_attribution
-                        tracking_ctx.marketplace_id = ctx.marketplace_id
-                        tracking_ctx.developer_user_id = ctx.developer_user_id
-
-            except Exception as attr_err:
-                logger.debug("Failed to resolve developer attribution (non-fatal): %s", attr_err)
 
             # Abort checking configuration - use time-based throttling for efficiency
             ABORT_CHECK_INTERVAL_SEC = 0.5  # Check every N seconds (responsive but not too frequent)
@@ -417,7 +409,7 @@ async def _process_chat_message_async(
         # Exception-path settlement: individual ConsumeRecords were already
         # created during streaming. Query pending records and settle.
         try:
-            from app.core.consume.consume_service import settle_chat_records
+            from app.core.consume.settlement_service import settle_chat_records
             from app.repos.consume import ConsumeRepository
 
             async with TaskSessionLocal() as settle_db:
@@ -446,6 +438,7 @@ async def _process_chat_message_async(
                             total_amount=int(total_cost),
                             marketplace_id=ctx.marketplace_id,
                             developer_user_id=ctx.developer_user_id,
+                            developer_fork_mode=ctx.developer_fork_mode,
                             session_id=session_id,
                             topic_id=topic_id,
                             message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,

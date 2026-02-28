@@ -163,6 +163,32 @@ async def chat_websocket(
             await websocket.close(code=4003, reason="Session not found or access denied")
             return
 
+        # Resolve developer reward attribution once at connection time
+        agent_id_for_attribution: str | None = None
+        marketplace_id: str | None = None
+        developer_user_id: str | None = None
+        developer_fork_mode: str | None = None
+        if session and session.agent_id:
+            from app.repos.agent import AgentRepository
+            from app.repos.agent_marketplace import AgentMarketplaceRepository
+
+            agent_repo = AgentRepository(db)
+            agent = await agent_repo.get_agent_by_id(session.agent_id)
+            if agent and agent.original_source_id:
+                agent_id_for_attribution = str(agent.id)
+                marketplace_id = str(agent.original_source_id)
+
+                # Infer fork_mode from the fork's saved config fields
+                if agent.config_editable:
+                    developer_fork_mode = "editable"
+                else:
+                    developer_fork_mode = "locked"
+
+                mp_repo = AgentMarketplaceRepository(db)
+                listing = await mp_repo.get_by_id(agent.original_source_id)
+                if listing and listing.user_id:
+                    developer_user_id = listing.user_id
+
     await manager.connect(websocket, connection_id)
 
     # Track this connection for limit enforcement
@@ -278,6 +304,10 @@ async def chat_websocket(
                         context=None,
                         access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
                         stream_id=stream_id,
+                        agent_id_for_attribution=agent_id_for_attribution,
+                        marketplace_id=marketplace_id,
+                        developer_user_id=developer_user_id,
+                        developer_fork_mode=developer_fork_mode,
                     )
 
                     logger.info(f"Regeneration dispatched for topic {topic_id}, using message: {last_user_message.id}")
@@ -373,6 +403,10 @@ async def chat_websocket(
                     context=context,
                     access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
                     stream_id=stream_id,
+                    agent_id_for_attribution=agent_id_for_attribution,
+                    marketplace_id=marketplace_id,
+                    developer_user_id=developer_user_id,
+                    developer_fork_mode=developer_fork_mode,
                 )
 
                 # 7b. Acknowledge message receipt to client
