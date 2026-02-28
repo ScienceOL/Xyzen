@@ -23,7 +23,9 @@ function buildUserQuestion(eventData: AskUserQuestionEvent): UserQuestion {
       id: o.id,
       label: o.label,
       description: o.description,
+      markdown: o.markdown,
     })),
+    multiSelect: eventData.multi_select ?? false,
     allowTextInput: eventData.allow_text_input,
     timeoutSeconds: eventData.timeout_seconds,
     threadId: eventData.thread_id,
@@ -35,7 +37,13 @@ function buildUserQuestion(eventData: AskUserQuestionEvent): UserQuestion {
 interface AskUserQuestionEvent {
   question_id: string;
   question: string;
-  options?: Array<{ id: string; label: string; description?: string }>;
+  options?: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    markdown?: string;
+  }>;
+  multi_select?: boolean;
   allow_text_input: boolean;
   timeout_seconds: number;
   stream_id: string;
@@ -81,7 +89,9 @@ export function handleAskUserQuestion(
   }
 
   if (targetIndex === -1) {
-    console.warn("[questionHandlers] No target message found for ask_user_question event");
+    console.warn(
+      "[questionHandlers] No target message found for ask_user_question event",
+    );
     return;
   }
 

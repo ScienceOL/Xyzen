@@ -27,6 +27,13 @@ class QuestionOption(BaseModel):
     id: str = Field(description="Unique identifier for this option")
     label: str = Field(description="Short display label")
     description: str | None = Field(default=None, description="Optional longer description")
+    markdown: str | None = Field(
+        default=None,
+        description=(
+            "Optional markdown content to preview when this option is focused"
+            " (e.g., code snippet, formatted text)"
+        ),
+    )
 
 
 class AskUserQuestionInput(BaseModel):
@@ -36,6 +43,10 @@ class AskUserQuestionInput(BaseModel):
     options: list[QuestionOption] | None = Field(
         default=None,
         description="Optional list of selectable options. If omitted, only free-text input is shown.",
+    )
+    multi_select: bool = Field(
+        default=False,
+        description="Whether the user can select multiple options (default: single-select)",
     )
     allow_text_input: bool = Field(
         default=True,
@@ -52,6 +63,7 @@ class AskUserQuestionInput(BaseModel):
 def _ask_user_question(
     question: str,
     options: list[QuestionOption] | None = None,
+    multi_select: bool = False,
     allow_text_input: bool = True,
     timeout_seconds: int = 300,
 ) -> dict[str, Any]:
@@ -67,6 +79,7 @@ def _ask_user_question(
         "question_id": question_id,
         "question": question,
         "options": [opt.model_dump() for opt in options] if options else None,
+        "multi_select": multi_select,
         "allow_text_input": allow_text_input,
         "timeout_seconds": timeout_seconds,
     }
@@ -80,7 +93,7 @@ def _ask_user_question(
     logger.info("ask_user_question: resumed with response for question_id=%s", question_id)
 
     # user_response is the dict sent by the frontend:
-    # {"question_id": ..., "selected_option": ..., "text": ..., "timed_out": bool}
+    # {"question_id": ..., "selected_options": [...], "text": ..., "timed_out": bool}
     return user_response
 
 

@@ -131,11 +131,12 @@ export interface UserQuestion {
   questionId: string;
   question: string;
   options?: UserQuestionOption[];
+  multiSelect?: boolean;
   allowTextInput: boolean;
   timeoutSeconds: number;
   threadId: string;
   status: "pending" | "answered" | "timed_out";
-  selectedOption?: string;
+  selectedOptions?: string[];
   userText?: string;
   askedAt: number; // Unix timestamp ms
 }
@@ -144,6 +145,7 @@ export interface UserQuestionOption {
   id: string;
   label: string;
   description?: string;
+  markdown?: string;
 }
 
 /**

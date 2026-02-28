@@ -611,6 +611,7 @@
     "timedOut": "Timed out",
     "remaining": "{{time}} remaining",
     "answered": "Answered",
-    "typeAnswer": "Type your answer..."
+    "typeAnswer": "Type your answer...",
+    "other": "Other"
   }
 }

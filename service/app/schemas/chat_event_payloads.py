@@ -221,6 +221,7 @@ class QuestionOptionData(TypedDict):
     id: str
     label: str
     description: NotRequired[str]
+    markdown: NotRequired[str]
 
 
 class AskUserQuestionData(TypedDict):
@@ -229,6 +230,7 @@ class AskUserQuestionData(TypedDict):
     question_id: str
     question: str
     options: NotRequired[list[QuestionOptionData]]
+    multi_select: NotRequired[bool]
     allow_text_input: bool
     timeout_seconds: int
     stream_id: str

@@ -635,7 +635,7 @@ export function createConnectionActions(
       channelId: string,
       questionId: string,
       response: {
-        selectedOption?: string;
+        selectedOptions?: string[];
         text?: string;
         timedOut?: boolean;
       },
@@ -645,7 +645,7 @@ export function createConnectionActions(
         type: "user_question_response",
         data: {
           question_id: questionId,
-          selected_option: response.selectedOption,
+          selected_options: response.selectedOptions,
           text: response.text || "",
           timed_out: response.timedOut || false,
         },
@@ -663,7 +663,7 @@ export function createConnectionActions(
           msg.userQuestion.status = response.timedOut
             ? "timed_out"
             : "answered";
-          msg.userQuestion.selectedOption = response.selectedOption;
+          msg.userQuestion.selectedOptions = response.selectedOptions;
           msg.userQuestion.userText = response.text;
           msg.status = "pending";
         }

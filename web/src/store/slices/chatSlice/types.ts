@@ -75,7 +75,7 @@ export interface ChatSlice {
     channelId: string,
     questionId: string,
     response: {
-      selectedOption?: string;
+      selectedOptions?: string[];
       text?: string;
       timedOut?: boolean;
     },

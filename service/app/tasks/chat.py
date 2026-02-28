@@ -752,7 +752,7 @@ async def _resume_chat_from_interrupt_async(
                 existing_msg.user_question_data = {
                     **existing_msg.user_question_data,
                     "status": "answered",
-                    "selected_option": user_response.get("selected_option"),
+                    "selected_options": user_response.get("selected_options"),
                     "user_text": user_response.get("text"),
                 }
                 db.add(existing_msg)

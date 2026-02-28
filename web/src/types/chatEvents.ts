@@ -169,7 +169,13 @@ export type ChatEvent =
       data: {
         question_id: string;
         question: string;
-        options?: Array<{ id: string; label: string; description?: string }>;
+        options?: Array<{
+          id: string;
+          label: string;
+          description?: string;
+          markdown?: string;
+        }>;
+        multi_select?: boolean;
         allow_text_input: boolean;
         timeout_seconds: number;
         stream_id: string;

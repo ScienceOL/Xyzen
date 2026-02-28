@@ -210,7 +210,7 @@ async def chat_websocket(
                     if not question_id:
                         logger.warning(f"Missing question_id in user question response on {connection_id}")
                         continue
-                    selected_option = response_data.get("selected_option")
+                    selected_options = response_data.get("selected_options")
                     text = response_data.get("text", "")
                     timed_out = response_data.get("timed_out", False)
 
@@ -252,7 +252,7 @@ async def chat_websocket(
 
                     user_response = {
                         "question_id": question_id,
-                        "selected_option": selected_option,
+                        "selected_options": selected_options,
                         "text": text,
                         "timed_out": timed_out,
                     }

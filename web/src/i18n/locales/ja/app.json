@@ -610,6 +610,7 @@
     "timedOut": "タイムアウト",
     "remaining": "残り {{time}}",
     "answered": "回答済み",
-    "typeAnswer": "回答を入力..."
+    "typeAnswer": "回答を入力...",
+    "other": "その他"
   }
 }

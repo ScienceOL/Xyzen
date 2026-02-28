@@ -610,6 +610,7 @@
     "timedOut": "已超时",
     "remaining": "剩余 {{time}}",
     "answered": "已回答",
-    "typeAnswer": "输入你的回答..."
+    "typeAnswer": "输入你的回答...",
+    "other": "其他"
   }
 }
