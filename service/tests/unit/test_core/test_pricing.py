@@ -6,12 +6,14 @@ import pytest
 
 from app.core.consume.pricing import (
     CACHE_READ_DISCOUNT,
+    FALLBACK_MODEL_COST_RATES,
     TOKEN_CREDIT_RATES,
     _compute_cost,
     calculate_llm_cost_usd,
     calculate_llm_credits,
     calculate_tool_cost,
     get_model_cost,
+    validate_model_pricing_coverage,
 )
 
 
@@ -109,6 +111,17 @@ class TestGetModelCost:
             await get_model_cost("model-x", 100, 50, provider="google_vertex")
         mock_resolve.assert_awaited_once_with("model-x", "google_vertex")
 
+    @pytest.mark.asyncio
+    async def test_uses_fallback_when_modelsdev_missing(self) -> None:
+        """When models.dev returns None but fallback has rates, use fallback."""
+        fallback_model = next(iter(FALLBACK_MODEL_COST_RATES))
+        fallback_rates = FALLBACK_MODEL_COST_RATES[fallback_model]
+        with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=None):
+            cost = await get_model_cost(fallback_model, input_tokens=1000, output_tokens=500)
+        expected = _compute_cost(fallback_rates, 1000, 500)
+        assert cost == pytest.approx(expected)
+        assert cost > 0.0
+
 
 class TestCalculateLlmCredits:
     def test_pro_tier(self) -> None:
@@ -170,3 +183,142 @@ class TestCalculateLlmCostUsd:
     async def test_unknown_model(self) -> None:
         with patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=None):
             assert await calculate_llm_cost_usd("unknown", 1000, 500) == 0.0
+
+
+# Patch targets for model pricing coverage tests
+_TIER_CANDIDATES_PATCH = "app.schemas.model_tier.REGION_TIER_CANDIDATES"
+_HELPER_MODELS_PATCH = "app.schemas.model_tier.REGION_HELPER_MODELS"
+
+
+def _make_candidate(model: str, provider_type: str) -> object:
+    """Create a minimal TierModelCandidate-like object for testing."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(model=model, provider_type=provider_type)
+
+
+_FALLBACK_PATCH = "app.core.consume.pricing.FALLBACK_MODEL_COST_RATES"
+
+
+class TestValidateModelPricingCoverage:
+    """Tests for validate_model_pricing_coverage startup check."""
+
+    @pytest.mark.asyncio
+    async def test_passes_when_all_models_resolve(self) -> None:
+        """No error when every model resolves rates successfully."""
+        candidates = {
+            "global": {"ULTRA": [_make_candidate("model-a", "openai")]},
+        }
+        helpers: dict[str, dict[str, tuple[str, str]]] = {}
+        with (
+            patch(_TIER_CANDIDATES_PATCH, candidates),
+            patch(_HELPER_MODELS_PATCH, helpers),
+            patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value={"input": 1e-6, "output": 2e-6}),
+        ):
+            await validate_model_pricing_coverage()  # should not raise
+
+    @pytest.mark.asyncio
+    async def test_raises_when_model_unresolvable(self) -> None:
+        """RuntimeError raised when a model cannot be resolved from either source."""
+        candidates = {
+            "global": {"ULTRA": [_make_candidate("bad-model", "openai")]},
+        }
+        helpers: dict[str, dict[str, tuple[str, str]]] = {}
+        with (
+            patch(_TIER_CANDIDATES_PATCH, candidates),
+            patch(_HELPER_MODELS_PATCH, helpers),
+            patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=None),
+            patch(_FALLBACK_PATCH, {}),
+        ):
+            with pytest.raises(RuntimeError, match="bad-model"):
+                await validate_model_pricing_coverage()
+
+    @pytest.mark.asyncio
+    async def test_passes_with_fallback_when_modelsdev_missing(self) -> None:
+        """No error when models.dev returns None but fallback table has rates."""
+        candidates = {
+            "global": {"ULTRA": [_make_candidate("fallback-model", "openai")]},
+        }
+        helpers: dict[str, dict[str, tuple[str, str]]] = {}
+        fallback = {"fallback-model": {"input": 1e-6, "output": 2e-6}}
+        with (
+            patch(_TIER_CANDIDATES_PATCH, candidates),
+            patch(_HELPER_MODELS_PATCH, helpers),
+            patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=None),
+            patch(_FALLBACK_PATCH, fallback),
+        ):
+            await validate_model_pricing_coverage()  # should not raise
+
+    @pytest.mark.asyncio
+    async def test_raises_only_when_both_missing(self) -> None:
+        """RuntimeError raised only for models missing from both sources."""
+        candidates = {
+            "global": {
+                "ULTRA": [
+                    _make_candidate("has-fallback", "openai"),
+                    _make_candidate("no-fallback", "openai"),
+                ],
+            },
+        }
+        helpers: dict[str, dict[str, tuple[str, str]]] = {}
+        fallback = {"has-fallback": {"input": 1e-6, "output": 2e-6}}
+        with (
+            patch(_TIER_CANDIDATES_PATCH, candidates),
+            patch(_HELPER_MODELS_PATCH, helpers),
+            patch(_RESOLVE_PATCH, new_callable=AsyncMock, return_value=None),
+            patch(_FALLBACK_PATCH, fallback),
+        ):
+            with pytest.raises(RuntimeError, match="no-fallback"):
+                await validate_model_pricing_coverage()
+
+    @pytest.mark.asyncio
+    async def test_checks_all_regions(self) -> None:
+        """Models from both global and zh-cn regions are checked."""
+        candidates = {
+            "global": {"ULTRA": [_make_candidate("global-model", "openai")]},
+            "zh-cn": {"STANDARD": [_make_candidate("china-model", "qwen")]},
+        }
+        helpers: dict[str, dict[str, tuple[str, str]]] = {}
+        resolved_calls: list[tuple[str, str | None]] = []
+
+        async def _track_resolve(model: str, provider: str | None = None) -> dict[str, float]:
+            resolved_calls.append((model, provider))
+            return {"input": 1e-6, "output": 2e-6}
+
+        with (
+            patch(_TIER_CANDIDATES_PATCH, candidates),
+            patch(_HELPER_MODELS_PATCH, helpers),
+            patch(_RESOLVE_PATCH, side_effect=_track_resolve),
+        ):
+            await validate_model_pricing_coverage()
+
+        checked_models = {call[0] for call in resolved_calls}
+        assert "global-model" in checked_models
+        assert "china-model" in checked_models
+
+    @pytest.mark.asyncio
+    async def test_checks_helper_models(self) -> None:
+        """Helper models (selector, topic_rename) are included in the check."""
+        candidates: dict[str, dict[str, list[object]]] = {"global": {}}
+        helpers = {
+            "global": {
+                "selector": ("helper-selector", "qwen"),
+                "topic_rename": ("helper-rename", "qwen"),
+            },
+        }
+        resolved_calls: list[tuple[str, str | None]] = []
+
+        async def _track_resolve(model: str, provider: str | None = None) -> dict[str, float]:
+            resolved_calls.append((model, provider))
+            return {"input": 1e-6, "output": 2e-6}
+
+        with (
+            patch(_TIER_CANDIDATES_PATCH, candidates),
+            patch(_HELPER_MODELS_PATCH, helpers),
+            patch(_RESOLVE_PATCH, side_effect=_track_resolve),
+        ):
+            await validate_model_pricing_coverage()
+
+        checked_models = {call[0] for call in resolved_calls}
+        assert "helper-selector" in checked_models
+        assert "helper-rename" in checked_models

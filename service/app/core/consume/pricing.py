@@ -33,6 +33,25 @@ TOKEN_CREDIT_RATES: dict[str, float] = {
 # 缓存读取折扣率：缓存读取的token按输入费率的10%计费
 CACHE_READ_DISCOUNT: float = 0.1
 
+# 模型兜底费率 (USD per token)：当 models.dev 查询失败时使用
+# 费率来源：各厂商官方定价页（per 1M tokens），手动维护
+FALLBACK_MODEL_COST_RATES: dict[str, dict[str, float]] = {
+    # --- Anthropic (via GPUGeek) ---
+    "Vendor2/Claude-4.6-Opus": {"input": 5.0e-6, "output": 25.0e-6},
+    "Vendor2/Claude-4.5-Sonnet": {"input": 3.0e-6, "output": 15.0e-6},
+    # --- Google Vertex ---
+    "gemini-3.1-pro-preview": {"input": 2.0e-6, "output": 12.0e-6},
+    "gemini-3-flash-preview": {"input": 0.5e-6, "output": 3.0e-6},
+    # --- Qwen (Alibaba Cloud) ---
+    "qwen3-30b-a3b": {"input": 0.15e-6, "output": 0.60e-6},
+    "qwen3-max": {"input": 1.20e-6, "output": 6.0e-6},
+    "qwen3-next-80b-a3b-instruct": {"input": 0.09e-6, "output": 1.10e-6},
+    "deepseek-v3.2": {"input": 0.28e-6, "output": 0.42e-6},
+    # --- China-region models (via Qwen gateway) ---
+    "kimi-k2.5": {"input": 0.60e-6, "output": 3.0e-6},
+    "glm-4.7": {"input": 0.54e-6, "output": 2.40e-6},
+}
+
 # 工具调用 → 固定积分成本（按工具名称）
 # 未列出的工具默认成本为0（通过calculate_tool_cost()）
 TOOL_CREDIT_COSTS: dict[str, int] = {
@@ -188,8 +207,15 @@ async def get_model_cost(
     """
     rates = await _resolve_cost_rates(model_name, provider)
     if not rates:
-        logger.warning("Model %r not found in models.dev, cost will be 0", model_name)
-        return 0.0
+        rates = FALLBACK_MODEL_COST_RATES.get(model_name)
+        if rates:
+            logger.warning("Model %r not found in models.dev, using fallback rates", model_name)
+        else:
+            logger.warning(
+                "Model %r not found in models.dev or fallback table, cost will be 0",
+                model_name,
+            )
+            return 0.0
     return _compute_cost(rates, input_tokens, output_tokens, cache_read_input_tokens)
 
 
@@ -228,4 +254,49 @@ def validate_pricing_coverage() -> None:
         "Pricing coverage: %d tools (%d missing)",
         len(registered_tools),
         len(registered_tools - priced_tools),
+    )
+
+
+async def validate_model_pricing_coverage() -> None:
+    """启动时校验所有配置模型的费率覆盖，失败则阻塞启动。"""
+    from app.schemas.model_tier import REGION_HELPER_MODELS, REGION_TIER_CANDIDATES
+
+    # Collect unique (model_name, provider) pairs across all regions
+    models_to_check: set[tuple[str, str]] = set()
+
+    for _region, tier_dict in REGION_TIER_CANDIDATES.items():
+        for _tier, candidates in tier_dict.items():
+            for candidate in candidates:
+                models_to_check.add((candidate.model, str(candidate.provider_type)))
+
+    for _region, helpers in REGION_HELPER_MODELS.items():
+        for _role, (model_name, provider_type) in helpers.items():
+            models_to_check.add((model_name, str(provider_type)))
+
+    failed: list[str] = []
+    for model_name, provider in sorted(models_to_check):
+        rates = await _resolve_cost_rates(model_name, provider)
+        if rates:
+            logger.debug("Model pricing OK: %s (provider=%s)", model_name, provider)
+        elif FALLBACK_MODEL_COST_RATES.get(model_name):
+            logger.warning(
+                "Model pricing FALLBACK: %s (provider=%s) — not in models.dev, using fallback rates",
+                model_name,
+                provider,
+            )
+        else:
+            logger.error("Model pricing MISSING: %s (provider=%s)", model_name, provider)
+            failed.append(f"{model_name} (provider={provider})")
+
+    if failed:
+        raise RuntimeError(
+            f"Model pricing coverage check failed for {len(failed)} model(s):\n"
+            + "\n".join(f"  - {m}" for m in failed)
+            + "\n\nFix: add mappings in GPUGEEK_TO_MODELSDEV / INTERNAL_TO_MODELSDEV, "
+            "verify models.dev has pricing data, or add to FALLBACK_MODEL_COST_RATES."
+        )
+
+    logger.info(
+        "Model pricing coverage validated: all %d models have cost data",
+        len(models_to_check),
     )
