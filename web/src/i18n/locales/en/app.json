@@ -605,5 +605,12 @@
       "multiAgent": "Run multiple agents in parallel.",
       "dailyCheckIn": "Check in daily for bonus credits!"
     }
+  },
+  "question": {
+    "submit": "Submit",
+    "timedOut": "Timed out",
+    "remaining": "{{time}} remaining",
+    "answered": "Answered",
+    "typeAnswer": "Type your answer..."
   }
 }

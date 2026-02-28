@@ -37,3 +37,5 @@ export {
   handleSearchCitations,
   handleGeneratedFiles,
 } from "./controlHandlers";
+
+export { handleAskUserQuestion } from "./questionHandlers";

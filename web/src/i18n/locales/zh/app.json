@@ -604,5 +604,12 @@
       "multiAgent": "多个 Agent 并行，高效完成任务。",
       "dailyCheckIn": "每日签到领取额外积分！"
     }
+  },
+  "question": {
+    "submit": "提交",
+    "timedOut": "已超时",
+    "remaining": "剩余 {{time}}",
+    "answered": "已回答",
+    "typeAnswer": "输入你的回答..."
   }
 }
