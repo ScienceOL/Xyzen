@@ -336,7 +336,7 @@ async def _generate_image_with_dashscope(
     return image_bytes, mime_type
 
 
-async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> list[tuple[bytes, str, str]]:
+async def load_images_for_generation(user_id: str, image_ids: list[str]) -> list[tuple[bytes, str, str]]:
     """
     Load multiple images for generation from the database.
 
@@ -398,14 +398,15 @@ async def _load_images_for_generation(user_id: str, image_ids: list[str]) -> lis
 async def _try_mount_in_sandbox(session_id: str, image_bytes: bytes, filename: str) -> str | None:
     """Try to write generated image into the sandbox. Returns sandbox path or None."""
     try:
+        from app.configs.sandbox import get_sandbox_workdir
         from app.infra.sandbox import get_sandbox_manager
 
-        manager = get_sandbox_manager(session_id)
+        manager = await get_sandbox_manager(session_id)
         sandbox_id = await manager.get_sandbox_id()
         if not sandbox_id:
             return None
 
-        sandbox_path = f"/workspace/images/{filename}"
+        sandbox_path = f"{get_sandbox_workdir()}/images/{filename}"
         await manager.write_file_bytes(sandbox_path, image_bytes)
         logger.info(f"Auto-mounted generated image in sandbox: {sandbox_path}")
         return sandbox_path
@@ -440,7 +441,7 @@ async def _generate_image(
         source_image_ids: list[str] = image_ids or []
 
         if source_image_ids:
-            loaded_images = await _load_images_for_generation(user_id, source_image_ids)
+            loaded_images = await load_images_for_generation(user_id, source_image_ids)
             images_for_generation = [(img[0], img[1]) for img in loaded_images]
             source_storage_keys = [img[2] for img in loaded_images]
 
@@ -835,6 +836,7 @@ def create_image_tools_for_agent(user_id: str, session_id: str | None = None) ->
 __all__ = [
     "create_image_tools",
     "create_image_tools_for_agent",
+    "load_images_for_generation",
     "GenerateImageInput",
     "ReadImageInput",
     "MAX_INPUT_IMAGES",

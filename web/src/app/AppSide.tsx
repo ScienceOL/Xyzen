@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import AgentMarketplace from "@/app/marketplace/AgentMarketplace";
+import CommunityHub from "@/app/marketplace/CommunityHub";
 import { ActivityBar } from "@/components/layouts/ActivityBar";
 import { AppHeader } from "@/components/layouts/AppHeader";
 import KnowledgeBase from "@/components/layouts/KnowledgeBase";
 import MemoryPanel from "@/components/layouts/MemoryPanel";
+import RunnerPanel from "@/components/layouts/RunnerPanel";
 import SandboxPanel from "@/components/layouts/SandboxPanel";
+import ScheduledTasksPanel from "@/components/layouts/ScheduledTasksPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { Capsule } from "@/components/capsule";
 import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
+import { TerminalModal } from "@/components/modals/TerminalModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { DEFAULT_WIDTH, MIN_WIDTH } from "@/configs/common";
 import { useXyzen } from "@/store";
@@ -367,13 +370,25 @@ export function AppSide({
 
             {activePanel === "marketplace" && (
               <div className="h-full bg-white dark:bg-neutral-950">
-                <AgentMarketplace />
+                <CommunityHub />
               </div>
             )}
 
             {activePanel === "sandbox" && (
               <div className="h-full bg-white dark:bg-neutral-950">
                 <SandboxPanel />
+              </div>
+            )}
+
+            {activePanel === "runner" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <RunnerPanel />
+              </div>
+            )}
+
+            {activePanel === "tasks" && (
+              <div className="h-full bg-white dark:bg-neutral-950">
+                <ScheduledTasksPanel />
               </div>
             )}
 
@@ -392,6 +407,7 @@ export function AppSide({
       </div>
 
       <SettingsModal />
+      <TerminalModal />
       <PushPermissionPrompt />
     </>
   );

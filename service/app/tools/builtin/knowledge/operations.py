@@ -6,6 +6,7 @@ Core operations for knowledge base file management.
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import logging
@@ -216,9 +217,16 @@ async def list_files(user_id: str, knowledge_set_id: UUID) -> dict[str, Any]:
         return {"error": f"Internal error: {e!s}", "success": False}
 
 
-async def read_file(user_id: str, knowledge_set_id: UUID, filename: str) -> dict[str, Any]:
+async def read_file(
+    user_id: str, knowledge_set_id: UUID, filename: str, pages: str | None = None, mode: str | None = None
+) -> dict[str, Any]:
     """Read content of a file from the knowledge set."""
     from app.tools.utils.documents.handlers import FileHandlerFactory
+    from app.tools.utils.pdf import get_pdf_info, parse_page_range, read_pdf_pages_image, read_pdf_pages_text
+
+    mode = mode or "text"
+    if mode not in ("text", "image", "info"):
+        return {"error": f"Invalid mode: '{mode}'. Must be 'text', 'image', or 'info'.", "success": False}
 
     try:
         async with get_task_db_session() as db:
@@ -250,7 +258,121 @@ async def read_file(user_id: str, knowledge_set_id: UUID, filename: str) -> dict
             await storage.download_file(target_file.storage_key, buffer)
             file_bytes = buffer.getvalue()
 
-            # Use handler to process content (text mode only for LangChain tools)
+            is_pdf = target_file.content_type == "application/pdf" or target_file.original_filename.lower().endswith(
+                ".pdf"
+            )
+
+            # mode=info: return metadata only
+            if mode == "info":
+                info: dict[str, Any] = {
+                    "success": True,
+                    "filename": target_file.original_filename,
+                    "content_type": target_file.content_type,
+                    "size_bytes": target_file.file_size,
+                }
+                if is_pdf:
+                    try:
+                        pdf_info = get_pdf_info(file_bytes)
+                        info["page_count"] = pdf_info["page_count"]
+                    except Exception as e:
+                        logger.warning(f"Failed to get PDF info: {e}")
+                return info
+
+            # PDF handling with pagination
+            if is_pdf:
+                import fitz
+
+                MAX_DEFAULT_PAGES = 20
+
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                total_pages = len(doc)
+                doc.close()
+
+                page_nums: list[int] | None = None
+                auto_capped = False
+                if pages:
+                    try:
+                        page_nums = parse_page_range(pages, total_pages)
+                    except ValueError as e:
+                        return {"error": str(e), "success": False}
+                elif total_pages > MAX_DEFAULT_PAGES:
+                    page_nums = list(range(MAX_DEFAULT_PAGES))
+                    auto_capped = True
+
+                if mode == "image":
+                    images = read_pdf_pages_image(file_bytes, page_nums)
+                    img_result: dict[str, Any] = {
+                        "success": True,
+                        "filename": target_file.original_filename,
+                        "total_pages": total_pages,
+                        "pages_returned": len(images),
+                        "images": images,
+                    }
+                    if auto_capped:
+                        img_result["hint"] = (
+                            f"This PDF has {total_pages} pages. "
+                            f"Only the first {MAX_DEFAULT_PAGES} pages were returned to avoid exceeding context limits. "
+                            f"Use the 'pages' parameter (e.g., pages='{MAX_DEFAULT_PAGES + 1}-{min(total_pages, MAX_DEFAULT_PAGES * 2)}') to read additional pages."
+                        )
+                    return img_result
+                else:
+                    content = read_pdf_pages_text(file_bytes, page_nums)
+                    pages_read = len(page_nums) if page_nums else total_pages
+                    response: dict[str, Any] = {
+                        "success": True,
+                        "filename": target_file.original_filename,
+                        "content": content,
+                        "total_pages": total_pages,
+                        "pages_returned": pages_read,
+                    }
+                    if auto_capped:
+                        response["hint"] = (
+                            f"This PDF has {total_pages} pages. "
+                            f"Only the first {MAX_DEFAULT_PAGES} pages were returned to avoid exceeding context limits. "
+                            f"Use the 'pages' parameter (e.g., pages='{MAX_DEFAULT_PAGES + 1}-{min(total_pages, MAX_DEFAULT_PAGES * 2)}') to read additional pages."
+                        )
+                    # Hint LLM to try image mode if text extraction looks empty/poor
+                    elif pages_read > 0 and len(content.strip()) < pages_read * 50:
+                        response["hint"] = (
+                            "Text extraction returned very little content. "
+                            "This may be a scanned/image-based PDF. "
+                            "Try mode='image' to read pages as images instead."
+                        )
+                    return response
+
+            # Non-PDF: pages and image mode not supported
+            if pages:
+                return {"error": "The 'pages' parameter is only supported for PDF files.", "success": False}
+            if mode == "image":
+                return {"error": "mode='image' is only supported for PDF files.", "success": False}
+
+            # For image files, return base64-encoded content for LLM vision
+            image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp")
+            if target_file.original_filename.lower().endswith(image_extensions):
+                MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+                if len(file_bytes) > MAX_IMAGE_SIZE:
+                    return {
+                        "success": True,
+                        "filename": target_file.original_filename,
+                        "size_bytes": len(file_bytes),
+                        "hint": (
+                            f"This image is {len(file_bytes) / (1024 * 1024):.1f} MB, "
+                            f"which exceeds the {MAX_IMAGE_SIZE // (1024 * 1024)} MB limit for inline display. "
+                            "The image content was not returned to avoid exceeding context limits."
+                        ),
+                    }
+                content_type, _ = mimetypes.guess_type(target_file.original_filename)
+                if not content_type:
+                    content_type = "image/png"
+                b64_data = base64.b64encode(file_bytes).decode("utf-8")
+                return {
+                    "success": True,
+                    "filename": target_file.original_filename,
+                    "content": f"![{target_file.original_filename}](data:{content_type};base64,{b64_data})",
+                    "size_bytes": target_file.file_size,
+                }
+
+            # Use handler to process content (text mode for non-image files)
             handler = FileHandlerFactory.get_handler(target_file.original_filename)
 
             try:

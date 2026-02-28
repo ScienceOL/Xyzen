@@ -2,6 +2,90 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.6](https://github.com/ScienceOL/Xyzen/compare/v1.6.5...v1.6.6) (2026-02-27)
+
+### 🐛 Bug Fixes
+
+* add TerminalSessionList component for managing terminal sessions ([f21f1d3](https://github.com/ScienceOL/Xyzen/commit/f21f1d3408640dbee51b2fe15fd8d99b14ec67c7))
+
+## [1.6.5](https://github.com/ScienceOL/Xyzen/compare/v1.6.4...v1.6.5) (2026-02-27)
+
+### 🐛 Bug Fixes
+
+* add deployment model and repository for persistent service deployments ([be5a640](https://github.com/ScienceOL/Xyzen/commit/be5a640c9a09a33abf92834830efb941113b808d))
+
+## [1.6.4](https://github.com/ScienceOL/Xyzen/compare/v1.6.3...v1.6.4) (2026-02-26)
+
+### 🐛 Bug Fixes
+
+* use gemini-3.1-pro and separate file_read tool ([#276](https://github.com/ScienceOL/Xyzen/issues/276)) ([45a175e](https://github.com/ScienceOL/Xyzen/commit/45a175eb9864adc4b3a2dbe80f6655389de67e6b))
+
+## [1.6.3](https://github.com/ScienceOL/Xyzen/compare/v1.6.2...v1.6.3) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* remove touchAction style from TreeItemRow component ([289c768](https://github.com/ScienceOL/Xyzen/commit/289c7681dd5fa0629dd33be0683071fcec41d7fa))
+
+## [1.6.2](https://github.com/ScienceOL/Xyzen/compare/v1.6.1...v1.6.2) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* update curl commands to use sudo for installation on macOS and Linux ([e3374ad](https://github.com/ScienceOL/Xyzen/commit/e3374ad42de3617bd0040e03d8deba7a3ce12987))
+
+## [1.6.1](https://github.com/ScienceOL/Xyzen/compare/v1.6.0...v1.6.1) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* enhance sortable tree with touch and mouse sensors ([6d86d85](https://github.com/ScienceOL/Xyzen/commit/6d86d8595cfb562f93ed04e13eadf400d6d9978e))
+
+## [1.6.0](https://github.com/ScienceOL/Xyzen/compare/v1.5.9...v1.6.0) (2026-02-25)
+
+### ✨ Features
+
+* add runner management, skill marketplace, terminal, and CI pipeline ([#274](https://github.com/ScienceOL/Xyzen/issues/274)) ([9812324](https://github.com/ScienceOL/Xyzen/commit/98123245b638b2ca513db627554fc2cdfa7e3167)), closes [#273](https://github.com/ScienceOL/Xyzen/issues/273)
+
+## [1.5.9](https://github.com/ScienceOL/Xyzen/compare/v1.5.8...v1.5.9) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* remove unnecessary viewport-fit property and dark theme script from index.html ([2a0b310](https://github.com/ScienceOL/Xyzen/commit/2a0b310bdde080b8c9f9f1b1c0959ed152af35c2))
+
+## [1.5.8](https://github.com/ScienceOL/Xyzen/compare/v1.5.7...v1.5.8) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* adjust MobileApp height style for better responsiveness ([2915439](https://github.com/ScienceOL/Xyzen/commit/29154396be28144d62b3f352d4872dc109eabce1))
+
+## [1.5.7](https://github.com/ScienceOL/Xyzen/compare/v1.5.6...v1.5.7) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* add high availability considerations for backend logic ([007dbea](https://github.com/ScienceOL/Xyzen/commit/007dbea49bbb89490b7ec874abe39b8db7b0ab72))
+
+## [1.5.6](https://github.com/ScienceOL/Xyzen/compare/v1.5.5...v1.5.6) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* sync active topic with Service Worker to suppress push notifications ([c1a25b8](https://github.com/ScienceOL/Xyzen/commit/c1a25b87245e2487353cfe5eca65bfd49edfd245))
+
+## [1.5.5](https://github.com/ScienceOL/Xyzen/compare/v1.5.4...v1.5.5) (2026-02-25)
+
+### 🐛 Bug Fixes
+
+* add Markdown stripping for clean push notifications and enhance scheduled chat task locking ([#269](https://github.com/ScienceOL/Xyzen/issues/269)) ([8ff11cf](https://github.com/ScienceOL/Xyzen/commit/8ff11cf6cac7555f68936de3337a1d5aa14554fb))
+
+## [1.5.4](https://github.com/ScienceOL/Xyzen/compare/v1.5.3...v1.5.4) (2026-02-24)
+
+### 🐛 Bug Fixes
+
+* video support, tasks, knowledge ([f7f257a](https://github.com/ScienceOL/Xyzen/commit/f7f257a105ab558d2c7831b813d45053e1826290)), closes [#264](https://github.com/ScienceOL/Xyzen/issues/264)
+
+## [1.5.3](https://github.com/ScienceOL/Xyzen/compare/v1.5.2...v1.5.3) (2026-02-24)
+
+### 🐛 Bug Fixes
+
+* add SandboxConfigModal for user-specific sandbox settings ([#263](https://github.com/ScienceOL/Xyzen/issues/263)) ([698a9f5](https://github.com/ScienceOL/Xyzen/commit/698a9f509a57ace67e892c9280f2319e7932d911))
+
 ## [1.5.2](https://github.com/ScienceOL/Xyzen/compare/v1.5.1...v1.5.2) (2026-02-23)
 
 ### 🐛 Bug Fixes

@@ -4,6 +4,7 @@ import {
   ArrowDownTrayIcon,
   ArrowPathRoundedSquareIcon,
   ArrowsRightLeftIcon,
+  CodeBracketSquareIcon,
   EyeIcon,
   FolderOpenIcon,
   MinusIcon,
@@ -22,10 +23,11 @@ export interface ContextMenuProps {
   item: Folder | FileUploadResponse;
   position: { x: number; y: number };
   onClose: () => void;
-  onRename: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
-  onDelete: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
-  onMove: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
+  onRename?: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
+  onDelete?: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
+  onMove?: (item: Folder | FileUploadResponse, type: ContextMenuType) => void;
   onDownload?: (item: FileUploadResponse) => void;
+  onEdit?: (item: FileUploadResponse) => void;
   onPreview?: (item: FileUploadResponse) => void;
   onOpen?: (item: Folder) => void;
   onAddToKnowledgeSet?: (item: Folder | FileUploadResponse) => void;
@@ -50,6 +52,7 @@ export const ContextMenu = ({
   onDelete,
   onMove,
   onDownload,
+  onEdit,
   onPreview,
   onOpen,
   onAddToKnowledgeSet,
@@ -150,16 +153,18 @@ export const ContextMenu = ({
                 </button>
               )}
               <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
-              <button
-                onClick={() => {
-                  onDelete(item, type);
-                  onClose();
-                }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-              >
-                <TrashIcon className="h-4 w-4" />
-                {t("knowledge.contextMenu.deleteForever")}
-              </button>
+              {onDelete && (
+                <button
+                  onClick={() => {
+                    onDelete(item, type);
+                    onClose();
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                  {t("knowledge.contextMenu.deleteForever")}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -248,6 +253,19 @@ export const ContextMenu = ({
           </button>
         )}
 
+        {type === "file" && onEdit && (
+          <button
+            onClick={() => {
+              onEdit(item as FileUploadResponse);
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          >
+            <CodeBracketSquareIcon className="h-4 w-4" />
+            {t("knowledge.contextMenu.edit")}
+          </button>
+        )}
+
         {type === "file" && onDownload && (
           <button
             onClick={() => {
@@ -262,31 +280,35 @@ export const ContextMenu = ({
         )}
 
         {(type === "folder" && onOpen) ||
-        (type === "file" && (onPreview || onDownload)) ? (
+        (type === "file" && (onPreview || onEdit || onDownload)) ? (
           <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
         ) : null}
 
-        <button
-          onClick={() => {
-            onRename(item, type);
-            onClose();
-          }}
-          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-        >
-          <PencilIcon className="h-4 w-4" />
-          {t("knowledge.contextMenu.rename")}
-        </button>
+        {onRename && (
+          <button
+            onClick={() => {
+              onRename(item, type);
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          >
+            <PencilIcon className="h-4 w-4" />
+            {t("knowledge.contextMenu.rename")}
+          </button>
+        )}
 
-        <button
-          onClick={() => {
-            onMove(item, type);
-            onClose();
-          }}
-          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-        >
-          <ArrowsRightLeftIcon className="h-4 w-4" />
-          {t("knowledge.contextMenu.moveTo")}
-        </button>
+        {onMove && (
+          <button
+            onClick={() => {
+              onMove(item, type);
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          >
+            <ArrowsRightLeftIcon className="h-4 w-4" />
+            {t("knowledge.contextMenu.moveTo")}
+          </button>
+        )}
 
         {onAddToKnowledgeSet && !isInKnowledgeSetView && (
           <button
@@ -316,16 +338,18 @@ export const ContextMenu = ({
 
         <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
 
-        <button
-          onClick={() => {
-            onDelete(item, type);
-            onClose();
-          }}
-          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-        >
-          <TrashIcon className="h-4 w-4" />
-          {t("knowledge.contextMenu.delete")}
-        </button>
+        {onDelete && (
+          <button
+            onClick={() => {
+              onDelete(item, type);
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+          >
+            <TrashIcon className="h-4 w-4" />
+            {t("knowledge.contextMenu.delete")}
+          </button>
+        )}
       </div>
     </div>,
     document.body,

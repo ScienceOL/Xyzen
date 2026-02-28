@@ -345,7 +345,6 @@ export function convertToStreamingMessage(
   loadingMessage: Message,
   messageId: string,
 ): Message {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { isLoading: _, ...messageWithoutLoading } = loadingMessage;
   return {
     ...messageWithoutLoading,

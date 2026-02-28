@@ -227,6 +227,20 @@ def register_builtin_tools() -> None:
             requires_context=["user_id", "store"],
         )
 
+    # Register file reader tools (auto-enabled, no UI toggle)
+    from app.tools.builtin.file_reader import create_file_reader_tools
+
+    file_reader_tools = create_file_reader_tools()
+    for tool_id, tool in file_reader_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="file",
+            ui_toggleable=False,
+            default_enabled=True,
+            requires_context=["user_id"],
+        )
+
     # Register image tools
     from app.tools.builtin.image import create_image_tools
 
@@ -236,6 +250,21 @@ def register_builtin_tools() -> None:
             tool_id=tool_id,
             tool=tool,
             category="image",
+            display_name=tool.name.replace("_", " ").title(),
+            ui_toggleable=True,
+            default_enabled=False,
+            requires_context=["user_id"],
+        )
+
+    # Register video tools
+    from app.tools.builtin.video import create_video_tools
+
+    video_tools = create_video_tools()
+    for tool_id, tool in video_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="video",
             display_name=tool.name.replace("_", " ").title(),
             ui_toggleable=True,
             default_enabled=False,
@@ -292,6 +321,36 @@ def register_builtin_tools() -> None:
         default_enabled=False,
         requires_context=[],
     )
+
+    # Register scheduled task tools
+    from app.tools.builtin.scheduled_task import create_scheduled_task_tools
+
+    sched_tools = create_scheduled_task_tools()
+    for tool_id, tool in sched_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="scheduled_task",
+            display_name=tool.name.replace("_", " ").title(),
+            ui_toggleable=True,
+            default_enabled=False,
+            requires_context=["user_id", "session_id"],
+        )
+
+    # Register skill management tools
+    from app.tools.builtin.skill_management import create_skill_management_tools
+
+    skill_mgmt_tools = create_skill_management_tools()
+    for tool_id, tool in skill_mgmt_tools.items():
+        BuiltinToolRegistry.register(
+            tool_id=tool_id,
+            tool=tool,
+            category="skill_management",
+            display_name=tool.name.replace("_", " ").title(),
+            ui_toggleable=True,
+            default_enabled=False,
+            requires_context=["user_id"],
+        )
 
     logger.info(f"Registered {BuiltinToolRegistry.count()} builtin tools")
 

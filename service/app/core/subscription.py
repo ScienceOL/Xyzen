@@ -10,8 +10,18 @@ from app.models.subscription import (
     UserSubscription,
     UserSubscriptionCreate,
 )
+from app.core.plan_catalog import get_catalog_region, get_plan_catalog
 from app.repos.redemption import RedemptionRepository
 from app.repos.subscription import SubscriptionRepository
+from app.schemas.plan_catalog import (
+    CurrencyPricingResponse,
+    PlanCatalogResponse,
+    PlanFeatureResponse,
+    PlanLimitsResponse,
+    PlanResponse,
+    SandboxAddonRateResponse,
+    TopUpRateResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +35,9 @@ class UserLimits:
     max_file_upload_bytes: int
     max_parallel_chats: int
     max_sandboxes: int
+    max_scheduled_tasks: int
+    max_terminals: int
+    max_deployments: int
     max_model_tier: str
     role_name: str
     role_display_name: str
@@ -61,6 +74,12 @@ class SubscriptionService:
             )
         )
         await self.db.commit()
+
+        # Sync FGA tuple (best-effort)
+        from app.core.fga.subscription_sync import write_plan_subscription
+
+        await write_plan_subscription(user_id, default_role.name)
+
         return default_role
 
     async def get_user_limits(self, user_id: str) -> UserLimits | None:
@@ -74,6 +93,9 @@ class SubscriptionService:
             max_file_upload_bytes=role.max_file_upload_bytes,
             max_parallel_chats=role.max_parallel_chats,
             max_sandboxes=role.max_sandboxes,
+            max_scheduled_tasks=role.max_scheduled_tasks,
+            max_terminals=role.max_terminals,
+            max_deployments=role.max_deployments,
             max_model_tier=role.max_model_tier,
             role_name=role.name,
             role_display_name=role.display_name,
@@ -110,16 +132,28 @@ class SubscriptionService:
         expires_at: datetime | None = None,
     ) -> UserSubscription | None:
         """Create or update a user's subscription to point to a new role."""
+        # Resolve old role name for FGA sync
+        old_role = await self.repo.get_user_role(user_id)
+        old_plan_key = old_role.name if old_role else None
+
         effective_expires = expires_at if expires_at is not None else self._default_expires_at()
         sub = await self.repo.get_user_subscription(user_id)
         if sub is not None:
-            return await self.repo.update_user_role(user_id, role_id, effective_expires)
+            result = await self.repo.update_user_role(user_id, role_id, effective_expires)
+        else:
+            result = await self.repo.create_user_subscription(
+                UserSubscriptionCreate(user_id=user_id, role_id=role_id, expires_at=effective_expires)
+            )
+            await self.db.commit()
 
-        sub = await self.repo.create_user_subscription(
-            UserSubscriptionCreate(user_id=user_id, role_id=role_id, expires_at=effective_expires)
-        )
-        await self.db.commit()
-        return sub
+        # Sync FGA tuple (best-effort)
+        new_role = await self.repo.get_role_by_id(role_id)
+        if new_role:
+            from app.core.fga.subscription_sync import update_plan_subscription
+
+            await update_plan_subscription(user_id, old_plan_key, new_role.name)
+
+        return result
 
     async def list_plans(self) -> list[SubscriptionRole]:
         """List all available subscription plans."""
@@ -175,3 +209,87 @@ class SubscriptionService:
         await self.db.commit()
 
         return amount
+
+    async def get_plan_catalog_response(self) -> PlanCatalogResponse:
+        """Build the full plan catalog response, merging static catalog with DB limits."""
+        catalog = get_plan_catalog()
+        region = get_catalog_region()
+
+        # Build role_map from DB
+        roles = await self.list_plans()
+        role_map: dict[str, SubscriptionRole] = {r.name: r for r in roles}
+
+        plan_responses: list[PlanResponse] = []
+        for entry in catalog.plans:
+            # Merge limits from DB role if available
+            role = role_map.get(entry.plan_key)
+            limits: PlanLimitsResponse | None = None
+            if role is not None:
+                limits = PlanLimitsResponse(
+                    storage=_format_bytes(role.storage_limit_bytes),
+                    max_file_count=role.max_file_count,
+                    max_parallel_chats=role.max_parallel_chats,
+                    max_sandboxes=role.max_sandboxes,
+                    max_scheduled_tasks=role.max_scheduled_tasks,
+                    max_terminals=role.max_terminals,
+                    monthly_credits=role.monthly_credits,
+                    max_model_tier=role.max_model_tier,
+                )
+
+            plan_responses.append(
+                PlanResponse(
+                    plan_key=entry.plan_key,
+                    display_name_key=entry.display_name_key,
+                    is_free=entry.is_free,
+                    highlight=entry.highlight,
+                    badge_key=entry.badge_key,
+                    pricing=[
+                        CurrencyPricingResponse(
+                            currency=p.currency,
+                            amount=p.amount,
+                            display_price=p.display_price,
+                            credits=p.credits,
+                            first_month_amount=p.first_month_amount,
+                            first_month_display=p.first_month_display,
+                        )
+                        for p in entry.pricing
+                    ],
+                    features=[
+                        PlanFeatureResponse(key=f.key, included=f.included, params=f.params) for f in entry.features
+                    ],
+                    limits=limits,
+                )
+            )
+
+        return PlanCatalogResponse(
+            region=region,
+            plans=plan_responses,
+            topup_rates=[
+                TopUpRateResponse(
+                    currency=tr.currency,
+                    credits_per_unit=tr.credits_per_unit,
+                    unit_amount=tr.unit_amount,
+                    display_rate=tr.display_rate,
+                    payment_methods=list(tr.payment_methods),
+                )
+                for tr in catalog.topup_rates
+            ],
+            sandbox_addon_rates=[
+                SandboxAddonRateResponse(
+                    currency=sa.currency,
+                    amount_per_sandbox=sa.amount_per_sandbox,
+                    display_rate=sa.display_rate,
+                    min_plan=sa.min_plan,
+                )
+                for sa in catalog.sandbox_addon_rates
+            ],
+        )
+
+
+def _format_bytes(n: int) -> str:
+    """Human-readable byte size string."""
+    if n < 1024 * 1024:
+        return f"{n // 1024} KB"
+    if n < 1024 * 1024 * 1024:
+        return f"{n // (1024 * 1024)} MB"
+    return f"{n / (1024 * 1024 * 1024):.1f} GB"

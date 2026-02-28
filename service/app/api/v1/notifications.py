@@ -1,5 +1,7 @@
 """Notification REST API endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -11,6 +13,8 @@ from app.models.push_subscription import PushSubscription
 from app.repos.push_subscription import PushSubscriptionRepository
 
 router = APIRouter(tags=["notifications"])
+
+logger = logging.getLogger(__name__)
 
 
 # --- Response / Request models -----------------------------------------------
@@ -28,6 +32,7 @@ class PushSubscriptionRequest(BaseModel):
     endpoint: str
     keys: dict[str, str]  # {p256dh: "...", auth: "..."}
     user_agent: str = ""
+    old_endpoint: str = ""
 
 
 class PushSubscriptionResponse(BaseModel):
@@ -65,6 +70,23 @@ async def register_push_subscription(
         user_agent=body.user_agent,
     )
     await repo.upsert(sub)
+
+    # If the frontend reported a previous (now stale) endpoint, delete it.
+    if body.old_endpoint:
+        await repo.delete_by_endpoint(body.old_endpoint)
+
+    # Clean up any other stale subscriptions for the same push service domain
+    # (e.g. FCM endpoint changed after SW update / cache clear / browser restart).
+    domain = PushSubscriptionRepository.extract_domain(body.endpoint)
+    deleted = await repo.delete_stale_by_user_and_domain(user_id, domain, body.endpoint)
+    if deleted:
+        logger.info(
+            "Cleaned up %d stale push subscription(s) for user %s on %s",
+            deleted,
+            user_id,
+            domain,
+        )
+
     await db.commit()
     return PushSubscriptionResponse(success=True)
 

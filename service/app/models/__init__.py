@@ -15,6 +15,7 @@ from .chat_share import ChatShare, ChatShareCreate, ChatSharePublicRead, ChatSha
 from .checkin import CheckIn, CheckInCreate, CheckInRead
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
+from .deployment import Deployment, DeploymentCreate, DeploymentRead
 from .developer_earning import (
     DeveloperEarning,
     DeveloperEarningCreate,
@@ -35,6 +36,15 @@ from .knowledge_set import (
 from .links import AgentMcpServerLink
 from .mcp import McpServer
 from .skill import AgentSkillLink, Skill, SkillCreate, SkillRead, SkillUpdate
+from .skill_like import SkillLike, SkillLikeCreate, SkillLikeRead
+from .skill_marketplace import (
+    SkillMarketplace,
+    SkillMarketplaceCreate,
+    SkillMarketplaceRead,
+    SkillMarketplaceReadWithSnapshot,
+    SkillMarketplaceUpdate,
+)
+from .skill_snapshot import SkillSnapshot, SkillSnapshotCreate, SkillSnapshotRead
 from .message import (
     Message,
     MessageRead,
@@ -42,6 +52,7 @@ from .message import (
     MessageReadWithFiles,
     MessageReadWithFilesAndCitations,
 )
+from .payment import PaymentOrder, PaymentOrderCreate, PaymentOrderRead
 from .provider import Provider
 from .redemption import CreditLedger, RedemptionCode, RedemptionHistory, UserWallet
 from .session_stats import AgentStatsAggregated, SessionStatsRead, UserStatsAggregated
@@ -51,6 +62,9 @@ from .smithery_cache import SmitheryServersCache
 from .tool import Tool, ToolFunction, ToolVersion
 from .push_subscription import PushSubscription
 from .root_agent import RootAgent, RootAgentRead
+from .runner import Runner, RunnerRead, RunnerUpdate
+from .sandbox_profile import SandboxProfile, SandboxProfileRead, SandboxProfileUpdate
+from .scheduled_task import ScheduledTask, ScheduledTaskCreate, ScheduledTaskRead, ScheduledTaskUpdate
 from .topic import Topic, TopicRead, TopicReadWithMessages
 
 logger = logging.getLogger(__name__)
@@ -84,6 +98,9 @@ __all__ = [
     "CheckInCreate",
     "CheckInRead",
     "ConsumeRecord",
+    "Deployment",
+    "DeploymentCreate",
+    "DeploymentRead",
     "DeveloperEarning",
     "DeveloperEarningCreate",
     "DeveloperEarningRead",
@@ -109,12 +126,26 @@ __all__ = [
     "SkillCreate",
     "SkillRead",
     "SkillUpdate",
+    "SkillLike",
+    "SkillLikeCreate",
+    "SkillLikeRead",
+    "SkillMarketplace",
+    "SkillMarketplaceCreate",
+    "SkillMarketplaceRead",
+    "SkillMarketplaceReadWithSnapshot",
+    "SkillMarketplaceUpdate",
+    "SkillSnapshot",
+    "SkillSnapshotCreate",
+    "SkillSnapshotRead",
     "McpServer",
     "Message",
     "MessageRead",
     "MessageReadWithCitations",
     "MessageReadWithFiles",
     "MessageReadWithFilesAndCitations",
+    "PaymentOrder",
+    "PaymentOrderCreate",
+    "PaymentOrderRead",
     "Provider",
     "PushSubscription",
     "Session",
@@ -133,6 +164,16 @@ __all__ = [
     "RedemptionHistory",
     "RootAgent",
     "RootAgentRead",
+    "Runner",
+    "RunnerRead",
+    "RunnerUpdate",
+    "SandboxProfile",
+    "SandboxProfileRead",
+    "SandboxProfileUpdate",
+    "ScheduledTask",
+    "ScheduledTaskCreate",
+    "ScheduledTaskRead",
+    "ScheduledTaskUpdate",
     "UserWallet",
     "SubscriptionRole",
     "SubscriptionRoleRead",
@@ -160,6 +201,8 @@ try:
     AgentReadWithDetails.model_rebuild()
     # AgentMarketplaceReadWithSnapshot depends on AgentSnapshotRead
     AgentMarketplaceReadWithSnapshot.model_rebuild()
+    # SkillMarketplaceReadWithSnapshot depends on SkillSnapshotRead
+    SkillMarketplaceReadWithSnapshot.model_rebuild()
 except (NameError, TypeError, Exception) as e:
     logger.warning(
         f"Could not rebuild Pydantic models with forward references. "

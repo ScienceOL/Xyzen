@@ -47,6 +47,8 @@
     "memory": "メモリー",
     "more": "その他",
     "sandbox": "サンドボックス",
+    "runner": "ローカルターミナル",
+    "tasks": "タスク",
     "account": "マイページ",
     "comingSoon": "近日公開予定"
   },
@@ -137,6 +139,8 @@
     "noKnowledge": "なし",
     "image": "画像",
     "imageDesc": "画像を生成・読み取り",
+    "video": "動画",
+    "videoDesc": "動画を生成",
     "literatureSearch": "文献検索",
     "literatureSearchDesc": "学術論文を検索",
     "memory": "メモリ",
@@ -197,12 +201,12 @@
     "noDescription": "このアシスタントの説明はありません",
     "defaultDescription": "自由に質問できます。特定のアシスタントを選ぶ必要はなく、質問に応じて適切な回答を提供します。",
     "quickActions": {
-      "sayHello": "挨拶する",
-      "sayHelloMessage": "こんにちは！はじめまして。",
-      "askQuestion": "質問する",
-      "askQuestionMessage": "何か手伝ってもらえますか？",
-      "startTask": "タスクを始める",
-      "startTaskMessage": "新しいタスクを始めたいです。"
+      "drawImage": "水彩風景を描く",
+      "drawImageMessage": "夕暮れの海辺の風景を水彩風で描いて、暖かい色合いにしてね。描いたらナレッジベースに保存して、後からどう手を加えられるか教えて。例えば砂浜で遊ぶ人を足すとか。",
+      "launchSandbox": "共有可能なページを作成",
+      "launchSandboxMessage": "かっこいいアニメーション付きの楽しいウェブページを作って、シンプルでいいよ。できたら友達にシェアできるリンクをちょうだい。",
+      "scheduleTask": "毎日のリマインダーを設定",
+      "scheduleTaskMessage": "毎朝9時に天気とやることリストを通知してくれるリマインダーを作って。あと、通知権限をオンにするのも忘れずに教えてね。"
     }
   },
   "chatHeader": {
@@ -310,8 +314,10 @@
       "subtitle": "タスクの難易度に応じてAI計算能力を柔軟に割り当て",
       "speed": "応答速度",
       "reasoning": "推論深度",
+      "context": "コンテキストウィンドウ",
       "availableModels": "能力の参考",
       "imageGen": "画像生成",
+      "betaSpecial": "ベータ特典",
       "disclaimer": "* このリストはモデル能力の参考用であり、実際に使用されるモデルを保証するものではありません。"
     },
     "speedLabels": {
@@ -324,6 +330,12 @@
       "basic": "基本",
       "standard": "標準",
       "excellent": "優秀",
+      "max": "MAX"
+    },
+    "contextLabels": {
+      "small": "短い",
+      "medium": "標準",
+      "large": "長い",
       "max": "MAX"
     },
     "features": {
@@ -370,7 +382,81 @@
     "emptyHint": "エージェントがコード実行ツールを使用すると、サンドボックスが自動的に作成されます。",
     "explorer": "エクスプローラー",
     "emptyWorkspace": "ファイルがありません",
-    "selectFile": "エクスプローラーからファイルを選択して表示"
+    "selectFile": "エクスプローラーからファイルを選択して表示",
+    "start": "サンドボックスを起動",
+    "started": "サンドボックスが起動しました",
+    "startError": "サンドボックスの起動に失敗しました",
+    "keepAliveBtn": "サンドボックスタイマーを更新",
+    "keepAlive": "サンドボックスタイマーを更新しました",
+    "keepAliveError": "サンドボックスタイマーの更新に失敗しました",
+    "stopped": "停止中",
+    "deleteConfirmTitle": "サンドボックスを削除",
+    "deleteConfirmMessage": "サンドボックス「{{name}}」を削除してもよろしいですか？この操作は元に戻せません。",
+    "config": {
+      "title": "サンドボックス設定",
+      "subtitle": "サンドボックスのデフォルトリソースとライフサイクル設定をカスタマイズ",
+      "resources": "リソース",
+      "lifecycle": "ライフサイクル",
+      "runtime": "ランタイム",
+      "cpu": "CPU コア数",
+      "cpuHint": "各サンドボックスに割り当てるCPUコア数",
+      "memory": "メモリ (MB)",
+      "memoryHint": "各サンドボックスに割り当てるメモリ（メガバイト）",
+      "disk": "ディスク (MB)",
+      "diskHint": "各サンドボックスに割り当てるディスク容量（メガバイト）",
+      "autoStop": "自動停止（分）",
+      "autoStopHint": "非アクティブ状態が続いた場合に自動停止するまでの分数",
+      "autoDelete": "自動削除（分）",
+      "autoDeleteHint": "停止後に自動削除されるまでの分数",
+      "timeout": "タイムアウト（秒）",
+      "timeoutHint": "サンドボックス操作の最大実行時間（秒）",
+      "image": "コンテナイメージ",
+      "imageHint": "新しいサンドボックスに使用するカスタムコンテナイメージ",
+      "resetDefaults": "デフォルトに戻す",
+      "saved": "サンドボックス設定を保存しました",
+      "saveError": "サンドボックス設定の保存に失敗しました",
+      "reset": "設定をデフォルトに戻しました",
+      "resetError": "サンドボックス設定のリセットに失敗しました"
+    }
+  },
+  "tasksPanel": {
+    "title": "スケジュールタスク",
+    "subtitle": "スケジュール済みタスクを管理します。",
+    "empty": "スケジュールタスクはありません。",
+    "emptyHint": "エージェントでタスクをスケジュールするか、手動で作成してください。",
+    "loadError": "タスクの読み込みに失敗しました。",
+    "deleteConfirmTitle": "タスクを削除",
+    "deleteConfirmMessage": "このタスクを削除してもよろしいですか？",
+    "deleted": "タスクが削除されました。",
+    "deleteError": "タスクの削除に失敗しました。",
+    "cancelled": "タスクがキャンセルされました。",
+    "cancelError": "タスクのキャンセルに失敗しました。",
+    "statusPending": "待機中",
+    "statusRecurring": "繰り返し",
+    "statusActive": "アクティブ",
+    "statusPaused": "一時停止",
+    "statusCompleted": "完了",
+    "statusFailed": "失敗",
+    "statusCancelled": "キャンセル済み",
+    "scheduleOnce": "一回",
+    "scheduleDaily": "毎日",
+    "scheduleWeekly": "毎週",
+    "scheduleCron": "カスタム",
+    "scheduleType": "スケジュール",
+    "nextRun": "次回実行",
+    "lastRun": "前回実行",
+    "createdAt": "作成日時",
+    "runs": "回",
+    "source": "ソース",
+    "agent": "エージェント",
+    "timezone": "タイムゾーン",
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "daysAgo": "{{count}}日前",
+    "inMinutes": "{{count}}分後",
+    "inHours": "{{count}}時間後",
+    "inDays": "{{count}}日後"
   },
   "workspace": {
     "recommendations": {
@@ -425,7 +511,10 @@
     "system.service_unavailable": "サービスが一時的に利用できません。",
     "retryAction": "再試行",
     "rechargeAction": "チャージ",
-    "detailToggle": "詳細"
+    "detailToggle": "詳細",
+    "errorRef": "参照ID",
+    "occurredAt": "時刻",
+    "copyRef": "参照IDをコピー"
   },
   "account": {
     "checkIn": "デイリーチェックイン",
@@ -439,6 +528,7 @@
     "storage": "ストレージ",
     "files": "ファイル",
     "parallelChats": "並行チャット",
+    "scheduledTasks": "スケジュールタスク",
     "settings": "設定",
     "redeem": "コード交換",
     "region": "リージョン",
@@ -504,15 +594,15 @@
   },
   "loading": {
     "tips": {
-      "noAds": "広告を入れたかったのに、ボスに却下されました。",
-      "ceoAgent": "知ってましたか？CEO Agent は他の Agent に直接指示を出して作業させることができます。",
-      "publishEarn": "アシスタントをマーケットプレイスに公開してクレジット報酬を獲得しよう！",
-      "lazyProductivity": "「怠惰」こそが生産性の原動力。",
-      "deadlineProductivity": "「締め切り」こそが生産性の原動力。",
+      "noAds": "広告なし、ボスの命令です。",
+      "ceoAgent": "CEO Agent は他の Agent に指示できます。",
+      "publishEarn": "エージェント公開でクレジット獲得！",
+      "lazyProductivity": "「怠惰」こそ生産性の源。",
+      "deadlineProductivity": "「締め切り」こそ生産性の源。",
       "worthyOpponent": "なかなかの好敵手。",
-      "knowledgeBase": "ナレッジベースを接続して、エージェントに専門知識を持たせよう。",
-      "multiAgent": "複数のエージェントを並行して使い、複雑な調査タスクをこなそう。",
-      "dailyCheckIn": "毎日チェックインしてボーナスクレジットをもらおう！"
+      "knowledgeBase": "知識ベースで専門力を強化。",
+      "multiAgent": "複数エージェントを並行実行。",
+      "dailyCheckIn": "毎日チェックインでボーナス！"
     }
   }
 }

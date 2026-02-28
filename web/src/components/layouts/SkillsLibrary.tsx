@@ -1,240 +1,39 @@
 import { CreateSkillModal } from "@/components/layouts/components/ChatToolbar/CreateSkillModal";
-import { Button } from "@/components/ui/button";
-import { useXyzen } from "@/store";
+import { SkillResourcePanel } from "@/components/skills/SkillResourcePanel";
 import { skillService } from "@/service/skillService";
+import { useXyzen } from "@/store";
 import type { SkillRead } from "@/types/skills";
 import {
-  Files,
-  FileItem,
-  FolderContent,
-  FolderItem,
-  FolderTrigger,
-} from "@/components/animate-ui/components/radix/files";
-import {
   ArrowPathIcon,
-  ArchiveBoxIcon,
-  CodeBracketIcon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
-  FilmIcon,
-  ClockIcon,
-  MusicalNoteIcon,
-  PhotoIcon,
+  ArrowUpOnSquareIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PlusIcon,
   SparklesIcon,
-  TableCellsIcon,
-  UserCircleIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
-import { FolderIcon } from "lucide-react";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import {
+  DOCK_HORIZONTAL_MARGIN,
+  DOCK_SAFE_AREA,
+} from "@/components/layouts/BottomDock";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
 
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-  return "Unknown error";
-}
+const PublishSkillModal = lazy(
+  () => import("@/components/features/PublishSkillModal"),
+);
 
 function sortSkills(skills: SkillRead[]): SkillRead[] {
   return [...skills].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-interface FileTreeNode {
-  folders: Map<string, FileTreeNode>;
-  files: Set<string>;
-}
-
-function createFileTreeNode(): FileTreeNode {
-  return {
-    folders: new Map<string, FileTreeNode>(),
-    files: new Set<string>(),
-  };
-}
-
-function normalizeRelativePath(path: string): string | null {
-  const normalized = path.trim().replace(/\\/g, "/");
-  if (!normalized) return null;
-  if (normalized.startsWith("/")) return null;
-
-  const parts = normalized.split("/").filter(Boolean);
-  if (
-    parts.length === 0 ||
-    parts.some((part) => part === "." || part === ".." || part.length === 0)
-  ) {
-    return null;
-  }
-
-  return parts.join("/");
-}
-
-function addPathToTree(root: FileTreeNode, path: string): void {
-  const normalized = normalizeRelativePath(path);
-  if (!normalized) return;
-
-  const parts = normalized.split("/");
-  let node = root;
-  for (let i = 0; i < parts.length; i += 1) {
-    const part = parts[i];
-    const isLast = i === parts.length - 1;
-    if (isLast) {
-      node.files.add(part);
-      continue;
-    }
-
-    const existing = node.folders.get(part);
-    if (existing) {
-      node = existing;
-      continue;
-    }
-    const next = createFileTreeNode();
-    node.folders.set(part, next);
-    node = next;
-  }
-}
-
-function buildSkillFileTree(resourcePaths: string[]): FileTreeNode {
-  const root = createFileTreeNode();
-  const allPaths = new Set<string>(["SKILL.md", ...resourcePaths]);
-  for (const path of allPaths) {
-    addPathToTree(root, path);
-  }
-  return root;
-}
-
-function fileKindLabel(fileName: string): string {
-  const lower = fileName.toLowerCase();
-  if (lower === "skill.md") return "core";
-  if (lower.endsWith(".md")) return "md";
-  if (lower.endsWith(".json")) return "json";
-  if (
-    lower.endsWith(".yaml") ||
-    lower.endsWith(".yml") ||
-    lower.endsWith(".toml")
-  ) {
-    return "config";
-  }
-  if (
-    lower.endsWith(".csv") ||
-    lower.endsWith(".tsv") ||
-    lower.endsWith(".xlsx")
-  ) {
-    return "table";
-  }
-  if (
-    lower.endsWith(".png") ||
-    lower.endsWith(".jpg") ||
-    lower.endsWith(".jpeg") ||
-    lower.endsWith(".gif") ||
-    lower.endsWith(".svg") ||
-    lower.endsWith(".webp")
-  ) {
-    return "image";
-  }
-  if (
-    lower.endsWith(".mp3") ||
-    lower.endsWith(".wav") ||
-    lower.endsWith(".ogg")
-  ) {
-    return "audio";
-  }
-  if (
-    lower.endsWith(".mp4") ||
-    lower.endsWith(".mov") ||
-    lower.endsWith(".avi") ||
-    lower.endsWith(".mkv")
-  ) {
-    return "video";
-  }
-  if (
-    lower.endsWith(".zip") ||
-    lower.endsWith(".tar") ||
-    lower.endsWith(".gz")
-  ) {
-    return "archive";
-  }
-  if (
-    lower.endsWith(".py") ||
-    lower.endsWith(".ts") ||
-    lower.endsWith(".tsx") ||
-    lower.endsWith(".js") ||
-    lower.endsWith(".jsx")
-  ) {
-    return "code";
-  }
-  if (lower.endsWith(".txt")) return "text";
-  return "file";
-}
-
-function fileIcon(fileName: string): ReactNode {
-  const kind = fileKindLabel(fileName);
-
-  switch (kind) {
-    case "core":
-      return <SparklesIcon className="h-3.5 w-3.5 text-emerald-500" />;
-    case "md":
-      return <DocumentTextIcon className="h-3.5 w-3.5 text-blue-400" />;
-    case "code":
-      return <CodeBracketIcon className="h-3.5 w-3.5 text-blue-500" />;
-    case "json":
-      return <DocumentTextIcon className="h-3.5 w-3.5 text-yellow-500" />;
-    case "config":
-      return <DocumentTextIcon className="h-3.5 w-3.5 text-violet-400" />;
-    case "table":
-      return <TableCellsIcon className="h-3.5 w-3.5 text-green-500" />;
-    case "image":
-      return <PhotoIcon className="h-3.5 w-3.5 text-purple-400" />;
-    case "audio":
-      return <MusicalNoteIcon className="h-3.5 w-3.5 text-pink-400" />;
-    case "video":
-      return <FilmIcon className="h-3.5 w-3.5 text-orange-400" />;
-    case "archive":
-      return <ArchiveBoxIcon className="h-3.5 w-3.5 text-stone-400" />;
-    case "text":
-      return <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-400" />;
-    default:
-      return <DocumentTextIcon className="h-3.5 w-3.5 text-neutral-400" />;
-  }
-}
-
-function fileBadgeText(fileName: string): string {
-  const kind = fileKindLabel(fileName);
-  if (kind === "core") return "CORE";
-
-  const ext = fileName.split(".").pop()?.trim().toUpperCase();
-  if (ext && ext.length <= 6) {
-    return ext;
-  }
-  return kind.toUpperCase();
-}
-
-function collectExpandedValuesForSkill(
-  skillId: string,
-  resourcePaths: string[],
-): string[] {
-  const values = new Set<string>([`skill:${skillId}`]);
-  const allPaths = ["SKILL.md", ...resourcePaths];
-
-  for (const rawPath of allPaths) {
-    const normalized = normalizeRelativePath(rawPath);
-    if (!normalized) continue;
-    const parts = normalized.split("/");
-    if (parts.length <= 1) continue;
-
-    let folderValue = `skill:${skillId}`;
-    for (let index = 0; index < parts.length - 1; index += 1) {
-      folderValue = `${folderValue}/${parts[index]}`;
-      values.add(folderValue);
-    }
-  }
-
-  return Array.from(values);
 }
 
 export default function SkillsLibrary() {
@@ -246,226 +45,373 @@ export default function SkillsLibrary() {
   });
 
   const [skills, setSkills] = useState<SkillRead[]>([]);
-  const [resourcePathsBySkill, setResourcePathsBySkill] = useState<
-    Record<string, string[]>
-  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [publishSkillId, setPublishSkillId] = useState<string | null>(null);
 
   const builtinSkills = useMemo(
-    () => sortSkills(skills.filter((skill) => skill.scope === "builtin")),
+    () => sortSkills(skills.filter((s) => s.scope === "builtin")),
     [skills],
   );
   const userSkills = useMemo(
-    () => sortSkills(skills.filter((skill) => skill.scope === "user")),
+    () => sortSkills(skills.filter((s) => s.scope === "user")),
     [skills],
   );
-  const defaultExpandedValues = useMemo(() => {
-    const values = new Set<string>(["builtin-root", "user-root"]);
-    for (const skill of skills) {
-      const resourcePaths = resourcePathsBySkill[skill.id] ?? [];
-      for (const value of collectExpandedValuesForSkill(
-        skill.id,
-        resourcePaths,
-      )) {
-        values.add(value);
-      }
-    }
-    return Array.from(values);
-  }, [resourcePathsBySkill, skills]);
+
+  const selectedSkill = useMemo(
+    () => skills.find((s) => s.id === selectedSkillId) ?? null,
+    [skills, selectedSkillId],
+  );
 
   const loadSkills = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setWarning(null);
-
     try {
       const listed = await skillService.listSkills();
       setSkills(listed);
-
-      if (listed.length === 0) {
-        setResourcePathsBySkill({});
-        return;
-      }
-
-      const settled = await Promise.allSettled(
-        listed.map(async (skill) => {
-          const paths = await skillService.listSkillResources(skill.id);
-          return [skill.id, paths] as const;
-        }),
-      );
-
-      const nextMap: Record<string, string[]> = {};
-      let failedCount = 0;
-      for (const result of settled) {
-        if (result.status === "fulfilled") {
-          const [skillId, paths] = result.value;
-          nextMap[skillId] = paths;
-        } else {
-          failedCount += 1;
-        }
-      }
-
-      for (const skill of listed) {
-        if (!nextMap[skill.id]) {
-          nextMap[skill.id] = [];
-        }
-      }
-      setResourcePathsBySkill(nextMap);
-
-      if (failedCount > 0) {
-        setWarning(
-          t(
-            "app.skillsPanel.partialResourceFailed",
-            "Some skill files could not be loaded.",
-          ),
-        );
-      }
     } catch (err) {
-      setError(
-        toErrorMessage(err) ||
-          t("app.skillsPanel.loadFailed", "Failed to load skills"),
-      );
+      const msg = err instanceof Error ? err.message : "Failed to load skills";
+      setError(msg);
       setSkills([]);
-      setResourcePathsBySkill({});
     } finally {
       setIsLoading(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     void loadSkills();
   }, [loadSkills]);
 
-  return (
-    <div className="h-full w-full bg-white dark:bg-neutral-950 flex flex-col">
-      <div className="border-b border-neutral-200/80 dark:border-neutral-800 px-4 py-3 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-2">
-          <div>
+  const handleDeleteSkill = useCallback(
+    async (skillId: string) => {
+      try {
+        await skillService.deleteSkill(skillId);
+        if (selectedSkillId === skillId) {
+          setSelectedSkillId(null);
+        }
+        setDeleteConfirm(null);
+        await loadSkills();
+      } catch (err) {
+        console.error("Failed to delete skill", err);
+      }
+    },
+    [selectedSkillId, loadSkills],
+  );
+
+  const isDesktop =
+    typeof window !== "undefined" && window.innerWidth >= MOBILE_BREAKPOINT;
+
+  // ── Mobile: two-level navigation ──────────────────────────────────
+  // Level 1: skill list (full width)
+  // Level 2: skill detail (full width, with back button)
+  if (!isDesktop) {
+    // Mobile detail view
+    if (selectedSkill) {
+      return (
+        <div className="flex h-full w-full flex-col bg-white dark:bg-neutral-950">
+          {/* Back header */}
+          <div className="shrink-0 flex items-center gap-2 border-b border-neutral-200/40 dark:border-neutral-800/40 px-3 py-2.5">
+            <button
+              onClick={() => setSelectedSkillId(null)}
+              className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-[13px] font-medium text-indigo-600 dark:text-indigo-400 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+              {t("app.skillsPanel.title", "Skills")}
+            </button>
+            <span className="flex-1 truncate text-right text-[13px] font-semibold text-neutral-900 dark:text-white">
+              {selectedSkill.name}
+            </span>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <SkillResourcePanel
+              skill={selectedSkill}
+              readonly={selectedSkill.scope === "builtin"}
+            />
+          </div>
+
+          {publishSkillId && (
+            <Suspense>
+              <PublishSkillModal
+                open={!!publishSkillId}
+                onOpenChange={(open) => {
+                  if (!open) setPublishSkillId(null);
+                }}
+                skillId={publishSkillId}
+                skillName={
+                  skills.find((s) => s.id === publishSkillId)?.name ?? ""
+                }
+              />
+            </Suspense>
+          )}
+        </div>
+      );
+    }
+
+    // Mobile list view
+    return (
+      <div className="flex h-full w-full flex-col bg-white dark:bg-neutral-950">
+        {/* Header */}
+        <div className="shrink-0 border-b border-neutral-200/40 px-4 py-3 dark:border-neutral-800/40">
+          <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
               {t("app.skillsPanel.title", "Skills")}
             </h2>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              {t(
-                "app.skillsPanel.subtitle",
-                "Browse builtin and user skills as folders.",
-              )}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void loadSkills()}
-              disabled={isLoading}
-              className="h-8 px-2"
-            >
-              <ArrowPathIcon
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-              />
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              className="h-8"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              {t("app.skillsPanel.create", "Create Skill")}
-            </Button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => void loadSkills()}
+                disabled={isLoading}
+                className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-white/[0.06] dark:hover:text-neutral-300"
+              >
+                <ArrowPathIcon
+                  className={cn("h-4 w-4", isLoading && "animate-spin")}
+                />
+              </button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-white/[0.06] dark:hover:text-neutral-300"
+              >
+                <PlusIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-auto p-4">
-        {error && (
-          <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-            {error}
-          </div>
-        )}
-        {warning && (
-          <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
-            <ExclamationTriangleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{warning}</span>
-          </div>
-        )}
+        {/* Skill list */}
+        <div className="custom-scrollbar flex-1 overflow-y-auto px-3 py-2">
+          {error && (
+            <div className="mb-2 rounded-lg bg-red-50/80 px-3 py-2 text-xs text-red-600 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </div>
+          )}
 
-        {isLoading ? (
-          <div className="text-sm text-neutral-500 dark:text-neutral-400">
-            {t("app.skillsPanel.loading", "Loading skills...")}
-          </div>
-        ) : (
-          <Files
-            type="multiple"
-            defaultValue={defaultExpandedValues}
-            className="w-full"
-          >
-            <FolderItem value="builtin-root">
-              <FolderTrigger
-                icon={<FolderIcon className="h-3.5 w-3.5 text-fuchsia-500" />}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium">
+          {isLoading ? (
+            <div className="px-2 py-4 text-center text-xs text-neutral-400">
+              {t("app.skillsPanel.loading", "Loading skills...")}
+            </div>
+          ) : (
+            <>
+              {builtinSkills.length > 0 && (
+                <div className="mb-3">
+                  <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                     {t("app.skillsPanel.builtinFolder", "builtin")}
-                  </span>
-                  <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                    {builtinSkills.length}
-                  </span>
-                </div>
-              </FolderTrigger>
-              <FolderContent>
-                {builtinSkills.length === 0 && (
-                  <div className="px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    {t(
-                      "app.skillsPanel.emptyBuiltin",
-                      "No builtin skills available.",
-                    )}
                   </div>
-                )}
-                {builtinSkills.map((skill) => (
-                  <SkillFolder
-                    key={skill.id}
-                    skill={skill}
-                    resourcePaths={resourcePathsBySkill[skill.id] ?? []}
-                  />
-                ))}
-              </FolderContent>
-            </FolderItem>
-
-            <FolderItem value="user-root">
-              <FolderTrigger
-                icon={<FolderIcon className="h-3.5 w-3.5 text-sky-500" />}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium">
-                    {t("app.skillsPanel.userFolder", "my-skills")}
-                  </span>
-                  <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                    {userSkills.length}
-                  </span>
+                  {builtinSkills.map((skill) => (
+                    <SkillListItem
+                      key={skill.id}
+                      skill={skill}
+                      isSelected={false}
+                      showChevron
+                      onClick={() => setSelectedSkillId(skill.id)}
+                    />
+                  ))}
                 </div>
-              </FolderTrigger>
-              <FolderContent>
-                {userSkills.length === 0 && (
-                  <div className="px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
+              )}
+
+              <div>
+                <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                  {t("app.skillsPanel.userFolder", "my-skills")}
+                </div>
+                {userSkills.length === 0 ? (
+                  <div className="px-2 py-3 text-center text-xs text-neutral-400">
                     {t(
                       "app.skillsPanel.emptyUser",
                       "No user skills created yet.",
                     )}
                   </div>
+                ) : (
+                  userSkills.map((skill) => (
+                    <SkillListItem
+                      key={skill.id}
+                      skill={skill}
+                      isSelected={false}
+                      showChevron
+                      onClick={() => setSelectedSkillId(skill.id)}
+                    />
+                  ))
                 )}
-                {userSkills.map((skill) => (
-                  <SkillFolder
-                    key={skill.id}
-                    skill={skill}
-                    resourcePaths={resourcePathsBySkill[skill.id] ?? []}
-                  />
-                ))}
-              </FolderContent>
-            </FolderItem>
-          </Files>
+              </div>
+            </>
+          )}
+        </div>
+
+        <CreateSkillModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          agentId={activeAgentId}
+          onCreated={async () => {
+            await loadSkills();
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ── Desktop: side-by-side layout ──────────────────────────────────
+  return (
+    <div
+      className="flex h-full w-full bg-white dark:bg-neutral-950"
+      style={{
+        paddingTop: 16,
+        paddingBottom: DOCK_SAFE_AREA,
+        paddingLeft: DOCK_HORIZONTAL_MARGIN,
+        paddingRight: DOCK_HORIZONTAL_MARGIN,
+      }}
+    >
+      {/* Left sidebar: skill list */}
+      <div className="flex w-64 shrink-0 flex-col rounded-l-2xl border border-r-0 border-neutral-200/40 dark:border-neutral-700/50 bg-neutral-50/50 dark:bg-neutral-900/30">
+        {/* Header */}
+        <div className="shrink-0 border-b border-neutral-200/40 px-4 py-3 dark:border-neutral-800/40">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[13px] font-semibold text-neutral-900 dark:text-white">
+              {t("app.skillsPanel.title", "Skills")}
+            </h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => void loadSkills()}
+                disabled={isLoading}
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-white/[0.06] dark:hover:text-neutral-300"
+              >
+                <ArrowPathIcon
+                  className={cn("h-3.5 w-3.5", isLoading && "animate-spin")}
+                />
+              </button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-white/[0.06] dark:hover:text-neutral-300"
+              >
+                <PlusIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Skill list */}
+        <div className="custom-scrollbar flex-1 overflow-y-auto px-2 py-2">
+          {error && (
+            <div className="mb-2 rounded-lg bg-red-50/80 px-3 py-2 text-xs text-red-600 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="px-2 py-4 text-center text-xs text-neutral-400">
+              {t("app.skillsPanel.loading", "Loading skills...")}
+            </div>
+          ) : (
+            <>
+              {/* Builtin skills */}
+              {builtinSkills.length > 0 && (
+                <div className="mb-3">
+                  <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                    {t("app.skillsPanel.builtinFolder", "builtin")}
+                  </div>
+                  {builtinSkills.map((skill) => (
+                    <SkillListItem
+                      key={skill.id}
+                      skill={skill}
+                      isSelected={selectedSkillId === skill.id}
+                      onClick={() => setSelectedSkillId(skill.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* User skills */}
+              <div>
+                <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                  {t("app.skillsPanel.userFolder", "my-skills")}
+                </div>
+                {userSkills.length === 0 ? (
+                  <div className="px-2 py-3 text-center text-xs text-neutral-400">
+                    {t(
+                      "app.skillsPanel.emptyUser",
+                      "No user skills created yet.",
+                    )}
+                  </div>
+                ) : (
+                  userSkills.map((skill) => (
+                    <div key={skill.id} className="group relative">
+                      <SkillListItem
+                        skill={skill}
+                        isSelected={selectedSkillId === skill.id}
+                        onClick={() => setSelectedSkillId(skill.id)}
+                      />
+                      {/* Delete button */}
+                      {deleteConfirm === skill.id ? (
+                        <div className="absolute right-1 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleDeleteSkill(skill.id);
+                            }}
+                            className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-red-600"
+                          >
+                            {t("common.confirm", "Confirm")}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm(null);
+                            }}
+                            className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300"
+                          >
+                            {t("common.cancel", "Cancel")}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPublishSkillId(skill.id);
+                            }}
+                            title={t("skillMarketplace.publishAction")}
+                            className="rounded-md p-1 text-neutral-300 hover:bg-emerald-50 hover:text-emerald-500 dark:text-neutral-600 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
+                          >
+                            <ArrowUpOnSquareIcon className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm(skill.id);
+                            }}
+                            className="rounded-md p-1 text-neutral-300 hover:bg-red-50 hover:text-red-500 dark:text-neutral-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                          >
+                            <TrashIcon className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Right panel: skill resource browser */}
+      <div className="flex flex-1 flex-col min-w-0 rounded-r-2xl border border-neutral-200/40 dark:border-neutral-700/50 bg-white dark:bg-neutral-950 overflow-hidden">
+        {selectedSkill ? (
+          <SkillResourcePanel
+            skill={selectedSkill}
+            readonly={selectedSkill.scope === "builtin"}
+          />
+        ) : (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
+              <SparklesIcon className="mx-auto mb-3 h-8 w-8 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+                {t(
+                  "app.skillsPanel.selectSkill",
+                  "Select a skill to browse its resources",
+                )}
+              </p>
+            </div>
+          </div>
         )}
       </div>
 
@@ -477,114 +423,62 @@ export default function SkillsLibrary() {
           await loadSkills();
         }}
       />
+
+      {publishSkillId && (
+        <Suspense>
+          <PublishSkillModal
+            open={!!publishSkillId}
+            onOpenChange={(open) => {
+              if (!open) setPublishSkillId(null);
+            }}
+            skillId={publishSkillId}
+            skillName={skills.find((s) => s.id === publishSkillId)?.name ?? ""}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
 
-function SkillFolder({
+function SkillListItem({
   skill,
-  resourcePaths,
+  isSelected,
+  showChevron,
+  onClick,
 }: {
   skill: SkillRead;
-  resourcePaths: string[];
+  isSelected: boolean;
+  showChevron?: boolean;
+  onClick: () => void;
 }) {
-  const { t } = useTranslation();
-  const tree = useMemo(
-    () => buildSkillFileTree(resourcePaths),
-    [resourcePaths],
-  );
-  const sourceLabel =
-    skill.scope === "builtin"
-      ? t("app.skillsPanel.sourceBuiltin", "Source: builtin")
-      : t("app.skillsPanel.sourceUser", "Source: user");
-
   return (
-    <FolderItem value={`skill:${skill.id}`}>
-      <FolderTrigger
-        icon={
-          <SparklesIcon
-            className={cn(
-              "h-3.5 w-3.5",
-              skill.scope === "builtin" ? "text-fuchsia-500" : "text-sky-500",
-            )}
-          />
-        }
-      >
-        <span className="truncate">{skill.name}</span>
-      </FolderTrigger>
-      <FolderContent>
-        {renderTreeNode({
-          node: tree,
-          keyPrefix: `skill:${skill.id}`,
-          depth: 0,
-        })}
-
-        <FileItem
-          icon={<UserCircleIcon className="h-3.5 w-3.5 text-neutral-400" />}
-          className="text-neutral-500 dark:text-neutral-400"
-        >
-          {sourceLabel}
-        </FileItem>
-        <FileItem icon={<ClockIcon className="h-3.5 w-3.5 text-neutral-400" />}>
-          <span className="text-neutral-500 dark:text-neutral-400">
-            {t("app.skillsPanel.updatedAt", "Updated")}:{" "}
-            {new Date(skill.updated_at).toLocaleString()}
-          </span>
-        </FileItem>
-      </FolderContent>
-    </FolderItem>
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors",
+        isSelected
+          ? "bg-indigo-50/80 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400"
+          : "text-neutral-700 hover:bg-neutral-100/60 dark:text-neutral-300 dark:hover:bg-white/[0.04]",
+        showChevron && "py-2.5",
+      )}
+    >
+      <SparklesIcon
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          skill.scope === "builtin" ? "text-fuchsia-500" : "text-sky-500",
+        )}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium">{skill.name}</p>
+        {skill.description && (
+          <p className="truncate text-[10px] text-neutral-400 dark:text-neutral-500">
+            {skill.description}
+          </p>
+        )}
+      </div>
+      {showChevron && (
+        <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
+      )}
+    </button>
   );
-}
-
-function renderTreeNode({
-  node,
-  keyPrefix,
-  depth,
-}: {
-  node: FileTreeNode;
-  keyPrefix: string;
-  depth: number;
-}): ReactNode[] {
-  const elements: ReactNode[] = [];
-  const folders = Array.from(node.folders.entries()).sort(([a], [b]) =>
-    a.localeCompare(b),
-  );
-  const files = Array.from(node.files).sort((a, b) => a.localeCompare(b));
-
-  for (const [folderName, childNode] of folders) {
-    const folderKey = `${keyPrefix}/${folderName}`;
-    elements.push(
-      <FolderItem key={folderKey} value={folderKey}>
-        <FolderTrigger
-          icon={
-            <FolderIcon className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
-          }
-        >
-          <span className="truncate">{folderName}</span>
-        </FolderTrigger>
-        <FolderContent>
-          {renderTreeNode({
-            node: childNode,
-            keyPrefix: folderKey,
-            depth: depth + 1,
-          })}
-        </FolderContent>
-      </FolderItem>,
-    );
-  }
-
-  for (const fileName of files) {
-    const fileKey = `${keyPrefix}/${fileName}`;
-    const icon = fileIcon(fileName);
-    elements.push(
-      <FileItem key={fileKey} icon={icon}>
-        <span className="truncate">{fileName}</span>
-        <span className="ml-auto rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-          {fileBadgeText(fileName)}
-        </span>
-      </FileItem>,
-    );
-  }
-
-  return elements;
 }

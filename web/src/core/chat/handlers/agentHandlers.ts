@@ -63,7 +63,7 @@ export function handleAgentStart(
 
   if (loadingIndex !== -1) {
     // Convert loading message to agent execution message
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { isLoading: _, ...messageWithoutLoading } =
       channel.messages[loadingIndex];
     channel.messages[loadingIndex] = {

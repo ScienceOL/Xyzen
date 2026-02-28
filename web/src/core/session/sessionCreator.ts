@@ -5,6 +5,7 @@
  * extracted from chatSlice.ts for better separation of concerns.
  */
 
+import { DEFAULT_TOPIC_TITLE_KEY } from "@/configs/common";
 import { sessionService } from "@/service/sessionService";
 import { topicService } from "@/service/topicService";
 import { providerCore } from "@/core/provider";
@@ -121,7 +122,7 @@ export function buildSessionPayload(
  */
 export async function createTopicInSession(
   sessionId: string,
-  name: string = i18n.t("app.toolbar.newChat"),
+  name: string = i18n.t(DEFAULT_TOPIC_TITLE_KEY),
 ): Promise<TopicResponse> {
   return topicService.createTopic({ name, session_id: sessionId });
 }

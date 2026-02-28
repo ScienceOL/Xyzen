@@ -58,6 +58,11 @@ export async function registerPushSubscription(): Promise<boolean> {
     const reg = await navigator.serviceWorker.ready;
     const appServerKey = urlBase64ToUint8Array(vapidKey);
 
+    // Capture the current subscription endpoint before (re-)subscribing so
+    // the backend can clean up stale rows when the endpoint changes.
+    const previousSub = await reg.pushManager.getSubscription();
+    const previousEndpoint = previousSub?.endpoint;
+
     let subscription: PushSubscription;
     try {
       subscription = await reg.pushManager.subscribe({
@@ -81,9 +86,14 @@ export async function registerPushSubscription(): Promise<boolean> {
     }
 
     const json = subscription.toJSON();
+    const newEndpoint = json.endpoint ?? "";
     await notificationService.registerPushSubscription({
-      endpoint: json.endpoint ?? "",
+      endpoint: newEndpoint,
       keys: (json.keys as Record<string, string>) ?? {},
+      old_endpoint:
+        previousEndpoint && previousEndpoint !== newEndpoint
+          ? previousEndpoint
+          : undefined,
     });
     return true;
   } catch (err) {

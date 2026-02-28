@@ -2,6 +2,9 @@ import type { ChatEvent } from "@/types/chatEvents";
 import type { Message } from "@/store/types";
 import { authService } from "./authService";
 
+/** WebSocket close code sent by the server when authentication fails (mirrors HTTP 401). */
+const WS_CLOSE_AUTH_FAILED = 4401;
+
 interface StatusChangePayload {
   connected: boolean;
   error: string | null;
@@ -159,7 +162,7 @@ class XyzenService {
       console.log(
         `XyzenService: WebSocket disconnected [${topicId}] (code: ${event.code}, reason: ${event.reason})`,
       );
-      this.handleDisconnect(conn, event.reason);
+      this.handleDisconnect(conn, event.code, event.reason);
     };
 
     ws.onerror = (error) => {
@@ -310,8 +313,31 @@ class XyzenService {
   // Internal: disconnect & retry
   // ---------------------------------------------------------------------------
 
-  private handleDisconnect(conn: ConnectionState, reason?: string): void {
+  private handleDisconnect(
+    conn: ConnectionState,
+    code?: number,
+    reason?: string,
+  ): void {
     conn.wasDisconnected = true;
+
+    // Auth failure — do not retry, clear stale token and trigger logout.
+    if (code === WS_CLOSE_AUTH_FAILED) {
+      console.warn(
+        `XyzenService: Auth failed for [${conn.topicId}], clearing token.`,
+      );
+      authService.removeToken();
+      conn.onStatusChange({
+        connected: false,
+        error: reason || "Authentication failed. Please sign in again.",
+      });
+      this.connections.delete(conn.topicId);
+      if (this.primaryTopicId === conn.topicId) {
+        this.primaryTopicId = null;
+      }
+      // Trigger logout asynchronously to redirect user to login.
+      import("@/core/auth").then((m) => m.logout());
+      return;
+    }
 
     if (conn.retryCount < MAX_RETRIES) {
       const delay = Math.min(1000 * Math.pow(2, conn.retryCount), 10000);
@@ -404,7 +430,7 @@ class XyzenService {
     ws.onmessage = (event) => this.handleWsMessage(conn, event);
     ws.onclose = (event) => {
       this.clearHeartbeat(conn);
-      this.handleDisconnect(conn, event.reason);
+      this.handleDisconnect(conn, event.code, event.reason);
     };
     ws.onerror = (error) => {
       console.error(`XyzenService: WebSocket error [${topicId}]:`, error);

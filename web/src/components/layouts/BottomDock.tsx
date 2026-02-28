@@ -8,8 +8,10 @@ import { useXyzen } from "@/store";
 import {
   CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
+  ClockIcon,
   Cog6ToothIcon,
   CommandLineIcon,
+  ComputerDesktopIcon,
   FolderIcon,
   LightBulbIcon,
   SparklesIcon,
@@ -64,6 +66,8 @@ export type ActivityPanel =
   | "marketplace"
   | "memory"
   | "sandbox"
+  | "runner"
+  | "tasks"
   | "account";
 
 interface BottomDockProps {
@@ -280,9 +284,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
                         {t("app.authStatus.pointsBalance")}
                       </div>
                       <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                        {billing.isLoading
-                          ? "..."
-                          : (billing.points ?? "--")}
+                        {billing.isLoading ? "..." : (billing.points ?? "--")}
                       </div>
                     </div>
                   </div>
@@ -635,6 +637,18 @@ function SubscriptionTooltip({
                 </div>
               )}
 
+              {/* Scheduled Tasks (only when limit > 0) */}
+              {usage.scheduled_tasks?.limit > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Tasks
+                  </span>
+                  <span className="font-medium">
+                    {usage.scheduled_tasks.used} / {usage.scheduled_tasks.limit}
+                  </span>
+                </div>
+              )}
+
               {/* Files */}
               <div className="flex justify-between gap-4">
                 <span className="text-neutral-500 dark:text-neutral-400">
@@ -662,6 +676,7 @@ function SubscriptionTooltip({
 }
 
 function SubscriptionBadge() {
+  const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
   const billing = useBilling();
   const respondingCount = useXyzen((s) => s.respondingChannelIds.size);
@@ -674,7 +689,7 @@ function SubscriptionBadge() {
   }
 
   const { subQuery, usageQuery, roleName } = subInfo;
-  const displayName = subQuery.data?.role?.display_name ?? "Free";
+  const displayName = t(`subscription.plan.${roleName}`);
   const expiresAt = subQuery.data?.subscription?.expires_at;
   const canClaimCredits = subQuery.data?.can_claim_credits ?? false;
   const style = TIER_STYLES[roleName] ?? TIER_STYLES.free;
@@ -807,6 +822,18 @@ export function BottomDock({
       icon: CommandLineIcon,
       label: t("app.activityBar.sandbox", "Sandbox"),
       panel: "sandbox",
+    },
+    {
+      id: "runner",
+      icon: ComputerDesktopIcon,
+      label: t("app.activityBar.runner"),
+      panel: "runner",
+    },
+    {
+      id: "tasks",
+      icon: ClockIcon,
+      label: t("app.activityBar.tasks", "Tasks"),
+      panel: "tasks",
     },
     {
       id: "marketplace",

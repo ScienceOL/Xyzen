@@ -20,6 +20,7 @@ class FileScope(StrEnum):
 
 class FileCategory(StrEnum):
     IMAGE = "images"
+    VIDEO = "videos"
     DOCUMENT = "documents"
     AUDIO = "audio"
     OTHER = "others"
@@ -118,6 +119,11 @@ def detect_file_category(filename: str) -> FileCategory:
     image_exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico"}
     if ext in image_exts:
         return FileCategory.IMAGE
+
+    # Video extensions
+    video_exts = {".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"}
+    if ext in video_exts:
+        return FileCategory.VIDEO
 
     # Document extensions
     doc_exts = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".md"}

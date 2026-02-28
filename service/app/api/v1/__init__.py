@@ -1,11 +1,13 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
+from .admin_marketplace import router as admin_marketplace_router
 from .agents import router as agents_router
 from .auth import router as auth_router
 from .avatar import router as avatar_router
 from .chat_shares import router as chat_shares_router
 from .checkin import router as checkin_router
+from .deployments import router as deployments_router
 from .developer import router as developer_router
 from .files import router as files_router
 from .folders import router as folders_router
@@ -15,12 +17,16 @@ from .mcps import router as mcps_router
 from .memories import router as memories_router
 from .messages import router as messages_router
 from .notifications import router as notifications_router
+from .payment import router as payment_router
 from .providers import router as providers_router
 from .redemption import router as redemption_router
 from .root_agent import router as root_agent_router
+from .runners import router as runners_router
 from .sandbox import router as sandbox_router
 from .sandboxes import router as sandboxes_router
+from .scheduled_tasks import router as scheduled_tasks_router
 from .sessions import router as sessions_router
+from .skill_marketplace import router as skill_marketplace_router
 from .skills import agent_skills_router, router as skills_router
 from .subscription import router as subscription_router
 from .system import router as system_router
@@ -106,14 +112,20 @@ v1_router.include_router(files_router, prefix="/files")
 v1_router.include_router(folders_router, prefix="/folders")
 v1_router.include_router(knowledge_sets_router, prefix="/knowledge-sets")
 v1_router.include_router(marketplace_router, prefix="/marketplace")
+v1_router.include_router(skill_marketplace_router, prefix="/skill-marketplace")
 v1_router.include_router(messages_router, prefix="/messages")
 v1_router.include_router(notifications_router, prefix="/notifications")
+v1_router.include_router(payment_router, prefix="/payment", tags=["payment"])
 v1_router.include_router(memories_router, prefix="/memories")
 v1_router.include_router(sandbox_router, prefix="/sessions")
 v1_router.include_router(sandboxes_router)
+v1_router.include_router(scheduled_tasks_router, prefix="/scheduled-tasks")
 v1_router.include_router(subscription_router, prefix="/subscription", tags=["subscription"])
 v1_router.include_router(avatar_router, prefix="/avatar")
 v1_router.include_router(root_agent_router, prefix="/root-agent")
+v1_router.include_router(runners_router, prefix="/runners")
 v1_router.include_router(chat_shares_router, prefix="/chat-shares")
+v1_router.include_router(deployments_router, prefix="/deployments")
 v1_router.include_router(tools_router, prefix="/tools")
+v1_router.include_router(admin_marketplace_router, prefix="/admin/marketplace", tags=["admin-marketplace"])
 v1_router.include_router(system_router, tags=["system"])

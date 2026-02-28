@@ -4,6 +4,7 @@
   "plans": "Subscription",
   "gotIt": "Got it",
   "comingSoon": "Coming Soon",
+  "subscribe": "Subscribe",
   "notInteroperable": "Subscription not interoperable with international version",
   "betaNotice": "Recharging is not available during beta. Join the beta group for updates.",
   "surveyTitle": "Fill out beta survey",
@@ -20,23 +21,27 @@
     "resetsMonthly": "Resets monthly",
     "parallel": "{{count}} parallel",
     "sandbox": "{{count}} sandbox",
+    "scheduledTask": "{{count}} task",
+    "terminal": "{{count}} terminal",
+    "scheduledTaskNone": "—",
     "firstMonth": "First month {{price}}"
   },
 
   "feature": {
-    "liteStandard": "Lite & Standard models",
-    "basic": "Basic features",
-    "autonomousExploration": "Autonomous exploration",
-    "proUltra": "Pro & Ultra models",
-    "advancedReasoning": "Advanced reasoning models",
-    "nAutonomous": "{{count}} autonomous exploration",
-    "sandboxAccess": "Sandbox access",
+    "liteModels": "Lite models",
+    "basicFeatures": "Basic features",
+    "moreProductivity": "Enhanced productivity tools",
+    "advancedModels": "Standard / Pro / Ultra models",
+    "allBasic": "All basic features",
+    "standardModels": "Standard models",
+    "expandedResources": "Expanded resource limits",
+    "proUltraModels": "Pro & Ultra models",
     "allStandard": "All Standard features",
-    "pro": "Pro models",
+    "proModels": "Pro models",
     "prioritySupport": "Priority support",
     "ultraModels": "Ultra models",
-    "allPro": "All Pro features",
-    "nAutonomousPlural": "{{count}} autonomous explorations",
+    "allPro": "All Professional features",
+    "maxResources": "Max resources & concurrency",
     "dedicated": "Dedicated support"
   },
 
@@ -62,6 +67,8 @@
     "storage": "Storage",
     "parallelChats": "Parallel Chats",
     "sandboxes": "Sandboxes",
+    "scheduledTasks": "Scheduled Tasks",
+    "terminals": "Terminals",
     "redeemTitle": "Redeem Credits",
     "redeemHint": "Enter a redemption code in Settings > Redemption to claim credits or upgrade",
     "claiming": "Claiming...",
@@ -71,6 +78,15 @@
     "expired": "Expired",
     "expiresToday": "Expires today",
     "expiresIn": "Expires in {{days}} days"
+  },
+
+  "payment": {
+    "title": "Complete Payment",
+    "scanQR": "Scan to Pay",
+    "waiting": "Waiting for payment...",
+    "success": "Payment Successful!",
+    "failed": "Payment failed or expired",
+    "close": "Close"
   },
 
   "creator": "Creator",

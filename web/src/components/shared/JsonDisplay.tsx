@@ -115,10 +115,13 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
 
   const badge = VARIANT_BADGE[variant] ?? VARIANT_BADGE.default;
 
+  const hasScrollConstraint = maxHeight !== "none";
+
   return (
     <div
       className={clsx(
-        "group relative w-full min-w-0 overflow-hidden rounded-sm border shadow flex flex-col not-prose",
+        "group relative w-full min-w-0 overflow-hidden rounded-sm border shadow not-prose",
+        hasScrollConstraint && "flex flex-col",
         "border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#0d1117]",
         className,
       )}
@@ -158,8 +161,9 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
       {/* Code content */}
       <div
         className={clsx(
-          "relative min-h-0 overflow-y-auto custom-scrollbar",
-          maxHeight !== "none" && maxHeight,
+          "relative min-h-0",
+          hasScrollConstraint &&
+            `${maxHeight} overflow-y-auto custom-scrollbar`,
           compact ? "p-2" : "p-5",
         )}
       >
@@ -176,12 +180,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
           />
         )}
 
-        <div
-          className={clsx(
-            "w-full min-w-0 overflow-x-auto custom-scrollbar",
-            isDark && "dark",
-          )}
-        >
+        <div className={clsx(isDark && "dark")}>
           {!highlightedHtml ? (
             <pre
               className={clsx(

@@ -2,7 +2,6 @@ import logging
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
-from pathlib import Path
 from typing import Any, Mapping
 
 import uvicorn
@@ -48,6 +47,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.infra.redis import run_once
 
     await run_once("startup:providers", initialize_providers_on_startup)
+
+    # Sync subscription role definitions from plan catalog to DB
+    from app.core.subscription_bootstrap import ensure_subscription_roles
+
+    await run_once("startup:subscription_roles", ensure_subscription_roles)
+
+    # Sync plan→capability FGA tuples (best-effort, skip if FGA unavailable)
+    async def _ensure_fga_capability_tuples() -> None:
+        try:
+            from app.core.fga.subscription_tuples import ensure_capability_tuples
+
+            await ensure_capability_tuples()
+        except Exception as e:
+            logger.warning(f"FGA capability tuple sync skipped: {e}")
+
+    await run_once("startup:fga_capability_tuples", _ensure_fga_capability_tuples)
 
     # Register builtin tools (web_search, knowledge_*, etc.)
     from app.tools.registry import register_builtin_tools
@@ -96,6 +111,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await db.rollback()
 
     await run_once("startup:builtin_listings", _ensure_builtin_listings)
+
+    # Publish builtin skills to skill marketplace
+    from app.core.skill_marketplace import BuiltinSkillPublisher
+
+    async def _ensure_builtin_skill_listings() -> None:
+        async with AsyncSessionLocal() as db:
+            try:
+                publisher = BuiltinSkillPublisher(db)
+                listings = await publisher.ensure_builtin_skill_listings()
+                await db.commit()
+                logger.info(f"Builtin skill marketplace listings ensured: {list(listings.keys())}")
+            except Exception as e:
+                logger.error(f"Failed to publish builtin skills to marketplace: {e}")
+                await db.rollback()
+
+    await run_once("startup:builtin_skill_listings", _ensure_builtin_skill_listings)
 
     # 自动创建和管理所有 MCP 服务器
     from app.mcp import registry
@@ -179,10 +210,11 @@ app.router.routes.extend(mcp_routes)
 
 
 if __name__ == "__main__":
-    BASE_DIR = Path(__file__).resolve().parent.parent
+    # WARNING 3.13 not allow absolute path in glob()
+    # BASE_DIR = Path(__file__).resolve().parent.parent
 
-    MIGRATIONS_DIR = BASE_DIR / "migrations"
-    TESTS_DIR = BASE_DIR / "tests"
+    # MIGRATIONS_DIR = BASE_DIR / ”migrations”
+    # TESTS_DIR = BASE_DIR / “tests”
 
     uvicorn.run(
         "app.main:app",
@@ -190,5 +222,5 @@ if __name__ == "__main__":
         port=configs.Port,
         log_config=LOGGING_CONFIG,
         reload=configs.Debug,
-        reload_excludes=[str(MIGRATIONS_DIR), str(TESTS_DIR)],
+        reload_excludes=["migrations", "tests"],
     )

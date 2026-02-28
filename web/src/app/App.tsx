@@ -2,11 +2,10 @@ import { autoLogin, handleRelinkCallback } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useXyzen } from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
-import { SecretCodePage } from "@/components/admin/SecretCodePage";
 import SharedAgentDetailPage from "@/app/marketplace/SharedAgentDetailPage";
 import SharedChatPage from "@/app/share/SharedChatPage";
 import { CenteredInput } from "@/components/features";
@@ -24,6 +23,12 @@ import { AppSide } from "./AppSide";
 import { AuthLoadingScreen } from "./AuthLoadingScreen";
 import { MobileApp } from "./MobileApp";
 import { LandingPage } from "./landing/LandingPage";
+
+const SecretCodePage = React.lazy(() =>
+  import("@/components/admin/SecretCodePage").then((m) => ({
+    default: m.SecretCodePage,
+  })),
+);
 
 // Handle relink callback in popup - check at module level
 handleRelinkCallback();
@@ -314,6 +319,27 @@ export function Xyzen({
     return () =>
       navigator.serviceWorker?.removeEventListener("message", handler);
   }, [activateChannel, setActivePanel]);
+
+  // Sync active topic to Service Worker so it can suppress push notifications
+  // for the topic the user is already viewing (WeChat-style behaviour).
+  useEffect(() => {
+    const sync = (topicId: string | null) => {
+      navigator.serviceWorker?.ready.then((reg) => {
+        reg.active?.postMessage({ type: "SET_ACTIVE_TOPIC", topicId });
+      });
+    };
+    // Send current value immediately
+    sync(useXyzen.getState().activeChatChannel);
+    // Subscribe to future changes
+    let prev = useXyzen.getState().activeChatChannel;
+    return useXyzen.subscribe((state) => {
+      if (state.activeChatChannel !== prev) {
+        prev = state.activeChatChannel;
+        sync(prev);
+      }
+    });
+  }, []);
+
   // Unified progress bar logic
   useEffect(() => {
     // Target progress based on current state
@@ -466,7 +492,9 @@ export function Xyzen({
   if (currentHash === "#secretcode") {
     return (
       <QueryClientProvider client={queryClient}>
-        <SecretCodePage />
+        <Suspense>
+          <SecretCodePage />
+        </Suspense>
       </QueryClientProvider>
     );
   }

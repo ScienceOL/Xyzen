@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 from sqlmodel import col, select
@@ -47,6 +48,22 @@ class SubscriptionRepository:
         stmt = select(SubscriptionRole).order_by(col(SubscriptionRole.priority))
         result = await self.db.exec(stmt)
         return list(result.all())
+
+    async def upsert_role(self, name: str, **fields: Any) -> SubscriptionRole:
+        """Insert or update a SubscriptionRole by name. Returns the role."""
+        existing = await self.get_role_by_name(name)
+        if existing is not None:
+            changed = False
+            for k, v in fields.items():
+                if getattr(existing, k) != v:
+                    setattr(existing, k, v)
+                    changed = True
+            if changed:
+                existing.updated_at = datetime.now(timezone.utc)
+                self.db.add(existing)
+                await self.db.flush()
+            return existing
+        return await self.create_role(SubscriptionRoleCreate(name=name, **fields))
 
     # ==================== UserSubscription ====================
 

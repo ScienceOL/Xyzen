@@ -1,0 +1,38 @@
+{
+  "title": "Terminal",
+  "status": {
+    "connected": "Connected",
+    "connecting": "Connecting...",
+    "disconnected": "Disconnected",
+    "detached": "Detached",
+    "error": "Error",
+    "reconnecting": "Reconnecting...",
+    "exited": "Exited"
+  },
+  "reconnecting": {
+    "title": "Reconnecting...",
+    "attempt": "Attempt {{current}}/{{max}}"
+  },
+  "noRunner": "No runner is online",
+  "noRunnerHint": "Connect a runner from Settings to start a terminal session",
+  "openTerminal": "Open Terminal",
+  "openWithCommand": "Run Command",
+  "commandPlaceholder": "e.g. claude, bash, python",
+  "launch": "Launch",
+  "quickLaunch": {
+    "title": "Quick Launch",
+    "shell": "Shell",
+    "claudeCode": "Claude Code",
+    "custom": "Custom Command"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "empty": "No active sessions",
+    "new": "New Session",
+    "attach": "Attach",
+    "kill": "Terminate",
+    "expired": "Session expired",
+    "detached": "Detached",
+    "exited": "Exited ({{code}})"
+  }
+}

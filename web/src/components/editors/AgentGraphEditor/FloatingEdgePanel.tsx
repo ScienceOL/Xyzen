@@ -247,15 +247,14 @@ function FloatingEdgePanel({
                     value={statePath}
                     onChange={(e) => setStatePath(e.target.value)}
                     onBlur={flush}
-                    placeholder={t("agents.graphEditor.edge.statePathPlaceholder")}
+                    placeholder={t(
+                      "agents.graphEditor.edge.statePathPlaceholder",
+                    )}
                   />
                 </FieldGroup>
 
                 <FieldGroup label={t("agents.graphEditor.edge.operator")}>
-                  <Select
-                    value={operator}
-                    onValueChange={handleOperatorChange}
-                  >
+                  <Select value={operator} onValueChange={handleOperatorChange}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -274,7 +273,9 @@ function FloatingEdgePanel({
                       value={predicateValue}
                       onChange={(e) => setPredicateValue(e.target.value)}
                       onBlur={flush}
-                      placeholder={t("agents.graphEditor.edge.valuePlaceholder")}
+                      placeholder={t(
+                        "agents.graphEditor.edge.valuePlaceholder",
+                      )}
                     />
                   </FieldGroup>
                 )}

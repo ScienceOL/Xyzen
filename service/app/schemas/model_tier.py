@@ -77,7 +77,7 @@ _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
     ],
     ModelTier.PRO: [
         TierModelCandidate(
-            model="gemini-3-pro-preview",
+            model="gemini-3.1-pro-preview",
             provider_type=ProviderType.GOOGLE_VERTEX,
             priority=1,
             description="Default choice (99%+). Best choice for most tasks.",
@@ -124,20 +124,20 @@ _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
         ),
     ],
     ModelTier.LITE: [
+        # TierModelCandidate(
+        #     model="gemini-2.5-flash-lite",
+        #     provider_type=ProviderType.GOOGLE_VERTEX,
+        #     priority=1,
+        #     capabilities=["fast", "efficient"],
+        #     description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
+        # ),
         TierModelCandidate(
-            model="gemini-2.5-flash-lite",
-            provider_type=ProviderType.GOOGLE_VERTEX,
-            priority=1,
-            capabilities=["fast", "efficient"],
-            description="Choose this if this is just a simple task. Fast and lightweight for general tasks, suitable for high-throughput needs, but may underperform in complex reasoning.",
-        ),
-        TierModelCandidate(
-            model="DeepSeek/DeepSeek-V3.1-0821",
-            provider_type=ProviderType.GPUGEEK,
+            model="deepseek-v3.2",
+            provider_type=ProviderType.QWEN,
             is_fallback=True,
             priority=99,
-            capabilities=["coding", "efficient"],
-            description="Choose this for most tasks. Efficient with strong performance in coding and reasoning, comparable to larger models; great for instruction following and agentic tasks.",
+            capabilities=["fast", "efficient"],
+            description="Lightweight model for quick responses.",
         ),
     ],
 }
@@ -193,13 +193,13 @@ _CHINA_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
 # Region lookup
 # ---------------------------------------------------------------------------
 
-_REGION_TIER_CANDIDATES: dict[str, dict[ModelTier, list[TierModelCandidate]]] = {
+REGION_TIER_CANDIDATES: dict[str, dict[ModelTier, list[TierModelCandidate]]] = {
     "global": _GLOBAL_TIER_MODEL_CANDIDATES,
     "zh-cn": _CHINA_TIER_MODEL_CANDIDATES,
 }
 
 # Region-specific helper model configs (selector LLM, topic rename LLM)
-_REGION_HELPER_MODELS: dict[str, dict[str, tuple[str, ProviderType]]] = {
+REGION_HELPER_MODELS: dict[str, dict[str, tuple[str, ProviderType]]] = {
     "global": {
         "selector": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
         "topic_rename": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
@@ -225,18 +225,18 @@ def _get_region() -> str:
 
 def get_tier_candidates() -> dict[ModelTier, list[TierModelCandidate]]:
     """Get the tier model candidates for the current deployment region."""
-    return _REGION_TIER_CANDIDATES.get(_get_region(), _GLOBAL_TIER_MODEL_CANDIDATES)
+    return REGION_TIER_CANDIDATES.get(_get_region(), _GLOBAL_TIER_MODEL_CANDIDATES)
 
 
 def get_model_selector_config() -> tuple[str, ProviderType]:
     """Get (model, provider) for the model selector LLM."""
-    helpers = _REGION_HELPER_MODELS.get(_get_region(), _REGION_HELPER_MODELS["global"])
+    helpers = REGION_HELPER_MODELS.get(_get_region(), REGION_HELPER_MODELS["global"])
     return helpers["selector"]
 
 
 def get_topic_rename_config() -> tuple[str, ProviderType]:
     """Get (model, provider) for topic title generation."""
-    helpers = _REGION_HELPER_MODELS.get(_get_region(), _REGION_HELPER_MODELS["global"])
+    helpers = REGION_HELPER_MODELS.get(_get_region(), REGION_HELPER_MODELS["global"])
     return helpers["topic_rename"]
 
 

@@ -1,0 +1,160 @@
+{
+  "title": "Skill Marketplace",
+  "tabs": {
+    "all": "All Skills",
+    "starred": "Starred",
+    "my": "My Skills"
+  },
+  "search": {
+    "placeholder": "Search skills..."
+  },
+  "sort": {
+    "recent": "Most Recent",
+    "likes": "Most Liked",
+    "forks": "Most Forked",
+    "views": "Most Viewed",
+    "oldest": "Oldest"
+  },
+  "filters": {
+    "filteredBy": "Filtered by:",
+    "clear": "Clear filters"
+  },
+  "loadError": "Failed to load listings. Please try again.",
+  "retry": "Retry",
+  "empty": {
+    "starred": {
+      "title": "No Starred Skills",
+      "body": "You haven't starred any skills yet. Browse the marketplace and click the heart icon to save your favorites!",
+      "browse": "Browse Skills"
+    },
+    "all": {
+      "title": "No Skills Yet",
+      "body": "Be the first to share your skills with the community!"
+    },
+    "search": {
+      "body": "No skills match your search. Try different keywords or clear filters."
+    },
+    "publish": {
+      "title": "How to publish your skill:",
+      "steps": {
+        "1": "Go to the Skills panel and create a skill",
+        "2": "Add a SKILL.md with instructions and any resource files",
+        "3": "Click \"Publish to Market\" in the skill options",
+        "4": "Share your skill with the community!"
+      }
+    }
+  },
+  "card": {
+    "by": "by {{author}}",
+    "byOfficial": "Xyzen",
+    "noDescription": "No description provided",
+    "tagsMore": "+{{count}} more"
+  },
+  "badge": {
+    "official": "Official"
+  },
+  "detail": {
+    "loading": "Loading skill details...",
+    "error": "Failed to load skill details. Please try again.",
+    "back": "Back to Marketplace",
+    "noDescription": "No description provided",
+    "stats": {
+      "likes": "Likes",
+      "forks": "Forks",
+      "views": "Views"
+    },
+    "tabs": {
+      "readme": "README",
+      "skillMd": "SKILL.md",
+      "resources": "Resources"
+    },
+    "readme": {
+      "empty": "No README provided for this skill.",
+      "manage": "Manage to add a README"
+    },
+    "skillMd": {
+      "empty": "No SKILL.md content available."
+    },
+    "resources": {
+      "empty": "No resource files.",
+      "file": "{{path}} ({{size}})"
+    },
+    "actions": {
+      "title": "Actions",
+      "fork": "Add to Library",
+      "liked": "Liked",
+      "like": "Like This Skill",
+      "loginToFork": "Login to Add",
+      "loginToLike": "Login to Like",
+      "manage": "Manage Skill",
+      "shareTitle": "Share"
+    },
+    "meta": {
+      "publishedBy": "Published By",
+      "firstPublished": "First Published:",
+      "lastUpdated": "Last Updated:"
+    },
+    "aboutForking": {
+      "title": "About Adding",
+      "description": "Adding creates your own independent copy. Changes won't affect the original skill."
+    }
+  },
+  "publish": {
+    "title": "Publish to Skill Market",
+    "titleUpdate": "Update Skill Listing",
+    "description": "Share your skill with the community. You can update or unpublish it anytime.",
+    "commitMessage": {
+      "label": "Commit Message",
+      "placeholder": "Describe what changed in this version",
+      "charCount": "{{count}}/500 characters"
+    },
+    "readme": {
+      "label": "README.md",
+      "placeholder": "Add documentation for your skill... (Markdown supported)",
+      "hint": "Basic Markdown syntax is supported."
+    },
+    "publishImmediately": {
+      "label": "Publish Immediately",
+      "description": "Make this listing visible in the marketplace right away"
+    },
+    "success": {
+      "published": "Skill published to marketplace successfully!",
+      "updated": "Skill listing updated successfully!"
+    },
+    "error": {
+      "default": "Failed to publish skill. Please try again."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "publish": "Publish",
+      "update": "Update Listing",
+      "publishing": "Publishing..."
+    }
+  },
+  "fork": {
+    "title": "Add Skill: {{name}}",
+    "description": "Create your own copy of this skill to customize and use.",
+    "skillName": "Skill Name",
+    "skillNamePlaceholder": "my-custom-skill",
+    "skillNameHint": "Give your copy a unique name",
+    "originalDescription": "Original Description",
+    "forkButton": "Add to Library",
+    "forking": "Adding...",
+    "error": "Failed to add skill. Please try again."
+  },
+  "infinite": {
+    "loadingMore": "Loading more...",
+    "scrollHint": "Scroll to load more"
+  },
+  "sections": {
+    "trending": "Trending Skills",
+    "officialPicks": "Official Skills",
+    "recentlyPublished": "Recently Published",
+    "allSkills": "All Skills"
+  },
+  "communityHub": {
+    "agents": "Agents",
+    "skills": "Skills"
+  },
+  "publishAction": "Publish to Market"
+}

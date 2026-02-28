@@ -5,7 +5,7 @@ from typing import Any
 
 import jwt
 import requests
-from fastapi import Header, HTTPException, Query, status
+from fastapi import Header, HTTPException, Query, WebSocket, status
 
 from app.configs import configs
 from app.configs.auth import AuthProviderConfigBase
@@ -314,6 +314,59 @@ async def get_auth_context_websocket(token: str | None = Query(None, alias="toke
     auth_result = AuthProvider.validate_token(token)
     if not auth_result.success or not auth_result.user_info:
         raise Exception(auth_result.error_message or "Token validation failed")
+
+    return AuthContext(
+        user_id=auth_result.user_info.id,
+        auth_provider=AuthProvider.get_provider_name(),
+        access_token=token,
+    )
+
+
+# Custom WebSocket close code for authentication failures.
+# 4401 mirrors HTTP 401 in the WebSocket private-use range (4000-4999).
+WS_CLOSE_AUTH_FAILED = 4401
+
+
+async def ws_authenticate_user(websocket: WebSocket, token: str | None) -> str | None:
+    """Authenticate a WebSocket connection and return the user ID.
+
+    On auth failure the WebSocket is accepted then immediately closed with
+    code 4401 so the client can distinguish auth errors from transient
+    disconnects.  Returns ``None`` when authentication fails (the caller
+    should ``return`` without further processing).
+    """
+    if not token:
+        await websocket.accept()
+        await websocket.close(code=WS_CLOSE_AUTH_FAILED, reason="Missing authentication token")
+        return None
+
+    auth_result = AuthProvider.validate_token(token)
+    if not auth_result.success or not auth_result.user_info:
+        reason = auth_result.error_message or "Token validation failed"
+        await websocket.accept()
+        await websocket.close(code=WS_CLOSE_AUTH_FAILED, reason=reason)
+        return None
+
+    return auth_result.user_info.id
+
+
+async def ws_authenticate_context(websocket: WebSocket, token: str | None) -> AuthContext | None:
+    """Authenticate a WebSocket connection and return the full AuthContext.
+
+    Same semantics as :func:`ws_authenticate_user` but returns the richer
+    ``AuthContext`` needed by some endpoints (e.g. chat).
+    """
+    if not token:
+        await websocket.accept()
+        await websocket.close(code=WS_CLOSE_AUTH_FAILED, reason="Missing authentication token")
+        return None
+
+    auth_result = AuthProvider.validate_token(token)
+    if not auth_result.success or not auth_result.user_info:
+        reason = auth_result.error_message or "Token validation failed"
+        await websocket.accept()
+        await websocket.close(code=WS_CLOSE_AUTH_FAILED, reason=reason)
+        return None
 
     return AuthContext(
         user_id=auth_result.user_info.id,

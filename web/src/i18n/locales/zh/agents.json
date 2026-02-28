@@ -149,6 +149,7 @@
       "toolFilterHint": "留空允许所有工具",
       "maxIterations": "最大迭代次数"
     },
+    "fullscreenEdit": "展开编辑器",
     "tool": {
       "title": "工具配置",
       "outputKey": "输出键",

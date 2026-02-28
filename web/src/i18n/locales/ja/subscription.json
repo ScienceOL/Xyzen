@@ -4,6 +4,7 @@
   "plans": "サブスクリプション",
   "gotIt": "了解",
   "comingSoon": "近日公開",
+  "subscribe": "購読する",
   "notInteroperable": "サブスクリプションは国際版と互換性がありません",
   "betaNotice": "ベータ期間中はチャージできません。最新情報はベータグループにご参加ください。",
   "surveyTitle": "ベータアンケートに回答",
@@ -20,23 +21,27 @@
     "resetsMonthly": "月次リセット",
     "parallel": "{{count}} 並列",
     "sandbox": "{{count}} サンドボックス",
+    "scheduledTask": "{{count}} タスク",
+    "terminal": "{{count}} ターミナル",
+    "scheduledTaskNone": "—",
     "firstMonth": "初月 {{price}}"
   },
 
   "feature": {
-    "liteStandard": "Lite & Standard モデル",
-    "basic": "基本機能",
-    "autonomousExploration": "自律探索",
-    "proUltra": "Pro & Ultra モデル",
-    "advancedReasoning": "高度な推論モデル",
-    "nAutonomous": "自律探索 {{count}} 回",
-    "sandboxAccess": "サンドボックスアクセス",
+    "liteModels": "Lite モデル",
+    "basicFeatures": "基本機能",
+    "moreProductivity": "高度な生産性ツール",
+    "advancedModels": "Standard / Pro / Ultra モデル",
+    "allBasic": "全基本機能",
+    "standardModels": "Standard モデル",
+    "expandedResources": "拡張リソース枠",
+    "proUltraModels": "Pro & Ultra モデル",
     "allStandard": "全スタンダード機能",
-    "pro": "Pro モデル",
+    "proModels": "Pro モデル",
     "prioritySupport": "優先サポート",
     "ultraModels": "Ultra モデル",
-    "allPro": "全プロ機能",
-    "nAutonomousPlural": "自律探索 {{count}} 回",
+    "allPro": "全プロフェッショナル機能",
+    "maxResources": "最大リソース & 同時実行",
     "dedicated": "専用サポート"
   },
 
@@ -62,6 +67,8 @@
     "storage": "ストレージ",
     "parallelChats": "並列チャット",
     "sandboxes": "サンドボックス",
+    "scheduledTasks": "スケジュールタスク",
+    "terminals": "ターミナル",
     "redeemTitle": "クレジット引き換え",
     "redeemHint": "設定 > 引き換えコードで引き換えコードを入力してクレジットを取得またはアップグレード",
     "claiming": "受け取り中...",
@@ -71,6 +78,15 @@
     "expired": "期限切れ",
     "expiresToday": "本日期限",
     "expiresIn": "残り {{days}} 日"
+  },
+
+  "payment": {
+    "title": "お支払い",
+    "scanQR": "QRコードで支払い",
+    "waiting": "お支払いを待っています...",
+    "success": "お支払い完了！",
+    "failed": "お支払いに失敗または期限切れ",
+    "close": "閉じる"
   },
 
   "creator": "クリエイター",

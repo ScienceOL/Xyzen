@@ -1,3 +1,6 @@
+import SandboxCard from "@/components/layouts/components/SandboxCard";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import SandboxConfigModal from "@/components/modals/SandboxConfigModal";
 import {
   sandboxService,
   type SandboxEntry,
@@ -5,85 +8,28 @@ import {
 } from "@/service/sandboxService";
 import {
   ArrowPathIcon,
-  BoltIcon,
+  Cog6ToothIcon,
   CommandLineIcon,
-  PlayIcon,
-  TrashIcon,
 } from "@heroicons/react/24/outline";
-import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import SandboxWorkspace from "./SandboxWorkspace";
+import {
+  DOCK_HORIZONTAL_MARGIN,
+  DOCK_SAFE_AREA,
+} from "@/components/layouts/BottomDock";
+import { MOBILE_BREAKPOINT } from "@/configs/common";
+
+const SandboxWorkspace = React.lazy(() => import("./SandboxWorkspace"));
 
 const AUTO_REFRESH_INTERVAL = 30_000; // 30 seconds
-
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 30) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
-}
-
-function formatRemaining(seconds: number | null | undefined): string {
-  if (seconds == null) return "";
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m left`;
-  const hours = Math.floor(mins / 60);
-  return `${hours}h ${mins % 60}m left`;
-}
-
-// --- Status helpers ---
-
-type SandboxLiveStatus = "running" | "stopped" | "unknown" | "loading";
-
-function resolveStatus(
-  status: SandboxStatusResponse | undefined,
-): SandboxLiveStatus {
-  if (!status) return "loading";
-  return status.status;
-}
-
-const statusDotClasses: Record<SandboxLiveStatus, string> = {
-  running: "bg-emerald-400",
-  stopped: "bg-neutral-400 dark:bg-neutral-600",
-  unknown: "bg-neutral-400 dark:bg-neutral-600",
-  loading: "bg-neutral-300 dark:bg-neutral-700 animate-pulse",
-};
-
-const statusBadgeClasses: Record<SandboxLiveStatus, string> = {
-  running:
-    "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400",
-  stopped:
-    "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400",
-  unknown:
-    "bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400",
-  loading:
-    "bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500",
-};
-
-function statusLabel(s: SandboxLiveStatus): string {
-  if (s === "loading") return "…";
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-/** Running but <5 min remaining → amber pulse dot */
-function shouldWarn(
-  status: SandboxStatusResponse | undefined,
-): boolean {
-  return (
-    status?.status === "running" &&
-    status.remaining_seconds != null &&
-    status.remaining_seconds < 300
-  );
-}
 
 export default function SandboxPanel() {
   const { t } = useTranslation();
@@ -100,6 +46,12 @@ export default function SandboxPanel() {
     Record<string, SandboxStatusResponse>
   >({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<SandboxEntry | null>(null);
+
+  // Config modal state
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   // --- Fetch real status for each sandbox ---
   const fetchStatuses = useCallback(async (entries: SandboxEntry[]) => {
@@ -126,7 +78,7 @@ export default function SandboxPanel() {
       setSandboxes(res.sandboxes);
       void fetchStatuses(res.sandboxes);
     } catch {
-      setError(t("app.sandbox.loadError", "Failed to load sandboxes"));
+      setError(t("app.sandbox.loadError"));
     } finally {
       setLoading(false);
     }
@@ -146,28 +98,28 @@ export default function SandboxPanel() {
 
   // --- Actions ---
 
-  const handleDelete = useCallback(
-    async (entry: SandboxEntry) => {
-      setDeletingId(entry.session_id);
-      try {
-        await sandboxService.deleteSandbox(entry.session_id);
-        setSandboxes((prev) =>
-          prev.filter((s) => s.session_id !== entry.session_id),
-        );
-        setStatusMap((prev) => {
-          const next = { ...prev };
-          delete next[entry.session_id];
-          return next;
-        });
-        toast.success(t("app.sandbox.deleted", "Sandbox deleted"));
-      } catch {
-        toast.error(t("app.sandbox.deleteError", "Failed to delete sandbox"));
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [t],
-  );
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    const entry = deleteTarget;
+    setDeletingId(entry.session_id);
+    try {
+      await sandboxService.deleteSandbox(entry.session_id);
+      setSandboxes((prev) =>
+        prev.filter((s) => s.session_id !== entry.session_id),
+      );
+      setStatusMap((prev) => {
+        const next = { ...prev };
+        delete next[entry.session_id];
+        return next;
+      });
+      toast.success(t("app.sandbox.deleted"));
+    } catch {
+      toast.error(t("app.sandbox.deleteError"));
+    } finally {
+      setDeletingId(null);
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget, t]);
 
   const handleKeepAlive = useCallback(
     async (entry: SandboxEntry) => {
@@ -175,7 +127,7 @@ export default function SandboxPanel() {
       try {
         const res = await sandboxService.keepAlive(entry.session_id);
         if (res.success) {
-          toast.success(t("app.sandbox.keepAlive", "Sandbox timer refreshed"));
+          toast.success(t("app.sandbox.keepAlive"));
           try {
             const s = await sandboxService.getSandboxStatus(entry.session_id);
             setStatusMap((prev) => ({ ...prev, [entry.session_id]: s }));
@@ -186,9 +138,7 @@ export default function SandboxPanel() {
           toast.error(res.message || "Keep-alive failed");
         }
       } catch {
-        toast.error(
-          t("app.sandbox.keepAliveError", "Failed to refresh sandbox timer"),
-        );
+        toast.error(t("app.sandbox.keepAliveError"));
       } finally {
         setKeepAliveId(null);
       }
@@ -202,7 +152,7 @@ export default function SandboxPanel() {
       try {
         const res = await sandboxService.startSandbox(entry.session_id);
         if (res.success) {
-          toast.success(t("app.sandbox.started", "Sandbox started"));
+          toast.success(t("app.sandbox.started"));
           try {
             const s = await sandboxService.getSandboxStatus(entry.session_id);
             setStatusMap((prev) => ({ ...prev, [entry.session_id]: s }));
@@ -213,9 +163,7 @@ export default function SandboxPanel() {
           toast.error(res.message || "Failed to start sandbox");
         }
       } catch {
-        toast.error(
-          t("app.sandbox.startError", "Failed to start sandbox"),
-        );
+        toast.error(t("app.sandbox.startError"));
       } finally {
         setStartingId(null);
       }
@@ -226,203 +174,138 @@ export default function SandboxPanel() {
   // --- Workspace view ---
   if (selectedSandbox) {
     return (
-      <SandboxWorkspace
-        sandbox={selectedSandbox}
-        onBack={() => setSelectedSandbox(null)}
-      />
+      <Suspense>
+        <SandboxWorkspace
+          sandbox={selectedSandbox}
+          onBack={() => setSelectedSandbox(null)}
+        />
+      </Suspense>
     );
   }
 
-  return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800 shrink-0">
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-            {t("app.sandbox.title", "Sandboxes")}
-          </h2>
-          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-            {t("app.sandbox.subtitle", "Manage active sandbox environments")}
-          </p>
-        </div>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-          title={t("common.refresh", "Refresh")}
-        >
-          <ArrowPathIcon
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-          />
-        </button>
-      </div>
+  const isDesktop =
+    typeof window !== "undefined" && window.innerWidth >= MOBILE_BREAKPOINT;
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
-        {loading && sandboxes.length === 0 && (
-          <div className="flex h-32 items-center justify-center">
-            <p className="text-sm text-neutral-400 dark:text-neutral-500">
-              {t("common.loading", "Loading...")}
+  return (
+    <div
+      className="flex h-full flex-col"
+      style={
+        isDesktop
+          ? {
+              paddingTop: 16,
+              paddingBottom: DOCK_SAFE_AREA,
+              paddingLeft: DOCK_HORIZONTAL_MARGIN,
+              paddingRight: DOCK_HORIZONTAL_MARGIN,
+            }
+          : {}
+      }
+    >
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden sm:rounded-2xl sm:border sm:border-neutral-200/40 sm:dark:border-neutral-700/50 bg-neutral-50/50 dark:bg-neutral-900/30">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-200/40 px-4 py-3 dark:border-neutral-800/40 shrink-0">
+          <div>
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+              {t("app.sandbox.title")}
+            </h2>
+            <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+              {t("app.sandbox.subtitle")}
             </p>
           </div>
-        )}
-
-        {error && (
-          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-            <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setIsConfigOpen(true)}
+              className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+              title={t("app.sandbox.config.title")}
+            >
+              <Cog6ToothIcon className="h-4 w-4" />
+            </button>
             <button
               onClick={() => void load()}
-              className="text-xs text-neutral-500 underline hover:text-neutral-700 dark:hover:text-neutral-300"
+              disabled={loading}
+              className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+              title={t("common.refresh")}
             >
-              {t("common.retry", "Retry")}
+              <ArrowPathIcon
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
-        )}
+        </div>
 
-        {!loading && !error && sandboxes.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-            <CommandLineIcon className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              {t("app.sandbox.empty", "No active sandboxes")}
-            </p>
-            <p className="text-xs text-neutral-400 dark:text-neutral-500">
-              {t(
-                "app.sandbox.emptyHint",
-                "Sandboxes are created automatically when agents use code execution tools.",
-              )}
-            </p>
-          </div>
-        )}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+          {loading && sandboxes.length === 0 && (
+            <div className="flex h-32 items-center justify-center">
+              <p className="text-sm text-neutral-400 dark:text-neutral-500">
+                {t("common.loading")}
+              </p>
+            </div>
+          )}
 
-        <AnimatePresence mode="popLayout">
-          {sandboxes.map((sb) => {
-            const statusRes = statusMap[sb.session_id];
-            const liveStatus = resolveStatus(statusRes);
-            const isStopped = liveStatus === "stopped";
-            const isRunning = liveStatus === "running";
-            const warn = shouldWarn(statusRes);
-
-            return (
-              <motion.div
-                key={sb.session_id}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                className={`mb-2 rounded-lg border p-3 transition-shadow ${
-                  isStopped
-                    ? "border-neutral-200/60 bg-neutral-50 dark:border-neutral-800/60 dark:bg-neutral-900/50"
-                    : "cursor-pointer border-neutral-200 bg-white hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
-                }`}
-                onClick={() => {
-                  if (!isStopped) setSelectedSandbox(sb);
-                }}
+          {error && (
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+              <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+              <button
+                onClick={() => void load()}
+                className="text-xs text-neutral-500 underline hover:text-neutral-700 dark:hover:text-neutral-300"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    {/* Title row */}
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`h-2 w-2 shrink-0 rounded-full ${
-                          warn
-                            ? "bg-amber-400 animate-pulse"
-                            : statusDotClasses[liveStatus]
-                        }`}
-                      />
-                      <p
-                        className={`truncate text-sm font-medium ${
-                          isStopped
-                            ? "text-neutral-400 dark:text-neutral-500"
-                            : "text-neutral-900 dark:text-white"
-                        }`}
-                      >
-                        {sb.session_name || sb.session_id.slice(0, 8)}
-                      </p>
-                      {/* Status badge */}
-                      <span
-                        className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-medium leading-none ${statusBadgeClasses[liveStatus]}`}
-                      >
-                        {statusLabel(liveStatus)}
-                      </span>
-                    </div>
+                {t("common.retry")}
+              </button>
+            </div>
+          )}
 
-                    {sb.agent_name && (
-                      <p className="mt-1 truncate pl-4 text-xs text-neutral-500 dark:text-neutral-400">
-                        {sb.agent_name}
-                      </p>
-                    )}
+          {!loading && !error && sandboxes.length === 0 && (
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+              <CommandLineIcon className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                {t("app.sandbox.empty")}
+              </p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                {t("app.sandbox.emptyHint")}
+              </p>
+            </div>
+          )}
 
-                    {/* Meta row */}
-                    <div className="mt-1.5 flex items-center gap-3 pl-4 text-[10px] text-neutral-400 dark:text-neutral-500">
-                      <span>{sb.backend}</span>
-                      <span>{formatRelativeTime(sb.created_at)}</span>
-                      {statusRes?.remaining_seconds != null ? (
-                        <span>
-                          {formatRemaining(statusRes.remaining_seconds)}
-                        </span>
-                      ) : (
-                        sb.ttl_seconds != null && (
-                          <span>{formatRemaining(sb.ttl_seconds)}</span>
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex shrink-0 items-center gap-1">
-                    {/* Start button — only for stopped sandboxes */}
-                    {isStopped && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleStart(sb);
-                        }}
-                        disabled={startingId === sb.session_id}
-                        className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-emerald-50 hover:text-emerald-500 disabled:opacity-40 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
-                        title={t("app.sandbox.start", "Start sandbox")}
-                      >
-                        <PlayIcon className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-
-                    {/* Keep-alive — only for running sandboxes */}
-                    {isRunning && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleKeepAlive(sb);
-                        }}
-                        disabled={keepAliveId === sb.session_id}
-                        className="rounded-md p-1 text-neutral-300 transition-colors hover:bg-amber-50 hover:text-amber-500 disabled:opacity-30 dark:text-neutral-600 dark:hover:bg-amber-900/20 dark:hover:text-amber-400"
-                        title={t(
-                          "app.sandbox.keepAliveBtn",
-                          "Refresh sandbox timer",
-                        )}
-                      >
-                        <BoltIcon className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-
-                    {/* Delete */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleDelete(sb);
-                      }}
-                      disabled={deletingId === sb.session_id}
-                      className="rounded-md p-1 text-neutral-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-neutral-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                      title={t("common.delete", "Delete")}
-                    >
-                      <TrashIcon className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+          <AnimatePresence mode="popLayout">
+            {sandboxes.map((sb) => (
+              <SandboxCard
+                key={sb.session_id}
+                sandbox={sb}
+                status={statusMap[sb.session_id]}
+                isDeleting={deletingId === sb.session_id}
+                isKeepingAlive={keepAliveId === sb.session_id}
+                isStarting={startingId === sb.session_id}
+                onOpen={setSelectedSandbox}
+                onDelete={setDeleteTarget}
+                onKeepAlive={(entry) => void handleKeepAlive(entry)}
+                onStart={(entry) => void handleStart(entry)}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      <ConfirmationModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title={t("app.sandbox.deleteConfirmTitle")}
+        message={t("app.sandbox.deleteConfirmMessage", {
+          name:
+            deleteTarget?.session_name ||
+            deleteTarget?.session_id.slice(0, 8) ||
+            "",
+        })}
+        confirmLabel={t("common.delete")}
+        destructive
+      />
+
+      {/* Sandbox config modal */}
+      <SandboxConfigModal
+        isOpen={isConfigOpen}
+        onClose={() => setIsConfigOpen(false)}
+      />
     </div>
   );
 }

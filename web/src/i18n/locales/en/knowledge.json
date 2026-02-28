@@ -82,6 +82,7 @@
     "open": "Open",
     "preview": "Preview",
     "download": "Download",
+    "edit": "Edit",
     "rename": "Rename",
     "moveTo": "Move to...",
     "addToKnowledgeSet": "Add to Knowledge Set",
@@ -186,6 +187,18 @@
     "fileCount": "{{count}} files",
     "updated": "Updated {{date}}",
     "createKnowledgeSet": "New Knowledge Set"
+  },
+  "fileEditor": {
+    "save": "Save",
+    "saving": "Saving...",
+    "unsavedChanges": "You have unsaved changes. Discard?",
+    "unsavedTitle": "Unsaved Changes",
+    "discard": "Discard",
+    "keepEditing": "Keep Editing",
+    "autoSaved": "Saved",
+    "saveSuccess": "File saved",
+    "saveError": "Failed to save",
+    "loadError": "Failed to load file content"
   },
   "createKnowledgeSetModal": {
     "title": "Create Knowledge Set",

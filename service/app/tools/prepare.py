@@ -147,6 +147,23 @@ def _load_all_builtin_tools(
         )
         tools.extend(image_tools)
 
+    # Load file reader tools if user_id is available
+    if user_id:
+        from app.tools.builtin.file_reader import create_file_reader_tools_for_agent
+
+        file_reader_tools = create_file_reader_tools_for_agent(user_id=user_id)
+        tools.extend(file_reader_tools)
+
+    # Load video tools if user_id is available
+    if user_id:
+        from app.tools.builtin.video import create_video_tools_for_agent
+
+        video_tools = create_video_tools_for_agent(
+            user_id=user_id,
+            session_id=str(session_id) if session_id else None,
+        )
+        tools.extend(video_tools)
+
     # Load memory tools if user_id is available and memory is enabled
     if user_id:
         from app.configs import configs as app_configs
@@ -176,6 +193,34 @@ def _load_all_builtin_tools(
                 user_id=user_id,
             )
             tools.extend(sandbox_tools)
+
+    # Load scheduled task tools if user_id and session_id are available
+    if user_id and session_id:
+        from app.tools.builtin.subagent.context import get_session_factory
+
+        _session_factory = get_session_factory()
+        if _session_factory:
+            from app.tools.builtin.scheduled_task import create_scheduled_task_tools_for_session
+
+            agent_id_for_sched = agent.id if agent else None
+            if agent_id_for_sched:
+                sched_tools = create_scheduled_task_tools_for_session(
+                    user_id=user_id,
+                    agent_id=agent_id_for_sched,
+                    session_id=session_id,
+                    topic_id=topic_id or session_id,  # fallback to session_id if no topic
+                    session_factory=_session_factory,
+                )
+                tools.extend(sched_tools)
+
+            # Load skill management tools (reuse _session_factory)
+            from app.tools.builtin.skill_management import create_skill_management_tools_for_session
+
+            skill_mgmt_tools = create_skill_management_tools_for_session(
+                user_id=user_id,
+                session_factory=_session_factory,
+            )
+            tools.extend(skill_mgmt_tools)
 
     return tools
 
@@ -219,6 +264,8 @@ async def _load_skill_tools(
                 name=s.name,
                 description=s.description,
                 resource_prefix=s.resource_prefix,
+                id=str(s.id),
+                root_folder_id=str(s.root_folder_id) if s.root_folder_id else None,
             )
             for s in skills
         ]

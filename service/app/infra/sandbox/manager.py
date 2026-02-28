@@ -54,8 +54,12 @@ _REDIS_TTL_BUFFER_SECONDS = 3600  # 1 hour
 def _compute_redis_ttl() -> int:
     """Redis TTL must outlive the sandbox on the backend.
 
-    = auto_stop + auto_delete + 1h buffer (so Redis always remembers a
-    mapping while the sandbox still exists on Daytona/E2B).
+    The key must stay in Redis as long as the sandbox could still exist
+    on the provider side so we can map ``session_id → sandbox_id``.
+
+    * **Daytona**: auto_stop + auto_delete + 1 h buffer
+    * **E2B (auto_pause)**: timeout + pause_duration_days + 1 h buffer
+    * **E2B (no auto_pause)**: timeout + 1 h buffer
 
     Falls back to 7 days if config is unavailable.
     """
@@ -63,6 +67,16 @@ def _compute_redis_ttl() -> int:
         from app.configs import configs
 
         sc = configs.Sandbox
+        backend = sc.Backend.lower()
+
+        if backend == "e2b":
+            timeout_s = sc.E2B.TimeoutSeconds
+            if sc.E2B.AutoPause:
+                pause_s = sc.E2B.PauseDurationDays * 86400
+                return timeout_s + pause_s + _REDIS_TTL_BUFFER_SECONDS
+            return timeout_s + _REDIS_TTL_BUFFER_SECONDS
+
+        # Daytona (default)
         auto_stop_s = sc.Daytona.AutoStopMinutes * 60
         auto_delete_minutes = sc.Daytona.AutoDeleteMinutes
         auto_delete_s = auto_delete_minutes * 60 if auto_delete_minutes > 0 else 86400
@@ -199,7 +213,12 @@ class SandboxManager:
                         logger.warning("LimitsEnforcer not available, skipping sandbox limit check")
 
                 sandbox_name = f"xyzen-{self._session_id[:8]}-{uuid.uuid4().hex[:6]}"
-                sandbox_id = await self._backend.create_sandbox(name=sandbox_name)
+
+                # Resolve per-user sandbox configuration
+                from app.infra.sandbox.config_resolver import SandboxConfigResolver
+
+                resolved_config = await SandboxConfigResolver.resolve_for_user(self._user_id)
+                sandbox_id = await self._backend.create_sandbox(name=sandbox_name, config=resolved_config)
 
                 # Store mapping as hash with metadata
                 from app.configs import configs
@@ -281,15 +300,26 @@ class SandboxManager:
                 await redis_client.aclose()
 
     async def _on_operation(self) -> None:
-        """Called after each delegated operation to refresh TTLs."""
-        redis_client = await self._create_redis_client()
+        """Called after each delegated operation to refresh TTLs.
+
+        Failures here are non-fatal — housekeeping should never cause
+        the caller's tool invocation to fail.
+        """
+        try:
+            redis_client = await self._create_redis_client()
+        except Exception as e:
+            logger.debug(f"_on_operation: failed to create Redis client: {e}")
+            return
         try:
             await self._touch_redis_ttl(redis_client)
             await self._maybe_keep_alive_backend(redis_client)
         except Exception as e:
             logger.debug(f"_on_operation housekeeping failed: {e}")
         finally:
-            await redis_client.aclose()
+            try:
+                await redis_client.aclose()
+            except Exception:
+                pass
 
     async def _verify_or_recover(self, redis_client: aioredis.Redis, sandbox_id: str) -> bool:
         """Check if a sandbox is alive; try to restart if stopped.
@@ -544,4 +574,11 @@ async def scan_all_sandbox_infos(redis_url: str) -> list[SandboxInfo]:
         await redis_client.aclose()
 
 
-__all__ = ["REDIS_KEY_PREFIX", "SandboxInfo", "SandboxManager", "SandboxState", "SandboxStatus", "scan_all_sandbox_infos"]
+__all__ = [
+    "REDIS_KEY_PREFIX",
+    "SandboxInfo",
+    "SandboxManager",
+    "SandboxState",
+    "SandboxStatus",
+    "scan_all_sandbox_infos",
+]

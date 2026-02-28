@@ -2,19 +2,51 @@
  * Standard Web Push Service Worker — no Firebase dependency.
  *
  * Handles background push notifications when the app is closed or unfocused.
- * Push events fire in both foreground and background; the SW always calls
- * showNotification() so the user sees a system-level notification.
+ * Suppresses notifications when the user is actively viewing the relevant topic
+ * (similar to WeChat / Slack behaviour).
  */
+
+// Active topic communicated from the main thread via postMessage.
+let _activeTopicId = null;
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SET_ACTIVE_TOPIC") {
+    _activeTopicId = event.data.topicId ?? null;
+  }
+});
 
 self.addEventListener("push", (event) => {
   const data = event.data?.json() ?? { title: "Xyzen", body: "" };
+
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: data.icon || "/icon.png",
-      badge: "/icon.png",
-      data: { url: data.url || "/" },
-    }),
+    (async () => {
+      // Extract topic ID from the push URL (e.g. "/#/chat/{topicId}")
+      const pushUrl = data.url || "";
+      const topicMatch = /\/#\/chat\/([a-zA-Z0-9_-]+)/.exec(pushUrl);
+      const pushTopicId = topicMatch?.[1] ?? null;
+
+      // If the push targets a specific topic, check whether the user is
+      // currently viewing it in a focused window → suppress the notification.
+      if (pushTopicId && pushTopicId === _activeTopicId) {
+        const clients = await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        });
+        const hasFocusedClient = clients.some(
+          (c) => c.visibilityState === "visible",
+        );
+        if (hasFocusedClient) {
+          return; // User is already looking at this topic — stay silent.
+        }
+      }
+
+      await self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: data.icon || "/icon.png",
+        badge: "/icon.png",
+        data: { url: data.url || "/" },
+      });
+    })(),
   );
 });
 

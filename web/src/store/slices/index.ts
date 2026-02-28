@@ -8,5 +8,7 @@ export * from "./mcpSlice";
 export * from "./mcpToolSlice";
 export * from "./notificationSlice";
 export * from "./providerSlice";
+export * from "./runnerSlice";
+export * from "./terminalSlice";
 export * from "./uiSlice/";
 export * from "./walletSlice";

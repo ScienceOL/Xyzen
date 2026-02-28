@@ -12,6 +12,7 @@ services:
       web:
         condition: service_started
     restart: unless-stopped
+    attach: false
     networks:
       - xyzen-network
 
@@ -46,24 +47,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - xyzen-network
-
-  searxng:
-    image: registry.sciol.ac.cn/sciol/searxng:latest
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ../infra/searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ../infra/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
-    environment:
-      - SEARXNG_BASE_URL=http://localhost:8080/
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-754b4bf6bfd589a450139b40c2420d41c0e92760d0594dbcbc5d90e8a3c5aa24}
-    restart: unless-stopped
-    deploy:
-      replicas: ${SEARXNG_REPLICAS:-1}
-    attach: false
     networks:
       - xyzen-network
 

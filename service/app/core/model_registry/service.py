@@ -91,6 +91,7 @@ CUSTOM_MODELS: list[CustomModelConfig] = [
 
 # Manually configured model list for GPUGeek provider
 GPUGEEK_MODELS: list[str] = [
+    "Vendor2/Claude-4.6-Opus",
     "Vendor2/Claude-3.7-Sonnet",
     "Vendor2/Claude-4-Sonnet",
     "Vendor2/Claude-4.5-Opus",
@@ -102,6 +103,7 @@ GPUGEEK_MODELS: list[str] = [
 
 # Mapping from GPUGeek model names to models.dev (provider_id, model_id)
 GPUGEEK_TO_MODELSDEV: dict[str, tuple[str, str]] = {
+    "Vendor2/Claude-4.6-Opus": ("anthropic", "claude-opus-4-6"),
     "Vendor2/Claude-3.7-Sonnet": ("anthropic", "claude-3-7-sonnet-latest"),
     "Vendor2/Claude-4-Sonnet": ("anthropic", "claude-sonnet-4-20250514"),
     "Vendor2/Claude-4.5-Opus": ("anthropic", "claude-opus-4-5-20251101"),

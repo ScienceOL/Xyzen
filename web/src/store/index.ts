@@ -16,6 +16,8 @@ import {
   createMcpToolSlice,
   createNotificationSlice,
   createProviderSlice,
+  createRunnerSlice,
+  createTerminalSlice,
   createUiSlice,
   createWalletSlice,
 } from "./slices";
@@ -35,6 +37,8 @@ export const useXyzen = create<XyzenState>()(
       ...createFileUploadSlice(...a),
       ...createKnowledgeSlice(...a),
       ...createNotificationSlice(...a),
+      ...createRunnerSlice(...a),
+      ...createTerminalSlice(...a),
       ...createWalletSlice(...a),
     })),
     {
@@ -55,7 +59,25 @@ export const useXyzen = create<XyzenState>()(
         mobileCeoOverlay: state.mobileCeoOverlay,
         mobilePage: state.mobilePage,
         openTabsByAgent: state.openTabsByAgent,
+        terminalSessions: state.terminalSessions,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Mark any live-status sessions as detached after page reload
+        const sessions = state.terminalSessions;
+        if (sessions) {
+          for (const id of Object.keys(sessions)) {
+            const s = sessions[id];
+            if (
+              s.status === "connected" ||
+              s.status === "connecting" ||
+              s.status === "reconnecting"
+            ) {
+              s.status = "detached";
+            }
+          }
+        }
+      },
     },
   ),
 );

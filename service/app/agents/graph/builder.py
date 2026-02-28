@@ -27,7 +27,7 @@ from app.agents.types import (
     NodeFunction,
     StateDict,
 )
-from app.agents.utils import extract_text_from_content
+from app.agents.utils import extract_text_from_content, dedup_tool_calls
 from app.schemas.graph_config_legacy import (
     ConditionType,
     CustomCondition,
@@ -388,11 +388,17 @@ class GraphBuilder:
             content_str = extract_text_from_content(getattr(response, "content", response))
             tool_calls = getattr(response, "tool_calls", None) or []
 
+            # Fix tool calls that were incorrectly concatenated by provider streaming bugs
+            if tool_calls:
+                tool_calls = dedup_tool_calls(tool_calls)
+
             logger.info(f"[LLM Node: {config.id}] Text output completed, tool_calls: {len(tool_calls)}")
 
             # Preserve the original response message to retain provider-specific metadata
             # (e.g., Gemini thought signatures needed for tool calling).
-            if isinstance(response, BaseMessage):
+            # However, if tool calls were fixed by dedup, we must rebuild the message.
+            original_tool_calls = getattr(response, "tool_calls", None) or []
+            if isinstance(response, BaseMessage) and tool_calls == original_tool_calls:
                 ai_message = response
             else:
                 ai_message = AIMessage(

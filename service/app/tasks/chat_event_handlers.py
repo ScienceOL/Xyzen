@@ -161,7 +161,7 @@ async def _ensure_session_info(ctx: ChatTaskContext) -> None:
         from app.core.session.service import SessionService
 
         svc = SessionService(ctx.db)
-        await svc._clamp_session_model_tier(session, ctx.user_id)
+        await svc.clamp_session_model_tier(session, ctx.user_id)
 
     ctx.cached_model_tier = session.model_tier if session else None
     ctx.cached_model_name = session.model if session else None
@@ -194,30 +194,17 @@ async def finalize_and_settle(
         return
 
     try:
-        await _ensure_session_info(ctx)
-        model_tier = ctx.cached_model_tier
-
-        # Get tier_rate for settlement calculation
-        tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
-
-        # LITE tier = free
-        if tier_rate == 0.0:
-            # Still mark pending records as success
-            repo = ConsumeRepository(ctx.db)
-            records = await repo.list_records_for_settlement(ctx.session_id, ctx.topic_id, ctx.ai_message_obj.id)
-            if records:
-                await repo.bulk_update_consume_state([r.id for r in records], "success")
-            return
-
         # Query all pending records for this message
         repo = ConsumeRepository(ctx.db)
         records = await repo.list_records_for_settlement(ctx.session_id, ctx.topic_id, ctx.ai_message_obj.id)
+        if not records:
+            return
 
         record_ids = [r.id for r in records]
         record_amounts_sum = sum(r.amount for r in records)
 
         # Total = sum of individual record amounts
-        total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
+        total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
 
         remaining_amount = total_cost - pre_deducted_amount
 
@@ -385,8 +372,12 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
         amount = calculate_llm_credits(
             ctx.input_tokens, ctx.output_tokens, tier_rate, cache_read_input_tokens=cache_read
         )
-        cost_usd = calculate_llm_cost_usd(
-            model_name or "unknown", ctx.input_tokens, ctx.output_tokens, cache_read_input_tokens=cache_read
+        cost_usd = await calculate_llm_cost_usd(
+            model_name or "unknown",
+            ctx.input_tokens,
+            ctx.output_tokens,
+            cache_read_input_tokens=cache_read,
+            provider=provider_id,
         )
 
         tracking = ConsumptionTrackingService(ctx.db)
@@ -487,11 +478,6 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
         try:
             await _ensure_session_info(ctx)
             model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
-
-            # LITE tier: all consumption is free
-            tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(ctx.cached_model_tier, 1.0) if ctx.cached_model_tier else 1.0
-            if tier_rate == 0:
-                amount = 0
 
             tracking = ConsumptionTrackingService(ctx.db)
             await tracking.record_tool_call(
@@ -978,10 +964,11 @@ async def handle_normal_finalization(
     # --- Push notification: always notify so mobile users get alerts even when backgrounded ---
     try:
         if ctx.ai_message_obj and ctx.full_content:
-            from app.core.notification.events import pack_notification_body
+            from app.core.notification.events import pack_notification_body, strip_markdown
             from app.tasks.notification import send_notification, send_web_push
 
             _title = f"{ctx.agent_name or 'Agent'} replied"
+            _push_title = ctx.agent_name or "Agent"
             _msg_id = str(ctx.ai_message_obj.id)
             _packed = pack_notification_body(
                 ctx.full_content[:200],
@@ -1005,10 +992,20 @@ async def handle_normal_finalization(
                     "url": f"/#/chat/{ctx.topic_id}",
                 },
             )
+
+            # Build a concise push body: "TopicName｜short preview…"
+            _topic = await ctx.topic_repo.get_topic_by_id(ctx.topic_id)
+            _topic_name = _topic.name if _topic and _topic.name else ""
+            _preview = strip_markdown(ctx.full_content, max_len=15)
+            if _topic_name:
+                _push_body = f"{_topic_name}｜{_preview}" if _preview else _topic_name
+            else:
+                _push_body = _preview or strip_markdown(ctx.full_content, max_len=30)
+
             send_web_push.delay(
                 user_id=ctx.user_id,
-                title=_title,
-                body=ctx.full_content[:200],
+                title=_push_title,
+                body=_push_body,
                 url=f"/#/chat/{ctx.topic_id}",
             )
     except Exception:

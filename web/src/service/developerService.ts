@@ -82,7 +82,9 @@ class DeveloperService {
     return http.get("/xyzen/api/v1/developer/reward-rates");
   }
 
-  async getListingEarnings(marketplaceId: string): Promise<ListingEarningsStats> {
+  async getListingEarnings(
+    marketplaceId: string,
+  ): Promise<ListingEarningsStats> {
     return http.get(`/xyzen/api/v1/marketplace/${marketplaceId}/earnings`);
   }
 }

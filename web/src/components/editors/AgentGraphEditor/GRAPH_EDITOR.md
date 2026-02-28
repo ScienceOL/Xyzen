@@ -27,33 +27,33 @@ AgentGraphEditor.tsx          ← ReactFlow canvas + toolbar + panel orchestrati
 
 ## GraphConfig → Visual Editor Field Mapping
 
-| GraphConfig Field             | Node Kind   | Visual Editor Component              |
-|-------------------------------|-------------|--------------------------------------|
-| `node.id`                     | All         | CommonSection (read-only text)       |
-| `node.name`                   | All         | CommonSection → Input                |
-| `node.description`            | All         | CommonSection → Input                |
-| `node.reads`                  | All         | CommonSection → TagInput             |
-| `node.writes`                 | All         | CommonSection → TagInput             |
-| `config.prompt_template`      | LLM         | LLMSection → Textarea (mono)         |
-| `config.output_key`           | LLM/Tool/Transform | LLMSection/ToolSection/TransformSection → Input |
-| `config.message_key`          | LLM         | LLMSection → Input                   |
-| `config.model_override`       | LLM         | LLMSection → Input                   |
-| `config.temperature_override` | LLM         | LLMSection → Input (number)          |
-| `config.max_tokens`           | LLM         | LLMSection → Input (number)          |
-| `config.tools_enabled`        | LLM         | LLMSection → Switch                  |
-| `config.tool_filter`          | LLM/Tool    | LLMSection/ToolSection → TagInput    |
-| `config.max_iterations`       | LLM         | LLMSection → Input (number, ≥1)      |
-| `config.execute_all`          | Tool        | ToolSection → Switch                 |
-| `config.timeout_seconds`      | Tool        | ToolSection → Input (number, 1-600)  |
-| `config.template`             | Transform   | TransformSection → Textarea (mono)   |
-| `config.input_keys`           | Transform   | TransformSection → TagInput          |
-| `config.component_ref.key`    | Component   | ComponentSection → Input             |
-| `config.component_ref.version`| Component   | ComponentSection → Input             |
-| `config.config_overrides`     | Component   | ComponentSection → JSON hint         |
-| `edge.label`                  | Edge        | FloatingEdgePanel → Input            |
-| `edge.priority`               | Edge        | FloatingEdgePanel → Input (number)   |
-| `edge.when` (builtin)         | Edge        | FloatingEdgePanel → Select           |
-| `edge.when` (predicate)       | Edge        | FloatingEdgePanel → state_path/op/value |
+| GraphConfig Field              | Node Kind          | Visual Editor Component                         |
+| ------------------------------ | ------------------ | ----------------------------------------------- |
+| `node.id`                      | All                | CommonSection (read-only text)                  |
+| `node.name`                    | All                | CommonSection → Input                           |
+| `node.description`             | All                | CommonSection → Input                           |
+| `node.reads`                   | All                | CommonSection → TagInput                        |
+| `node.writes`                  | All                | CommonSection → TagInput                        |
+| `config.prompt_template`       | LLM                | LLMSection → Textarea (mono)                    |
+| `config.output_key`            | LLM/Tool/Transform | LLMSection/ToolSection/TransformSection → Input |
+| `config.message_key`           | LLM                | LLMSection → Input                              |
+| `config.model_override`        | LLM                | LLMSection → Input                              |
+| `config.temperature_override`  | LLM                | LLMSection → Input (number)                     |
+| `config.max_tokens`            | LLM                | LLMSection → Input (number)                     |
+| `config.tools_enabled`         | LLM                | LLMSection → Switch                             |
+| `config.tool_filter`           | LLM/Tool           | LLMSection/ToolSection → TagInput               |
+| `config.max_iterations`        | LLM                | LLMSection → Input (number, ≥1)                 |
+| `config.execute_all`           | Tool               | ToolSection → Switch                            |
+| `config.timeout_seconds`       | Tool               | ToolSection → Input (number, 1-600)             |
+| `config.template`              | Transform          | TransformSection → Textarea (mono)              |
+| `config.input_keys`            | Transform          | TransformSection → TagInput                     |
+| `config.component_ref.key`     | Component          | ComponentSection → Input                        |
+| `config.component_ref.version` | Component          | ComponentSection → Input                        |
+| `config.config_overrides`      | Component          | ComponentSection → JSON hint                    |
+| `edge.label`                   | Edge               | FloatingEdgePanel → Input                       |
+| `edge.priority`                | Edge               | FloatingEdgePanel → Input (number)              |
+| `edge.when` (builtin)          | Edge               | FloatingEdgePanel → Select                      |
+| `edge.when` (predicate)        | Edge               | FloatingEdgePanel → state_path/op/value         |
 
 ## Data Flow
 
@@ -69,6 +69,7 @@ AgentGraphEditor.tsx          ← ReactFlow canvas + toolbar + panel orchestrati
 ```
 
 **Loop prevention**: `useGraphConfig` uses two hash refs:
+
 - `lastExternalHashRef` — tracks the last config synced FROM parent
 - `lastPushedHashRef` — tracks the last config pushed TO parent
 
@@ -76,23 +77,23 @@ Both are compared before syncing to prevent echo loops.
 
 ## useGraphConfig Hook API
 
-| Method        | Signature                                                        |
-|---------------|------------------------------------------------------------------|
-| `addNode`     | `(kind: GraphNodeKind, position?) → nodeId`                     |
-| `updateNode`  | `(nodeId, { name?, description?, reads?, writes?, config? })`   |
-| `deleteNode`  | `(nodeId) → void`                                               |
-| `updateEdge`  | `(edgeId, { label?, priority?, when? }) → void`                 |
-| `deleteEdge`  | `(edgeId) → void`                                               |
-| `onConnect`   | React Flow connection handler                                    |
-| `reset`       | Reset to initial config                                          |
-| `getConfig`   | Get current GraphConfig snapshot                                 |
+| Method       | Signature                                                     |
+| ------------ | ------------------------------------------------------------- |
+| `addNode`    | `(kind: GraphNodeKind, position?) → nodeId`                   |
+| `updateNode` | `(nodeId, { name?, description?, reads?, writes?, config? })` |
+| `deleteNode` | `(nodeId) → void`                                             |
+| `updateEdge` | `(edgeId, { label?, priority?, when? }) → void`               |
+| `deleteEdge` | `(edgeId) → void`                                             |
+| `onConnect`  | React Flow connection handler                                 |
+| `reset`      | Reset to initial config                                       |
+| `getConfig`  | Get current GraphConfig snapshot                              |
 
 ## Custom Edge Types
 
-| Type              | File                  | Visual                                     |
-|-------------------|-----------------------|--------------------------------------------|
-| `default`         | DefaultEdge.tsx       | Solid neutral stroke, hover-delete button   |
-| `conditionalEdge` | ConditionalEdge.tsx   | Dashed violet (#8b5cf6), label badge, hover-delete |
+| Type              | File                | Visual                                             |
+| ----------------- | ------------------- | -------------------------------------------------- |
+| `default`         | DefaultEdge.tsx     | Solid neutral stroke, hover-delete button          |
+| `conditionalEdge` | ConditionalEdge.tsx | Dashed violet (#8b5cf6), label badge, hover-delete |
 
 Edges are auto-typed in `graphConfigToFlow()`: if `edge.when` is set, type = `conditionalEdge`.
 
@@ -117,6 +118,7 @@ Edges are auto-typed in `graphConfigToFlow()`: if `edge.when` is set, type = `co
 ## i18n Key Reference
 
 All keys live under `agents.graphEditor.*`:
+
 - `nodePanel.{title, id, deleteNode}` — panel chrome
 - `common.{name, description, reads, writes, ...}` — shared fields
 - `llm.*`, `tool.*`, `transform.*`, `component.*` — kind-specific

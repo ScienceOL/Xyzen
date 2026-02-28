@@ -9,7 +9,16 @@ import {
 } from "@/components/icons/LlmIcons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Bot, Brain, Check, Code2, Cpu, Sparkles, Zap } from "lucide-react";
+import {
+  Bot,
+  Brain,
+  Check,
+  Code2,
+  Cpu,
+  MessageSquare,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { SiAnthropic, SiOpenai } from "react-icons/si";
@@ -50,8 +59,10 @@ interface TierInfo {
   rate: string;
   speed: number; // 0-100
   reasoning: number; // 0-100
+  context: number; // 0-100
   speedLabelKey: string;
   reasoningLabelKey: string;
+  contextLabelKey: string;
   featureKeys: string[];
   models: ModelInfo[];
   gradient?: string;
@@ -70,6 +81,7 @@ interface ModelInfo {
     | "qwen"
     | "deepseek"
     | "glm";
+  betaSpecial?: boolean;
 }
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -89,15 +101,18 @@ const TIERS: TierInfo[] = [
     rate: "0.0x",
     speed: 95,
     reasoning: 35,
+    context: 25,
     speedLabelKey: "ultraFast",
     reasoningLabelKey: "basic",
+    contextLabelKey: "small",
     accentColor: "text-amber-500",
     buttonStyle: "bg-surface-200",
     featureKeys: ["quickTranslation", "textSummary", "simpleQA"],
     models: [
-      { name: "Gemini 2.5 Flash-Lite", provider: "google" },
+      // { name: "Gemini 2.5 Flash-Lite", provider: "google" },
       // { name: "Qwen3 30B A3B", provider: "qwen" },
       { name: "Grok 4.1 Fast", provider: "xai" },
+      { name: "DeepSeek V3.2", provider: "deepseek", betaSpecial: true },
     ],
   },
   {
@@ -106,8 +121,10 @@ const TIERS: TierInfo[] = [
     rate: "1.0x",
     speed: 80,
     reasoning: 75,
+    context: 55,
     speedLabelKey: "fast",
     reasoningLabelKey: "standard",
+    contextLabelKey: "medium",
     accentColor: "text-blue-500",
     buttonStyle: "bg-blue-600 hover:bg-blue-500",
     featureKeys: ["dailyChat", "emailWriting", "knowledgeQA"],
@@ -123,17 +140,19 @@ const TIERS: TierInfo[] = [
     rate: "3.0x",
     speed: 65,
     reasoning: 90,
+    context: 100,
     speedLabelKey: "moderate",
     reasoningLabelKey: "excellent",
+    contextLabelKey: "max",
     accentColor: "text-violet-500",
     buttonStyle: "bg-violet-600 hover:bg-violet-500",
     recommended: true,
     featureKeys: ["pdfAnalysis", "codeWriting", "taskPlanning"],
     models: [
       { name: "Claude Sonnet 4.5", provider: "anthropic" },
-      { name: "Gemini 3 Pro", provider: "google" },
+      { name: "Gemini 3.1 Pro", provider: "google" },
       { name: "GPT-5.3", provider: "openai" },
-      { name: "Grok 4.1", provider: "xai" },
+      // { name: "Grok 4.1", provider: "xai" },
       // { name: "Qwen3 Max", provider: "qwen" },
     ],
   },
@@ -143,8 +162,10 @@ const TIERS: TierInfo[] = [
     rate: "6.8x",
     speed: 30,
     reasoning: 100,
+    context: 100,
     speedLabelKey: "thinking",
     reasoningLabelKey: "max",
+    contextLabelKey: "max",
     accentColor: "text-purple-400",
     gradient:
       "from-purple-500/10 to-pink-500/10 dark:from-purple-900/40 dark:to-pink-900/40",
@@ -152,9 +173,9 @@ const TIERS: TierInfo[] = [
       "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500",
     featureKeys: ["deepReasoning", "academicAnalysis", "mathSolving"],
     models: [
-      { name: "Claude Opus 4.6", provider: "anthropic" },
+      { name: "Claude Opus 4.6 1M", provider: "anthropic" },
       { name: "GPT-5.2 Pro", provider: "openai" },
-      { name: "Grok 4.1 Thinking", provider: "xai" },
+      // { name: "Grok 4.1 Thinking", provider: "xai" },
     ],
   },
 ];
@@ -282,6 +303,28 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                         />
                       </div>
                     </div>
+                    {/* Context */}
+                    <div className="group/stat">
+                      <div className="flex justify-between text-[11px] text-zinc-500 dark:text-white/60 mb-1.5">
+                        <span className="flex items-center gap-1.5">
+                          <MessageSquare className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />{" "}
+                          {t("app.tierSelector.infoModal.context")}
+                        </span>
+                        <span className="text-zinc-700 dark:text-white/80 font-mono">
+                          {t(
+                            `app.tierSelector.contextLabels.${tier.contextLabelKey}`,
+                          )}
+                        </span>
+                      </div>
+                      <div className="h-1 bg-zinc-200 dark:bg-white/10 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${tier.context}%` }}
+                          transition={{ delay: 0.9 + index * 0.1, duration: 1 }}
+                          className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Features */}
@@ -330,6 +373,11 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                           <span className="text-xs font-medium text-zinc-700 dark:text-white/90">
                             {model.name}
                           </span>
+                          {model.betaSpecial && (
+                            <span className="ml-auto shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full bg-gradient-to-r from-cyan-500/15 to-blue-500/15 text-cyan-600 dark:from-cyan-400/20 dark:to-blue-400/20 dark:text-cyan-300 ring-1 ring-cyan-500/20">
+                              {t("app.tierSelector.infoModal.betaSpecial")}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>

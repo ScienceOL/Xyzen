@@ -1,6 +1,7 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .airwallex import AirwallexConfig
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
@@ -18,6 +19,8 @@ from .redemption import AdminConfig
 from .redis import RedisConfig
 from .sandbox import SandboxConfig
 from .searxng import SearXNGConfig
+from .settler import SettlerConfig
+from .video import VideoConfig
 
 
 class AppConfig(BaseSettings):
@@ -110,9 +113,19 @@ class AppConfig(BaseSettings):
         description="Image generation configuration",
     )
 
+    Video: VideoConfig = Field(
+        default_factory=lambda: VideoConfig(),
+        description="Video generation configuration",
+    )
+
     Sandbox: SandboxConfig = Field(
         default_factory=lambda: SandboxConfig(),
         description="Sandbox code execution configuration",
+    )
+
+    Settler: SettlerConfig = Field(
+        default_factory=lambda: SettlerConfig(),
+        description="Settler persistent deployment configuration",
     )
 
     Memory: MemoryConfig = Field(
@@ -133,6 +146,11 @@ class AppConfig(BaseSettings):
     EE: EEConfig = Field(
         default_factory=lambda: EEConfig(),
         description="Enterprise Edition configuration",
+    )
+
+    Airwallex: AirwallexConfig = Field(
+        default_factory=lambda: AirwallexConfig(),
+        description="Airwallex payment gateway configuration",
     )
 
 

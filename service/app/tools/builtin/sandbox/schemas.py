@@ -8,6 +8,13 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.configs.sandbox import get_sandbox_workdir
+
+
+def _wd() -> str:
+    """Shorthand used by Field defaults that need the configured workdir."""
+    return get_sandbox_workdir()
+
 
 class SandboxBashInput(BaseModel):
     """Input schema for sandbox_bash tool."""
@@ -21,7 +28,7 @@ class SandboxBashInput(BaseModel):
     )
     cwd: str | None = Field(
         default=None,
-        description="Working directory to run the command in. Defaults to /workspace.",
+        description=f"Working directory to run the command in. Defaults to {_wd()}.",
     )
     timeout: int | None = Field(
         default=None,
@@ -33,7 +40,7 @@ class SandboxReadInput(BaseModel):
     """Input schema for sandbox_read tool."""
 
     path: str = Field(
-        description="Absolute path of the file to read in the sandbox (e.g. /workspace/main.py).",
+        description=f"Absolute path of the file to read in the sandbox (e.g. {_wd()}/main.py).",
     )
 
 
@@ -75,7 +82,7 @@ class SandboxGlobInput(BaseModel):
         description='Glob pattern to match files (e.g. "*.py", "src/**/*.ts").',
     )
     path: str = Field(
-        default="/workspace",
+        default_factory=_wd,
         description="Root directory to search from.",
     )
 
@@ -87,7 +94,7 @@ class SandboxGrepInput(BaseModel):
         description="Regex or literal string pattern to search for in file contents.",
     )
     path: str = Field(
-        default="/workspace",
+        default_factory=_wd,
         description="Root directory to search from.",
     )
     include: str | None = Field(
@@ -102,7 +109,7 @@ class SandboxExportInput(BaseModel):
     path: str = Field(
         description=(
             "Absolute sandbox file path to export into user files "
-            "(must be under /workspace, e.g. /workspace/output/report.pdf)."
+            f"(must be under {_wd()}, e.g. {_wd()}/output/report.pdf)."
         ),
     )
     filename: str | None = Field(
@@ -128,8 +135,25 @@ class SandboxUploadInput(BaseModel):
         description="File ID from the user's file library to upload into the sandbox.",
     )
     path: str = Field(
-        default="/workspace",
+        default_factory=_wd,
         description="Destination directory in the sandbox. The original filename is preserved.",
+    )
+
+
+class SandboxDeployInput(BaseModel):
+    """Input schema for sandbox_deploy tool."""
+
+    port: int = Field(
+        description="Port the deployed service listens on (e.g. 3000, 5000, 8080).",
+        ge=1,
+        le=65535,
+    )
+    start_command: str = Field(
+        description="Command to start the service (e.g. 'cd /workspace && npm start').",
+    )
+    source_dir: str = Field(
+        default_factory=_wd,
+        description="Directory in the sandbox to deploy from.",
     )
 
 
@@ -143,4 +167,5 @@ __all__ = [
     "SandboxExportInput",
     "SandboxPreviewInput",
     "SandboxUploadInput",
+    "SandboxDeployInput",
 ]

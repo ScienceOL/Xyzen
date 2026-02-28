@@ -15,57 +15,7 @@ import * as monaco from "monaco-editor";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-// --- Language detection from file extension ---
-
-const EXT_TO_LANGUAGE: Record<string, string> = {
-  ts: "typescript",
-  tsx: "typescript",
-  js: "javascript",
-  jsx: "javascript",
-  py: "python",
-  rb: "ruby",
-  go: "go",
-  rs: "rust",
-  java: "java",
-  kt: "kotlin",
-  c: "c",
-  cpp: "cpp",
-  h: "c",
-  hpp: "cpp",
-  cs: "csharp",
-  swift: "swift",
-  sh: "shell",
-  bash: "shell",
-  zsh: "shell",
-  json: "json",
-  yaml: "yaml",
-  yml: "yaml",
-  toml: "ini",
-  xml: "xml",
-  html: "html",
-  htm: "html",
-  css: "css",
-  scss: "scss",
-  less: "less",
-  md: "markdown",
-  sql: "sql",
-  dockerfile: "dockerfile",
-  makefile: "plaintext",
-  graphql: "graphql",
-  prisma: "plaintext",
-  env: "plaintext",
-  txt: "plaintext",
-};
-
-function getLanguage(filename: string): string {
-  const lower = filename.toLowerCase();
-  // Handle special filenames
-  if (lower === "dockerfile") return "dockerfile";
-  if (lower === "makefile") return "plaintext";
-  const ext = lower.split(".").pop() ?? "";
-  return EXT_TO_LANGUAGE[ext] ?? "plaintext";
-}
+import { getLanguage } from "@/lib/language";
 
 // --- File icon helper ---
 

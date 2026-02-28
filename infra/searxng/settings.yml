@@ -1,7 +1,7 @@
 use_default_settings: true
 
 redis:
-  url: redis://redis:6379/0
+  url: redis://localhost:6379/0
 
 general:
   instance_name: "Xyzen Search"

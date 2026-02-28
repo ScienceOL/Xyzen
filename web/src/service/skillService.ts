@@ -36,6 +36,25 @@ class SkillService {
   async listSkillResources(skillId: string): Promise<string[]> {
     return http.get(`/xyzen/api/v1/skills/${skillId}/resources`);
   }
+
+  async updateSkill(
+    skillId: string,
+    data: {
+      name?: string;
+      description?: string;
+      skill_md?: string;
+      license?: string | null;
+      compatibility?: string | null;
+      metadata_json?: Record<string, unknown> | null;
+      resources?: { path: string; content: string }[];
+    },
+  ): Promise<SkillRead> {
+    return http.patch(`/xyzen/api/v1/skills/${skillId}`, data);
+  }
+
+  async deleteSkill(skillId: string): Promise<void> {
+    return http.delete(`/xyzen/api/v1/skills/${skillId}`);
+  }
 }
 
 export const skillService = new SkillService();

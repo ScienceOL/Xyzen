@@ -107,6 +107,62 @@ class FgaClient:
                 results.append(obj_str.split(":", 1)[1])
         return results
 
+    async def write_tuple_raw(
+        self,
+        user: str,
+        relation: str,
+        object_type: str,
+        object_id: str,
+    ) -> None:
+        """Write a tuple with an arbitrary user string (no ``user:`` prefix)."""
+        body = WriteRequest(
+            writes=WriteRequestWrites(
+                tuple_keys=[
+                    TupleKeyWithoutCondition(
+                        user=user,
+                        relation=relation,
+                        object=f"{object_type}:{object_id}",
+                    )
+                ]
+            ),
+        )
+        await self._api.write(body)
+
+    async def delete_tuple_raw(
+        self,
+        user: str,
+        relation: str,
+        object_type: str,
+        object_id: str,
+    ) -> None:
+        """Delete a tuple with an arbitrary user string (no ``user:`` prefix)."""
+        body = WriteRequest(
+            deletes=WriteRequestDeletes(
+                tuple_keys=[
+                    TupleKeyWithoutCondition(
+                        user=user,
+                        relation=relation,
+                        object=f"{object_type}:{object_id}",
+                    )
+                ]
+            ),
+        )
+        await self._api.write(body)
+
+    async def check_capability(self, user_id: str, capability: str) -> bool:
+        """Check if a user has a capability via plan→capability FGA relation."""
+        body = CheckRequest(
+            tuple_key=TupleKey(
+                user=f"user:{user_id}",
+                relation="granted",
+                object=f"capability:{capability}",
+            ),
+        )
+        resp = await self._api.check(body)
+        if resp is None:
+            return False
+        return bool(resp.allowed)
+
     async def write_public_access(
         self,
         relation: str,

@@ -1,6 +1,8 @@
 """Unified pricing configuration for credits, tool costs, and model costs.
 
 Centralizes all pricing coefficients so changes only require editing this file.
+Model cost rates are resolved at runtime from models.dev (via ModelsDevService)
+with MODEL_COST_RATES as a static fallback for models not listed there.
 """
 
 import logging
@@ -26,49 +28,58 @@ TOKEN_CREDIT_RATES: dict[str, float] = {
 # Tool call -> fixed credit cost (by tool name).
 # Unlisted tools default to 0 via calculate_tool_cost().
 TOOL_CREDIT_COSTS: dict[str, int] = {
-    # --- Image ---
-    "generate_image": 10,
-    "read_image": 2,
-    # --- Web / Search ---
-    "web_search": 1,
+    # --- Web Search ---
+    "web_search": 0,
     "web_fetch": 1,
     "literature_search": 1,
     # --- Knowledge ---
-    "knowledge_write": 5,
-    "knowledge_search": 1,
+    "knowledge_write": 1,
+    "knowledge_search": 0,
     "knowledge_list": 0,
     "knowledge_read": 0,
     "knowledge_help": 0,
     # --- Memory ---
     "manage_memory": 1,
     "search_memory": 1,
+    # --- File I/O ---
+    "file_read": 1,
+    # --- Image ---
+    "generate_image": 10,
+    "read_image": 2,
+    # --- Video ---
+    "generate_video": 1000,
     # --- Sandbox ---
-    "sandbox_bash": 1,
-    "sandbox_upload": 1,
-    "sandbox_export": 1,
-    "sandbox_preview": 1,
+    "sandbox_bash": 5,
+    "sandbox_upload": 0,
+    "sandbox_export": 0,
+    "sandbox_preview": 0,
     "sandbox_read": 0,
-    "sandbox_write": 0,
+    "sandbox_write": 1,
     "sandbox_edit": 0,
     "sandbox_glob": 0,
     "sandbox_grep": 0,
-    # --- Delegation / Subagent ---
-    "spawn_subagent": 2,
-    "delegate_to_agent": 2,
-    "list_user_agents": 0,
-    "get_agent_details": 0,
     # --- Skills ---
     "activate_skill": 0,
     "list_skill_resources": 0,
+    # --- Delegation / Subagent ---
+    "spawn_subagent": 1,
+    "delegate_to_agent": 1,
+    "list_user_agents": 0,
+    "get_agent_details": 0,
+    # --- Scheduled Tasks ---
+    "create_scheduled_task": 1,
+    "list_scheduled_tasks": 0,
+    "cancel_scheduled_task": 0,
 }
 
 # Model -> real cost rates (USD per token, for platform cost tracking).
-# Keys must match the model names in schemas/model_tier.py candidates.
+# Static fallback — runtime resolution via models.dev is preferred (see get_model_cost).
 MODEL_COST_RATES: dict[str, dict[str, float]] = {
     # --- Global: ULTRA ---
     "Vendor2/Claude-4.6-Opus": {"input": 5e-6, "output": 25e-6},
     # --- Global: PRO ---
     "gemini-3-pro-preview": {"input": 1.25e-6, "output": 10e-6},
+    "gemini-3.1-pro-preview": {"input": 1.25e-6, "output": 10e-6},
     "Vendor2/Claude-4.5-Sonnet": {"input": 3e-6, "output": 15e-6},
     # --- Global: STANDARD ---
     "gemini-3-flash-preview": {"input": 0.15e-6, "output": 3.5e-6},
@@ -106,23 +117,75 @@ def calculate_tool_cost(tool_name: str) -> int:
 CACHE_READ_DISCOUNT: float = 0.1  # cache_read tokens charged at 10% of input rate
 
 
-def get_model_cost(
+async def _resolve_cost_rates(
     model_name: str,
+    provider: str | None = None,
+) -> dict[str, float] | None:
+    """Try models.dev first, fall back to MODEL_COST_RATES.
+
+    Returns {"input": <per-token>, "output": <per-token>} or None.
+    """
+    try:
+        from app.core.model_registry.service import (
+            GPUGEEK_TO_MODELSDEV,
+            INTERNAL_TO_MODELSDEV,
+            ModelsDevService,
+        )
+
+        # Resolve models.dev (provider_id, model_id) pair
+        modelsdev_provider: str | None = None
+        modelsdev_model_id: str = model_name
+
+        # GPUGeek models need explicit mapping
+        gpugeek_mapping = GPUGEEK_TO_MODELSDEV.get(model_name)
+        if gpugeek_mapping:
+            modelsdev_provider, modelsdev_model_id = gpugeek_mapping
+        elif provider:
+            modelsdev_provider = INTERNAL_TO_MODELSDEV.get(provider)
+
+        info = await ModelsDevService.get_model_info_for_key(modelsdev_model_id, modelsdev_provider)
+        if info and (info.input_cost_per_token > 0 or info.output_cost_per_token > 0):
+            return {"input": info.input_cost_per_token, "output": info.output_cost_per_token}
+    except Exception:
+        logger.debug("models.dev lookup failed for %r, using static fallback", model_name, exc_info=True)
+
+    return MODEL_COST_RATES.get(model_name)
+
+
+def _compute_cost(
+    rates: dict[str, float],
     input_tokens: int,
     output_tokens: int,
     cache_read_input_tokens: int = 0,
 ) -> float:
-    """Calculate real platform cost in USD for a model call."""
-    rates = MODEL_COST_RATES.get(model_name)
-    if not rates:
-        logger.warning("Model %r not in MODEL_COST_RATES, cost will be 0", model_name)
-        return 0.0
+    """Pure arithmetic: apply per-token rates with cache-read discount."""
     regular_input = max(0, input_tokens - cache_read_input_tokens)
     return (
         regular_input * rates.get("input", 0)
         + cache_read_input_tokens * rates.get("input", 0) * CACHE_READ_DISCOUNT
         + output_tokens * rates.get("output", 0)
     )
+
+
+async def get_model_cost(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_input_tokens: int = 0,
+    *,
+    provider: str | None = None,
+) -> float:
+    """Calculate real platform cost in USD for a model call.
+
+    Resolves per-token rates from models.dev at runtime (cached).
+    Falls back to the static MODEL_COST_RATES table when models.dev
+    has no data for the given model.
+    """
+    rates = await _resolve_cost_rates(model_name, provider)
+    if not rates:
+        logger.warning("Model %r not in models.dev or MODEL_COST_RATES, cost will be 0", model_name)
+        return 0.0
+    return _compute_cost(rates, input_tokens, output_tokens, cache_read_input_tokens)
 
 
 def calculate_llm_credits(
@@ -143,20 +206,25 @@ def calculate_llm_credits(
     return int(token_cost * tier_rate)
 
 
-def calculate_llm_cost_usd(
+async def calculate_llm_cost_usd(
     model_name: str,
     input_tokens: int,
     output_tokens: int,
     cache_read_input_tokens: int = 0,
+    *,
+    provider: str | None = None,
 ) -> float:
     """Calculate real platform cost in USD for one LLM call. Semantic alias for get_model_cost."""
-    return get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens)
+    return await get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens, provider=provider)
 
 
-def calculate_settlement_total(record_amounts_sum: int, tier_rate: float) -> int:
-    """Calculate settlement total from sum of record amounts. LITE returns 0."""
-    if tier_rate <= 0:
-        return 0
+def calculate_settlement_total(record_amounts_sum: int, _tier_rate: float) -> int:
+    """Calculate settlement total from sum of record amounts.
+
+    Settlement should use persisted per-record `amount` directly:
+    - LLM records already apply tier multiplier at write time (LITE -> 0)
+    - tool_call records are fixed costs and should not be tier-scaled
+    """
     return record_amounts_sum
 
 
@@ -169,7 +237,7 @@ def validate_pricing_coverage() -> None:
     # --- Tool pricing coverage ---
     from app.tools.registry import BuiltinToolRegistry
 
-    registered_tools = set(BuiltinToolRegistry._metadata.keys())
+    registered_tools = {info.id for info in BuiltinToolRegistry.list_all()}
     priced_tools = set(TOOL_CREDIT_COSTS.keys())
 
     for tool_id in sorted(registered_tools - priced_tools):
@@ -181,26 +249,25 @@ def validate_pricing_coverage() -> None:
     all_models: set[str] = set()
 
     from app.schemas.model_tier import (
-        _CHINA_TIER_MODEL_CANDIDATES,
-        _GLOBAL_TIER_MODEL_CANDIDATES,
-        _REGION_HELPER_MODELS,
+        REGION_HELPER_MODELS,
+        REGION_TIER_CANDIDATES,
     )
 
-    for candidates_map in (_GLOBAL_TIER_MODEL_CANDIDATES, _CHINA_TIER_MODEL_CANDIDATES):
+    for candidates_map in REGION_TIER_CANDIDATES.values():
         for tier_candidates in candidates_map.values():
             for c in tier_candidates:
                 all_models.add(c.model)
 
-    for helpers in _REGION_HELPER_MODELS.values():
+    for helpers in REGION_HELPER_MODELS.values():
         for model_name, _ in helpers.values():
             all_models.add(model_name)
 
-    from app.configs.image import ImageConfig, _REGION_IMAGE_OVERRIDES
+    from app.configs.image import REGION_IMAGE_OVERRIDES, ImageConfig
 
     base = ImageConfig()
     for attr in ("Model", "EditModel", "VisionModel"):
         all_models.add(getattr(base, attr))
-    for overrides in _REGION_IMAGE_OVERRIDES.values():
+    for overrides in REGION_IMAGE_OVERRIDES.values():
         for key in ("Model", "EditModel", "VisionModel"):
             if key in overrides:
                 all_models.add(overrides[key])

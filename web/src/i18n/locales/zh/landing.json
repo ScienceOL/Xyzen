@@ -100,6 +100,10 @@
         "title": "MCP & 模型切换",
         "desc": "50+ MCP 集成，自由切换 LLM 提供商"
       },
+      "scheduled_tasks": {
+        "title": "定时任务",
+        "desc": "类 Cron 定时执行，Agent 按你的时间表自动运行任务"
+      },
       "agent_create_agent": {
         "title": "Agent 创建 Agent",
         "desc": "Agent 自主设计、构建、发布新的 Agent —— 生态自我繁殖、自我扩展"

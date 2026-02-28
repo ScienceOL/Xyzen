@@ -410,6 +410,91 @@ async def get_file_url(
         )
 
 
+@router.put("/{file_id}/content", response_model=FileRead)
+async def update_file_content(
+    file_id: UUID,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user),
+    storage: StorageServiceProto = Depends(get_storage_service),
+    db: AsyncSession = Depends(get_session),
+) -> FileRead:
+    """
+    Replace the content of an existing file.
+
+    Overwrites the file in object storage and updates size/hash metadata in DB.
+
+    Args:
+        file_id: File UUID
+        file: New file content (multipart/form-data)
+        user_id: Authenticated user ID (injected by dependency)
+        storage: Storage service instance (injected by dependency)
+        db: Database session (injected by dependency)
+
+    Returns:
+        FileRead: Updated file record
+
+    Raises:
+        HTTPException: 404 if file not found, 403 if access denied, 400 if target is a directory or deleted
+    """
+    try:
+        file_repo = FileRepository(db)
+        file_record = await file_repo.get_file_by_id(file_id)
+
+        if not file_record:
+            raise ErrCode.FILE_NOT_FOUND.with_messages(f"File {file_id} not found")
+
+        if file_record.user_id != user_id:
+            raise ErrCode.FILE_ACCESS_DENIED.with_messages("You don't have access to this file")
+
+        if file_record.is_dir:
+            raise ErrCode.INVALID_REQUEST.with_messages("Cannot update content of a directory")
+
+        if file_record.is_deleted:
+            raise ErrCode.INVALID_REQUEST.with_messages("Cannot update content of a deleted file")
+
+        if not file_record.storage_key:
+            raise ErrCode.INVALID_REQUEST.with_messages("File has no storage key")
+
+        file_data = await file.read()
+        if not file_data:
+            raise ErrCode.EMPTY_MESSAGE.with_messages("File content is empty")
+
+        file_size = len(file_data)
+        file_hash = calculate_file_hash(file_data)
+
+        # Determine content type
+        content_type = file_record.content_type or "application/octet-stream"
+
+        # Overwrite in object storage using the same storage key
+        await storage.upload_file(
+            file_data=BytesIO(file_data),
+            storage_key=file_record.storage_key,
+            content_type=content_type,
+            metadata={"user_id": user_id},
+        )
+
+        # Update DB metadata directly
+        file_record.file_size = file_size
+        file_record.file_hash = file_hash
+        db.add(file_record)
+        await db.flush()
+
+        await db.commit()
+        await db.refresh(file_record)
+
+        return FileRead(**file_record.model_dump())
+
+    except ErrCodeError as e:
+        logger.error(f"Failed to update file content {file_id}: {e}")
+        raise handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Unexpected error updating file content {file_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
 @router.patch("/{file_id}", response_model=FileRead)
 async def update_file(
     file_id: UUID,

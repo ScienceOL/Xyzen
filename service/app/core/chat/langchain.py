@@ -188,21 +188,18 @@ async def _resolve_provider_and_model(
         effective_model_tier = session.model_tier
         if effective_model_tier:
             try:
-                from app.core.subscription import SubscriptionService
+                from app.core.limits import LimitsEnforcer
 
-                sub_service = SubscriptionService(db)
-                role = await sub_service.get_user_role(session.user_id)
-                max_tier_str = role.max_model_tier if role else "lite"
-                tier_order = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
-                max_tier_enum = ModelTier(max_tier_str)
-                if tier_order.index(effective_model_tier) > tier_order.index(max_tier_enum):
+                enforcer = await LimitsEnforcer.create(db, session.user_id)
+                clamped_tier = await enforcer.check_model_tier(effective_model_tier)
+                if clamped_tier != effective_model_tier:
                     logger.info(
-                        f"Clamped model tier from {effective_model_tier.value} to {max_tier_enum.value} "
+                        f"Clamped model tier from {effective_model_tier.value} to {clamped_tier.value} "
                         f"(subscription limit for user {session.user_id})"
                     )
-                    effective_model_tier = max_tier_enum
+                    effective_model_tier = clamped_tier
                     # Persist the clamped tier so DB, billing, and frontend stay consistent
-                    session.model_tier = max_tier_enum
+                    session.model_tier = clamped_tier
                     session.model = None
                     db.add(session)
                     await db.flush()
@@ -212,12 +209,23 @@ async def _resolve_provider_and_model(
         if session.provider_id:
             provider_id = str(session.provider_id)
 
-        # If session.model is already set, use it directly (cached selection)
+        # If session.model is already set, validate it against tier candidates
+        # before using. Stale cached models (e.g. removed from tier config or
+        # written by an older default) would bypass provider resolution and get
+        # sent to the wrong provider.
         if session.model:
-            model_name = session.model
-            logger.info(f"Using cached session model: {model_name}")
+            if get_candidate_for_model(session.model):
+                model_name = session.model
+                logger.info(f"Using cached session model: {model_name}")
+            else:
+                logger.warning(
+                    f"Cached session model '{session.model}' not in tier candidates, clearing to trigger re-selection"
+                )
+                session.model = None
+                db.add(session)
+                await db.flush()
         # If model_tier is set but no model, do intelligent selection
-        elif effective_model_tier:
+        if not model_name and effective_model_tier:
             if message_text and user_provider_manager:
                 try:
                     model_name = await select_model_for_tier(
@@ -932,17 +940,22 @@ def _handle_streaming_error(e: Exception, user_id: str, stream_id: str = "") -> 
     """Handle and format streaming errors using structured ChatErrorCode."""
     from app.common.code.chat_error_code import classify_exception
 
-    code, safe_message = classify_exception(e)
+    classified = classify_exception(e)
 
-    if code.user_safe:
-        logger.warning(f"Chat error [{code}] for user {user_id}: {e}")
+    if classified.code.user_safe:
+        logger.warning(f"Chat error [{classified.error_ref}] [{classified.code}] for user {user_id}: {e}")
     else:
-        logger.error(f"Chat error [{code}] for user {user_id}: {e}", exc_info=True)
+        logger.error(f"Chat error [{classified.error_ref}] [{classified.code}] for user {user_id}: {e}", exc_info=True)
+
+    detail = f"Exception: {classified.error_type}" if classified.error_type else None
 
     return StreamingEventHandler.create_error_event(
-        error=safe_message,
-        error_code=code.value,
-        error_category=code.category,
-        recoverable=code.recoverable,
+        error=classified.message,
+        error_code=classified.code.value,
+        error_category=classified.code.category,
+        recoverable=classified.code.recoverable,
+        detail=detail,
+        error_ref=classified.error_ref,
+        occurred_at=classified.occurred_at,
         stream_id=stream_id,
     )

@@ -53,16 +53,16 @@ def create_knowledge_tools() -> dict[str, BaseTool]:
     )
 
     # Read file tool
-    async def read_file_placeholder(filename: str) -> dict[str, Any]:
+    async def read_file_placeholder(filename: str, pages: str | None = None, mode: str | None = None) -> dict[str, Any]:
         return {"error": "Knowledge tools require agent context binding", "success": False}
 
     tools["knowledge_read"] = StructuredTool(
         name="knowledge_read",
         description=(
             "Read the content of a file from the agent's knowledge base. "
-            "Supports: PDF (text + tables), DOCX (text + tables), XLSX (all sheets), "
-            "PPTX (text + speaker notes), HTML (text extraction), JSON/YAML/XML (formatted), "
-            "images (OCR text extraction from PNG/JPG/GIF/WEBP), and plain text files. "
+            "Supports: PDF (text + tables, with pagination via pages='1-5'), DOCX, XLSX, "
+            "PPTX, HTML, JSON/YAML/XML, images, and plain text. "
+            "Use mode='info' to check file metadata (page count, size) before reading large files. "
             "Use knowledge_list first to see available files."
         ),
         args_schema=KnowledgeReadFileInput,
@@ -152,17 +152,17 @@ def create_knowledge_tools_for_agent(user_id: str, knowledge_set_id: UUID) -> li
     )
 
     # Read file tool
-    async def read_file_bound(filename: str) -> dict[str, Any]:
-        return await read_file(user_id, knowledge_set_id, filename)
+    async def read_file_bound(filename: str, pages: str | None = None, mode: str | None = None) -> dict[str, Any]:
+        return await read_file(user_id, knowledge_set_id, filename, pages=pages, mode=mode)
 
     tools.append(
         StructuredTool(
             name="knowledge_read",
             description=(
                 "Read the content of a file from your knowledge base. "
-                "Supports: PDF (text + tables), DOCX (text + tables), XLSX (all sheets), "
-                "PPTX (text + speaker notes), HTML (text extraction), JSON/YAML/XML (formatted), "
-                "images (OCR text extraction from PNG/JPG/GIF/WEBP), and plain text files. "
+                "Supports: PDF (text + tables, with pagination via pages='1-5'), DOCX, XLSX, "
+                "PPTX, HTML, JSON/YAML/XML, images, and plain text. "
+                "Use mode='info' to check file metadata (page count, size) before reading large files. "
                 "Use knowledge_list first to see available files."
             ),
             args_schema=KnowledgeReadFileInput,

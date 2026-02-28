@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.infra.sandbox.manager import SandboxManager
 
 from .operations import (
+    sandbox_deploy,
     sandbox_edit,
     sandbox_exec,
     sandbox_export,
@@ -33,6 +34,7 @@ from .operations import (
 )
 from .schemas import (
     SandboxBashInput,
+    SandboxDeployInput,
     SandboxEditInput,
     SandboxExportInput,
     SandboxGlobInput,
@@ -41,6 +43,7 @@ from .schemas import (
     SandboxReadInput,
     SandboxUploadInput,
     SandboxWriteInput,
+    _wd,
 )
 
 
@@ -113,7 +116,7 @@ _TOOL_DEFS: list[_ToolDef] = [
         tool_id="sandbox_export",
         description=(
             "Export a file from the sandbox into your file library. "
-            "The path must be under /workspace. Returns a file_id and download URL."
+            f"The path must be under {_wd()}. Returns a file_id and download URL."
         ),
         args_schema=SandboxExportInput,
     ),
@@ -137,8 +140,30 @@ _TOOL_DEFS: list[_ToolDef] = [
     ),
 ]
 
+# Deploy tool is defined separately — only included when Settler is enabled.
+_DEPLOY_TOOL_DEF = _ToolDef(
+    tool_id="sandbox_deploy",
+    description=(
+        "Deploy a service from the sandbox to a persistent public URL. "
+        "The service will keep running even after the sandbox stops. "
+        "First ensure your app works via sandbox_preview, then use this to deploy permanently. "
+        "Returns a stable HTTPS URL on app.xyzen.ai."
+    ),
+    args_schema=SandboxDeployInput,
+)
+
 # Type alias for bound coroutines returned by the binder functions.
 type _BoundCoro = Callable[..., Coroutine[Any, Any, dict[str, Any]]]
+
+
+def _get_all_tool_defs() -> list[_ToolDef]:
+    """Return the full tool def list, conditionally including deploy."""
+    from app.configs import configs
+
+    defs = list(_TOOL_DEFS)
+    if configs.Settler.Enable:
+        defs.append(_DEPLOY_TOOL_DEF)
+    return defs
 
 
 def create_sandbox_tools() -> dict[str, BaseTool]:
@@ -166,7 +191,7 @@ def create_sandbox_tools() -> dict[str, BaseTool]:
             args_schema=td.args_schema,
             coroutine=_noop,
         )
-        for td in _TOOL_DEFS
+        for td in _get_all_tool_defs()
     }
 
 
@@ -177,25 +202,32 @@ def create_sandbox_tools_for_session(
     """
     Create sandbox tools bound to a specific session.
 
-    A SandboxManager is created lazily — no sandbox is provisioned until
-    the first tool call.
+    A SandboxManager is resolved lazily on first tool call — this allows
+    async Runner detection (checking Redis for online runners) without
+    requiring the caller to be async.
 
     Args:
         session_id: Session UUID string
-        user_id: Current user ID (needed for sandbox_export/upload)
+        user_id: Current user ID (needed for sandbox_export/upload and Runner routing)
 
     Returns:
         List of BaseTool instances with session context bound
     """
-    from app.infra.sandbox import get_sandbox_manager
+    # Lazy async manager holder — resolved on first tool invocation
+    _manager_holder: list["SandboxManager | None"] = [None]
 
-    manager = get_sandbox_manager(session_id, user_id=user_id)
+    async def _get_manager() -> "SandboxManager":
+        if _manager_holder[0] is None:
+            from app.infra.sandbox import get_sandbox_manager
+
+            _manager_holder[0] = await get_sandbox_manager(session_id, user_id=user_id)
+        return _manager_holder[0]
 
     # Map each tool_id to its session-bound coroutine.
-    binders = _build_binders(manager, session_id=session_id, user_id=user_id)
+    binders = _build_lazy_binders(_get_manager, session_id=session_id, user_id=user_id)
 
     tools: list[BaseTool] = []
-    for td in _TOOL_DEFS:
+    for td in _get_all_tool_defs():
         bound = binders.get(td.tool_id)
         if bound is None:
             continue
@@ -210,40 +242,52 @@ def create_sandbox_tools_for_session(
     return tools
 
 
-def _build_binders(
-    manager: "SandboxManager",
+def _build_lazy_binders(
+    get_manager: Callable[[], Coroutine[Any, Any, "SandboxManager"]],
     *,
     session_id: str,
     user_id: str | None,
 ) -> dict[str, _BoundCoro]:
-    """Return a dict mapping tool_id → session-bound async callable."""
+    """Return a dict mapping tool_id → lazy async callable that resolves the manager on first use."""
 
     async def bash_bound(command: str, cwd: str | None = None, timeout: int | None = None) -> dict[str, Any]:
-        return await sandbox_exec(manager, command, cwd=cwd, timeout=timeout)
+        return await sandbox_exec(await get_manager(), command, cwd=cwd, timeout=timeout)
 
     async def read_bound(path: str) -> dict[str, Any]:
-        return await sandbox_read(manager, path)
+        return await sandbox_read(await get_manager(), path)
 
     async def write_bound(path: str, content: str) -> dict[str, Any]:
-        return await sandbox_write(manager, path, content)
+        return await sandbox_write(await get_manager(), path, content)
 
     async def edit_bound(path: str, old_text: str, new_text: str) -> dict[str, Any]:
-        return await sandbox_edit(manager, path, old_text, new_text)
+        return await sandbox_edit(await get_manager(), path, old_text, new_text)
 
-    async def glob_bound(pattern: str, path: str = "/workspace") -> dict[str, Any]:
-        return await sandbox_glob(manager, pattern, path=path)
+    async def glob_bound(pattern: str, path: str = "") -> dict[str, Any]:
+        return await sandbox_glob(await get_manager(), pattern, path=path or _wd())
 
-    async def grep_bound(pattern: str, path: str = "/workspace", include: str | None = None) -> dict[str, Any]:
-        return await sandbox_grep(manager, pattern, path=path, include=include)
+    async def grep_bound(pattern: str, path: str = "", include: str | None = None) -> dict[str, Any]:
+        return await sandbox_grep(await get_manager(), pattern, path=path or _wd(), include=include)
 
     async def export_bound(path: str, filename: str | None = None) -> dict[str, Any]:
-        return await sandbox_export(manager, user_id=user_id, session_id=session_id, path=path, filename=filename)
+        return await sandbox_export(
+            await get_manager(), user_id=user_id, session_id=session_id, path=path, filename=filename
+        )
 
     async def preview_bound(port: int) -> dict[str, Any]:
-        return await sandbox_preview(manager, port=port)
+        return await sandbox_preview(await get_manager(), port=port)
 
-    async def upload_bound(file_id: str, path: str = "/workspace") -> dict[str, Any]:
-        return await sandbox_upload(manager, user_id=user_id, file_id=file_id, path=path)
+    async def upload_bound(file_id: str, path: str = "") -> dict[str, Any]:
+        return await sandbox_upload(await get_manager(), user_id=user_id, file_id=file_id, path=path or _wd())
+
+    async def deploy_bound(port: int, start_command: str, source_dir: str = "") -> dict[str, Any]:
+        return await sandbox_deploy(
+            await get_manager(),
+            user_id=user_id,
+            session_id=session_id,
+            port=port,
+            start_command=start_command,
+            source_dir=source_dir or _wd(),
+        )
 
     return {
         "sandbox_bash": bash_bound,
@@ -255,6 +299,7 @@ def _build_binders(
         "sandbox_export": export_bound,
         "sandbox_preview": preview_bound,
         "sandbox_upload": upload_bound,
+        "sandbox_deploy": deploy_bound,
     }
 
 

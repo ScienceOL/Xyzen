@@ -17,6 +17,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.configs import configs
 from app.infra.database import get_session
 from app.middleware.auth import get_current_user
+from app.models.sandbox_profile import SandboxProfileRead, SandboxProfileUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,7 @@ async def delete_sandbox(
     # Check if sandbox exists
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")
@@ -220,7 +221,7 @@ async def get_sandbox_status(
 
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")
@@ -253,7 +254,7 @@ async def keep_alive_sandbox(
 
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")
@@ -282,7 +283,7 @@ async def start_sandbox(
 
     from app.infra.sandbox import get_sandbox_manager
 
-    manager = get_sandbox_manager(str(session_id), user_id=user)
+    manager = await get_sandbox_manager(str(session_id), user_id=user)
     sandbox_id = await manager.get_sandbox_id()
     if not sandbox_id:
         raise HTTPException(status_code=404, detail="No active sandbox for this session")
@@ -292,3 +293,58 @@ async def start_sandbox(
         logger.info(f"User {user} started sandbox {sandbox_id} for session {session_id}")
         return StartSandboxResponse(success=True, message="Sandbox started")
     return StartSandboxResponse(success=False, message="Failed to start sandbox")
+
+
+# --- Sandbox Profile endpoints ---
+
+
+@router.get("/sandbox-profile", response_model=SandboxProfileRead)
+async def get_sandbox_profile(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> SandboxProfileRead:
+    """Get the current user's sandbox configuration profile.
+
+    Returns 404 if no custom profile exists (user is using global defaults).
+    """
+    from app.repos.sandbox_profile import SandboxProfileRepository
+
+    repo = SandboxProfileRepository(db)
+    profile = await repo.get_by_user_id(user)
+    if not profile:
+        raise HTTPException(status_code=404, detail="No custom sandbox profile — using global defaults")
+    return SandboxProfileRead.model_validate(profile)
+
+
+@router.put("/sandbox-profile", response_model=SandboxProfileRead)
+async def update_sandbox_profile(
+    body: SandboxProfileUpdate,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> SandboxProfileRead:
+    """Create or update the current user's sandbox configuration profile.
+
+    Fields set to ``null`` clear back to global defaults.
+    """
+    from app.repos.sandbox_profile import SandboxProfileRepository
+
+    repo = SandboxProfileRepository(db)
+    profile = await repo.upsert(user, body)
+    await db.commit()
+    return SandboxProfileRead.model_validate(profile)
+
+
+@router.delete("/sandbox-profile")
+async def delete_sandbox_profile(
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, bool]:
+    """Delete the current user's sandbox profile (reset to global defaults)."""
+    from app.repos.sandbox_profile import SandboxProfileRepository
+
+    repo = SandboxProfileRepository(db)
+    deleted = await repo.delete(user)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="No custom sandbox profile to delete")
+    await db.commit()
+    return {"deleted": True}

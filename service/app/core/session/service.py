@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code import ErrCode
+from app.core.chat.constants import DEFAULT_TOPIC_TITLE
 from app.models.sessions import (
     Session as SessionModel,
     SessionCreate,
@@ -21,8 +22,6 @@ from app.schemas.model_tier import ModelTier
 
 logger = logging.getLogger(__name__)
 
-TIER_ORDER = [ModelTier.LITE, ModelTier.STANDARD, ModelTier.PRO, ModelTier.ULTRA]
-
 
 class SessionService:
     def __init__(self, db: AsyncSession) -> None:
@@ -31,34 +30,34 @@ class SessionService:
         self.topic_repo = TopicRepository(db)
         self.message_repo = MessageRepository(db)
 
-    async def _clamp_session_model_tier(self, session: SessionModel, user_id: str) -> bool:
+    async def clamp_session_model_tier(self, session: SessionModel, user_id: str) -> bool:
         """Clamp session.model_tier to subscription limit. Persists to DB if changed.
 
         If model_tier is NULL, sets it to the user's max allowed tier.
         Returns True if the tier was changed.
         """
         try:
-            from app.core.subscription import SubscriptionService
+            from app.core.limits import LimitsEnforcer
 
-            role = await SubscriptionService(self.db).get_user_role(user_id)
-            max_tier_str = role.max_model_tier if role else "lite"
-            max_tier_enum = ModelTier(max_tier_str)
+            enforcer = await LimitsEnforcer.create(self.db, user_id)
 
             if not session.model_tier:
                 # NULL tier: initialize to the user's max allowed tier
-                logger.info(f"Session {session.id}: setting NULL model_tier to {max_tier_enum.value}")
-                session.model_tier = max_tier_enum
+                max_tier = enforcer.db_clamp_tier(ModelTier.ULTRA)
+                logger.info(f"Session {session.id}: setting NULL model_tier to {max_tier.value}")
+                session.model_tier = max_tier
                 session.model = None
                 self.db.add(session)
                 await self.db.flush()
                 return True
 
-            if TIER_ORDER.index(session.model_tier) > TIER_ORDER.index(max_tier_enum):
+            effective_tier = await enforcer.check_model_tier(session.model_tier)
+            if effective_tier != session.model_tier:
                 logger.info(
                     f"Session {session.id}: clamping model_tier from {session.model_tier.value} "
-                    f"to {max_tier_enum.value} (subscription limit)"
+                    f"to {effective_tier.value} (subscription limit)"
                 )
-                session.model_tier = max_tier_enum
+                session.model_tier = effective_tier
                 # Clear cached model so next message triggers re-selection
                 session.model = None
                 self.db.add(session)
@@ -76,7 +75,9 @@ class SessionService:
         if existing_session:
             existing_topics = await self.topic_repo.get_topics_by_session(existing_session.id, order_by_updated=True)
             if not existing_topics:
-                await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing_session.id))
+                await self.topic_repo.create_topic(
+                    TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=existing_session.id)
+                )
                 await self.db.commit()
             return SessionRead(**existing_session.model_dump())
 
@@ -93,8 +94,8 @@ class SessionService:
         created_new_session = False
         try:
             session = await self.session_repo.create_session(validated, user_id)
-            await self._clamp_session_model_tier(session, user_id)
-            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session.id))
+            await self.clamp_session_model_tier(session, user_id)
+            await self.topic_repo.create_topic(TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=session.id))
             await self.db.commit()
             created_new_session = True
         except IntegrityError:
@@ -108,7 +109,7 @@ class SessionService:
                 # creation was partially committed or topics were cleared).
                 topics = await self.topic_repo.get_topics_by_session(existing.id)
                 if not topics:
-                    await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=existing.id))
+                    await self.topic_repo.create_topic(TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=existing.id))
                     await self.db.commit()
                 return SessionRead(**existing.model_dump())
             raise
@@ -139,7 +140,7 @@ class SessionService:
             raise ErrCode.SESSION_NOT_FOUND.with_messages("No session found for this user-agent combination")
 
         # Clamp tier if it exceeds subscription limit
-        if await self._clamp_session_model_tier(session, user_id):
+        if await self.clamp_session_model_tier(session, user_id):
             await self.db.commit()
 
         # Fetch topics ordered by updated_at descending (most recent first)
@@ -156,7 +157,7 @@ class SessionService:
         # Clamp all sessions in one pass, commit once if any changed
         any_clamped = False
         for session in sessions:
-            if await self._clamp_session_model_tier(session, user_id):
+            if await self.clamp_session_model_tier(session, user_id):
                 any_clamped = True
         if any_clamped:
             await self.db.commit()
@@ -189,7 +190,7 @@ class SessionService:
                 await self.message_repo.delete_messages_by_topic(topic.id)
                 await self.topic_repo.delete_topic(topic.id)
 
-            await self.topic_repo.create_topic(TopicCreate(name="新的聊天", session_id=session_id))
+            await self.topic_repo.create_topic(TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=session_id))
 
         await self.db.commit()
 

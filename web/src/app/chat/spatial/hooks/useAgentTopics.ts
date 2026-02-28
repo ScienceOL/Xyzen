@@ -1,5 +1,9 @@
+import { DEFAULT_TOPIC_TITLE_KEY } from "@/configs/common";
 import { useRespondingChannelIds } from "@/hooks/useChannelSelectors";
-import { sessionService, type SessionTopicRead } from "@/service/sessionService";
+import {
+  sessionService,
+  type SessionTopicRead,
+} from "@/service/sessionService";
 import { topicService } from "@/service/topicService";
 import { useXyzen } from "@/store";
 import i18n from "i18next";
@@ -119,12 +123,19 @@ export function useAgentTopics(agentId: string): UseAgentTopicsResult {
     if (!activeTopicId) return;
 
     const store = useXyzen.getState();
+
+    // Guard: only auto-open tabs that belong to this agent.
+    // If channel doesn't exist yet (async creation), skip — it will
+    // trigger again once the channel is created and activeChatChannel updates.
+    const channel = store.channels[activeTopicId];
+    if (!channel || channel.agentId !== agentIdRef.current) return;
+
     const tabs = store.openTabsByAgent[agentIdRef.current] ?? [];
     if (tabs.some((t) => t.id === activeTopicId)) return;
 
     // Resolve the best available name: allTopics → channel title → fallback
     const nameMap = buildNameMap(allTopics);
-    const name = nameMap.get(activeTopicId) || i18n.t("app.toolbar.newChat");
+    const name = nameMap.get(activeTopicId) || i18n.t(DEFAULT_TOPIC_TITLE_KEY);
     store.openTab(agentIdRef.current, { id: activeTopicId, name });
   }, [activeTopicId, allTopics]);
 
@@ -132,7 +143,7 @@ export function useAgentTopics(agentId: string): UseAgentTopicsResult {
     if (!sessionId) return;
 
     const newTopic = await topicService.createTopic({
-      name: i18n.t("app.toolbar.newChat"),
+      name: i18n.t(DEFAULT_TOPIC_TITLE_KEY),
       session_id: sessionId,
     });
 

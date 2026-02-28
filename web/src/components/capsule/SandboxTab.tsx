@@ -7,6 +7,7 @@ import {
 } from "@/components/animate-ui/components/radix/files";
 import { SandboxFileViewer } from "@/components/capsule/SandboxFileViewer";
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
+import { SANDBOX_WORKDIR } from "@/configs/common";
 import { sandboxService, type SandboxFileInfo } from "@/service/sandboxService";
 import {
   ArrowPathIcon,
@@ -227,7 +228,7 @@ export function SandboxTab() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 shrink-0 flex items-center justify-between">
         <p className="text-xs text-neutral-400 dark:text-neutral-500">
-          /workspace
+          {SANDBOX_WORKDIR}
         </p>
         <button
           onClick={() => void loadRoot()}

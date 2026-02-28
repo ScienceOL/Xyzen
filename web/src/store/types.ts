@@ -10,6 +10,8 @@ import type {
   McpToolSlice,
   NotificationSlice,
   ProviderSlice,
+  RunnerSlice,
+  TerminalSlice,
   UiSlice,
   WalletSlice,
 } from "./slices";
@@ -44,7 +46,7 @@ export interface MessageAttachment {
   name: string;
   type: string;
   size: number;
-  category: "images" | "documents" | "audio" | "others";
+  category: "images" | "videos" | "documents" | "audio" | "others";
   download_url?: string;
   thumbnail_url?: string;
 }
@@ -64,6 +66,8 @@ export interface MessageError {
   message: string; // User-safe display message
   recoverable: boolean; // Show retry button?
   detail?: string; // Optional sanitized detail
+  errorRef?: string; // Unique reference ID for log correlation
+  occurredAt?: string; // ISO timestamp of when the error occurred
 }
 
 /**
@@ -265,4 +269,6 @@ export type XyzenState = UiSlice &
   FileUploadSlice &
   KnowledgeSlice &
   NotificationSlice &
+  RunnerSlice &
+  TerminalSlice &
   WalletSlice;

@@ -228,8 +228,20 @@ async def load_skill_resource_files(
     prefix: str | None,
     *,
     storage: StorageServiceProto | None = None,
+    skill=None,
+    db=None,
 ) -> list[dict[str, str]]:
-    """Download all resource files for sandbox deployment (excluding SKILL.md)."""
+    """Download all resource files for sandbox deployment (excluding SKILL.md).
+
+    Supports two modes:
+    - DB-backed: If ``skill`` has ``root_folder_id``, query the File table.
+    - OSS-prefix: Falls back to listing ``prefix`` from OSS (legacy).
+    """
+    # DB-backed path
+    if skill and getattr(skill, "root_folder_id", None) and db:
+        return await _load_resource_files_from_db(skill, db, storage)
+
+    # Legacy OSS-prefix path
     if not prefix:
         return []
 
@@ -252,12 +264,66 @@ async def load_skill_resource_files(
     return result
 
 
+async def _load_resource_files_from_db(skill, db, storage=None) -> list[dict[str, str]]:
+    """Load resource files from File table for DB-backed skills."""
+    from sqlmodel import col, select
+
+    from app.models.file import File
+
+    storage_svc = storage or get_storage_service()
+
+    statement = (
+        select(File).where(File.skill_id == skill.id).where(col(File.is_deleted).is_(False)).where(File.is_dir == False)  # noqa: E712
+    )
+    items = (await db.exec(statement)).all()
+
+    # Build path map: walk parent_id chain to reconstruct relative paths
+    all_statement = select(File).where(File.skill_id == skill.id).where(col(File.is_deleted).is_(False))
+    all_items = {f.id: f for f in (await db.exec(all_statement)).all()}
+
+    def _build_path(file_item) -> str:
+        parts: list[str] = [file_item.original_filename]
+        current = file_item
+        while current.parent_id and current.parent_id != skill.root_folder_id:
+            parent = all_items.get(current.parent_id)
+            if not parent:
+                break
+            parts.insert(0, parent.original_filename)
+            current = parent
+        return "/".join(parts)
+
+    result: list[dict[str, str]] = []
+    for item in items:
+        if item.original_filename == SKILL_MD_FILENAME and item.parent_id == skill.root_folder_id:
+            continue  # Skip SKILL.md at root
+        if not item.storage_key:
+            continue
+        rel_path = _build_path(item)
+        buffer = BytesIO()
+        await storage_svc.download_file(item.storage_key, buffer)
+        result.append({"path": rel_path, "content": buffer.getvalue().decode("utf-8")})
+
+    return result
+
+
 async def load_skill_md(
     prefix: str | None,
     *,
     storage: StorageServiceProto | None = None,
+    skill=None,
+    db=None,
 ) -> str | None:
-    """Load SKILL.md content from OSS folder."""
+    """Load SKILL.md content.
+
+    Supports two modes:
+    - DB-backed: If ``skill`` has ``root_folder_id``, look up in the File table.
+    - OSS-prefix: Falls back to reading from OSS (legacy).
+    """
+    # DB-backed path
+    if skill and getattr(skill, "root_folder_id", None) and db:
+        return await _load_skill_md_from_db(skill, db, storage)
+
+    # Legacy OSS-prefix path
     if not prefix:
         return None
 
@@ -269,6 +335,32 @@ async def load_skill_md(
 
     buffer = BytesIO()
     await storage_svc.download_file(key, buffer)
+    return buffer.getvalue().decode("utf-8")
+
+
+async def _load_skill_md_from_db(skill, db, storage=None) -> str | None:
+    """Load SKILL.md from File table for DB-backed skills."""
+    from sqlmodel import col, select
+
+    from app.models.file import File
+
+    storage_svc = storage or get_storage_service()
+
+    statement = (
+        select(File)
+        .where(File.skill_id == skill.id)
+        .where(File.original_filename == SKILL_MD_FILENAME)
+        .where(File.parent_id == skill.root_folder_id)
+        .where(col(File.is_deleted).is_(False))
+        .limit(1)
+    )
+    result = await db.exec(statement)
+    file_record = result.first()
+    if not file_record or not file_record.storage_key:
+        return None
+
+    buffer = BytesIO()
+    await storage_svc.download_file(file_record.storage_key, buffer)
     return buffer.getvalue().decode("utf-8")
 
 

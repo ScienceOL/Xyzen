@@ -82,6 +82,7 @@
     "open": "打开",
     "preview": "预览",
     "download": "下载",
+    "edit": "编辑",
     "rename": "重命名",
     "moveTo": "移动到...",
     "addToKnowledgeSet": "添加到知识库",
@@ -186,6 +187,18 @@
     "fileCount": "{{count}} 个文件",
     "updated": "更新于 {{date}}",
     "createKnowledgeSet": "新建知识库"
+  },
+  "fileEditor": {
+    "save": "保存",
+    "saving": "保存中...",
+    "unsavedChanges": "您有未保存的更改。是否放弃？",
+    "unsavedTitle": "未保存的更改",
+    "discard": "放弃",
+    "keepEditing": "继续编辑",
+    "autoSaved": "已保存",
+    "saveSuccess": "文件已保存",
+    "saveError": "保存失败",
+    "loadError": "加载文件内容失败"
   },
   "createKnowledgeSetModal": {
     "title": "创建知识库",

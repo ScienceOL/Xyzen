@@ -144,7 +144,7 @@ def process_chat_message(
 
             pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
             if pending:
-                done, still_pending = loop.run_until_complete(asyncio.wait(pending, timeout=1.0))
+                done, still_pending = loop.run_until_complete(asyncio.wait(pending, timeout=3.0))
                 # Cancel anything still pending to avoid hanging the worker.
                 for task in still_pending:
                     task.cancel()
@@ -354,17 +354,25 @@ async def _process_chat_message_async(
             await handle_normal_finalization(ctx, pre_deducted_amount, access_token)
 
     except Exception as e:
-        logger.error(f"Unhandled error in process_chat_message: {e}", exc_info=True)
-
         from app.common.code.chat_error_code import classify_exception
 
-        error_code_val, safe_message = classify_exception(e)
+        classified = classify_exception(e)
+        logger.error(
+            f"Unhandled error [{classified.error_ref}] [{classified.code}] in process_chat_message: {e}",
+            exc_info=True,
+        )
+
+        detail = f"Exception: {classified.error_type}" if classified.error_type else None
         error_event_data: dict[str, Any] = {
-            "error": safe_message,
-            "error_code": error_code_val.value,
-            "error_category": error_code_val.category,
-            "recoverable": error_code_val.recoverable,
+            "error": classified.message,
+            "error_code": classified.code.value,
+            "error_category": classified.code.category,
+            "recoverable": classified.code.recoverable,
+            "error_ref": classified.error_ref,
+            "occurred_at": classified.occurred_at,
         }
+        if detail is not None:
+            error_event_data["detail"] = detail
         if stream_id:
             error_event_data["stream_id"] = stream_id
         await publisher.publish(
@@ -402,8 +410,8 @@ async def _process_chat_message_async(
                         msg.content = ai_message_full_content or ""
                         if ai_message_thinking_content:
                             msg.thinking_content = ai_message_thinking_content
-                        msg.error_code = error_code_val.value
-                        msg.error_category = error_code_val.category
+                        msg.error_code = classified.code.value
+                        msg.error_category = classified.code.category
                         msg_db.add(msg)
                         await msg_db.commit()
                         logger.debug(
@@ -430,16 +438,11 @@ async def _process_chat_message_async(
         # Exception-path settlement: individual ConsumeRecords were already
         # created during streaming. Query pending records and settle.
         try:
-            from app.core.consume.pricing import TIER_MODEL_CONSUMPTION_RATE, calculate_settlement_total
+            from app.core.consume.pricing import calculate_settlement_total
             from app.core.consume.service import settle_chat_records
             from app.repos.consume import ConsumeRepository
-            from app.repos.session import SessionRepository
 
             async with TaskSessionLocal() as settle_db:
-                session_repo = SessionRepository(settle_db)
-                session = await session_repo.get_session_by_id(session_id)
-                model_tier = session.model_tier if session else None
-
                 # Query pending ConsumeRecords for this task
                 repo = ConsumeRepository(settle_db)
                 records = await repo.list_records_for_exception_settlement(
@@ -454,8 +457,7 @@ async def _process_chat_message_async(
                     record_amounts_sum = sum(r.amount for r in records)
 
                     # Total = sum of record amounts
-                    tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
-                    total_cost = calculate_settlement_total(record_amounts_sum, tier_rate)
+                    total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
                     remaining = total_cost - pre_deducted_amount
 
                     if remaining > 0:

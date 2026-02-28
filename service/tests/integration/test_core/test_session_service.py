@@ -1,6 +1,7 @@
 import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.chat.constants import DEFAULT_TOPIC_TITLE
 from app.core.session import SessionService
 from app.models.message import MessageCreate
 from app.models.sessions import SessionUpdate
@@ -30,7 +31,7 @@ class TestSessionService:
         assert len(sessions) == 1
         assert sessions[0].id == created.id
         assert len(sessions[0].topics) == 1
-        assert sessions[0].topics[0].name == "新的聊天"
+        assert sessions[0].topics[0].name == DEFAULT_TOPIC_TITLE
 
     async def test_clear_session_topics(self, db_session: AsyncSession, session_service: SessionService):
         user_id = "test-user-session-service-clear"
@@ -53,7 +54,7 @@ class TestSessionService:
 
         topics_after = await topic_repo.get_topics_by_session(created.id)
         assert len(topics_after) == 1
-        assert topics_after[0].name == "新的聊天"
+        assert topics_after[0].name == DEFAULT_TOPIC_TITLE
 
         # Messages for deleted topics should be gone (no-FK, so we query by old topic_id)
         assert await message_repo.get_messages_by_topic(extra_topic_1.id) == []

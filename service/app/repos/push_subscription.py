@@ -1,6 +1,7 @@
 """Repository for Web Push subscriptions."""
 
 import logging
+from urllib.parse import urlparse
 
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -51,3 +52,28 @@ class PushSubscriptionRepository:
             await self.db.flush()
             return True
         return False
+
+    async def delete_stale_by_user_and_domain(self, user_id: str, domain: str, keep_endpoint: str) -> int:
+        """Delete all subscriptions for *user_id* whose endpoint shares the
+        same push-service *domain*, EXCEPT the one with *keep_endpoint*.
+
+        Returns the number of deleted rows.
+        """
+        stmt = select(PushSubscription).where(
+            col(PushSubscription.user_id) == user_id,
+            col(PushSubscription.endpoint) != keep_endpoint,
+            col(PushSubscription.endpoint).startswith(domain),
+        )
+        result = await self.db.exec(stmt)
+        stale = list(result.all())
+        for row in stale:
+            await self.db.delete(row)
+        if stale:
+            await self.db.flush()
+        return len(stale)
+
+    @staticmethod
+    def extract_domain(endpoint: str) -> str:
+        """Return ``https://host`` from an endpoint URL."""
+        parsed = urlparse(endpoint)
+        return f"{parsed.scheme}://{parsed.netloc}"

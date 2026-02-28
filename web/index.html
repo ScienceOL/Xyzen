@@ -2,6 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Anti-flash: set dark background before any external resource loads -->
+    <style>
+      @media (prefers-color-scheme: dark) {
+        html {
+          background: #000;
+        }
+      }
+      html.dark {
+        background: #000;
+      }
+    </style>
+    <script>
+      (function () {
+        var t = localStorage.getItem("theme");
+        if (
+          t === "dark" ||
+          (t !== "light" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches)
+        )
+          document.documentElement.classList.add("dark");
+      })();
+    </script>
     <link
       rel="icon"
       type="image/png"

@@ -62,7 +62,18 @@ class E2BConfig(BaseModel):
     )
     TimeoutSeconds: int = Field(
         default=300,
-        description="Sandbox lifetime in seconds before auto-shutdown",
+        description="Sandbox idle timeout in seconds. With AutoPause enabled the "
+        "sandbox is paused (not killed) when this expires.",
+    )
+    AutoPause: bool = Field(
+        default=True,
+        description="Automatically pause (instead of kill) the sandbox when the "
+        "timeout expires. Preserves filesystem and memory state.",
+    )
+    PauseDurationDays: int = Field(
+        default=7,
+        description="Maximum number of days a paused sandbox is retained on E2B "
+        "before being deleted. E2B supports up to 30 days.",
     )
 
 
@@ -105,3 +116,18 @@ class SandboxConfig(BaseModel):
     # --- Provider-specific (nested) ---
     Daytona: DaytonaConfig = Field(default_factory=DaytonaConfig)
     E2B: E2BConfig = Field(default_factory=E2BConfig)
+
+
+def get_sandbox_workdir() -> str:
+    """Return the resolved sandbox working directory.
+
+    Lazily reads ``configs.Sandbox.WorkDir`` and normalises to an
+    absolute POSIX path.  All backend/tool code should use this instead
+    of hard-coding ``/workspace``.
+    """
+    from app.configs import configs
+
+    raw = (configs.Sandbox.WorkDir or "/workspace").strip()
+    if not raw.startswith("/"):
+        raw = f"/{raw}"
+    return raw

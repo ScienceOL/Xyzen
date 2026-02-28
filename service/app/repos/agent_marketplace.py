@@ -1,9 +1,10 @@
 import logging
 from datetime import datetime, timezone
-from typing import Literal, Sequence
+from typing import Any, Literal, Sequence
 from uuid import UUID
 
 from sqlalchemy import Float, cast, literal
+from sqlalchemy import select as sa_select
 from sqlmodel import asc, case, col, desc, func, or_, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -50,6 +51,7 @@ class AgentMarketplaceRepository:
             readme=listing_data.readme,
             scope=listing_data.scope,
             builtin_key=listing_data.builtin_key,
+            fork_mode=listing_data.fork_mode,
         )
 
         self.db.add(listing)
@@ -478,3 +480,131 @@ class AgentMarketplaceRepository:
 
         result = await self.db.exec(statement)
         return result.all()
+
+    # ------------------------------------------------------------------
+    # Admin queries
+    # ------------------------------------------------------------------
+
+    async def admin_get_overview_stats(self) -> dict[str, Any]:
+        """Aggregate overview stats for the admin dashboard."""
+        stmt = sa_select(
+            func.count().label("total_listings"),
+            func.count().filter(col(AgentMarketplace.is_published).is_(True)).label("published"),
+            func.count().filter(col(AgentMarketplace.is_published).is_(False)).label("unpublished"),
+            func.count().filter(col(AgentMarketplace.scope) == MarketplaceScope.OFFICIAL).label("official"),
+            func.count().filter(col(AgentMarketplace.scope) == MarketplaceScope.COMMUNITY).label("community"),
+            func.coalesce(func.sum(col(AgentMarketplace.forks_count)), 0).label("total_forks"),
+            func.coalesce(func.sum(col(AgentMarketplace.views_count)), 0).label("total_views"),
+            func.coalesce(func.sum(col(AgentMarketplace.likes_count)), 0).label("total_likes"),
+        ).select_from(AgentMarketplace)
+
+        result = (await self.db.exec(stmt)).one()  # type: ignore[arg-type]
+        return {
+            "total_listings": int(result.total_listings),
+            "published": int(result.published),
+            "unpublished": int(result.unpublished),
+            "official": int(result.official),
+            "community": int(result.community),
+            "total_forks": int(result.total_forks),
+            "total_views": int(result.total_views),
+            "total_likes": int(result.total_likes),
+        }
+
+    async def admin_search_listings(
+        self,
+        search: str | None = None,
+        scope: MarketplaceScope | None = None,
+        is_published: bool | None = None,
+        sort_by: Literal["recent", "forks", "views", "likes", "earnings"] = "recent",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Paginated admin listing search with LEFT JOIN earnings."""
+        from app.models.developer_earning import DeveloperEarning
+
+        # CTE: aggregate earnings per marketplace_id
+        earnings_cte = (
+            sa_select(
+                col(DeveloperEarning.marketplace_id),
+                func.coalesce(func.sum(col(DeveloperEarning.amount)), 0).label("total_earned"),
+                func.coalesce(func.sum(col(DeveloperEarning.total_consumed)), 0).label("total_consumed"),
+            )
+            .group_by(col(DeveloperEarning.marketplace_id))
+            .cte("earnings_cte")
+        )
+
+        # Base query
+        base = sa_select(
+            AgentMarketplace,
+            func.coalesce(earnings_cte.c.total_earned, 0).label("total_earned"),
+            func.coalesce(earnings_cte.c.total_consumed, 0).label("total_consumed"),
+        ).outerjoin(earnings_cte, col(AgentMarketplace.id) == earnings_cte.c.marketplace_id)
+
+        # Filters
+        filters: list[Any] = []
+        if search:
+            pattern = f"%{search}%"
+            filters.append(
+                or_(
+                    col(AgentMarketplace.name).ilike(pattern),
+                    col(AgentMarketplace.description).ilike(pattern),
+                )
+            )
+        if scope is not None:
+            filters.append(col(AgentMarketplace.scope) == scope)
+        if is_published is not None:
+            filters.append(col(AgentMarketplace.is_published).is_(is_published))
+
+        if filters:
+            base = base.where(*filters)
+
+        # Count
+        count_stmt = sa_select(func.count()).select_from(AgentMarketplace)
+        if filters:
+            count_stmt = count_stmt.where(*filters)
+        total = int((await self.db.exec(count_stmt)).one())  # type: ignore[arg-type]
+
+        # Sorting
+        if sort_by == "forks":
+            base = base.order_by(desc(AgentMarketplace.forks_count))
+        elif sort_by == "views":
+            base = base.order_by(desc(AgentMarketplace.views_count))
+        elif sort_by == "likes":
+            base = base.order_by(desc(AgentMarketplace.likes_count))
+        elif sort_by == "earnings":
+            base = base.order_by(desc(func.coalesce(earnings_cte.c.total_earned, 0)))
+        else:
+            base = base.order_by(desc(AgentMarketplace.updated_at))
+
+        base = base.limit(limit).offset(offset)
+        rows = (await self.db.exec(base)).all()  # type: ignore[arg-type]
+
+        listings = []
+        for row in rows:
+            listing: AgentMarketplace = row[0]
+            listings.append(
+                {
+                    "id": str(listing.id),
+                    "name": listing.name,
+                    "description": listing.description,
+                    "avatar": listing.avatar,
+                    "scope": listing.scope,
+                    "is_published": listing.is_published,
+                    "fork_mode": listing.fork_mode,
+                    "user_id": listing.user_id,
+                    "author_display_name": listing.author_display_name,
+                    "tags": listing.tags or [],
+                    "likes_count": listing.likes_count,
+                    "forks_count": listing.forks_count,
+                    "views_count": listing.views_count,
+                    "total_earned": int(row.total_earned),
+                    "total_consumed": int(row.total_consumed),
+                    "created_at": listing.created_at.isoformat(),
+                    "updated_at": listing.updated_at.isoformat(),
+                    "first_published_at": listing.first_published_at.isoformat()
+                    if listing.first_published_at
+                    else None,
+                }
+            )
+
+        return listings, total

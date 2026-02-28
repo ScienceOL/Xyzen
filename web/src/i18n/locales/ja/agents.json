@@ -149,6 +149,7 @@
       "toolFilterHint": "空欄で全ツール許可",
       "maxIterations": "最大反復回数"
     },
+    "fullscreenEdit": "エディターを拡大",
     "tool": {
       "title": "ツール設定",
       "outputKey": "出力キー",

@@ -1,0 +1,38 @@
+{
+  "title": "终端",
+  "status": {
+    "connected": "已连接",
+    "connecting": "连接中...",
+    "disconnected": "已断开",
+    "detached": "已分离",
+    "error": "错误",
+    "reconnecting": "重新连接中...",
+    "exited": "已退出"
+  },
+  "reconnecting": {
+    "title": "正在重新连接...",
+    "attempt": "尝试 {{current}}/{{max}}"
+  },
+  "noRunner": "没有在线的本地连接",
+  "noRunnerHint": "在设置中添加本地连接以启动终端会话",
+  "openTerminal": "打开终端",
+  "openWithCommand": "运行命令",
+  "commandPlaceholder": "例如 claude, bash, python",
+  "launch": "启动",
+  "quickLaunch": {
+    "title": "快速启动",
+    "shell": "Shell",
+    "claudeCode": "Claude Code",
+    "custom": "自定义命令"
+  },
+  "sessions": {
+    "title": "会话",
+    "empty": "没有活跃的会话",
+    "new": "新建会话",
+    "attach": "连接",
+    "kill": "终止",
+    "expired": "会话已过期",
+    "detached": "已分离",
+    "exited": "已退出 ({{code}})"
+  }
+}

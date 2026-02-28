@@ -5,7 +5,9 @@ import logging
 from openfga_sdk import (
     ClientConfiguration,
     CreateStoreRequest,
+    ObjectRelation,
     OpenFgaApi,
+    TupleToUserset,
     TypeDefinition,
     Userset,
     Usersets,
@@ -96,6 +98,38 @@ _TYPE_DEFINITIONS: list[TypeDefinition] = [
                         RelationReference(type="user"),
                         RelationReference(type="user", wildcard={}),
                     ]
+                ),
+            }
+        ),
+    ),
+    # ── Subscription capability RBAC ──────────────────────────
+    TypeDefinition(
+        type="plan",
+        relations={"subscriber": Userset(this={})},
+        metadata=Metadata(
+            relations={
+                "subscriber": RelationMetadata(
+                    directly_related_user_types=[RelationReference(type="user")],
+                ),
+            }
+        ),
+    ),
+    TypeDefinition(
+        type="capability",
+        relations={
+            "granted": Userset(
+                tuple_to_userset=TupleToUserset(
+                    tupleset=ObjectRelation(relation="associated_plan"),
+                    computed_userset=ObjectRelation(relation="subscriber"),
+                ),
+            ),
+            "associated_plan": Userset(this={}),
+        },
+        metadata=Metadata(
+            relations={
+                "granted": RelationMetadata(directly_related_user_types=[]),
+                "associated_plan": RelationMetadata(
+                    directly_related_user_types=[RelationReference(type="plan")],
                 ),
             }
         ),

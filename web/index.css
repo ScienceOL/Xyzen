@@ -27,6 +27,43 @@
   --brand: oklch(0.707 0.165 254.624);
 }
 
+@utility custom-scrollbar-thin {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 1.5px;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.15);
+  }
+
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.35);
+  }
+}
+
+:is(.dark) .custom-scrollbar-thin {
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(115, 115, 115, 0.15);
+  }
+
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(115, 115, 115, 0.35);
+  }
+}
+
 @utility custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
@@ -228,6 +265,7 @@
     body {
       overflow: hidden;
       height: 100dvh;
+      height: -webkit-fill-available;
     }
   }
 
@@ -578,6 +616,90 @@
   & .border-t {
     border-color: rgba(255, 255, 255, 0.2) !important;
   }
+}
+
+/* ================================================================== */
+/*  Terminal Landing Page Utilities                                    */
+/* ================================================================== */
+
+/* Scrolling horizontal scanline overlay — no position:relative here
+   so it won't override Tailwind `fixed` on the scroll container.     */
+.crt-scanlines::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.015) 2px,
+    rgba(255, 255, 255, 0.015) 4px
+  );
+  animation: crt-scanline-scroll 8s linear infinite;
+}
+@keyframes crt-scanline-scroll {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100vh;
+  }
+}
+
+/* White glow heading text */
+.crt-glow-text {
+  color: #ffffff;
+  text-shadow:
+    0 0 6px rgba(255, 255, 255, 0.35),
+    0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+/* Dimmed glow variant for timestamps / highlights */
+.crt-glow-text-dim {
+  color: #d4d4d4;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.12);
+}
+
+/* Terminal card surface */
+.crt-terminal-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 12px rgba(255, 255, 255, 0.02);
+}
+
+/* Blinking block cursor */
+.crt-cursor::after {
+  content: "\2588";
+  animation: crt-cursor-blink 1s step-end infinite;
+  color: #ffffff;
+}
+@keyframes crt-cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Edge-darkening vignette */
+.crt-vignette {
+  position: relative;
+}
+.crt-vignette::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
 }
 
 /* Dark mode adjustments */

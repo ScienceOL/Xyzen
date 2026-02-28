@@ -287,6 +287,11 @@ export function createConnectionActions(
 
         console.groupEnd();
 
+        // Sync tab name when topic is renamed by the backend
+        if (event.type === "topic_updated") {
+          get().renameTab(event.data.id, event.data.name);
+        }
+
         // Chunk events return early above, so all events reaching here are state transitions
         updateDerivedStatus();
         closeIdleNonPrimaryConnection(topicId);
@@ -518,7 +523,7 @@ export function createConnectionActions(
         const loadingMsg = channel.messages.find((m) => m.isLoading);
         if (loadingMsg) {
           const loadingIndex = channel.messages.indexOf(loadingMsg);
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
           const { isLoading: _, ...rest } = channel.messages[loadingIndex];
           channel.messages[loadingIndex] = {
             ...rest,
@@ -561,7 +566,6 @@ export function createConnectionActions(
                 (m) => m.isLoading,
               );
               if (loadingIndex !== -1) {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { isLoading: _, ...messageWithoutLoading } =
                   state.channels[channelId].messages[loadingIndex];
                 state.channels[channelId].messages[loadingIndex] = {

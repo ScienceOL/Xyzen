@@ -68,6 +68,55 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
 
+  # Build runner CLI binaries and upload to GitHub Release
+  build-runner:
+    name: Build Runner CLI
+    needs: release
+    if: needs.release.outputs.new_release_published == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.release.outputs.new_release_version }}
+      GIT_TAG: ${{ needs.release.outputs.new_release_git_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.new_release_git_tag }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: runner/go.mod
+          cache-dependency-path: runner/go.sum
+
+      - name: Cross-compile for all platforms
+        working-directory: runner
+        run: make all VERSION=${{ env.VERSION }}
+
+      - name: Upload binaries to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ env.GIT_TAG }}" \
+            runner/bin/xyzen-darwin-amd64 \
+            runner/bin/xyzen-darwin-arm64 \
+            runner/bin/xyzen-linux-amd64 \
+            runner/bin/xyzen-linux-arm64 \
+            runner/bin/xyzen-windows-amd64.exe \
+            --clobber
+
+      - name: Runner Build Summary
+        run: |
+          echo "## Runner CLI Binaries" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Binary |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS Intel | \`xyzen-darwin-amd64\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS Apple Silicon | \`xyzen-darwin-arm64\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux x86_64 | \`xyzen-linux-amd64\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux ARM64 | \`xyzen-linux-arm64\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Windows x86_64 | \`xyzen-windows-amd64.exe\` |" >> $GITHUB_STEP_SUMMARY
+
   # Build service image per-platform (amd64 + arm64 in parallel)
   build-service:
     name: Build Service (${{ matrix.platform }})

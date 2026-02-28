@@ -47,6 +47,8 @@
     "memory": "Memory",
     "more": "More",
     "sandbox": "Sandbox",
+    "runner": "Local Terminal",
+    "tasks": "Tasks",
     "account": "Account",
     "comingSoon": "Coming Soon"
   },
@@ -137,6 +139,8 @@
     "noKnowledge": "None",
     "image": "Image",
     "imageDesc": "Generate and read images",
+    "video": "Video",
+    "videoDesc": "Generate videos",
     "literatureSearch": "Literature",
     "literatureSearchDesc": "Search academic papers",
     "memory": "Memory",
@@ -198,12 +202,12 @@
     "noDescription": "No description available for this assistant",
     "defaultDescription": "You can ask any question freely. No need to select a specific assistant — the system will provide appropriate responses.",
     "quickActions": {
-      "sayHello": "Say hello",
-      "sayHelloMessage": "Hello! Nice to meet you.",
-      "askQuestion": "Ask a question",
-      "askQuestionMessage": "Can you help me with something?",
-      "startTask": "Start a task",
-      "startTaskMessage": "I'd like to start a new task."
+      "drawImage": "Paint a watercolor scene",
+      "drawImageMessage": "Draw me a seaside sunset in watercolor style, with warm tones. Save it to the knowledge base when you're done, and let me know how I can keep tweaking it — like adding people playing on the beach.",
+      "launchSandbox": "Create a shareable page",
+      "launchSandboxMessage": "Build me a fun interactive web page with some cool animations — keep it simple. Give me a shareable link when it's ready, I want to send it to friends.",
+      "scheduleTask": "Set a daily reminder",
+      "scheduleTaskMessage": "Set up a daily reminder at 9 AM that sends me the weather and my to-do list. Oh, and remind me to turn on notification permissions so I actually get the alerts."
     }
   },
   "chatHeader": {
@@ -311,8 +315,10 @@
       "subtitle": "Flexibly allocate AI computing power based on task difficulty",
       "speed": "Response Speed",
       "reasoning": "Reasoning Depth",
+      "context": "Context Window",
       "availableModels": "Model Reference",
       "imageGen": "Image Generation",
+      "betaSpecial": "Beta Special",
       "disclaimer": "* Models listed are for capability reference only and do not guarantee the actual model used."
     },
     "speedLabels": {
@@ -325,6 +331,12 @@
       "basic": "Basic",
       "standard": "Standard",
       "excellent": "Excellent",
+      "max": "MAX"
+    },
+    "contextLabels": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
       "max": "MAX"
     },
     "features": {
@@ -371,7 +383,81 @@
     "emptyHint": "Sandboxes are created automatically when agents use code execution tools.",
     "explorer": "Explorer",
     "emptyWorkspace": "No files",
-    "selectFile": "Select a file from the explorer to view"
+    "selectFile": "Select a file from the explorer to view",
+    "start": "Start sandbox",
+    "started": "Sandbox started",
+    "startError": "Failed to start sandbox",
+    "keepAliveBtn": "Refresh sandbox timer",
+    "keepAlive": "Sandbox timer refreshed",
+    "keepAliveError": "Failed to refresh sandbox timer",
+    "stopped": "Stopped",
+    "deleteConfirmTitle": "Delete Sandbox",
+    "deleteConfirmMessage": "Are you sure you want to delete the sandbox \"{{name}}\"? This action cannot be undone.",
+    "config": {
+      "title": "Sandbox Configuration",
+      "subtitle": "Customize default sandbox resources and lifecycle settings",
+      "resources": "Resources",
+      "lifecycle": "Lifecycle",
+      "runtime": "Runtime",
+      "cpu": "CPU Cores",
+      "cpuHint": "Number of CPU cores allocated to each sandbox",
+      "memory": "Memory (MB)",
+      "memoryHint": "Memory in megabytes allocated to each sandbox",
+      "disk": "Disk (MB)",
+      "diskHint": "Disk space in megabytes allocated to each sandbox",
+      "autoStop": "Auto-stop (minutes)",
+      "autoStopHint": "Minutes of inactivity before the sandbox is automatically stopped",
+      "autoDelete": "Auto-delete (minutes)",
+      "autoDeleteHint": "Minutes after stop before the sandbox is automatically deleted",
+      "timeout": "Timeout (seconds)",
+      "timeoutHint": "Maximum execution time in seconds for sandbox operations",
+      "image": "Container Image",
+      "imageHint": "Custom container image for new sandboxes",
+      "resetDefaults": "Reset to Defaults",
+      "saved": "Sandbox configuration saved",
+      "saveError": "Failed to save sandbox configuration",
+      "reset": "Configuration reset to defaults",
+      "resetError": "Failed to reset sandbox configuration"
+    }
+  },
+  "tasksPanel": {
+    "title": "Scheduled Tasks",
+    "subtitle": "Manage your scheduled and recurring tasks.",
+    "empty": "No scheduled tasks yet.",
+    "emptyHint": "Use an agent to schedule tasks, or create one manually.",
+    "loadError": "Failed to load scheduled tasks.",
+    "deleteConfirmTitle": "Delete Task",
+    "deleteConfirmMessage": "Are you sure you want to delete this task?",
+    "deleted": "Task deleted.",
+    "deleteError": "Failed to delete task.",
+    "cancelled": "Task cancelled.",
+    "cancelError": "Failed to cancel task.",
+    "statusPending": "Pending",
+    "statusRecurring": "Recurring",
+    "statusActive": "Active",
+    "statusPaused": "Paused",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusCancelled": "Cancelled",
+    "scheduleOnce": "Once",
+    "scheduleDaily": "Daily",
+    "scheduleWeekly": "Weekly",
+    "scheduleCron": "Custom",
+    "scheduleType": "Schedule",
+    "nextRun": "Next run",
+    "lastRun": "Last run",
+    "createdAt": "Created",
+    "runs": "runs",
+    "source": "Source",
+    "agent": "Agent",
+    "timezone": "Timezone",
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "inMinutes": "in {{count}}m",
+    "inHours": "in {{count}}h",
+    "inDays": "in {{count}}d"
   },
   "workspace": {
     "recommendations": {
@@ -426,7 +512,10 @@
     "system.service_unavailable": "The service is temporarily unavailable.",
     "retryAction": "Retry",
     "rechargeAction": "Recharge",
-    "detailToggle": "Details"
+    "detailToggle": "Details",
+    "errorRef": "Ref",
+    "occurredAt": "Time",
+    "copyRef": "Copy reference ID"
   },
   "account": {
     "checkIn": "Daily Check-in",
@@ -440,6 +529,7 @@
     "storage": "Storage",
     "files": "Files",
     "parallelChats": "Parallel Chats",
+    "scheduledTasks": "Scheduled Tasks",
     "settings": "Settings",
     "redeem": "Redeem",
     "region": "Region",
@@ -505,15 +595,15 @@
   },
   "loading": {
     "tips": {
-      "noAds": "I wanted to add ads, but the boss said no.",
-      "ceoAgent": "Did you know? The CEO Agent can directly command other Agents to work for it.",
-      "publishEarn": "Publish your assistant to the marketplace and earn credit rewards!",
-      "lazyProductivity": "\"Laziness\" is the #1 driver of productivity.",
-      "deadlineProductivity": "\"Deadlines\" are the #1 driver of productivity.",
+      "noAds": "Ad-free, boss's orders.",
+      "ceoAgent": "CEO Agent can command other agents.",
+      "publishEarn": "Publish agents, earn credits.",
+      "lazyProductivity": "\"Laziness\" drives productivity.",
+      "deadlineProductivity": "\"Deadlines\" drive productivity.",
       "worthyOpponent": "A worthy opponent indeed.",
-      "knowledgeBase": "Connect a knowledge base to give your agent domain expertise.",
-      "multiAgent": "Use multiple agents in parallel for complex research tasks.",
-      "dailyCheckIn": "Don't forget to check in daily for bonus credits!"
+      "knowledgeBase": "Add a knowledge base for expertise.",
+      "multiAgent": "Run multiple agents in parallel.",
+      "dailyCheckIn": "Check in daily for bonus credits!"
     }
   }
 }

@@ -49,6 +49,8 @@ export function handleError(
     error_category?: string;
     recoverable?: boolean;
     detail?: string;
+    error_ref?: string;
+    occurred_at?: string;
     stream_id: string;
   },
 ): void {
@@ -62,6 +64,8 @@ export function handleError(
         message: eventData.error,
         recoverable: eventData.recoverable ?? false,
         detail: eventData.detail,
+        errorRef: eventData.error_ref,
+        occurredAt: eventData.occurred_at,
       }
     : {
         code: "system.internal_error",
@@ -252,7 +256,6 @@ export function handleStreamAborted(
   // Handle loading message - convert to cancelled message
   const loadingIndex = findLoadingMessageIndex(channel);
   if (loadingIndex !== -1) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { isLoading: _, ...messageWithoutLoading } =
       channel.messages[loadingIndex];
     channel.messages[loadingIndex] = {
@@ -512,7 +515,7 @@ export function handleGeneratedFiles(
       name: string;
       type: string;
       size: number;
-      category: "images" | "documents" | "audio" | "others";
+      category: "images" | "videos" | "documents" | "audio" | "others";
       download_url?: string;
       thumbnail_url?: string;
     }>;
