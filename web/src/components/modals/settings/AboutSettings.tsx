@@ -174,11 +174,24 @@ export const AboutSettings = () => {
             href={`${GITHUB_REPO}/blob/main/CHANGELOG.md`}
             label="Changelog"
           />
+          <div className="mx-4 h-px bg-neutral-200/60 dark:bg-neutral-700/60" />
+          <LinkRow
+            href="#/terms"
+            label={t("landing.footer.terms", "Terms of Service")}
+            external={false}
+          />
+          <div className="mx-4 h-px bg-neutral-200/60 dark:bg-neutral-700/60" />
+          <LinkRow
+            href="#/privacy"
+            label={t("landing.footer.privacy", "Privacy Policy")}
+            external={false}
+          />
         </div>
 
         {/* Footer */}
         <p className="mt-8 pb-4 text-center text-xs text-neutral-400 dark:text-neutral-500">
-          © {new Date().getFullYear()} ScienceOL.{" "}
+          &copy; 2024-2026 Miracle Story (Shanghai) Intelligent Technology Co.,
+          Ltd.{" "}
           <a
             href={`${GITHUB_REPO}/blob/main/LICENSE`}
             target="_blank"
@@ -196,13 +209,13 @@ export const AboutSettings = () => {
 interface LinkRowProps {
   href: string;
   label: string;
+  external?: boolean;
 }
 
-const LinkRow = ({ href, label }: LinkRowProps) => (
+const LinkRow = ({ href, label, external = true }: LinkRowProps) => (
   <a
     href={href}
-    target="_blank"
-    rel="noopener noreferrer"
+    {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     className="flex items-center justify-between px-4 py-3 text-sm text-neutral-900 transition-colors hover:bg-neutral-200/50 dark:text-neutral-100 dark:hover:bg-neutral-700/50"
   >
     <span>{label}</span>

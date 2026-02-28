@@ -243,7 +243,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
             colorClass: "from-lime-950/30 to-lime-900/30 border-lime-800",
           },
           {
-            label: "Daily Check-in",
+            label: "Check-in",
             value: summaryStats.daily_checkin_credits,
             colorClass: "from-green-950/30 to-green-900/30 border-green-800",
           },
@@ -343,7 +343,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
                   Subscription
                 </th>
                 <th className="px-4 py-2 text-right text-xs text-neutral-400">
-                  Daily Check-in
+                  Check-in
                 </th>
                 <th className="px-4 py-2 text-right text-xs text-neutral-400">
                   Transactions

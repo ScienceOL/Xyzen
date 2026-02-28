@@ -10,6 +10,7 @@
     "region": "サービスと地域",
     "redemption": "引き換え",
     "mcp": "MCPサーバー",
+    "feedback": "フィードバック",
     "about": "このアプリについて"
   },
   "region": {
@@ -26,7 +27,8 @@
     "alipay": "Alipay",
     "international": {
       "title": "国際版",
-      "subtitle": "世界中のユーザー向けサービス"
+      "subtitle": "世界中のユーザー向けサービス",
+      "hint": "中国大陸の居住者はご利用いただけません。"
     },
     "china": {
       "title": "中国大陸版",
@@ -262,6 +264,22 @@
     "errors": {
       "empty": "引き換えコードを入力してください"
     }
+  },
+  "feedback": {
+    "title": "フィードバック・苦情",
+    "subtitle": "ご意見をお聞かせください。改善点やお気づきの問題があればお知らせください。",
+    "typePlaceholder": "フィードバックの種類を選択",
+    "types": {
+      "bug": "バグ報告",
+      "feature": "機能リクエスト",
+      "complaint": "苦情",
+      "other": "その他"
+    },
+    "subjectPlaceholder": "件名を入力",
+    "contentPlaceholder": "詳細を記載してください...",
+    "send": "フィードバックを送信",
+    "emailHint": "クリックするとメールクライアントが開き、サポートチームにフィードバックが送信されます。",
+    "or": "または直接メール："
   },
   "about": {
     "frontend": "フロントエンド",

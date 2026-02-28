@@ -11,6 +11,7 @@ from app.models.subscription import (
     UserSubscriptionCreate,
 )
 from app.core.plan_catalog import get_catalog_region, get_plan_catalog
+from app.configs import configs
 from app.repos.redemption import RedemptionRepository
 from app.repos.subscription import SubscriptionRepository
 from app.schemas.plan_catalog import (
@@ -283,6 +284,7 @@ class SubscriptionService:
                 )
                 for sa in catalog.sandbox_addon_rates
             ],
+            paypal_client_id=configs.Payment.PayPal.ClientId if configs.Payment.PayPal.Enabled else "",
         )
 
 

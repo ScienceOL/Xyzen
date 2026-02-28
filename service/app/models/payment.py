@@ -17,10 +17,12 @@ class PaymentOrderBase(SQLModel):
     currency: str = Field(default="CNY", description="Currency code (CNY, USD)")
     credits_amount: int = Field(default=0, description="Credits to grant upon fulfillment")
     duration_days: int = Field(default=30, description="Subscription duration in days")
-    payment_method: str = Field(default="alipaycn", description="Payment method (alipaycn, wechatpay, card)")
+    payment_method: str = Field(default="paypal", description="Payment method (paypal, alipaycn, wechatpay, card)")
     status: str = Field(default="pending", description="Order status: pending, succeeded, failed, expired")
-    airwallex_intent_id: str = Field(default="", description="Airwallex PaymentIntent ID")
-    qr_code_url: str = Field(default="", description="QR code URL for scan-to-pay")
+    provider_order_id: str = Field(
+        default="", description="Payment provider order/intent ID (PayPal order ID, Airwallex intent ID, etc.)"
+    )
+    qr_code_url: str = Field(default="", description="QR code URL for scan-to-pay (Airwallex)")
     fulfilled: bool = Field(default=False, description="Whether credits/subscription have been granted")
     fulfilled_at: datetime | None = Field(
         default=None,
@@ -63,4 +65,4 @@ class PaymentOrderCreate(SQLModel):
     currency: str = "CNY"
     credits_amount: int = 0
     duration_days: int = 30
-    payment_method: str = "alipaycn"
+    payment_method: str = "paypal"

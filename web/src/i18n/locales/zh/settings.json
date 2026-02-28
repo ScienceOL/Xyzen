@@ -10,6 +10,7 @@
     "region": "服务与地区",
     "redemption": "兑换码",
     "mcp": "MCP服务器",
+    "feedback": "投诉与反馈",
     "about": "关于"
   },
   "region": {
@@ -26,7 +27,8 @@
     "alipay": "支付宝",
     "international": {
       "title": "国际版",
-      "subtitle": "面向全球用户的服务"
+      "subtitle": "面向全球用户的服务",
+      "hint": "本服务不面向中国大陆居民提供。"
     },
     "china": {
       "title": "中国大陆版",
@@ -241,6 +243,22 @@
     "errors": {
       "empty": "请输入兑换码"
     }
+  },
+  "feedback": {
+    "title": "投诉与反馈",
+    "subtitle": "我们重视您的反馈。请告诉我们如何改进，或报告您遇到的任何问题。",
+    "typePlaceholder": "选择反馈类型",
+    "types": {
+      "bug": "Bug 报告",
+      "feature": "功能建议",
+      "complaint": "投诉",
+      "other": "其他"
+    },
+    "subjectPlaceholder": "简要说明",
+    "contentPlaceholder": "请描述详细内容...",
+    "send": "发送反馈",
+    "emailHint": "点击后将打开您的邮件客户端，将反馈发送至我们的支持团队。",
+    "or": "或直接发送邮件至"
   },
   "about": {
     "frontend": "前端",

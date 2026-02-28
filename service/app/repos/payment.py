@@ -23,21 +23,21 @@ class PaymentRepository:
 
         This function does NOT commit the transaction, but it does flush the session.
         """
-        logger.debug(f"Creating payment order for user: {data.user_id}, type: {data.order_type}")
+        logger.debug("Creating payment order for user: %s, type: %s", data.user_id, data.order_type)
         order = PaymentOrder(**data.model_dump())
         self.db.add(order)
         await self.db.flush()
         await self.db.refresh(order)
-        logger.info(f"Created payment order: {order.id}, amount: {order.amount} {order.currency}")
+        logger.info("Created payment order: %s, amount: %s %s", order.id, order.amount, order.currency)
         return order
 
     async def get_order_by_id(self, order_id: UUID) -> PaymentOrder | None:
         """Fetch a payment order by ID."""
         return await self.db.get(PaymentOrder, order_id)
 
-    async def get_order_by_intent_id(self, intent_id: str) -> PaymentOrder | None:
-        """Fetch a payment order by Airwallex PaymentIntent ID."""
-        result = await self.db.exec(select(PaymentOrder).where(PaymentOrder.airwallex_intent_id == intent_id))
+    async def get_order_by_provider_id(self, provider_order_id: str) -> PaymentOrder | None:
+        """Fetch a payment order by provider order/intent ID."""
+        result = await self.db.exec(select(PaymentOrder).where(PaymentOrder.provider_order_id == provider_order_id))
         return result.one_or_none()
 
     async def update_order_status(self, order_id: UUID, status: str) -> PaymentOrder | None:
@@ -53,24 +53,29 @@ class PaymentRepository:
         self.db.add(order)
         await self.db.flush()
         await self.db.refresh(order)
-        logger.info(f"Updated payment order {order_id} status to {status}")
+        logger.info("Updated payment order %s status to %s", order_id, status)
         return order
 
-    async def set_intent_id_and_qr(self, order_id: UUID, intent_id: str, qr_code_url: str) -> PaymentOrder | None:
-        """Set Airwallex intent ID and QR code URL on an order.
+    async def set_provider_id_and_url(
+        self,
+        order_id: UUID,
+        provider_order_id: str,
+        url: str,
+    ) -> PaymentOrder | None:
+        """Set provider order ID and URL (QR code or approval link) on an order.
 
         This function does NOT commit the transaction.
         """
         order = await self.db.get(PaymentOrder, order_id)
         if order is None:
             return None
-        order.airwallex_intent_id = intent_id
-        order.qr_code_url = qr_code_url
+        order.provider_order_id = provider_order_id
+        order.qr_code_url = url
         order.updated_at = datetime.now(timezone.utc)
         self.db.add(order)
         await self.db.flush()
         await self.db.refresh(order)
-        logger.info(f"Set intent {intent_id} and QR on order {order_id}")
+        logger.info("Set provider_order %s on order %s", provider_order_id, order_id)
         return order
 
     async def mark_fulfilled(self, order_id: UUID) -> PaymentOrder | None:
@@ -82,7 +87,7 @@ class PaymentRepository:
         if order is None:
             return None
         if order.fulfilled:
-            logger.info(f"Order {order_id} already fulfilled, skipping")
+            logger.info("Order %s already fulfilled, skipping", order_id)
             return order
         order.fulfilled = True
         order.fulfilled_at = datetime.now(timezone.utc)
@@ -90,7 +95,7 @@ class PaymentRepository:
         self.db.add(order)
         await self.db.flush()
         await self.db.refresh(order)
-        logger.info(f"Marked order {order_id} as fulfilled")
+        logger.info("Marked order %s as fulfilled", order_id)
         return order
 
     async def list_user_orders(self, user_id: str, limit: int = 50, offset: int = 0) -> list[PaymentOrder]:

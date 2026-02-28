@@ -192,5 +192,10 @@
     "github": "Star on GitHub",
     "start": "让知识创造收益",
     "license": "开源 / 社区驱动"
+  },
+  "footer": {
+    "copyright": "\u00a9 2024-2026 奇迹物语（上海）智能科技有限公司 版权所有",
+    "terms": "用户协议",
+    "privacy": "隐私政策"
   }
 }

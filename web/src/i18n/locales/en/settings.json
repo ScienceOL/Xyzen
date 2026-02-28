@@ -10,6 +10,7 @@
     "region": "Service & Region",
     "redemption": "Redemption",
     "mcp": "MCP Servers",
+    "feedback": "Feedback",
     "about": "About"
   },
   "region": {
@@ -26,7 +27,8 @@
     "alipay": "Alipay",
     "international": {
       "title": "International",
-      "subtitle": "Global service for worldwide users"
+      "subtitle": "Global service for worldwide users",
+      "hint": "Not available for residents of Mainland China."
     },
     "china": {
       "title": "China Mainland",
@@ -262,6 +264,22 @@
     "errors": {
       "empty": "Please enter a redemption code"
     }
+  },
+  "feedback": {
+    "title": "Feedback & Complaints",
+    "subtitle": "We value your feedback. Let us know how we can improve, or report any issues you've encountered.",
+    "typePlaceholder": "Select feedback type",
+    "types": {
+      "bug": "Bug Report",
+      "feature": "Feature Request",
+      "complaint": "Complaint",
+      "other": "Other"
+    },
+    "subjectPlaceholder": "Brief summary",
+    "contentPlaceholder": "Please describe the details...",
+    "send": "Send Feedback",
+    "emailHint": "This will open your email client to send the feedback to our support team.",
+    "or": "or email us directly at"
   },
   "about": {
     "frontend": "Frontend",

@@ -7,6 +7,10 @@ import {
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
 import { PaymentQRModal } from "@/components/features/PaymentQRModal";
+import {
+  PayPalCheckoutButton,
+  PayPalProvider,
+} from "@/components/features/PayPalCheckoutButton";
 import { usePlanCatalog } from "@/hooks/usePlanCatalog";
 import { useSubscriptionInfo, useBilling } from "@/hooks/ee";
 import { cn } from "@/lib/utils";
@@ -658,10 +662,12 @@ function MySubscriptionTab() {
 function PlanCard({
   plan,
   index,
+  isChina,
   onSubscribe,
 }: {
   plan: SubscriptionPlan;
   index: number;
+  isChina: boolean;
   onSubscribe?: (planKey: string) => void;
 }) {
   const { t } = useTranslation();
@@ -824,22 +830,27 @@ function PlanCard({
         ))}
       </div>
 
-      <button
-        disabled={isLocked || isFree}
-        onClick={() => !isFree && !isLocked && onSubscribe?.(plan.planKey)}
-        className={cn(
-          "w-full rounded-lg py-2 text-xs font-semibold transition-colors",
-          isLocked || isFree
-            ? "cursor-not-allowed bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
-            : "bg-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400",
-        )}
-      >
-        {isFree
-          ? t("subscription.plan.free")
-          : isLocked
-            ? t("subscription.comingSoon")
-            : t("subscription.subscribe")}
-      </button>
+      {/* Subscribe action */}
+      {!isFree && !isLocked && !isChina ? (
+        <PayPalCheckoutButton planKey={plan.planKey} />
+      ) : (
+        <button
+          disabled={isLocked || isFree}
+          onClick={() => !isFree && !isLocked && onSubscribe?.(plan.planKey)}
+          className={cn(
+            "w-full rounded-lg py-2 text-xs font-semibold transition-colors",
+            isLocked || isFree
+              ? "cursor-not-allowed bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
+              : "bg-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400",
+          )}
+        >
+          {isFree
+            ? t("subscription.plan.free")
+            : isLocked
+              ? t("subscription.comingSoon")
+              : t("subscription.subscribe")}
+        </button>
+      )}
     </motion.div>
   );
 }
@@ -976,7 +987,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
       if (checkoutLoading) return;
       setCheckoutLoading(true);
       try {
-        const paymentMethod = isChina ? "alipaycn" : "alipaycn";
+        const paymentMethod = "alipaycn";
         const result = await paymentService.createCheckout(
           planKey,
           paymentMethod,
@@ -996,7 +1007,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
         setCheckoutLoading(false);
       }
     },
-    [checkoutLoading, isChina, regionPlans],
+    [checkoutLoading, regionPlans],
   );
 
   const handlePaymentSuccess = useCallback(() => {
@@ -1055,13 +1066,16 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                           <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-500" />
                         </div>
                       ) : (
-                        <>
+                        <PayPalProvider
+                          clientId={catalog?.paypal_client_id ?? ""}
+                        >
                           <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
                             {regionPlans.map((plan, index) => (
                               <PlanCard
                                 key={plan.planKey}
                                 plan={plan}
                                 index={index}
+                                isChina={isChina}
                                 onSubscribe={handleSubscribe}
                               />
                             ))}
@@ -1091,7 +1105,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                               {t("subscription.notInteroperable")}
                             </motion.p>
                           )}
-                        </>
+                        </PayPalProvider>
                       )}
                     </motion.div>
                   </TabsContent>

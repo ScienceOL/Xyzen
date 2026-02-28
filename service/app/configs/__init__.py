@@ -1,7 +1,6 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .airwallex import AirwallexConfig
 from .auth import AuthConfig
 from .database import DatabaseConfig
 from .dynamic_mcp_server import DynamicMCPConfig
@@ -11,6 +10,7 @@ from .image import ImageConfig
 from .lab import LabConfig
 from .memory import MemoryConfig
 from .novu import NovuConfig
+from .payment import PaymentConfig
 from .llm import LLMConfig
 from .logger import LoggerConfig
 from .mcps import McpProviderConfig
@@ -148,9 +148,9 @@ class AppConfig(BaseSettings):
         description="Enterprise Edition configuration",
     )
 
-    Airwallex: AirwallexConfig = Field(
-        default_factory=lambda: AirwallexConfig(),
-        description="Airwallex payment gateway configuration",
+    Payment: PaymentConfig = Field(
+        default_factory=lambda: PaymentConfig(),
+        description="Payment gateway configuration (PayPal, Airwallex, etc.)",
     )
 
 

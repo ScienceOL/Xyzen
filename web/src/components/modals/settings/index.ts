@@ -1,5 +1,6 @@
 export * from "./AboutSettings";
 export * from "./AccountSettings";
+export * from "./FeedbackSettings";
 export * from "./LanguageSettings";
 export * from "./McpSettings";
 export * from "./RedemptionSettings";
